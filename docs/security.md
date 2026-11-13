@@ -40,13 +40,17 @@ The collector reads and never writes, except for its output file and its memory 
 
 It mounts the host's `/proc` read-only, for load, memory and the lock table. A process can read
 the environment of other processes that run as its own user through `/proc`, so the collector
-should run as a user that owns nothing else on the host. The compose file runs it as uid 1000 so
-that it can write into a folder that user owns, which on a single-user host is the operator's own
-account. Giving the collector an account of its own is the better arrangement and is not done yet.
+should run as a user that owns nothing else on the host. The compose file runs it as uid 10001,
+an account with no processes and no files of its own, and the operator grants that uid the
+secrets file and the two folders it writes to;
+[configuration.md](./configuration.md#the-collectors-account) has the commands. Do not change it
+to your own uid for convenience: the collector could then read the environment of everything
+you run.
 
 Several services it reads offer no read-only credential, so `secrets.json` holds logins that
-could change those services. It is mode 600, mounted read-only into the container, and read once
-at start. Treat the file as you would the services' own configuration.
+could change those services. It is mode 600 with one ACL entry that lets the collector's uid
+read it, mounted read-only into the container, and read once at start. Treat the file as you
+would the services' own configuration.
 
 ## The page
 

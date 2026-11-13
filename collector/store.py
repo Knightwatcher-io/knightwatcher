@@ -80,5 +80,7 @@ class Memory:
         dumped = self._dump()
         if dumped == self._saved:
             return
-        atomic_write(self.path, dumped.encode("utf-8"), mode=0o600)
+        # Group-readable so that an ACL on the folder can let the operator read the file; a
+        # mode of 600 would mask every ACL entry out.
+        atomic_write(self.path, dumped.encode("utf-8"), mode=0o640)
         self._saved = dumped
