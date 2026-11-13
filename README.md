@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="web/logo-dark.svg">
+  <img src="web/logo.svg" alt="Knightwatcher: a pixel-art knight's helmet with a red plume and a calm face" width="160">
+</picture>
+
 # Knightwatcher
 
 A wall display for a homelab. A pixel-art knight fills a tablet's screen and mirrors the state of
