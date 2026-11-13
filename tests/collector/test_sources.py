@@ -1,0 +1,559 @@
+import datetime as dt
+import os
+import re
+import socket
+import tempfile
+import threading
+import unittest
+
+from collector.net import AuthError, SourceError, dns_query, tcp_reachable
+from collector.sources.adblock import AdblockSource
+from collector.sources.backup import BackupSource, parse_when
+from collector.sources.containers import ContainersSource, classify, ignored
+from collector.sources.dns import DnsSource
+from collector.sources.host import HostSource
+from collector.sources.imports import RadarrSource, SonarrSource
+from collector.sources.pi import PiSource
+from collector.sources.security import SecuritySource
+from collector.sources.ssh import SshSource, decode_address
+from collector.sources.streams import StreamsSource, title_of
+from collector.sources.updates import UpdatesSource
+from collector.sources.wan import WanSource
+from kw_helpers import T0, FakeHttp, FakeProc, at, make_config
+
+SECRETS = {
+    "adguard": {"username": "kw", "password": "pw-example"},
+    "tautulli": {"api_key": "tk-example"},
+    "sonarr": {"api_key": "sk-example"},
+    "radarr": {"api_key": "rk-example"},
+}
+
+
+def source(cls, name, settings, raw=None):
+    raw = dict(raw or {})
+    raw.setdefault("sources", {})[name] = settings
+    config = make_config(raw, SECRETS)
+    return cls(config.sources[name], config)
+
+
+class HostTest(unittest.TestCase):
+    def setUp(self):
+        self.proc = FakeProc()
+        self.addCleanup(self.proc.cleanup)
+        self.disk = tempfile.TemporaryDirectory()
+        self.addCleanup(self.disk.cleanup)
+
+    def make(self):
+        raw = {"collector": {"proc_root": self.proc.root}}
+        disks = [{"mount": "/data", "path": self.disk.name}]
+        return source(HostSource, "host", {"disks": disks}, raw)
+
+    def test_reads_cpu_memory_swap_load_and_disk(self):
+        s = self.make()
+        s._last = (0, 0)  # pretend an earlier sample, to skip the first-read pause
+        self.proc.set_stat(busy=600, idle=400, cores=12)
+        self.proc.set_meminfo(total_kb=1000, available_kb=250, swap_total=100, swap_free=10)
+        r = s.fetch(T0)
+        self.assertEqual(r.facts["cpu_pct"], 60.0)
+        self.assertEqual(r.facts["cores"], 12)
+        self.assertEqual(r.facts["load1"], 1.5)
+        self.assertEqual(r.facts["mem_pct"], 75.0)
+        self.assertEqual(r.facts["swap_pct"], 90.0)
+        self.assertEqual(r.data["mem_available_pct"], 25.0)
+        disk = r.facts["disks"][0]
+        self.assertEqual(disk["mount"], "/data")
+        self.assertTrue(0 <= disk["pct"] <= 100)
+        self.assertIsInstance(disk["free_gb"], int)
+
+    def test_cpu_is_the_change_between_reads(self):
+        s = self.make()
+        s._last = (0, 0)
+        self.proc.set_stat(busy=100, idle=900)
+        s.fetch(T0)
+        self.proc.set_stat(busy=190, idle=910)  # 90 busy of 100
+        self.assertEqual(s.fetch(T0).facts["cpu_pct"], 90.0)
+
+    def test_missing_proc_is_a_source_error(self):
+        s = self.make()
+        s.proc = os.path.join(self.proc.root, "absent")
+        with self.assertRaises(SourceError):
+            s.fetch(T0)
+
+
+class ContainersTest(unittest.TestCase):
+    def test_classify(self):
+        self.assertEqual(classify("running", "Up 4 days (healthy)"), "ok")
+        self.assertEqual(classify("running", "Up 4 days"), "ok")
+        self.assertEqual(classify("running", "Up 1 hour (health: starting)"), "ok")
+        self.assertEqual(classify("running", "Up 2 days (unhealthy)"), "unhealthy")
+        self.assertEqual(classify("restarting", "Restarting (1) 5 seconds ago"), "restarting")
+        self.assertEqual(classify("exited", "Exited (1) 3 minutes ago"), "failed")
+        self.assertEqual(classify("exited", "Exited (0) 3 minutes ago"), "ok")
+        self.assertEqual(classify("dead", "Dead"), "failed")
+        self.assertEqual(classify("created", "Created"), "ok")
+
+    def test_ignore_patterns(self):
+        self.assertTrue(ignored("ci-runner-7f3a", ["ci-runner-*"]))
+        self.assertFalse(ignored("radarr", ["ci-runner-*"]))
+
+    def test_fetch_through_the_proxy(self):
+        http = FakeHttp()
+        self.addCleanup(http.close)
+        http.routes["/containers/json"] = (
+            200,
+            [
+                {"Names": ["/radarr"], "State": "running", "Status": "Up 2 days (unhealthy)"},
+                {"Names": ["/sonarr"], "State": "running", "Status": "Up 2 days"},
+                {"Names": ["/bazarr"], "State": "exited", "Status": "Exited (137) 1 hour ago"},
+                {"Names": ["/oneoff-run-1"], "State": "exited", "Status": "Exited (2) now"},
+            ],
+        )
+        s = source(ContainersSource, "containers", {"url": http.url, "ignore": ["*-run-*"]})
+        r = s.fetch(T0)
+        self.assertEqual(
+            r.facts,
+            {
+                "total": 3,
+                "running": 2,
+                "unhealthy": ["radarr"],
+                "restarting": [],
+                "failed": ["bazarr"],
+            },
+        )
+        self.assertEqual(set(r.data["bad"]), {"radarr", "bazarr"})
+        self.assertEqual(http.requests[0][0], "/containers/json?all=1")
+
+    def test_proxy_down_is_a_source_error(self):
+        s = source(ContainersSource, "containers", {"url": "http://127.0.0.1:9"})
+        with self.assertRaises(SourceError):
+            s.fetch(T0)
+
+
+class WanDnsPiTest(unittest.TestCase):
+    def test_wan_up_when_any_url_answers(self):
+        http = FakeHttp()
+        self.addCleanup(http.close)
+        http.routes["/trace"] = (200, b"ok")
+        s = source(WanSource, "wan", {"urls": ["http://127.0.0.1:9/x", http.url + "/trace"]})
+        self.assertEqual(s.fetch(T0).facts, {"up": True})
+
+    def test_wan_down_is_a_fact_not_a_failure(self):
+        s = source(WanSource, "wan", {"urls": ["http://127.0.0.1:9/x"]})
+        r = s.fetch(T0)
+        self.assertEqual(r.facts, {"up": False})
+
+    def _dns_server(self, rcode=0):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(("127.0.0.1", 0))
+        self.addCleanup(sock.close)
+
+        def answer():
+            data, addr = sock.recvfrom(512)
+            flags = 0x8180 | rcode
+            sock.sendto(data[:2] + flags.to_bytes(2, "big") + data[4:], addr)
+
+        threading.Thread(target=answer, daemon=True).start()
+        return sock.getsockname()[1]
+
+    def test_dns_query_round_trip(self):
+        port = self._dns_server()
+        self.assertEqual(dns_query("127.0.0.1", port, "example.com", 2), 0)
+
+    def test_dns_source_up_and_down(self):
+        port = self._dns_server()
+        s = source(DnsSource, "dns", {"server": "127.0.0.1", "port": port})
+        self.assertEqual(s.fetch(T0).facts, {"up": True})
+        closed = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        closed.bind(("127.0.0.1", 0))
+        dead_port = closed.getsockname()[1]
+        closed.close()
+        s = source(DnsSource, "dns", {"server": "127.0.0.1", "port": dead_port})
+        s.timeout = 0.5
+        self.assertEqual(s.fetch(T0).facts, {"up": False})
+
+    def test_tcp_reachable_counts_a_refusal_as_an_answer(self):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        self.addCleanup(listener.close)
+        self.assertTrue(tcp_reachable("127.0.0.1", listener.getsockname()[1], 1))
+        self.assertTrue(tcp_reachable("127.0.0.1", 9, 1))  # nothing listens: refused
+
+    def test_pi_unreachable(self):
+        # 192.0.2.0/24 is reserved for documentation and is not routed.
+        s = source(PiSource, "pi", {"host": "192.0.2.4", "ports": [22]})
+        s.timeout = 0.3
+        self.assertEqual(s.fetch(T0).facts, {"up": False})
+
+
+class SshTest(unittest.TestCase):
+    def setUp(self):
+        self.proc = FakeProc()
+        self.addCleanup(self.proc.cleanup)
+
+    def test_decode_addresses(self):
+        self.assertEqual(decode_address("0A0200C0"), "192.0.2.10")
+        self.assertEqual(
+            decode_address("0000000000000000FFFF00000A0200C0"), "192.0.2.10"
+        )  # IPv4-mapped IPv6
+        self.assertEqual(decode_address("B80D0120000000000000000001000000"), "2001:db8::1")
+
+    def test_counts_established_connections_to_the_port(self):
+        rows = [
+            # local 0.0.0.0:22 listening
+            "   0: 00000000:0016 00000000:0000 0A 0 0 0\n",
+            # 192.0.2.10:51000 -> :22 established
+            "   1: 0300000A:0016 0A0200C0:C738 01 0 0 0\n",
+            # 198.51.100.7 -> :22 established
+            "   2: 0300000A:0016 076433C6:C739 01 0 0 0\n",
+            # an outgoing connection to someone else's :22 is not ours
+            "   3: 0300000A:C73A 0A0200C0:0016 01 0 0 0\n",
+            # established on another port
+            "   4: 0300000A:01BB 0A0200C0:C73B 01 0 0 0\n",
+        ]
+        self.proc.write("net/tcp", FakeProc.TCP_HEADER + "".join(rows))
+        raw = {"collector": {"proc_root": self.proc.root}}
+        s = source(SshSource, "ssh", {"port": 22}, raw)
+        self.assertEqual(s.fetch(T0).facts, {"count": 2, "sources": ["192.0.2.10", "198.51.100.7"]})
+        s = source(SshSource, "ssh", {"port": 22, "ignore_sources": ["198.51.100.0/24"]}, raw)
+        self.assertEqual(s.fetch(T0).facts, {"count": 1, "sources": ["192.0.2.10"]})
+
+
+class UpdatesTest(unittest.TestCase):
+    def setUp(self):
+        self.proc = FakeProc()
+        self.addCleanup(self.proc.cleanup)
+        self.raw = {"collector": {"proc_root": self.proc.root}}
+        self.settings = {
+            "holders": [
+                {"name": "nightly maintenance", "pattern": r"(^|/)maintenance\.sh"},
+                {"name": "image updates", "pattern": r"update-images\.sh"},
+            ]
+        }
+
+    def test_running_while_a_matching_process_holds_a_lock(self):
+        self.proc.write(
+            "locks",
+            "1: FLOCK  ADVISORY  WRITE 4242 00:28:1234 0 EOF\n"
+            "2: -> FLOCK  ADVISORY  WRITE 4343 00:28:1234 0 EOF\n"
+            "3: POSIX  ADVISORY  WRITE 99 08:01:77 0 EOF\n"
+            "4: OFDLCK ADVISORY  READ  -1 08:01:78 0 EOF\n",
+        )
+        self.proc.write("4242/cmdline", "/bin/bash\0/opt/scripts/maintenance.sh\0")
+        self.proc.write("4343/cmdline", "/bin/bash\0/opt/scripts/update-images.sh\0")
+        self.proc.write("99/cmdline", "/usr/sbin/cron\0-f\0")
+        s = source(UpdatesSource, "updates", self.settings, self.raw)
+        # 4343 is waiting for the lock, not holding it.
+        self.assertEqual(s.fetch(T0).facts, {"running": True, "what": "nightly maintenance"})
+
+    def test_idle_when_no_holder_matches(self):
+        self.proc.write("locks", "1: FLOCK  ADVISORY  WRITE 99 08:01:77 0 EOF\n")
+        self.proc.write("99/cmdline", "/bin/bash\0/opt/scripts/other-maintenance.sh\0")
+        s = source(UpdatesSource, "updates", self.settings, self.raw)
+        self.assertEqual(s.fetch(T0).facts, {"running": False, "what": ""})
+
+    def test_vanished_process_is_skipped(self):
+        self.proc.write("locks", "1: FLOCK  ADVISORY  WRITE 5555 08:01:77 0 EOF\n")
+        s = source(UpdatesSource, "updates", self.settings, self.raw)
+        self.assertEqual(s.fetch(T0).facts["running"], False)
+
+
+class BackupTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.log = os.path.join(self.tmp.name, "backup.log")
+
+    def write(self, content):
+        with open(self.log, "w", encoding="utf-8") as fh:
+            fh.write(content)
+
+    def make(self):
+        return source(
+            BackupSource,
+            "backup",
+            {"log": self.log, "pattern": r"Backup completed: (.+)$"},
+        )
+
+    def test_parse_when_forms(self):
+        utc = dt.UTC
+        want = dt.datetime(2026, 1, 8, 3, 1, 59, tzinfo=utc)
+        self.assertEqual(parse_when("Thu  8 Jan 03:01:59 UTC 2026", utc), want)
+        self.assertEqual(parse_when("Thu Jan  8 03:01:59 UTC 2026", utc), want)
+        self.assertEqual(parse_when("2026-01-08T03:01:59Z", utc), want)
+        self.assertEqual(parse_when("2026-01-08 03:01:59", utc), want)
+        self.assertEqual(parse_when("Thu 8 Jan 04:01:59 +0100 2026", utc), want)
+        with self.assertRaises(SourceError):
+            parse_when("yesterday", utc)
+
+    def test_first_start_records_without_an_event(self):
+        self.write("Backup started\nBackup completed: Wed 14 Jan 03:00:00 UTC 2026\n")
+        s = self.make()
+        memory = {}
+        r = s.fetch(T0)
+        self.assertEqual(s.observe(r, memory, T0), [])
+        self.assertEqual(r.facts["last_ok"], "2026-01-14T03:00:00Z")
+        self.assertEqual(r.facts["age_h"], 42.0)
+
+    def test_new_completion_is_an_event(self):
+        s = self.make()
+        memory = {"last_ok": "2026-01-14T03:00:00Z"}
+        self.write(
+            "Backup completed: Wed 14 Jan 03:00:00 UTC 2026\n"
+            "Backup completed: Thu 15 Jan 03:12:00 UTC 2026\n"
+        )
+        events = s.observe(s.fetch(T0), memory, T0)
+        self.assertEqual(events, [{"type": "backup_done", "count": 1, "text": "BACKUP DONE 03:12"}])
+        self.assertEqual(memory["last_ok"], "2026-01-15T03:12:00Z")
+        self.assertEqual(s.observe(s.fetch(T0), memory, T0), [])
+
+    def test_truncated_log_falls_back_to_memory(self):
+        self.write("")
+        s = self.make()
+        memory = {"last_ok": "2026-01-15T03:12:00Z"}
+        r = s.fetch(T0)
+        self.assertEqual(s.observe(r, memory, T0), [])
+        self.assertEqual(r.facts["last_ok"], "2026-01-15T03:12:00Z")
+
+    def test_nothing_known(self):
+        self.write("Backup started\n")
+        s = self.make()
+        r = s.fetch(T0)
+        s.observe(r, {}, T0)
+        self.assertEqual(r.facts, {"last_ok": None, "age_h": None})
+
+    def test_missing_log_is_a_source_error(self):
+        s = self.make()
+        with self.assertRaises(SourceError):
+            s.fetch(T0)
+
+
+class AdblockTest(unittest.TestCase):
+    def setUp(self):
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+
+    def test_blocked_count_and_rise_events(self):
+        stats = {"num_blocked_filtering": 4800}
+        self.http.routes["/control/stats"] = (200, lambda _h: stats)
+        s = source(AdblockSource, "adblock", {"url": self.http.url})
+        memory = {}
+        r = s.fetch(T0)
+        self.assertEqual(r.facts, {"blocked_today": 4800})
+        self.assertEqual(s.observe(r, memory, T0), [])  # first sight
+        stats["num_blocked_filtering"] = 4803
+        self.assertEqual(
+            s.observe(s.fetch(T0), memory, T0), [{"type": "ad_blocked", "count": 3, "text": ""}]
+        )
+        self.assertEqual(s.observe(s.fetch(T0), memory, T0), [])  # no rise
+        stats["num_blocked_filtering"] = 100  # the rolling window moved on
+        self.assertEqual(s.observe(s.fetch(T0), memory, T0), [])
+        self.assertEqual(memory["blocked"], 100)
+
+    def test_credentials_go_with_the_first_request(self):
+        self.http.routes["/control/stats"] = (200, {"num_blocked_filtering": 1})
+        s = source(AdblockSource, "adblock", {"url": self.http.url})
+        s.fetch(T0)
+        self.assertEqual(len(self.http.requests), 1)
+        self.assertTrue(self.http.requests[0][1]["Authorization"].startswith("Basic "))
+
+    def test_refused_login_is_an_auth_error_after_one_request(self):
+        for status in (401, 403):
+            self.http.requests.clear()
+            self.http.routes["/control/stats"] = (status, {"message": "nope"})
+            s = source(AdblockSource, "adblock", {"url": self.http.url})
+            with self.assertRaises(AuthError):
+                s.fetch(T0)
+            self.assertEqual(len(self.http.requests), 1)
+
+    def test_error_text_carries_no_secret_or_url(self):
+        s = source(AdblockSource, "adblock", {"url": "http://127.0.0.1:9"})
+        with self.assertRaises(SourceError) as cm:
+            s.fetch(T0)
+        self.assertNotIn("pw-example", str(cm.exception))
+        self.assertNotIn("127.0.0.1", str(cm.exception))
+
+
+class SecurityTest(unittest.TestCase):
+    def setUp(self):
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+        self.soc = {
+            "threat_score_24h": 2,
+            "organic_bans_24h": 14,
+            "last_ban": {
+                "ip": "203.0.113.77",
+                "jail": "caddy",
+                "time": "2026-01-15T20:00:00+00:00",
+            },
+            "schema": 6,
+        }
+        self.http.routes["/soc"] = (200, lambda _h: self.soc)
+        self.s = source(SecuritySource, "security", {"url": self.http.url})
+
+    def poll(self, memory, now):
+        r = self.s.fetch(now)
+        return r, self.s.observe(r, memory, now)
+
+    def test_facts(self):
+        r, _ = self.poll({}, T0)
+        self.assertEqual(r.facts, {"threat_score": 2, "bans_24h": 14, "attack": False})
+
+    def test_new_last_ban_is_an_event_and_first_sight_is_not(self):
+        memory = {}
+        _, events = self.poll(memory, T0)
+        self.assertEqual(events, [])
+        self.soc["last_ban"] = {
+            "ip": "198.51.100.9",
+            "jail": "sshd",
+            "time": "2026-01-15T21:00:10Z",
+        }
+        self.soc["organic_bans_24h"] = 15
+        r, events = self.poll(memory, at(30))
+        self.assertEqual(
+            events, [{"type": "ip_banned", "count": 1, "text": "BANNED 198.51.100.9 · sshd"}]
+        )
+        self.assertTrue(r.data["jail_ban"])
+        self.assertEqual(r.data["bans_in_window"], 1)
+
+    def test_old_jail_ban_is_not_an_attack(self):
+        self.soc["last_ban"]["jail"] = "sshd"
+        self.soc["last_ban"]["time"] = "2026-01-15T19:00:00Z"  # two hours before T0
+        r, _ = self.poll({}, T0)
+        self.assertFalse(r.data["jail_ban"])
+
+    def test_bans_are_counted_over_the_window(self):
+        memory = {}
+        self.poll(memory, T0)
+        self.soc["organic_bans_24h"] = 17  # three new bans
+        r, _ = self.poll(memory, at(60))
+        self.assertEqual(r.data["bans_in_window"], 3)
+        self.soc["organic_bans_24h"] = 19
+        r, _ = self.poll(memory, at(300))
+        self.assertEqual(r.data["bans_in_window"], 5)
+        r, _ = self.poll(memory, at(700))  # the first three have left the window
+        self.assertEqual(r.data["bans_in_window"], 2)
+
+    def test_marker_survives_a_restart(self):
+        memory = {}
+        self.poll(memory, T0)
+        fresh = source(SecuritySource, "security", {"url": self.http.url})
+        r = fresh.fetch(at(30))
+        self.assertEqual(fresh.observe(r, memory, at(30)), [])
+
+
+class ImportsTest(unittest.TestCase):
+    def setUp(self):
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+        self.records = []
+        self.http.routes["/api/v3/history"] = (200, lambda _h: {"records": self.records})
+
+    def test_sonarr_events_and_titles(self):
+        s = source(SonarrSource, "sonarr", {"url": self.http.url})
+        memory = {}
+        self.records = [{"id": 10, "sourceTitle": "Old.Show.S01E01.1080p"}]
+        self.assertEqual(s.observe(s.fetch(T0), memory, T0), [])
+        self.records = [
+            {
+                "id": 12,
+                "sourceTitle": "The.Night.Shift.S02E05.1080p",
+                "series": {"title": "The Night Shift"},
+                "episode": {"seasonNumber": 2, "episodeNumber": 5},
+            },
+            {"id": 11, "sourceTitle": "The.Night.Shift.S02E04.1080p"},
+            {"id": 10, "sourceTitle": "Old.Show.S01E01.1080p"},
+        ]
+        events = s.observe(s.fetch(T0), memory, T0)
+        self.assertEqual(
+            [e["text"] for e in events],
+            ["IMPORTED · The.Night.Shift.S02E04.1080p", "IMPORTED · The Night Shift S02E05"],
+        )
+        self.assertEqual(memory["last_id"], 12)
+        path, headers = self.http.requests[-1]
+        self.assertIn("eventType=3", path)
+        self.assertIn("includeSeries=true", path)
+        self.assertEqual(headers["X-Api-Key"], "sk-example")
+
+    def test_empty_history_on_first_start_still_catches_the_first_import(self):
+        s = source(RadarrSource, "radarr", {"url": self.http.url})
+        memory = {}
+        self.assertEqual(s.observe(s.fetch(T0), memory, T0), [])
+        self.records = [{"id": 1, "sourceTitle": "x", "movie": {"title": "A Film", "year": 2024}}]
+        events = s.observe(s.fetch(T0), memory, T0)
+        self.assertEqual([e["text"] for e in events], ["IMPORTED · A Film (2024)"])
+
+    def test_refused_key_is_an_auth_error(self):
+        self.http.routes["/api/v3/history"] = (401, {"message": "Unauthorized"})
+        s = source(RadarrSource, "radarr", {"url": self.http.url})
+        with self.assertRaises(AuthError):
+            s.fetch(T0)
+
+
+class StreamsTest(unittest.TestCase):
+    def setUp(self):
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+
+    def test_titles(self):
+        self.assertEqual(
+            title_of(
+                {
+                    "media_type": "episode",
+                    "grandparent_title": "The Night Shift",
+                    "parent_media_index": "2",
+                    "media_index": "4",
+                }
+            ),
+            "The Night Shift S02E04",
+        )
+        self.assertEqual(title_of({"media_type": "movie", "title": "A Film"}), "A Film")
+        self.assertEqual(
+            title_of({"media_type": "track", "grandparent_title": "Band", "title": "Song"}),
+            "Band - Song",
+        )
+
+    def test_activity(self):
+        reply = {
+            "response": {
+                "result": "success",
+                "data": {
+                    "stream_count": "1",
+                    "sessions": [{"media_type": "movie", "title": "A Film"}],
+                },
+            }
+        }
+        self.http.routes["/api/v2"] = (200, reply)
+        s = source(StreamsSource, "streams", {"url": self.http.url})
+        self.assertEqual(s.fetch(T0).facts, {"count": 1, "titles": ["A Film"]})
+        self.assertIn("apikey=tk-example", self.http.requests[0][0])
+
+    def test_bad_key_is_an_auth_error(self):
+        reply = {"response": {"result": "error", "message": "Invalid apikey", "data": {}}}
+        self.http.routes["/api/v2"] = (200, reply)
+        s = source(StreamsSource, "streams", {"url": self.http.url})
+        with self.assertRaises(AuthError):
+            s.fetch(T0)
+
+
+class InterfaceTest(unittest.TestCase):
+    def test_every_source_has_a_name_and_returns_a_reading(self):
+        from collector.config import SOURCE_DEFAULTS
+        from collector.contract import FACT_SECTIONS
+        from collector.sources import build_sources
+
+        raw = {"sources": {n: {"enabled": True} for n in SOURCE_DEFAULTS}}
+        for name in ("containers", "streams", "adblock", "security", "sonarr", "radarr"):
+            raw["sources"][name]["url"] = "http://192.0.2.1"
+        raw["sources"]["pi"]["host"] = "192.0.2.4"
+        raw["sources"]["updates"]["holders"] = [{"name": "x", "pattern": "x"}]
+        config = make_config(raw, SECRETS)
+        built = build_sources(config)
+        self.assertEqual(sorted(s.name for s in built), sorted(SOURCE_DEFAULTS))
+        for s in built:
+            self.assertTrue(s.section is None or s.section in FACT_SECTIONS)
+            self.assertTrue(re.match(r"^[a-z]+$", s.name))
+
+
+if __name__ == "__main__":
+    unittest.main()

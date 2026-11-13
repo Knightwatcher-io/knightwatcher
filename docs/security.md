@@ -36,6 +36,12 @@ The collector reads and never writes, except for its one output file.
 - It mounts host paths read-only, and only the ones a source needs.
 - It opens no listening port.
 
+It mounts the host's `/proc` read-only, for load, memory and the lock table. A process can read
+the environment of other processes that run as its own user through `/proc`, so the collector
+should run as a user that owns nothing else on the host. The compose file runs it as uid 1000 so
+that it can write into a folder that user owns, which on a single-user host is the operator's own
+account. Giving the collector an account of its own is the better arrangement and is not done yet.
+
 Several services it reads offer no read-only credential, so `secrets.json` holds logins that
 could change those services. It is mode 600, mounted read-only into the container, and read once
 at start. Treat the file as you would the services' own configuration.

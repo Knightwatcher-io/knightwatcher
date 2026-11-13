@@ -24,4 +24,16 @@ docs/       this documentation
 
 ## Checks
 
-The commands for each part are added here by the change that adds the part.
+The collector:
+
+```bash
+python3 -m unittest discover -s tests/collector -v
+uvx ruff check collector tests && uvx ruff format --check collector tests
+docker build -t knightwatch-collector:dev .
+docker compose config -q
+python3 -m collector --config config.toml --secrets secrets.json --check-config
+```
+
+The last two need a `.env`, a `config.toml` and a `secrets.json` in place; see
+[configuration.md](./configuration.md). The commands for the page are added by the change that
+restructures it.

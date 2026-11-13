@@ -1,0 +1,111 @@
+# Knightwatch collector settings. Copy to config.toml (ignored by git) and fill in your own.
+# Every value here is invented. docs/configuration.md describes each setting.
+# A source runs when its [sources.*] table is present and `enabled` is not false.
+
+[collector]
+interval_s = 30
+output_dir = "/out"
+state_dir = "/var/lib/knightwatch"
+timezone = "UTC"
+http_timeout_s = 5.0
+auth_backoff_s = 1200
+proc_root = "/host/proc"
+
+[conditions]
+# Highest first. A condition left out of the list is never raised.
+priority = [
+  "attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent",
+  "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night",
+]
+clear_after_polls = 1
+
+[conditions.attack]
+window_s = 600
+jails = ["sshd"]
+bans = 5
+
+[conditions.wan_down]
+failed_checks = 2
+
+[conditions.container_unhealthy]
+for_s = 180
+
+[conditions.disk_full]
+pct = 90.0
+
+[conditions.backup_overdue]
+hours = 30.0
+
+[conditions.pi_silent]
+for_s = 180
+
+[conditions.cpu_hot]
+pct = 85.0
+for_s = 300
+
+[conditions.memory_tight]
+available_pct = 10.0
+for_s = 300
+
+[conditions.ssh_session]
+min_sessions = 1
+
+[conditions.streaming]
+min_streams = 1
+
+[conditions.night]
+start = "23:00"
+end = "07:00"
+
+[sources.host]
+disks = [{ mount = "/data", path = "/host/disks/data" }]
+
+[sources.containers]
+url = "http://192.0.2.10:2375"
+ignore = ["*-run-*", "knightwatch-collector-*"]
+
+[sources.wan]
+urls = ["https://1.1.1.1/cdn-cgi/trace"]
+
+[sources.dns]
+server = "127.0.0.1"
+port = 53
+name = "example.com"
+
+[sources.backup]
+log = "/host/backup.log"
+pattern = 'Backup completed: (.+)$'
+timezone = "UTC"
+read_bytes = 262144
+
+[sources.pi]
+host = "192.0.2.4"
+ports = [22]
+
+[sources.updates]
+holders = [
+  { name = "nightly maintenance", pattern = 'nightly-maintenance\.sh' },
+]
+
+[sources.ssh]
+port = 22
+ignore_sources = []
+
+[sources.streams]
+url = "http://192.0.2.20:8181"
+secret = "tautulli"
+
+[sources.adblock]
+url = "http://192.0.2.53"
+secret = "adguard"
+
+[sources.security]
+url = "http://192.0.2.1:9192"
+
+[sources.sonarr]
+url = "http://192.0.2.30:8989"
+secret = "sonarr"
+
+[sources.radarr]
+url = "http://192.0.2.31:7878"
+secret = "radarr"
