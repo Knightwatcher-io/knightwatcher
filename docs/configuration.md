@@ -46,6 +46,7 @@ The `[collector]` and `[conditions]` tables can be left out entirely to take the
 | `memory_tight.available_pct` | `10.0` | `MemAvailable` as a percent of `MemTotal`, at or below. |
 | `memory_tight.for_s` | `300` | How long it must last. |
 | `ssh_session.min_sessions` | `1` | Open SSH sessions needed. |
+| `ssh_session.show_for_s` | `600` | How long a new SSH session keeps `ssh_session` up. `0` keeps it up for as long as `min_sessions` sessions are open. |
 | `streaming.min_streams` | `1` | Streams playing needed. |
 | `night.start`, `night.end` | `"23:00"`, `"07:00"` | Quiet hours in `timezone`, 24-hour. The window may cross midnight. |
 

@@ -20,6 +20,7 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(c.conditions["container_unhealthy"]["for_s"], 180)
         self.assertEqual(c.conditions["attack"], {"window_s": 600, "jails": ["sshd"], "bans": 5})
         self.assertEqual(c.conditions["night"], {"start": "23:00", "end": "07:00"})
+        self.assertEqual(c.conditions["ssh_session"], {"min_sessions": 1, "show_for_s": 600})
         self.assertEqual(c.collector["timezone"], "UTC")
         self.assertEqual(c.sources, {})
 
@@ -66,6 +67,33 @@ class BuildTest(unittest.TestCase):
                 }
             )
         self.assertEqual(len(cm.exception.problems), 2)
+
+    def test_ssh_show_for_s_may_be_zero_but_not_negative(self):
+        c = build({"conditions": {"ssh_session": {"show_for_s": 0}}})
+        self.assertEqual(c.conditions["ssh_session"]["show_for_s"], 0)
+        with self.assertRaises(ConfigError) as cm:
+            build({"conditions": {"ssh_session": {"show_for_s": -1}}})
+        self.assertEqual(
+            cm.exception.problems, ["conditions.ssh_session.show_for_s: must be zero or above zero"]
+        )
+
+    def test_session_and_stream_minimums_are_at_least_one(self):
+        with self.assertRaises(ConfigError) as cm:
+            build(
+                {
+                    "conditions": {
+                        "ssh_session": {"min_sessions": 0},
+                        "streaming": {"min_streams": 0},
+                    }
+                }
+            )
+        self.assertEqual(
+            cm.exception.problems,
+            [
+                "conditions.ssh_session.min_sessions: must be at least 1",
+                "conditions.streaming.min_streams: must be at least 1",
+            ],
+        )
 
     def test_auth_backoff_cannot_be_shorter_than_twenty_minutes(self):
         with self.assertRaises(ConfigError):
