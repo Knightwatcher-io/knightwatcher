@@ -1132,11 +1132,12 @@
     const off = it('off');
     if (off) cparts(off.item.parts, env(off, { hold: off.item.hold }), L.off);
     if (helmet && helmet.item.rest) {
-      cshapes(helmet.item.rest.shapes, { a: ANCHOR.rest, dx: 0, dy: 0 }, env(helmet), L.restHelmet);
+      // the plume first, behind the helmet, as on the worn helmet
       if (plume && plume.item.rest && helmet.item.rest.mounts) {
         const m = mount(helmet.item.rest.mounts.plume, env(helmet)), at = { a: ANCHOR.rest, dx: m[0], dy: m[1] };
         cshapes(plume.item.rest.shapes, at, env(plume, { rest: at }), L.restHelmet);
       }
+      cshapes(helmet.item.rest.shapes, { a: ANCHOR.rest, dx: 0, dy: 0 }, env(helmet), L.restHelmet);
     }
     if (off && off.item.rest) cshapes(off.item.rest.shapes, { a: ANCHOR.rest, dx: 0, dy: 0 }, env(off), L.restOff);
     return L;

@@ -1,7 +1,8 @@
 /* Knightwatcher: the knight, on the fine grid. Open helm, red plume, blue tabard, a greatsword held
    in both hands. pose() turns a condition into the knight's pose, rig() turns a pose into the points
    the knight is drawn on, and draw() draws it there: from the base pack when start() found one it
-   can use (packHD), and otherwise from the code below (codeHD), which draws the same knight. */
+   can use (packHD), and otherwise from the code below (codeHD), which draws the same knight.
+   rest.draw() draws the knight's gear where a scene sets it down, from the same source. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C, U = V.U;
@@ -26,8 +27,9 @@
 
   /* The rig's result, filled in place on every call so that drawing a frame allocates nothing for it.
      Each anchor is an [x, y] pair, except main, the weapon's frame, which is [x, y, angle]. The
-     anchors off (the off hand), plume (the helmet's mount) and rest (a scene's place for gear) come
-     with later steps and are not here yet. grip is the grip mode: 'none', 'hammer' or 'two'. */
+     anchor off (the off hand) comes with the one-handed grip and is not here yet; the plume's mount
+     is folded into the plume's shapes by pack.js, and rest is a scene's place, which KW.knight.rest
+     sets, not the rig. grip is the grip mode: 'none', 'hammer' or 'two'. */
   const RIG = {
     grip: 'none',
     anchors: { root: [0, 0], footL: [0, 0], footR: [0, 0], hipL: [0, 0], hipR: [0, 0], hem: [0, 0], belt: [0, 0], neck: [0, 0],
@@ -248,7 +250,7 @@
      draw() reads, and walks the order sequence() gives for the grip and the helmet, drawing the
      look's lists and, between them, the engine's own steps above. Nothing is allocated for it. */
   const PK = { lib: null, look: null, A: null, Vs: null, from: null, iDrop: 0, iBloat: 0, iStepL: 0, iStepR: 0, iSway: 0,
-    drop: [0, 0], bloat: [0, 0], hA: null, hV: null };
+    drop: [0, 0], bloat: [0, 0], hA: null, hV: null, rA: null, rV: null };
   const clampTo = (v, r) => (v < r[0] ? r[0] : v > r[1] ? r[1] : v);
   /* The pose's anchors and values into the library's arrays, in its order, the weapon frame's
      direction after the anchors, drop and bloat clamped into the ranges the library states. */
@@ -292,6 +294,53 @@
   }
   function knightHD(o) { if (PK.look) packHD(o); else codeHD(o); }
 
+  /* ---- Gear at rest -----------------------------------------------------------------------------
+     The house and the smithy show the knight's gear off the knight: the helmet on the stool, the
+     weapon on the pegs and across the anvil. A scene asks for an item by its slot in its own paint
+     or draw, so the item stays layered with the scene's art, and gets what is equipped: from the
+     look's lists on the pack path, and from the code below on the code path.
+
+     The helmet is drawn from its rest view, with the plume's rest view on the view's plume mount,
+     on the rest anchor at the scene's place. A helmet with no rest view shows nothing there. The
+     weapon needs no rest view: its worn shapes are drawn on a frame the scene fixes, and an angle of
+     pi/2 lays it flat. Neither moves with the knight, so every named value is 0 for them. */
+
+  /* The open helm resting on a surface, its small plume on top, x its middle and y its foot. */
+  function helmRestHD(x, y) {
+    ell(x + 6, y - 58, 18, 10, C.K); ell(x + 6, y - 58, 15, 7, [[.3, C.R0], [.75, C.R1], [1, C.R2]]); ell(x + 18, y - 52, 9, 6, C.K); ell(x + 18, y - 52, 6, 4, C.R2);
+    rrect(x - 32, y - 56, 64, 54, 24, C.K); rrect(x - 29, y - 53, 58, 48, 21, STEEL);
+    Rh(x - 2, y - 52, 3, 16, C.S0); Rh(x + 1, y - 52, 1, 16, C.S3);
+    rrect(x - 20, y - 38, 40, 30, 9, C.K); rrect(x - 17, y - 35, 34, 24, 7, [[.5, '#14101c'], [1, '#0b0810']]);
+    rrect(x - 28, y - 10, 56, 9, 3, C.K); rrect(x - 26, y - 9, 52, 6, 2, STEEL2);
+    for (const dx of [-24, 24]) { ell(x + dx, y - 24, 2, 2, C.S4); }
+  }
+  /* The greatsword's blade on the code path: the inner edges of the blade along its frame, as
+     swordHD draws them. */
+  const SWORD_BLADE = Object.freeze({ from: 34, to: 263, half: 15 });
+
+  /* Draws the equipped item of slot at rest: 'helmet' with the rest anchor at (x, y), its foot's
+     middle on a surface, or 'main' with the middle of its grip at (x, y) along the angle a (0 is
+     straight up). Any other slot draws nothing. */
+  function restHD(slot, x, y, a) {
+    if (slot === 'helmet') {
+      if (!PK.look) { helmRestHD(x, y); return; }
+      const A = PK.rA, r = 2 * PK.lib.ANCHOR.rest;
+      A[r] = x; A[r + 1] = y;
+      PK.lib.draw(PK.look.lists.restHelmet, A, PK.rV, D);
+    } else if (slot === 'main') {
+      if (!PK.look) { P.swordHD(x, y, a); return; }
+      const lib = PK.lib, A = PK.rA, m = 2 * lib.ANCHOR.main;
+      A[m] = x; A[m + 1] = y; A[lib.FRAME_SX] = Math.sin(a); A[lib.FRAME_SY] = -Math.cos(a);
+      lib.draw(PK.look.lists.main, A, PK.rV, D);
+    }
+  }
+  /* The equipped weapon's blade, { from, to, half } in frame units, for a scene that draws on it
+     (the smithy's hot tip), or null when the weapon gives none. */
+  const restBlade = () => (PK.look ? PK.look.blade : SWORD_BLADE);
+  /* What a scene adds to its backdrop key for an item it paints at rest: the equipped item's name,
+     '<pack>/<item>', or '' when none is equipped; 'code' on the code path. */
+  const restKey = slot => (PK.look ? PK.look.look.items[slot] || '' : 'code');
+
   /* Chooses, once at start-up, where the knight is drawn from. texts are the packs' files (the page
      passes KW.packText), and allowUnsigned is true only on a page whose version is 'dev'. Reads
      every text, gathers the packs and resolves the default look; if that gives a look with a
@@ -315,7 +364,7 @@
     }
     if (!look.grip || look.grip.kind !== 'two' || look.grip.hands.length !== 2) return done('the base pack\'s weapon is not two-handed, and the poses hold one in both hands');
     const base = g.packs.get(lib.BASE_ID);
-    Object.assign(PK, { lib, look, A: lib.newAnchors(), Vs: lib.newValues(), hA: lib.newAnchors(), hV: lib.newValues(),
+    Object.assign(PK, { lib, look, A: lib.newAnchors(), Vs: lib.newValues(), hA: lib.newAnchors(), hV: lib.newValues(), rA: lib.newAnchors(), rV: lib.newValues(),
       from: lib.ANCHORS.map(n => RIG.anchors[n] || null), drop: lib.RANGE.drop, bloat: lib.RANGE.bloat,
       iDrop: lib.VALUE.drop, iBloat: lib.VALUE.bloat, iStepL: lib.VALUE.stepL, iStepR: lib.VALUE.stepR, iSway: lib.VALUE.sway });
     HANDS = look.grip.hands.slice();
@@ -365,8 +414,11 @@
 
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
-     knight is. speech draws a speech bubble. rig and start are described above, build is the
-     present knight's measurements, source is 'pack' or 'code' and status what start() found. */
+     knight is. speech draws a speech bubble. rest holds what a scene calls for the gear at rest
+     (described above): draw(slot, x, y, a), blade() and key(slot). rig and start are described
+     above, build is the present knight's measurements, source is 'pack' or 'code' and status what
+     start() found. */
   const headAtCorner = (ax, ay, o) => (PK.look ? packHead(ax + 120, ay + 94, o) : bareHD(ax + 120, ay + 94, o));
-  KW.knight = { draw: knightHD, rig, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD, start, source: 'code', status: null };
+  KW.knight = { draw: knightHD, rig, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD,
+    rest: { draw: restHD, blade: restBlade, key: restKey }, start, source: 'code', status: null };
 })(window.KW);

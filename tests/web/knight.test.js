@@ -1,10 +1,11 @@
-// Tests for the knight, web/js/knight.js: the drawing, call by call, and the rig it stands on.
-// Run with: node --test tests/web/
+// Tests for the knight, web/js/knight.js: the drawing, call by call, the gear at rest, and the rig it
+// stands on. Run with: node --test tests/web/
 //
 // The drawing code runs under Node against a fake canvas context that records every call and every
 // property it is given. Each pose in POSES is drawn twice, once from code and once from the base
 // pack in web/packs/, and each record is compared with the stored one in fixtures/knight/, which
-// was taken from the code. Equal calls mean equal pixels.
+// was taken from the code. Equal calls mean equal pixels. Besides the knight, POSES draws the gear
+// at rest, and the house and the smithy painted and drawn, since they show it.
 //
 //   KNIGHT_LOG=write node --test tests/web/knight.test.js         stores the record of the code as it is
 //   KNIGHT_LOG=dump:DIR node --test tests/web/knight.test.js      writes each pose's full record, from code, to DIR
@@ -32,10 +33,12 @@ const MODE = process.env.KNIGHT_LOG || '';
 const PATHS = { code: false, pack: true };
 
 /* The scripts index.html loads, in its order, that the knight's drawing needs: everything but the
-   scenes and the files that drive the page (state, engine, demo, main). The pack library and the
-   carriers are among them. */
+   files that drive the page (state, engine, demo, main) and the scenes other than the two that show
+   the knight's gear at rest, the house and the smithy. The pack library and the carriers are among
+   them. */
+const SCENES = ['js/scenes/house.js', 'js/scenes/smithy.js'];
 const SCRIPTS = [...fs.readFileSync(path.join(WEB, 'index.html'), 'utf8').matchAll(/<script src="([^"?]+)"><\/script>/g)].map(m => m[1])
-  .filter(s => !s.startsWith('js/scenes/') && !['js/state.js', 'js/engine.js', 'js/demo.js', 'js/main.js'].includes(s));
+  .filter(s => (!s.startsWith('js/scenes/') || SCENES.includes(s)) && !['js/state.js', 'js/engine.js', 'js/demo.js', 'js/main.js'].includes(s));
 
 /* Loads the page's drawing code the way index.html does, into a sandbox whose window is an empty
    object, chooses the knight's source as main.js does, for a 'dev' page when dev is true, and
@@ -58,6 +61,8 @@ function load(dev, texts) {
     vm.runInContext(fs.readFileSync(path.join(WEB, f), 'utf8'), box, { filename: f });
   }
   const KW = box.window.KW;
+  // the engine draws the watched things where a scene's draw asks for them; here that is one line
+  KW.things = { draw() { log.push('things'); } };
   const status = KW.knight.start(texts || KW.packText, dev === true);
   KW.draw.setCtx(ctx);
   return { KW, K: KW.knight, log, status };
@@ -72,7 +77,7 @@ function at(K, id, t, over) {
 }
 
 /* Every pose the test draws, by name. Each entry draws one picture. */
-function POSES(K) {
+function POSES(K, scenes) {
   const p = [];
   const knight = (name, id, t, over, then) => p.push([name, () => { const o = at(K, id, t, over); if (then) then(o); K.draw(o); }]);
   // the stance, still and walking
@@ -127,6 +132,22 @@ function POSES(K) {
   p.push(['head in bed unwell', () => { const o = at(K, 'container_unhealthy', 1400); K.head(-15 + o.headDx * 5, 262, o); }]);
   p.push(['speech flipped', () => K.speech(672, 180, 1000, true)]);
   p.push(['speech', () => K.speech(300, 120, 700, false)]);
+  // the gear at rest on its own, at the places the house and the smithy put it
+  p.push(['helmet at rest on the stool', () => K.rest.draw('helmet', 460, 476)]);
+  p.push(['weapon at rest on the pegs', () => K.rest.draw('main', 618, 228, Math.PI / 2)]);
+  p.push(['weapon at rest on the anvil', () => K.rest.draw('main', 490, 425, Math.PI / 2)]);
+  p.push(['weapon at rest at a slant', () => K.rest.draw('main', 300.5, 280.25, 0.7)]);
+  // The house and the smithy, which show the knight's gear at rest: painted, which is the backdrop
+  // with the weapon on the pegs or across the anvil, and drawn, which is the helmet on the stool,
+  // the sleeper's head on the pillow and the blade's hot tip.
+  const H = scenes.house, S = scenes.smithy;
+  for (const tv of [false, true]) p.push([`house painted${tv ? ' with the television' : ''}`, () => H.paint({ tv })]);
+  for (const [name, id, t, inBed] of [['asleep', 'night', 2300, true], ['unwell in bed', 'container_unhealthy', 1400, true], ['helmet off', 'idle', 2300, false]]) {
+    p.push([`house drawn, ${name}`, () => H.draw(t, { tv: false, inBed, helmOff: true, o: at(K, id, t) })]);
+  }
+  p.push(['house drawn, helmet on', () => H.draw(2300, { tv: true, inBed: false, helmOff: false, o: at(K, 'streaming', 2300) })]);
+  for (const kx of [440, 300]) p.push([`smithy painted kx${kx}`, () => S.paint({ kx })]);
+  for (const t of [300, 1250]) p.push([`smithy drawn t${t}`, () => { const s = { kx: 440, o: at(K, 'updating', t), strike: false }; S.act(t, s); S.draw(t, s); }]);
   return p;
 }
 
@@ -139,9 +160,9 @@ function POSES(K) {
    character of every line is compared as drawn. */
 const codeSpelling = l => (l.startsWith('s rgba(') ? l.replace(/,0(\.\d+)\)$/, ',$1)') : l);
 function draw(dev) {
-  const { K, log, status } = load(dev);
+  const { KW, K, log, status } = load(dev);
   assert.equal(status.source, dev ? 'pack' : 'code', status.note);
-  return POSES(K).map(([name, fn]) => { log.length = 0; fn(); return [name, dev ? log.map(codeSpelling) : log.slice()]; });
+  return POSES(K, KW.scenes).map(([name, fn]) => { log.length = 0; fn(); return [name, dev ? log.map(codeSpelling) : log.slice()]; });
 }
 /* A value from the sandbox as plain data, to compare with values made here. */
 const plain = v => JSON.parse(JSON.stringify(v));
@@ -174,7 +195,7 @@ if (MODE === 'write') {
     const drawn = draw(dev), from = path_ === 'pack' ? 'from the base pack' : 'from code';
 
     test(`${from}: the stored record covers exactly the poses drawn`, () => {
-      assert.equal(drawn.length, 98);
+      assert.equal(drawn.length, 112);
       assert.deepEqual(drawn.map(([name]) => name), Object.keys(stored.poses));
     });
 
@@ -271,6 +292,91 @@ if (MODE === 'write') {
     const first = seen.filter(s => s[2] === 40 && s[3] === 60), second = seen.filter(s => s[2] === 5 && s[3] === 30);
     assert.equal(first.length + second.length, seen.length, 'drop 65 and bloat 100 clamped to 40 and 60; drop 5 and bloat 30 unchanged');
     assert.ok(first.length && second.length);
+  });
+
+  /* ---- The gear at rest ---------------------------------------------------------------------- */
+
+  /* The base pack's file as text, after edit(pack) has changed the parsed pack. */
+  const editedPack = edit => {
+    const env = JSON.parse(fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8'));
+    edit(env.pack);
+    return JSON.stringify(env);
+  };
+
+  test('the blade and the backdrop key name the equipped weapon on the pack path, and the greatsword on the code path', () => {
+    const code = load(false), pack = load(true);
+    assert.deepEqual(plain(code.K.rest.blade()), { from: 34, to: 263, half: 15 });
+    assert.deepEqual(plain(pack.K.rest.blade()), { from: 34, to: 263, half: 15 });
+    assert.equal(code.K.rest.key('main'), 'code');
+    assert.equal(pack.K.rest.key('main'), 'kw.base/main.greatsword');
+    assert.equal(pack.K.rest.key('off'), '', 'no shield is equipped');
+    // the scenes' backdrop keys carry it
+    assert.equal(pack.KW.scenes.house.key({ tv: true }), 'tv|kw.base/main.greatsword');
+    assert.equal(code.KW.scenes.house.key({ tv: false }), '|code');
+    assert.equal(pack.KW.scenes.smithy.key({ kx: 440.4 }), '440|kw.base/main.greatsword');
+    assert.equal(code.KW.scenes.smithy.key({ kx: 440 }), '440|code');
+  });
+
+  test('a slot with nothing to show at rest draws nothing, on either path', () => {
+    for (const dev of [false, true]) {
+      const { K, log } = load(dev);
+      for (const slot of ['off', 'legs', 'plume', 'head', 'nothing']) K.rest.draw(slot, 300, 300, 0);
+      assert.deepEqual(log, [], dev ? 'from the base pack' : 'from code');
+    }
+  });
+
+  test('the pack path draws the gear at rest from what the pack says', () => {
+    const a = load(true);
+    // a plume colour shows on the resting helmet's small plume, and nothing else changes
+    const pink = load(true, [editedPack(p => { p.swatches.plume.red.entries['1'] = '#ab0102'; })]);
+    for (const box of [a, pink]) box.K.rest.draw('helmet', 460, 476);
+    const diff = a.log.map((l, i) => [l, pink.log[i]]).filter(([x, y]) => x !== y);
+    assert.equal(a.log.length, pink.log.length);
+    assert.ok(diff.length > 3 && diff.every(([x, y]) => x === 's #ff4a3d' && y === 's #ab0102'));
+    // a helmet with no rest view shows nothing on the stool, and one with no plume mount at rest
+    // shows no plume
+    const none = load(true, [editedPack(p => { delete p.items['helm.open'].rest; })]);
+    assert.equal(none.status.source, 'pack');
+    none.K.rest.draw('helmet', 460, 476);
+    assert.deepEqual(none.log, []);
+    const bare = load(true, [editedPack(p => { delete p.items['helm.open'].rest.mounts; })]);
+    bare.K.rest.draw('helmet', 460, 476);
+    assert.ok(bare.log.length > 0 && bare.log.length < a.log.length);
+    assert.equal(bare.log[0], 's #1a1524');
+    assert.match(bare.log[1], /^r 4\d\d 420 /, 'the helmet\'s dome is first, 56 above the stool');
+    // the colour of the jewel in the guard shows on the pegs
+    const jewel = load(true, [editedPack(p => {
+      const s = JSON.stringify(p.items['main.greatsword']).split('"@base.r1"').join('"#123456"');
+      p.items['main.greatsword'] = JSON.parse(s);
+    })]);
+    a.log.length = 0;
+    for (const box of [a, jewel]) box.K.rest.draw('main', 618, 228, Math.PI / 2);
+    const jd = a.log.map((l, i) => [l, jewel.log[i]]).filter(([x, y]) => x !== y);
+    assert.equal(a.log.length, jewel.log.length);
+    assert.ok(jd.length > 3 && jd.every(([x, y]) => x === 's #ff4a3d' && y === 's #123456'));
+  });
+
+  test('a weapon that gives no blade has no hot tip in the smithy', () => {
+    const a = load(true), b = load(true, [editedPack(p => { delete p.items['main.greatsword'].blade; })]);
+    assert.equal(b.K.rest.blade(), null);
+    const drawn = box => { box.log.length = 0; const s = { kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
+    const with_ = drawn(a), without = drawn(b);
+    assert.ok(with_.includes('s #7a2a1d') && with_.includes('s #fff3a0'));
+    assert.ok(!without.includes('s #7a2a1d') && !without.includes('s #8f231d'), 'no hot bands');
+    assert.ok(without.length < with_.length);
+  });
+
+  test('the gear at rest is drawn with every named value 0, and allocates no new arrays', () => {
+    const { KW, K } = load(true), seen = [], draw0 = KW.pack.draw;
+    KW.pack.draw = (list, A, V, P, face) => { seen.push([A, V, Array.from(V), face]); return draw0(list, A, V, P, face); };
+    K.draw(at(K, 'memory_tight', 2300));
+    const knight = seen.length;
+    for (let i = 0; i < 2; i++) { K.rest.draw('helmet', 460, 476); K.rest.draw('main', 618, 228, Math.PI / 2); }
+    const rest = seen.slice(knight);
+    assert.equal(rest.length, 4);
+    assert.ok(rest.every(s => s[0] === rest[0][0] && s[1] === rest[0][1]), 'the same two arrays every time');
+    assert.ok(rest[0][0] !== seen[0][0] && rest[0][1] !== seen[0][1], 'not the knight\'s own');
+    assert.ok(rest.every(s => s[2].every(v => v === 0) && s[3] === undefined));
   });
 
   /* ---- The rig ------------------------------------------------------------------------------ */

@@ -1026,13 +1026,19 @@ test('the one-handed sword and the shield: hold point folded in, shield drawn on
   assert.equal(PK.sequence('sideways'), null);
 });
 
-test('the rest views: the helmet at rest carries the plume\'s rest view on its mount', () => {
+test('the rest views: the helmet at rest carries the plume\'s rest view on its mount, behind it', () => {
   const L = baseLook(), R = recorder(), A = PK.newAnchors();
   A[2 * PK.ANCHOR.rest] = 300; A[2 * PK.ANCHOR.rest + 1] = 400;
   PK.draw(L.lists.restHelmet, A, PK.newValues(), R.P);
-  assert.equal(R.log.length, 10 + 4);
+  assert.equal(R.log.length, 4 + 10);
+  assert.deepEqual(R.log[0], ['ell', 306, 342, 18, 10, K], 'the plume first, at the mount (6, -58)');
+  assert.deepEqual(R.log[4], ['rrect', 268, 344, 64, 54, 24, K], 'then the helmet over it');
+  // a helmet whose rest view has no plume mount rests without the plume
+  const bare = PK.resolve([load(edited(p => { delete helm(p).rest.mounts; }))], {});
+  assert.equal(bare.lists.restHelmet.length, 10);
+  R.log.length = 0;
+  PK.draw(bare.lists.restHelmet, A, PK.newValues(), R.P);
   assert.deepEqual(R.log[0], ['rrect', 268, 344, 64, 54, 24, K]);
-  assert.deepEqual(R.log[10], ['ell', 306, 342, 18, 10, K], 'the plume at the mount (6, -58)');
   const S = PK.resolve(library(), { items: { off: 'kw.base/off.round' } });
   assert.equal(S.lists.restOff.length, 2);
 });

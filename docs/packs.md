@@ -12,11 +12,12 @@ records, and draws a list by calling the primitives. It loads under Node for the
 
 The page loads the library and the base pack, `web/packs/base.pack.json`, which holds the present
 knight as data. Where the page can use the base pack it draws the knight from it, and otherwise
-from the code in `knight.js`, which draws the same knight; see [On the page](#on-the-page). Not
-built yet: fetching downloaded packs from `data/packs/`, the plain stand-in figure drawn when there
-is no base pack, the scenes' gear at rest drawn from a pack (the helmet on the stool, the sword on
-the pegs and the anvil), and anything that draws a decoration. A decoration's fields and shapes are
-checked and its cost counted, but only its keyframes are compiled; its shapes are not.
+from the code in `knight.js`, which draws the same knight; see [On the page](#on-the-page). The
+scenes' gear at rest (the helmet on the house's stool, the weapon on the pegs and across the anvil)
+follows the knight in the same way; see [Gear at rest](#gear-at-rest). Not built yet: fetching
+downloaded packs from `data/packs/`, the plain stand-in figure drawn when there is no base pack,
+and anything that draws a decoration. A decoration's fields and shapes are checked and its cost
+counted, but only its keyframes are compiled; its shapes are not.
 
 This page describes format 1.0 as the library implements it.
 
@@ -366,8 +367,14 @@ hung on the `rest` anchor that the scene places.
 | `mounts` | helmet only: `{"plume": pair}`, where the plume's rest view hangs |
 | `shapes` | 1 to 64 shapes, with no `at` of their own |
 
-A plume's rest view has `shapes` only, and is drawn at the helmet's rest mount. A weapon needs no
-rest view: a scene draws its worn shapes on a frame of its own.
+A plume's rest view has `shapes` only, and is drawn at the helmet's rest mount, before the helmet's
+rest view and so behind it, as the worn plume is drawn behind the worn helmet. A weapon needs no
+rest view: a scene draws its worn shapes on a frame of its own. Its `blade` tells a scene where the
+blade lies along that frame, for the smithy's hot tip.
+
+The page shows two rest views and one weapon at rest today; see [Gear at rest](#gear-at-rest). The
+shield's rest view is checked and compiled, and nothing draws it yet. `fits` and `box` are checked
+and are not yet compared with the place a scene puts the view in.
 
 ## Decorations
 
@@ -632,7 +639,7 @@ replace that code is not built yet.
 | `pauldrons` | the pauldrons |
 | `armL`, `armR`, `gauntL`, `gauntR` | each side's arm and gauntlet |
 | `main`, `off` | the weapon and the shield |
-| `restHelmet` | the helmet's rest view, with the plume's rest view on its mount |
+| `restHelmet` | the plume's rest view on the helmet's rest mount, when the view has one, then the helmet's rest view |
 | `restOff` | the shield's rest view |
 
 `sequence(mode, helmet)` returns the order of one frame for a grip mode as names: these lists and
@@ -651,7 +658,8 @@ A test draws the fixture's whole knight this way through `draw.js`, in eleven po
 bloated, attacking, unwell, walking, helmet off, sword away, at the anvil, mid-swing both ways),
 and requires every fill to equal what `knight.js` draws, pixel for pixel, and the number of fills
 to stay within the look's cost. The page's own path from the base pack is checked harder still, in
-the 98 poses of the knight's call record; see [On the page](#on-the-page).
+the 112 records of the knight's call record (98 poses of the knight, the gear at rest, and the
+house and the smithy); see [On the page](#on-the-page).
 
 ## The library
 
@@ -710,8 +718,9 @@ unsigned. It holds the present knight and nothing the display does not draw toda
   tabard `blue` and plume `red`;
 - `defaults` naming all of them. It has no palettes of its own and no decorations.
 
-The helmet and the plume carry the rest views of the helmet on the house's stool, which the house
-still draws from its own code. The items and swatches are the test fixture's, unchanged; the
+The helmet and the plume carry the rest views of the helmet on the house's stool, and the
+greatsword its `blade`, `{"from": 34, "to": 263, "half": 15}`, for the smithy's hot tip; see [Gear
+at rest](#gear-at-rest). The items and swatches are the test fixture's, unchanged; the
 fixture also carries extras the tests need (a second build, long hair, an arming sword, a shield, a
 pennant and a lantern). Its default look costs 11 932 and draws at most 99 shapes.
 
@@ -779,6 +788,26 @@ one so.
 
 Each frame on the pack path is described under [the rig in page.md](./page.md#the-knights-rig).
 
+### Gear at rest
+
+The house and the smithy show the knight's gear off the knight, and on the pack path they show
+what the look equips: the helmet on the house's stool from the look's `restHelmet` list, and the
+weapon on the house's pegs and across the smithy's anvil from its `main` list, the same shapes the
+knight holds, on a frame the scene fixes. The smithy draws the hot tip of the blade from the
+weapon's `blade`, and draws none for a weapon without one. A scene asks for each by the item's slot
+in its own `paint` or `draw`, through `KW.knight.rest`, which draws from code on the code path, so
+no scene looks at which path is in use:
+
+```js
+K.rest.draw('helmet', 460, 476);                // the house's draw: the helmet on the stool
+K.rest.draw('main', 618, 228, Math.PI / 2);     // the house's paint: the weapon on the pegs
+const b = K.rest.blade();                       // the smithy's draw: { from, to, half } or null
+```
+
+The house and the smithy paint the weapon into their cached backdrop, so their backdrop keys carry
+`K.rest.key('main')`, the equipped weapon's name. [page.md](./page.md#gear-at-rest) has the places
+each scene declares in its `rests` field, the numbers of the hot tip and the key.
+
 ## Tests
 
 ```bash
@@ -809,8 +838,10 @@ the same answer as this verifier for every signature the tests put to both.
 `signature` step otherwise, one build with the present measurements, one item for each slot the
 present drawing has and nothing more, each item and swatch equal to the fixture's, and a default
 look that resolves with nothing missing at a cost of 11 932. `tests/web/knight.test.js` draws the
-knight's 98 poses from the base pack as the page does and compares every call with the record
-taken from the code; [page.md](./page.md#checks) describes it.
+knight's 98 poses, the gear at rest, and the house and the smithy painted and drawn, from the base
+pack as the page does, and compares every call with the record taken from the code; it also checks
+that a pack's colours reach the gear at rest, and that a helmet with no rest view and a weapon with
+no `blade` show nothing there. [page.md](./page.md#checks) describes it.
 
 ```bash
 node --test tests/tools/
