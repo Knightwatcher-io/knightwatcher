@@ -9,9 +9,6 @@ history, is written as though it already were.
 - **The operator's own details**: real hostnames, domains, IP addresses, usernames, email
   addresses, device names, the titles of what is being watched.
 - **Real output** of the collector. `state.json` describes a private network.
-- **Generated art that has not been adopted**, and the ledger of paid calls that made it, both
-  under `art/`. The scripts that name where the art tools' keys are kept (`tools/artgen/local-*`)
-  stay out too.
 
 Examples, tests and screenshots use invented data. Addresses come from the documentation ranges
 (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`) and names from `example.com`.

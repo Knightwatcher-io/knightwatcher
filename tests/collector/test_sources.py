@@ -94,8 +94,8 @@ class ContainersTest(unittest.TestCase):
         self.assertEqual(classify("created", "Created"), "ok")
 
     def test_ignore_patterns(self):
-        self.assertTrue(ignored("agent-coord-7f3a", ["agent-coord-*"]))
-        self.assertFalse(ignored("radarr", ["agent-coord-*"]))
+        self.assertTrue(ignored("ci-runner-7f3a", ["ci-runner-*"]))
+        self.assertFalse(ignored("radarr", ["ci-runner-*"]))
 
     def test_fetch_through_the_proxy(self):
         http = FakeHttp()

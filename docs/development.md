@@ -16,10 +16,8 @@ tests/
   collector/         unittest tests for the collector
   web/               node tests for web/js/state.js
 tools/
-  artgen/            the art generation tools, described in art.md
   shots.sh           regression screenshots of the page
   check-private.sh   the check that no private detail is tracked
-art/                 the art tools' output and call ledger; ignored by git
 docs/                this documentation
 compose.yaml  Dockerfile  config.example.toml  secrets.example.json  pyproject.toml
 ```
@@ -52,15 +50,6 @@ python3 -m collector --config config.toml --secrets secrets.json --check-config
 
 The last two need a `.env`, a `config.toml` and a `secrets.json` in place; see
 [configuration.md](./configuration.md).
-
-The art tools:
-
-```bash
-uvx ruff check tools/artgen && uvx ruff format --check tools/artgen
-```
-
-`pyproject.toml` leaves `tools` out of a bare `ruff` run, and an explicit path lints it anyway.
-[art.md](./art.md) describes the tools.
 
 The page:
 

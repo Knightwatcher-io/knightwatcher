@@ -9,7 +9,7 @@ dependencies = []
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-extend-exclude = ["web", "tools", "art"]
+extend-exclude = ["web", "tools"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "BLE"]

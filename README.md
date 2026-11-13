@@ -32,4 +32,3 @@ collector write its file to `web/data/`, behind whatever authentication you use.
 - [Configuration](docs/configuration.md): `config.toml`, `secrets.json` and `.env`
 - [Security](docs/security.md): what never enters this repository, and the collector's privileges
 - [Development](docs/development.md): layout, checks, and the rules for changes
-- [Art tools](docs/art.md): the generated-art experiments and their outcome

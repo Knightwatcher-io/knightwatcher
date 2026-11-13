@@ -75,10 +75,8 @@ and the props are drawn by code on one grid of 960 by 600 with the ground at 530
 scaled by a whole number of device pixels where the screen allows (three on the target tablet).
 The still part of a scene is painted once and kept. Only what moves is drawn each frame.
 
-A generated set was tried and not adopted, because it was too coarse and its swing frames did not
-hold the sword in both hands. [art.md](./art.md) records the tools and the outcome. Any other
-generated or hand-drawn set would replace the code-drawn art as one complete set and never
-piecemeal, so that two styles never share a screen.
+A different set of art would replace the code-drawn art as one complete set and never piecemeal,
+so that two styles never share a screen.
 
 ## The collector
 
@@ -106,7 +104,6 @@ watched. Knightwatch opens no port of its own.
 ## Decisions not yet made
 
 - A licence, to be chosen before the repository is made public.
-- Whether generated art is ever committed, given how unsettled its copyright position is.
 - How the display behaves overnight on the tablet itself (dimming, sleep), which belongs to the
   kiosk browser more than to this project. The page asks for a screen wake lock in live mode and
   goes full screen on a tap, and leaves the rest open.

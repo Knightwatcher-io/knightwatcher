@@ -1,6 +1,3 @@
-# Working notes of unattended runs, never project history
-.overnight/
-
 # Site configuration and credentials: never committed
 /config.toml
 /secrets.json
@@ -10,10 +7,6 @@
 
 # What the collector writes for the page
 /web/data/
-
-# Generated art that has not been adopted, and its call ledger
-/art/candidates/
-/art/ledger.json
 
 # Python and tooling
 __pycache__/
@@ -25,9 +18,6 @@ dist/
 
 # The list of private patterns names what it protects
 /tools/private-patterns.txt
-
-# Local wrappers that name where keys are kept
-/tools/artgen/local-*
 
 # The collector's memory between restarts, and lock files of tools run here
 /var/
