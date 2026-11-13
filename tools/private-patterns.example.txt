@@ -1,0 +1,4 @@
+# One extended regular expression per line. Copy to private-patterns.txt and list what is yours:
+# your domains, hostnames, usernames, email addresses and private address ranges.
+example-private-domain\.test
+192\.168\.[0-9]+\.[0-9]+
