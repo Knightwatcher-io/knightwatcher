@@ -11,13 +11,13 @@ records, and draws a list by calling the primitives. It loads under Node for the
 `tests/web/pack.test.js`, like `state.js`.
 
 The page loads the library and the base pack, `web/packs/base.pack.json`, which holds the present
-knight as data. Where the page can use the base pack it draws the knight from it, and otherwise
-from the code in `knight.js`, which draws the same knight; see [On the page](#on-the-page). The
-scenes' gear at rest (the helmet on the house's stool, the weapon on the pegs and across the anvil)
-follows the knight in the same way; see [Gear at rest](#gear-at-rest). Not built yet: fetching
-downloaded packs from `data/packs/`, the plain stand-in figure drawn when there is no base pack,
-and anything that draws a decoration. A decoration's fields and shapes are checked and its cost
-counted, but only its keyframes are compiled; its shapes are not.
+knight as data, and, when served, the packs the collector downloaded into `data/packs/`. Where the
+page can use the base pack it draws the knight from it, and otherwise from the code in
+`knight.js`, which draws the same knight; see [On the page](#on-the-page). The scenes' gear at rest (the helmet on the house's stool, the weapon
+on the pegs and across the anvil) follows the knight in the same way; see [Gear at
+rest](#gear-at-rest). Not built yet: anything that draws a decoration, and the settings screen
+that chooses a look and shows which packs were refused. A decoration's fields and shapes are
+checked and its cost counted, but only its keyframes are compiled; its shapes are not.
 
 This page describes format 1.0 as the library implements it.
 
@@ -677,8 +677,7 @@ with every one of its builds, and its default plume fits its default helmet, so 
 always ends.
 
 With no base pack loaded, `resolve` returns `{ ok: false, reason: 'no base pack' }`. The page then
-draws the knight from code (see [On the page](#on-the-page)); the plain stand-in figure meant to
-replace that code is not built yet.
+draws the knight from code (see [When packs fail](#when-packs-fail)).
 
 ## The compiled lists
 
@@ -770,7 +769,7 @@ Constants: `FORMAT`, `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STE
 ### The base pack
 
 `web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.0.0.
-Whether it ships signed is said under [Two paths](#two-paths). It holds the present knight and nothing the display does not draw today:
+Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight and nothing the display does not draw today:
 
 - one build, `build.a`, with the present knight's eight measurements and the plain head;
 - eleven items, one for each slot the present drawing has: `legs.plate`, `boots.leather`,
@@ -812,47 +811,118 @@ back to exactly the same text, whatever the file holds; a shell script would nee
 `tests/tools/pack-carrier.test.js` checks that every pack file has a carrier and that every carrier
 pushes its file's text byte for byte.
 
-### Two paths
+### Where the knight is drawn from
 
-`main.js` calls `KW.knight.start(KW.packText, allowUnsigned)` once at start-up, with
-`allowUnsigned` true only when the page's `kw-version` meta tag says `dev`, the way it reads the
-version for the reload check. `start` reads every carried text with `read()`, gathers the results
-and resolves the default look (`resolve(packs, {})`). The choice it makes holds until the page is
-loaded again:
+`main.js` calls `KW.knight.start(KW.packText, allowUnsigned)` once at start-up, before the first
+frame, with `allowUnsigned` true only when the page's `kw-version` meta tag says `dev`, the way it
+reads the version for the reload check. `start` reads every carried text with `read()`, gathers the
+results and resolves the look (`resolve(packs, look)`, with the base pack's defaults while no
+settings screen chooses one). When the downloaded packs arrive, `KW.knight.add()` reads them with
+the same options and resolves the look again (see [Downloaded packs](#downloaded-packs)):
 
 - **A `dev` page** (the repository's own, opened from disk or served straight from `web/`) accepts
-  the base pack signed or unsigned, and draws the knight from it. A `sig` it carries must verify
-  all the same.
-- **A deployed page** draws the knight from the base pack when the pack carries a signature that
-  verifies against a key in `KEYS`. It refuses an unsigned base pack at the `signature` step (`sig:
-  is missing, and this page accepts only signed packs`), and one whose signature does not verify,
-  so no look resolves and the page draws the knight from the code in `knight.js`.
+  packs signed or unsigned. A `sig` a pack carries must verify all the same.
+- **A deployed page** accepts a pack only when it carries a signature that verifies against a key
+  in `KEYS`. It refuses an unsigned pack at the `signature` step (`sig: is missing, and this page
+  accepts only signed packs`), and one whose signature does not verify or names a key it does not
+  know.
 
-**Today the base pack ships signed with `kw1`, so a deployed page draws the knight from it.**
+**Today the base pack ships signed with `kw1`, so a deployed page draws the knight from it.** When
+no base pack can be used the page draws the knight from the code in `knight.js`, the full knight as
+it shipped before packs (see [When packs fail](#when-packs-fail)).
 
-The code path keeps a deployed display drawing the present knight whenever its base pack is
-refused. Both paths give the same pixels: the call record and the screenshots prove it (see
-[page.md](./page.md#checks)). Once the base pack ships signed, the plain stand-in figure, not built
-yet, is meant to take the code's place as the drawing for "no usable base pack".
-
-Nothing is drawn on screen about the choice. The console gets one line, `console.info` for the
-pack and `console.warn` for code:
+Nothing is drawn on screen about the choice. `knight.js` writes to the console one line for each
+refused pack, and one line, `console.info` for the base pack and `console.warn` for code, each
+time the source changes:
 
 ```
 knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, signed
 knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, unsigned
-knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
+knightwatcher: the pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
+knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step
 ```
 
-The reason in that line is cut to 120 characters. `KW.knight.source` holds `'pack'` or `'code'`, and
-`KW.knight.status` holds `{ source, base, refused, note }`: `base` is `{ id, version, signed }` of
-the base pack in use, or `null`; `refused` lists `{ id, step, reason }` for every pack turned away,
-with the reason whole; `note` is the console line. A settings screen can read both. The code path
-is also taken when no base pack is carried, when the base pack fails any other step, when the pack
-library is missing, and when the default weapon is not held in both hands, since every pose holds
-one so.
+The reason in a refusal's line is cut to 120 characters, and the line about the source names the
+step the base pack was refused at. `KW.knight.source` holds `'pack'` or `'code'`, and `KW.knight.status` holds `{ source, base, refused, fallbacks, note }`:
 
-Each frame on the pack path is described under [the rig in page.md](./page.md#the-knights-rig).
+| Field | Holds |
+|---|---|
+| `base` | `{ id, version, signed }` of the base pack in use, or `null` |
+| `refused` | `{ id, file, step, reason }` for every pack turned away, with the reason whole; see [When packs fail](#when-packs-fail) |
+| `fallbacks` | what of the look took the base pack's default, as `resolve` reports it (see [Looks](#looks)) |
+| `note` | the last line written about the source |
+
+`start` makes a new status; `add` and a pack marked bad update that one in place, so the settings
+screen's status panel can keep it and read it again. The knight is drawn from code when no base
+pack is carried, when the base pack fails any step or is marked bad, when the pack library is
+missing, and when the base pack's weapon is not held in both hands, since every pose holds one so.
+
+`start(texts, allowUnsigned, opts)` takes in `opts` a `look` to draw, and `keys`, which replaces
+`KEYS` in `read()` and is for the tests only; the page passes neither.
+
+### Downloaded packs
+
+The collector (in stage 2) writes the packs it downloads into `data/packs/`, beside `state.json`,
+with an index:
+
+```json
+{ "packs": ["kw-extra.pack.json", "plumes-1.pack.json"] }
+```
+
+| Rule | Limit |
+|---|---|
+| the index | a JSON object, at most 16 KiB; keys other than `packs` are ignored |
+| `packs` | a list of at most 32 names |
+| a name | a file name only, no path: lower-case letters, digits, `-` and `_`, dots between them but never two in a row, ending in `.pack.json`, at most 64 characters, listed once |
+
+Served over HTTP, in every mode, the page fetches `data/packs/index.json` once at load, relative to
+itself, and then every file it names from `data/packs/`, as text: never as script, never from
+anywhere else, each with `cache: "no-store"`, no redirects followed, and the same four-second
+cut-off as `state.json`. `KW.knight.fetchPacks(fetch)` does the fetching and `KW.knight.add()` the
+reading, through the same `read()` as the carriers; `KW.knight.packIndex(value)` checks a parsed
+index. A page opened from disk fetches nothing and shows the packs it ships with. A pack added later
+shows when the page is next loaded, since a page reads the folder only once.
+
+A missing index (a 404) means no packs and is silent. Everything else that goes wrong is a refusal
+in the status:
+
+| Step | When | `file` |
+|---|---|---|
+| `index` | the index cannot be fetched (`the server answered 500`, `no answer within four seconds`), is not JSON, or breaks a rule above as a whole; nothing else is fetched | `index.json` |
+| `index` | one name breaks a rule; the other names are still fetched | the name, cut to 64 characters, or `null` when it is not a string |
+| `fetch` | a named file is missing, cannot be fetched or is over 512 KiB | the name |
+| a step of `read()` | the file is refused by the checks | the name, with `id` once the envelope gives one |
+
+A downloaded pack with the base pack's id replaces the shipped one when its version is higher, as
+`gather` does for any two packs with one id.
+
+### When packs fail
+
+The knight never vanishes. In order:
+
+1. **A pack is refused.** It goes into `status.refused` as `{ id, file, step, reason }` and to the
+   console once. `id` is the pack's id, or `null` when it could not be read; `file` is the
+   downloaded file's name, or `null` for a pack that ships with the page; `step` is the step of
+   the checks, `index` or `fetch` from the table above, `counts` when more than 32 packs are
+   loaded, or `draw` for a pack marked bad (rule 4). Nothing on the wall changes, and the settings
+   screen's status panel (not built yet) shows the list. A panel must show the entries as text.
+2. **An item, swatch or build in the look is missing**, because its pack was refused, removed or
+   never downloaded: that slot, set or build takes the base pack's default, as `resolve` does, and
+   `status.fallbacks` says so. A weapon that is not held in both hands also takes the default,
+   with the reason `the poses hold the weapon in both hands`.
+3. **No base pack can be used.** The knight is drawn from code: the full knight as it shipped
+   before packs, with the open helm, the red plume, the blue tabard and the greatsword, by
+   `codeHD` in `knight.js`. The sleeper's head in the house is drawn by `bareHD`, and the gear at
+   rest by code too: the helmet on the stool, the greatsword on the pegs and across the anvil, and
+   the hot tip from the greatsword's blade. `rest.blade()` is `{ from: 34, to: 263, half: 15 }` and
+   `rest.key()` is `'code'`. The reason is in the status and the console. Nothing plainer than this
+   knight is ever drawn.
+4. **A compiled list throws while drawing**, which the checks should make impossible. The throw is
+   caught for that frame, and the packs that gave the list's slots are marked bad (the base pack
+   only when no other pack gave any of them), refused at the `draw` step with the reason `the
+   <list> list threw while drawing: <message>`. From the next frame the knight is drawn by the
+   rules above without them. The same holds for the lists of the gear at rest and the sleeper's
+   head. A throw in the engine's own drawing is not put down to a pack.
 
 ### Gear at rest
 
@@ -917,6 +987,24 @@ sandbox's `KEYS`, that a deployed page reads a signed base pack through `KW.ed25
 draws from code when no verifier is loaded. It also checks
 that a pack's colours reach the gear at rest, and that a helmet with no rest view and a weapon with
 no `blade` show nothing there. [page.md](./page.md#checks) describes it.
+
+`tests/web/loading.test.js` checks loading and failure. For the index: its shape, more than 32
+names, and names that carry a path or are not a pack file's. For the fetch, against a fake `fetch`:
+a missing index is silent and asks for nothing else; an index that is not JSON, too large, answered
+with an error, or not answered within four seconds is refused whole; a bad name is never asked
+for; a file that is missing, fails, hangs or is too large is refused with its name; a file that
+fails `read()` at the size, json, envelope, signature, format, fields or references step is refused
+with its name and id. On a deployed page an unsigned downloaded pack and one signed by an unknown
+kid or by the wrong key are refused, and one signed with a key made for the run and passed through
+`keys` is read and drawn; a `dev` page reads the unsigned one. Each refusal is in the status and
+written to the console once. A look naming a missing build, item or swatch falls back to the
+base pack's defaults and draws what the default look draws, and a one-handed weapon gives way to
+the default. With no base pack, a broken one, an unsigned one or one signed by an unknown kid on
+a deployed page, no pack library, and after a throw inside the base pack's lists, the page draws
+from code, and 28 records of the knight, the sleeper's head, the gear at rest, the house and the
+smithy must equal, call for call, the records `knight.test.js` stores from the code. A throw
+inside a downloaded pack's list, a list of the gear at rest or the sleeper's head is caught and
+the right pack marked bad, and a throw in the engine's own drawing is not.
 
 ```bash
 node --test tests/tools/

@@ -57,9 +57,10 @@ const SCRIPTS = [...fs.readFileSync(path.join(WEB, 'index.html'), 'utf8').matchA
    points the drawing at a context that writes one line per call: "s" for a fillStyle, "a" for a
    globalAlpha, "r" for a fillRect, and the name for anything else. texts, when given, replace what
    the carriers pushed. kw1, when given, is the base64 of a public key that the sandbox's copy of
-   pack.js holds as kw1 in place of the shipped one, for a pack signed with a key made for the run. */
+   pack.js holds as kw1 in place of the shipped one, for a pack signed with a key made for the run.
+   The sandbox's console writes into lines, as [level, text]. */
 function load(dev, texts, kw1) {
-  const log = [];
+  const log = [], lines = [];
   const ctx = new Proxy({}, {
     set(_, k, v) { log.push((k === 'fillStyle' ? 's' : k === 'globalAlpha' ? 'a' : String(k)) + ' ' + v); return true; },
     get(_, k) {
@@ -67,7 +68,7 @@ function load(dev, texts, kw1) {
       return (...a) => { log.push([String(k), ...a].join(' ')); };
     },
   });
-  const box = vm.createContext({ window: {} });
+  const box = vm.createContext({ window: {}, console: { info: l => lines.push(['info', l]), warn: l => lines.push(['warn', l]) } });
   for (const f of SCRIPTS) {
     // a carrier names KW as the page's global, which window.KW is in a browser
     if (box.window.KW) box.KW = box.window.KW;
@@ -84,7 +85,7 @@ function load(dev, texts, kw1) {
   KW.things = { draw() { log.push('things'); } };
   const status = KW.knight.start(texts || KW.packText, dev === true);
   KW.draw.setCtx(ctx);
-  return { KW, K: KW.knight, log, status };
+  return { KW, K: KW.knight, log, status, lines };
 }
 
 const X = 480, FLOOR = 530;
@@ -249,6 +250,7 @@ if (MODE === 'write') {
     assert.equal(status.source, 'pack', status.note);
     assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.0.0', signed });
     assert.deepEqual(plain(status.refused), []);
+    assert.deepEqual(plain(status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), []);
     assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, ' + (signed ? 'signed' : 'unsigned'));
   };
   const MISSING = 'sig: is missing, and this page accepts only signed packs';
@@ -271,12 +273,14 @@ if (MODE === 'write') {
     fromPack(load(true, [UNSIGNED]).status, false);
   });
 
+  const CODE = 'knightwatcher: the knight is drawn from code: ';
   test('a deployed page refuses an unsigned base pack at the signature step and draws from code', () => {
-    const { K, status } = load(false, [UNSIGNED]);
+    const { K, status, lines } = load(false, [UNSIGNED]);
     assert.equal(K.source, 'code');
     assert.equal(status.base, null);
-    assert.deepEqual(plain(status.refused), [{ id: 'kw.base', step: 'signature', reason: MISSING }]);
-    assert.equal(status.note, 'knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step: ' + MISSING);
+    assert.deepEqual(plain(status.refused), [{ id: 'kw.base', file: null, step: 'signature', reason: MISSING }]);
+    assert.equal(status.note, CODE + 'the base pack kw.base was refused at the signature step');
+    assert.deepEqual(lines, [['warn', 'knightwatcher: the pack kw.base was refused at the signature step: ' + MISSING], ['warn', status.note]]);
   });
 
   test('a deployed page draws from the base pack as it ships when it is signed, and from code when it is not', () => {
@@ -286,7 +290,7 @@ if (MODE === 'write') {
       fromPack(status, true);
     } else {
       assert.equal(K.source, 'code');
-      assert.deepEqual(plain(status.refused), [{ id: 'kw.base', step: 'signature', reason: MISSING }]);
+      assert.deepEqual(plain(status.refused), [{ id: 'kw.base', file: null, step: 'signature', reason: MISSING }]);
     }
   });
 
@@ -304,7 +308,7 @@ if (MODE === 'write') {
     box.KW.ed25519 = undefined;
     const none = box.K.start([run.text], false);
     assert.equal(none.source, 'code');
-    assert.deepEqual(plain(none.refused), [{ id: 'kw.base', step: 'signature', reason: 'sig: cannot be checked: no verifier is loaded' }]);
+    assert.deepEqual(plain(none.refused), [{ id: 'kw.base', file: null, step: 'signature', reason: 'sig: cannot be checked: no verifier is loaded' }]);
     // and a page whose kw1 is another key refuses it
     const other = load(false, [run.text]).status;
     assert.equal(other.source, 'code');
@@ -314,25 +318,27 @@ if (MODE === 'write') {
 
   test('with no base pack, a broken one or no pack library, the knight is drawn from code', () => {
     const text = UNSIGNED;
-    assert.equal(load(true, []).status.note, 'knightwatcher: the knight is drawn from code: no base pack is loaded');
+    assert.equal(load(true, []).status.note, CODE + 'no base pack is loaded');
     let s = load(true, ['not json']).status;
     assert.equal(s.source, 'code');
-    assert.deepEqual(plain(s.refused), [{ id: null, step: 'json', reason: 'the file is not valid JSON' }]);
-    s = load(true, [text.replace('"version": "1.0.0"', '"version": "1.0"')]).status;
-    assert.equal(s.note, 'knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the fields step: pack.version: must be major.minor.patch, each 0 to 999');
+    assert.deepEqual(plain(s.refused), [{ id: null, file: null, step: 'json', reason: 'the file is not valid JSON' }]);
+    const v = load(true, [text.replace('"version": "1.0.0"', '"version": "1.0"')]);
+    assert.equal(v.status.note, CODE + 'the base pack kw.base was refused at the fields step');
+    assert.deepEqual(v.lines[0], ['warn', 'knightwatcher: the pack kw.base was refused at the fields step: pack.version: must be major.minor.patch, each 0 to 999']);
     const box = load(true);
     assert.equal(box.K.source, 'pack');
     box.KW.pack = undefined;
-    assert.equal(box.K.start(box.KW.packText, true).note, 'knightwatcher: the knight is drawn from code: the pack library is not loaded');
+    assert.equal(box.K.start(box.KW.packText, true).note, CODE + 'the pack library is not loaded');
     assert.equal(box.K.source, 'code');
   });
 
   test('the console line cuts a long reason short', () => {
     const box = load(true), lib = box.KW.pack;
     box.KW.pack = Object.assign({}, lib, { read: () => ({ ok: false, step: 'fields', reason: 'r'.repeat(300), id: 'kw.base' }) });
+    box.lines.length = 0;
     const s = box.K.start(box.KW.packText, true);
     assert.equal(s.source, 'code');
-    assert.equal(s.note, 'knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the fields step: ' + 'r'.repeat(117) + '...');
+    assert.deepEqual(box.lines[0], ['warn', 'knightwatcher: the pack kw.base was refused at the fields step: ' + 'r'.repeat(117) + '...']);
     assert.equal(s.refused[0].reason.length, 300, 'the status keeps the reason whole');
   });
 
