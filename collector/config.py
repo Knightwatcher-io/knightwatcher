@@ -72,7 +72,7 @@ SOURCE_DEFAULTS: dict[str, dict[str, Any]] = {
     "updates": {"enabled": True, "holders": []},
     "ssh": {"enabled": True, "port": 22, "ignore_sources": []},
     "streams": {"enabled": True, "url": "", "secret": "tautulli"},
-    "adblock": {"enabled": True, "url": "", "secret": "adguard"},
+    "adblock": {"enabled": True, "url": "", "secret": "adguard", "fly_every_s": 300.0},
     "security": {"enabled": True, "url": ""},
     "sonarr": {"enabled": True, "url": "", "secret": "sonarr"},
     "radarr": {"enabled": True, "url": "", "secret": "radarr"},
@@ -268,6 +268,8 @@ def _validate_source(name: str, s: dict, problems: list[str]) -> None:
                 problems.append(f"sources.updates.holders[{i}].pattern: {exc}")
         if not s["holders"]:
             problems.append("sources.updates.holders: list at least one lock holder")
+    elif name == "adblock":
+        _check_positive("sources.adblock.fly_every_s", s["fly_every_s"], problems, True)
     elif name == "ssh":
         import ipaddress
 

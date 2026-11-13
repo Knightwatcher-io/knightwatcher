@@ -32,8 +32,9 @@ Rules that follow from this, each decided by the owner:
 - Serious outranks fun. The conditions have one order, and the highest one active wins the scene,
   the knight's state and the headline. Small reactions to events (an advert blocked, an address
   banned, a download imported) play only while nothing at warning level or above is active.
-- Blocked adverts become flies. They gather, up to eight, and the knight swats them all at most
-  once every 30 seconds.
+- Blocked adverts become flies. One fly stands for a few minutes of the household's usual
+  blocking, so a quiet network sends the odd fly and a burst sends a swarm. They gather, up to
+  eight, and the knight swats them all at most once every 30 seconds.
 
 ## The knight
 
