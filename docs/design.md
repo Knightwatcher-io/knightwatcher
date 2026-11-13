@@ -2,7 +2,7 @@
 
 Knightwatcher is a wall display for a homelab. A pixel-art knight fills a tablet's screen, in a
 scene and a state that mirror the machines being watched: the knight sweats when the CPU is
-pinned, takes to bed when a container is unhealthy, and goes to the king's court when someone
+pinned, takes to bed when a container is unhealthy, and goes to the royal court when someone
 opens a shell. A headline over the top says why in words, beside a wall clock.
 
 It has two parts that share one file.
@@ -61,12 +61,18 @@ and a state of the knight. Highest first:
 | `pi_silent` | warning | house | staring at the empty plate |
 | `cpu_hot` | warning | training yard | training frantically, sweating |
 | `memory_tight` | warning | the quiet scene of the moment | bloated |
-| `ssh_session` | at work | king's court | talking with the King |
+| `ssh_session` | at work | royal court | talking with the monarch |
 | `updating` | at work | smithy | hammering the greatsword |
 | `streaming` | quiet | house | watching the television |
 | `night` | asleep | house | in bed, screen dimmed |
 
 With no condition active the quiet scenes take turns: battlement, camp, house, training yard.
+
+The monarch on the throne at court is one of three young adults, each with a look of their own:
+monarch A, a king; monarch B, a queen; and monarch C, a monarch who reads as neither. All three
+sit the same way and talk with the knight the same way, and differ in hair, crown, robe and what
+they hold. A is the default. For now the address chooses between them (`mon=`, see
+[page.md](./page.md#the-address)); a setting will choose in normal use.
 
 ## Art
 

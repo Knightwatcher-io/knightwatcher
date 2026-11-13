@@ -8,7 +8,7 @@ beside a wall clock.
 The scene is a night in the knight's world. When all is quiet the knight stands on the
 battlement, by the camp fire, in the house or in the training yard, and strolls to another spot
 every 12 to 22 seconds. A fault changes the scene to one that suits it: the cellar for a full
-disk, the smithy during an update, the king's court while someone has a shell open. The text
+disk, the smithy during an update, the royal court while someone has a shell open. The text
 colour carries the status, green when quiet, amber for a warning, red when critical and blue
 while something is at work.
 

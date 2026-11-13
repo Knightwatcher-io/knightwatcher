@@ -105,7 +105,7 @@
         if (here.act === 'yawn') { const c = el % 6500; if (c > 3800 && c < 5600) { o.eyes = 'closed'; o.mouth = 'o'; } }
       }
     }
-    const s = { w, piOK, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false };
+    const s = { w, piOK, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false, mon: KW.hooks.mon };
     if (sc.act) sc.act(t, s);
     o.x = kx;
 

@@ -150,10 +150,12 @@ before it calls `paint`, `draw` and `over`.
 | `here` | where the knight stands in the scene's `rounds`, `{ act, el }` with `el` the ms spent there, or `null` |
 | `inBed`, `helmOff` | whether the knight is in bed, and whether the helmet is off |
 | `strike` | free for a scene's `act` to pass to its `draw` (the smithy's hammer blow) |
+| `mon` | the monarch at court, from the address's `mon=` hook: `a`, `b` or `c` |
 
 Some scenes reach further. The house draws the sleeper's head with `KW.knight.head` and its Zs
-at night in `over`. The court sets the knight talking in `draw` and draws the King's speech
-bubble with `KW.knight.speech`. The smithy's `act` sets the hammer and `strike`. The yard keeps
+at night in `over`. The court paints the monarch that `s.mon` names into its backdrop, keyed on
+the choice, sets the knight talking in `draw` and draws the monarch's speech bubble with
+`KW.knight.speech`. The smithy's `act` sets the hammer and `strike`. The yard keeps
 the time the dummy was last struck and swings the knight's sword in `act`.
 
 ## Modes
@@ -229,8 +231,8 @@ of the last reload and the time. `state.js` loads under Node for the tests.
 
 ## The address
 
-The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=` and `kx=` also work
-in live mode. `f=`, `e=` and `sw=` start something in the demo and do nothing elsewhere.
+The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=` and `mon=`
+also work in live mode. `f=`, `e=` and `sw=` start something in the demo and do nothing elsewhere.
 
 | Key | Meaning |
 |---|---|
@@ -245,13 +247,16 @@ in live mode. `f=`, `e=` and `sw=` start something in the demo and do nothing el
 | `f=` | starts with that many flies |
 | `sw=1` | starts a swat |
 | `kx=` | places the knight, in units of `U` |
+| `mon=` | the monarch at court: `a` the king, `b` the queen, `c` the monarch who is neither. Anything else, or no hook, gives `a` |
 
 `e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time.
 With time frozen the knight never starts a swat alone, so the flies of `f=` hover until `sw=1`
 starts one, and a knight placed away from their spot by `kx=` stays exactly there, in mid-stride,
 rather than walking a step in each frame.
 
-The demo rewrites the hash as its settings change, with the contract's ids in `on=`.
+The demo rewrites the hash as its settings change, with the contract's ids in `on=`. The test hooks
+(`t=`, `kx=`, `mon=`, `f=`, `e=` and `sw=`) are read once when the page loads, and the rewritten
+hash leaves them out, so they last until the page is opened again.
 
 ## Deploying
 
