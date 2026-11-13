@@ -14,16 +14,16 @@ from collector.config import ConfigError, load
 from collector.runner import STATE_FILE, Runner
 from collector.store import Memory
 
-DEFAULT_CONFIG = "/etc/knightwatch/config.toml"
-DEFAULT_SECRETS = "/etc/knightwatch/secrets.json"
+DEFAULT_CONFIG = "/etc/knightwatcher/config.toml"
+DEFAULT_SECRETS = "/etc/knightwatcher/secrets.json"
 
 log = logging.getLogger("collector")
 
 
 def _parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="collector", description="Knightwatch collector")
-    p.add_argument("--config", default=os.environ.get("KNIGHTWATCH_CONFIG", DEFAULT_CONFIG))
-    p.add_argument("--secrets", default=os.environ.get("KNIGHTWATCH_SECRETS", DEFAULT_SECRETS))
+    p = argparse.ArgumentParser(prog="collector", description="Knightwatcher collector")
+    p.add_argument("--config", default=os.environ.get("KNIGHTWATCHER_CONFIG", DEFAULT_CONFIG))
+    p.add_argument("--secrets", default=os.environ.get("KNIGHTWATCHER_SECRETS", DEFAULT_SECRETS))
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--once", action="store_true", help="run one poll, write the file, exit")
     mode.add_argument(

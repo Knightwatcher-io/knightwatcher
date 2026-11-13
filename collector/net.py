@@ -45,7 +45,7 @@ def basic_auth(username: str, password: str) -> dict[str, str]:
 
 
 def fetch(url: str, timeout: float, headers: dict[str, str] | None = None) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "knightwatch", **(headers or {})})
+    req = urllib.request.Request(url, headers={"User-Agent": "knightwatcher", **(headers or {})})
     try:
         with _opener.open(req, timeout=timeout) as resp:
             body = resp.read(MAX_BODY + 1)

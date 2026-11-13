@@ -1,4 +1,4 @@
-/* Knightwatch scene: the training yard at night, on the fine grid. A quiet scene, where the knight
+/* Knightwatcher scene: the training yard at night, on the fine grid. A quiet scene, where the knight
    trains on the practice dummy, and the scene for a hot CPU, where he trains without rest. The
    scene interface is in docs/page.md. */
 (function (KW) {

@@ -1,4 +1,4 @@
-/* Knightwatch: the knight, on the fine grid. Open helm, red plume, blue tabard, a greatsword held
+/* Knightwatcher: the knight, on the fine grid. Open helm, red plume, blue tabard, a greatsword held
    in both hands. pose() turns a condition into the state of the knight, and knightHD() draws him. */
 (function (KW) {
   'use strict';

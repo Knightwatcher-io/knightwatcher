@@ -1,4 +1,4 @@
-# Knightwatch
+# Knightwatcher
 
 A wall display for a homelab. A pixel-art knight fills a tablet's screen and mirrors the state of
 the machines he watches: he sweats when the CPU is pinned, takes to his bed when a container is

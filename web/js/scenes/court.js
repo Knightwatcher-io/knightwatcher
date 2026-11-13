@@ -1,4 +1,4 @@
-/* Knightwatch scene: the king's court, on the fine grid. The scene for an open SSH session, where
+/* Knightwatcher scene: the king's court, on the fine grid. The scene for an open SSH session, where
    the knight and the King take turns to talk. The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';

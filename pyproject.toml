@@ -1,7 +1,7 @@
 [project]
-name = "knightwatch-collector"
+name = "knightwatcher-collector"
 version = "0.1.0"
-description = "Reads a homelab and writes the state file for the Knightwatch wall display"
+description = "Reads a homelab and writes the state file for the Knightwatcher wall display"
 requires-python = ">=3.13"
 # Standard library only, at run time and in the tests.
 dependencies = []

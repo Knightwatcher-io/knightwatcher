@@ -1,11 +1,11 @@
-# Knightwatch collector settings. Copy to config.toml (ignored by git) and fill in your own.
+# Knightwatcher collector settings. Copy to config.toml (ignored by git) and fill in your own.
 # Every value here is invented. docs/configuration.md describes each setting.
 # A source runs when its [sources.*] table is present and `enabled` is not false.
 
 [collector]
 interval_s = 30
 output_dir = "/out"
-state_dir = "/var/lib/knightwatch"
+state_dir = "/var/lib/knightwatcher"
 timezone = "UTC"
 http_timeout_s = 5.0
 auth_backoff_s = 1200
@@ -63,7 +63,7 @@ disks = [{ mount = "/data", path = "/host/disks/data" }]
 
 [sources.containers]
 url = "http://192.0.2.10:2375"
-ignore = ["*-run-*", "knightwatch-collector-*"]
+ignore = ["*-run-*", "knightwatcher-collector-*"]
 
 [sources.wan]
 urls = ["https://1.1.1.1/cdn-cgi/trace"]

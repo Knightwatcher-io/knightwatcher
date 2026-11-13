@@ -1,4 +1,4 @@
-/* Knightwatch: the display. The scene fills the screen and the words lie over it. The review bar
+/* Knightwatcher: the display. The scene fills the screen and the words lie over it. The review bar
    above it is shown in the demo alone. */
 @font-face { font-family: "VT323"; src: url("../fonts/VT323-Regular.ttf") format("truetype"); font-display: swap; }
 

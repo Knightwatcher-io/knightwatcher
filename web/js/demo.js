@@ -1,4 +1,4 @@
-/* Knightwatch: the demo. Invented conditions, a bar of controls for reviewing every scene and
+/* Knightwatcher: the demo. Invented conditions, a bar of controls for reviewing every scene and
    state, and a loop that shows them in turn. The page runs it when it has never had a valid state
    file, or when the address carries ?demo. Every name, address and figure here is invented. */
 (function (KW) {

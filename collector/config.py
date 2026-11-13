@@ -32,7 +32,7 @@ CONDITION_IDS = [
 COLLECTOR_DEFAULTS: dict[str, Any] = {
     "interval_s": 30,
     "output_dir": "/out",
-    "state_dir": "/var/lib/knightwatch",
+    "state_dir": "/var/lib/knightwatcher",
     "timezone": "UTC",
     "http_timeout_s": 5.0,
     "auth_backoff_s": 1200,

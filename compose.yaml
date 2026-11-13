@@ -1,13 +1,13 @@
-# The Knightwatch collector. Host paths come from .env beside this file (ignored by git); see
+# The Knightwatcher collector. Host paths come from .env beside this file (ignored by git); see
 # docs/configuration.md. Every host path is bound with create_host_path: false, so a missing
 # path stops the container instead of Docker creating an empty folder in its place.
-name: knightwatch
+name: knightwatcher
 
 services:
   collector:
     build: .
-    image: knightwatch-collector:latest
-    container_name: knightwatch-collector
+    image: knightwatcher-collector:latest
+    container_name: knightwatcher-collector
     restart: unless-stopped
     network_mode: host
     read_only: true
@@ -26,12 +26,12 @@ services:
       # Settings and credentials, read once at start.
       - type: bind
         source: ./config.toml
-        target: /etc/knightwatch/config.toml
+        target: /etc/knightwatcher/config.toml
         read_only: true
         bind: { create_host_path: false }
       - type: bind
         source: ./secrets.json
-        target: /etc/knightwatch/secrets.json
+        target: /etc/knightwatcher/secrets.json
         read_only: true
         bind: { create_host_path: false }
       # The host's /proc: CPU, memory, load, the lock table and process command lines.
@@ -42,23 +42,23 @@ services:
         bind: { create_host_path: false }
       # The backup log, a single file rotated in place.
       - type: bind
-        source: ${KNIGHTWATCH_BACKUP_LOG:?set KNIGHTWATCH_BACKUP_LOG in .env}
+        source: ${KNIGHTWATCHER_BACKUP_LOG:?set KNIGHTWATCHER_BACKUP_LOG in .env}
         target: /host/backup.log
         read_only: true
         bind: { create_host_path: false }
       # Any small folder on the data volume, so statvfs can see the volume's size.
       - type: bind
-        source: ${KNIGHTWATCH_DATA_DISK:?set KNIGHTWATCH_DATA_DISK in .env}
+        source: ${KNIGHTWATCHER_DATA_DISK:?set KNIGHTWATCHER_DATA_DISK in .env}
         target: /host/disks/data
         read_only: true
         bind: { create_host_path: false }
       # Where state.json is written: a folder the web server serves.
       - type: bind
-        source: ${KNIGHTWATCH_OUT:?set KNIGHTWATCH_OUT in .env}
+        source: ${KNIGHTWATCHER_OUT:?set KNIGHTWATCHER_OUT in .env}
         target: /out
         bind: { create_host_path: false }
       # What survives a restart: the event sequence and the last-seen markers.
       - type: bind
-        source: ${KNIGHTWATCH_VAR:-./var}
-        target: /var/lib/knightwatch
+        source: ${KNIGHTWATCHER_VAR:-./var}
+        target: /var/lib/knightwatcher
         bind: { create_host_path: false }

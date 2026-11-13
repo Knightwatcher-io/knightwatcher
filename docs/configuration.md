@@ -21,7 +21,7 @@ The `[collector]` and `[conditions]` tables can be left out entirely to take the
 |---|---|---|
 | `interval_s` | `30` | Seconds between polls. Also written to `state.json` as `interval_s`. |
 | `output_dir` | `"/out"` | Folder `state.json` is written to. |
-| `state_dir` | `"/var/lib/knightwatch"` | Folder for `memory.json` and the collector's lock. |
+| `state_dir` | `"/var/lib/knightwatcher"` | Folder for `memory.json` and the collector's lock. |
 | `timezone` | `"UTC"` | IANA zone for the night hours and the times shown in words. |
 | `http_timeout_s` | `5.0` | Timeout for each network call. Must be shorter than `interval_s`. |
 | `auth_backoff_s` | `1200` | Pause after a 401, 403 or 429. Cannot be set below 1200. |
@@ -135,7 +135,7 @@ One section per service, read once when the collector starts.
 
 ```json
 {
-  "adguard": { "username": "knightwatch", "password": "an-invented-password" },
+  "adguard": { "username": "knightwatcher", "password": "an-invented-password" },
   "tautulli": { "api_key": "0123456789abcdef0123456789abcdef" },
   "sonarr": { "api_key": "fedcba9876543210fedcba9876543210" },
   "radarr": { "api_key": "00112233445566778899aabbccddeeff" }
@@ -153,13 +153,13 @@ one is missing.
 
 | Variable | Example | Mounted at |
 |---|---|---|
-| `KNIGHTWATCH_OUT` | `/srv/www/knightwatch/data` | `/out`, where `state.json` is written. Must exist and be writable by the collector's account. |
-| `KNIGHTWATCH_BACKUP_LOG` | `/var/log/backup.log` | `/host/backup.log`, read-only. |
-| `KNIGHTWATCH_DATA_DISK` | `/data/lost+found` | `/host/disks/data`, read-only. Any folder on the data volume works; an empty one shares nothing but the volume's size. |
-| `KNIGHTWATCH_VAR` | `./var` (the default) | `/var/lib/knightwatch`, the memory file. Must exist and be writable by the collector's account. |
+| `KNIGHTWATCHER_OUT` | `/srv/www/knightwatcher/data` | `/out`, where `state.json` is written. Must exist and be writable by the collector's account. |
+| `KNIGHTWATCHER_BACKUP_LOG` | `/var/log/backup.log` | `/host/backup.log`, read-only. |
+| `KNIGHTWATCHER_DATA_DISK` | `/data/lost+found` | `/host/disks/data`, read-only. Any folder on the data volume works; an empty one shares nothing but the volume's size. |
+| `KNIGHTWATCHER_VAR` | `./var` (the default) | `/var/lib/knightwatcher`, the memory file. Must exist and be writable by the collector's account. |
 
 `config.toml`, `secrets.json` and the host's `/proc` are mounted from fixed places: the first
-two from beside `compose.yaml`, read-only, at `/etc/knightwatch/`, and `/proc` read-only at
+two from beside `compose.yaml`, read-only, at `/etc/knightwatcher/`, and `/proc` read-only at
 `/host/proc`.
 
 ## The collector's account
@@ -171,8 +171,8 @@ leave their owner and mode alone:
 
 ```bash
 setfacl -m u:10001:r secrets.json
-setfacl -m u:10001:rwx var /srv/www/knightwatch/data
-setfacl -d -m u:10001:rwx,u:$(id -u):rwx var /srv/www/knightwatch/data
+setfacl -m u:10001:rwx var /srv/www/knightwatcher/data
+setfacl -d -m u:10001:rwx,u:$(id -u):rwx var /srv/www/knightwatcher/data
 ```
 
 The third line sets the default for files made in the two folders from then on, and names your

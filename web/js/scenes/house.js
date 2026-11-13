@@ -1,4 +1,4 @@
-/* Knightwatch scene: the knight's house at night, on the fine grid. A quiet scene, and the scene for
+/* Knightwatcher scene: the knight's house at night, on the fine grid. A quiet scene, and the scene for
    an unhealthy container (in bed), an overdue backup, a silent Pi, a stream on the television and
    the night (in bed). The knight's head in bed is drawn here, from the knight's own bare head. The
    scene interface is in docs/page.md. */

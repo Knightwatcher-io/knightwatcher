@@ -1,4 +1,4 @@
-/* Knightwatch: the drawing primitives, the palette, and the view they draw into.
+/* Knightwatcher: the drawing primitives, the palette, and the view they draw into.
    Every file of the page shares the one namespace object, KW. */
 (function (KW) {
   'use strict';

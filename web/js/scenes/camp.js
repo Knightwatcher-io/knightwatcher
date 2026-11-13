@@ -1,4 +1,4 @@
-/* Knightwatch scene: the camp in the woods at night, on the fine grid. A quiet scene. The scene
+/* Knightwatcher scene: the camp in the woods at night, on the fine grid. A quiet scene. The scene
    interface is in docs/page.md. */
 (function (KW) {
   'use strict';

@@ -1,4 +1,4 @@
-/* Knightwatch: the props that more than one scene uses, or that the engine draws over a scene:
+/* Knightwatcher: the props that more than one scene uses, or that the engine draws over a scene:
    the raspberry pie (the Raspberry Pi), fire, sky and stars, the greatsword, brick, the barrel, the
    table and the wall torch, and the flies, the goblin, the crate and its parachute. */
 (function (KW) {
