@@ -1,5 +1,5 @@
 /* Knightwatcher scene: the smithy, on the fine grid. The scene for an update, where the knight hammers
-   his greatsword on the anvil. The scene interface is in docs/page.md. */
+   the greatsword on the anvil. The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C;

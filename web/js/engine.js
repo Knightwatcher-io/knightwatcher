@@ -1,5 +1,5 @@
-/* Knightwatcher: the engine. Each frame it chooses the scene, walks the knight between his spots,
-   plays the swat and the events, and draws everything in order. What it shows comes from
+/* Knightwatcher: the engine. Each frame it chooses the scene, walks the knight between the scene's
+   spots, plays the swat and the events, and draws everything in order. What it shows comes from
    KW.engine.input, which the demo (demo.js) or the state file (main.js) sets:
      w       the condition that wins, as KW.state makes it: { id, lv, st, scene, hl, sub }
      is      'auto' for the quiet scenes to take turns, or the name of the one to keep

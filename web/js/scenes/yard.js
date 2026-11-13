@@ -1,6 +1,6 @@
 /* Knightwatcher scene: the training yard at night, on the fine grid. A quiet scene, where the knight
-   trains on the practice dummy, and the scene for a hot CPU, where he trains without rest. The
-   scene interface is in docs/page.md. */
+   trains on the practice dummy, and the scene for a hot CPU, where the training goes on without
+   rest. The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, P = KW.props, K = KW.knight, C = D.C;

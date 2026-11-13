@@ -16,8 +16,8 @@
   /* Ermine: white fur with black tails, over a rectangle. */
   function ermine(x, y, w, h) { for (let j = 0; j < h; j += 14) for (let i = 4 + (j / 14 % 2) * 9; i < w - 4; i += 18) { Rh(x + i, y + j + 3, 3, 6, C.K); Rh(x + i - 2, y + j + 3, 7, 2, C.K); } }
 
-  /* The King on his throne, seated, x the middle and by the seat of the dais under his feet. The
-     mouth is drawn apart, in mouth(), since it moves while he talks. */
+  /* The King on the throne, seated, x the middle and by the seat of the dais underfoot. The mouth
+     is drawn apart, in mouth(), since it moves while the King talks. */
   function king(x, by) {
     // shoes and robe
     for (const d of [-26, 26]) { ell(x + d, by - 6, 20, 10, C.K); ell(x + d, by - 7, 17, 7, [[.3, C.N1], [1, C.N3]]); }
@@ -25,7 +25,7 @@
     poly([[x - 55, by - 157], [x + 55, by - 157], [x + 76, by - 11], [x - 76, by - 11]], ROBE);
     rrect(x - 79, by - 30, 158, 22, 6, C.K); rrect(x - 76, by - 28, 152, 17, 5, FUR); ermine(x - 76, by - 28, 152, 14);
     rrect(x - 15, by - 150, 30, 140, 6, C.K); rrect(x - 12, by - 148, 24, 136, 4, FUR); for (let y = by - 135; y < by - 30; y += 22) { Rh(x - 2, y, 4, 7, C.K); Rh(x - 4, y + 2, 8, 2, C.K); }
-    // sleeves and hands on the armrests, the sceptre in his left hand
+    // sleeves and hands on the armrests, the sceptre in the left hand
     for (const d of [-1, 1]) {
       poly([[x + d * 52, by - 152], [x + d * 78, by - 128], [x + d * 76, by - 82], [x + d * 50, by - 86]], C.K);
       poly([[x + d * 53, by - 148], [x + d * 75, by - 127], [x + d * 73, by - 85], [x + d * 53, by - 89]], d < 0 ? ROBE : [[.3, C.R1], [1, C.R3]]);

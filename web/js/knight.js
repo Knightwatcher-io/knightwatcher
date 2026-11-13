@@ -1,5 +1,5 @@
 /* Knightwatcher: the knight, on the fine grid. Open helm, red plume, blue tabard, a greatsword held
-   in both hands. pose() turns a condition into the state of the knight, and knightHD() draws him. */
+   in both hands. pose() turns a condition into the knight's pose, and knightHD() draws it. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C, U = V.U;
@@ -75,8 +75,8 @@
     const n = Math.floor(t / 320) % 4; for (let i = 0; i < n; i++) ell(x + 20 + i * 17, y + 20, 5, 5, C.K);
   }
 
-  /* Draws the knight from his pose o: o.x is the middle of his body on the fine grid, o.floor the
-     ground he stands on. */
+  /* Draws the knight from the pose o: o.x is the middle of the body on the fine grid, o.floor the
+     ground underfoot. */
   function knightHD(o) {
     const t = o.t, ox = Math.round(o.x) - 120 + (o.shake || 0) * 4, oy = o.floor - 300;
     const u = ((o.bob || 0) + (o.crouch || 0)) * U, bw = (o.bloat || 0) * U, ax = ox + (o.headDx || 0) * U, ay = oy + u + (o.headDy || 0) * U;
@@ -168,6 +168,7 @@
     return q >= .3 && q < .56;
   }
 
-  /* head draws his bare head with its corner at (ax, ay), as in bed; speech draws a speech bubble. */
+  /* head draws the knight's bare head with its corner at (ax, ay), as in bed; speech draws a
+     speech bubble. */
   KW.knight = { draw: knightHD, pose, swing, head: bareHD, speech: speechHD };
 })(window.KW);

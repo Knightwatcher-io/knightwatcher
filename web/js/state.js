@@ -8,9 +8,9 @@
   const LEVELS = { critical: 'crit', warning: 'warn', work: 'info', quiet: 'ok', sleep: 'sleep' };
 
   /* What the page makes of each condition id, highest first, as docs/design.md decides. lv ranks
-     the knight's behaviour: 3 and above is serious and holds back the fun, 2 pins him to his scene.
-     level is the level the design gives the id, used when a file leaves it out. A scene of null
-     is the quiet scene of the moment. */
+     the knight's behaviour: 3 and above is serious and holds back the fun, 2 pins the knight to
+     the scene. level is the level the design gives the id, used when a file leaves it out. A
+     scene of null is the quiet scene of the moment. */
   const CONDITIONS = {
     attack:              { lv: 4, level: 'critical', scene: 'battlement' },
     wan_down:            { lv: 4, level: 'critical', scene: 'battlement' },
@@ -122,7 +122,7 @@
     return { kind: ageS > 3 * lastGood.intervalS ? 'silent' : 'hold', ageS };
   }
 
-  /* The knight's state once the collector has fallen silent: the last state he had, under a red
+  /* The knight's state once the collector has fallen silent: the last state shown, under a red
      NO SIGNAL and how long it has been. */
   function noSignal(w, ageS) {
     const min = Math.max(0, Math.floor(ageS / 60));
