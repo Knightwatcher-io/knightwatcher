@@ -19,10 +19,11 @@ tests/
   web/               node tests for the page's scripts
     fixtures/knight/ the stored call record of the knight's drawing
     fixtures/        a fixture pack for the pack library's tests
-  tools/             node tests for tools/deploy.sh and tools/pack-carrier.js
+  tools/             node tests for tools/deploy.sh, tools/pack-carrier.js and tools/sign-pack.js
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version
   pack-carrier.js    writes the carrier of each pack in web/packs/
+  sign-pack.js       signs pack files, or takes their signatures off, and writes their carriers
   icons.sh           regenerates the favicon and the app icons from the drawings in icons/
   shots.sh           regression screenshots of the page
   check-private.sh   the check that no private detail is tracked
@@ -39,6 +40,11 @@ compose.yaml  Dockerfile  config.example.toml  secrets.example.json  pyproject.t
 - **A pack file and its carrier change together.** After editing a file in `web/packs/`, run
   `node tools/pack-carrier.js` and commit both; a test fails while they differ. See
   [packs.md](./packs.md#carriers).
+- **A signed pack is signed again after any change.** Editing a pack that carries a `sig` breaks
+  its signature, and `node --test tests/tools/` fails until it is signed again or unsigned with
+  `node tools/sign-pack.js --unsign`. See [Signing the packs](#signing-the-packs).
+- **No key in the repository.** No private key of any kind is committed, test keys included; the
+  tests generate theirs in memory for each run.
 - **Invented data everywhere.** See [security.md](./security.md). Run `tools/check-private.sh`
   before every push.
 - **Docs describe what is built.** The last step of every change is the docs: check each doc
@@ -86,12 +92,14 @@ the gear at rest, and the house and the smithy, which show that gear, against a 
 from code and once from the base pack, and compares every call with a stored record, in about a
 second. The record is stored again only when the knight or those scenes are meant to change;
 [page.md](./page.md#checks) says how. `node --test tests/tools/` also checks that every pack
-carrier matches its pack file.
+carrier matches its pack file, tests the signing tool with keys generated for the run, and checks
+that every pack in `web/packs/` that carries a `sig` verifies against the key table in `pack.js`.
 
-The repository's own page draws the knight from the base pack and a deployed copy draws it from
-code, so the screenshots of the repository's page check the pack path, and the knight test checks
-both. To shoot the code path as well, take a second pair of sets from a copy of `web/` whose
-`kw-version` is not `dev`; [page.md](./page.md#checks) shows how.
+The repository's own page draws the knight from the base pack, so the screenshots of the
+repository's page check the pack path, and the knight test checks both paths. A deployed copy
+draws from code while the base pack ships unsigned; to shoot the code path as well, take a second
+pair of sets from a copy of `web/` whose `kw-version` is not `dev` and whose base pack carries no
+signature; [page.md](./page.md#checks) shows how.
 
 ## The logo and the icons
 
@@ -105,6 +113,31 @@ CHROME=/path/to/chrome-headless-shell tools/icons.sh
 ```
 
 and a second run gives the same bytes.
+
+## Signing the packs
+
+A deployed page draws only packs signed with a key in `KEYS` in `web/js/pack.js`; the project's
+key is `kw1`. Its private half is held outside the repository by a private release process, and is
+never written to a file beside a checkout. A release that changes a shipped pack signs it in that
+process:
+
+1. The commit to sign is pushed to `main`, with its pack files unsigned or carrying an old `sig`.
+2. The release process takes `web/js/pack.js`, `web/js/ed25519.js`, `tools/sign-pack.js`,
+   `tools/pack-carrier.js` and `web/packs/` from that commit, runs
+   `node tools/sign-pack.js web/packs/*.pack.json` with the key in `PACK_KEY_KW1`, and hands back
+   the signed pack files and the commit they were signed at.
+3. Only the `sig` of each file is copied into a checkout whose `HEAD` descends from that commit,
+   after checking that each pack is unchanged since it; the carriers are written again with
+   `node tools/pack-carrier.js`.
+4. The checks below are run, and the signed files and their carriers are committed and pushed.
+
+The signature is public, so carrying it back into the repository is safe. A pack changed between
+steps 1 and 3 is refused there and needs another run. [packs.md](./packs.md#signing-a-pack)
+describes the tool, and how a fork signs with a key of its own.
+
+Whether the base pack ships signed today, and what a deployed page draws in each case, is in
+[packs.md](./packs.md#two-paths). The page's tests hold in either state, so carrying a signature
+across changes no test.
 
 ## Deploying the page
 

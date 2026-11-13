@@ -73,8 +73,10 @@ compare() {
   python3 -I - "$1" "$2" "${names[@]}" <<'PY'
 import struct, sys, zlib
 
-# The clock sits in the top right corner. Its region is left out of the comparison.
-MASK_X0, MASK_Y1 = 760, 110
+# The clock sits in the top right corner. Its region is left out of the comparison. At 960 by 600
+# its ink reaches x 752 and y 20 to 85 at the widest hour, one starting with 2, so the mask starts
+# 12 pixels further left to leave room for a scene that lays the text out a pixel differently.
+MASK_X0, MASK_Y1 = 740, 110
 
 def decode(path):
     with open(path, "rb") as f:

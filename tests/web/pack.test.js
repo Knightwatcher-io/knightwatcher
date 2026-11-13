@@ -831,11 +831,31 @@ test('a signature by another key, or naming an unknown kid, fails', () => {
   const r = readEnv({ kwpack: 1, pack: p, sig: sigOf(p, { kid: 'kw2' }) });
   assert.deepEqual([r.ok, r.step], [false, 'signature']);
   assert.match(r.reason, /does not know, "kw2"/);
-  // the shipped key table is empty, so no signed pack passes without keys being given
-  assert.deepEqual(Object.keys(PK.KEYS), []);
-  assert.equal(PK.read(envText(p), { verify }).step, 'signature');
+  // the shipped table holds the project's key alone, so a pack signed by any other key under its
+  // kid fails, and one naming another kid is unknown, unless keys are given
+  assert.deepEqual(Object.keys(PK.KEYS), ['kw1']);
+  const shipped = PK.read(envText(p), { verify });
+  assert.deepEqual([shipped.ok, shipped.step], [false, 'signature']);
+  assert.match(shipped.reason, /does not verify/);
+  assert.match(PK.read(JSON.stringify({ kwpack: 1, pack: p, sig: sigOf(p, { kid: 'kw2' }) }), { verify }).reason, /does not know, "kw2"/);
   // a key of the wrong length is no key
   assert.equal(PK.read(envText(p), { verify, keys: { kw1: PUB.slice(1) } }).step, 'signature');
+});
+
+test('the shipped key table holds kw1, 32 bytes, in a frozen table that hands out copies', () => {
+  assert.ok(Object.isFrozen(PK.KEYS));
+  const k = PK.KEYS.kw1;
+  assert.ok(k instanceof Uint8Array);
+  assert.equal(k.length, 32);
+  assert.equal(Buffer.from(k).toString('base64'), 'L6J33tuj/6eKJTc+T6hHVATAS0m1bJnsgdOSgYYtxf4=');
+  // a key the curve accepts: node:crypto takes it as an Ed25519 public key
+  assert.equal(crypto.createPublicKey({ key: { kty: 'OKP', crv: 'Ed25519', x: Buffer.from(k).toString('base64url') }, format: 'jwk' }).asymmetricKeyType, 'ed25519');
+  // changing the bytes handed out changes nothing, and kw1 cannot be replaced or another key added
+  k.fill(0);
+  assert.equal(Buffer.from(PK.KEYS.kw1).toString('base64'), 'L6J33tuj/6eKJTc+T6hHVATAS0m1bJnsgdOSgYYtxf4=');
+  assert.throws(() => { 'use strict'; PK.KEYS.kw1 = PUB; }, TypeError);
+  assert.throws(() => { 'use strict'; PK.KEYS.kw2 = PUB; }, TypeError);
+  assert.deepEqual(Object.keys(PK.KEYS), ['kw1']);
 });
 
 test('the sig must be well formed', () => {
