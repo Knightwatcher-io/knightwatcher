@@ -8,7 +8,9 @@ const ST = require('../../web/js/state.js');
 
 // The example in docs/state.md, so that the contract and the page cannot drift apart unnoticed.
 const doc = fs.readFileSync(path.join(__dirname, '../../docs/state.md'), 'utf8');
-const EXAMPLE = JSON.parse(doc.match(/```json\n([\s\S]*?)\n```/)[1]);
+// The example from the docs, with its interval pinned: the times in these tests are worked out
+// for a file written every 30 seconds, whatever interval the docs' example shows.
+const EXAMPLE = Object.assign(JSON.parse(doc.match(/```json\n([\s\S]*?)\n```/)[1]), { interval_s: 30 });
 const GEN = Date.parse(EXAMPLE.generated_at);
 
 // A copy of the example with some fields replaced.
