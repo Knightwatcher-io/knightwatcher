@@ -70,13 +70,20 @@
       ell(x, by, w, w, c); poly([[x - w, by], [x + sw, by - h], [x + w, by]], c);
     }
   }
+  /* The lamps' colours and loops, the devices' and the raspberry's: while up from green to black
+     and back over 3.6 seconds, while down from red to black and back over 2 seconds. lampLevel
+     is how bright the loop is at time t, from 1 at t 0 to 0 at half the period. */
+  const LAMP = { up: { rgb: [143, 224, 122], hi: '#e4ffd6', ms: 3600 }, down: { rgb: [255, 74, 61], hi: '#ffd0c8', ms: 2000 } };
+  const lampLevel = (t, ok) => .5 + .5 * Math.cos(t * 2 * Math.PI / (ok ? LAMP.up : LAMP.down).ms);
+
   /* ---- The raspberry pie ------------------------------------------------------------------------
      A fruit pie seen from the side and a little above, its middle at x + 32 and its dish standing
      on a surface at y + 31: a fluted white dish, a domed crust with a crimped edge and a lattice
-     over raspberry filling, a raspberry on top, and steam, which is all that moves. With ok false
-     the dish stands empty but for crumbs, under a question mark. part 'still' draws only what does
-     not move, and 'moving' only the steam; the engine draws the question mark of a watched thing
-     itself (see KINDS). */
+     over raspberry filling, steam, and a raspberry on top, which is the pie's lamp. With ok false
+     the dish stands empty but for crumbs and one raspberry, which stays the lamp, under a question
+     mark.
+     part 'still' draws only what does not move, and 'moving' only the steam and the raspberry; the
+     engine draws the question mark of a watched thing itself (see KINDS). */
   const CRUST = ['#ffd98a', '#f2ac4e', '#cc7f32', '#93521d'], FILLING = ['#d2325f', '#9a1640', '#5c0a24'];
   const DISH = [[.1, C.W], [.42, C.S0], [.74, C.S1], [1, C.S2]];
   /* The pie's top, in the dish's frame: u across from the middle, v down from the rim's middle. The
@@ -104,22 +111,30 @@
     poly([[cx - 35, y + 6], [cx + 35, y + 6], [cx + 30, y + 28], [cx - 30, y + 28]], DISH);
     for (let i = -6; i <= 6; i++) strip(cx + i * 5.3, y + 9, cx + i * 4.5, y + 27, .6, .6, i < -2 ? C.S1 : i < 3 ? C.S2 : C.S3);
   }
+  /* Where the raspberry's middle sits, from the pie's middle and the rim's middle: on the top of
+     the dome, sunk a little into the lattice, and, in the empty dish, low on its right, clear of
+     the question mark and hidden below the dish's near rim. */
+  const BERRY_ON_PIE = [0, -DOME[1] - 8], BERRY_IN_DISH = [20, -4];
   function pieHD(x, y, t, ok, part) {
     const cx = x + 32, ry = y + 6;
     if (part !== 'moving') pieDish(cx, y);
     if (!ok) {
-      if (part === 'moving') return;
-      ell(cx, ry, 40, 10, C.K); ell(cx, ry, 37, 8, DISH); ell(cx, ry + 1, 32, 6, [[.3, C.S3], [1, C.S4]]); ell(cx, ry + 3, 27, 4, [[.3, C.S1], [1, C.S2]]);
-      for (const [dx, dy, c] of [[-15, 3, CRUST[2]], [-5, 5, CRUST[1]], [8, 3, CRUST[3]], [16, 4, CRUST[2]], [1, 3, FILLING[1]], [-9, 2, FILLING[2]]]) Rh(cx + dx, ry + dy, 3, 2, c);
-      Rh(cx - 46, y + 29, 3, 2, CRUST[2]); Rh(cx + 43, y + 30, 2, 2, CRUST[1]);
+      if (part !== 'moving') {
+        ell(cx, ry, 40, 10, C.K); ell(cx, ry, 37, 8, DISH); ell(cx, ry + 1, 32, 6, [[.3, C.S3], [1, C.S4]]); ell(cx, ry + 3, 27, 4, [[.3, C.S1], [1, C.S2]]);
+        for (const [dx, dy, c] of [[-15, 3, CRUST[2]], [-5, 5, CRUST[1]], [8, 3, CRUST[3]], [16, 4, CRUST[2]], [1, 3, FILLING[1]], [-9, 2, FILLING[2]]]) Rh(cx + dx, ry + dy, 3, 2, c);
+        Rh(cx - 46, y + 29, 3, 2, CRUST[2]); Rh(cx + 43, y + 30, 2, 2, CRUST[1]);
+      }
+      if (part !== 'still') raspberryHD(cx + BERRY_IN_DISH[0], ry + BERRY_IN_DISH[1], t, false);
       if (!part && Math.floor(t / 400) % 2) SP.mark(cx, y - 62, '?');
       return;
     }
     if (part !== 'moving') pieTop(cx, ry);
     if (part === 'still') return;
     for (let i = 0; i < 3; i++) { const ph = ((t / 1800) + i / 3) % 1; alpha(.8 - ph * .8); ell(cx - 14 + i * 14 + Math.sin(ph * 7 + i * 2) * 5, ry - DOME[1] - 16 - ph * 46, 4 - ph * 2, 7, C.W); alpha(1); }
+    // the raspberry stands in front of the steam, which rises from behind it
+    raspberryHD(cx + BERRY_ON_PIE[0], ry + BERRY_ON_PIE[1], t, true);
   }
-  /* The whole pie's crust, crimping and raspberry, over the dish. */
+  /* The whole pie's crust and crimping, over the dish. */
   function pieTop(cx, ry) {
     D.pix(cx - RIM[0] - 3, ry - DOME[1] - 1, 2 * RIM[0] + 7, DOME[1] + RIM[1] + 3, (i, j) => crustAt(i - RIM[0] - 3, j - DOME[1] - 1));
     // the crimping along the near edge
@@ -127,11 +142,81 @@
       const px = cx + u, py = ry + RIM[1] * Math.sqrt(1 - (u / RIM[0]) ** 2) - 1, tone = u < -12 ? 1 : u < 14 ? 2 : 3;
       ell(px, py, 5, 4, C.K); ell(px, py, 3, 2, CRUST[tone]); Rh(px - 2, py - 2, 2, 1, CRUST[tone - 1]);
     }
-    // a raspberry on the top of the dome
-    const bx = cx - 2, by = ry - DOME[1] - 3;
-    ell(bx, by, 7, 7, C.K); ell(bx, by, 5, 5, [[.3, '#ff5c84'], [.75, '#d81e4f'], [1, '#9c0f36']]);
-    for (const [dx, dy] of [[-2, -2], [2, -2], [0, 0], [-3, 2], [3, 1], [0, 3]]) Rh(bx + dx, by + dy, 1, 1, '#8a0d30');
-    Rh(bx - 3, by - 4, 2, 2, C.W);
+  }
+
+  /* ---- The raspberry, the pie's lamp -------------------------------------------------------------
+     A raspberry of round drupelets, each with a dark outline and a highlight, under a green calyx
+     and its stalk, 25 pixels across and 33 tall. It lights and dims on the lamps' loops
+     (LAMP, above): while the Pi is up in its own colours, from a deep crimson to a bright pink-red
+     in a warm halo, over 3.6 seconds, and while it is down from red to black over 2 seconds. */
+  /* The drupelets' middles, in rows from the top, in the berry's frame: u across from the middle,
+     v down. Each is a disc of radius BERRY_R; those later in the list are in front. */
+  const BERRY_R = 3.6, DRUPES = [];
+  for (const [v, us] of [[-8, [-5.5, 0, 5.5]], [-3.5, [-8.25, -2.75, 2.75, 8.25]], [1, [-7.75, -2.6, 2.6, 7.75]], [5.5, [-5.25, 0, 5.25]], [10, [-2.6, 2.6]]]) for (const u of us) DRUPES.push([u, v]);
+  /* The calyx: four sepals spreading from the top of the berry, and the stalk. */
+  const SEPALS = [[-10, -8.5], [-4.5, -6], [4.5, -6], [10, -8.5]], CALYX = [0, -11.5];
+  function nearSeg(u, v, a, b, w0, w1) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], q = Math.max(0, Math.min(1, ((u - a[0]) * dx + (v - a[1]) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(u - a[0] - q * dx, v - a[1] - q * dy) <= w0 + (w1 - w0) * q;
+  }
+  const inCalyx = (u, v) => SEPALS.some(s => nearSeg(u, v, CALYX, s, 2.2, .6)) || nearSeg(u, v, CALYX, [1.5, -17], 1.1, 1.1);
+  /* The drupelet a point lies in, outline and all: the frontmost whose disc, one pixel wider,
+     holds it; -1 for none. */
+  function drupeAt(u, v) { let k = -1; for (let i = 0; i < DRUPES.length; i++) if (Math.hypot(u - DRUPES[i][0], v - DRUPES[i][1]) <= BERRY_R + 1) k = i; return k; }
+  /* What the raspberry is at (u, v): k its outline, a, b and h a drupelet's lit side, shaded side
+     and highlight, g and G the calyx and its lit edge, or null outside. */
+  function berryAt(u, v) {
+    const cal = (du, dv) => inCalyx(u + du, v + dv), edgeOf = f => !f(-1, 0) || !f(1, 0) || !f(0, -1) || !f(0, 1);
+    if (cal(0, 0)) return edgeOf(cal) ? 'k' : u + v * .5 < -8 || (u < 0 && v < -12) ? 'G' : 'g';
+    const i = drupeAt(u, v);
+    if (i < 0) return !edgeOf((du, dv) => !cal(du, dv)) ? null : 'k';
+    if (edgeOf((du, dv) => !cal(du, dv))) return 'k';
+    const [du, dv] = DRUPES[i];
+    if (Math.hypot(u - du, v - dv) > BERRY_R) return 'k';
+    if (Math.hypot(u - du + 1.3, v - dv + 1.3) < 1.2) return 'h';
+    // each drupelet shaded on its lower right, and the drupelets on the berry's lower right darker
+    return (u - du) * .55 + (v - dv) * .65 > 1.2 || du * .5 + dv * .35 > 4.5 ? 'b' : 'a';
+  }
+  /* The berry's box: BW by BH, its frame's origin at (BX, BY) inside it. */
+  const BW = 27, BH = 34, BX = 13, BY = 18;
+  /* The berry's map, a key from berryAt for each pixel of its box, whole on the pie and, in the
+     dish, without what the dish's near rim hides: below the front edge of its inside. */
+  const inDish = (u, v) => { const du = u + BERRY_IN_DISH[0], dv = v + BERRY_IN_DISH[1]; return Math.abs(du) < 32 && dv <= 1 + 6 * Math.sqrt(1 - (du / 32) ** 2); };
+  const BERRY_MAP = { pie: [], dish: [] };
+  for (let j = 0; j < BH; j++) for (let i = 0; i < BW; i++) {
+    const k = berryAt(i - BX, j - BY);
+    BERRY_MAP.pie.push(k); BERRY_MAP.dish.push(inDish(i - BX, j - BY) ? k : null);
+  }
+  /* The berry's colours, lit and dark, up on the pie and down in the dish; the outline and the
+     calyx are the same in all. While down the drupelets go to black, as a lamp does. */
+  const rgb = (c, k) => 'rgb(' + c.map(v => Math.round(v * k)).join(',') + ')';
+  const BERRY_COLS = {
+    up: { lit: { a: '#ff5c80', b: '#d8285a', h: '#ffd6e0' }, dark: { a: '#6a0f2e', b: '#430a1e', h: '#8a2244' }, glow: '#ff7a6a' },
+    down: { lit: { a: rgb(LAMP.down.rgb, 1), b: rgb(LAMP.down.rgb, .66), h: LAMP.down.hi }, dark: { a: '#000000', b: '#000000', h: '#000000' }, glow: rgb(LAMP.down.rgb, 1) }
+  };
+  const CALYX_COLS = { k: C.K, g: '#4f9a45', G: '#8fe07a' };
+  /* The berry painted once in each of its colourings, in a small canvas of its own: up on the
+     pie, whole, and down in the dish, below its rim. */
+  const berrySprites = {};
+  function berrySprite(ok, lit) {
+    const key = (ok ? 'up' : 'down') + (lit ? '|lit' : '|dark');
+    let cv = berrySprites[key];
+    if (!cv) {
+      const cols = Object.assign({}, CALYX_COLS, BERRY_COLS[ok ? 'up' : 'down'][lit ? 'lit' : 'dark']), map = BERRY_MAP[ok ? 'pie' : 'dish'], was = D.getCtx();
+      cv = document.createElement('canvas'); cv.width = BW; cv.height = BH;
+      D.setCtx(cv.getContext('2d')); D.pix(0, 0, BW, BH, (i, j) => { const k = map[j * BW + i]; return k ? cols[k] : null; }); D.setCtx(was);
+      berrySprites[key] = cv;
+    }
+    return cv;
+  }
+  /* The raspberry with its middle at (x, y) at time t, on the pie while up and in the dish while
+     down: a soft light round it in its lit colour, the dark berry, and the lit one over it as
+     strongly as the lamp's loop is bright. */
+  function raspberryHD(x, y, t, ok) {
+    const a = lampLevel(t, ok), ctx = D.getCtx(), px = Math.round(x) - BX, py = Math.round(y) - BY;
+    glow(x, y, 24, BERRY_COLS[ok ? 'up' : 'down'].glow, .3 * a);
+    ctx.drawImage(berrySprite(ok, false), px, py);
+    alpha(a); ctx.drawImage(berrySprite(ok, true), px, py); alpha(1);
   }
   /* ---- The other watched things -------------------------------------------------------------
      Drawn as the devices they are, in the steels and whites of the palette. Each takes
@@ -141,13 +226,12 @@
      device has one lamp, its only moving part: while up it fades from green to black and back
      over 3.6 seconds, and while down from red to black and back over 2 seconds, a slow blink.
      A gone device stays where it is, plainly dead or broken. */
-  const LAMP = { up: { rgb: [143, 224, 122], hi: '#e4ffd6', ms: 3600 }, down: { rgb: [255, 74, 61], hi: '#ffd0c8', ms: 2000 } };
   /* The lamp's dark rim, 12 by 12 around its middle (x, y): the still part. */
   function lampRim(x, y) { Rh(x - 6, y - 6, 12, 12, C.K); }
   /* The lamp itself at time t: its colour between full and black, a highlight while it is bright,
      and a soft light round it in its own colour. */
   function lampHD(x, y, t, ok) {
-    const L = ok ? LAMP.up : LAMP.down, a = .5 + .5 * Math.cos(t * 2 * Math.PI / L.ms);
+    const L = ok ? LAMP.up : LAMP.down, a = lampLevel(t, ok);
     glow(x, y, 20, 'rgb(' + L.rgb.join(',') + ')', .3 * a);
     Rh(x - 5, y - 5, 10, 10, 'rgb(' + L.rgb.map(v => Math.round(v * a)).join(',') + ')');
     if (a > .5) { alpha(2 * a - 1); Rh(x - 4, y - 4, 3, 3, L.hi); alpha(1); }
@@ -288,5 +372,5 @@
     for (const dx of [-48, -18, 18, 48]) strip(cx + dx, y - 44, cx + dx * .55, y, 1, 1, C.S3);
   }
 
-  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, sky, starsHD, flameHD, pieHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf, crateHD, flyHD, poofHD, goblinHD, chuteHD };
+  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, sky, starsHD, flameHD, pieHD, raspberryHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf, crateHD, flyHD, poofHD, goblinHD, chuteHD };
 })(window.KW);

@@ -396,7 +396,7 @@ spot the knight stands at, of the swings, and of the knight's boots. `pl=1` show
 
 | Kind | Up | Down |
 |---|---|---|
-| `pi` | the pie in its dish, steaming | the empty dish with crumbs |
+| `pi` | the pie in its dish, steaming, a large raspberry on top | the empty dish with crumbs and one raspberry |
 | `camera` | a white bullet camera on a wall arm, its lens dark glass | the body hanging straight down from the arm, dulled, its lens dark |
 | `machine` | a grey tower case | the case dark, its side panel off and leant against it |
 | `vm` | the same case as an outline of bright dots | only a few paler dots at its corners |
@@ -409,15 +409,29 @@ devices fit within 80 by 64 above the base.
 its own colour. While its machine is up, or `unknown`, the lamp fades from green to black and back
 over 3.6 seconds; while it is down, from red to black and back over 2 seconds, a slow blink. The
 loop starts 523 ms later in each place than in the one before it (`pie`, `h1` to `h3`, `g1` to
-`g3`), so the lamps of a scene never pulse together. The pie has no lamp and steams while up.
-Nothing else moves but the question mark.
+`g3`), so the lamps of a scene never pulse together. Both loops come from `LAMP` and `lampLevel` in
+`props.js`, which every lamp shares.
+
+**The raspberry.** The pie's lamp is the raspberry on its top, 25 pixels across and 33 tall
+with its calyx: round drupelets, each with a dark outline and a highlight, under a green calyx and
+stalk. It lights on the lamps' loops from the pie's place, so its loop starts at the place's
+offset, 0. While the Pi is up it goes from a bright pink-red (`#ff5c80` on its drupelets) to a
+deep crimson (`#6a0f2e`) and back over 3.6 seconds, in a warm light (`#ff7a6a`); while the Pi is
+down a single raspberry lies low in the empty dish, to the right of the question mark and partly
+hidden by the dish's near rim, and blinks from the down lamp's red to black over 2 seconds. Its
+calyx and outline stay as they are. The steam rises behind it, and nothing else moves but the
+question mark.
 
 **Drawing.** `part` `'still'` draws what does not move and `'moving'` what does: the lamp, and the
-pie's steam. The engine paints each thing's still part once, with its pole, into a small canvas of
-its own, kept by place, kind and state, and draws it with one call where the scene's `draw` calls
-`KW.things.draw(t, s)`, so each scene's drawing order is what it was. Only the moving part is drawn
-each frame, and the question mark is kept in a canvas of its own as well. A frame with the pie and
-six devices costs about 75 calls more than one with the pie alone.
+pie's steam and raspberry. The engine paints each thing's still part once, with its pole, into a
+small canvas of its own, kept by place, kind and state, and draws it with one call where the
+scene's `draw` calls `KW.things.draw(t, s)`, so each scene's drawing order is what it was. Only the
+moving part is drawn each frame, and the question mark is kept in a canvas of its own as well. The
+raspberry is painted once in each of its colourings, lit and dark, into small canvases of its own
+in `props.js`; each frame draws its light, the dark berry, and the lit berry over it at the loop's
+level, 18 calls, as a device's lamp costs 16 to 20. The pie up costs 114 calls a frame with its
+steam, and the pie down 18. A frame with the pie and six devices costs about 75 calls more than one
+with the pie alone.
 
 **The question mark.** Over a gone thing whose `alert` is true, the engine draws the question mark,
 blinking every 400 ms, with its foot at least 4 pixels above the gone thing. A gone thing that
@@ -523,8 +537,9 @@ as drawn, and the screenshots confirm the pixels.
 kind of watched thing: that it stays inside 80 by 64 above its base, up and gone; that its moving
 part is only its lamp, inside the place, in both states; that the lamp fades green to black over
 3.6 seconds while up and red to black over 2 while down; that its still part does not change with
-time; that gone differs from up; and that the pie in parts draws what the whole pie drew. It prints
-the calls each part costs.
+time; that gone differs from up; and that the pie in parts draws what the whole pie drew. For the
+raspberry it checks that it lights on the lamps' loops, up and down, is not in the up pie's still
+part, and stays inside the pie's place. It prints the calls each part costs.
 
 The same knight test checks the choice itself: the console line on each path, the refusal at the
 `signature` step, the code path when there is no base pack, a broken one or no library, a changed

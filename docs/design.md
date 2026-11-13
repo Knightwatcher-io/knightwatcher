@@ -44,10 +44,16 @@ behind it. The helmet comes off in the house and the smithy. Gear is drawn in sl
 hands) over one body so that new items can be added later.
 
 The Raspberry Pi that watches the main host is a steaming raspberry pie, present in every scene.
-It is a fruit pie in a white dish, with a lattice crust and a raspberry on top. When the Pi is
-judged down, silent for its `down_after_s`, the pie is gone and the empty dish is left, with a few
-crumbs. A collector from before watched things gives no judgement, and with it the dish empties
-at the first missed check, as it always did.
+It is a fruit pie in a white dish, with a lattice crust and a large raspberry on top, drawn as a
+cluster of round drupelets under a green calyx so that it reads as a raspberry from across the
+room. The raspberry is the pie's lamp: while the Pi is up it glows and dims slowly in its own
+colours, from a deep crimson to a bright pink-red, on the same slow loop as the other lamps. The
+colour language says green for up, but a whole pie against an empty dish already says up or down,
+and a green raspberry would read as unripe. When the Pi is judged down, silent for its
+`down_after_s`, the pie is gone and the empty dish is left, with a few crumbs and a single
+raspberry, which blinks slowly from red to black like any other lamp of a down machine. A
+collector from before watched things gives no judgement, and with it the dish empties at the
+first missed check, as it always did.
 
 ## Watched things
 
@@ -65,7 +71,9 @@ and they fill in the order of the list, so a thing keeps its place whether it is
 thing with no place left is not drawn but is still watched.
 
 Every device carries one lamp that never stops: while the machine is up it fades slowly from green
-to black and back, and while it is down it blinks slowly from red to black. A down device also
+to black and back, and while it is down it blinks slowly from red to black. The pie's lamp is its
+raspberry, which keeps its own colours while the Pi is up and blinks red like the rest while it
+is down. A down device also
 looks broken from across the room: the camera hangs from its arm, the tower goes dark with its
 side panel off, the dotted outline breaks up into a few dots at its corners, and the box lies on
 its side with its lid off. A question mark blinks over a down thing that alerts; a thing set not
