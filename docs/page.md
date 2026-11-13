@@ -8,7 +8,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 
 | File | Holds |
 |---|---|
-| `index.html` | the markup: the review bar, the display surface, the script tags in load order |
+| `index.html` | the markup: the page's version in the `kw-version` meta tag, the review bar, the display surface, the script tags in load order |
 | `css/display.css` | the display, the text colours by status, the review bar |
 | `fonts/` | the VT323 typeface and its licence |
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
@@ -16,10 +16,10 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie, fire, sky and stars, flies, the goblin, the crate and its parachute |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into his state, `draw(o)` draws him, `swing()` animates a cut, `head()` draws his bare head and `speech()` a speech bubble |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
-| `js/state.js` | reading `data/state.json` and turning it into what the engine needs |
+| `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events, drawing order |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
-| `js/main.js` | start-up, sizing, the clock and the words over the scene, the choice of mode |
+| `js/main.js` | start-up, sizing, the clock and the words over the scene, the choice of mode, the check for a new version |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run.
@@ -134,10 +134,26 @@ Where the browser refuses either (a wake lock needs a secure context, and full s
 gesture), nothing happens and nothing is logged. The demo's review bar keeps its own Full screen
 button.
 
+**New versions.** A copy deployed with `tools/deploy.sh` (see [Deploying](#deploying)) carries its
+version in the `kw-version` meta tag, and `version.json` beside `index.html` names the version
+deployed now. Served over HTTP, in every mode including the demo, the page fetches `version.json`,
+relative to itself and with `cache: "no-store"`, five minutes after it loads and every five minutes
+after, and cuts a fetch off after four seconds. When the version there differs from its own, it
+reloads at once, with no notice. Before reloading it records the version it is reloading for and
+the time in `sessionStorage`. If it has already reloaded for that same version within the last 30
+minutes and is still not on it (a cache served the old `index.html` again), it waits until those 30
+minutes are up before reloading again. Where `sessionStorage` is refused the record is kept in
+memory, which a reload loses, so such a page may reload once on each load. A failed fetch, or a
+file that names no version, does nothing. The repository's own `index.html` says `dev`, and a page
+whose version is `dev` never checks, so the page still opens from disk, or is served straight from
+`web/`, with no build step.
+
 The mapping is the pure function `KW.state.map(file, nowMs)`. Beside it, `judge(view, lastGood,
 nowMs)` decides between showing a file, holding the last one, NO SIGNAL and the demo, and
 `takeEvents()` picks the events to play and `noSignal()` builds the knight's NO SIGNAL state.
-`state.js` loads under Node for the tests.
+`versionOf(file)` reads the version out of a parsed `version.json`, and `reloadDue(own, fetched,
+last, nowMs)` decides whether to reload, given the page's own version, the fetched one, the record
+of the last reload and the time. `state.js` loads under Node for the tests.
 
 ## The address
 
@@ -160,6 +176,24 @@ in live mode. `f=`, `e=` and `sw=` start something in the demo and do nothing el
 
 The demo rewrites the hash as its settings change, with the contract's ids in `on=`.
 
+## Deploying
+
+```bash
+tools/deploy.sh /path/to/served/folder
+```
+
+The tool copies `web/` into the folder, leaving the folder's `data/` (where the collector writes)
+alone and deleting any other file that `web/` no longer has. It then stamps the copy, and only the
+copy, with a version: the first 12 hex characters of a sha256 over the names and contents of the
+files of `web/`, in a stable order and leaving `data/` out. It writes `version.json` as
+`{"version": "<hash>"}`, sets the `kw-version` meta tag of `index.html` to the version, and appends
+`?v=<hash>` to every local script and stylesheet address there, so a new version is fetched under
+addresses no cache has seen. The fonts the stylesheet loads are not stamped. A deploy that changes
+nothing in `web/` gives the same version and reloads no open page. The version does not depend on
+git, so the tool works from an exported copy too. It refuses a folder that is `web/`, lies inside
+it or holds it, and an `index.html` whose meta tag it cannot find. Open displays reload within
+about five minutes of a deploy that changes something.
+
 ## Checks
 
 Syntax, from the repository's root:
@@ -168,10 +202,17 @@ Syntax, from the repository's root:
 for f in $(find web/js -name '*.js'); do node --check "$f" || exit 1; done
 ```
 
-The mapping from a state file, `judge` and the rules for events:
+The mapping from a state file, `judge`, the rules for events and the decision to reload:
 
 ```bash
 node --test tests/web/
+```
+
+The deploy tool, which it runs against temporary folders and copies of `web/`, never the
+repository's own:
+
+```bash
+node --test tests/tools/
 ```
 
 The regression screenshots, with `CHROME` pointing at a headless Chromium. Take a reference set

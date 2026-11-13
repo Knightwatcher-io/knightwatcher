@@ -1,5 +1,6 @@
 /* Knightwatcher: reading the state file (docs/state.md) and turning it into what the engine needs.
-   Everything above start() is pure and loads under Node, for the tests in tests/web/. */
+   It also decides when a deployed page reloads itself for a new version. Everything above start()
+   is pure and loads under Node, for the tests in tests/web/. */
 (function (KW) {
   'use strict';
 
@@ -128,6 +129,37 @@
     return Object.assign({}, w || IDLE, { st: 'crit', hl: 'NO SIGNAL', sub: 'collector silent for ' + min + ' min' });
   }
 
+  /* ---- New versions of the page --------------------------------------------------------------
+     tools/deploy.sh stamps a deployed copy with a version, a hash of the page's files: in a meta
+     tag of index.html and in version.json beside it. A page whose own version is 'dev' (the
+     repository's own files) never reloads. */
+
+  /* How long a reload for one version holds back another reload for the same version, in case
+     the reload brought back a cached index.html of the old one. */
+  const RELOAD_GUARD_MS = 30 * 60 * 1000;
+
+  const VERSION_RE = /^[\w.-]{1,64}$/;
+
+  /* The version a parsed version.json names, or null when the file does not name one. */
+  function versionOf(file) {
+    return isObj(file) && typeof file.version === 'string' && VERSION_RE.test(file.version) ? file.version : null;
+  }
+
+  /* Whether the page should reload, given its own version, the version version.json names (null
+     when the fetch failed or the file was malformed), the mark left by the last reload ({ version,
+     at }, at in ms, or null) and the time nowMs. It should when the versions differ, unless it has
+     already reloaded for that same version within RELOAD_GUARD_MS and is still not on it. A mark
+     from the future, as after the clock was set back, holds nothing back. */
+  function reloadDue(own, fetched, last, nowMs) {
+    if (typeof own !== 'string' || own === 'dev' || !VERSION_RE.test(own)) return false;
+    if (typeof fetched !== 'string' || fetched === 'dev' || !VERSION_RE.test(fetched) || fetched === own) return false;
+    if (isObj(last) && last.version === fetched && typeof last.at === 'number') {
+      const since = nowMs - last.at;
+      if (since >= 0 && since < RELOAD_GUARD_MS) return false;
+    }
+    return true;
+  }
+
   /* Fetches data/state.json now and every 5 seconds after, and hands each result to onView: what
      map() made of it, or { ok: false, problem: 'unreachable' } when it could not be fetched or
      parsed. Browser only. */
@@ -148,7 +180,7 @@
     poll();
   }
 
-  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, map, takeEvents, judge, noSignal, start };
+  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, RELOAD_GUARD_MS, map, takeEvents, judge, noSignal, versionOf, reloadDue, start };
   KW.state = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? (window.KW = window.KW || {}) : {});

@@ -199,3 +199,43 @@ test('a stale file or an unknown schema shows NO SIGNAL at once', () => {
   // the same file grown stale: its own age
   assert.deepEqual(ST.judge(ST.map(EXAMPLE, at(120)), good, at(120)), { kind: 'silent', ageS: 120 });
 });
+
+test('version.json names a version only as a plain string', () => {
+  assert.equal(ST.versionOf({ version: 'd73439586760' }), 'd73439586760');
+  for (const f of [null, [], 'd73439586760', {}, { version: 7 }, { version: '' }, { version: 'a b' }, { version: '<html>' }, { version: 'x'.repeat(65) }]) {
+    assert.equal(ST.versionOf(f), null, JSON.stringify(f));
+  }
+});
+
+test('a deployed page reloads when the deployed version differs from its own', () => {
+  const now = 1e12;
+  assert.equal(ST.reloadDue('aaaaaaaaaaaa', 'bbbbbbbbbbbb', null, now), true);
+  assert.equal(ST.reloadDue('aaaaaaaaaaaa', 'aaaaaaaaaaaa', null, now), false);
+  // a failed or malformed fetch does nothing
+  for (const fetched of [null, undefined, '', 7, 'a b']) assert.equal(ST.reloadDue('aaaaaaaaaaaa', fetched, null, now), false);
+});
+
+test('the repository\'s own page never reloads', () => {
+  const now = 1e12;
+  for (const own of ['dev', '', null, undefined]) assert.equal(ST.reloadDue(own, 'bbbbbbbbbbbb', null, now), false, String(own));
+  assert.equal(ST.reloadDue('aaaaaaaaaaaa', 'dev', null, now), false);
+});
+
+test('a reload for one version holds back another for 30 minutes', () => {
+  const now = 1e12, G = ST.RELOAD_GUARD_MS, mark = at => ({ version: 'bbbbbbbbbbbb', at });
+  assert.equal(G, 30 * 60 * 1000);
+  // reloaded for this version and still not on it: wait out the 30 minutes
+  assert.equal(ST.reloadDue('aaaaaaaaaaaa', 'bbbbbbbbbbbb', mark(now), now), false);
+  assert.equal(ST.reloadDue('aaaaaaaaaaaa', 'bbbbbbbbbbbb', mark(now - G + 1), now), false);
+  assert.equal(ST.reloadDue('aaaaaaaaaaaa', 'bbbbbbbbbbbb', mark(now - G), now), true);
+  // a mark for another version holds nothing back
+  assert.equal(ST.reloadDue('aaaaaaaaaaaa', 'cccccccccccc', mark(now), now), true);
+  // a mark from the future, as after the clock was set back, holds nothing back
+  assert.equal(ST.reloadDue('aaaaaaaaaaaa', 'bbbbbbbbbbbb', mark(now + 60e3), now), true);
+  // a mark that cannot be read holds nothing back
+  for (const last of ['junk', 7, [], { version: 'bbbbbbbbbbbb' }, { version: 'bbbbbbbbbbbb', at: 'now' }]) {
+    assert.equal(ST.reloadDue('aaaaaaaaaaaa', 'bbbbbbbbbbbb', last, now), true, JSON.stringify(last));
+  }
+  // once on the new version, nothing to do whatever the mark says
+  assert.equal(ST.reloadDue('bbbbbbbbbbbb', 'bbbbbbbbbbbb', mark(now), now), false);
+});
