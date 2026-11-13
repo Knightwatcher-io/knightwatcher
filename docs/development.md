@@ -35,5 +35,18 @@ python3 -m collector --config config.toml --secrets secrets.json --check-config
 ```
 
 The last two need a `.env`, a `config.toml` and a `secrets.json` in place; see
-[configuration.md](./configuration.md). The commands for the page are added by the change that
-restructures it.
+[configuration.md](./configuration.md).
+
+The page:
+
+```bash
+for f in $(find web/js -name '*.js'); do node --check "$f" || exit 1; done
+node --test tests/web/
+CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-ref    # before a change
+CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-new    # after it
+tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
+```
+
+The screenshots compare the page with itself before and after a change that should not alter how
+it looks. Take one set at a time: two headless browsers running at once drop frames, and an
+event's shot then differs for no reason. [page.md](./page.md) has the rest.

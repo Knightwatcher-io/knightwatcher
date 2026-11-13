@@ -1,0 +1,50 @@
+/* Knightwatch: the display. The scene fills the screen and the words lie over it. The review bar
+   above it is shown in the demo alone. */
+@font-face { font-family: "VT323"; src: url("../fonts/VT323-Regular.ttf") format("truetype"); font-display: swap; }
+
+html, body { margin: 0; height: 100%; background: #000; }
+body { display: flex; flex-direction: column; font: 13px/1.4 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif; color: #eee; overflow: hidden; }
+
+/* ---- The review bar, outside the mocked surface ------------------------------------------ */
+.rv { background: #f3f1ec; color: #1d1d1f; border-bottom: 1px solid #c9c5bc; padding: 6px 12px; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.rv .grp { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.rv .grp > span { font-weight: 600; margin-right: 2px; color: #55524b; }
+.rv .grp > em { font-style: normal; color: #55524b; margin-left: 4px; }
+.rv button { font: inherit; border: 1px solid #a9a49a; background: #fff; color: #1d1d1f; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
+.rv button[aria-pressed="true"] { background: #1d1d1f; color: #fff; border-color: #1d1d1f; }
+.rv button:focus-visible { outline: 2px solid #2563d9; outline-offset: 1px; }
+.rv details { flex-basis: 100%; }
+.rv summary { cursor: pointer; font-weight: 600; color: #55524b; }
+.rv .notes { margin: 6px 0 2px; max-width: 1100px; columns: 2 420px; column-gap: 28px; }
+.rv .notes p { margin: 0 0 6px; break-inside: avoid; }
+body.nobar .rv { display: none; }
+body.nobar { cursor: none; }
+
+/* ---- The display: the scene fills it, the words lie over it ------------------------------- */
+#surface { flex: 1; min-height: 0; position: relative; container-type: size; background: #000; color: var(--fg);
+  font-family: "VT323", "DejaVu Sans Mono", monospace; overflow: hidden; user-select: none; -webkit-user-select: none; --hs: 17; }
+#surface.hs-s { --hs: 13; } #surface.hs-m { --hs: 17; } #surface.hs-l { --hs: 22; }
+/* Green when quiet, amber for a warning, red when critical, blue while something is at work. */
+#surface.st-ok    { --fg: #39ff6a; --fg2: #2fd95a; }
+#surface.st-warn  { --fg: #ffb000; --fg2: #f0a400; }
+#surface.st-crit  { --fg: #ff4a3d; --fg2: #ff6a5e; }
+#surface.st-info  { --fg: #3fd0ff; --fg2: #3fc4f0; }
+#surface.st-sleep { --fg: #1c8a3a; --fg2: #1c8a3a; }
+#cv { position: absolute; image-rendering: pixelated; }
+.scrim { position: absolute; left: 0; right: 0; top: 0; height: 44%; pointer-events: none; background: linear-gradient(rgba(0,0,0,.82), rgba(0,0,0,.5) 55%, rgba(0,0,0,0)); }
+#surface.quiet .scrim { height: 26%; background: linear-gradient(rgba(0,0,0,.6), rgba(0,0,0,0)); }
+.ov { position: absolute; inset: 0; padding: 2.6cqh 2.6cqw; pointer-events: none; --ol: 0.35cqh;
+  text-shadow: var(--ol) var(--ol) 0 #000, calc(-1 * var(--ol)) var(--ol) 0 #000, var(--ol) calc(-1 * var(--ol)) 0 #000, calc(-1 * var(--ol)) calc(-1 * var(--ol)) 0 #000, 0 0 1.2cqh #000; }
+.hrow { display: flex; align-items: flex-start; gap: 2cqw; white-space: nowrap; }
+.htxt { flex: 1; min-width: 0; }
+#hl { display: inline-block; font-size: calc(var(--hs) * 1cqh); line-height: 0.82; }
+#surface.quiet #hl { display: none; }
+#sub { font-size: 6.4cqh; line-height: 1; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.6cqh; }
+#quiet { display: none; font-size: 5.6cqh; line-height: 1; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#surface.quiet #quiet { display: block; }
+#surface.quiet #sub { display: none; }
+#more { font-size: 7cqh; line-height: 0.82; color: #000; background: #ffb000; padding: 0.5cqh 1cqw 0; display: none; text-shadow: none; margin-top: 1.2cqh; }
+#more.crit { background: #ff4a3d; }
+#clock { font-size: 15cqh; line-height: 0.78; color: var(--fg); }
+#cap { position: absolute; left: 2.6cqw; bottom: 2.6cqh; font-size: 7cqh; line-height: 1; color: var(--fg); background: rgba(0,0,0,.66); padding: 0.8cqh 1.4cqw 0.4cqh; opacity: 0; transition: opacity .5s; white-space: nowrap; }
+#cap.on { opacity: 1; }
