@@ -1,13 +1,16 @@
 import datetime as dt
 import unittest
 from typing import ClassVar
+from unittest import mock
 
 from collector.conditions import Conditions
 from collector.sources import Reading
-from kw_helpers import T0, at, make_config
+from collector.sources.host import HostSource
+from kw_helpers import T0, FakeProc, at, make_config
 
 
-def host(cpu=10.0, avail=50.0, disks=None, load1=1.0):
+def host(cpu=10.0, avail=50.0, disks=None, load1=1.0, span=30.0):
+    """A host reading whose CPU and available memory are averages over span seconds."""
     facts = {
         "cpu_pct": cpu,
         "load1": load1,
@@ -16,7 +19,13 @@ def host(cpu=10.0, avail=50.0, disks=None, load1=1.0):
         "swap_pct": 99.0,
         "disks": disks or [],
     }
-    return Reading(facts, {"mem_available_pct": avail})
+    data = {
+        "mem_available_pct": avail,
+        "mem_available_avg": avail,
+        "mem_span_s": span,
+        "cpu_span_s": span,
+    }
+    return Reading(facts, data)
 
 
 def containers(bad=None):
@@ -53,75 +62,338 @@ def ids(out):
 
 
 class Harness:
-    """Feeds a Conditions engine one poll at a time, 30 s apart."""
+    """Feeds a Conditions engine one poll at a time, step seconds apart (10, the default
+    interval, unless the test says)."""
 
-    def __init__(self, raw=None):
+    def __init__(self, raw=None, step=10):
         self.c = Conditions(make_config(raw))
         self.t = 0
+        self.step = step
 
-    def poll(self, **readings):
-        out = self.c.evaluate(readings, at(self.t))
-        self.t += 30
+    def poll(self, fresh=None, **readings):
+        out = self.c.evaluate(readings, at(self.t), fresh)
+        self.t += self.step
         return out
 
 
-class SustainTest(unittest.TestCase):
-    def test_cpu_hot_needs_five_minutes(self):
-        h = Harness()
-        for _ in range(10):  # 0 .. 270 s
-            self.assertEqual(ids(h.poll(host=host(cpu=90))), [])
-        out = h.poll(host=host(cpu=90))  # 300 s
-        self.assertEqual(ids(out), ["cpu_hot"])
-        self.assertEqual(out[0]["level"], "warning")
-        self.assertEqual(out[0]["since"], "2026-01-15T21:00:00Z")
-        self.assertEqual(out[0]["headline"], "CPU HOT")
-        self.assertEqual(out[0]["detail"], "90% for 5 min · load 1.0")
+class HoldTest(unittest.TestCase):
+    """The clearing rule, shown with disk_full, which has no duration of its own."""
 
-    def test_a_spike_resets_the_timer(self):
-        h = Harness()
-        for _ in range(9):
-            h.poll(host=host(cpu=90))
-        h.poll(host=host(cpu=20))
-        for _ in range(9):
-            self.assertEqual(ids(h.poll(host=host(cpu=90))), [])
+    FULL: ClassVar[list] = [{"mount": "/data", "pct": 95.0, "free_gb": 1}]
+    ROOMY: ClassVar[list] = [{"mount": "/data", "pct": 50.0, "free_gb": 900}]
 
-    def test_clears_only_after_one_further_interval(self):
-        h = Harness({"conditions": {"cpu_hot": {"for_s": 0}}})
-        self.assertEqual(ids(h.poll(host=host(cpu=90))), ["cpu_hot"])
-        held = h.poll(host=host(cpu=10))
-        self.assertEqual(ids(held), ["cpu_hot"])
-        self.assertEqual(held[0]["detail"].split(" ")[0], "90%")  # last words stand
-        self.assertEqual(ids(h.poll(host=host(cpu=10))), [])
+    def test_clears_once_the_cause_has_been_absent_for_clear_after_s(self):
+        h = Harness()
+        self.assertEqual(ids(h.poll(host=host(disks=self.FULL))), ["disk_full"])  # 0 s
+        for _ in range(3):  # 10, 20, 30 s: absent since 10 s, held with the last words
+            held = h.poll(host=host(disks=self.ROOMY))
+            self.assertEqual(ids(held), ["disk_full"])
+            self.assertEqual(held[0]["detail"], "/data at 95% · 1 GB free")
+        self.assertEqual(ids(h.poll(host=host(disks=self.ROOMY))), [])  # 40 s: 30 s absent
+
+    def test_clear_after_s_is_in_seconds_whatever_the_interval(self):
+        h = Harness({"conditions": {"clear_after_s": 60}}, step=20)
+        h.poll(host=host(disks=self.FULL))  # 0 s
+        for _ in range(3):  # 20, 40, 60 s
+            self.assertEqual(ids(h.poll(host=host(disks=self.ROOMY))), ["disk_full"])
+        self.assertEqual(ids(h.poll(host=host(disks=self.ROOMY))), [])  # 80 s: 60 s absent
+
+    def test_zero_clears_at_once(self):
+        h = Harness({"conditions": {"clear_after_s": 0}})
+        h.poll(host=host(disks=self.FULL))
+        self.assertEqual(ids(h.poll(host=host(disks=self.ROOMY))), [])
 
     def test_returning_cause_during_the_hold_keeps_it_active(self):
-        h = Harness({"conditions": {"cpu_hot": {"for_s": 0}}})
-        first = h.poll(host=host(cpu=90))
-        h.poll(host=host(cpu=10))
-        again = h.poll(host=host(cpu=95))
+        h = Harness()
+        first = h.poll(host=host(disks=self.FULL))
+        h.poll(host=host(disks=self.ROOMY))
+        h.poll(host=host(disks=self.ROOMY))
+        again = h.poll(host=host(disks=self.FULL))
         self.assertEqual(again[0]["since"], first[0]["since"])
+        # The hold starts again from the next absence.
+        for _ in range(3):
+            self.assertEqual(ids(h.poll(host=host(disks=self.ROOMY))), ["disk_full"])
+        self.assertEqual(ids(h.poll(host=host(disks=self.ROOMY))), [])
 
     def test_a_failed_source_counts_as_absent(self):
-        h = Harness({"conditions": {"cpu_hot": {"for_s": 0}}})
-        h.poll(host=host(cpu=90))
-        h.poll(host=None)
+        h = Harness()
+        h.poll(host=host(disks=self.FULL))
+        for _ in range(3):
+            self.assertEqual(ids(h.poll(host=None)), ["disk_full"])
         self.assertEqual(ids(h.poll(host=None)), [])
 
 
-class EachConditionTest(unittest.TestCase):
+class ResourceWordsTest(unittest.TestCase):
+    """cpu_hot and memory_tight judge the averages the host source works out."""
+
+    def test_cpu_hot_from_the_window_average(self):
+        h = Harness()
+        self.assertEqual(ids(h.poll(host=host(cpu=84.9))), [])
+        out = h.poll(host=host(cpu=99))  # 10 s
+        self.assertEqual(ids(out), ["cpu_hot"])
+        self.assertEqual(out[0]["level"], "warning")
+        self.assertEqual(out[0]["headline"], "CPU HOT")
+        # The average covers the last 30 s, so the cause began 30 s before it was raised.
+        self.assertEqual(out[0]["since"], "2026-01-15T20:59:40Z")
+        self.assertEqual(out[0]["detail"], "99% for 30 s · load 1.0")
+        later = [h.poll(host=host(cpu=97))[0]["detail"] for _ in range(4)]  # 20 .. 50 s
+        self.assertEqual(
+            later,
+            [
+                "97% for 40 s · load 1.0",
+                "97% for 50 s · load 1.0",
+                "97% for 1 min · load 1.0",
+                "97% for 1 min · load 1.0",
+            ],
+        )
+
     def test_memory_tight_judges_available_memory_not_swap(self):
-        h = Harness({"conditions": {"memory_tight": {"for_s": 0}}})
+        h = Harness()
         # Swap is 99 % full in every reading; only MemAvailable matters.
         self.assertEqual(ids(h.poll(host=host(avail=40))), [])
         out = h.poll(host=host(avail=8))
         self.assertEqual(ids(out), ["memory_tight"])
-        self.assertEqual(out[0]["detail"], "8% available for 0 s")
+        self.assertEqual(out[0]["detail"], "8% available for 30 s")
+        self.assertEqual(h.poll(host=host(avail=9))[0]["detail"], "9% available for 40 s")
 
-    def test_memory_tight_waits_five_minutes_by_default(self):
+    def test_never_for_zero_seconds(self):
+        # An average resting on the short sample after a start still reads at least 1 s.
         h = Harness()
-        for _ in range(10):
-            self.assertEqual(ids(h.poll(host=host(avail=5))), [])
-        self.assertEqual(ids(h.poll(host=host(avail=5))), ["memory_tight"])
+        out = h.poll(host=host(cpu=95, avail=5, span=0.5))
+        self.assertEqual(ids(out), ["cpu_hot", "memory_tight"])
+        self.assertEqual(out[0]["detail"], "95% for 1 s · load 1.0")
+        self.assertEqual(out[1]["detail"], "5% available for 1 s")
 
+
+class Machine:
+    """A host whose CPU and memory the test drives second by second, read by the real host
+    source on a fake /proc, and judged by the conditions on the fake clock.
+
+    The CPU has 1000 jiffies a second, so a second at p percent adds 10 p busy jiffies.
+    """
+
+    def __init__(self, test, raw=None):
+        self.proc = FakeProc()
+        test.addCleanup(self.proc.cleanup)
+        raw = dict(raw or {})
+        raw["collector"] = {"proc_root": self.proc.root}
+        raw["sources"] = {"host": {}}
+        config = make_config(raw)
+        self.source = HostSource(config.sources["host"], config)
+        self.conditions = Conditions(config)
+        self.t = 0.0
+        self.busy = 0
+        self.idle = 0
+        self.avail = 50.0
+        self.proc.set_stat(0, 0)
+        # The short sample after a start: the machine runs on at its last load for half a second.
+        self.load = 0.0
+        sleep = mock.patch("collector.sources.host.time.sleep", side_effect=self._half_second)
+        sleep.start()
+        test.addCleanup(sleep.stop)
+
+    def _half_second(self, seconds):
+        self._advance(seconds, self.load)
+
+    def _advance(self, seconds, pct):
+        busy = round(pct * 10 * seconds)
+        self.busy += busy
+        self.idle += round(1000 * seconds) - busy
+        self.proc.set_stat(self.busy, self.idle)
+
+    def run(self, seconds, pct=None, avail=None):
+        """Run for some seconds at a CPU percentage, with this much memory available."""
+        if pct is not None:
+            self.load = pct
+        if avail is not None:
+            self.avail = avail
+        self._advance(seconds, self.load)
+        self.t += seconds
+
+    def poll(self):
+        """Read the host at the current time and judge; return the conditions raised."""
+        self.proc.set_meminfo(total_kb=1_000_000, available_kb=round(self.avail * 10_000))
+        reading = self.source.fetch(at(self.t))
+        self.reading = reading
+        return self.conditions.evaluate({"host": reading}, at(self.t))
+
+    def steady(self, polls, step=10, pct=None, avail=None):
+        """Poll every step seconds at a steady load; return the ids raised at each poll."""
+        out = []
+        for _ in range(polls):
+            self.run(step, pct, avail)
+            out.append(ids(self.poll()))
+        return out
+
+
+class CpuWindowTest(unittest.TestCase):
+    def idle_machine(self):
+        m = Machine(self)
+        m.run(0, pct=2)
+        m.poll()
+        m.steady(6, pct=2)  # a full window of idle history, at 60 s
+        return m
+
+    def test_a_five_second_spike_raises_nothing(self):
+        m = self.idle_machine()
+        m.run(5, pct=100)
+        m.run(5, pct=2)
+        raised = [ids(m.poll())]
+        raised += m.steady(4, pct=2)
+        self.assertEqual(raised, [[]] * 5)
+
+    def test_thirty_seconds_at_99_raises_it_on_the_poll_that_completes_the_window(self):
+        m = self.idle_machine()  # at 60 s
+        raised = m.steady(3, pct=99)  # 70, 80, 90 s
+        self.assertEqual(raised, [[], [], ["cpu_hot"]])
+        self.assertEqual(m.reading.facts["cpu_pct"], 99.0)
+
+    def test_the_detail_reads_for_30_s_at_first_and_grows(self):
+        m = self.idle_machine()
+        m.steady(2, pct=99)
+        out = []
+        for _ in range(4):
+            m.run(10, pct=99)
+            out.append(m.poll()[0]["detail"])
+        self.assertEqual(
+            out,
+            [
+                "99% for 30 s · load 1.5",
+                "99% for 40 s · load 1.5",
+                "99% for 50 s · load 1.5",
+                "99% for 1 min · load 1.5",
+            ],
+        )
+
+    def test_a_dip_of_one_sample_does_not_clear_it(self):
+        m = self.idle_machine()
+        m.steady(3, pct=99)  # raised at 90 s
+        # One ten-second sample at 70 %: the window holds (99 + 99 + 70) / 3 = 89.3 %.
+        self.assertEqual(m.steady(1, pct=70), [["cpu_hot"]])
+        self.assertEqual(m.reading.facts["cpu_pct"], 89.3)
+        self.assertEqual(m.steady(3, pct=99), [["cpu_hot"]] * 3)
+        held = m.conditions.trackers["cpu_hot"]
+        self.assertIsNone(held.absent_since)  # the cause never went away
+
+    def test_it_clears_once_the_average_falls_and_clear_after_s_has_passed(self):
+        m = self.idle_machine()
+        m.steady(3, pct=99)  # raised at 90 s
+        # Idle from 90 s: the averages at 100, 110 and 120 s are 67, 34.7 and 2 %.
+        raised = m.steady(6, pct=2)  # 100 .. 150 s
+        # Below 85 % from 100 s, so it is held until 130 s and gone at 130.
+        self.assertEqual(raised, [["cpu_hot"]] * 3 + [[]] * 3)
+
+    def test_the_window_comes_from_config(self):
+        m = Machine(self, {"conditions": {"cpu_hot": {"window_s": 60}}})
+        m.run(0, pct=2)
+        m.poll()
+        m.steady(12, pct=2)
+        self.assertEqual(m.steady(6, pct=99), [[]] * 5 + [["cpu_hot"]])
+
+
+class MemoryWindowTest(unittest.TestCase):
+    def roomy_machine(self):
+        m = Machine(self)
+        m.run(0, pct=2, avail=50)
+        m.poll()
+        m.steady(6)
+        return m
+
+    def test_a_brief_low_reading_raises_nothing(self):
+        m = self.roomy_machine()
+        raised = m.steady(1, avail=3) + m.steady(4, avail=50)
+        self.assertEqual(raised, [[]] * 5)
+
+    def test_thirty_seconds_low_raises_it_on_the_poll_that_completes_the_window(self):
+        m = self.roomy_machine()
+        # Samples at 70, 80 and 90 s are low; the 60 s sample leaves the window at 90 s.
+        self.assertEqual(m.steady(3, avail=5), [[], [], ["memory_tight"]])
+        self.assertEqual(m.reading.data["mem_available_avg"], 5.0)
+        self.assertEqual(m.reading.facts["mem_pct"], 95.0)  # the latest reading, not the mean
+
+    def test_the_detail_reads_for_30_s_at_first_and_grows(self):
+        m = self.roomy_machine()
+        m.steady(2, avail=5)
+        out = []
+        for _ in range(3):
+            m.run(10)
+            out.append(m.poll()[0]["detail"])
+        self.assertEqual(
+            out,
+            ["5% available for 30 s", "5% available for 40 s", "5% available for 50 s"],
+        )
+
+    def test_a_dip_of_one_sample_does_not_clear_it(self):
+        m = self.roomy_machine()
+        m.steady(3, avail=5)
+        # One sample at 14 %: the window holds (5 + 5 + 14) / 3 = 8 %.
+        self.assertEqual(m.steady(1, avail=14), [["memory_tight"]])
+        self.assertEqual(m.steady(2, avail=5), [["memory_tight"]] * 2)
+        self.assertIsNone(m.conditions.trackers["memory_tight"].absent_since)
+
+    def test_it_clears_once_the_average_rises_and_clear_after_s_has_passed(self):
+        m = self.roomy_machine()
+        m.steady(3, avail=5)  # raised at 90 s
+        # Means at 100, 110, 120 s: 20, 35, 50 %; above 10 % from 100 s.
+        self.assertEqual(m.steady(6, avail=50), [["memory_tight"]] * 3 + [[]] * 3)
+
+
+class StartTest(unittest.TestCase):
+    """After a start the window holds only what has been seen since."""
+
+    def test_an_idle_start_raises_nothing(self):
+        m = Machine(self)
+        m.run(0, pct=2)
+        self.assertEqual(ids(m.poll()), [])
+        self.assertEqual(m.reading.facts["cpu_pct"], 2.0)
+        self.assertEqual(m.reading.data["cpu_span_s"], 0.5)
+
+    def test_a_start_into_a_busy_cpu_judges_the_half_second_it_has(self):
+        m = Machine(self)
+        m.run(0, pct=99)
+        out = m.poll()
+        self.assertEqual(ids(out), ["cpu_hot"])
+        self.assertEqual(out[0]["detail"], "99% for 1 s · load 1.5")
+
+    def test_the_window_grows_until_it_is_full(self):
+        m = Machine(self)
+        m.run(0, pct=99)
+        m.poll()  # 0 s: busy for the half second it saw
+        m.run(10, pct=2)
+        m.poll()  # 10 s: the average covers 10.5 s
+        self.assertEqual(m.reading.data["cpu_span_s"], 10.5)
+        spans = []
+        for _ in range(4):
+            m.run(10)
+            m.poll()
+            spans.append(m.reading.data["cpu_span_s"])
+        self.assertEqual(spans, [20.5, 30.5, 30.0, 30.0])
+
+    def test_a_spike_soon_after_a_start_is_diluted_by_what_history_there_is(self):
+        m = Machine(self)
+        m.run(0, pct=2)
+        m.poll()
+        m.run(5, pct=100)
+        m.run(5, pct=2)
+        self.assertEqual(ids(m.poll()), [])  # 5 s of 100 % in 10.5 s is 48.7 %
+        self.assertEqual(m.reading.facts["cpu_pct"], 48.7)
+
+    def test_memory_after_a_start_is_the_one_reading_there_is(self):
+        m = Machine(self)
+        m.run(0, pct=2, avail=4)
+        out = m.poll()
+        self.assertEqual(ids(out), ["memory_tight"])
+        self.assertEqual(out[0]["detail"], "4% available for 1 s")
+
+    def test_memory_after_a_start_that_is_roomy(self):
+        m = Machine(self)
+        m.run(0, pct=2, avail=50)
+        self.assertEqual(ids(m.poll()), [])
+        self.assertEqual(m.reading.data["mem_available_avg"], 50.0)
+        self.assertEqual(m.reading.data["mem_span_s"], 0.5)
+
+
+class EachConditionTest(unittest.TestCase):
     def test_disk_full_is_immediate(self):
         h = Harness()
         disks = [{"mount": "/data", "pct": 91.2, "free_gb": 640}]
@@ -147,9 +419,9 @@ class EachConditionTest(unittest.TestCase):
 
     def test_pi_silent_after_three_minutes(self):
         h = Harness()
-        for _ in range(6):
+        for _ in range(18):  # 0 .. 170 s
             self.assertEqual(ids(h.poll(pi=Reading({"up": False}))), [])
-        out = h.poll(pi=Reading({"up": False}))
+        out = h.poll(pi=Reading({"up": False}))  # 180 s
         self.assertEqual(ids(out), ["pi_silent"])
         self.assertEqual(out[0]["detail"], "no answer for 3 min")
 
@@ -160,6 +432,16 @@ class EachConditionTest(unittest.TestCase):
         self.assertEqual(ids(out), ["wan_down"])
         self.assertEqual(out[0]["level"], "critical")
 
+    def test_wan_down_counts_fresh_reads_not_polls(self):
+        h = Harness()
+        down = Reading({"up": False})
+        self.assertEqual(ids(h.poll({"wan"}, wan=down)), [])  # 0 s, read
+        self.assertEqual(ids(h.poll(set(), wan=down)), [])  # 10 s, the same reading
+        self.assertEqual(ids(h.poll(set(), wan=down)), [])  # 20 s, the same reading
+        out = h.poll({"wan"}, wan=Reading({"up": False}))  # 30 s, the second failed check
+        self.assertEqual(ids(out), ["wan_down"])
+        self.assertEqual(out[0]["detail"], "no answer for 30 s")
+
     def test_one_failed_wan_check_is_not_enough(self):
         h = Harness()
         h.poll(wan=Reading({"up": False}))
@@ -169,9 +451,9 @@ class EachConditionTest(unittest.TestCase):
     def test_container_unhealthy_after_three_minutes_per_container(self):
         h = Harness()
         sick = {"radarr": {"kind": "unhealthy", "status": "Up 2 days (unhealthy)"}}
-        for _ in range(6):
+        for _ in range(18):  # 0 .. 170 s
             self.assertEqual(ids(h.poll(containers=containers(sick))), [])
-        out = h.poll(containers=containers(sick))
+        out = h.poll(containers=containers(sick))  # 180 s
         self.assertEqual(ids(out), ["container_unhealthy"])
         self.assertEqual(out[0]["headline"], "RADARR UNWELL")
         self.assertEqual(out[0]["detail"], "unhealthy for 3 min")
@@ -202,10 +484,10 @@ class EachConditionTest(unittest.TestCase):
     def test_container_that_recovers_restarts_its_timer(self):
         h = Harness()
         sick = {"radarr": {"kind": "unhealthy", "status": "Up (unhealthy)"}}
-        for _ in range(5):
+        for _ in range(15):  # 0 .. 140 s
             h.poll(containers=containers(sick))
-        h.poll(containers=containers({}))
-        for _ in range(6):
+        h.poll(containers=containers({}))  # 150 s
+        for _ in range(18):  # 160 .. 330 s: 170 s unhealthy, not 180
             self.assertEqual(ids(h.poll(containers=containers(sick))), [])
 
     def test_ssh_updating_streaming(self):
@@ -243,6 +525,11 @@ class EachConditionTest(unittest.TestCase):
         self.assertEqual(out[0]["detail"], "5 bans in 10 min")
 
 
+def shown(h, polls, reading):
+    """Whether ssh_session is up at each of several polls of the same reading."""
+    return ["ssh_session" in ids(h.poll(ssh=reading)) for _ in range(polls)]
+
+
 class SshSessionTest(unittest.TestCase):
     def test_sessions_open_at_the_first_reading_are_old(self):
         h = Harness()
@@ -256,42 +543,34 @@ class SshSessionTest(unittest.TestCase):
         self.assertEqual(ids(out), ["ssh_session"])
         self.assertEqual(out[0]["headline"], "SHELL OPEN")
         self.assertEqual(out[0]["detail"], "2 ssh sessions from 192.0.2.10, 198.51.100.7")
-        self.assertEqual(out[0]["since"], "2026-01-15T21:00:30Z")
+        self.assertEqual(out[0]["since"], "2026-01-15T21:00:10Z")
 
     def test_it_lasts_show_for_s_from_the_new_session(self):
         h = Harness({"conditions": {"ssh_session": {"show_for_s": 90}}})
         h.poll(ssh=ssh(A))  # 0 s
-        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 30 s, B is new
-        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 60 s
-        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 90 s
-        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 120 s, held one poll
-        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), [])  # 150 s
+        # B is new at 10 s and fresh until 99 s; absent from 100 s, held 30 s, gone at 130 s.
+        self.assertEqual(shown(h, 13, ssh(A, B)), [True] * 12 + [False])
 
     def test_the_default_is_ten_minutes(self):
         h = Harness()
         h.poll(ssh=ssh(A))  # 0 s
-        for _ in range(20):  # 30 .. 600 s, B first seen at 30 s
-            self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])
-        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 630 s, held
-        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), [])  # 660 s
+        # B is new at 10 s: up from 10 to 600 s, held to 630 s, gone at 640 s.
+        self.assertEqual(shown(h, 64, ssh(A, B)), [True] * 63 + [False])
 
     def test_a_second_new_session_extends_the_window(self):
         h = Harness({"conditions": {"ssh_session": {"show_for_s": 90}}})
         h.poll(ssh=ssh())  # 0 s
-        h.poll(ssh=ssh(A))  # 30 s, A is new
-        out = h.poll(ssh=ssh(A, B))  # 60 s, B is new
-        self.assertEqual(out[0]["since"], "2026-01-15T21:00:30Z")
-        for _ in range(2):  # 90 and 120 s; A alone would have ended at 120 s
-            self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])
-        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 150 s, held
-        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), [])  # 180 s
+        h.poll(ssh=ssh(A))  # 10 s, A is new
+        out = h.poll(ssh=ssh(A, B))  # 20 s, B is new
+        self.assertEqual(out[0]["since"], "2026-01-15T21:00:10Z")
+        # A alone would have ended at 100 s; B keeps it up to 109 s, held to 130 s, gone at 140.
+        self.assertEqual(shown(h, 12, ssh(A, B)), [True] * 11 + [False])
 
     def test_a_new_session_that_closes_lets_it_clear(self):
         h = Harness()
         h.poll(ssh=ssh(A))
         self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])
-        self.assertEqual(ids(h.poll(ssh=ssh(A))), ["ssh_session"])  # held one poll
-        self.assertEqual(ids(h.poll(ssh=ssh(A))), [])
+        self.assertEqual(shown(h, 4, ssh(A)), [True, True, True, False])  # held 30 s
 
     def test_a_closed_session_is_forgotten(self):
         h = Harness()
@@ -307,10 +586,8 @@ class SshSessionTest(unittest.TestCase):
 
     def test_zero_keeps_it_up_while_sessions_are_open(self):
         h = Harness({"conditions": {"ssh_session": {"show_for_s": 0}}})
-        for _ in range(30):
-            self.assertEqual(ids(h.poll(ssh=ssh(A))), ["ssh_session"])
-        self.assertEqual(ids(h.poll(ssh=ssh())), ["ssh_session"])  # held one poll
-        self.assertEqual(ids(h.poll(ssh=ssh())), [])
+        self.assertEqual(shown(h, 90, ssh(A)), [True] * 90)
+        self.assertEqual(shown(h, 4, ssh()), [True, True, True, False])
 
     def test_an_unreadable_source_leaves_the_memory_alone(self):
         h = Harness()
@@ -319,8 +596,7 @@ class SshSessionTest(unittest.TestCase):
         self.assertEqual(ids(h.poll(ssh=None)), [])
         self.assertEqual(ids(h.poll(ssh=ssh(A))), [])  # A is still old
         self.assertEqual(ids(h.poll(ssh=ssh(A, C))), ["ssh_session"])
-        self.assertEqual(ids(h.poll(ssh=None)), ["ssh_session"])  # absent, held one poll
-        self.assertEqual(ids(h.poll(ssh=None)), [])
+        self.assertEqual(shown(h, 4, None), [True, True, True, False])  # absent, held 30 s
         self.assertEqual(ids(h.poll(ssh=ssh(A, C))), ["ssh_session"])  # C is still new
 
 

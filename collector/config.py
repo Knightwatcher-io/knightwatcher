@@ -30,7 +30,7 @@ CONDITION_IDS = [
 ]
 
 COLLECTOR_DEFAULTS: dict[str, Any] = {
-    "interval_s": 30,
+    "interval_s": 10,
     "output_dir": "/out",
     "state_dir": "/var/lib/knightwatcher",
     "timezone": "UTC",
@@ -41,15 +41,15 @@ COLLECTOR_DEFAULTS: dict[str, Any] = {
 
 CONDITION_DEFAULTS: dict[str, Any] = {
     "priority": list(CONDITION_IDS),
-    "clear_after_polls": 1,
+    "clear_after_s": 30,
     "attack": {"window_s": 600, "jails": ["sshd"], "bans": 5},
     "wan_down": {"failed_checks": 2},
     "container_unhealthy": {"for_s": 180},
     "disk_full": {"pct": 90.0},
     "backup_overdue": {"hours": 30.0},
     "pi_silent": {"for_s": 180},
-    "cpu_hot": {"pct": 85.0, "for_s": 300},
-    "memory_tight": {"available_pct": 10.0, "for_s": 300},
+    "cpu_hot": {"pct": 85.0, "window_s": 30},
+    "memory_tight": {"available_pct": 10.0, "window_s": 30},
     "ssh_session": {"min_sessions": 1, "show_for_s": 600},
     "updating": {},
     "streaming": {"min_streams": 1},
@@ -57,25 +57,38 @@ CONDITION_DEFAULTS: dict[str, Any] = {
 }
 
 SOURCE_DEFAULTS: dict[str, dict[str, Any]] = {
-    "host": {"enabled": True, "disks": []},
-    "containers": {"enabled": True, "url": "", "ignore": []},
-    "wan": {"enabled": True, "urls": ["https://1.1.1.1/cdn-cgi/trace"]},
-    "dns": {"enabled": True, "server": "127.0.0.1", "port": 53, "name": "example.com"},
+    "host": {"enabled": True, "every_s": 10, "disks": []},
+    "containers": {"enabled": True, "every_s": 10, "url": "", "ignore": []},
+    "wan": {"enabled": True, "every_s": 30, "urls": ["https://1.1.1.1/cdn-cgi/trace"]},
+    "dns": {
+        "enabled": True,
+        "every_s": 30,
+        "server": "127.0.0.1",
+        "port": 53,
+        "name": "example.com",
+    },
     "backup": {
         "enabled": True,
+        "every_s": 60,
         "log": "/host/backup.log",
         "pattern": r"System Backup Completed: (.+)$",
         "timezone": "UTC",
         "read_bytes": 262144,
     },
-    "pi": {"enabled": True, "host": "", "ports": [22]},
-    "updates": {"enabled": True, "holders": []},
-    "ssh": {"enabled": True, "port": 22, "ignore_sources": []},
-    "streams": {"enabled": True, "url": "", "secret": "tautulli"},
-    "adblock": {"enabled": True, "url": "", "secret": "adguard", "fly_every_s": 300.0},
-    "security": {"enabled": True, "url": ""},
-    "sonarr": {"enabled": True, "url": "", "secret": "sonarr"},
-    "radarr": {"enabled": True, "url": "", "secret": "radarr"},
+    "pi": {"enabled": True, "every_s": 30, "host": "", "ports": [22]},
+    "updates": {"enabled": True, "every_s": 10, "holders": []},
+    "ssh": {"enabled": True, "every_s": 10, "port": 22, "ignore_sources": []},
+    "streams": {"enabled": True, "every_s": 30, "url": "", "secret": "tautulli"},
+    "adblock": {
+        "enabled": True,
+        "every_s": 30,
+        "url": "",
+        "secret": "adguard",
+        "fly_every_s": 300.0,
+    },
+    "security": {"enabled": True, "every_s": 30, "url": ""},
+    "sonarr": {"enabled": True, "every_s": 30, "url": "", "secret": "sonarr"},
+    "radarr": {"enabled": True, "every_s": 30, "url": "", "secret": "radarr"},
 }
 
 # Settings a source cannot run without.
@@ -96,6 +109,18 @@ SECRET_FIELDS = {
     "sonarr": ["api_key"],
     "radarr": ["api_key"],
 }
+
+# Settings that were removed, with what to set instead. Naming the replacement beats the plain
+# "unknown setting" an old config.toml would otherwise get.
+REPLACED = {
+    "conditions.clear_after_polls": "clear_after_s, in seconds",
+    "conditions.cpu_hot.for_s": "window_s, the seconds the CPU is averaged over",
+    "conditions.memory_tight.for_s": "window_s, the seconds available memory is averaged over",
+}
+
+# The shortest interval and averaging window the collector accepts, in seconds.
+MIN_INTERVAL_S = 5
+MIN_WINDOW_S = 10
 
 _HHMM = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
@@ -145,6 +170,9 @@ def _type_ok(default: Any, value: Any) -> bool:
 def _merge(where: str, defaults: dict, given: dict, problems: list[str]) -> dict:
     out = copy.deepcopy(defaults)
     for key, value in given.items():
+        if f"{where}.{key}" in REPLACED:
+            problems.append(f"{where}.{key}: removed; use {REPLACED[f'{where}.{key}']}")
+            continue
         if key not in defaults:
             problems.append(f"{where}.{key}: unknown setting")
             continue
@@ -167,7 +195,8 @@ def _check_positive(where: str, value: float, problems: list[str], allow_zero=Fa
 
 
 def _validate_collector(c: dict, problems: list[str]) -> None:
-    _check_positive("collector.interval_s", c["interval_s"], problems)
+    if c["interval_s"] < MIN_INTERVAL_S:
+        problems.append(f"collector.interval_s: must be at least {MIN_INTERVAL_S}")
     _check_positive("collector.http_timeout_s", c["http_timeout_s"], problems)
     if c["http_timeout_s"] >= c["interval_s"]:
         problems.append("collector.http_timeout_s: must be shorter than interval_s")
@@ -187,9 +216,12 @@ def _validate_conditions(c: dict, problems: list[str]) -> None:
         elif cid in seen:
             problems.append(f"conditions.priority: {cid!r} listed twice")
         seen.add(cid)
-    _check_positive("conditions.clear_after_polls", c["clear_after_polls"], problems, True)
-    for cid in ("cpu_hot", "memory_tight", "pi_silent", "container_unhealthy"):
+    _check_positive("conditions.clear_after_s", c["clear_after_s"], problems, True)
+    for cid in ("pi_silent", "container_unhealthy"):
         _check_positive(f"conditions.{cid}.for_s", c[cid]["for_s"], problems, True)
+    for cid in ("cpu_hot", "memory_tight"):
+        if c[cid]["window_s"] < MIN_WINDOW_S:
+            problems.append(f"conditions.{cid}.window_s: must be at least {MIN_WINDOW_S}")
     for where, v in (
         ("cpu_hot.pct", c["cpu_hot"]["pct"]),
         ("memory_tight.available_pct", c["memory_tight"]["available_pct"]),
@@ -220,6 +252,7 @@ def _validate_conditions(c: dict, problems: list[str]) -> None:
 
 
 def _validate_source(name: str, s: dict, problems: list[str]) -> None:
+    _check_positive(f"sources.{name}.every_s", s["every_s"], problems)
     for key in REQUIRED.get(name, []):
         if not s[key]:
             problems.append(f"sources.{name}.{key}: required when the source is enabled")

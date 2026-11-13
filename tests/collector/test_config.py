@@ -3,16 +3,17 @@ import os
 import tempfile
 import unittest
 
-from collector.config import CONDITION_IDS, ConfigError, build, load
+from collector.config import CONDITION_IDS, SOURCE_DEFAULTS, ConfigError, build, load
 
 
 class BuildTest(unittest.TestCase):
     def test_defaults(self):
         c = build({})
-        self.assertEqual(c.interval_s, 30)
+        self.assertEqual(c.interval_s, 10)
         self.assertEqual(c.conditions["priority"], CONDITION_IDS)
-        self.assertEqual(c.conditions["cpu_hot"], {"pct": 85.0, "for_s": 300})
-        self.assertEqual(c.conditions["memory_tight"]["available_pct"], 10.0)
+        self.assertEqual(c.conditions["clear_after_s"], 30)
+        self.assertEqual(c.conditions["cpu_hot"], {"pct": 85.0, "window_s": 30})
+        self.assertEqual(c.conditions["memory_tight"], {"available_pct": 10.0, "window_s": 30})
         self.assertEqual(c.conditions["disk_full"]["pct"], 90.0)
         self.assertEqual(c.conditions["backup_overdue"]["hours"], 30.0)
         self.assertEqual(c.conditions["pi_silent"]["for_s"], 180)
@@ -23,6 +24,82 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(c.conditions["ssh_session"], {"min_sessions": 1, "show_for_s": 600})
         self.assertEqual(c.collector["timezone"], "UTC")
         self.assertEqual(c.sources, {})
+
+    def test_each_source_has_its_own_pace(self):
+        paces = {name: d["every_s"] for name, d in SOURCE_DEFAULTS.items()}
+        self.assertEqual(
+            paces,
+            {
+                "host": 10,
+                "ssh": 10,
+                "updates": 10,
+                "containers": 10,
+                "backup": 60,
+                "wan": 30,
+                "dns": 30,
+                "pi": 30,
+                "streams": 30,
+                "adblock": 30,
+                "security": 30,
+                "sonarr": 30,
+                "radarr": 30,
+            },
+        )
+        c = build({"sources": {"wan": {"every_s": 5}}})
+        self.assertEqual(c.sources["wan"]["every_s"], 5)
+        with self.assertRaises(ConfigError) as cm:
+            build({"sources": {"wan": {"every_s": 0}}})
+        self.assertEqual(cm.exception.problems, ["sources.wan.every_s: must be above zero"])
+
+    def test_interval_is_at_least_five_seconds(self):
+        c = build({"collector": {"interval_s": 5, "http_timeout_s": 4.0}})
+        self.assertEqual(c.interval_s, 5)
+        with self.assertRaises(ConfigError) as cm:
+            build({"collector": {"interval_s": 4, "http_timeout_s": 2.0}})
+        self.assertEqual(cm.exception.problems, ["collector.interval_s: must be at least 5"])
+
+    def test_windows_are_at_least_ten_seconds(self):
+        c = build({"conditions": {"cpu_hot": {"window_s": 10}, "memory_tight": {"window_s": 60}}})
+        self.assertEqual(c.conditions["cpu_hot"]["window_s"], 10)
+        with self.assertRaises(ConfigError) as cm:
+            build({"conditions": {"cpu_hot": {"window_s": 9}, "memory_tight": {"window_s": 0}}})
+        self.assertEqual(
+            cm.exception.problems,
+            [
+                "conditions.cpu_hot.window_s: must be at least 10",
+                "conditions.memory_tight.window_s: must be at least 10",
+            ],
+        )
+
+    def test_clear_after_s_may_be_zero_but_not_negative(self):
+        self.assertEqual(build({"conditions": {"clear_after_s": 0}}).conditions["clear_after_s"], 0)
+        with self.assertRaises(ConfigError) as cm:
+            build({"conditions": {"clear_after_s": -1}})
+        self.assertEqual(
+            cm.exception.problems, ["conditions.clear_after_s: must be zero or above zero"]
+        )
+
+    def test_removed_settings_name_their_replacements(self):
+        with self.assertRaises(ConfigError) as cm:
+            build(
+                {
+                    "conditions": {
+                        "clear_after_polls": 1,
+                        "cpu_hot": {"for_s": 300},
+                        "memory_tight": {"for_s": 300},
+                    }
+                }
+            )
+        self.assertEqual(
+            cm.exception.problems,
+            [
+                "conditions.clear_after_polls: removed; use clear_after_s, in seconds",
+                "conditions.cpu_hot.for_s: removed; use window_s, the seconds the CPU is "
+                "averaged over",
+                "conditions.memory_tight.for_s: removed; use window_s, the seconds available "
+                "memory is averaged over",
+            ],
+        )
 
     def test_a_present_table_enables_a_source(self):
         c = build({"sources": {"wan": {}, "ssh": {"enabled": False}}})

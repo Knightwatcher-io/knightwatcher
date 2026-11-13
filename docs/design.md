@@ -88,9 +88,9 @@ A small Python program with no third-party dependencies, run as a container:
   HTTP, DNS or a TCP connection;
 - one output, written atomically: `state.json` in a folder the web server already serves.
 
-It keeps the short history that sustained conditions need (a CPU that has been hot for five
-minutes is a condition; a spike is not), so the page stays stateless. Every source may fail on its
-own: the collector reports the source as unavailable and carries on.
+It keeps the short history that its judgements need (a CPU averaging 85 percent or more over the
+last 30 seconds is a condition; a spike of a few seconds is not), so the page stays stateless.
+Every source may fail on its own: the collector reports the source as unavailable and carries on.
 
 Sources are separate modules behind one small interface, so a homelab with different tools swaps
 a module and leaves the rest alone.

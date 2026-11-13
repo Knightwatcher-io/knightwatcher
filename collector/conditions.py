@@ -1,10 +1,11 @@
 """Conditions: what is true now, how long it must last to count, and the words for it.
 
 Each condition has a cause, judged afresh at every poll from the sources' readings. A condition
-becomes active once its cause has held for the condition's duration (or number of checks), and
-clears only once the cause has been absent for `clear_after_polls` further polls, so it does not
-flap. A source that could not be read counts as the cause being absent, so a dead source cannot
-hold a condition up for ever.
+becomes active once its cause has held for the condition's duration (or number of fresh reads),
+and clears only once the cause has been absent for `clear_after_s` seconds, so it does not flap.
+A source that could not be read counts as the cause being absent, so a dead source cannot hold a
+condition up for ever. CPU and memory are judged on averages over a window, which the host
+source works out from its own history.
 """
 
 from __future__ import annotations
@@ -48,38 +49,46 @@ class Cause:
     context: Any = None  # whatever the words need
 
 
+# Conditions that count reads, and the source whose fresh reads they count. A poll that reuses
+# a source's last reading is not a new check.
+COUNTS_READS_OF = {"wan_down": "wan"}
+
+
 class Tracker:
     """Sustain and clear rules for one condition."""
 
-    def __init__(self, for_s: float = 0, for_polls: int = 1, clear_after_polls: int = 1):
+    def __init__(self, for_s: float = 0, for_reads: int = 1, clear_after_s: float = 0):
         self.for_s = for_s
-        self.for_polls = for_polls
-        self.clear_after = clear_after_polls
+        self.for_reads = for_reads
+        self.clear_after_s = clear_after_s
         self.cause_since: dt.datetime | None = None
-        self.cause_polls = 0
-        self.absent_polls = 0
+        self.cause_reads = 0
+        self.absent_since: dt.datetime | None = None
         self.active = False
         self.since: dt.datetime | None = None
 
-    def update(self, cause: Cause, now: dt.datetime) -> bool:
+    def update(self, cause: Cause, now: dt.datetime, fresh: bool = True) -> bool:
+        """Judge one poll. fresh says whether the reading behind the cause is a new read."""
         if cause.present:
             if self.cause_since is None:
                 self.cause_since = cause.since or now
-            self.cause_polls += 1
-            self.absent_polls = 0
+            if fresh:
+                self.cause_reads += 1
+            self.absent_since = None
             held = (now - self.cause_since).total_seconds()
-            if not self.active and held >= self.for_s and self.cause_polls >= self.for_polls:
+            if not self.active and held >= self.for_s and self.cause_reads >= self.for_reads:
                 self.active = True
                 self.since = self.cause_since
         else:
             self.cause_since = None
-            self.cause_polls = 0
+            self.cause_reads = 0
             if self.active:
-                self.absent_polls += 1
-                if self.absent_polls > self.clear_after:
+                if self.absent_since is None:
+                    self.absent_since = now
+                if (now - self.absent_since).total_seconds() >= self.clear_after_s:
                     self.active = False
                     self.since = None
-                    self.absent_polls = 0
+                    self.absent_since = None
         return self.active
 
 
@@ -109,21 +118,12 @@ class Conditions:
         self.config = config
         c = config.conditions
         self.priority: list[str] = list(c["priority"])
-        clear = c["clear_after_polls"]
-        self.trackers = {
-            "attack": Tracker(clear_after_polls=clear),
-            "wan_down": Tracker(for_polls=c["wan_down"]["failed_checks"], clear_after_polls=clear),
-            "container_unhealthy": Tracker(clear_after_polls=clear),
-            "disk_full": Tracker(clear_after_polls=clear),
-            "backup_overdue": Tracker(clear_after_polls=clear),
-            "pi_silent": Tracker(for_s=c["pi_silent"]["for_s"], clear_after_polls=clear),
-            "cpu_hot": Tracker(for_s=c["cpu_hot"]["for_s"], clear_after_polls=clear),
-            "memory_tight": Tracker(for_s=c["memory_tight"]["for_s"], clear_after_polls=clear),
-            "ssh_session": Tracker(clear_after_polls=clear),
-            "updating": Tracker(clear_after_polls=clear),
-            "streaming": Tracker(clear_after_polls=clear),
-            "night": Tracker(clear_after_polls=clear),
-        }
+        clear = c["clear_after_s"]
+        self.trackers = {cid: Tracker(clear_after_s=clear) for cid in LEVELS}
+        self.trackers["wan_down"] = Tracker(
+            for_reads=c["wan_down"]["failed_checks"], clear_after_s=clear
+        )
+        self.trackers["pi_silent"] = Tracker(for_s=c["pi_silent"]["for_s"], clear_after_s=clear)
         # Per-container short history: name -> (first seen bad, kind, status).
         self.bad_since: dict[str, tuple[dt.datetime, str, str]] = {}
         # SSH connections seen: (address, port) -> first seen, or None if open at the first
@@ -185,18 +185,30 @@ class Conditions:
         f = _facts(r, "pi")
         return Cause(f is not None and not f["up"])
 
+    @staticmethod
+    def _window_start(now: dt.datetime, span_s: float) -> dt.datetime:
+        """When an average over the last span_s seconds began: the cause has held since then.
+
+        At least a second back, so the words never say "for 0 s" when the average rests on the
+        short sample taken after a start.
+        """
+        return now - dt.timedelta(seconds=max(1.0, span_s))
+
     def _cpu_hot(self, r, now) -> Cause:
-        f = _facts(r, "host")
+        f, d = _facts(r, "host"), _data(r, "host")
         if f is None:
             return Cause(False)
-        return Cause(f["cpu_pct"] >= self.config.conditions["cpu_hot"]["pct"], context=f)
+        # cpu_pct is already the average over the window (see the host source).
+        present = f["cpu_pct"] >= self.config.conditions["cpu_hot"]["pct"]
+        return Cause(present, since=self._window_start(now, d["cpu_span_s"]), context=f)
 
     def _memory_tight(self, r, now) -> Cause:
         d = _data(r, "host")
         if d is None:
             return Cause(False)
         limit = self.config.conditions["memory_tight"]["available_pct"]
-        return Cause(d["mem_available_pct"] <= limit, context=d["mem_available_pct"])
+        avg = d["mem_available_avg"]
+        return Cause(avg <= limit, since=self._window_start(now, d["mem_span_s"]), context=avg)
 
     def _ssh_session(self, r, now) -> Cause:
         f = _facts(r, "ssh")
@@ -304,7 +316,17 @@ class Conditions:
 
     # Evaluation -------------------------------------------------------------------------------
 
-    def evaluate(self, readings: dict[str, Reading | None], now: dt.datetime) -> list[dict]:
+    def evaluate(
+        self,
+        readings: dict[str, Reading | None],
+        now: dt.datetime,
+        fresh: set[str] | None = None,
+    ) -> list[dict]:
+        """Judge every condition for one poll.
+
+        fresh names the sources read afresh at this poll; the others' readings are reused from
+        an earlier read. None means every reading is fresh.
+        """
         out = []
         for cid in self.priority:
             try:
@@ -322,7 +344,9 @@ class Conditions:
                     "last_ip": lb["ip"],
                 }
             tracker = self.trackers[cid]
-            if not tracker.update(cause, now):
+            counted = COUNTS_READS_OF.get(cid)
+            is_fresh = fresh is None or counted is None or counted in fresh
+            if not tracker.update(cause, now, is_fresh):
                 self.causes.pop(cid, None)
                 continue
             if cause.present:

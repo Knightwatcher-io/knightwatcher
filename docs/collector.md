@@ -1,29 +1,42 @@
 # The collector
 
-The collector reads the homelab every `interval_s` seconds (30 by default) and writes `state.json`,
+The collector reads the homelab every `interval_s` seconds (10 by default) and writes `state.json`,
 the file described in [state.md](./state.md). It is a Python package in `collector/` that uses the
 standard library alone, and it runs as a container. Its settings are in
 [configuration.md](./configuration.md).
 
 ## One poll
 
-1. **Read.** Every enabled source is read at once, each in its own thread. The poll waits for
-   them until 66 percent of the interval has passed (about 20 seconds at the default 30), and a
-   source still running at that point is reported as `timed out` for this poll. It is not
-   started again while that read is still running, so a source that hangs costs one thread and
-   never piles up. Every network call has its own timeout as well (`http_timeout_s`).
-2. **Observe.** Each source that answered turns its reading into events, comparing it with the
-   markers it keeps in the memory file. This step runs in the main thread, one source after
-   another.
+1. **Read.** Every enabled source that is due is read at once, each in its own thread. A source is
+   due when its last read began at least its `every_s` ago (10 seconds for `host`, `ssh`,
+   `updates` and `containers`, 60 for `backup`, 30 for the rest), give or take a second for the
+   poll's own timing, so a source with an `every_s` below the interval is read at every poll.
+   The poll waits for its reads until 66 percent of the interval has passed (about 7 seconds at
+   the default 10). A read still running then carries on into later polls, and is collected by
+   the first poll that finds it finished. It counts as `timed out` once it has run for 66 percent
+   of the source's own pace or of the interval, whichever is longer: about 20 seconds for a source
+   read every 30 seconds, enough for one that tries two addresses in turn. A read that times out
+   is dropped, and the source is not started again while that read is still running, so a source
+   that hangs costs one thread and never piles up. Every network call has its own timeout as well
+   (`http_timeout_s`).
+2. **Observe.** Each source read afresh at this poll turns its reading into events, comparing it
+   with the markers it keeps in the memory file. This step runs in the main thread, one source
+   after another.
 3. **Judge.** The conditions are judged from the readings, in priority order.
 4. **Write.** The collector builds the state document, checks it against the contract (a
    breach is logged, and the file is still written), and writes it to a temporary name in the
    output folder before renaming it into place. The file is mode 644 so that the web server can
    read it. The memory file is then saved if anything in it changed.
 
+Between reads a source's last reading stands. It is written to the file and judged at every
+poll, but it is not observed again, so it raises no events, and its entry in `sources` keeps the
+time of the read it came from. A failed read stands in the same way, and the source is tried
+again at its own pace.
+
 A source that fails is marked `ok: false` in `sources` with a short reason, and its `facts`
 section is `null`. The error text never carries a URL, and any secret value that turns up in
-it is replaced with `***` before it is written.
+it is replaced with `***` before it is written. Before a source's first read has finished, its
+entry says `first read still running`.
 
 ### Credentials refused
 
@@ -36,12 +49,50 @@ then retry.
 
 ## Conditions
 
-Each condition has a cause, judged afresh at every poll. A condition becomes active once its
-cause has held for its duration: CPU at 85 percent or more for five minutes, the second machine
-silent for three minutes, two failed internet checks in a row, and so on. A container must stay
-unhealthy, restarting or exited with a non-zero code for three minutes before it counts, and
-each container has its own timer. Conditions with no duration (`disk_full`, `ssh_session`,
-`updating`, `streaming`, `night`, `attack`) are active from the first poll that shows the cause.
+Each condition has a cause, judged afresh at every poll. Most become active from the first poll
+that shows the cause (`attack`, `disk_full`, `backup_overdue`, `ssh_session`, `updating`,
+`streaming`, `night`). The others need it to last:
+
+- `pi_silent` needs the second machine silent for `for_s` (three minutes by default).
+- `container_unhealthy` needs a container unhealthy, restarting or exited with a non-zero code
+  for `for_s` (three minutes by default), and each container has its own timer.
+- `wan_down` needs `failed_checks` failed internet checks in a row (two by default). A check is a
+  fresh read of the `wan` source, so a poll that reuses the last reading does not count, and two
+  checks are 30 seconds apart at the default pace.
+- `cpu_hot` and `memory_tight` are judged on averages, below.
+
+### CPU and memory
+
+`cpu_hot` is raised when the CPU, averaged over the last `window_s` seconds (30 by default), is
+at or above `pct`. `memory_tight` is raised when `MemAvailable` as a percent of `MemTotal`,
+averaged over its own `window_s`, is at or below `available_pct`. A spike of a few seconds moves a
+30-second average little, so it raises nothing, while a CPU pinned for 30 seconds raises `cpu_hot`
+on the poll that completes the window. A brief dip keeps the condition up as long as the average
+stays past the threshold. `disk_full` is a level and is judged on the latest reading.
+
+The host source keeps the samples behind these averages: the time, the busy and total CPU
+jiffies, and the available memory. It keeps enough for the larger window and one more read. A
+window is measured from its base sample, the oldest one no older than the window (a second's
+slack allows for a poll that starts late). CPU is the difference in jiffies between the base and
+the latest sample, which makes it exact however the samples are spaced. Memory is the mean of the
+samples after the base, each weighted by the time since the one before it. If the host is read
+less often than a window is long, the window reaches back to the previous read instead.
+
+After a start there is no history, and none after a gap in the host's reads longer than the
+history it keeps. The first read then takes a half-second CPU sample, and the averages cover
+whatever has been seen since: half a second at the first poll, ten
+and a half at the second, and so on until the window is full. A condition can be raised from the
+history there is, as long as the average over it is past the threshold.
+
+The words count from the start of the window: `CPU HOT` with `99% for 30 s · load 2.9` when it
+appears, the time then growing with each poll, and the condition's `since` 30 seconds before it
+was raised. After a start the time reads at least `1 s`. `facts.host.cpu_pct` is the CPU average
+over the `cpu_hot` window; `facts.host.mem_pct` is the latest reading.
+
+Memory is judged by `MemAvailable` and never by swap, which a busy host can keep full for
+weeks without being short of memory.
+
+### SSH sessions
 
 `ssh_session` is raised when a new SSH session appears. A session is one established connection
 to the SSH port, identified by its remote address and port. The cause is present while at least
@@ -52,20 +103,24 @@ as old, so a restart raises nothing, and a poll where the source cannot be read 
 of sessions as it was. With `show_for_s` at 0 the condition is up for as long as `min_sessions`
 sessions are open.
 
-A condition clears only after its cause has been absent for `clear_after_polls` further polls
-(one by default). While it is held through that poll it keeps the words it last had. A source
-that cannot be read counts as the cause being absent, so a dead source cannot hold a condition
-up indefinitely; the per-container timers are kept through a failed read.
+### Clearing
 
-Memory is judged by `MemAvailable` and never by swap, which a busy host can keep full for
-weeks without being short of memory.
+A condition clears once its cause has been absent for `clear_after_s` seconds (30 by default),
+counted from the first poll that found it absent. While it is held it keeps the words it last
+had, and a cause that returns in that time keeps it up with its first `since`. A source that
+cannot be read counts as the cause being absent, so a dead source cannot hold a condition up
+indefinitely; the per-container timers are kept through a failed read. `night` is held the same
+way, so it shows for up to `clear_after_s` past the end of the quiet hours.
+
+### Attacks
 
 The attack signal is a ban in one of the configured jails (`sshd` by default) within the attack
 window (`window_s`, ten minutes by default), or at least `bans` bans in that window. Bans are
-counted from the rise in the 24-hour ban count between polls and from changes in the last ban, so a
-ban that both arrives and ages out of the 24-hour window between two polls can be missed.
+counted from the rise in the 24-hour ban count between reads and from changes in the last ban, so
+a ban that both arrives and ages out of the 24-hour window between two reads can be missed.
 
-The history behind all of this lives in memory and starts again when the collector restarts.
+The history behind all of this, the host's samples included, is held by the running process
+rather than the memory file, and starts again when the collector restarts.
 
 ## Events
 
@@ -76,8 +131,8 @@ The history behind all of this lives in memory and starts again when the collect
 | `import` | a new import record appears in Sonarr's or Radarr's history | 1 each | `IMPORTED · The Night Shift S02E04` |
 | `backup_done` | the backup log shows a completion newer than the last one seen | 1 | `BACKUP DONE 03:12` |
 
-When a source has no markers yet, it records what is already there and raises nothing. The
-markers, the event sequence number `seq` and the last 20 events are kept in `memory.json` in
+Events come only from fresh reads, so a source's pace sets how often it can raise them. When a
+source has no markers yet, it records what is already there and raises nothing. The markers, the event sequence number `seq` and the last 20 events are kept in `memory.json` in
 the state folder, so `seq` keeps rising across restarts and anything that happened while the
 collector was down is raised when it comes back. `at` is the time the collector noticed the
 event.
@@ -87,18 +142,18 @@ leaves it. A fall raises nothing and resets the marker.
 
 A fly stands for one helping of the household's normal blocking, so that normal traffic gives a
 fly every `fly_every_s` (300 seconds by default) on average and a burst gives a swarm. The
-normal rate is read afresh from `/control/stats` on every poll: `num_blocked_filtering` divided
+normal rate is read afresh from `/control/stats` on every read: `num_blocked_filtering` divided
 by the length of AdGuard Home's statistics window, counted from the first day or hour with any
 DNS queries to the current one, so a new install's mostly empty window does not understate it.
-One fly is then `rate * fly_every_s` blocked queries, and never fewer than one. Each poll's rise
+One fly is then `rate * fly_every_s` blocked queries, and never fewer than one. Each read's rise
 goes into a carry kept in memory; every whole fly's worth in the carry becomes a fly and the
-remainder stays for the next poll. An event carries at most eight flies, and a bigger burst
-drops the excess rather than queueing it. When the statistics give no rate (the lists missing,
+remainder stays for the next read. None of this depends on how often the source is read. An
+event carries at most eight flies, and a bigger burst drops the excess rather than queueing it. When the statistics give no rate (the lists missing,
 empty, all zero or malformed), a fly is 50 blocked queries. No event is raised until at least
 one fly is due. `fly_every_s = 0` restores one fly per blocked query, with `count` the rise.
 
 `blocked_today` counts from local midnight in the collector's time zone. The source keeps the
-date and the count in memory and adds each poll's rise, starting again from nought when the
+date and the count in memory and adds each read's rise, starting again from nought when the
 date changes. On first sight, or on the first poll after an upgrade from a version that kept no
 count, it starts from AdGuard Home's own figures for today: the last day's blocks, or with
 hourly statistics the hours since local midnight.
@@ -145,15 +200,15 @@ class ExampleSource(Source):
         return Reading({"up": reply["ok"]}, {"anything": "the events or conditions need"})
 
     def observe(self, reading, memory, now):
-        """Runs in the main thread. Return events; keep markers in `memory`."""
+        """Runs in the main thread after a fresh read. Return events; keep markers in `memory`."""
         return []
 ```
 
 Then:
 
-1. Add its defaults to `SOURCE_DEFAULTS` in `collector/config.py`, with any required settings in
-   `REQUIRED` and any credentials in `SECRET_FIELDS`, and register the class in
-   `build_sources` in `collector/sources/__init__.py`.
+1. Add its defaults to `SOURCE_DEFAULTS` in `collector/config.py`, `every_s` among them, with
+   any required settings in `REQUIRED` and any credentials in `SECRET_FIELDS`, and register the
+   class in `build_sources` in `collector/sources/__init__.py`.
 2. If it brings a new `facts` section or event type, change [state.md](./state.md) and the
    lists in `collector/contract.py` in the same commit.
 3. If a condition depends on it, write the cause and the words in `collector/conditions.py`.
@@ -181,7 +236,8 @@ pointed at the same folder exits at once.
 
 The container definition is `compose.yaml`: a non-root user of its own (uid and gid 10001), a
 read-only root filesystem, no capabilities, `no-new-privileges`, the host's network, no
-published port and no Docker socket. Its health check runs `--health`. Every host path is bound
-with `create_host_path: false`, so a missing path stops the container rather than leaving Docker
-to create an empty folder there. [configuration.md](./configuration.md#the-collectors-account)
+published port and no Docker socket. Its health check runs `--health`, which at the default
+interval fails once the file is more than 30 seconds old. Every host path is bound with
+`create_host_path: false`, so a missing path stops the container rather than leaving Docker to
+create an empty folder there. [configuration.md](./configuration.md#the-collectors-account)
 says how that user is given the files it needs.

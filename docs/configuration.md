@@ -14,16 +14,17 @@ a default. Every value on this page is invented.
 
 A source runs when its `[sources.<name>]` table is present and its `enabled` is not `false`.
 The `[collector]` and `[conditions]` tables can be left out entirely to take the defaults.
+Durations are in seconds.
 
 ### [collector]
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `interval_s` | `30` | Seconds between polls. Also written to `state.json` as `interval_s`. |
+| `interval_s` | `10` | Seconds between polls, at least 5. Also written to `state.json` as `interval_s`, and the page treats a file older than three intervals as stale. |
 | `output_dir` | `"/out"` | Folder `state.json` is written to. |
 | `state_dir` | `"/var/lib/knightwatcher"` | Folder for `memory.json` and the collector's lock. |
 | `timezone` | `"UTC"` | IANA zone for the night hours and the times shown in words. |
-| `http_timeout_s` | `5.0` | Timeout for each network call. Must be shorter than `interval_s`. |
+| `http_timeout_s` | `5.0` | Timeout for each network call. Must be shorter than `interval_s`, so an interval of 5 needs it lowered. |
 | `auth_backoff_s` | `1200` | Pause after a 401, 403 or 429. Cannot be set below 1200. |
 | `proc_root` | `"/host/proc"` | Where the host's `/proc` is mounted. |
 
@@ -32,25 +33,41 @@ The `[collector]` and `[conditions]` tables can be left out entirely to take the
 | Setting | Default | Meaning |
 |---|---|---|
 | `priority` | the order in [design.md](./design.md) | Conditions, highest first. One left out is never raised. |
-| `clear_after_polls` | `1` | Further polls a cause must be absent before its condition clears. |
+| `clear_after_s` | `30` | How long a cause must be absent before its condition clears. Zero or more. |
 | `attack.window_s` | `600` | The window for recent bans. |
 | `attack.jails` | `["sshd"]` | A ban in one of these jails within the window is an attack. |
 | `attack.bans` | `5` | So is this many bans of any kind within the window. |
-| `wan_down.failed_checks` | `2` | Failed internet checks in a row before `wan_down`. |
+| `wan_down.failed_checks` | `2` | Failed internet checks in a row before `wan_down`. Each check is a fresh read of the `wan` source, so they are its `every_s` apart. |
 | `container_unhealthy.for_s` | `180` | How long a container must be unhealthy, restarting or exited non-zero. |
-| `disk_full.pct` | `90.0` | Percent used, on any configured disk. |
+| `disk_full.pct` | `90.0` | Percent used, on any configured disk, judged on the latest reading. |
 | `backup_overdue.hours` | `30.0` | Hours since the last completed backup. |
 | `pi_silent.for_s` | `180` | How long the second machine must be unreachable. |
-| `cpu_hot.pct` | `85.0` | CPU use, percent of all cores. |
-| `cpu_hot.for_s` | `300` | How long it must last. |
-| `memory_tight.available_pct` | `10.0` | `MemAvailable` as a percent of `MemTotal`, at or below. |
-| `memory_tight.for_s` | `300` | How long it must last. |
+| `cpu_hot.pct` | `85.0` | CPU use, percent of all cores, averaged over the window: at or above. |
+| `cpu_hot.window_s` | `30` | The window the CPU is averaged over. At least 10. |
+| `memory_tight.available_pct` | `10.0` | `MemAvailable` as a percent of `MemTotal`, averaged over the window: at or below. |
+| `memory_tight.window_s` | `30` | The window available memory is averaged over. At least 10. |
 | `ssh_session.min_sessions` | `1` | Open SSH sessions needed. |
 | `ssh_session.show_for_s` | `600` | How long a new SSH session keeps `ssh_session` up. `0` keeps it up for as long as `min_sessions` sessions are open. |
 | `streaming.min_streams` | `1` | Streams playing needed. |
 | `night.start`, `night.end` | `"23:00"`, `"07:00"` | Quiet hours in `timezone`, 24-hour. The window may cross midnight. |
 
 `updating` has no settings: it is active while any configured lock holder is running.
+
+`clear_after_polls`, `cpu_hot.for_s` and `memory_tight.for_s` were removed when the collector
+moved to 10-second polls and averaged CPU and memory. A `config.toml` that still sets one is
+refused with a message naming its replacement: `clear_after_s`, or `window_s`.
+[collector.md](./collector.md#cpu-and-memory) says how the averages are worked out.
+
+### Every source
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | `false` turns the source off while keeping its table. |
+| `every_s` | see below | How often the source is read. Between reads its last reading stands, and it raises no events. Above zero; below `interval_s` it means every poll. |
+
+`every_s` is 10 for `host`, `ssh`, `updates` and `containers`, 60 for `backup`, and 30 for every
+other source. `host` should be read at least as often as the shorter window; when it is read less
+often, an average reaches back to the previous read instead.
 
 ### [sources.host]
 

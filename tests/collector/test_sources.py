@@ -5,6 +5,7 @@ import socket
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 from collector.net import AuthError, SourceError, dns_query, tcp_reachable
 from collector.sources import Reading
@@ -12,7 +13,7 @@ from collector.sources.adblock import AdblockSource, blocked_since_midnight, nor
 from collector.sources.backup import BackupSource, parse_when
 from collector.sources.containers import ContainersSource, classify, ignored
 from collector.sources.dns import DnsSource
-from collector.sources.host import HostSource
+from collector.sources.host import HostSource, Sample, cpu_average, mem_average
 from collector.sources.imports import RadarrSource, SonarrSource
 from collector.sources.pi import PiSource
 from collector.sources.security import SecuritySource
@@ -51,7 +52,7 @@ class HostTest(unittest.TestCase):
 
     def test_reads_cpu_memory_swap_load_and_disk(self):
         s = self.make()
-        s._last = (0, 0)  # pretend an earlier sample, to skip the first-read pause
+        s.history.append(Sample(at(-10), 0, 0, 25.0))  # an earlier sample: no first-read pause
         self.proc.set_stat(busy=600, idle=400, cores=12)
         self.proc.set_meminfo(total_kb=1000, available_kb=250, swap_total=100, swap_free=10)
         r = s.fetch(T0)
@@ -61,18 +62,87 @@ class HostTest(unittest.TestCase):
         self.assertEqual(r.facts["mem_pct"], 75.0)
         self.assertEqual(r.facts["swap_pct"], 90.0)
         self.assertEqual(r.data["mem_available_pct"], 25.0)
+        self.assertEqual(r.data["mem_available_avg"], 25.0)
+        self.assertEqual(r.data["cpu_span_s"], 10.0)
         disk = r.facts["disks"][0]
         self.assertEqual(disk["mount"], "/data")
         self.assertTrue(0 <= disk["pct"] <= 100)
         self.assertIsInstance(disk["free_gb"], int)
 
-    def test_cpu_is_the_change_between_reads(self):
+    def test_cpu_is_the_change_over_the_window(self):
         s = self.make()
-        s._last = (0, 0)
+        s.history.append(Sample(at(-10), 0, 0, 50.0))
         self.proc.set_stat(busy=100, idle=900)
         s.fetch(T0)
-        self.proc.set_stat(busy=190, idle=910)  # 90 busy of 100
-        self.assertEqual(s.fetch(T0).facts["cpu_pct"], 90.0)
+        self.proc.set_stat(busy=190, idle=910)  # 90 busy of 100 since the last read
+        r = s.fetch(at(10))
+        # The window reaches back to the sample at -10 s: 190 busy of 1100.
+        self.assertEqual(r.facts["cpu_pct"], 17.3)
+        self.assertEqual(r.data["cpu_span_s"], 20.0)
+
+    def test_the_window_average_is_exact_when_samples_are_uneven(self):
+        # One core at 100 jiffies a second: 5 s fully busy, then 25 s idle.
+        history = [
+            Sample(T0, 0, 0, 50.0),
+            Sample(at(5), 500, 500, 10.0),
+            Sample(at(30), 500, 3000, 40.0),
+        ]
+        pct, span = cpu_average(history, at(30), 30)
+        # The mean of the two intervals' percentages would be 50; the time is 5 s in 30.
+        self.assertEqual((pct, span), (16.7, 30.0))
+        mem, span = mem_average(history, at(30), 30)
+        # 10 % for 5 s and 40 % for 25 s, not the plain mean of 25 %.
+        self.assertEqual((mem, span), (35.0, 30.0))
+
+    def test_the_window_starts_at_the_oldest_sample_inside_it(self):
+        history = [Sample(at(t), t * 50, t * 100, 50.0) for t in range(0, 50, 10)]
+        # At 40 s a 30 s window starts at the 10 s sample, not at 0 s.
+        self.assertEqual(cpu_average(history, at(40), 30), (50.0, 30.0))
+        # A poll a little late still finds the sample 30 s back.
+        late = [*history[:-1], Sample(at(40.4), 2020, 4040, 50.0)]
+        self.assertEqual(cpu_average(late, at(40.4), 30)[1], 30.4)
+
+    def test_a_window_shorter_than_the_reads_uses_the_previous_read(self):
+        history = [Sample(T0, 0, 0, 50.0), Sample(at(60), 3000, 6000, 20.0)]
+        self.assertEqual(cpu_average(history, at(60), 30), (50.0, 60.0))
+        self.assertEqual(mem_average(history, at(60), 30), (20.0, 60.0))
+
+    def test_history_is_kept_for_the_larger_window_and_one_read(self):
+        raw = {
+            "collector": {"proc_root": self.proc.root},
+            "conditions": {"memory_tight": {"window_s": 60}},
+        }
+        s = source(HostSource, "host", {}, raw)
+        self.assertEqual(s.keep_s, 60 + 10 + 1)
+        s.history.append(Sample(at(-10), 0, 0, 50.0))
+        for t in range(0, 200, 10):
+            s.fetch(at(t))
+        self.assertEqual(s.history[0].at, at(190 - 70))
+        self.assertEqual(len(s.history), 8)
+
+    def test_the_first_read_takes_a_short_sample(self):
+        s = self.make()
+        with mock.patch("collector.sources.host.time.sleep") as sleep:
+            r = s.fetch(T0)
+        sleep.assert_called_once_with(0.5)
+        self.assertEqual(r.data["cpu_span_s"], 0.5)
+        self.assertEqual([x.at for x in s.history], [at(-0.5), T0])
+        self.assertIsNone(s.history[0].avail_pct)
+
+    def test_a_clock_that_goes_back_starts_the_history_again(self):
+        s = self.make()
+        s.history.append(Sample(at(100), 0, 0, 50.0))
+        with mock.patch("collector.sources.host.time.sleep"):
+            s.fetch(T0)
+        self.assertEqual([x.at for x in s.history], [at(-0.5), T0])
+
+    def test_a_failed_read_records_no_sample(self):
+        s = self.make()
+        s.history.append(Sample(at(-10), 0, 0, 50.0))
+        os.unlink(os.path.join(self.proc.root, "meminfo"))
+        with self.assertRaises(SourceError):
+            s.fetch(T0)
+        self.assertEqual(len(s.history), 1)
 
     def test_missing_proc_is_a_source_error(self):
         s = self.make()
