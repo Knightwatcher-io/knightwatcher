@@ -828,7 +828,7 @@ loaded again:
   is missing, and this page accepts only signed packs`), and one whose signature does not verify,
   so no look resolves and the page draws the knight from the code in `knight.js`.
 
-**Today the base pack ships unsigned, so a deployed page draws the knight from code.**
+**Today the base pack ships signed with `kw1`, so a deployed page draws the knight from it.**
 
 The code path keeps a deployed display drawing the present knight whenever its base pack is
 refused. Both paths give the same pixels: the call record and the screenshots prove it (see
