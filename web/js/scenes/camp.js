@@ -64,9 +64,13 @@
     g3: { cls: 'ground', kind: 'floor', x: 200, y: 530, w: 88, h: 112 }
   };
 
+  /* Where a foe may stand: left of the knight by choice, on the ground from the left edge to the
+     pie's stone, clear of the stone, the fire and the log. */
+  const FOE_ZONE = { side: -1, spans: [[70, 494]] };
+
   KW.scenes.camp = {
     spot: 88, places: PLACES, outdoors: true,
     rounds: [{ x: 88, act: 'sniff', dur: 22 }, { x: 68, act: 'yawn', dur: 14 }, { x: 96, act: 'look', dur: 16 }],
-    paint, draw
+    paint, draw, foeZone: FOE_ZONE
   };
 })(window.KW);

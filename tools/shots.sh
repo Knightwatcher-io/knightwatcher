@@ -56,6 +56,14 @@ SHOTS=(
   "arm-house|bar=0&t=2300&is=house&arm=one"
   "arm-update|bar=0&t=1250&on=update&arm=one"
   "arm-swat-left|bar=0&t=1330&is=battlement&f=6&sw=1&arm=one"
+  "goblin-rise|bar=0&t=460&is=battlement&e=goblin"
+  "goblin-bonk|bar=0&t=1658&is=battlement&e=goblin"
+  "goblin-poof|bar=0&t=1900&is=battlement&e=goblin"
+  "goblin-camp-rise|bar=0&t=500&is=camp&e=goblin"
+  "goblin-camp-bonk|bar=0&t=1658&is=camp&e=goblin"
+  "goblin-camp-poof|bar=0&t=2400&is=camp&e=goblin"
+  "goblin-camp-g3|bar=0&t=1300&is=camp&e=goblin&th=pi,machine,vm,box"
+  "arm-goblin-bonk|bar=0&t=1658&is=battlement&e=goblin&arm=one"
 )
 
 take() {

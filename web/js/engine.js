@@ -22,10 +22,11 @@
 
   /* The quiet scenes take turns, each for the input's turnMs. */
   const TURNS = ['battlement', 'camp', 'house', 'yard'];
-  /* Each event lasts dur ms and plays only in the scenes listed. */
+  /* Each event lasts dur ms and plays only in the scenes listed. An event with a foe names it (in
+     KW.props.FOES) and the exit it leaves by (in FOE.exits, below). */
   const OUTDOORS = Object.keys(KW.scenes).filter(k => KW.scenes[k].outdoors);
   const EVENTS = {
-    goblin: { dur: 3400, where: ['battlement', 'camp'] },
+    goblin: { dur: 3400, where: ['battlement', 'camp'], foe: 'goblin', exit: 'poof' },
     crate:  { dur: 4200, where: OUTDOORS },
     feast:  { dur: 3600, where: ['battlement', 'camp', 'yard', 'house'] } };
 
@@ -71,6 +72,163 @@
     if (text) KW.ui.caption(text, e.dur + 1500);
     if (w.lv >= 3 || !e.where.includes(w.scene || idleScene(frozen() ? KW.hooks.t : performance.now())) || swat) return;
     ev = { type, t0: frozen() ? 0 : performance.now(), dur: e.dur };
+  }
+
+  /* ---- Foes -------------------------------------------------------------------------------------
+     An event with a foe (the goblin of ip_banned) plays in three parts, each read from a table so
+     that a later foe reuses them with only its own description (KW.props.FOES, which gives its
+     poses, height, half width, middle and crown):
+       the entrance  up from behind the scene's wall (wallAt) or out of a hole in the ground, a
+                     peek, a hop to the ground, a face pulled at the knight, a flinch;
+       the strike    the knight's own swing (KW.knight.swing), stopped where the blade first meets
+                     the foe's crown, then a bounce back and a return to the stance, so the blade
+                     never passes through the foe;
+       the exit      what the foe leaves by; the one exit built is the poof.
+     Times are in ms from the start of the event; an exit's are from the moment of the hit. */
+  const FOE = {
+    // the distance from the knight's middle to the foe's, least, wanted and most
+    gap: [150, 210, 240],
+    // how far a foe keeps from the box of a watched thing's place, beyond its own half width
+    clear: 0,
+    enter: { open: [60, 260], rise: [250, 650], peek: [650, 850], hop: [850, 1150], land: [1150, 1230], taunt: [1230, 1480], brace: 1480,
+      // how high above the line it peeks (its feet below the line by this), and clears the line in its hop
+      peekBelow: 72, hopOver: 26, squash: [.14, .1], tauntFrame: 110,
+      // the line a foe is clipped to while in its hole: the hole's middle, below the ground
+      holeLine: 4 },
+    strike: { at: 1250, dur: 900, rebound: 80, recover: 560, kick: .32, eyes: 500 },
+    exits: {
+      // gone in a puff of smoke: struck (squashed for 120 ms), the cloud at 140, the foe hidden
+      // at 170 behind it, sparkles from 240, the knight pleased at 640, a hole closed by 1190
+      poof: { struck: 140, squash: [120, .1, .08], cloud: 140, gone: 170, sparkles: 240, pleased: 640, close: [840, 1190], impact: 160 }
+    }
+  };
+  const segQ = (el, a, b) => clamp01((el - a) / (b - a));
+
+  /* Where the foe F stands with the knight at kx in scene sc, as { x, side }, or null when there is
+     no room. The scene's foeZone gives the side tried first and the spans of ground clear of its
+     own props; the places that hold a watched thing on the ground or the pie's are kept clear too.
+     The spot is the one nearest the wanted gap on the first side that has room. */
+  function foeSpot(F, sc, things, places, kx) {
+    const z = sc.foeZone; if (!z) return null;
+    const [gMin, gWant, gMax] = FOE.gap, m = F.w + FOE.clear, blocked = [];
+    for (const th of things || []) {
+      const pl = th && places && places[th.place];
+      if (pl && (pl.cls === 'pie' || pl.cls === 'ground')) blocked.push([pl.x - pl.w / 2 - m, pl.x + pl.w / 2 + m]);
+    }
+    const first = z.side < 0 ? -1 : 1;
+    for (const side of [first, -first]) {
+      const want = kx + side * gWant, lo = side > 0 ? kx + gMin : kx - gMax, hi = side > 0 ? kx + gMax : kx - gMin;
+      const ok = x => x >= lo && x <= hi && z.spans.some(([a, b]) => x >= a && x <= b) && !blocked.some(([a, b]) => x > a && x < b);
+      const cands = [want, lo, hi];
+      for (const sp of z.spans.concat(blocked)) cands.push(sp[0], sp[1]);
+      let pick = null;
+      for (const x of cands) if (ok(x) && (pick === null || Math.abs(x - want) < Math.abs(pick - want))) pick = x;
+      if (pick !== null) return { x: Math.round(pick), side };
+    }
+    return null;
+  }
+
+  /* The blade in the knight's pose o: its frame and its extent along it, outline included. */
+  function bladeOf(o) {
+    const b = K.rest.blade() || { from: 34, to: 263, half: 15 }, m = K.rig(o).anchors.main;
+    return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: b.to + 7, half: b.half + 4 };
+  }
+  /* How far the blade is short of the nearest point of the foe's crown, in pixels: below 0 once
+     it touches. dir is the way the swing cuts; a point the blade has not reached is ahead of it. */
+  function bladeGap(bl, F, fx, side, floor, dir) {
+    const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), nx = Math.cos(bl.a) * dir, ny = Math.sin(bl.a) * dir;
+    let gap = Infinity;
+    for (const [cx, cy] of F.crown) {
+      const px = fx - side * cx - bl.x, py = floor + cy - bl.y, along = px * sx + py * sy;
+      if (along >= bl.from && along <= bl.to) gap = Math.min(gap, px * nx + py * ny - bl.half);
+    }
+    return gap;
+  }
+  /* How far through the swing (0 to 1) the blade meets the foe's crown, the knight in pose o (at
+     rest, its bob still) at o.x; 1 when it never does. Found to a thousandth of the swing. */
+  function contactQ(F, fx, side, o) {
+    const p = Object.assign({}, o, { bob: 0 }), at = q => { Object.assign(p, { gx: o.gx, gy: o.gy, wang: o.wang }); K.swing(p, q, side); return bladeGap(bladeOf(p), F, fx, side, o.floor, side); };
+    let lo = 0, hi = null;
+    for (let q = 0; q <= .55 + 1e-9; q += .005) { if (at(q) <= 0) { hi = q; break; } lo = q; }
+    if (hi === null) return 1;
+    for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (at(mid) <= 0) hi = mid; else lo = mid; }
+    return lo;
+  }
+  /* The plan of a foe's event, worked out once on its first frame: the foe, where it stands, the
+     line it comes over, and when the blade meets it. null when it has no room. */
+  function foePlan(type, sc, s, o) {
+    const e = EVENTS[type], F = P.FOES[e.foe], spot = F && foeSpot(F, sc, s.things, s.places, o.x);
+    if (!spot) return null;
+    const burrow = !sc.wallAt, lineAt = burrow ? () => V.HFL + FOE.enter.holeLine : sc.wallAt;
+    const q = contactQ(F, spot.x, spot.side, o), S = FOE.strike;
+    return { F, x: spot.x, side: spot.side, burrow, lineAt, q, hit: q < 1 ? Math.round(S.at + q * S.dur) : S.at + S.dur, exit: FOE.exits[e.exit] };
+  }
+
+  /* The strike on the knight's pose o at el: the swing until the hit, then the bounce back and the
+     return to the stance the pose began in. */
+  function strike(o, el, pl) {
+    const S = FOE.strike, base = { gx: o.gx, gy: o.gy, wang: o.wang };
+    if (el < S.at) return;
+    if (el < pl.hit) { K.swing(o, (el - S.at) / S.dur, pl.side); return; }
+    if (pl.q >= 1) { if (el < S.at + S.dur) K.swing(o, (el - S.at) / S.dur, pl.side); return; }
+    const r = el - pl.hit; if (r >= S.rebound + S.recover) return;
+    const c = { gx: 0, gy: 0, wang: 0 }; K.swing(c, pl.q, pl.side);
+    const b = { gx: c.gx - pl.side * .5, gy: c.gy - 2, wang: c.wang - pl.side * S.kick };
+    const [f, t, k] = r < S.rebound ? [c, b, ease(r / S.rebound)] : [b, base, ease(clamp01((r - S.rebound) / S.recover))];
+    o.gx = lerp(f.gx, t.gx, k); o.gy = lerp(f.gy, t.gy, k); o.wang = lerp(f.wang, t.wang, k); o.eyes = 'angry';
+  }
+
+  /* What the foe looks like at el: its pose, its feet, which way it faces, its squash, whether it
+     is still behind the line (and clipped to above it), the hole's opening, and what it leaves. */
+  function foeAt(el, pl) {
+    const N = FOE.enter, X = pl.exit, HFL = V.HFL, F = pl.F, L = pl.burrow ? HFL : pl.lineAt(pl.x), deep = L + F.h + 12;
+    const st = { pose: 'climb', x: pl.x, y: deep, face: -pl.side, sx: 1, sy: 1, behind: true, show: el >= N.rise[0], hole: 0, fx: [] };
+    if (pl.burrow) st.hole = ease(segQ(el, N.open[0], N.open[1]));
+    if (el < N.peek[0]) st.y = lerp(deep, L + N.peekBelow, ease(segQ(el, N.rise[0], N.rise[1])));
+    else if (el < N.hop[0]) st.y = L + N.peekBelow + (Math.floor(el / 110) % 2);
+    else if (el < N.hop[1]) {
+      const q = segQ(el, N.hop[0], N.hop[1]), top = L - N.hopOver;
+      st.y = q < .5 ? lerp(L + N.peekBelow, top, ease(q * 2)) : lerp(top, HFL, (q - .5) * 2 * (q - .5) * 2);
+      st.behind = q < .5;
+    } else { st.y = HFL; st.behind = false; st.pose = 'stand'; }
+    if (el >= N.land[0] && el < N.land[1]) { const k = Math.sin(segQ(el, N.land[0], N.land[1]) * Math.PI); st.sy = 1 - N.squash[0] * k; st.sx = 1 + N.squash[1] * k; }
+    if (el >= N.taunt[0] && el < N.taunt[1]) st.pose = Math.floor((el - N.taunt[0]) / N.tauntFrame) % 2 ? 'taunt1' : 'taunt0';
+    if (el >= N.brace && el < pl.hit) st.pose = 'brace';
+    if (el < pl.hit) return st;
+    const r = el - pl.hit, top = F.crown.reduce((a, c) => (c[1] < a[1] ? c : a));
+    st.pose = 'hit';
+    const k = Math.sin(segQ(r, 0, X.squash[0]) * Math.PI); st.sy = 1 - X.squash[1] * k; st.sx = 1 + X.squash[2] * k;
+    if (r < X.impact) st.fx.push({ kind: 'impact', x: pl.x - pl.side * top[0], y: HFL + top[1] - 2 });
+    if (r >= X.gone) st.show = false;
+    if (r >= X.cloud && r < X.cloud + P.CLOUD_MS) st.fx.push({ kind: 'cloud', x: pl.x, y: HFL - F.mid, el: r - X.cloud });
+    if (r >= X.sparkles && r < X.sparkles + P.SPARKLE_MS) st.fx.push({ kind: 'sparkles', x: pl.x, y: HFL - F.mid, el: r - X.sparkles });
+    if (pl.burrow) st.hole = 1 - ease(segQ(r, X.close[0], X.close[1]));
+    return st;
+  }
+
+  /* Clips to above the line: for each column x from x0 to x1, from the top down to lineAt(x). */
+  function clipAbove(lineAt, x0, x1) {
+    main.beginPath(); let run = x0, y = lineAt(x0);
+    for (let x = x0 + 1; x <= x1 + 1; x++) { const yy = x <= x1 ? lineAt(x) : NaN; if (yy !== y) { main.rect(run, V.HT, x - run, y - V.HT); run = x; y = yy; } }
+    main.clip();
+  }
+  /* The hole and the foe, before the knight. */
+  function foeHD(pl, st, el) {
+    if (pl.burrow) { P.holeHD(pl.x, V.HFL, st.hole); P.clodsHD(pl.x, V.HFL, el - FOE.enter.open[0]); }
+    if (!st.show) return;
+    const F = pl.F, cv = F.pose(st.pose), [ax, ay] = F.anchor;
+    main.save();
+    if (st.behind) clipAbove(pl.lineAt, Math.round(st.x - ax), Math.round(st.x + ax));
+    main.translate(Math.round(st.x), Math.round(st.y)); main.scale((st.face > 0 ? -1 : 1) * st.sx, st.sy); main.drawImage(cv, -ax, -ay);
+    main.restore();
+  }
+  /* What the foe leaves by, after the knight. */
+  function foeFxHD(pl, st) {
+    for (const f of st.fx) {
+      if (f.kind === 'impact') P.poofHD(f.x, f.y);
+      else if (f.kind === 'cloud') P.cloudHD(f.x, f.y, f.el, pl.F.h);
+      else if (f.kind === 'sparkles') P.sparklesHD(f.x, f.y, f.el, pl.F.h);
+    }
   }
 
   /* ---- Watched things in their places --------------------------------------------------------
@@ -203,6 +361,8 @@
     if (w.id === 'thing_down') { const px = KW.things.placeX(s, w.place); o.look = px === null ? 0 : Math.sign(px - kx); }
     if (sc.act) sc.act(t, s);
     o.x = kx;
+    // a foe's event: where the foe stands and when the blade meets it, worked out on its first frame
+    if (ev && ev.plan === undefined) ev.plan = EVENTS[ev.type].foe ? foePlan(ev.type, sc, s, o) : null;
 
     // the swat, the events. With time frozen a swat starts only from the address (sw=1), never by
     // itself, since one started by a frame would show only from the next.
@@ -217,13 +377,15 @@
     } else if (!freeze && funOK && !ev && flies.some(f => !f.dead && t - f.born > 1300) && t - lastSwat > 30000) startSwat(t);
     let p = 0; const type = ev && ev.type;
     if (ev) { p = (t - ev.t0) / ev.dur; if (p >= 1) ev = null; }
-    const live = ev ? type : null, el = ev ? t - ev.t0 : 0, gx = kx + 170, crX = Math.max(HL + 70, kx - 320), hitAt = 900 + .47 * 900;
-    // the goblin comes up from behind whatever the scene puts in its way, or out of the grass
-    const wallY = sc.wallAt ? sc.wallAt(gx) : HFL, gobTop = wallY - 46;
-    if (live === 'goblin') {
-      if (el > 500) { o.eyes = 'angry'; o.look = 1; }
-      if (el > 900 && el < 1800) K.swing(o, (el - 900) / 900, 1);
-      if (el > 2000) { o.eyes = 'happy'; o.mouth = 'smile'; o.look = 0; }
+    const live = ev ? type : null, el = ev ? t - ev.t0 : 0, crX = Math.max(HL + 70, kx - 320);
+    // a foe comes up from behind whatever the scene puts in its way, or out of the ground; the
+    // knight stands still for it (no bob), glares, strikes and is pleased when it has gone
+    const plan = ev ? ev.plan : null, foe = plan ? foeAt(el, plan) : null;
+    if (plan) {
+      o.bob = 0;
+      if (el > FOE.strike.eyes) { o.eyes = 'angry'; o.look = plan.side; }
+      strike(o, el, plan);
+      if (el > plan.hit + plan.exit.pleased) { o.eyes = 'happy'; o.mouth = 'smile'; o.look = 0; }
     }
     if (live === 'crate') { o.look = -1; if (p < .6) o.eyes = 'wide'; else { o.eyes = 'happy'; o.mouth = 'smile'; } }
     if (live === 'feast') { o.eyes = 'happy'; o.mouth = 'chew'; o.food = 1; o.hearts = p > .25; }
@@ -234,9 +396,7 @@
     D.setCtx(main); main.setTransform(1, 0, 0, 1, 0, 0); main.imageSmoothingEnabled = false; alpha(1); main.fillStyle = '#000'; main.fillRect(0, 0, V.LW, V.LH);
     if (sc.paint) backdrop(scene + '|' + (sc.key ? sc.key(s) : ''), sc, s, sway);
     fine(); sc.draw(t, s); fine();
-    if (live === 'goblin' && el <= hitAt) {
-      main.save(); main.beginPath(); main.rect(HL, HT, HR - HL, wallY - HT); main.clip(); P.goblinHD(gx, wallY - 46 * ease(clamp01(el / 700))); main.restore();
-    }
+    if (foe) foeHD(plan, foe, el);
     if (live === 'crate') {
       const q = Math.min(1, p / .6), y = HT - 130 + (HFL - 50 - HT + 130) * q, x = crX + Math.sin(p * 14) * 15 * (1 - q);
       if (p < .9 || Math.floor(t / 110) % 2) { if (q < 1) P.chuteHD(x + 30, y); P.crateHD(x, y); }
@@ -248,10 +408,7 @@
       else { const a = t - f.dead; if (a < 260) P.poofHD(f.at[0], f.at[1]); if (a < 900) Rh(f.at[0] - 3, f.at[1] + a * a / 900, 6, 5, '#3a3344'); }
     }
     for (let i = flies.length - 1; i >= 0; i--) if (flies[i].dead && t - flies[i].dead > 1000) flies.splice(i, 1);
-    if (live === 'goblin' && el > hitAt) {
-      const q = (el - hitAt) / (EVENTS.goblin.dur - hitAt); P.goblinHD(gx + q * 600, gobTop - Math.sin(q * Math.PI * .85) * 250);
-      if (el < hitAt + 350) P.poofHD(gx + 30, gobTop + 16);
-    }
+    if (foe) foeFxHD(plan, foe);
     if (w.id === 'attack') { alpha(.08 + .07 * Math.sin(t / 220)); Rh(HL, HT, HR - HL, HH - HT + 20, D.C.R1); alpha(1); }
     if (w.id === 'night' && inBed) { alpha(.5); Rh(HL, HT, HR - HL, HH - HT + 20, '#000'); alpha(1); }
     if (sc.over) { fine(); sc.over(t, s); fine(); }
@@ -263,6 +420,9 @@
 
   Object.assign(E, {
     EVENTS, TURNS,
+    /* The foe player's parts, for the tests: the tables, where a foe stands, when the blade meets
+       it, the plan of an event, the strike on a pose and the foe at a moment. */
+    foe: { FOE, spot: foeSpot, contactQ, bladeOf, bladeGap, plan: foePlan, strike, at: foeAt },
     init(ctx) { main = ctx; D.setCtx(ctx); },
     draw, addFly, startSwat, fireEvent,
     /* The scene on screen now. */

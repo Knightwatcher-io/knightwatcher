@@ -1,7 +1,8 @@
 /* Knightwatcher: the props that more than one scene uses, or that the engine draws over a scene:
    the raspberry pie (the Raspberry Pi) and the other watched things, fire, sky and stars, the
-   greatsword, brick, the barrel, the table and the wall torch, and the flies, the goblin, the crate
-   and its parachute. */
+   greatsword, brick, the barrel, the table and the wall torch, the flies, the crate and its
+   parachute, and the foes (the goblin) with the smoke, the sparkles and the hole they come and
+   go by. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, C = D.C;
@@ -359,18 +360,227 @@
   }
   function flyHD(x, y, flap) { alpha(.85); ell(x - 6, y - (flap ? 6 : 2), 6, 3, C.W); ell(x + 6, y - (flap ? 6 : 2), 6, 3, C.W); alpha(1); ell(x, y, 5, 4, '#3a3344'); Rh(x - 3, y - 2, 2, 2, C.R1); }
   function poofHD(x, y) { for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; strip(x + Math.sin(a) * 6, y - Math.cos(a) * 6, x + Math.sin(a) * 17, y - Math.cos(a) * 17, 1.5, 1.5, '#fff3a0'); } ell(x, y, 4, 4, C.W); }
-  function goblinHD(x, y) {
-    const g = [[.2, '#b4f0a0'], [.7, '#8fe07a'], [1, '#5fae4f']];
-    poly([[x + 2, y + 6], [x + 14, y + 26], [x + 20, y + 14]], C.K); poly([[x + 58, y + 6], [x + 46, y + 26], [x + 40, y + 14]], C.K);
-    poly([[x + 5, y + 10], [x + 14, y + 23], [x + 18, y + 15]], '#5fae4f'); poly([[x + 55, y + 10], [x + 46, y + 23], [x + 42, y + 15]], '#5fae4f');
-    ell(x + 30, y + 26, 22, 20, C.K); ell(x + 30, y + 26, 19, 17, g);
-    for (const ex of [21, 39]) { ell(x + ex, y + 22, 6, 6, C.W); ell(x + ex + 1, y + 23, 3, 3, C.K); }
-    rrect(x + 19, y + 32, 22, 8, 3, C.K); for (let i = 0; i < 4; i++) Rh(x + 21 + i * 5, y + 33, 3, 3, C.W);
-  }
   function chuteHD(cx, y) {
     ell(cx, y - 44, 52, 34, C.K, null, y - 44); ell(cx, y - 44, 49, 31, [[.2, C.R1], [.4, C.W], [.6, C.R1], [.8, C.W], [1, C.R1]], null, y - 45);
     for (const dx of [-48, -18, 18, 48]) strip(cx + dx, y - 44, cx + dx * .55, y, 1, 1, C.S3);
   }
 
-  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, sky, starsHD, flameHD, pieHD, raspberryHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf, crateHD, flyHD, poofHD, goblinHD, chuteHD };
+  /* ---- The goblin -------------------------------------------------------------------------------
+     A foe of the ip_banned event, full size beside the knight: 160 pixels from its feet to the top
+     of the saucepan it wears for a helmet, in a patched sackcloth tunic, all ears and nose. It is
+     drawn facing left, frontal like the knight with its face turned the way it looks, standing on
+     its feet at (x, y), lit from the left. Each pose is painted once into a canvas of its own and
+     blitted from there by the engine, mirrored or squashed as the moment needs (see foeSprite). */
+  const GOB = {
+    skin: [[.16, '#c8f3ae'], [.55, '#93d97c'], [.86, '#64b553'], [1, '#3f8a3a']], limb: [[.3, '#93d97c'], [.75, '#78c565'], [1, '#4f9a45']],
+    jaw: [[.4, '#64b553'], [1, '#3f8a3a']], arm: '#86d070', finger: '#93d97c', nose: '#78c565', dark: '#2f6b3a', light: '#c8f3ae',
+    earIn: '#f2a08c', blush: '#e98f7c', tongue: '#ff6f8a', tongueLine: '#d24a6a', mouth: '#4a1424',
+    tunic: [[.15, '#c99a5b'], [.55, '#a8763c'], [.85, '#855726'], [1, '#5f3b17']], patch: '#d7b98a', pot: [[.14, C.S2], [.5, C.S3], [.85, C.S4], [1, '#3a4150']]
+  };
+  function gLimb(pts) { SP.stroke(pts, 7.5, C.K); SP.stroke(pts, 4.5, GOB.arm); }
+  /* A three-fingered hand at (hx, hy), the fingers spread along the angle a (0 is up). */
+  function gHand(hx, hy, a) {
+    const f = [-.65, 0, .65].map(d => [hx + Math.sin(a + d) * 9, hy - Math.cos(a + d) * 9]);
+    for (const [fx, fy] of f) ell(fx, fy, 4.5, 4.5, C.K);
+    ell(hx, hy, 9, 8, C.K);
+    for (const [fx, fy] of f) ell(fx, fy, 2.5, 2.5, GOB.finger);
+    ell(hx, hy, 6.5, 5.5, GOB.limb); Rh(hx - 4, hy - 3, 2, 2, GOB.light);
+  }
+  /* An ear from the side of the head at (bx, by), pointing to side d, its tip lowered by droop. */
+  function gEar(bx, by, d, droop) {
+    const tip = [bx + d * 46, by - 20 + droop];
+    poly([[bx, by - 15], [tip[0] + d * 3, tip[1] - 2], [bx + d * 2, by + 16]], C.K);
+    poly([[bx + d * 2, by - 12], [tip[0] - d * 2, tip[1] - 1], [bx + d * 3, by + 12]], GOB.limb);
+    poly([[bx + d * 5, by - 7], [bx + d * 2 + (tip[0] - bx - d * 2) * .62, by - 2 + (tip[1] - by + 2) * .62], [bx + d * 6, by + 7]], GOB.earIn);
+  }
+  function gFoot(fx, fy, d) {
+    const cx = fx + d * 7;
+    ell(cx, fy + 2, 18, 8, C.K); ell(cx, fy + 1, 15, 5.5, GOB.limb);
+    for (const k of [0, 5]) Rh(cx + d * (9 + k) - (d < 0 ? 1 : 0), fy - 3, 1, 4, GOB.dark);
+    Rh(cx - 8, fy - 3, 7, 1, GOB.light);
+  }
+  function gLegs(x, y) {
+    const L = [[x - 13, y - 40], [x - 18, y - 10], [x + 13, y - 40], [x + 18, y - 10]];
+    for (let i = 0; i < 4; i += 2) { strip(L[i][0], L[i][1], L[i + 1][0], L[i + 1][1], 8, 7, C.K); strip(L[i][0], L[i][1], L[i + 1][0], L[i + 1][1], 5, 4, GOB.limb); }
+    gFoot(L[1][0], L[1][1], -1); gFoot(L[3][0], L[3][1], 1);
+  }
+  function gTunic(x, y) {
+    Rh(x - 11, y - 96, 18, 10, C.K); Rh(x - 9, y - 96, 14, 9, GOB.dark);
+    for (let i = -40; i < 32; i += 12) poly([[x + i, y - 37], [x + i + 6, y - 27], [x + i + 12, y - 37]], C.K);
+    poly([[x - 31, y - 91], [x + 29, y - 91], [x + 38, y - 34], [x - 40, y - 34]], C.K);
+    poly([[x - 28, y - 88], [x + 26, y - 88], [x + 35, y - 37], [x - 37, y - 37]], GOB.tunic);
+    for (let i = -40; i < 32; i += 12) poly([[x + i + 3, y - 38], [x + i + 6, y - 31], [x + i + 9, y - 38]], i < -10 ? GOB.tunic[1][1] : GOB.tunic[2][1]);
+    // the patch, stitched on
+    Rh(x + 5, y - 84, 16, 14, C.K); Rh(x + 7, y - 82, 12, 10, GOB.patch); for (let k = 0; k < 3; k++) { Rh(x + 4, y - 81 + k * 4, 3, 1, C.K); Rh(x + 19, y - 81 + k * 4, 3, 1, C.K); }
+    // the rope belt and its knot
+    Rh(x - 37, y - 64, 72, 8, C.K); Rh(x - 35, y - 63, 68, 6, C.N0); for (let i = 0; i < 68; i += 5) Rh(x - 35 + i, y - 63, 2, 6, C.N2);
+    strip(x + 14, y - 58, x + 18, y - 44, 3, 3, C.K); strip(x + 14, y - 58, x + 18, y - 44, 1.5, 1.5, C.N0);
+    ell(x + 13, y - 60, 6, 5, C.K); ell(x + 13, y - 60, 4, 3, C.N1);
+  }
+  /* The eyes: open, wide (alarmed), squint (pleased with itself) or shut tight (struck). */
+  function gEyes(x, y, kind, look) {
+    const E = [[x - 21, y - 117], [x + 4, y - 118]];
+    for (let i = 0; i < 2; i++) {
+      const [cx, cy] = E[i], d = i ? 1 : -1;
+      if (kind === 'shut') { strip(cx + 7 * d, cy - 6, cx - 5 * d, cy, 2.2, 2.2, C.K); strip(cx - 5 * d, cy, cx + 7 * d, cy + 6, 2.2, 2.2, C.K); continue; }
+      if (kind === 'squint') { Rh(cx - 7, cy - 3, 14, 3, C.K); Rh(cx - 10, cy - 1, 4, 5, C.K); Rh(cx + 6, cy - 1, 4, 5, C.K); continue; }
+      const wide = kind === 'wide';
+      ell(cx, cy, wide ? 11 : 9.5, wide ? 13 : 11.5, C.K); ell(cx, cy, wide ? 9 : 7.5, wide ? 11 : 9.5, C.W);
+      const px = cx + (wide ? 0 : -2 + look * 2), py = cy + 1;
+      ell(px, py, wide ? 3 : 4, wide ? 3.5 : 5, C.K); Rh(px - (wide ? 2 : 3), py - 3, 2, 2, C.W);
+    }
+  }
+  function gBrows(x, y, kind) {
+    if (kind === 'none') return;
+    const B = kind === 'worried' ? [[x - 31, y - 128, x - 14, y - 133], [x - 3, y - 134, x + 13, y - 129]]
+      : [[x - 32, y - 131, x - 13, y - 135], [x - 4, y - 131, x + 13, y - 128]];
+    for (const b of B) strip(b[0], b[1], b[2], b[3], 2.5, 2.5, C.K);
+  }
+  function gNose(x, y) {
+    strip(x - 8, y - 109, x - 28, y - 98, 7, 5, C.K); strip(x - 8, y - 109, x - 28, y - 98, 4, 2.5, GOB.nose);
+    ell(x - 31, y - 96, 7.5, 6.5, C.K); ell(x - 31, y - 97, 5.5, 4.5, [[.4, GOB.finger], [1, '#5fae4f']]); Rh(x - 35, y - 100, 2, 2, GOB.light);
+  }
+  /* The mouth: a toothy grin, the grin with the tongue out, a small gulp, or a wail. */
+  function gMouth(x, y, kind) {
+    const mx = x - 3, my = y - 88;
+    if (kind === 'small') { ell(mx + 2, my, 4, 4, C.K); return; }
+    if (kind === 'wail') { ell(mx, my + 1, 13, 10, C.K); ell(mx, my + 2, 10, 7, GOB.mouth); ell(mx, my + 6, 6, 3, GOB.tongue); Rh(mx - 7, my - 6, 5, 4, C.W); Rh(mx + 2, my - 6, 5, 4, C.W); return; }
+    ell(mx, my - 2, 19, 9, C.K, my - 2); ell(mx, my - 2, 15, 6, GOB.mouth, my - 1);
+    Rh(mx - 9, my - 1, 5, 4, C.W); Rh(mx + 2, my - 1, 5, 4, C.W);
+    if (kind === 'tongue') { ell(mx - 4, my + 9, 7, 7, C.K); ell(mx - 4, my + 8, 5, 5, GOB.tongue); Rh(mx - 4, my + 5, 1, 5, GOB.tongueLine); }
+  }
+  /* The saucepan, dy below where it sits on the head, its handle out behind. */
+  function gPot(x, y, dy) {
+    const py = y + dy - 4;
+    strip(x + 26, py - 136, x + 54, py - 146, 5, 5, C.K); strip(x + 26, py - 136, x + 52, py - 145, 2.5, 2.5, [[.4, C.N0], [1, C.N2]]);
+    rrect(x - 31, py - 156, 56, 24, 8, C.K); rrect(x - 28, py - 153, 50, 19, 6, GOB.pot);
+    Rh(x - 21, py - 151, 3, 14, C.S1); Rh(x - 2, py - 150, 6, 2, C.S4); Rh(x - 1, py - 148, 4, 1, '#3a4150');
+    rrect(x - 36, py - 138, 66, 9, 3, C.K); Rh(x - 34, py - 136, 62, 5, C.S2); Rh(x - 34, py - 136, 62, 1, C.S1); Rh(x + 14, py - 133, 16, 2, C.S3);
+  }
+  /* The arms of each pose, both sides: the shoulder, the elbow and the hand from the feet, and
+     the angle the fingers spread along. Arms in front of the body are marked front. */
+  const GOB_ARMS = {
+    hips: [[[-28, -84], [-48, -70], [-36, -56], 2.6], [[26, -84], [46, -70], [34, -56], -2.6]],
+    up: [[[-28, -84], [-50, -112], [-44, -146], -.2], [[26, -84], [48, -114], [42, -148], .2]],
+    ears0: [[[-28, -84], [-58, -98], [-48, -130], -.5], [[26, -84], [56, -98], [46, -132], .5]],
+    ears1: [[[-28, -84], [-60, -96], [-52, -128], -.9], [[26, -84], [58, -96], [50, -130], .9]],
+    clutch: [[[-28, -84], [-42, -64], [-16, -70], 1.2], [[26, -84], [40, -64], [12, -70], -1.2]],
+    flung: [[[-28, -84], [-58, -94], [-72, -110], -.9], [[26, -84], [56, -96], [70, -112], .9]]
+  };
+  const GOB_FRONT = { clutch: true };
+  /* The poses: arms, eyes, brows, mouth, how far the pot sits down (dy) and the ears droop. */
+  const GOB_POSES = {
+    stand: { arms: 'hips', eyes: 'open', brows: 'cheeky', mouth: 'grin' },
+    climb: { arms: 'up', eyes: 'open', brows: 'cheeky', mouth: 'grin' },
+    taunt0: { arms: 'ears0', eyes: 'squint', brows: 'cheeky', mouth: 'tongue' },
+    taunt1: { arms: 'ears1', eyes: 'open', brows: 'cheeky', mouth: 'tongue', look: -1 },
+    brace: { arms: 'clutch', eyes: 'wide', brows: 'worried', mouth: 'small', droop: 14 },
+    hit: { arms: 'flung', eyes: 'shut', brows: 'none', mouth: 'wail', pot: 6, droop: 16 }
+  };
+  function gArms(x, y, kind, front) {
+    if (!!GOB_FRONT[kind] !== front) return;
+    for (const [s, e, h, a] of GOB_ARMS[kind]) { gLimb([[x + s[0], y + s[1]], [x + e[0], y + e[1]], [x + h[0], y + h[1]]]); gHand(x + h[0], y + h[1], a); }
+  }
+  function goblinHD(x, y, pose) {
+    const p = GOB_POSES[pose] || GOB_POSES.stand, droop = p.droop || 0;
+    gArms(x, y, p.arms, false);
+    gLegs(x, y);
+    gTunic(x, y);
+    gEar(x - 33, y - 110, -1, droop); gEar(x + 27, y - 110, 1, droop + 4);
+    ell(x - 3, y - 109, 38, 30, C.K); ell(x - 3, y - 109, 35, 27, GOB.skin); ell(x - 3, y - 109, 35, 27, GOB.jaw, y - 95);
+    ell(x + 22, y - 104, 3, 3, GOB.dark); Rh(x + 21, y - 105, 1, 1, GOB.light);
+    ell(x + 18, y - 99, 6, 3, GOB.blush); ell(x - 34, y - 104, 4, 3, GOB.blush);
+    gEyes(x, y, p.eyes, p.look || 0); gBrows(x, y, p.brows);
+    gMouth(x, y, p.mouth);
+    gPot(x, y, p.pot || 0);
+    gNose(x, y);
+    gArms(x, y, p.arms, true);
+  }
+
+  /* ---- Foes -------------------------------------------------------------------------------------
+     What the engine's foe player (engine.js) needs of a foe, and nothing about which foe it is:
+       pose(name)  a canvas with the pose painted once, the feet at anchor; names are those of
+                   poses, and an unknown name gives stand
+       anchor      the feet in that canvas, [x, y]
+       h           its height from the feet to its top
+       w           half its width across the body, which must stay clear of a watched thing
+       mid         the middle of its body above the feet, where the smoke of its exit gathers
+       crown       the points of its top, [x, y] from the feet as drawn facing left: the knight's
+                   blade stops at the first of them it meets, so no blade passes through it
+     A later foe gives the same, at its own size, and the entrance and the exit work unchanged. */
+  const SPR = { w: 220, h: 230, ax: 110, ay: 214 };
+  function foeSprites(paint, poses) {
+    const cache = {};
+    return name => {
+      const n = Object.prototype.hasOwnProperty.call(poses, name) ? name : 'stand';
+      if (!cache[n]) {
+        const cv = document.createElement('canvas'); cv.width = SPR.w; cv.height = SPR.h;
+        const was = D.getCtx(); D.setCtx(cv.getContext('2d')); paint(SPR.ax, SPR.ay, n); D.setCtx(was);
+        cache[n] = cv;
+      }
+      return cache[n];
+    };
+  }
+  const FOES = {
+    goblin: { pose: foeSprites(goblinHD, GOB_POSES), poses: Object.keys(GOB_POSES), anchor: [SPR.ax, SPR.ay], size: [SPR.w, SPR.h], h: 160, w: 40, mid: 78,
+      crown: [[-83, -119], [-80, -112], [-36, -133], [-31, -152], [-23, -160], [0, -160], [17, -160], [30, -133], [54, -146], [76, -114]] }
+  };
+
+  /* ---- What a foe leaves by ---------------------------------------------------------------------
+     A four-pointed star with a dark outline, s from its middle to each point. */
+  function starHD(x, y, s, c) {
+    if (s < 1) return; const w = Math.max(2, s * .28);
+    poly([[x, y - s - 3], [x + w + 2, y], [x, y + s + 3], [x - w - 2, y]], C.K); poly([[x - s - 3, y], [x, y - w - 2], [x + s + 3, y], [x, y + w + 2]], C.K);
+    poly([[x, y - s], [x + w, y], [x, y + s], [x - w, y]], c); poly([[x - s, y], [x, y - w], [x + s, y], [x, y + w]], c);
+    Rh(x - 1, y - 1, 3, 3, C.W);
+  }
+  /* A cloud of smoke for a foe h tall, its middle at (x, y), el ms after it burst: it bursts from
+     55 per cent to full size in 100 ms, billows, then from 400 ms drifts up, shrinks and fades
+     out by 1100 ms. It is painted into a canvas of its own and faded as one, so the puffs show no
+     seams where they overlap. */
+  const PUFFS = [[0, -6, 40], [-38, 4, 30], [38, 0, 32], [-20, -44, 30], [22, -46, 31], [-28, 40, 27], [30, 38, 28], [0, 44, 30], [2, -78, 24], [-50, -26, 20], [50, -24, 21]];
+  const SMOKE = [[.2, C.W], [.62, C.S0], [.88, C.S1], [1, C.S2]], CLOUD_MS = 1100;
+  let cloudCv = null;
+  function cloudHD(x, y, el, h) {
+    if (el < 0 || el >= CLOUD_MS) return;
+    const k = h / 160, cw = Math.ceil(320 * k), ch = Math.ceil(340 * k), ox = cw / 2, oy = Math.round(180 * k);
+    if (!cloudCv) cloudCv = document.createElement('canvas');
+    if (cloudCv.width !== cw || cloudCv.height !== ch) { cloudCv.width = cw; cloudCv.height = ch; }
+    const c = cloudCv.getContext('2d'), was = D.getCtx();
+    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cw, ch); D.setCtx(c);
+    const grow = .55 + .45 * D.ease(D.clamp01(el / 100)), q = D.clamp01((el - 400) / 700), lift = 26 * q, shrink = 1 - .45 * q;
+    const P2 = PUFFS.map(([dx, dy, r], i) => [ox + dx * k * grow, oy + dy * k * grow - lift * (1 + i % 3 * .3), r * k * grow * shrink + Math.sin(el / 90 + i) * 1.5]);
+    for (const [px, py, r] of P2) ell(px, py, r + 3, r + 3, C.K);
+    for (const [px, py, r] of P2) ell(px, py, r, r, SMOKE);
+    for (const [px, py, r] of P2) if (r > 18) ell(px + r * .3, py + r * .35, r * .45, r * .3, C.S1);
+    D.setCtx(was);
+    alpha(1 - q); was.drawImage(cloudCv, Math.round(x - ox), Math.round(y - oy)); alpha(1);
+  }
+  /* Gold sparkles twinkling in turn round (x, y), el ms after the first, for a foe h tall: each
+     grows and shrinks over 420 ms. SPARKLE_MS is when the last has gone. */
+  const SPARKS = [[-58, -64, 0], [52, -30, 110], [-24, 36, 230], [34, -96, 330], [-6, -14, 470], [62, 30, 560]], SPARKLE_MS = 980;
+  function sparklesHD(x, y, el, h) {
+    const k = h / 160;
+    for (const [dx, dy, at] of SPARKS) { const q = (el - at) / 420; if (q < 0 || q > 1) continue; starHD(x + dx * k, y + dy * k - q * 10, 9 * Math.sin(q * Math.PI), C.G0); }
+  }
+  /* A hole in the grass with its middle at (x, y) on the ground, open by k (0 to 1): a ring of
+     earth round a dark pit, 88 pixels across when open, no wider than a foe's place beside a
+     watched thing. */
+  function holeHD(x, y, k) {
+    if (k <= 0) return;
+    ell(x, y + 4, 44 * k, 12 * k, C.K); ell(x, y + 3, 41 * k, 9 * k, [[.2, C.N1], [.7, C.N2], [1, C.N3]]);
+    ell(x, y + 4, 31 * k, 6.5 * k, C.K); ell(x, y + 5, 27 * k, 4.5 * k, '#07090a');
+  }
+  /* The clods a hole throws up as it opens, el ms after it starts to; gone by 540 ms or once they
+     fall back below the ground at y. */
+  function clodsHD(x, y, el) {
+    if (el < 0 || el > 540) return;
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i - 2.5) * .42, v = .42 + (i % 3) * .06, cx = x + Math.cos(a) * v * el, cy = y - 2 + Math.sin(a) * v * el + .0016 * el * el;
+      if (cy > y + 4) continue; Rh(cx - 4, cy - 3, 8, 7, C.K); Rh(cx - 2, cy - 1, 4, 3, i % 2 ? C.N2 : C.N1);
+    }
+  }
+
+  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, sky, starsHD, flameHD, pieHD, raspberryHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf, crateHD, flyHD, poofHD, chuteHD,
+    FOES, starHD, cloudHD, CLOUD_MS, sparklesHD, SPARKLE_MS, holeHD, clodsHD };
 })(window.KW);
