@@ -14,8 +14,9 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie, fire, sky and stars, flies, the goblin, the crate and its parachute |
-| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `draw(o)` draws the knight in it, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble |
+| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble; `build` holds the knight's measurements |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
+| `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them. Not loaded by `index.html` yet; see [packs.md](./packs.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events, drawing order |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
@@ -44,6 +45,76 @@ tapering bar between two points) take a colour or a list of `[fraction, colour]`
 shape. `pix` draws a shape given pixel by pixel, painting each pixel once so that the shape can
 fade without seams. `glow` lays a soft light and `dith` a dithered band. The palette is
 `KW.draw.C`, with lists of bands for steel, gold and leather.
+
+## The knight's rig
+
+`knight.js` draws the knight in two stages. `KW.knight.rig(o)` works out, from the pose `o`, a set
+of named points (the anchors) and named numbers (the values). The drawing then puts every shape at
+an anchor plus an offset, folding in a value where a shape changes size, and works out no position
+of its own.
+
+The root is the point between the feet on the ground: `X = round(o.x) + 4 * shake`, `Y = o.floor`,
+with `shake` the attack's tremble. The pose's `gx` and `gy` still count from the old corner of the
+knight's 240 by 300 box, 120 left of the root and 300 above it.
+
+| Anchor | Where | For the present knight |
+|---|---|---|
+| `root` | between the feet, on the ground | `(X, Y)` |
+| `footL`, `footR` | under each leg, on the ground | `(X ∓ 24, Y)` |
+| `hipL`, `hipR` | the top of each leg | `(X ∓ 24, Y - 74 + drop)` |
+| `hem` | the bottom of the torso | `(X, Y - 64 + drop)` |
+| `belt` | the belt line | `(X, Y - 102 + drop)` |
+| `neck` | the top of the torso | `(X, Y - 162 + drop)` |
+| `shoulderL`, `shoulderR` | the shoulder joints | `(X ∓ (54 + bloat), Y - 132 + drop)` |
+| `head` | the middle of the eye line | `(X + 5 * headDx, Y - 206 + drop + 5 * headDy)` |
+| `handL`, `handR` | the hands, placed by the grip | see below |
+| `main` | the weapon's frame, `[x, y, angle]` | see below |
+
+Every anchor is an `[x, y]` pair apart from `main`, and "left" is the viewer's left.
+
+The values are whole numbers: `drop`, how far the upper body sinks (`(bob + crouch) * 5`);
+`bloat`, how far each side swells when memory is tight (`bloat * 5`); `stepL` and `stepR`, 1 while
+that foot is lifted in the walk; `sway`, the plume's sway from -4 to 4; and the build's eight
+differences, `dShoulder`, `dChest`, `dWaist`, `dHip`, `dStance`, `dLeg`, `dHeight` and `dHead`.
+
+**The build.** The knight's shape is eight measurements in grid pixels, held in `KW.knight.build`:
+
+| Measurement | Meaning | Present knight |
+|---|---|---|
+| `shoulder` | half the span between the shoulder joints | 54 |
+| `chest` | half the width of the torso at the chest | 46 |
+| `waist` | half the width at the belt | 46 |
+| `hip` | half the width at the hem | 46 |
+| `stance` | half the distance between the middles of the legs | 24 |
+| `leg` | the height of the hips above the ground | 74 |
+| `height` | the height of the shoulders above the ground | 132 |
+| `head` | half the width of the bare skull | 51 |
+
+The present knight is the only build and the reference for the others: each difference is a
+build's measurement less the present knight's, so for the present knight all eight are 0. The
+anchors lean on them in full. `stance` moves the feet and hips sideways, `leg` raises the hips, the
+hem and the belt, `height` raises the neck, the shoulders and the head, `shoulder` widens the
+shoulders, and `head` raises the head, so that a bigger skull grows upwards from the neck. `chest`,
+`waist` and `hip` move no anchor. `rig(o, build)` takes another build, which only the tests pass.
+
+**The grip** is in the result's `grip` and places the hands and `main`:
+
+- `none`, when the sword is put away: the hands hang at `(X ∓ (64 + bloat), Y - 84 + drop)` and
+  `main` rests at the root with angle 0. The arms are drawn left, then right.
+- `hammer`, in the smithy: the left hand steadies the work at `(X + 45, Y - 104 + drop)`, and the
+  right swings the hammer from `(X + 80 + bloat, Y - 122 + drop)`, which is also `main`, with the
+  hammer's angle.
+- `two`, the greatsword in both hands: `main` is the middle of the grip and the blade's angle. The
+  hand on the side the blade leans to holds the grip 6 pixels up the blade, the other 30 down it.
+  The arm on the lean side is drawn before the blade and the other after it.
+
+The engine's own drawing hangs on the same anchors: the face on `head`; the crates, sweat, steam,
+the mark, the thought bubble, the progress bar and the speech bubble on `neck`; the hearts on
+`root`. The drumstick takes its height from `head` and its x from `neck`, so it follows the head up
+and down but not sideways, as it always has.
+
+`rig` fills the same object on every call and returns it, so a frame allocates nothing for it and a
+caller that keeps the result sees it change at the next call.
 
 ## The scene interface
 
@@ -207,11 +278,32 @@ Syntax, from the repository's root:
 for f in $(find web/js -name '*.js'); do node --check "$f" || exit 1; done
 ```
 
-The mapping from a state file, `judge`, the rules for events and the decision to reload:
+The mapping from a state file, `judge`, the rules for events and the decision to reload, and the
+knight's drawing and rig:
 
 ```bash
 node --test tests/web/
 ```
+
+`tests/web/knight.test.js` checks the knight call by call. It loads `draw.js`, `sprites.js`,
+`props.js` and `knight.js` under Node with an empty `window` and a fake canvas context that records
+every call and every property set, draws the knight in about a hundred poses, and compares each
+record with the one stored in `tests/web/fixtures/knight/`. For every pose that holds the number of
+calls, a hash of the whole record and a hash of each block of 128 calls; for one pose it holds the
+full record. Equal calls mean equal pixels, so a change that should leave the knight alone is
+checked in about a second, before the screenshots. A failure names the pose and the block of calls
+where the first difference lies, or the exact call in the pose stored in full. To see every call
+that differs, dump the records of both trees and compare the folders:
+
+```bash
+KNIGHT_LOG=dump:/tmp/kw-calls-old node --test tests/web/knight.test.js   # in the tree before
+KNIGHT_LOG=dump:/tmp/kw-calls-new node --test tests/web/knight.test.js   # in the tree after
+diff -r /tmp/kw-calls-old /tmp/kw-calls-new
+```
+
+The stored record changes only when the knight is meant to look different. Store it again from the
+code as it is with `KNIGHT_LOG=write node --test tests/web/knight.test.js`, and look at the
+screenshots before trusting it.
 
 The deploy tool, which it runs against temporary folders and copies of `web/`, never the
 repository's own:

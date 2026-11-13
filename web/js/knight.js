@@ -1,17 +1,93 @@
 /* Knightwatcher: the knight, on the fine grid. Open helm, red plume, blue tabard, a greatsword held
-   in both hands. pose() turns a condition into the knight's pose, and knightHD() draws it. */
+   in both hands. pose() turns a condition into the knight's pose, rig() turns a pose into the points
+   the knight is drawn on, and knightHD() draws it there. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C, U = V.U;
   const { alpha, Rh, ell, rrect, poly, strip, lerp, ease, STEEL, STEEL2, STEEL3, GOLD, LEATHER } = D;
   const SKINS = { F: [[.14, C.F0], [.72, C.F1], [1, C.F2]], L: [[.14, '#dff3bd'], [.72, '#b9dd92'], [1, '#94bd6e']], P: [[.14, '#ffc9b8'], [.72, '#ff9f8c'], [1, '#e07a66']] };
 
-  function faceHD(ax, ay, o) {
+  /* ---- The rig ----------------------------------------------------------------------------------
+     Each frame rig(o) works out, from the pose and the build, the named points the knight is drawn
+     on (the anchors) and the named numbers its shapes may lean on (the values). Every position the
+     drawing uses is an anchor plus an offset.
+
+     A build is eight measurements in grid pixels. The present knight is the only build, and it is
+     also the reference: the values dShoulder to dHead are a build's measurements less these, so for
+     the present knight they are all 0 and the terms that use them move nothing. */
+  const BUILD = Object.freeze({ shoulder: 54, chest: 46, waist: 46, hip: 46, stance: 24, leg: 74, height: 132, head: 51 });
+  /* The greatsword's two hand stations along its frame, upper and lower. */
+  const HANDS = [6, -30];
+
+  /* The rig's result, filled in place on every call so that drawing a frame allocates nothing for it.
+     Each anchor is an [x, y] pair, except main, the weapon's frame, which is [x, y, angle]. The
+     anchors off (the off hand), plume (the helmet's mount) and rest (a scene's place for gear) come
+     with later steps and are not here yet. grip is the grip mode: 'none', 'hammer' or 'two'. */
+  const RIG = {
+    grip: 'none',
+    anchors: { root: [0, 0], footL: [0, 0], footR: [0, 0], hipL: [0, 0], hipR: [0, 0], hem: [0, 0], belt: [0, 0], neck: [0, 0],
+      shoulderL: [0, 0], shoulderR: [0, 0], head: [0, 0], handL: [0, 0], handR: [0, 0], main: [0, 0, 0] },
+    values: { drop: 0, bloat: 0, stepL: 0, stepR: 0, sway: 0, dShoulder: 0, dChest: 0, dWaist: 0, dHip: 0, dStance: 0, dLeg: 0, dHeight: 0, dHead: 0 },
+  };
+  const put = (p, x, y) => { p[0] = x; p[1] = y; };
+
+  /* The rig for the pose o and the build b (the present knight when left out). The root is between
+     the feet on the ground. The old corner of the knight's 240 by 300 box, which the pose's gx and gy
+     still count from, is 120 left of it and 300 above. */
+  function rig(o, b) {
+    b = b || BUILD;
+    const A = RIG.anchors, v = RIG.values, t = o.t;
+    const X = Math.round(o.x) + (o.shake || 0) * 4, Y = o.floor;
+    const d = ((o.bob || 0) + (o.crouch || 0)) * U, bw = (o.bloat || 0) * U;
+    v.drop = d; v.bloat = bw;
+    v.stepL = o.walk && Math.floor(t / 320) % 2 === 0 ? 1 : 0; v.stepR = o.walk && !v.stepL ? 1 : 0;
+    v.sway = Math.round(Math.sin(t / 900) * 4);
+    const dSh = v.dShoulder = b.shoulder - BUILD.shoulder;
+    v.dChest = b.chest - BUILD.chest; v.dWaist = b.waist - BUILD.waist; v.dHip = b.hip - BUILD.hip;
+    const dSt = v.dStance = b.stance - BUILD.stance, dL = v.dLeg = b.leg - BUILD.leg;
+    const dHt = v.dHeight = b.height - BUILD.height, dHd = v.dHead = b.head - BUILD.head;
+
+    put(A.root, X, Y);
+    put(A.footL, X - (24 + dSt), Y); put(A.footR, X + (24 + dSt), Y);
+    put(A.hipL, X - (24 + dSt), Y - (74 + dL) + d); put(A.hipR, X + (24 + dSt), Y - (74 + dL) + d);
+    put(A.hem, X, Y - (64 + dL) + d); put(A.belt, X, Y - (102 + dL) + d);
+    put(A.neck, X, Y - (162 + dHt) + d);
+    put(A.shoulderL, X - (54 + dSh + bw), Y - (132 + dHt) + d); put(A.shoulderR, X + (54 + dSh + bw), Y - (132 + dHt) + d);
+    put(A.head, X + (o.headDx || 0) * U, Y - (206 + dHt + dHd) + d + (o.headDy || 0) * U);
+
+    // The grip, which places the hands and the weapon's frame.
+    const m = A.main;
+    if (o.hammer != null) {
+      // the smith: the left hand steadies the work, the right swings a hammer from its own frame
+      RIG.grip = 'hammer';
+      put(A.handL, X + 45, Y - 104 + d); put(A.handR, X + 80 + bw, Y - 122 + d);
+      m[0] = A.handR[0]; m[1] = A.handR[1]; m[2] = lerp(-.25, 1.75, o.hammer);
+    } else if (o.sword !== false) {
+      // Both hands on the grip, whose middle the pose gives in units of U from the old corner. The
+      // hand on the side the blade leans to holds the upper station. The sums keep the order the
+      // drawing has always used, since gx and gy are fractional in a swing.
+      RIG.grip = 'two';
+      const a = o.wang || 0, gx = X - 120 + o.gx * U, gy = Y - 300 + o.gy * U + d, sx = Math.sin(a), sy = -Math.cos(a);
+      m[0] = gx; m[1] = gy; m[2] = a;
+      const up = sx >= 0 ? A.handR : A.handL, low = sx >= 0 ? A.handL : A.handR;
+      put(up, gx + sx * HANDS[0], gy + sy * HANDS[0]); put(low, gx + sx * HANDS[1], gy + sy * HANDS[1]);
+    } else {
+      // no weapon: the hands hang at the sides, and the frame rests at the root
+      RIG.grip = 'none';
+      put(A.handL, X - (64 + bw), Y - 84 + d); put(A.handR, X + (64 + bw), Y - 84 + d);
+      m[0] = X; m[1] = Y; m[2] = 0;
+    }
+    return RIG;
+  }
+
+  /* ---- The head ---------------------------------------------------------------------------------
+     Each takes the head anchor (hx, hy), the middle of the eye line. */
+  function faceHD(hx, hy, o) {
     const lk = (o.look || 0) * 3, mid = SKINS[o.face || 'F'][1][1];
-    if (!o.face) { ell(ax + 91, ay + 107, 7, 4, '#f3a892'); ell(ax + 149, ay + 107, 7, 4, '#f3a892'); }
-    if (o.puff) { ell(ax + 89, ay + 106, 9, 8, '#ff9f8c'); ell(ax + 151, ay + 106, 9, 8, '#ff9f8c'); }
+    if (!o.face) { ell(hx - 29, hy + 13, 7, 4, '#f3a892'); ell(hx + 29, hy + 13, 7, 4, '#f3a892'); }
+    if (o.puff) { ell(hx - 31, hy + 12, 9, 8, '#ff9f8c'); ell(hx + 31, hy + 12, 9, 8, '#ff9f8c'); }
     for (const side of [-1, 1]) {
-      const x = ax + 120 + side * 18, y = ay + 94;
+      const x = hx + side * 18, y = hy;
       switch (o.eyes) {
         case 'closed': Rh(x - 7, y + 4, 14, 3, C.K); Rh(x - 9, y + 1, 3, 4, C.K); Rh(x + 6, y + 1, 3, 4, C.K); break;
         case 'happy': Rh(x - 6, y - 3, 12, 3, C.K); Rh(x - 9, y - 1, 4, 5, C.K); Rh(x + 5, y - 1, 4, 5, C.K); break;
@@ -22,7 +98,7 @@
         default: ell(x + lk, y, 7, 10, C.K); ell(x + lk, y + 4, 4, 4, '#4a3558'); Rh(x + lk - 4, y - 6, 4, 4, C.W); Rh(x + lk + 2, y + 3, 2, 2, C.W); Rh(x - 6, y - 17, 12, 3, '#8a5a2b');
       }
     }
-    const mx = ax + 120, my = ay + 111;
+    const mx = hx, my = hy + 17;
     let m = o.mouth; if (m === 'chew' || m === 'talk') m = (Math.floor(o.t / (m === 'chew' ? 160 : 230)) % 2) ? 'open' : 'flat';
     switch (m) {
       case 'smile': Rh(mx - 7, my, 14, 3, C.K); Rh(mx - 10, my - 3, 4, 4, C.K); Rh(mx + 6, my - 3, 4, 4, C.K); break;
@@ -34,35 +110,36 @@
     }
     if (o.thermo) { rrect(mx + 4, my - 5, 48, 8, 4, C.K); rrect(mx + 6, my - 3, 44, 4, 2, C.W); ell(mx + 52, my - 1, 6, 6, C.K); ell(mx + 52, my - 1, 4, 4, C.R1); }
   }
-  function helmHD(ax, ay, o) {
-    const s = Math.round(Math.sin(o.t / 900) * 4);
+  /* The helmet, its plume swaying by s, and the face in its opening. */
+  function helmHD(hx, hy, o, s) {
     // the plume
-    if (o.droop) { ell(ax + 152, ay + 26, 36, 15, C.K); ell(ax + 152, ay + 26, 33, 12, [[.4, C.R1], [1, C.R2]]); ell(ax + 176, ay + 40, 19, 13, C.K); ell(ax + 176, ay + 40, 16, 10, C.R2); }
+    if (o.droop) { ell(hx + 32, hy - 68, 36, 15, C.K); ell(hx + 32, hy - 68, 33, 12, [[.4, C.R1], [1, C.R2]]); ell(hx + 56, hy - 54, 19, 13, C.K); ell(hx + 56, hy - 54, 16, 10, C.R2); }
     else {
-      ell(ax + 122 + s, ay + 20, 41, 23, C.K); ell(ax + 144, ay + 31, 28, 15, C.K);
-      ell(ax + 122 + s, ay + 20, 38, 20, [[.25, C.R0], [.7, C.R1], [1, C.R2]]); ell(ax + 144, ay + 31, 25, 12, [[.4, C.R1], [1, C.R2]]);
-      ell(ax + 108 + s, ay + 13, 15, 7, C.R0); strip(ax + 112 + s, ay + 30, ax + 140 + s, ay + 14, 1.5, 1.5, C.R2); strip(ax + 128, ay + 36, ax + 160, ay + 26, 1.5, 1.5, C.R3);
+      ell(hx + 2 + s, hy - 74, 41, 23, C.K); ell(hx + 24, hy - 63, 28, 15, C.K);
+      ell(hx + 2 + s, hy - 74, 38, 20, [[.25, C.R0], [.7, C.R1], [1, C.R2]]); ell(hx + 24, hy - 63, 25, 12, [[.4, C.R1], [1, C.R2]]);
+      ell(hx - 12 + s, hy - 81, 15, 7, C.R0); strip(hx - 8 + s, hy - 64, hx + 20 + s, hy - 80, 1.5, 1.5, C.R2); strip(hx + 8, hy - 58, hx + 40, hy - 68, 1.5, 1.5, C.R3);
     }
     // the dome, darker at the foot
-    rrect(ax + 50, ay + 26, 140, 118, 52, C.K); rrect(ax + 54, ay + 30, 132, 110, 48, STEEL);
-    rrect(ax + 54, ay + 30, 132, 110, 48, [[.12, C.S1], [.58, C.S2], [.84, C.S3], [1, C.S4]], ay + 120, ay + 140);
-    Rh(ax + 117, ay + 31, 5, 34, C.S0); Rh(ax + 122, ay + 31, 2, 34, C.S3);
+    rrect(hx - 70, hy - 68, 140, 118, 52, C.K); rrect(hx - 66, hy - 64, 132, 110, 48, STEEL);
+    rrect(hx - 66, hy - 64, 132, 110, 48, [[.12, C.S1], [.58, C.S2], [.84, C.S3], [1, C.S4]], hy + 26, hy + 46);
+    Rh(hx - 3, hy - 63, 5, 34, C.S0); Rh(hx + 2, hy - 63, 2, 34, C.S3);
     // the opening and the face in it
-    rrect(ax + 72, ay + 62, 96, 66, 18, C.K); rrect(ax + 76, ay + 66, 88, 58, 15, [[.5, C.S3], [1, C.S4]]);
-    rrect(ax + 81, ay + 71, 78, 48, 11, C.K); rrect(ax + 83, ay + 73, 74, 44, 9, SKINS[o.face || 'F']);
-    rrect(ax + 83, ay + 73, 74, 44, 9, 'rgba(60,30,20,.18)', ay + 73, ay + 78);
-    for (const [x, y] of [[63, 96], [177, 96], [66, 120], [174, 120], [92, 46], [148, 46]]) { ell(ax + x, ay + y, 4, 4, C.S4); Rh(ax + x - 2, ay + y - 2, 2, 2, C.S0); }
-    rrect(ax + 60, ay + 131, 120, 14, 6, C.K); rrect(ax + 63, ay + 133, 114, 9, 4, STEEL2);
-    faceHD(ax, ay, o);
+    rrect(hx - 48, hy - 32, 96, 66, 18, C.K); rrect(hx - 44, hy - 28, 88, 58, 15, [[.5, C.S3], [1, C.S4]]);
+    rrect(hx - 39, hy - 23, 78, 48, 11, C.K); rrect(hx - 37, hy - 21, 74, 44, 9, SKINS[o.face || 'F']);
+    rrect(hx - 37, hy - 21, 74, 44, 9, 'rgba(60,30,20,.18)', hy - 21, hy - 16);
+    for (const [x, y] of [[-57, 2], [57, 2], [-54, 26], [54, 26], [-28, -48], [28, -48]]) { ell(hx + x, hy + y, 4, 4, C.S4); Rh(hx + x - 2, hy + y - 2, 2, 2, C.S0); }
+    rrect(hx - 60, hy + 37, 120, 14, 6, C.K); rrect(hx - 57, hy + 39, 114, 9, 4, STEEL2);
+    faceHD(hx, hy, o);
   }
-  function bareHD(ax, ay, o) {
+  /* The bare head: ears, skull, hair and the face. */
+  function bareHD(hx, hy, o) {
     const skin = SKINS[o.face || 'F'], hair = [[.2, C.N0], [.7, C.N1], [1, C.N2]];
-    for (const x of [63, 177]) { ell(ax + x, ay + 98, 11, 14, C.K); ell(ax + x, ay + 98, 8, 11, skin); }
-    rrect(ax + 66, ay + 38, 108, 104, 40, C.K); rrect(ax + 69, ay + 41, 102, 98, 37, skin);
-    rrect(ax + 62, ay + 27, 116, 54, 34, C.K); rrect(ax + 65, ay + 30, 110, 48, 31, hair);
-    for (const [x, y, rx, c] of [[84, 76, 15, C.N1], [110, 79, 15, C.N0], [137, 77, 16, C.N1], [160, 72, 12, C.N2]]) ell(ax + x, ay + y, rx, 10, c);
-    ell(ax + 116, ay + 24, 11, 10, C.K); ell(ax + 116, ay + 24, 8, 7, C.N0);
-    faceHD(ax, ay, o);
+    for (const x of [-57, 57]) { ell(hx + x, hy + 4, 11, 14, C.K); ell(hx + x, hy + 4, 8, 11, skin); }
+    rrect(hx - 54, hy - 56, 108, 104, 40, C.K); rrect(hx - 51, hy - 53, 102, 98, 37, skin);
+    rrect(hx - 58, hy - 67, 116, 54, 34, C.K); rrect(hx - 55, hy - 64, 110, 48, 31, hair);
+    for (const [x, y, rx, c] of [[-36, -18, 15, C.N1], [-10, -15, 15, C.N0], [17, -17, 16, C.N1], [40, -22, 12, C.N2]]) ell(hx + x, hy + y, rx, 10, c);
+    ell(hx - 4, hy - 70, 11, 10, C.K); ell(hx - 4, hy - 70, 8, 7, C.N0);
+    faceHD(hx, hy, o);
   }
   function armHD(sx, sy, hx, hy) { strip(sx, sy, hx, hy, 11, 10, C.K); strip(sx, sy, hx, hy, 8, 7, STEEL2); }
   function gauntHD(hx, hy) { ell(hx, hy, 14, 13, C.K); ell(hx, hy, 11, 10, STEEL); Rh(hx - 7, hy + 3, 14, 2, C.S3); }
@@ -76,65 +153,71 @@
   }
 
   /* Draws the knight from the pose o: o.x is the middle of the body on the fine grid, o.floor the
-     ground underfoot. */
+     ground underfoot. Every position comes from the rig. */
   function knightHD(o) {
-    const t = o.t, ox = Math.round(o.x) - 120 + (o.shake || 0) * 4, oy = o.floor - 300;
-    const u = ((o.bob || 0) + (o.crouch || 0)) * U, bw = (o.bloat || 0) * U, ax = ox + (o.headDx || 0) * U, ay = oy + u + (o.headDy || 0) * U;
-    if (o.crates) { const w = Math.round(Math.sin(t / 900) * 5); P.crateHD(ox + 90, oy - 22 + u); P.crateHD(ox + 94 + w, oy - 72 + u); P.crateHD(ox + 90 + 2 * w, oy - 122 + u); }
+    const t = o.t, r = rig(o);
+    const { root, footL, footR, hipL, hipR, hem, belt, neck, shoulderL, shoulderR, head, handL, handR, main } = r.anchors;
+    const { drop, bloat, stepL, stepR, sway } = r.values;
+    // the crates, carried overhead
+    if (o.crates) { const w = Math.round(Math.sin(t / 900) * 5); P.crateHD(neck[0] - 30, neck[1] - 160); P.crateHD(neck[0] - 26 + w, neck[1] - 210); P.crateHD(neck[0] - 30 + 2 * w, neck[1] - 260); }
     // greaves, knee cops, boots
-    const sl = o.walk && Math.floor(t / 320) % 2 === 0 ? 6 : 0, sr = o.walk && !sl ? 6 : 0;
-    rrect(ox + 79, oy + 226 + u, 34, 56 - u, 8, C.K); rrect(ox + 82, oy + 229 + u, 28, 50 - u, 6, STEEL2);
-    rrect(ox + 127, oy + 226 + u, 34, 56 - u, 8, C.K); rrect(ox + 130, oy + 229 + u, 28, 50 - u, 6, STEEL3);
-    ell(ox + 96, oy + 240 + u, 15, 10, C.K); ell(ox + 96, oy + 240 + u, 12, 7, STEEL); ell(ox + 144, oy + 240 + u, 15, 10, C.K); ell(ox + 144, oy + 240 + u, 12, 7, STEEL2);
-    rrect(ox + 68, oy + 272 - sl, 48, 28, 9, C.K); rrect(ox + 71, oy + 275 - sl, 42, 20, 7, LEATHER); Rh(ox + 71, oy + 294 - sl, 42, 3, C.N3);
-    rrect(ox + 124, oy + 272 - sr, 48, 28, 9, C.K); rrect(ox + 127, oy + 275 - sr, 42, 20, 7, [[.15, C.N1], [.6, C.N2], [1, C.N3]]); Rh(ox + 127, oy + 294 - sr, 42, 3, C.N3);
-    // the tabard: belt, buckle, gold hem, and the watch's eye
-    const tx = ox + 74 - bw, tw = 92 + 2 * bw, ty = oy + 138 + u;
+    rrect(hipL[0] - 17, hipL[1], 34, 56 - drop, 8, C.K); rrect(hipL[0] - 14, hipL[1] + 3, 28, 50 - drop, 6, STEEL2);
+    rrect(hipR[0] - 17, hipR[1], 34, 56 - drop, 8, C.K); rrect(hipR[0] - 14, hipR[1] + 3, 28, 50 - drop, 6, STEEL3);
+    ell(hipL[0], hipL[1] + 14, 15, 10, C.K); ell(hipL[0], hipL[1] + 14, 12, 7, STEEL); ell(hipR[0], hipR[1] + 14, 15, 10, C.K); ell(hipR[0], hipR[1] + 14, 12, 7, STEEL2);
+    const sl = 6 * stepL, sr = 6 * stepR;
+    rrect(footL[0] - 28, footL[1] - 28 - sl, 48, 28, 9, C.K); rrect(footL[0] - 25, footL[1] - 25 - sl, 42, 20, 7, LEATHER); Rh(footL[0] - 25, footL[1] - 6 - sl, 42, 3, C.N3);
+    rrect(footR[0] - 20, footR[1] - 28 - sr, 48, 28, 9, C.K); rrect(footR[0] - 17, footR[1] - 25 - sr, 42, 20, 7, [[.15, C.N1], [.6, C.N2], [1, C.N3]]); Rh(footR[0] - 17, footR[1] - 6 - sr, 42, 3, C.N3);
+    // the tabard from the neck: belt, buckle, gold hem, and the watch's eye
+    const tw = 92 + 2 * bloat, tx = neck[0] - 46 - bloat, ty = neck[1];
     rrect(tx - 3, ty - 3, tw + 6, 104, 14, C.K); rrect(tx, ty, tw, 98, 11, [[.1, C.B0], [.55, C.B1], [.85, C.B2], [1, C.B3]]);
-    Rh(ox + 118, ty + 76, 4, 22, C.K); Rh(tx + 3, ty + 89, tw - 6, 4, C.G1); Rh(tx + 3, ty + 93, tw - 6, 2, C.G2);
-    Rh(tx, ty + 60, tw, 14, C.N3); Rh(tx, ty + 62, tw, 9, C.N2); Rh(tx, ty + 62, tw, 2, C.N1);
-    rrect(ox + 108, ty + 56, 24, 22, 5, C.K); rrect(ox + 111, ty + 59, 18, 16, 3, GOLD); Rh(ox + 116, ty + 64, 8, 6, C.K);
-    ell(ox + 120, ty + 28, 24, 14, C.G2); ell(ox + 120, ty + 28, 22, 12, GOLD); ell(ox + 120, ty + 28, 16, 7, C.B3); ell(ox + 120, ty + 28, 7, 6, C.W); ell(ox + 120, ty + 28, 3, 3, C.K);
-    // head, then the pauldrons
-    (o.helmet === false ? bareHD : helmHD)(ax, ay, o);
-    if (o.food) SP.drum(ox + 138, ay + 88 + (Math.floor(t / 160) % 2) * 5);
-    ell(ox + 70 - bw, oy + 161 + u, 25, 20, C.K); ell(ox + 70 - bw, oy + 160 + u, 22, 17, STEEL); Rh(ox + 63 - bw, oy + 155 + u, 4, 4, C.S3);
-    ell(ox + 170 + bw, oy + 161 + u, 25, 20, C.K); ell(ox + 170 + bw, oy + 160 + u, 22, 17, STEEL2); Rh(ox + 173 + bw, oy + 155 + u, 4, 4, C.S4);
-    const lsx = ox + 66 - bw, rsx = ox + 174 + bw, shy = oy + 168 + u;
-    if (o.hammer != null) {
-      // the smith: the left hand steadies the work, the right swings a hammer
-      const a = lerp(-.25, 1.75, o.hammer), hx = ox + 200 + bw, hy = oy + 178 + u, ex = hx + Math.sin(a) * 50, ey = hy - Math.cos(a) * 50;
-      armHD(lsx, shy, ox + 165, oy + 196 + u); gauntHD(ox + 165, oy + 196 + u);
-      armHD(rsx, shy, hx, hy); strip(hx, hy, ex, ey, 4, 4, [[.4, C.N0], [1, C.N2]]);
-      rrect(ex - 20, ey - 14, 40, 28, 5, C.K); rrect(ex - 17, ey - 11, 34, 22, 3, STEEL3); gauntHD(hx, hy);
-    } else if (o.sword !== false) {
+    Rh(hem[0] - 2, hem[1] - 22, 4, 22, C.K); Rh(hem[0] - 43 - bloat, hem[1] - 9, tw - 6, 4, C.G1); Rh(hem[0] - 43 - bloat, hem[1] - 5, tw - 6, 2, C.G2);
+    Rh(belt[0] - 46 - bloat, belt[1], tw, 14, C.N3); Rh(belt[0] - 46 - bloat, belt[1] + 2, tw, 9, C.N2); Rh(belt[0] - 46 - bloat, belt[1] + 2, tw, 2, C.N1);
+    rrect(belt[0] - 12, belt[1] - 4, 24, 22, 5, C.K); rrect(belt[0] - 9, belt[1] - 1, 18, 16, 3, GOLD); Rh(belt[0] - 4, belt[1] + 4, 8, 6, C.K);
+    ell(neck[0], ty + 28, 24, 14, C.G2); ell(neck[0], ty + 28, 22, 12, GOLD); ell(neck[0], ty + 28, 16, 7, C.B3); ell(neck[0], ty + 28, 7, 6, C.W); ell(neck[0], ty + 28, 3, 3, C.K);
+    // head, then the pauldrons. The drumstick follows the head up and down but not sideways.
+    if (o.helmet === false) bareHD(head[0], head[1], o); else helmHD(head[0], head[1], o, sway);
+    if (o.food) SP.drum(neck[0] + 18, head[1] - 6 + (Math.floor(t / 160) % 2) * 5);
+    ell(shoulderL[0] + 4, shoulderL[1] - 7, 25, 20, C.K); ell(shoulderL[0] + 4, shoulderL[1] - 8, 22, 17, STEEL); Rh(shoulderL[0] - 3, shoulderL[1] - 13, 4, 4, C.S3);
+    ell(shoulderR[0] - 4, shoulderR[1] - 7, 25, 20, C.K); ell(shoulderR[0] - 4, shoulderR[1] - 8, 22, 17, STEEL2); Rh(shoulderR[0] - 1, shoulderR[1] - 13, 4, 4, C.S4);
+    // the arms and hands, by grip
+    if (r.grip === 'hammer') {
+      // the left hand steadies the work, the right swings a hammer
+      const ex = main[0] + Math.sin(main[2]) * 50, ey = main[1] - Math.cos(main[2]) * 50;
+      armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); gauntHD(handL[0], handL[1]);
+      armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); strip(main[0], main[1], ex, ey, 4, 4, [[.4, C.N0], [1, C.N2]]);
+      rrect(ex - 20, ey - 14, 40, 28, 5, C.K); rrect(ex - 17, ey - 11, 34, 22, 3, STEEL3); gauntHD(handR[0], handR[1]);
+    } else if (r.grip === 'two') {
       // Both hands on the grip. The arm on the side the blade leans to is drawn first, so the
       // blade and its guard pass in front of it and no arm crosses over the steel.
-      const a = o.wang || 0, gx = ox + o.gx * U, gy = oy + o.gy * U + u, sx = Math.sin(a), sy = -Math.cos(a);
-      const up = [gx + sx * 6, gy + sy * 6], low = [gx - sx * 30, gy - sy * 30], right = sx >= 0;
-      if (right) armHD(rsx, shy, up[0], up[1]); else armHD(lsx, shy, up[0], up[1]);
-      P.swordHD(gx, gy, a);
-      if (right) armHD(lsx, shy, low[0], low[1]); else armHD(rsx, shy, low[0], low[1]);
+      const right = Math.sin(main[2]) >= 0, up = right ? handR : handL, low = right ? handL : handR;
+      if (right) armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); else armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]);
+      P.swordHD(main[0], main[1], main[2]);
+      if (right) armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); else armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]);
       gauntHD(up[0], up[1]); gauntHD(low[0], low[1]);
-    } else { armHD(lsx, shy, ox + 56 - bw, oy + 216 + u); gauntHD(ox + 56 - bw, oy + 216 + u); armHD(rsx, shy, ox + 184 + bw, oy + 216 + u); gauntHD(ox + 184 + bw, oy + 216 + u); }
-    // what floats around the knight
+    } else {
+      armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); gauntHD(handL[0], handL[1]);
+      armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); gauntHD(handR[0], handR[1]);
+    }
+    // what floats around the knight, hung on the neck so that it rises and sinks with the body
     if (o.sweat) {
       const n = o.sweat >= 1 ? 6 : 2;
       for (let i = 0; i < n; i++) {
         const ph = ((t / 620) + i / n) % 1, side = i % 2 ? 1 : -1;
-        if (ph < .9) { const x = ox + 118 + side * (76 + ph * 50), y = oy + 60 + u - Math.sin(ph * Math.PI) * 36 + ph * 90; poly([[x, y - 10], [x - 5, y + 2], [x + 5, y + 2]], '#7fe9ff'); ell(x, y + 3, 5, 5, '#7fe9ff'); Rh(x - 3, y + 1, 2, 3, C.W); }
+        if (ph < .9) { const x = neck[0] - 2 + side * (76 + ph * 50), y = neck[1] - 78 - Math.sin(ph * Math.PI) * 36 + ph * 90; poly([[x, y - 10], [x - 5, y + 2], [x + 5, y + 2]], '#7fe9ff'); ell(x, y + 3, 5, 5, '#7fe9ff'); Rh(x - 3, y + 1, 2, 3, C.W); }
       }
     }
-    if (o.steam) for (let i = 0; i < 3; i++) { const ph = ((t / 900) + i / 3) % 1; alpha(1 - ph); ell(ox + 78 + i * 40 + Math.sin(ph * 6 + i) * 10, oy + 16 + u - ph * 66, 9 - ph * 4, 9 - ph * 4, C.W); alpha(1); }
-    if (o.mark && Math.floor(t / 320) % 3 !== 2) SP.mark(ox + 120, oy - 74 + u, o.mark);
-    if (o.bubble) { rrect(ox - 82, oy - 94 + u, 112, 82, 30, C.K); rrect(ox - 78, oy - 90 + u, 104, 74, 26, C.W); ell(ox + 24, oy + 2 + u, 9, 9, C.W); ell(ox + 44, oy + 26 + u, 6, 6, C.W); SP.drum(ox - 46, oy - 74 + u); }
-    if (o.progress != null) { rrect(ox + 52, oy - 52 + u, 136, 30, 8, C.W); rrect(ox + 57, oy - 47 + u, 126, 20, 5, C.K); rrect(ox + 61, oy - 43 + u, Math.max(6, 118 * o.progress), 12, 3, '#7fe9ff'); }
-    if (o.hearts) for (let i = 0; i < 3; i++) { const ph = ((t / 1100) + i / 3) % 1; alpha(1 - ph * .8); SP.heart(ox + 37 + i * 70, oy + 20 - ph * 70); alpha(1); }
-    if (o.speak) speechHD(ox + 150, oy - 62 + u, t);
+    if (o.steam) for (let i = 0; i < 3; i++) { const ph = ((t / 900) + i / 3) % 1; alpha(1 - ph); ell(neck[0] - 42 + i * 40 + Math.sin(ph * 6 + i) * 10, neck[1] - 122 - ph * 66, 9 - ph * 4, 9 - ph * 4, C.W); alpha(1); }
+    if (o.mark && Math.floor(t / 320) % 3 !== 2) SP.mark(neck[0], neck[1] - 212, o.mark);
+    if (o.bubble) { rrect(neck[0] - 202, neck[1] - 232, 112, 82, 30, C.K); rrect(neck[0] - 198, neck[1] - 228, 104, 74, 26, C.W); ell(neck[0] - 96, neck[1] - 136, 9, 9, C.W); ell(neck[0] - 76, neck[1] - 112, 6, 6, C.W); SP.drum(neck[0] - 166, neck[1] - 212); }
+    if (o.progress != null) { rrect(neck[0] - 68, neck[1] - 190, 136, 30, 8, C.W); rrect(neck[0] - 63, neck[1] - 185, 126, 20, 5, C.K); rrect(neck[0] - 59, neck[1] - 181, Math.max(6, 118 * o.progress), 12, 3, '#7fe9ff'); }
+    // the hearts rise from a fixed height and do not sink with the body
+    if (o.hearts) for (let i = 0; i < 3; i++) { const ph = ((t / 1100) + i / 3) % 1; alpha(1 - ph * .8); SP.heart(root[0] - 83 + i * 70, root[1] - 280 - ph * 70); alpha(1); }
+    if (o.speak) speechHD(neck[0] + 30, neck[1] - 200, t);
   }
 
   /* The state of the knight for a condition id (see docs/state.md), at time t. gx and gy place the
-     middle of the sword's grip in units of U from the knight's corner, wang is the blade's angle. */
+     middle of the sword's grip in units of U from the knight's old corner (see rig), wang is the
+     blade's angle. */
   const BASE = { gx: 26, gy: 45, a: .45 };
   function pose(id, t) {
     const o = { t, eyes: 'open', mouth: 'flat', bob: Math.floor(t / 900) % 2, gx: BASE.gx, gy: BASE.gy, wang: BASE.a };
@@ -168,7 +251,9 @@
     return q >= .3 && q < .56;
   }
 
-  /* head draws the knight's bare head with its corner at (ax, ay), as in bed; speech draws a
-     speech bubble. */
-  KW.knight = { draw: knightHD, pose, swing, head: bareHD, speech: speechHD };
+  /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
+     the head anchor is 120 right of that corner and 94 below it. speech draws a speech bubble. rig
+     is described above, and build is the present knight's measurements. */
+  const headAtCorner = (ax, ay, o) => bareHD(ax + 120, ay + 94, o);
+  KW.knight = { draw: knightHD, rig, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD };
 })(window.KW);
