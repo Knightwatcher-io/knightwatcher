@@ -857,12 +857,12 @@ the same options and resolves the look again (see [Downloaded packs](#downloaded
   accepts only signed packs`), and one whose signature does not verify or names a key it does not
   know.
 
-**Today the base pack ships unsigned.** Version 1.1.0, which added the sword and shield, had its
-signature taken off when it was edited, and the release signs it again with `kw1`. Until then a
-`dev` page draws the knight from it and a deployed page refuses it at the `signature` step and
-draws the knight from the code in `knight.js`, the full knight as it shipped before packs, which
-looks the same as the default look (see [When packs fail](#when-packs-fail)). The sword and shield
-need the base pack: from code the knight always holds the greatsword.
+**Today the base pack, version 1.1.0, ships signed with `kw1`,** so a deployed page draws the
+knight from it. A base pack edited after signing has its signature taken off until the release
+signs it again; meanwhile a deployed page draws the knight from the code in `knight.js`, the full
+knight as it shipped before packs, which looks the same as the default look (see
+[When packs fail](#when-packs-fail)). The sword and shield need the base pack: from code the
+knight always holds the greatsword.
 
 Nothing is drawn on screen about the choice. `knight.js` writes to the console one line for each
 refused pack, and one line, `console.info` for the base pack and `console.warn` for code, each
