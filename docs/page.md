@@ -14,7 +14,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie, fire, sky and stars, flies, the goblin, the crate and its parachute |
-| `js/knight.js` | the knight: `pose(id, t)` turns a condition into his state, `draw(o)` draws him, `swing()` animates a cut, `head()` draws his bare head and `speech()` a speech bubble |
+| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `draw(o)` draws the knight in it, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events, drawing order |
@@ -55,16 +55,16 @@ before it calls `paint`, `draw` and `over`.
 |---|---|---|
 | `spot` | yes | where the knight stands on arrival, in units of `U` across the grid |
 | `draw(t, s)` | yes | draws the scene at time `t` in ms: everything on a scene without `paint`, otherwise what moves |
-| `rounds` | no | the spots the knight strolls between while nothing pins him: `[{ x, act, dur }]`, `x` in units of `U`, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles |
+| `rounds` | no | the spots the knight strolls between while free to move: `[{ x, act, dur }]`, `x` in units of `U`, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles |
 | `paint(s)` | no | the still part, painted once into a cached canvas and kept until the key or the screen's shape changes |
 | `key(s)` | no | a string; the cached backdrop is painted again when it changes |
 | `act(t, s)` | no | called each frame after strolling and before the swat and events; may change the knight's pose `s.o` |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
 | `wallAt(x)` | no | the y of the top of whatever the goblin climbs over at grid x; the ground when absent |
 | `outdoors` | no | `true` where flies are swatted and the crate may land |
-| `bed` | no | `true` where the knight takes to his bed for `night` and `container_unhealthy` |
+| `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy` |
 | `helmet` | no | `false` where the helmet comes off (unless the address says otherwise) |
-| `sword` | no | `false` where the knight puts his sword away |
+| `sword` | no | `false` where the knight puts the sword away |
 
 `s` is the same object for every call in a frame:
 
@@ -75,8 +75,8 @@ before it calls `paint`, `draw` and `over`.
 | `tv` | whether the television is on |
 | `kx` | the knight's x on the grid |
 | `o` | the knight's pose for this frame |
-| `here` | where the knight stands in his round, `{ act, el }` with `el` the ms spent there, or `null` |
-| `inBed`, `helmOff` | whether he is in bed, and whether his helmet is off |
+| `here` | where the knight stands in the scene's `rounds`, `{ act, el }` with `el` the ms spent there, or `null` |
+| `inBed`, `helmOff` | whether the knight is in bed, and whether the helmet is off |
 | `strike` | free for a scene's `act` to pass to its `draw` (the smithy's hammer blow) |
 
 Some scenes reach further. The house draws the sleeper's head with `KW.knight.head` and its Zs

@@ -1,5 +1,5 @@
 /* Knightwatcher: the small symbols drawn over a scene or over the knight, on the fine grid: the marks
-   over his head, the heart, the Z of a sleeper, the drumstick and the spark of a hammer blow. */
+   over the head, the heart, the Z of a sleeper, the drumstick and the spark of a hammer blow. */
 (function (KW) {
   'use strict';
   const D = KW.draw, C = D.C;
