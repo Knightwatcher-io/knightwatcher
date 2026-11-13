@@ -53,7 +53,7 @@
   }
 
   KW.scenes.camp = {
-    grid: 'fine', spot: 88, outdoors: true,
+    spot: 88, outdoors: true,
     rounds: [{ x: 88, act: 'sniff', dur: 22 }, { x: 68, act: 'yawn', dur: 14 }, { x: 96, act: 'look', dur: 16 }],
     paint, draw
   };

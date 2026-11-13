@@ -64,7 +64,7 @@
   }
 
   KW.scenes.cellar = {
-    grid: 'fine', spot: 124, sword: false,
+    spot: 124, sword: false,
     rounds: [{ x: 124, act: 'guard', dur: 7 }, { x: 146, act: 'guard', dur: 7 }],
     paint, draw
   };

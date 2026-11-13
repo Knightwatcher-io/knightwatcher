@@ -60,7 +60,7 @@
   function wallAt(x) { return ((((x + 70) % 160) + 160) % 160 < 80 ? V.HFL - 119 : V.HFL - 66); }
 
   KW.scenes.battlement = {
-    grid: 'fine', spot: 96, outdoors: true,
+    spot: 96, outdoors: true,
     rounds: [{ x: 96, act: 'guard', dur: 18 }, { x: 66, act: 'look', dur: 16 }, { x: 126, act: 'sniff', dur: 12 }],
     key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt
   };

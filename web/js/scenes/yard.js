@@ -104,7 +104,7 @@
   }
 
   KW.scenes.yard = {
-    grid: 'fine', spot: 104, outdoors: true,
+    spot: 104, outdoors: true,
     rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 80, act: 'look', dur: 14 }],
     act, paint, draw
   };

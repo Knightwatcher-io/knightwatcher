@@ -159,7 +159,7 @@
   }
 
   KW.scenes.house = {
-    grid: 'fine', spot: 114, bed: true, helmet: false, sword: false,
+    spot: 114, bed: true, helmet: false, sword: false,
     rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 100, act: 'yawn', dur: 14 }, { x: 110, act: 'look', dur: 14 }],
     key: s => (s.tv ? 'tv' : ''), paint, draw, over
   };

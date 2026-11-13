@@ -113,5 +113,5 @@
     s.o.mouth = kingTalks ? 'flat' : 'talk'; s.o.speak = !kingTalks;
   }
 
-  KW.scenes.court = { grid: 'fine', spot: 72, paint, draw };
+  KW.scenes.court = { spot: 72, paint, draw };
 })(window.KW);
