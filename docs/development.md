@@ -1,5 +1,10 @@
 # Development
 
+Read this page before changing anything, and [security.md](./security.md) before committing.
+The design is in [design.md](./design.md), and the contract between the collector and the page
+is in [state.md](./state.md). Read [page.md](./page.md) before touching `web/` and
+[collector.md](./collector.md) before touching `collector/`.
+
 ## Layout
 
 ```
@@ -27,9 +32,11 @@ compose.yaml  Dockerfile  config.example.toml  secrets.example.json  pyproject.t
 - **The collector uses the standard library alone.** A dependency needs a reason written here.
 - **Invented data everywhere.** See [security.md](./security.md). Run `tools/check-private.sh`
   before every push.
-- **Docs describe what is built.** Change the doc in the same commit as the change it describes.
+- **Docs describe what is built.** The last step of every change is the docs: check each doc
+  that describes what you changed against what you built, and correct whatever no longer
+  matches, in the same commit. A change whose docs are stale is not finished.
 - **Prose is plain.** British English, no emojis, no em dashes, no filler.
-- **Commits follow Conventional Commits** and credit no tool.
+- **Commits follow Conventional Commits.**
 
 ## Checks
 
