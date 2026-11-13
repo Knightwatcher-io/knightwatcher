@@ -9,7 +9,7 @@
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C, U = V.U;
-  const { alpha, Rh, ell, rrect, poly, strip, lerp, ease, STEEL, STEEL2, STEEL3, GOLD, LEATHER } = D;
+  const { alpha, Rh, ell, rrect, poly, strip, lerp, ease, clamp01, STEEL, STEEL2, STEEL3, GOLD, LEATHER } = D;
   const SKINS = { F: [[.14, C.F0], [.72, C.F1], [1, C.F2]], L: [[.14, '#dff3bd'], [.72, '#b9dd92'], [1, '#94bd6e']], P: [[.14, '#ffc9b8'], [.72, '#ff9f8c'], [1, '#e07a66']] };
   /* The texts of the packs that ship with the page. Each carrier in packs/, loaded after this file,
      pushes its pack's file onto it, and start() reads them. */
@@ -28,6 +28,9 @@
      middle, low enough that its gauntlet stays clear of the guard, which starts 17 up. On the pack
      path they are the weapon's own, which for the base pack's greatsword are the same two. */
   let HANDS = [2, -30];
+  /* How far the upper hand slides down the grip, in pixels along the frame, as the blade turns past
+     level: none up to an angle of from, all of most from to on, and in proportion between. */
+  const SLIDE = Object.freeze({ from: 1.4, to: 1.8, most: 2 });
   /* Whether the look's weapon is held in one hand, and whether a shield is in the other. rebuild()
      sets them from the resolved look; pose(), swing() and rig() read them. Only the pack path can
      hold a one-handed weapon: the code path is the greatsword. */
@@ -90,16 +93,24 @@
     } else if (o.sword !== false) {
       // Both hands on the grip, whose middle the pose gives in units of U from the old corner. The
       // hand on the side the blade leans to holds the upper station. The sums keep the order the
-      // drawing has always used, since gx and gy are fractional in a swing.
+      // drawing has always used, since gx and gy are fractional in a swing. Once the blade is past
+      // level, at the end of a cut and in the strike's bounce, the upper hand slides down the grip
+      // (SLIDE), so that its gauntlet stays clear of the guard at every angle.
       RIG.grip = 'two';
       const a = o.wang || 0, gx = X - 120 + o.gx * U, gy = Y - 300 + o.gy * U + d, sx = Math.sin(a), sy = -Math.cos(a);
       m[0] = gx; m[1] = gy; m[2] = a;
       const up = sx >= 0 ? A.handR : A.handL, low = sx >= 0 ? A.handL : A.handR;
-      put(up, gx + sx * HANDS[0], gy + sy * HANDS[0]); put(low, gx + sx * HANDS[1], gy + sy * HANDS[1]);
+      const s0 = HANDS[0] - SLIDE.most * clamp01((Math.abs(a) - SLIDE.from) / (SLIDE.to - SLIDE.from));
+      put(up, gx + sx * s0, gy + sy * s0); put(low, gx + sx * HANDS[1], gy + sy * HANDS[1]);
     } else {
-      // no weapon: the hands hang at the sides, and the frame rests at the root
+      // No weapon: the hands hang at the sides, or with the crate (the carrying grip) hold the
+      // load against the chest by its lower corners, the arms round its sides; the frame rests at
+      // the root.
       RIG.grip = 'none';
-      put(A.handL, X - (64 + bw), Y - 84 + d); put(A.handR, X + (64 + bw), Y - 84 + d);
+      if (o.crates) {
+        const n = A.neck, w = carrySway(t), hx = CARRY.w / 2 + CARRY.hand[0], hy = CARRY.top + CARRY.h * CARRY.n + CARRY.hand[1];
+        put(A.handL, n[0] - hx + w, n[1] + hy); put(A.handR, n[0] + hx + w, n[1] + hy);
+      } else { put(A.handL, X - (64 + bw), Y - 84 + d); put(A.handR, X + (64 + bw), Y - 84 + d); }
       m[0] = X; m[1] = Y; m[2] = 0;
     }
     put(A.off, A.handL[0], A.handL[1]);
@@ -108,20 +119,33 @@
 
   /* ---- The head ---------------------------------------------------------------------------------
      Each takes the head anchor (hx, hy), the middle of the eye line. */
-  function faceHD(hx, hy, o) {
-    const lk = (o.look || 0) * 3, mid = SKINS[o.face || 'F'][1][1];
-    if (!o.face) { ell(hx - 29, hy + 13, 7, 4, '#f3a892'); ell(hx + 29, hy + 13, 7, 4, '#f3a892'); }
-    if (o.puff) { ell(hx - 31, hy + 12, 9, 8, '#ff9f8c'); ell(hx + 31, hy + 12, 9, 8, '#ff9f8c'); }
+  /* The face's own colours on the code path: the cheeks, the puffed cheeks and the brows. On the
+     pack path they are the look's (PK.look.colours), from its skin and hair swatches. */
+  const CODE_FACE = Object.freeze({ cheek: '#f3a892', puff: '#ff9f8c', brow: '#8a5a2b' });
+  /* The colour of a skin ramp's middle band, the one across the middle of the face's width, which
+     the lid of the half-closed eyes is filled with. */
+  function midBand(ramp) {
+    if (!Array.isArray(ramp)) return ramp;
+    for (let i = 0; i < ramp.length; i++) if (ramp[i][0] >= .5) return ramp[i][1];
+    return ramp[ramp.length - 1][1];
+  }
+  /* The face: the eyes, brows, cheeks and mouth. skin is the skin ramp the face is filled with this
+     frame (the normal, sick or hot one) and fc the colours of the cheeks, the puffed cheeks and the
+     brows: the code's own on the code path, the look's on the pack path. */
+  function faceHD(hx, hy, o, skin, fc) {
+    const lk = (o.look || 0) * 3, mid = midBand(skin), brow = fc.brow;
+    if (!o.face) { ell(hx - 29, hy + 13, 7, 4, fc.cheek); ell(hx + 29, hy + 13, 7, 4, fc.cheek); }
+    if (o.puff) { ell(hx - 31, hy + 12, 9, 8, fc.puff); ell(hx + 31, hy + 12, 9, 8, fc.puff); }
     for (const side of [-1, 1]) {
       const x = hx + side * 18, y = hy;
       switch (o.eyes) {
         case 'closed': Rh(x - 7, y + 4, 14, 3, C.K); Rh(x - 9, y + 1, 3, 4, C.K); Rh(x + 6, y + 1, 3, 4, C.K); break;
         case 'happy': Rh(x - 6, y - 3, 12, 3, C.K); Rh(x - 9, y - 1, 4, 5, C.K); Rh(x + 5, y - 1, 4, 5, C.K); break;
-        case 'wide': ell(x, y, 10, 13, C.K); ell(x, y, 8, 11, C.W); ell(x + lk, y + 1, 4, 5, C.K); Rh(x + lk - 2, y - 2, 2, 2, C.W); Rh(x - 6, y - 20, 12, 3, '#8a5a2b'); break;
+        case 'wide': ell(x, y, 10, 13, C.K); ell(x, y, 8, 11, C.W); ell(x + lk, y + 1, 4, 5, C.K); Rh(x + lk - 2, y - 2, 2, 2, C.W); Rh(x - 6, y - 20, 12, 3, brow); break;
         case 'half': ell(x + lk, y + 2, 7, 9, C.K); Rh(x + lk - 3, y + 1, 3, 3, C.W); Rh(x - 10, y - 9, 20, 8, mid); Rh(x - 9, y - 2, 18, 3, C.K); break;
         case 'dizzy': strip(x - 7, y - 7, x + 7, y + 7, 2, 2, C.K); strip(x - 7, y + 7, x + 7, y - 7, 2, 2, C.K); break;
         case 'angry': ell(x + lk, y + 2, 7, 9, C.K); Rh(x + lk - 3, y - 1, 3, 3, C.W); strip(x + side * 10, y - 15, x - side * 9, y - 8, 2.5, 2.5, C.K); break;
-        default: ell(x + lk, y, 7, 10, C.K); ell(x + lk, y + 4, 4, 4, '#4a3558'); Rh(x + lk - 4, y - 6, 4, 4, C.W); Rh(x + lk + 2, y + 3, 2, 2, C.W); Rh(x - 6, y - 17, 12, 3, '#8a5a2b');
+        default: ell(x + lk, y, 7, 10, C.K); ell(x + lk, y + 4, 4, 4, '#4a3558'); Rh(x + lk - 4, y - 6, 4, 4, C.W); Rh(x + lk + 2, y + 3, 2, 2, C.W); Rh(x - 6, y - 17, 12, 3, brow);
       }
     }
     const mx = hx, my = hy + 17;
@@ -155,7 +179,7 @@
     rrect(hx - 37, hy - 21, 74, 44, 9, 'rgba(60,30,20,.18)', hy - 21, hy - 16);
     for (const [x, y] of [[-57, 2], [57, 2], [-54, 26], [54, 26], [-28, -48], [28, -48]]) { ell(hx + x, hy + y, 4, 4, C.S4); Rh(hx + x - 2, hy + y - 2, 2, 2, C.S0); }
     rrect(hx - 60, hy + 37, 120, 14, 6, C.K); rrect(hx - 57, hy + 39, 114, 9, 4, STEEL2);
-    faceHD(hx, hy, o);
+    faceHD(hx, hy, o, SKINS[o.face || 'F'], CODE_FACE);
   }
   /* The bare head: ears, skull, hair and the face. */
   function bareHD(hx, hy, o) {
@@ -165,7 +189,7 @@
     rrect(hx - 58, hy - 67, 116, 54, 34, C.K); rrect(hx - 55, hy - 64, 110, 48, 31, hair);
     for (const [x, y, rx, c] of [[-36, -18, 15, C.N1], [-10, -15, 15, C.N0], [17, -17, 16, C.N1], [40, -22, 12, C.N2]]) ell(hx + x, hy + y, rx, 10, c);
     ell(hx - 4, hy - 70, 11, 10, C.K); ell(hx - 4, hy - 70, 8, 7, C.N0);
-    faceHD(hx, hy, o);
+    faceHD(hx, hy, o, skin, CODE_FACE);
   }
   function armHD(sx, sy, hx, hy) { strip(sx, sy, hx, hy, 11, 10, C.K); strip(sx, sy, hx, hy, 8, 7, STEEL2); }
   function gauntHD(hx, hy) { ell(hx, hy, 14, 13, C.K); ell(hx, hy, 11, 10, STEEL); Rh(hx - 7, hy + 3, 14, 2, C.S3); }
@@ -179,12 +203,33 @@
   }
 
   /* ---- The engine's own steps ------------------------------------------------------------------
-     Drawn by code on both paths, at their places in the order of one frame: the crates before
-     everything, the drumstick after the face, the hammer between the right arm and its gauntlet,
-     and what floats around the knight after everything. */
+     Drawn by code on both paths, at their places in the order of one frame: the drumstick after the
+     face, the crates after the pauldrons and before the arms, the hammer between the right arm and
+     its gauntlet, and what floats around the knight after everything. */
+  /* The load the knight carries against the chest on a full disk, from the neck anchor: n crates
+     of w by h stacked, the top one's top edge top below the neck, and the carrying grip's hands at
+     the bottom crate's lower corners, hand[0] outside its side and hand[1] above its foot. One
+     crate of 80 by 64, a little larger than the cellar's, reads best there: it spans the chest
+     inside the arms, and its top lies 50 below the head anchor, under the helmet's opening (whose
+     foot is 34 below it) and under the bare chin (47). */
+  const CARRY = Object.freeze({ w: 80, h: 64, n: 1, top: 6, hand: [4, -8] });
+  /* The load's slow sway, which the hands follow. */
+  const carrySway = t => Math.round(Math.sin(t / 900) * 2);
+  /* A crate of w by h with its top left at (x, y), drawn as the cellar's crates are: an outline,
+     planks, two braces, corner plates and a brass plate in the middle. */
+  function crateHD(x, y, w, h) {
+    Rh(x, y, w, h, C.K); Rh(x + 3, y + 3, w - 6, h - 6, C.N1);
+    const pl = (h - 6) / 3;
+    for (let j = 0; j < 3; j++) { Rh(x + 3, y + 3 + j * pl, w - 6, 2, C.N0); Rh(x + 3, y + 3 + (j + 1) * pl - 2, w - 6, 1, C.N3); }
+    strip(x + 6, y + 6, x + w - 6, y + h - 6, 3, 3, C.N2); strip(x + w - 6, y + 6, x + 6, y + h - 6, 3, 3, C.N2);
+    Rh(x + 3, y + 3, 6, h - 6, C.N2); Rh(x + w - 9, y + 3, 6, h - 6, C.N2);
+    for (const [cx, cy] of [[3, 3], [w - 11, 3], [3, h - 11], [w - 11, h - 11]]) Rh(x + cx, y + cy, 8, 8, C.S4);
+    rrect(x + w / 2 - 8, y + h / 2 - 7, 16, 14, 3, C.G2); rrect(x + w / 2 - 6, y + h / 2 - 5, 12, 10, 2, C.G1);
+  }
   function cratesHD(o, neck) {
-    // the crates, carried overhead
-    if (o.crates) { const w = Math.round(Math.sin(o.t / 900) * 5); P.crateHD(neck[0] - 30, neck[1] - 160); P.crateHD(neck[0] - 26 + w, neck[1] - 210); P.crateHD(neck[0] - 30 + 2 * w, neck[1] - 260); }
+    if (!o.crates) return;
+    const x = neck[0] - CARRY.w / 2 + carrySway(o.t);
+    for (let i = 0; i < CARRY.n; i++) crateHD(x, neck[1] + CARRY.top + i * CARRY.h, CARRY.w, CARRY.h);
   }
   /* The drumstick follows the head up and down but not sideways. */
   function drumHD(o, neck, head) { if (o.food) SP.drum(neck[0] + 18, head[1] - 6 + (Math.floor(o.t / 160) % 2) * 5); }
@@ -220,7 +265,6 @@
     const r = rig(o);
     const { root, footL, footR, hipL, hipR, hem, belt, neck, shoulderL, shoulderR, head, handL, handR, main } = r.anchors;
     const { drop, bloat, stepL, stepR, sway } = r.values;
-    cratesHD(o, neck);
     // greaves, knee cops, boots
     rrect(hipL[0] - 17, hipL[1], 34, 56 - drop, 8, C.K); rrect(hipL[0] - 14, hipL[1] + 3, 28, 50 - drop, 6, STEEL2);
     rrect(hipR[0] - 17, hipR[1], 34, 56 - drop, 8, C.K); rrect(hipR[0] - 14, hipR[1] + 3, 28, 50 - drop, 6, STEEL3);
@@ -240,6 +284,8 @@
     drumHD(o, neck, head);
     ell(shoulderL[0] + 4, shoulderL[1] - 7, 25, 20, C.K); ell(shoulderL[0] + 4, shoulderL[1] - 8, 22, 17, STEEL); Rh(shoulderL[0] - 3, shoulderL[1] - 13, 4, 4, C.S3);
     ell(shoulderR[0] - 4, shoulderR[1] - 7, 25, 20, C.K); ell(shoulderR[0] - 4, shoulderR[1] - 8, 22, 17, STEEL2); Rh(shoulderR[0] - 1, shoulderR[1] - 13, 4, 4, C.S4);
+    // the crates, held against the chest, under the arms
+    cratesHD(o, neck);
     // the arms and hands, by grip
     if (r.grip === 'hammer') {
       // the left hand steadies the work, the right swings a hammer
@@ -296,7 +342,7 @@
     for (let i = 0; i < seq.length; i++) {
       switch (seq[i]) {
         case 'crates': cratesHD(o, neck); break;
-        case 'face': faceHD(head[0], head[1], o); break;
+        case 'face': faceHD(head[0], head[1], o, face || PK.look.colours.face, PK.look.colours); break;
         case 'drumstick': drumHD(o, neck, head); break;
         case 'hammer': hammerHD(main); break;
         case 'effects': effectsHD(o, neck, root); break;
@@ -310,7 +356,7 @@
     const A = PK.hA, h = 2 * PK.lib.ANCHOR.head;
     A[h] = hx; A[h + 1] = hy;
     try { PK.cur = 'headOff'; PK.lib.draw(PK.look.lists.headOff, A, PK.hV, D, faceRamp(o)); PK.cur = null; } catch (e) { caught(e); return; }
-    faceHD(hx, hy, o);
+    faceHD(hx, hy, o, faceRamp(o) || PK.look.colours.face, PK.look.colours);
   }
   /* A throw inside a compiled list, which the checks should make impossible: the packs behind the
      list are marked bad, and the knight is drawn by the rules of start() from the next frame. A
@@ -580,10 +626,11 @@
      blade's angle, and with a weapon in one hand fx and fy place the shield hand in the same units.
      BASE is the greatsword's stance. BASE1 is the one-handed stance: the sword hand low at the
      right with the blade up and a little out, the shield in front of the chest. ATTACK1 raises the
-     sword over the right shoulder and brings the shield in to the middle. */
+     sword over the right shoulder, its guard on the helmet's shell clear of the opening, and brings
+     the shield in to the middle. disk_full carries the crates (see CARRY). */
   const BASE = { gx: 26, gy: 45, a: .45 };
   const BASE1 = { gx: 37.6, gy: 40.8, a: .3, fx: 20, fy: 38.4 };
-  const ATTACK1 = { gx: 40, gy: 24.4, a: .2, fx: 19.6, fy: 37.6 };
+  const ATTACK1 = { gx: 42, gy: 24.4, a: .2, fx: 19.6, fy: 37.6 };
   function pose(id, t) {
     const o = { t, eyes: 'open', mouth: 'flat', bob: Math.floor(t / 900) % 2, gx: BASE.gx, gy: BASE.gy, wang: BASE.a };
     if (ONE) { o.gx = BASE1.gx; o.gy = BASE1.gy; o.wang = BASE1.a; o.fx = BASE1.fx; o.fy = BASE1.fy; }
@@ -611,11 +658,13 @@
     return o;
   }
   /* The one-handed swing's wind-up and cut, by direction: to the right, the sword's own side, the
-     shield stays in front; to the left, across the body, the shield swings up and out of the
-     blade's way. The blade's angles are the two-handed swing's, so the swat's hit test is the same
-     for both weapons. */
+     wind-up raises the sword upright over the right shoulder, a little over the attack, so the
+     blade never crosses the face, and the shield stays in front; to the left, across the body, the
+     shield lifts and the blade passes in front of it. The cut's angle is the two-handed swing's,
+     and both wind-ups lie short of the nearest fly, so the swat's hit test is the same for both
+     weapons. */
   const SWING1 = {
-    1: { wind: { gx: 33.2, gy: 24.8, a: -1.0, fx: 16, fy: 38 }, hit: { gx: 44.8, gy: 38.4, a: 2.0, fx: 14, fy: 40 } },
+    1: { wind: { gx: 43.2, gy: 23.2, a: 0, fx: 16, fy: 38 }, hit: { gx: 44.8, gy: 38.4, a: 2.0, fx: 14, fy: 40 } },
     '-1': { wind: { gx: 38.8, gy: 23.2, a: 1.0, fx: 12, fy: 37.6 }, hit: { gx: 17.2, gy: 40.8, a: -2.0, fx: 3.2, fy: 26.4 } }
   };
   /* A swing: wind up over one shoulder, cut across, recover. dir +1 cuts to the right. In both hands

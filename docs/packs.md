@@ -268,12 +268,12 @@ arithmetic as the greatsword's drawing in `props.js`.
 
 The order of one frame, front to back reading down; the engine's own steps are in brackets.
 
-1. [the crates, when carrying]
-2. `back`, `legs`, `boots`, `torso`, each in the order its parts are written
-3. the head group. Helmet on: hair's `helmeted` view, the plume, the helmet. Helmet off: the
+1. `back`, `legs`, `boots`, `torso`, each in the order its parts are written
+2. the head group. Helmet on: hair's `helmeted` view, the plume, the helmet. Helmet off: the
    build's head item, the hair.
-4. [the face], [the drumstick, in the feast]
-5. `pauldrons`
+3. [the face], [the drumstick, in the feast]
+4. `pauldrons`
+5. [the crate, when carrying]
 6. the hands group, by grip mode (below)
 7. [sweat, steam, the marks, the thought bubble, the progress bar, hearts, the speech bubble]
 
@@ -284,18 +284,31 @@ The order of one frame, front to back reading down; the engine's own steps are i
 | `twoR`, the two-handed blade leaning right | arm R, arm L, the weapon, gauntlet R, gauntlet L |
 | `twoL`, leaning left | arm L, arm R, the weapon, gauntlet L, gauntlet R |
 | `one`, one-handed | arm L, gauntlet L, the shield, arm R, the weapon, gauntlet R |
-| `oneCrossed`, the sword hand left of the root | arm L, gauntlet L, arm R, the weapon, gauntlet R, the shield |
+| `oneCrossed`, the sword hand left of the root | arm L, gauntlet L, arm R, the shield, the weapon, gauntlet R |
 
 In the two-handed modes the arm on the lean side reaches the upper hand, so the engine puts the
 upper hand on that side's hand anchor. Both arms go before the weapon, so neither is ever drawn
 over the blade or the guard, and the gauntlets after it, closing on the grip; a two-handed
 weapon's upper station must sit low enough that its gauntlet stays below the guard, as the base
-pack's greatsword's 2 does. The one-handed orders hold the sword in the right hand and
+pack's greatsword's 2 does. Once the blade turns past level the engine slides the upper hand up to
+2 further down the grip, which a weapon's stations need not allow for. The one-handed orders hold the sword in the right hand and
 the shield in the left. In `one` the shield's group goes first, so the sword arm and the sword lie
 over the shield's edge where they meet and no arm crosses the shield's face. In `oneCrossed`,
-while the sword hand is across the body, both arms go before the weapon and the shield goes last:
-the blade may pass over the shield arm but never under it, and goes behind the shield. The off
-gauntlet lies behind the shield in every pose. With a one-handed weapon and no shield the left
+while the sword hand is across the body, both arms go first, then the shield, then the weapon and
+last the sword hand's gauntlet: the sword arm stays behind the shield, and the blade passes in
+front of the shield, so a blow struck across the body is seen. The off gauntlet lies behind the
+shield in every pose.
+
+The order of one frame has changed three times since the format was approved. The first change
+put both arms before the weapon in `twoR` and `twoL`. The second: `oneCrossed` used to draw the
+shield last, over the blade, and at the camp, where the goblin stands low on the shield's side, the
+shield hid the blade at the bonk and in the swat to the left. The blade is now drawn over the
+shield. The third moved the engine's `crates` step from first, behind everything, to after
+`pauldrons` and before the hands group, in every mode: the knight now carries a crate against the
+chest with the arms round its sides, where before the crates floated behind the head. A pack's own
+lists keep their places relative to each other. The order is the engine's, given by `sequence()`
+in `pack.js`, and no pack carries it, so the base pack and its signature are unchanged by these
+changes. With a one-handed weapon and no shield the left
 hand hangs at the side as in `none`, and the orders are the same with no shield in them.
 
 The poses with each grip belong to the engine, not to the weapon: every one-handed weapon is held,
@@ -363,6 +376,13 @@ fixed offsets from `head`, so no helmet can cover it. A helmet must also show sk
 face box, `x` from -28 to 28 and `y` from -20 to 20 around `head`. The box is `[x, x + w]` by
 `[y, y + h]` (centre plus and minus the radii for an ellipse), cut by any clip. It must hold at both
 ends of the range of every name the shape leans on.
+
+The face is drawn in the look's colours. The lid of the half-closed eyes takes the band of the
+skin ramp in use (`face`, or `sick` or `hot` when the knight is ill or overheated) that lies across
+the middle of the face's width, the first band whose fraction is 0.5 or more; the cheeks take the
+skin's `cheek`, the puffed cheeks its `puff`, and the brows the hair's `brow`. A skin swatch's
+three ramps and two colours, and a hair swatch's `brow`, should therefore be chosen together with
+the face in mind.
 
 The check proves that a skin-coloured shape covers the face box. It does not prove that nothing is
 painted over that shape afterwards: the fixture's own helmet lays a translucent shade over the top
@@ -506,7 +526,7 @@ can make for it, worked out at the ends of the range of every value it leans on:
 A clip with both ends set caps the rows of an `ell` or `rrect`. A band list of the user's skin
 counts as 8 bands. A framed point may turn to any angle, so it reaches the length of its `(s, p)`
 in every direction. A shape whose points hang on two anchors adds `ANCHOR_SPAN`, 400: the
-farthest apart two anchors of one frame may lie. The present rig keeps well inside it: over every
+farthest apart two anchors of one frame may lie. The present rig keeps inside it: over every
 pose, every point of a swing, the smallest and largest builds and a bloat of 60, its anchors lie at
 most 273 apart (the left shoulder and the hammer hand at the anvil). A decoration's shape counts as many times over as the largest scale its
 group's keyframes reach.
@@ -515,7 +535,9 @@ The cost is a bound, not a count. The present knight costs 11 932 in its heavies
 greatsword, helmet on): 5560 for the legs, boots, tabard, pauldrons, arms and gauntlets, 1720 for
 the plume and helmet, and 4652 for the greatsword. Drawn through `draw.js` it makes between
 about 5800 and 6500 calls in the poses measured, the face included. With the helmet off the head
-group costs 1632; with the sword put away, or at the anvil, the greatsword's 4652 drops out.
+group costs 1632; with the sword put away, or at the anvil, the greatsword's 4652 drops out. The
+look with the sword and shield costs 12 035 and draws up to about 7000 calls, the attack the
+heaviest.
 
 ## Signing
 
@@ -738,8 +760,9 @@ A test draws the fixture's whole knight this way through `draw.js`, in eleven po
 bloated, attacking, unwell, walking, helmet off, sword away, at the anvil, mid-swing both ways),
 and requires every fill to equal what `knight.js` draws, pixel for pixel, and the number of fills
 to stay within the look's cost. The page's own path from the base pack is checked harder still, in
-the 112 records of the knight's call record (98 poses of the knight, the gear at rest, and the
-house and the smithy); see [On the page](#on-the-page).
+the 112 records of the knight's call record (94 poses of the knight, the bare head in bed and the
+speech bubble twice each, the gear at rest, and the house and the smithy); see
+[On the page](#on-the-page).
 
 ## The library
 
@@ -774,7 +797,8 @@ array of loaded packs.
 A resolved look is `{ ok: true, look, fallbacks, ignored, m, diffs, colours, grip, blade, plumeShown,
 shapes, cost, lists }`: `look` names what is drawn, `m` and `diffs` are the build's measurements and
 differences, `colours` holds the skin's `face`, `sick`, `hot`, `cheek` and `puff` and the hair's
-`brow` for the engine's face, and `shapes` and `cost` are the counts against the caps.
+`brow` for the engine's face (the half-closed eyes' lid takes the middle band of the ramp in use,
+the cheeks, the puffed cheeks and the brows the three colours), and `shapes` and `cost` are the counts against the caps.
 
 `animate(decoration, t)` takes a `t` that is not a finite number, or is negative, as 0, and returns
 finite values and well-formed colours for every `t`.
@@ -1022,7 +1046,7 @@ present drawing has, the arming sword and the heater shield, and nothing more, e
 equal to the fixture's or, for the two new items, to `fixtures/base-onehand.items.json`, a default
 look that resolves with nothing missing at a cost of 11 932, and the look with the sword and shield
 resolving with nothing missing, one-handed, at 119 shapes. `tests/web/knight.test.js` draws the
-knight's 98 poses, the gear at rest, and the house and the smithy painted and drawn, from the base
+knight's 94 poses, the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy painted and drawn, from the base
 pack as the page does, and compares every call with the record taken from the code. It draws the
 code path from the unsigned copy, which a deployed page always refuses, and edits only that copy, so
 it too holds in either state. It checks that a deployed page draws from the shipped base pack when
@@ -1030,10 +1054,12 @@ it is signed and from code when it is not, and, with a key made for the run swap
 sandbox's `KEYS`, that a deployed page reads a signed base pack through `KW.ed25519.verify` and
 draws from code when no verifier is loaded. It also checks
 that a pack's colours reach the gear at rest, and that a helmet with no rest view and a weapon with
-no `blade` show nothing there. With the sword and shield it checks the one-handed grip, the stance
+no `blade` show nothing there. It checks that the face takes the look's skin and hair colours and
+that a deep skin with black hair, made for the test, leaves no colour of the warm skin in any
+condition's face. With the sword and shield it checks the one-handed grip, the stance
 and the attack, the free hand hanging when there is no shield, the change to `oneCrossed` in the
 swing to the left, the pegs, the shield's places and the backdrop keys, and, frame by frame, that
-no arm is drawn over a blade or a shield ([page.md](./page.md#the-knights-rig)). [page.md](./page.md#checks) describes it.
+no arm is drawn over a blade or a shield, in the swings, the attack and the goblin strike ([page.md](./page.md#the-knights-rig)). [page.md](./page.md#checks) describes it.
 
 `tests/web/loading.test.js` checks loading and failure. For the index: its shape, more than 32
 names, and names that carry a path or are not a pack file's. For the fetch, against a fake `fetch`:

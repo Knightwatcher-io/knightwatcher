@@ -43,19 +43,22 @@ default look. The base pack also carries a one-handed arming sword and a heater 
 the owner chose to ship beside the greatsword: the shield's field is in the tabard's colours, so it
 follows the tabard, with the gold eye of the watch on it, as on the tabard and the banners. The
 knight holds the sword in the right hand and the shield in front of the chest with the left; in
-the attack the sword goes up over the right shoulder and the shield comes in to the middle, and in
-a swing to the left the shield lifts out of the blade's way. A shield is carried only with a
+the attack the sword goes up over the right shoulder and the shield comes in to the middle. A
+swing to the right winds up with the sword upright over the right shoulder, clear of the face; in
+a swing to the left the shield lifts as the sword crosses the body, and the blade passes in front
+of it, so a blow struck on that side is always seen. A shield is carried only with a
 one-handed weapon, and a one-handed weapon without a shield leaves the other hand hanging free.
 
 No arm or gauntlet is ever drawn over a blade or its guard, nor over the face of a shield. With
 the greatsword both arms go behind the blade, the one on the side it leans to first, and the hands
 close on the grip below the guard, the upper one far enough down that it never covers the guard.
 With the sword and shield the shield's arm goes behind the shield and the sword's arm behind the
-sword, and while the sword crosses the body both arms go behind it and it goes behind the shield.
+sword, and while the sword crosses the body both arms go behind the shield and the blade goes in
+front of it.
 A test draws every frame of the swings and the attack and checks this pixel by pixel
 ([page.md](./page.md#the-knights-rig)). The helmet comes off in the house and the
-smithy. Gear is drawn in slots (head, weapon, shield, hands) over one body so that new items can be
-added later.
+smithy. Gear is drawn in slots over one body so that new items can be added later; the slots are
+listed in [packs.md](./packs.md#slots-and-the-drawing-order).
 
 The gear the knight is not holding is at rest where it belongs: the helmet on the stool in the
 house, the weapon on the house's pegs and across the smithy's anvil, and the shield on the wall
@@ -109,7 +112,7 @@ and a state of the knight. Highest first:
 | `attack` | critical | battlement | sword raised, alarmed |
 | `wan_down` | critical | battlement | puzzled, a cut rope |
 | `container_unhealthy` | warning | house | in bed, thermometer |
-| `disk_full` | warning | cellar | carrying a tower of crates |
+| `disk_full` | warning | cellar | crouched and sweating, carrying a heavy crate against the chest |
 | `backup_overdue` | warning | house | hungry, thinking of food |
 | `pi_silent` | warning | house | staring at the empty dish |
 | `thing_down` | warning | the quiet scene of the moment | stays put, frowning, looking towards the empty place |
