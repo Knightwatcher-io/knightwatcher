@@ -134,7 +134,7 @@
   }
 
   /* The state of the knight for a condition id (see docs/state.md), at time t. gx and gy place the
-     middle of the sword's grip in coarse units from the knight's corner, wang is the blade's angle. */
+     middle of the sword's grip in units of U from the knight's corner, wang is the blade's angle. */
   const BASE = { gx: 26, gy: 45, a: .45 };
   function pose(id, t) {
     const o = { t, eyes: 'open', mouth: 'flat', bob: Math.floor(t / 900) % 2, gx: BASE.gx, gy: BASE.gy, wang: BASE.a };

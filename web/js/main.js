@@ -12,7 +12,7 @@
   H0.slice(1).split('&').forEach(kv => { const [k, v] = kv.split('='); if (k in S && v != null) S[k] = decodeURIComponent(v); });
   for (const k of Object.keys(OPTS)) if (!(S[k] in OPTS[k])) S[k] = Object.keys(OPTS[k])[0];
   const hv = k => (H0.match(new RegExp('[#&]' + k + '=([\\w.-]+)')) || [])[1];
-  /* t=<ms> freezes time for screenshots, kx=<x> places the knight (coarse units). */
+  /* t=<ms> freezes time for screenshots, kx=<x> places the knight (in units of U). */
   KW.hooks = { hv, t: +(hv('t') || 0), kx: hv('kx') };
   const freeze = KW.hooks.t;
 
@@ -43,7 +43,7 @@
   setInterval(tick, 1000); tick();
 
   /* ---- Sizing: the scene cut to the screen's own shape ---------------------------------------
-     From twice the fine grid upwards the canvas is scaled by a whole number of device pixels, which
+     From twice the grid's size upwards the canvas is scaled by a whole number of device pixels, which
      is what the tablet gets (three). A smaller window is scaled by a fraction and smoothed, for
      looking at the page on a desk. */
   const capnote = $('capnote');
