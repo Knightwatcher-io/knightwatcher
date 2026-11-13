@@ -1,0 +1,20 @@
+# Site configuration and credentials: never committed
+/config.toml
+/secrets.json
+.env
+.env.*
+!.env.example
+
+# What the collector writes for the page
+/web/data/
+
+# Python and tooling
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+
+# The list of private patterns names what it protects
+/tools/private-patterns.txt

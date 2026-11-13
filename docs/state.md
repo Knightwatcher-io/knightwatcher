@@ -1,0 +1,75 @@
+# The state file
+
+`state.json` is the only thing the collector and the page share. The collector writes it whole,
+to a temporary name and then renamed into place, so the page never reads half a file. The page
+fetches it every few seconds.
+
+Every value below is invented.
+
+```json
+{
+  "schema": 1,
+  "generated_at": "2026-01-15T21:42:10Z",
+  "interval_s": 30,
+  "conditions": [
+    {
+      "id": "container_unhealthy",
+      "level": "warning",
+      "since": "2026-01-15T21:30:02Z",
+      "headline": "RADARR UNWELL",
+      "detail": "unhealthy for 12 min · restarted twice"
+    }
+  ],
+  "quiet_line": "ALL QUIET · 29 up · backup 03:12 · 4,812 ads blocked",
+  "events": [
+    { "seq": 4410, "type": "ad_blocked", "at": "2026-01-15T21:42:01Z", "count": 3, "text": "" },
+    { "seq": 4411, "type": "ip_banned", "at": "2026-01-15T21:42:07Z", "count": 1,
+      "text": "BANNED 203.0.113.77 · 6 probes for /.env" }
+  ],
+  "facts": {
+    "host": { "cpu_pct": 23.0, "load1": 2.9, "cores": 12, "mem_pct": 61.0, "swap_pct": 9.0,
+              "disks": [ { "mount": "/data", "pct": 71.0, "free_gb": 640 } ] },
+    "containers": { "total": 29, "running": 29, "unhealthy": [], "restarting": [], "failed": [] },
+    "wan": { "up": true },
+    "dns": { "up": true },
+    "backup": { "last_ok": "2026-01-15T03:12:00Z", "age_h": 18.5 },
+    "pi": { "up": true },
+    "updates": { "running": false, "what": "" },
+    "streams": { "count": 1, "titles": ["The Night Shift S02E04"] },
+    "ssh": { "count": 0, "sources": [] },
+    "adblock": { "blocked_today": 4812 },
+    "security": { "threat_score": 2, "bans_24h": 14, "attack": false }
+  },
+  "sources": {
+    "containers": { "ok": true, "at": "2026-01-15T21:42:10Z", "error": "" },
+    "adblock": { "ok": false, "at": "2026-01-15T21:40:40Z", "error": "401 from the DNS filter" }
+  }
+}
+```
+
+## Fields
+
+- **`schema`** is `1`. A page that meets a number it does not know shows its "no signal" state.
+- **`generated_at`** and **`interval_s`**: when the file was written and how often it should be.
+  The page treats the file as stale once it is older than three intervals, and says so on screen.
+- **`conditions`** lists what is true now, highest priority first. The page acts on the first and
+  counts the rest. An empty list means all is quiet.
+  - `id` is one of: `attack`, `wan_down`, `container_unhealthy`, `disk_full`, `backup_overdue`,
+    `pi_silent`, `cpu_hot`, `memory_tight`, `ssh_session`, `updating`, `streaming`, `night`. The
+    page ignores an id it does not know.
+  - `level` is `critical`, `warning`, `work`, `quiet` or `sleep`. It sets the text colour.
+  - `headline` is at most 16 characters, in capitals. `detail` is at most 60 characters.
+- **`quiet_line`** is shown when `conditions` is empty. At most 52 characters.
+- **`events`** are things that happened, for the page to act out once. `seq` only ever rises, and
+  the page remembers the highest it has played. The collector keeps the last 20. `type` is one of
+  `ad_blocked`, `ip_banned`, `import`, `backup_done`. `text` is a caption of at most 44
+  characters, empty for `ad_blocked`. `count` says how many the event stands for.
+- **`facts`** are the figures behind the conditions, for a page that wants to show them. Any
+  section is `null` when its source is unavailable.
+- **`sources`** says, for each source, whether its last read worked.
+
+## Who decides what
+
+The collector decides whether a condition is true, including how long something must last before
+it counts, and writes the words. The page decides which scene and which state of the knight a
+condition maps to, and nothing else. Thresholds and durations are the collector's configuration.
