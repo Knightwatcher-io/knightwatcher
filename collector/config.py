@@ -50,7 +50,7 @@ CONDITION_DEFAULTS: dict[str, Any] = {
     "pi_silent": {"for_s": 180},
     "cpu_hot": {"pct": 85.0, "for_s": 300},
     "memory_tight": {"available_pct": 10.0, "for_s": 300},
-    "ssh_session": {"min_sessions": 1},
+    "ssh_session": {"min_sessions": 1, "show_for_s": 600},
     "updating": {},
     "streaming": {"min_streams": 1},
     "night": {"start": "23:00", "end": "07:00"},
@@ -208,10 +208,15 @@ def _validate_conditions(c: dict, problems: list[str]) -> None:
     for key in ("start", "end"):
         if not _HHMM.match(c["night"][key]):
             problems.append(f"conditions.night.{key}: expected HH:MM, 24-hour")
-    for cid in ("ssh_session", "streaming"):
-        for k, v in c[cid].items():
-            if v < 1:
-                problems.append(f"conditions.{cid}.{k}: must be at least 1")
+    for where, v in (
+        ("ssh_session.min_sessions", c["ssh_session"]["min_sessions"]),
+        ("streaming.min_streams", c["streaming"]["min_streams"]),
+    ):
+        if v < 1:
+            problems.append(f"conditions.{where}: must be at least 1")
+    _check_positive(
+        "conditions.ssh_session.show_for_s", c["ssh_session"]["show_for_s"], problems, True
+    )
 
 
 def _validate_source(name: str, s: dict, problems: list[str]) -> None:

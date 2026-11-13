@@ -126,6 +126,9 @@ class Conditions:
         }
         # Per-container short history: name -> (first seen bad, kind, status).
         self.bad_since: dict[str, tuple[dt.datetime, str, str]] = {}
+        # SSH connections seen: (address, port) -> first seen, or None if open at the first
+        # reading. None until the first reading.
+        self.ssh_seen: dict[tuple[str, int], dt.datetime | None] | None = None
         self.causes: dict[str, Cause] = {}
 
     # Causes -----------------------------------------------------------------------------------
@@ -198,8 +201,23 @@ class Conditions:
     def _ssh_session(self, r, now) -> Cause:
         f = _facts(r, "ssh")
         if f is None:
+            # Keep the memory of connections through a failed read.
             return Cause(False)
-        return Cause(f["count"] >= self.config.conditions["ssh_session"]["min_sessions"], context=f)
+        s = self.config.conditions["ssh_session"]
+        conns = {tuple(c) for c in _data(r, "ssh").get("conns", [])}
+        if self.ssh_seen is None:
+            # The first reading adopts whatever is open as old.
+            self.ssh_seen = dict.fromkeys(conns)
+        else:
+            self.ssh_seen = {c: self.ssh_seen.get(c, now) for c in conns}
+        enough = f["count"] >= s["min_sessions"]
+        if s["show_for_s"] == 0:
+            return Cause(enough, context=f)
+        fresh = any(
+            t is not None and (now - t).total_seconds() < s["show_for_s"]
+            for t in self.ssh_seen.values()
+        )
+        return Cause(enough and fresh, context=f)
 
     def _updating(self, r, now) -> Cause:
         f = _facts(r, "updates")

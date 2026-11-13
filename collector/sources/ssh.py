@@ -1,6 +1,8 @@
 """Open SSH sessions: established TCP connections to the SSH port, from the host's own table.
 
-The container shares the host's network namespace, so /proc/net/tcp is the host's table.
+The container shares the host's network namespace, so /proc/net/tcp is the host's table. Each
+connection is reported by its remote address and port in `data`, so that the ssh_session
+condition can tell a new session from one already open.
 """
 
 from __future__ import annotations
@@ -29,8 +31,8 @@ def decode_address(hex_addr: str) -> str:
     return str(addr.ipv4_mapped) if addr.ipv4_mapped else str(addr)
 
 
-def sessions(path: str, port: int) -> list[str]:
-    """Remote addresses of established connections whose local port is `port`."""
+def sessions(path: str, port: int) -> list[tuple[str, int]]:
+    """Remote (address, port) of each established connection whose local port is `port`."""
     out = []
     try:
         with open(path, encoding="ascii") as fh:
@@ -42,7 +44,8 @@ def sessions(path: str, port: int) -> list[str]:
                 local, remote = fields[1], fields[2]
                 if int(local.rsplit(":", 1)[1], 16) != port:
                     continue
-                out.append(decode_address(remote.rsplit(":", 1)[0]))
+                addr, rport = remote.rsplit(":", 1)
+                out.append((decode_address(addr), int(rport, 16)))
     except FileNotFoundError:
         return []
     return out
@@ -64,11 +67,14 @@ class SshSource(Source):
     def fetch(self, now):
         port = self.settings["port"]
         try:
-            remotes = sessions(os.path.join(self.net, "tcp"), port)
-            remotes += sessions(os.path.join(self.net, "tcp6"), port)
+            conns = sessions(os.path.join(self.net, "tcp"), port)
+            conns += sessions(os.path.join(self.net, "tcp6"), port)
         except OSError as exc:
             raise SourceError(f"cannot read the connection table ({exc.strerror})") from None
         except (ValueError, IndexError):
             raise SourceError("unexpected connection table format") from None
-        remotes = [r for r in remotes if self._kept(r)]
-        return Reading({"count": len(remotes), "sources": sorted(set(remotes))})
+        conns = sorted(c for c in conns if self._kept(c[0]))
+        return Reading(
+            {"count": len(conns), "sources": sorted({addr for addr, _ in conns})},
+            {"conns": [[addr, rport] for addr, rport in conns]},
+        )

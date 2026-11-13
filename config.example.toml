@@ -49,6 +49,7 @@ for_s = 300
 
 [conditions.ssh_session]
 min_sessions = 1
+show_for_s = 600
 
 [conditions.streaming]
 min_streams = 1

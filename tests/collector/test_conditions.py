@@ -37,6 +37,17 @@ def security(jail_ban=False, in_window=0, jail="sshd", ip="203.0.113.77"):
     return Reading(facts, data)
 
 
+def ssh(*conns):
+    """An ssh reading of (address, port) connections."""
+    facts = {"count": len(conns), "sources": sorted({a for a, _ in conns})}
+    return Reading(facts, {"conns": [[a, p] for a, p in conns]})
+
+
+A = ("192.0.2.10", 51000)
+B = ("198.51.100.7", 51001)
+C = ("203.0.113.5", 51002)
+
+
 def ids(out):
     return [c["id"] for c in out]
 
@@ -199,8 +210,9 @@ class EachConditionTest(unittest.TestCase):
 
     def test_ssh_updating_streaming(self):
         h = Harness()
+        h.poll(ssh=ssh())
         out = h.poll(
-            ssh=Reading({"count": 1, "sources": ["192.0.2.10"]}),
+            ssh=ssh(A),
             updates=Reading({"running": True, "what": "nightly maintenance"}),
             streams=Reading({"count": 1, "titles": ["The Night Shift S02E04"]}),
         )
@@ -229,6 +241,87 @@ class EachConditionTest(unittest.TestCase):
         out = h.poll(security=security(in_window=5))
         self.assertEqual(ids(out), ["attack"])
         self.assertEqual(out[0]["detail"], "5 bans in 10 min")
+
+
+class SshSessionTest(unittest.TestCase):
+    def test_sessions_open_at_the_first_reading_are_old(self):
+        h = Harness()
+        for _ in range(3):
+            self.assertEqual(ids(h.poll(ssh=ssh(A, B))), [])
+
+    def test_a_new_session_raises_it(self):
+        h = Harness()
+        h.poll(ssh=ssh(A))
+        out = h.poll(ssh=ssh(A, B))
+        self.assertEqual(ids(out), ["ssh_session"])
+        self.assertEqual(out[0]["headline"], "SHELL OPEN")
+        self.assertEqual(out[0]["detail"], "2 ssh sessions from 192.0.2.10, 198.51.100.7")
+        self.assertEqual(out[0]["since"], "2026-01-15T21:00:30Z")
+
+    def test_it_lasts_show_for_s_from_the_new_session(self):
+        h = Harness({"conditions": {"ssh_session": {"show_for_s": 90}}})
+        h.poll(ssh=ssh(A))  # 0 s
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 30 s, B is new
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 60 s
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 90 s
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 120 s, held one poll
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), [])  # 150 s
+
+    def test_the_default_is_ten_minutes(self):
+        h = Harness()
+        h.poll(ssh=ssh(A))  # 0 s
+        for _ in range(20):  # 30 .. 600 s, B first seen at 30 s
+            self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 630 s, held
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), [])  # 660 s
+
+    def test_a_second_new_session_extends_the_window(self):
+        h = Harness({"conditions": {"ssh_session": {"show_for_s": 90}}})
+        h.poll(ssh=ssh())  # 0 s
+        h.poll(ssh=ssh(A))  # 30 s, A is new
+        out = h.poll(ssh=ssh(A, B))  # 60 s, B is new
+        self.assertEqual(out[0]["since"], "2026-01-15T21:00:30Z")
+        for _ in range(2):  # 90 and 120 s; A alone would have ended at 120 s
+            self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])  # 150 s, held
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), [])  # 180 s
+
+    def test_a_new_session_that_closes_lets_it_clear(self):
+        h = Harness()
+        h.poll(ssh=ssh(A))
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])
+        self.assertEqual(ids(h.poll(ssh=ssh(A))), ["ssh_session"])  # held one poll
+        self.assertEqual(ids(h.poll(ssh=ssh(A))), [])
+
+    def test_a_closed_session_is_forgotten(self):
+        h = Harness()
+        h.poll(ssh=ssh(A))
+        h.poll(ssh=ssh())
+        self.assertEqual(ids(h.poll(ssh=ssh(A))), ["ssh_session"])
+
+    def test_min_sessions_still_applies(self):
+        h = Harness({"conditions": {"ssh_session": {"min_sessions": 2}}})
+        h.poll(ssh=ssh())
+        self.assertEqual(ids(h.poll(ssh=ssh(A))), [])
+        self.assertEqual(ids(h.poll(ssh=ssh(A, B))), ["ssh_session"])
+
+    def test_zero_keeps_it_up_while_sessions_are_open(self):
+        h = Harness({"conditions": {"ssh_session": {"show_for_s": 0}}})
+        for _ in range(30):
+            self.assertEqual(ids(h.poll(ssh=ssh(A))), ["ssh_session"])
+        self.assertEqual(ids(h.poll(ssh=ssh())), ["ssh_session"])  # held one poll
+        self.assertEqual(ids(h.poll(ssh=ssh())), [])
+
+    def test_an_unreadable_source_leaves_the_memory_alone(self):
+        h = Harness()
+        self.assertEqual(ids(h.poll(ssh=None)), [])
+        self.assertEqual(ids(h.poll(ssh=ssh(A))), [])  # first good reading: A adopted
+        self.assertEqual(ids(h.poll(ssh=None)), [])
+        self.assertEqual(ids(h.poll(ssh=ssh(A))), [])  # A is still old
+        self.assertEqual(ids(h.poll(ssh=ssh(A, C))), ["ssh_session"])
+        self.assertEqual(ids(h.poll(ssh=None)), ["ssh_session"])  # absent, held one poll
+        self.assertEqual(ids(h.poll(ssh=None)), [])
+        self.assertEqual(ids(h.poll(ssh=ssh(A, C))), ["ssh_session"])  # C is still new
 
 
 class NightTest(unittest.TestCase):
@@ -262,14 +355,19 @@ class NightTest(unittest.TestCase):
 
 class PriorityTest(unittest.TestCase):
     READINGS: ClassVar[dict] = {
-        "ssh": Reading({"count": 1, "sources": []}),
+        "ssh": ssh(A),
         "wan": Reading({"up": False}),
         "host": host(disks=[{"mount": "/data", "pct": 95.0, "free_gb": 1}]),
     }
 
+    def _evaluate(self, raw):
+        """One poll with no sessions open, then one with a new session and the rest."""
+        c = Conditions(make_config(raw))
+        c.evaluate({"ssh": ssh()}, T0.replace(hour=11, minute=59, second=30))
+        return c.evaluate(self.READINGS, T0.replace(hour=12))
+
     def test_default_order_is_the_design_table(self):
-        c = Conditions(make_config({"conditions": {"wan_down": {"failed_checks": 1}}}))
-        out = c.evaluate(self.READINGS, T0.replace(hour=12))
+        out = self._evaluate({"conditions": {"wan_down": {"failed_checks": 1}}})
         self.assertEqual(ids(out), ["wan_down", "disk_full", "ssh_session"])
 
     def test_order_comes_from_config(self):
@@ -279,12 +377,12 @@ class PriorityTest(unittest.TestCase):
                 "priority": ["ssh_session", "disk_full", "wan_down"],
             }
         }
-        out = Conditions(make_config(raw)).evaluate(self.READINGS, T0.replace(hour=12))
+        out = self._evaluate(raw)
         self.assertEqual(ids(out), ["ssh_session", "disk_full", "wan_down"])
 
     def test_a_condition_left_out_is_never_raised(self):
         raw = {"conditions": {"wan_down": {"failed_checks": 1}, "priority": ["ssh_session"]}}
-        out = Conditions(make_config(raw)).evaluate(self.READINGS, T0.replace(hour=12))
+        out = self._evaluate(raw)
         self.assertEqual(ids(out), ["ssh_session"])
 
 
@@ -295,10 +393,11 @@ class TextLimitTest(unittest.TestCase):
             f"container-number-{i}": {"kind": "unhealthy", "status": "Up (unhealthy)"}
             for i in range(10)
         }
-        many = [f"198.51.100.{i}" for i in range(20)]
+        many = [(f"198.51.100.{i}", 51000 + i) for i in range(20)]
+        h.poll(ssh=ssh())
         out = h.poll(
             containers=containers(bad),
-            ssh=Reading({"count": 20, "sources": many}),
+            ssh=ssh(*many),
             streams=Reading({"count": 1, "titles": ["An Extremely Long Title " * 5]}),
         )
         for c in out:

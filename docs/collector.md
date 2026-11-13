@@ -43,6 +43,15 @@ unhealthy, restarting or exited with a non-zero code for three minutes before it
 each container has its own timer. Conditions with no duration (`disk_full`, `ssh_session`,
 `updating`, `streaming`, `night`, `attack`) are active from the first poll that shows the cause.
 
+`ssh_session` is raised when a new SSH session appears. A session is one established connection
+to the SSH port, identified by its remote address and port. The cause is present while at least
+`min_sessions` sessions are open and one of them was first seen less than `show_for_s` ago (ten
+minutes by default), so a second new session extends the time. A session that closes early ends
+the cause at once. The first reading after the collector starts takes every session already open
+as old, so a restart raises nothing, and a poll where the source cannot be read leaves the record
+of sessions as it was. With `show_for_s` at 0 the condition is up for as long as `min_sessions`
+sessions are open.
+
 A condition clears only after its cause has been absent for `clear_after_polls` further polls
 (one by default). While it is held through that poll it keeps the words it last had. A source
 that cannot be read counts as the cause being absent, so a dead source cannot hold a condition
