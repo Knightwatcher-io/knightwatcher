@@ -248,10 +248,10 @@ if (MODE === 'write') {
   /* What a page says when it draws from a base pack, signed or not. */
   const fromPack = (status, signed) => {
     assert.equal(status.source, 'pack', status.note);
-    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.1.0', signed });
+    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.2.0', signed });
     assert.deepEqual(plain(status.refused), []);
     assert.deepEqual(plain(status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), []);
-    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.1.0, ' + (signed ? 'signed' : 'unsigned'));
+    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.2.0, ' + (signed ? 'signed' : 'unsigned'));
   };
   const MISSING = 'sig: is missing, and this page accepts only signed packs';
   /* The unsigned base pack signed with a key made for the run: { text, kw1 }, kw1 the public key in
@@ -322,7 +322,7 @@ if (MODE === 'write') {
     let s = load(true, ['not json']).status;
     assert.equal(s.source, 'code');
     assert.deepEqual(plain(s.refused), [{ id: null, file: null, step: 'json', reason: 'the file is not valid JSON' }]);
-    const v = load(true, [text.replace('"version": "1.1.0"', '"version": "1.1"')]);
+    const v = load(true, [text.replace('"version": "1.2.0"', '"version": "1.2"')]);
     assert.equal(v.status.note, CODE + 'the base pack kw.base was refused at the fields step');
     assert.deepEqual(v.lines[0], ['warn', 'knightwatcher: the pack kw.base was refused at the fields step: pack.version: must be major.minor.patch, each 0 to 999']);
     const box = load(true);
@@ -365,15 +365,15 @@ if (MODE === 'write') {
 
   test('the pack path draws the face in the look\'s colours: a changed skin and hair brow show, and nothing else changes', () => {
     // the middle band of each skin ramp, the cheeks, the puffed cheeks and the brows, each changed
-    // to a colour of its own
     // to a colour of its own; the warm skin's puffed cheeks share their colour with its hot ramp's
-    // middle band
-    const pairs = [['#f6cda4', '#a10001', 'the face\'s middle band'], ['#b9dd92', '#a10002', 'the sick middle band'], ['#ff9f8c', '#a10003', 'the hot middle band'],
+    // middle band. The new face band is light, so the dark new brows still stand clear of it and
+    // draw no edge, as the old ones did not.
+    const pairs = [['#f6cda4', '#f1d1b1', 'the face\'s middle band'], ['#b9dd92', '#a10002', 'the sick middle band'], ['#ff9f8c', '#a10003', 'the hot middle band'],
       ['#f3a892', '#a10004', 'the cheeks'], ['#ff9f8c', '#a10006', 'the puffed cheeks'], ['#8a5a2b', '#a10005', 'the brows']];
     const swap = new Set(pairs.map(([x, y]) => 's ' + x + '>s ' + y));
     const text = editedPack(p => {
       const s = p.swatches.skin.warm.entries, h = p.swatches.hair.brown.entries;
-      s.face[1][1] = '#a10001'; s.sick[1][1] = '#a10002'; s.hot[1][1] = '#a10003'; s.cheek = '#a10004'; s.puff = '#a10006'; h.brow = '#a10005';
+      s.face[1][1] = '#f1d1b1'; s.sick[1][1] = '#a10002'; s.hot[1][1] = '#a10003'; s.cheek = '#a10004'; s.puff = '#a10006'; h.brow = '#a10005';
     });
     const a = load(true), b = load(true, [text]);
     assert.equal(b.status.source, 'pack');
@@ -390,39 +390,85 @@ if (MODE === 'write') {
     for (const [from, to, what] of pairs) assert.ok(diff.some(([x, y]) => x === 's ' + from && y === 's ' + to), `${what}: ${from} is drawn as ${to}`);
   });
 
-  /* A deep skin and black and blonde hair, made for the tests and in no pack that ships. */
-  const DEEP = { name: 'Deep', entries: { face: [[0.14, '#9a6544'], [0.72, '#7b4a2e'], [1, '#5e3720']], sick: [[0.14, '#8f9a5c'], [0.72, '#6f7a42'], [1, '#525b2f']],
-    hot: [[0.14, '#b5584a'], [0.72, '#9a3f33'], [1, '#7a2c22']], cheek: '#a8564a', puff: '#c4685a' } };
-  const HAIR = { black: { name: 'Black', entries: { 0: '#3a3440', 1: '#2a2530', 2: '#1c1820', brow: '#1c1820' } },
-    blonde: { name: 'Blonde', entries: { 0: '#f2d27a', 1: '#d9b45a', 2: '#b8913c', brow: '#a07a30' } } };
-  const withSwatches = p => { p.swatches.skin.deep = DEEP; Object.assign(p.swatches.hair, HAIR); };
+  /* The base pack's colour choices, and a box that draws the looks made of them. */
+  const SWATCHES = JSON.parse(UNSIGNED).pack.swatches;
+  const skinColours = e => [...e.face, ...e.sick, ...e.hot].map(b => b[1]).concat(e.cheek, e.puff);
+  const hairColours = e => [e['0'], e['1'], e['2'], e.brow];
 
-  test('every condition\'s face drawn with a deep skin and black hair holds no colour of the warm skin or the brown brow', () => {
-    const text = editedPack(withSwatches), box = load(true, [text]);
-    box.status = box.K.start([text], true, { look: { swatches: { skin: 'kw.base/deep', hair: 'kw.base/black' } } });
-    assert.equal(box.status.source, 'pack');
-    assert.deepEqual(plain(box.status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), []);
-    const warm = JSON.parse(UNSIGNED).pack.swatches.skin.warm.entries;
-    const banned = new Set([...warm.face, ...warm.sick, ...warm.hot].map(b => b[1]).concat(warm.cheek, warm.puff, '#8a5a2b').map(c => 's ' + c));
-    const deep = new Set([...DEEP.entries.face, ...DEEP.entries.sick, ...DEEP.entries.hot].map(b => b[1]).concat(DEEP.entries.cheek, DEEP.entries.puff, '#1c1820').map(c => 's ' + c));
-    const ids = ['idle', 'container_unhealthy', 'cpu_hot', 'memory_tight', 'disk_full', 'backup_overdue', 'pi_silent', 'thing_down', 'updating', 'streaming', 'wan_down', 'attack', 'night', 'ssh_session'];
-    let drawn = 0;
-    for (const id of ids) for (const t of [1400, 2300, 2800]) for (const helmet of [true, false]) {
+  test('every skin with every hair colour: the face is drawn in that look\'s colours and in no other choice\'s', () => {
+    const box = load(true);
+    let pairs = 0;
+    for (const [sk, skin] of Object.entries(SWATCHES.skin)) for (const [hc, hair] of Object.entries(SWATCHES.hair)) {
+      box.status = box.K.start([UNSIGNED], true, { look: { swatches: { skin: 'kw.base/' + sk, hair: 'kw.base/' + hc } } });
+      assert.equal(box.status.source, 'pack');
+      assert.deepEqual(plain(box.status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), [], sk + ' ' + hc);
+      const own = new Set(skinColours(skin.entries).concat(hairColours(hair.entries)));
+      const others = [];
+      for (const [id, o] of Object.entries(SWATCHES.skin)) if (id !== sk) others.push(...skinColours(o.entries));
+      for (const [id, o] of Object.entries(SWATCHES.hair)) if (id !== hc) others.push(o.entries.brow);
+      const banned = new Set(others.filter(c => !own.has(c)).map(c => 's ' + c));
+      const e = skin.entries, mid = r => 's ' + r[1][1];
+      // each pose with the colour it must show: the face, the lids of the half eyes on the sick and
+      // hot ramps, the cheeks, the puffed cheeks, the brows of the open and the wide eyes
+      const poses = [['idle', 2300, true, [mid(e.face), 's ' + e.cheek, 's ' + hair.entries.brow]], ['idle', 2300, false, [mid(e.face), 's ' + hair.entries.brow]],
+        ['container_unhealthy', 1400, true, [mid(e.sick)]], ['container_unhealthy', 1400, false, [mid(e.sick)]], ['cpu_hot', 2300, true, [mid(e.hot)]],
+        ['cpu_hot', 2300, false, [mid(e.hot)]], ['memory_tight', 2300, false, ['s ' + e.puff]], ['wan_down', 2300, false, ['s ' + hair.entries.brow]],
+        ['backup_overdue', 2300, false, [mid(e.face)]]];
+      for (const [id, t, helmet, want] of poses) {
+        box.log.length = 0;
+        // the drumstick in the hungry knight's thought bubble is a prop with colours of its own
+        box.K.draw(at(box.K, id, t, { helmet, bubble: 0 }));
+        const what = `${sk} skin, ${hc} hair, ${id} t${t}, helmet ${helmet ? 'on' : 'off'}`;
+        assert.deepEqual(box.log.filter(l => banned.has(l)), [], what);
+        for (const w of want) assert.ok(box.log.includes(w), `${what}: ${w} is drawn`);
+      }
+      // and the head in bed, unwell
       box.log.length = 0;
-      // the drumstick in the hungry knight's thought bubble is a prop with colours of its own
-      box.K.draw(at(box.K, id, t, { helmet, bubble: 0 }));
-      const bad = box.log.filter(l => banned.has(l));
-      assert.deepEqual(bad, [], `${id} t${t}, helmet ${helmet ? 'on' : 'off'}`);
-      assert.ok(box.log.some(l => deep.has(l)), `${id} t${t}: the deep skin is drawn`);
-      drawn++;
+      box.K.head(-15, 262, at(box.K, 'container_unhealthy', 1400));
+      assert.deepEqual(box.log.filter(l => banned.has(l)), [], `${sk} skin, ${hc} hair, in bed`);
+      assert.ok(box.log.includes(mid(e.sick)), `${sk} skin, ${hc} hair, in bed: the sick skin`);
+      pairs++;
     }
-    // and the head in bed, well and unwell
-    for (const id of ['night', 'container_unhealthy']) {
-      box.log.length = 0;
-      box.K.head(-15, 262, at(box.K, id, 1400));
-      assert.deepEqual(box.log.filter(l => banned.has(l)), [], `${id} in bed`);
+    assert.equal(pairs, 36);
+  });
+
+  /* The WCAG contrast ratio of two colours, written here apart from knight.js. */
+  const lum = hex => {
+    const v = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+
+  test('the brows keep contrast against every skin: a brow near the skin\'s own lightness gets a dark edge, and only such a brow', () => {
+    const box = load(true), K_ = '#1a1524';
+    const edged = [];
+    for (const [sk, skin] of Object.entries(SWATCHES.skin)) for (const [hc, hair] of Object.entries(SWATCHES.hair)) {
+      box.K.start([UNSIGNED], true, { look: { swatches: { skin: 'kw.base/' + sk, hair: 'kw.base/' + hc } } });
+      // the brows lie across the face's middle and shadow bands, from a fifth to four fifths of its width
+      const brow = hair.entries.brow, under = skin.entries.face.slice(1).map(b => b[1]);
+      const low = Math.min(...under.map(c => ratio(brow, c)));
+      const want = low < 2.5;
+      if (want) edged.push(sk + '/' + hc);
+      // the edge is darker than every band it lies on, so it reads as a dark mark on any skin
+      for (const c of under) assert.ok(lum(K_) < lum(c), `${sk}: the edge is darker than ${c}`);
+      for (const [eyes, helmet] of [['open', true], ['open', false], ['wide', false]]) {
+        box.log.length = 0;
+        box.K.draw(at(box.K, 'idle', 2300, { eyes, helmet }));
+        const L = box.log, brows = [];
+        for (let i = 1; i < L.length; i++) if (L[i - 1] === 's ' + brow && /^r \S+ \S+ 12 3$/.test(L[i])) brows.push(i);
+        assert.equal(brows.length, 2, `${sk}/${hc} ${eyes}: two brows`);
+        for (const i of brows) {
+          const [x, y] = L[i].split(' ').slice(1, 3).map(Number);
+          const has = L[i - 3] === 's ' + K_ && L[i - 2] === `r ${x - 1} ${y - 1} 14 5`;
+          assert.equal(has, want, `${sk} skin, ${hc} brows (contrast ${low.toFixed(2)}), ${eyes} eyes, helmet ${helmet ? 'on' : 'off'}: ${want ? 'an edge' : 'no edge'}`);
+        }
+      }
     }
-    assert.equal(drawn, 84);
+    // today's knight, warm skin and brown brows, draws no edge, so its record is unchanged
+    assert.ok(!edged.includes('warm/brown'));
+    assert.deepEqual(edged, ['fair/blonde', 'fair/silver', 'warm/blonde', 'warm/silver', 'golden/brown', 'golden/auburn', 'golden/blonde', 'golden/silver',
+      'tan/brown', 'tan/auburn', 'tan/blonde', 'tan/silver', 'brown/black', 'brown/dark', 'brown/brown', 'brown/auburn', 'brown/blonde', 'brown/silver',
+      'deep/black', 'deep/dark', 'deep/brown', 'deep/auburn']);
   });
 
   test('the pack path clamps drop and bloat into the library\'s ranges, and allocates no new arrays', () => {

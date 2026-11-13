@@ -811,8 +811,8 @@ Constants: `FORMAT`, `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STE
 
 ### The base pack
 
-`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.1.0.
-Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, the free one-handed sword and shield, and nothing the display does not draw today:
+`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.2.0.
+Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), and nothing the display does not draw:
 
 - one build, `build.a`, with the present knight's eight measurements and the plain head;
 - eleven items, one for each slot the present drawing has: `legs.plate`, `boots.leather`,
@@ -822,21 +822,47 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   "hands": [0]}`, blade `{"from": 34, "to": 175, "half": 10}`, 22 shapes), and `off.heater`, a
   heater shield (hold `[0, -6]`, face `[-44, -44, 88, 110]`, 20 shapes worn and 26 in its rest
   view, which hangs it from a nail). The shield's field is painted in the tabard's four colours
-  (`@tabard.0` to `@tabard.3`, in the tabard's own bands), so it follows the tabard swatch, and it
-  carries the tabard's gold eye in the fixed `@base` colours;
-- one swatch for each of the four user sets, in the present colours: skin `warm`, hair `brown`,
-  tabard `blue` and plume `red`;
-- `defaults` naming the greatsword and the eleven others, so the default look is the present
-  knight; nothing names the sword and shield until a look asks for them. It has no palettes of its
+  (`@tabard.0` to `@tabard.3`, in the tabard's own bands), so it follows the tabard swatch;
+- two hair styles, new in 1.2.0: `hair.tied` ("Tied back", 29 shapes), swept back from the face and
+  gathered into a tail that falls behind the left ear (the viewer's left, clear of the greatsword),
+  with a `helmeted` view of 10 shapes in which the tail shows below the helmet; and `hair.curls`
+  ("Curls", 27 shapes), a round crown of curls with no `helmeted` view, since none of it shows
+  under the helmet. Their offsets at the sides of the head lean on `dHead`, as the helmet's do;
+- six swatches in each of the four user sets, in the order a settings screen should list them,
+  today's among them and the defaults:
+
+  | Set | Swatches (id: name) |
+  |---|---|
+  | skin | `fair`: Fair, `warm`: Warm, `golden`: Golden, `tan`: Tan, `brown`: Brown, `deep`: Deep |
+  | hair | `black`: Black, `dark`: Dark brown, `brown`: Brown, `auburn`: Auburn, `blonde`: Blonde, `silver`: Silver |
+  | tabard | `blue`: Blue, `forest`: Forest, `violet`: Violet, `wine`: Wine, `teal`: Teal, `sable`: Sable |
+  | plume | `red`: Red, `white`: White, `gold`: Gold, `royal`: Royal blue, `green`: Green, `violet`: Violet |
+
+  Each skin has its own face ramp, its own sick (green) and hot (red) ramps at about its own
+  lightness, so the conditions read on every tone, and its own cheek and puffed cheek. No tabard
+  is bright red, orange or amber, so a coat is never read as the critical or warning colour;
+- `defaults` naming the greatsword and the eleven others and today's swatches (skin `warm`, hair
+  `brown`, tabard `blue`, plume `red`), so the default look is the present knight; nothing names
+  the sword and shield or the new options until a look asks for them. It has no palettes of its
   own and no decorations.
+
+**The eye of the watch** on the tabard and on the shield, worn and at rest, is gold with a white
+eye and a pupil; its iris is `@tabard.3`, the tabard's darkest band, so the emblem takes the coat's
+colour. On the blue tabard that band is `#213f86`, the colour of `@base.b3` that the iris had
+before 1.2.0, so the default knight is drawn exactly as before. The banners in the scenes are drawn
+by code and keep their blue iris.
 
 The helmet and the plume carry the rest views of the helmet on the house's stool, and the
 greatsword its `blade`, `{"from": 34, "to": 263, "half": 15}`, for the smithy's hot tip; see [Gear
-at rest](#gear-at-rest). The eleven items and the swatches are the test fixture's, unchanged; the
-fixture also carries extras the tests need (a second build, long hair, a smaller arming sword of its
-own, a round shield, a pennant and a lantern). The two new items are kept, as approved, in
-`tests/web/fixtures/base-onehand.items.json`. The default look costs 11 932 and draws at most 99
-shapes; the look with the sword and shield draws at most 119.
+at rest](#gear-at-rest). The eleven items and today's swatches are the test fixture's, unchanged
+apart from the iris; the fixture also carries extras the tests need (a second build, long hair, a
+smaller arming sword of its own, a round shield, a pennant and a lantern). The one-handed items are
+kept, as approved, in `tests/web/fixtures/base-onehand.items.json`, and the free options (the
+twenty new swatches and the two hair styles) in `tests/web/fixtures/base-options.json`. The default
+look costs 11 932 and draws at most 99 shapes; the look with the sword and shield draws at most
+119. Colours do not change what is drawn, so every look's cost depends on its items alone, and the
+heaviest is the tied hair with the sword and shield: 129 shapes, cost 12 524, against the caps of
+1200 and 40 000.
 
 ### Carriers
 
@@ -881,8 +907,8 @@ the same options and resolves the look again (see [Downloaded packs](#downloaded
   accepts only signed packs`), and one whose signature does not verify or names a key it does not
   know.
 
-**Today the base pack, version 1.1.0, ships signed with `kw1`,** so a deployed page draws the
-knight from it. A base pack edited after signing has its signature taken off until the release
+**Version 1.1.0 shipped signed with `kw1`. Version 1.2.0 ships unsigned until the release signs
+it,** so meanwhile a deployed page draws the knight from code. A base pack edited after signing has its signature taken off until the release
 signs it again; meanwhile a deployed page draws the knight from the code in `knight.js`, the full
 knight as it shipped before packs, which looks the same as the default look (see
 [When packs fail](#when-packs-fail)). The sword and shield need the base pack: from code the
@@ -893,8 +919,8 @@ refused pack, and one line, `console.info` for the base pack and `console.warn` 
 time the source changes:
 
 ```
-knightwatcher: the knight is drawn from the base pack kw.base 1.1.0, signed
-knightwatcher: the knight is drawn from the base pack kw.base 1.1.0, unsigned
+knightwatcher: the knight is drawn from the base pack kw.base 1.2.0, signed
+knightwatcher: the knight is drawn from the base pack kw.base 1.2.0, unsigned
 knightwatcher: the pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
 knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step
 ```
@@ -1042,10 +1068,14 @@ the same answer as this verifier for every signature the tests put to both.
 unsigned copy (the shipped file with any `sig` taken off) is read on a `dev` page and refused at
 the `signature` step otherwise; the file as it ships is read on every page when it carries a
 signature, and on a `dev` page alone when it does not. It also checks one build with the present measurements, one item for each slot the
-present drawing has, the arming sword and the heater shield, and nothing more, each item and swatch
-equal to the fixture's or, for the two new items, to `fixtures/base-onehand.items.json`, a default
-look that resolves with nothing missing at a cost of 11 932, and the look with the sword and shield
-resolving with nothing missing, one-handed, at 119 shapes. `tests/web/knight.test.js` draws the
+present drawing has, the arming sword and the heater shield, the three hair styles and nothing
+more; six swatches in each set in the settings screen's order, today's the defaults; each item and
+swatch equal to the fixture's, to `fixtures/base-onehand.items.json` for the one-handed items or to
+`fixtures/base-options.json` for the free options, with the iris of the tabard and the shield,
+worn and at rest, on `@tabard.3` and no `@base.b3` left; a default look that resolves with nothing
+missing at a cost of 11 932; the look with the sword and shield resolving with nothing missing,
+one-handed, at 119 shapes; and every one of the 7776 combinations of skin, hair colour, hair style,
+tabard, plume and weapon resolving with nothing missing, the heaviest at 129 shapes and 12 524. `tests/web/knight.test.js` draws the
 knight's 94 poses, the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy painted and drawn, from the base
 pack as the page does, and compares every call with the record taken from the code. It draws the
 code path from the unsigned copy, which a deployed page always refuses, and edits only that copy, so

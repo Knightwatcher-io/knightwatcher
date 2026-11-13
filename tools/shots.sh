@@ -68,6 +68,16 @@ SHOTS=(
   # at the camp at 1672
   "arm-goblin-bonk|bar=0&t=1646&is=battlement&e=goblin&arm=one"
   "arm-goblin-camp-bonk|bar=0&t=1674&is=camp&e=goblin&arm=one"
+  # the free options, chosen by the look hooks (sk= hc= hy= tb= pm=): looks other than the default,
+  # the tail of the tied hair under the helmet, a sick and a hot face on dark skins, and the brows'
+  # dark edge where the brows are near the skin's own lightness
+  "look-deep-curls|bar=0&t=2300&is=battlement&h=off&sk=deep&hc=black&hy=curls&tb=sable&pm=gold"
+  "look-fair-tied|bar=0&t=2300&is=yard&h=off&sk=fair&hc=auburn&hy=tied&tb=wine&arm=one"
+  "look-tied-helmet|bar=0&t=2300&is=battlement&sk=fair&hc=auburn&hy=tied&tb=wine&pm=white&arm=one"
+  "look-house|bar=0&t=2300&is=house&sk=golden&hc=blonde&tb=teal&pm=royal&arm=one"
+  "look-sick-deep|bar=0&t=2300&on=sick&sk=deep&hc=dark&hy=tied&tb=forest"
+  "look-hot-brown|bar=0&t=2300&on=cpu&h=off&sk=brown&hc=silver&hy=curls&tb=violet&pm=green"
+  "look-brows|bar=0&t=2300&on=wan&h=off&sk=brown&hc=brown"
 )
 
 take() {

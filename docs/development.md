@@ -18,8 +18,9 @@ tests/
   collector/         unittest tests for the collector
   web/               node tests for the page's scripts
     fixtures/knight/ the stored call record of the knight's drawing
-    fixtures/        a fixture pack for the pack library's tests, and the base pack's sword and
-                     shield as approved (base-onehand.items.json)
+    fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
+                     shield as approved (base-onehand.items.json) and its free options as
+                     approved (base-options.json)
   tools/             node tests for tools/deploy.sh, tools/pack-carrier.js and tools/sign-pack.js
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version

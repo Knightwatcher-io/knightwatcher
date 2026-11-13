@@ -42,12 +42,22 @@ Open-faced helm, red plume, blue tabard, and a greatsword held and swung in both
 default look. The base pack also carries a one-handed arming sword and a heater shield, free, which
 the owner chose to ship beside the greatsword: the shield's field is in the tabard's colours, so it
 follows the tabard, with the gold eye of the watch on it, as on the tabard and the banners. The
+eye's iris takes the tabard's darkest band, so the emblem is in the coat's colours; on the default
+blue it is the blue it always was. The
 knight holds the sword in the right hand and the shield in front of the chest with the left; in
 the attack the sword goes up over the right shoulder and the shield comes in to the middle. A
 swing to the right winds up with the sword upright over the right shoulder, clear of the face; in
 a swing to the left the shield lifts as the sword crosses the body, and the blade passes in front
 of it, so a blow struck on that side is always seen. A shield is carried only with a
 one-handed weapon, and a one-handed weapon without a shield leaves the other hand hanging free.
+
+Every user chooses, free, the knight's skin tone, hair colour, hair style, tabard colour and plume
+colour, from six skins, six hair colours, three styles (short crop, tied back, curls), six tabards
+and six plumes, all in the base pack and chosen by the owner from a mock-up. Each skin turns green
+when the knight is sick and red when the knight is running hot, each tint at about the skin's own
+lightness, so the conditions read on every tone. No tabard is bright red, orange or amber, so the coat is never read as a status. The
+brows carry a one-pixel dark edge wherever their colour is too close to the skin's to show, so a
+face never loses its brows; today's knight needs none.
 
 No arm or gauntlet is ever drawn over a blade or its guard, nor over the face of a shield. With
 the greatsword both arms go behind the blade, the one on the side it leans to first, and the hands
