@@ -1,6 +1,6 @@
 // Tests for the foe player in web/js/engine.js and the goblin in web/js/props.js: the timing
-// table, where a foe stands, and that the knight's blade stops at the goblin's pot and never
-// passes through any part of it.
+// table, where a foe stands, and that the knight's blade, whichever weapon it is, meets the
+// goblin's pot at the bonk and never passes through any part of it.
 // Run with: node --test tests/web/
 //
 // The page's scripts run under Node as index.html loads them, into a sandbox whose document gives
@@ -24,16 +24,24 @@ function fakeCanvas() {
   return cv;
 }
 
-/* The page's scripts, with the knight drawn from the base pack (pack true) or from code. */
-function load(pack) {
+/* The arming sword and the heater shield, as main.js asks for them with the address's arm=one. */
+const ONE = { look: { items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater' } } };
+/* The weapons the knight may hold at the bonk: the greatsword from the base pack and from code,
+   and the arming sword with the shield, which only the base pack holds. */
+const WEAPONS = [['the greatsword, from the base pack', true, null], ['the greatsword, from code', false, null], ['the arming sword', true, ONE]];
+
+/* The page's scripts, with the knight drawn from the base pack (pack true) or from code, in the
+   look opts asks for (the base pack's defaults when left out). */
+function load(pack, opts) {
   const box = vm.createContext({ window: {}, document: { createElement: () => fakeCanvas() }, console: { info() {}, warn() {} } });
   for (const f of SCRIPTS) {
     if (box.window.KW) box.KW = box.window.KW;
     vm.runInContext(fs.readFileSync(path.join(WEB, f), 'utf8'), box, { filename: f });
   }
   const KW = box.window.KW;
-  KW.knight.start(pack ? KW.packText : [], true);
+  KW.knight.start(pack ? KW.packText : [], true, opts || undefined);
   assert.equal(KW.knight.source, pack ? 'pack' : 'code');
+  if (opts) assert.equal(KW.knight.rest.blade().to, 175, 'the arming sword is held');
   KW.draw.setCtx(fakeCanvas().getContext('2d'));
   return { KW, E: KW.engine, F: KW.engine.foe, P: KW.props, K: KW.knight, V: KW.view };
 }
@@ -78,8 +86,9 @@ test('the goblin is described as a foe, and its drawing matches the description'
   assert.ok(Math.min(...hem.map(r => r[0])) >= ax - G.w - 1 && Math.max(...hem.map(r => r[0] + r[2])) <= ax + G.w + 1);
 });
 
-test('the entrance runs in order, and the poof is over within the event, wherever the knight stands', () => {
+test('the entrance runs in order, and the poof is over within the event, wherever the knight stands, with either weapon', () => {
   const m = load(true), { FOE } = m.F, N = FOE.enter, X = FOE.exits.poof, dur = m.E.EVENTS.goblin.dur;
+  assert.equal(X.impact, FOE.strike.rebound, 'the burst on the pot lasts while the blade bounces off it, no longer');
   assert.equal(dur, 3400);
   assert.deepEqual(plain(m.E.EVENTS.goblin.where), ['battlement', 'camp']);
   assert.equal(m.E.EVENTS.goblin.foe, 'goblin'); assert.equal(m.E.EVENTS.goblin.exit, 'poof');
@@ -88,8 +97,8 @@ test('the entrance runs in order, and the poof is over within the event, whereve
   assert.equal(N.brace, N.taunt[1]);
   assert.ok(N.open[0] < N.rise[0] && N.open[1] <= N.peek[0], 'the hole is open before the foe is out');
   assert.ok(X.cloud <= X.gone && X.gone < X.struck + X.cloud, 'the foe is hidden only once the cloud covers it');
-  for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) {
-    const pl = planFor(m, scene, kx, [PIE]);
+  for (const mm of [m, load(true, ONE)]) for (const scene of ['battlement', 'camp']) for (const kx of spots(mm, scene)) {
+    const pl = planFor(mm, scene, kx, [PIE]);
     assert.ok(pl, `${scene} ${kx}: there is room`);
     assert.ok(pl.q < 1, `${scene} ${kx}: the blade meets it`);
     assert.ok(pl.hit > N.brace + 100 && pl.hit < FOE.strike.at + FOE.strike.dur, `${scene} ${kx}: struck after it flinches (${pl.hit})`);
@@ -97,7 +106,7 @@ test('the entrance runs in order, and the poof is over within the event, whereve
     assert.ok(pl.hit + X.sparkles + m.P.SPARKLE_MS <= dur, `${scene} ${kx}: the sparkles are gone by the end`);
     assert.ok(pl.hit + X.close[1] <= dur, `${scene} ${kx}: the hole is closed by the end`);
     assert.ok(pl.hit + FOE.strike.rebound + FOE.strike.recover <= dur, `${scene} ${kx}: the knight is back in the stance by the end`);
-    const end = m.F.at(dur - 1, pl);
+    const end = mm.F.at(dur - 1, pl);
     assert.equal(end.show, false); assert.equal(end.fx.length, 0, 'nothing left at the end');
     if (pl.burrow) assert.equal(end.hole, 0);
   }
@@ -154,17 +163,33 @@ function foePoints(m, pl, el) {
   }
   return pts;
 }
-/* How deep the point lies inside the blade's outline, in pixels; 0 or below is outside. */
-function depth(bl, x, y) {
+/* How deep the point lies inside the blade's outline, in pixels; 0 or below is outside. A point
+   beyond either end of the blade counts 0, or -Infinity when far is set. */
+function depth(bl, x, y, far) {
   const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), px = x - bl.x, py = y - bl.y, along = px * sx + py * sy, across = Math.abs(px * sy - py * sx);
-  return along < bl.from || along > bl.to ? 0 : bl.half - across;
+  return along < bl.from || along > bl.to ? (far ? -Infinity : 0) : bl.half - across;
 }
 
-for (const pack of [true, false]) {
-  test(`the blade stops at the goblin's pot and never passes through it (knight from ${pack ? 'the base pack' : 'code'})`, () => {
-    const m = load(pack), S = m.F.FOE.strike;
+for (const [name, pack, opts] of WEAPONS) {
+  test(`the blade meets the goblin's pot at the bonk and never passes through it (${name})`, () => {
+    const m = load(pack, opts), S = m.F.FOE.strike;
+    let plans = 0;
     for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) for (const things of [[PIE], [PIE, thing('g3')]]) {
-      const pl = planFor(m, scene, kx, things); if (!pl) continue;
+      const pl = planFor(m, scene, kx, things);
+      if (things.length === 1) assert.ok(pl, `${scene} knight ${kx}: the goblin comes with the pie alone`);
+      if (!pl) continue;
+      plans++;
+      // the goblin stands within the reach the weapon gives on its side
+      const g = m.F.gaps(pl.F, pose(m.K, m.V, kx, 0), pl.side), d = Math.abs(pl.x - kx);
+      assert.ok(g && d >= g[0] && d <= g[2], `${scene} knight ${kx}: gap ${d} within the weapon's reach ${g}`);
+      // the hit pose plays from the hit, and the blade touches the drawn goblin there: within 3
+      // pixels of its crown, and within 3 pixels of a filled pixel of the sprite itself
+      assert.equal(m.F.at(pl.hit - 1, pl).pose, 'brace'); assert.equal(m.F.at(pl.hit, pl).pose, 'hit');
+      const oh = pose(m.K, m.V, kx, pl.hit); m.F.strike(oh, pl.hit, pl);
+      const bh = m.F.bladeOf(oh), gapAtHit = m.F.bladeGap(bh, pl.F, pl.x, pl.side, m.V.HFL);
+      assert.ok(Math.abs(gapAtHit) < 3, `${scene} knight ${kx}: the blade meets the crown at the hit (${gapAtHit.toFixed(1)})`);
+      let touch = -Infinity; for (const [x, y] of foePoints(m, pl, pl.hit - 1)) touch = Math.max(touch, depth(bh, x, y, true));
+      assert.ok(touch >= -3, `${scene} knight ${kx}: the blade is ${(-touch).toFixed(1)} px from the drawn goblin at the hit`);
       let closest = Infinity;
       const times = []; for (let el = S.at; el <= pl.hit + S.rebound + S.recover; el += 8) times.push(el);
       times.push(pl.hit, pl.hit - 1, pl.hit + 1);
@@ -176,12 +201,40 @@ for (const pack of [true, false]) {
         for (const [x, y] of foePoints(m, pl, el)) worst = Math.max(worst, depth(bl, x, y));
         // the two outlines may touch, by up to 2 pixels, and no more
         assert.ok(worst <= 2, `${scene} knight ${kx} at ${el} ms: the blade is ${worst.toFixed(1)} px into the goblin`);
-        if (el <= pl.hit) closest = Math.min(closest, m.F.bladeGap(bl, pl.F, pl.x, pl.side, m.V.HFL, pl.side));
+        if (el <= pl.hit) closest = Math.min(closest, m.F.bladeGap(bl, pl.F, pl.x, pl.side, m.V.HFL));
       }
       assert.ok(closest <= 3, `${scene} knight ${kx}: the blade reaches the pot (${closest.toFixed(1)} px short)`);
     }
+    assert.ok(plans > 10);
   });
 }
+
+test('a weapon too short to reach a goblin anywhere in the zone: the goblin does not come, and never plays a hit', () => {
+  // held in both hands, where the grip stays close to the knight
+  for (const [, pack, opts] of WEAPONS.filter(w => !w[2])) {
+    const m = load(pack, opts), full = m.K.rest.blade();
+    // a dagger, its blade barely longer than its grip
+    m.K.rest.blade = () => ({ from: 34, to: 40, half: 8 });
+    const o = pose(m.K, m.V, 480, 0);
+    assert.equal(m.F.gaps(m.P.FOES.goblin, o, 1), null); assert.equal(m.F.gaps(m.P.FOES.goblin, o, -1), null);
+    for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) assert.equal(planFor(m, scene, kx, [PIE]), null, `${scene} ${kx}`);
+    m.K.rest.blade = () => full;
+  }
+});
+
+test('the greatsword keeps the gaps of the table, and the arming sword has its own, worked out from its reach', () => {
+  for (const [, pack, opts] of WEAPONS) {
+    const m = load(pack, opts), G = m.P.FOES.goblin, o = pose(m.K, m.V, 480, 0);
+    for (const side of [1, -1]) {
+      const g = plain(m.F.gaps(G, o, side));
+      if (!opts) assert.deepEqual(g, plain(m.F.FOE.gap), `side ${side}`);
+      assert.ok(g[0] <= g[1] && g[1] <= g[2] && g[2] <= m.F.FOE.gap[2]);
+      // the most is the furthest the blade reaches: one pixel further and it misses
+      if (g[2] < m.F.FOE.gap[2]) assert.equal(m.F.contactQ(G, 480 + side * (g[2] + 1), side, o), 1);
+      assert.ok(m.F.contactQ(G, 480 + side * g[2], side, o) < 1);
+    }
+  }
+});
 
 test('the knight glares from 500 ms, strikes towards the goblin and is pleased once it has gone', () => {
   const m = load(true), pl = planFor(m, 'camp', 440, [PIE]);
