@@ -37,8 +37,12 @@
      to the console for each refused pack and one for where the knight is drawn from. The packs
      the collector downloaded are added below, once the page knows it is served. */
   // The look: the base pack's defaults, the greatsword. Until the settings screen chooses a look,
-  // the address's arm=one asks for the arming sword and the heater shield instead.
+  // the address's arm=one asks for the arming sword and the heater shield instead, and sk=, hc=,
+  // tb= and pm= name the base pack's skin, hair, tabard and plume swatches and hy= its hair style
+  // (short, tied, curls). A name the base pack lacks falls back to the default, as resolve() does.
   const LOOK = hv('arm') === 'one' ? { items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater' } } : {};
+  for (const [k, set] of [['sk', 'skin'], ['hc', 'hair'], ['tb', 'tabard'], ['pm', 'plume']]) if (hv(k)) (LOOK.swatches = LOOK.swatches || {})[set] = 'kw.base/' + hv(k);
+  if (hv('hy')) (LOOK.items = LOOK.items || {}).hair = 'kw.base/hair.' + hv('hy');
   KW.knight.start(KW.packText, ownVersion === 'dev', { look: LOOK });
 
   /* ---- The words over the scene ------------------------------------------------------------- */

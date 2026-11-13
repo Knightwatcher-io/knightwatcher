@@ -121,7 +121,37 @@
      Each takes the head anchor (hx, hy), the middle of the eye line. */
   /* The face's own colours on the code path: the cheeks, the puffed cheeks and the brows. On the
      pack path they are the look's (PK.look.colours), from its skin and hair swatches. */
-  const CODE_FACE = Object.freeze({ cheek: '#f3a892', puff: '#ff9f8c', brow: '#8a5a2b' });
+  const CODE_FACE = Object.freeze({ face: SKINS.F, cheek: '#f3a892', puff: '#ff9f8c', brow: '#8a5a2b' });
+  /* The brows' dark edge. A brow in the hair's brow colour can all but vanish on a skin of about its
+     own lightness, dark brown brows on the deep skin or blonde ones on the tan, so where the brow's
+     contrast with the skin it lies on is under BROW_MIN the brow gets a one-pixel edge in the
+     outline colour. The skin is the look's normal face ramp, so the edge belongs to the look and
+     does not come and go with the knight's state, and its bands are the ones the brows lie across,
+     from a fifth to four fifths of the face's width. Contrast is the WCAG ratio of relative
+     luminances. Today's knight, warm skin and brown brows at 2.94, draws no edge. The answer is
+     kept for each ramp and brow, so a frame works nothing out after the first. */
+  const BROW_MIN = 2.5, BROW_EDGES = new Map();
+  function luminance(c) {
+    let m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c), v;
+    if (m) v = [m[1], m[2], m[3]].map(h => parseInt(h, 16));
+    else if ((m = /^rgba?\((\d+),(\d+),(\d+)/.exec(String(c).replace(/\s/g, '')))) v = [+m[1], +m[2], +m[3]];
+    else return null;
+    const [r, g, b] = v.map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  const contrast = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  function browEdge(ramp, brow) {
+    let seen = BROW_EDGES.get(ramp);
+    if (!seen) { seen = new Map(); BROW_EDGES.set(ramp, seen); }
+    let edge = seen.get(brow);
+    if (edge === undefined) {
+      const lb = luminance(brow), under = [];
+      if (Array.isArray(ramp)) { let p = 0; for (const [f, c] of ramp) { if (f > 0.2 && p < 0.8) under.push(c); p = f; } } else under.push(ramp);
+      edge = lb !== null && under.some(c => { const l = luminance(c); return l !== null && contrast(lb, l) < BROW_MIN; });
+      seen.set(brow, edge);
+    }
+    return edge;
+  }
   /* The colour of a skin ramp's middle band, the one across the middle of the face's width, which
      the lid of the half-closed eyes is filled with. */
   function midBand(ramp) {
@@ -130,10 +160,10 @@
     return ramp[ramp.length - 1][1];
   }
   /* The face: the eyes, brows, cheeks and mouth. skin is the skin ramp the face is filled with this
-     frame (the normal, sick or hot one) and fc the colours of the cheeks, the puffed cheeks and the
-     brows: the code's own on the code path, the look's on the pack path. */
+     frame (the normal, sick or hot one) and fc the normal face ramp and the colours of the cheeks,
+     the puffed cheeks and the brows: the code's own on the code path, the look's on the pack path. */
   function faceHD(hx, hy, o, skin, fc) {
-    const lk = (o.look || 0) * 3, mid = midBand(skin), brow = fc.brow;
+    const lk = (o.look || 0) * 3, mid = midBand(skin), brow = fc.brow, edge = browEdge(fc.face, brow);
     if (!o.face) { ell(hx - 29, hy + 13, 7, 4, fc.cheek); ell(hx + 29, hy + 13, 7, 4, fc.cheek); }
     if (o.puff) { ell(hx - 31, hy + 12, 9, 8, fc.puff); ell(hx + 31, hy + 12, 9, 8, fc.puff); }
     for (const side of [-1, 1]) {
@@ -141,11 +171,11 @@
       switch (o.eyes) {
         case 'closed': Rh(x - 7, y + 4, 14, 3, C.K); Rh(x - 9, y + 1, 3, 4, C.K); Rh(x + 6, y + 1, 3, 4, C.K); break;
         case 'happy': Rh(x - 6, y - 3, 12, 3, C.K); Rh(x - 9, y - 1, 4, 5, C.K); Rh(x + 5, y - 1, 4, 5, C.K); break;
-        case 'wide': ell(x, y, 10, 13, C.K); ell(x, y, 8, 11, C.W); ell(x + lk, y + 1, 4, 5, C.K); Rh(x + lk - 2, y - 2, 2, 2, C.W); Rh(x - 6, y - 20, 12, 3, brow); break;
+        case 'wide': ell(x, y, 10, 13, C.K); ell(x, y, 8, 11, C.W); ell(x + lk, y + 1, 4, 5, C.K); Rh(x + lk - 2, y - 2, 2, 2, C.W); if (edge) Rh(x - 7, y - 21, 14, 5, C.K); Rh(x - 6, y - 20, 12, 3, brow); break;
         case 'half': ell(x + lk, y + 2, 7, 9, C.K); Rh(x + lk - 3, y + 1, 3, 3, C.W); Rh(x - 10, y - 9, 20, 8, mid); Rh(x - 9, y - 2, 18, 3, C.K); break;
         case 'dizzy': strip(x - 7, y - 7, x + 7, y + 7, 2, 2, C.K); strip(x - 7, y + 7, x + 7, y - 7, 2, 2, C.K); break;
         case 'angry': ell(x + lk, y + 2, 7, 9, C.K); Rh(x + lk - 3, y - 1, 3, 3, C.W); strip(x + side * 10, y - 15, x - side * 9, y - 8, 2.5, 2.5, C.K); break;
-        default: ell(x + lk, y, 7, 10, C.K); ell(x + lk, y + 4, 4, 4, '#4a3558'); Rh(x + lk - 4, y - 6, 4, 4, C.W); Rh(x + lk + 2, y + 3, 2, 2, C.W); Rh(x - 6, y - 17, 12, 3, brow);
+        default: ell(x + lk, y, 7, 10, C.K); ell(x + lk, y + 4, 4, 4, '#4a3558'); Rh(x + lk - 4, y - 6, 4, 4, C.W); Rh(x + lk + 2, y + 3, 2, 2, C.W); if (edge) Rh(x - 7, y - 18, 14, 5, C.K); Rh(x - 6, y - 17, 12, 3, brow);
       }
     }
     const mx = hx, my = hy + 17;

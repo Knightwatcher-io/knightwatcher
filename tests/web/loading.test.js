@@ -254,7 +254,7 @@ test('a deployed page reads a downloaded pack signed with a key it knows, and re
 
 test('each refused pack is listed in the status and written to the console once', () => {
   const s = deployed();
-  assert.deepEqual(s.lines, [['info', 'knightwatcher: the knight is drawn from the base pack kw.base 1.1.0, signed']]);
+  assert.deepEqual(s.lines, [['info', 'knightwatcher: the knight is drawn from the base pack kw.base 1.2.0, signed']]);
   s.lines.length = 0;
   s.K.add({ files: [{ file: 'extra.pack.json', text: EXTRA }], refused: [{ id: null, file: 'index.json', step: 'index', reason: 'the index is not valid JSON' }] });
   assert.equal(s.lines.length, 2);

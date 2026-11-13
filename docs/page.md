@@ -24,7 +24,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the watched things in their places (`KW.things`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
-| `js/main.js` | start-up (starting the knight with its look, the greatsword or with `arm=one` the sword and shield, and fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
+| `js/main.js` | start-up (starting the knight with its look, the greatsword or with `arm=one` the sword and shield, and the free options the look hooks choose, and fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
@@ -193,7 +193,7 @@ At start-up, before the first frame, `main.js` calls `KW.knight.start(KW.packTex
 with `dev` true only when the page's version is `dev`. `start` reads the packs the carriers pushed,
 gathers them and resolves the look. The look is the base pack's defaults, the greatsword, until the
 settings screen chooses another; meanwhile the address's `arm=one` asks for the arming sword and the
-heater shield (see [The address](#the-address)). If a look resolves, the knight is drawn from the
+heater shield, and `sk=`, `hc=`, `hy=`, `tb=` and `pm=` for the free options (see [The address](#the-address)). If a look resolves, the knight is drawn from the
 base pack; otherwise from the code in `knight.js`, the full knight as it shipped before packs, which
 draws the default look: the greatsword, and no shield anywhere. A `dev` page accepts packs signed or unsigned. A
 deployed page accepts a pack only when it carries a signature that verifies against a key in
@@ -235,7 +235,16 @@ Two things stay as they were:
   or hot; the band across the middle of the face's width), and the cheeks, the puffed cheeks and
   the brows from `colours.cheek`, `colours.puff` and `colours.brow`, which `resolve()` takes from
   the skin and hair swatches. On the code path it keeps its own colours, which equal the base
-  pack's default swatches, so the default look's calls are the same on both paths;
+  pack's default swatches, so the default look's calls are the same on both paths. A brow whose
+  colour is too close to the skin it lies on gets a one-pixel edge in the outline colour, drawn
+  under it (a 14 by 5 rectangle round the 12 by 3 brow). Too close means a WCAG contrast ratio under
+  2.5 against the bands of the look's normal face ramp that the brows lie across, from a fifth to
+  four fifths of the face's width; the answer is worked out once for each ramp and brow, and it
+  belongs to the look, so the edge does not come and go with the knight's state. Of the 36 pairs of
+  the base pack's skins and hair colours, 22 get the edge: light brows on the fair, warm, golden
+  and tan skins, and the brows near the skin's own lightness on the golden, tan, brown and deep
+  ones. Today's knight, the warm skin with brown brows, stands at 2.94 and draws none, so its
+  calls are unchanged;
 - a pose that asks for the drooping plume (`droop`) is drawn by code, since the pack format has no
   drooping plume. No pose of the page sets it.
 
@@ -544,7 +553,7 @@ knight.
 ## The address
 
 The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `mon=`,
-`pl=` and `arm=` also work in live mode. `f=`, `e=`, `sw=` and `th=` act in the demo and do nothing
+`pl=` and the look hooks (`arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`) also work in live mode. `f=`, `e=`, `sw=` and `th=` act in the demo and do nothing
 elsewhere.
 
 | Key | Meaning |
@@ -563,6 +572,8 @@ elsewhere.
 | `mon=` | the monarch at court: `a` the king, `b` the queen, `c` the monarch who is neither. Anything else, or no hook, gives `a` |
 | `th=` | the demo's list of watched things: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `th=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `thing_down` on, the knight looks towards the first thing that is down and alerts |
 | `arm=one` | the knight's look: the base pack's arming sword in one hand and its heater shield in the other, in place of the greatsword. Anything else, or no hook, gives the default look, the greatsword. It stands in for the settings screen until that chooses the look. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
+| `sk=`, `hc=`, `tb=`, `pm=` | the knight's skin, hair colour, tabard and plume: the id of one of the base pack's swatches, such as `sk=deep&hc=black&tb=sable&pm=gold` (the ids are in [packs.md](./packs.md#the-base-pack)) |
+| `hy=` | the knight's hair style: `short`, `tied` or `curls`, the base pack's `hair.<value>` |
 | `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box, the 80 by 64 a thing may fill inside it, and the base. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
 
 `e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time.
@@ -570,8 +581,12 @@ With time frozen the knight never starts a swat alone, so the flies of `f=` hove
 starts one, and a knight placed away from their spot by `kx=` stays exactly there, in mid-stride,
 rather than walking a step in each frame.
 
+The look hooks (`arm=`, `sk=`, `hc=`, `hy=`, `tb=` and `pm=`) stand in for the settings screen. A
+value the base pack lacks takes the default for that choice, as `resolve()` does, and is listed in
+`KW.knight.status.fallbacks`; on the code path they do nothing.
+
 The demo rewrites the hash as its settings change, with the contract's ids in `on=`. The test hooks
-(`t=`, `kx=`, `mon=`, `th=`, `pl=`, `arm=`, `f=`, `e=` and `sw=`) are read once when the page loads, and
+(`t=`, `kx=`, `mon=`, `th=`, `pl=`, the look hooks, `f=`, `e=` and `sw=`) are read once when the page loads, and
 the rewritten hash leaves them out, so they last until the page is opened again.
 
 ## Deploying
@@ -656,9 +671,14 @@ anywhere keeps the goblin away.
 The same knight test checks the choice itself: the console lines, the refusal at the `signature`
 step, the code path when there is no base pack, a broken one or no library, a changed colour in the
 pack showing on the knight, and the clamping of `drop` and `bloat`. For the face it checks that a
-changed skin ramp, cheek, puffed cheek and hair brow show on the pack path and change nothing else,
-and that every condition's face, helmet on and off, drawn with a deep skin and black hair from
-swatches made for the test holds no colour of the warm skin or the brown brow. For the crate it
+changed skin ramp, cheek, puffed cheek and hair brow show on the pack path and change nothing else;
+that each of the 36 pairs of the base pack's skins and hair colours, in the quiet, sick, hot,
+memory-tight, WAN-down and hungry faces, helmet on and off, and the sick head in bed, draws its own
+face band, lids, cheeks, puffed cheeks and brows and no colour that belongs only to another skin or
+another hair's brows; and that the brows keep contrast against every skin: each brow is drawn with
+the dark edge exactly when its contrast with the skin bands it lies on, worked out in the test
+apart from `knight.js`, is under 2.5, the 22 such pairs are the expected ones, today's warm skin
+with brown brows not among them, and the edge is darker than every skin band it lies on. For the crate it
 checks, from the base pack and helmet on and off, with and without the bob, every 100 ms over the
 sway, that it is drawn after the pauldrons and before the arms, that its hands are at its lower
 corners, that no pixel of it lies on the helmet's opening or the bare face, and that nothing of the
@@ -723,6 +743,17 @@ millisecond after the hit on the battlement (`arm-goblin-bonk`, hit at 1645 ms) 
 at the camp, with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1672 ms). Every other shot has no `arm=`, so a change to the one-handed look leaves them
 byte for byte the same. A copy of the page from before the hook draws the greatsword in the `arm-`
 shots, so against such a reference those differ and the rest compare as usual.
+
+The seven `look-` shots choose free options with the look hooks: deep skin with black curls, a
+sable tabard and a gold plume on the battlement, helm off (`look-deep-curls`); fair skin with
+auburn hair tied back, a wine tabard and the sword and shield in the yard, helm off
+(`look-fair-tied`), and the same with the helm on, the tail showing below it, and a white plume
+(`look-tied-helmet`); golden skin with blonde hair, a teal tabard, the shield on the house's wall
+and a royal blue plume on the helmet on the stool (`look-house`); a sick face in bed on the deep
+skin, with dark brown hair tied back (`look-sick-deep`); a hot face on the brown skin with silver
+curls in the yard (`look-hot-brown`); and the wide eyes of WAN down on the brown skin with brown
+hair, whose brows draw the dark edge (`look-brows`). Every other shot uses no look hook but
+`arm=`, so against a copy of the page from before the hooks only these seven differ.
 
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
 Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade
