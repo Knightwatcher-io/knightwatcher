@@ -907,8 +907,8 @@ the same options and resolves the look again (see [Downloaded packs](#downloaded
   accepts only signed packs`), and one whose signature does not verify or names a key it does not
   know.
 
-**Version 1.1.0 shipped signed with `kw1`. Version 1.2.0 ships unsigned until the release signs
-it,** so meanwhile a deployed page draws the knight from code. A base pack edited after signing has its signature taken off until the release
+**Today the base pack, version 1.2.0, ships signed with `kw1`,** so a deployed page draws the
+knight from it. A base pack edited after signing has its signature taken off until the release
 signs it again; meanwhile a deployed page draws the knight from the code in `knight.js`, the full
 knight as it shipped before packs, which looks the same as the default look (see
 [When packs fail](#when-packs-fail)). The sword and shield need the base pack: from code the
