@@ -54,7 +54,8 @@
        quietLine  the line shown when w is null
        piOK, tv   whether the pie is on its plate, and whether the television is on
        events     the events of a known type, oldest first: { seq, act, count, text }
-       maxSeq     the highest seq in the file, or null when it has no events */
+       maxSeq     the highest seq in the file, or null when it has no events
+       intervalS  how often the collector says it writes the file, in seconds */
   function map(file, nowMs) {
     if (!isObj(file)) return { ok: false, problem: 'malformed', generatedAt: null };
     const gen = typeof file.generated_at === 'string' ? Date.parse(file.generated_at) : NaN;
@@ -89,7 +90,7 @@
       quietLine: str(file.quiet_line),
       piOK: piUp !== false && !known.some(c => c.id === 'pi_silent'),
       tv: (typeof streams === 'number' && streams > 0) || known.some(c => c.id === 'streaming'),
-      events, maxSeq
+      events, maxSeq, intervalS: interval
     };
   }
 
@@ -100,6 +101,24 @@
     if (view.maxSeq === null) return { play: [], lastSeq };
     if (lastSeq === null || view.maxSeq < lastSeq) return { play: [], lastSeq: view.maxSeq };
     return { play: view.events.filter(e => e.seq > lastSeq), lastSeq: view.maxSeq };
+  }
+
+  /* What the page does with the view of one fetch, given the last valid view (null before the
+     first) and the time nowMs. Returns { kind, ageS }, kind being:
+       'live'    the file is valid: show it
+       'demo'    no valid file has ever arrived
+       'hold'    the fetch failed or the file could not be read, and the last valid file is not yet
+                 older than three of its intervals: keep showing it
+       'silent'  NO SIGNAL: the file is stale, or has a schema the page does not know, or the fetch
+                 failed and the last valid file is older than three of its intervals
+     ageS is how long ago the newest file the page has seen was written. */
+  function judge(view, lastGood, nowMs) {
+    if (view.ok) return { kind: 'live', ageS: view.ageS };
+    if (!lastGood) return { kind: 'demo', ageS: null };
+    const ageS = (nowMs - lastGood.generatedAt) / 1000;
+    if (view.problem === 'stale') return { kind: 'silent', ageS: view.generatedAt > lastGood.generatedAt ? (nowMs - view.generatedAt) / 1000 : ageS };
+    if (view.problem === 'schema') return { kind: 'silent', ageS };
+    return { kind: ageS > 3 * lastGood.intervalS ? 'silent' : 'hold', ageS };
   }
 
   /* The knight's state once the collector has fallen silent: the last state he had, under a red
@@ -129,7 +148,7 @@
     poll();
   }
 
-  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, map, takeEvents, noSignal, start };
+  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, map, takeEvents, judge, noSignal, start };
   KW.state = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? (window.KW = window.KW || {}) : {});

@@ -52,6 +52,9 @@ Every value below is invented.
 - **`schema`** is `1`. A page that meets a number it does not know shows its "no signal" state.
 - **`generated_at`** and **`interval_s`**: when the file was written and how often it should be.
   The page treats the file as stale once it is older than three intervals, and says so on screen.
+  It measures that age against the clock of the device showing the page, so that clock and the
+  collector's must agree to well within three intervals. A display whose clock runs far ahead
+  shows "no signal" over a healthy collector.
 - **`conditions`** lists what is true now, highest priority first. The page acts on the first and
   counts the rest. An empty list means all is quiet.
   - `id` is one of: `attack`, `wan_down`, `container_unhealthy`, `disk_full`, `backup_overdue`,
