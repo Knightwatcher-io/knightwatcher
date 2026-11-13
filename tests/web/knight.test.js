@@ -2,11 +2,13 @@
 // Run with: node --test tests/web/
 //
 // The drawing code runs under Node against a fake canvas context that records every call and every
-// property it is given. Each pose in POSES is drawn and its record compared with the stored one in
-// fixtures/knight/. Equal calls mean equal pixels.
+// property it is given. Each pose in POSES is drawn twice, once from code and once from the base
+// pack in web/packs/, and each record is compared with the stored one in fixtures/knight/, which
+// was taken from the code. Equal calls mean equal pixels.
 //
-//   KNIGHT_LOG=write node --test tests/web/knight.test.js      stores the record of the code as it is
-//   KNIGHT_LOG=dump:DIR node --test tests/web/knight.test.js   writes each pose's full record to DIR
+//   KNIGHT_LOG=write node --test tests/web/knight.test.js         stores the record of the code as it is
+//   KNIGHT_LOG=dump:DIR node --test tests/web/knight.test.js      writes each pose's full record, from code, to DIR
+//   KNIGHT_LOG=dump-pack:DIR node --test tests/web/knight.test.js the same, drawn from the base pack
 //
 // Store the record only from code whose drawing is known to be right, before a change that should
 // not alter it. To find the first differing call in a pose that has only hashes stored, dump both
@@ -19,17 +21,28 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const WEB = path.join(__dirname, '../../web/js');
+const WEB = path.join(__dirname, '../../web');
 const FIX = path.join(__dirname, 'fixtures/knight');
 const CALLS = path.join(FIX, 'calls.json'), FULL = path.join(FIX, 'idle.log');
 const FULL_POSE = 'idle t2300';
 const BLOCK = 128;
 const MODE = process.env.KNIGHT_LOG || '';
+/* The two paths: from code, as on a deployed page, which refuses the unsigned base pack, and from
+   the base pack, as on a 'dev' page, which accepts it. */
+const PATHS = { code: false, pack: true };
+
+/* The scripts index.html loads, in its order, that the knight's drawing needs: everything but the
+   scenes and the files that drive the page (state, engine, demo, main). The pack library and the
+   carriers are among them. */
+const SCRIPTS = [...fs.readFileSync(path.join(WEB, 'index.html'), 'utf8').matchAll(/<script src="([^"?]+)"><\/script>/g)].map(m => m[1])
+  .filter(s => !s.startsWith('js/scenes/') && !['js/state.js', 'js/engine.js', 'js/demo.js', 'js/main.js'].includes(s));
 
 /* Loads the page's drawing code the way index.html does, into a sandbox whose window is an empty
-   object, and points it at a context that writes one line per call: "s" for a fillStyle, "a" for a
-   globalAlpha, "r" for a fillRect, and the name for anything else. */
-function load() {
+   object, chooses the knight's source as main.js does, for a 'dev' page when dev is true, and
+   points the drawing at a context that writes one line per call: "s" for a fillStyle, "a" for a
+   globalAlpha, "r" for a fillRect, and the name for anything else. texts, when given, replace what
+   the carriers pushed. */
+function load(dev, texts) {
   const log = [];
   const ctx = new Proxy({}, {
     set(_, k, v) { log.push((k === 'fillStyle' ? 's' : k === 'globalAlpha' ? 'a' : String(k)) + ' ' + v); return true; },
@@ -39,12 +52,15 @@ function load() {
     },
   });
   const box = vm.createContext({ window: {} });
-  for (const f of ['draw', 'sprites', 'props', 'knight']) {
-    vm.runInContext(fs.readFileSync(path.join(WEB, f + '.js'), 'utf8'), box, { filename: f + '.js' });
+  for (const f of SCRIPTS) {
+    // a carrier names KW as the page's global, which window.KW is in a browser
+    if (box.window.KW) box.KW = box.window.KW;
+    vm.runInContext(fs.readFileSync(path.join(WEB, f), 'utf8'), box, { filename: f });
   }
   const KW = box.window.KW;
+  const status = KW.knight.start(texts || KW.packText, dev === true);
   KW.draw.setCtx(ctx);
-  return { KW, K: KW.knight, log };
+  return { KW, K: KW.knight, log, status };
 }
 
 const X = 480, FLOOR = 530;
@@ -114,11 +130,21 @@ function POSES(K) {
   return p;
 }
 
-/* The record of each pose, in order, each as an array of lines. */
-function draw() {
-  const { K, log } = load();
-  return POSES(K).map(([name, fn]) => { log.length = 0; fn(); return [name, log.slice()]; });
+/* The record of each pose, in order, each as an array of lines, drawn by the path dev chooses.
+
+   One spelling differs between the paths and nothing else may: the pack writes a translucent colour
+   as rgba(60,30,20,0.18), which is how JavaScript writes the number, and the code as
+   rgba(60,30,20,.18). A canvas reads both as the same colour. On the pack path the alpha of such a
+   fillStyle is written without its leading zero before the record is compared; every other
+   character of every line is compared as drawn. */
+const codeSpelling = l => (l.startsWith('s rgba(') ? l.replace(/,0(\.\d+)\)$/, ',$1)') : l);
+function draw(dev) {
+  const { K, log, status } = load(dev);
+  assert.equal(status.source, dev ? 'pack' : 'code', status.note);
+  return POSES(K).map(([name, fn]) => { log.length = 0; fn(); return [name, dev ? log.map(codeSpelling) : log.slice()]; });
 }
+/* A value from the sandbox as plain data, to compare with values made here. */
+const plain = v => JSON.parse(JSON.stringify(v));
 
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
 function blocks(lines) {
@@ -134,41 +160,117 @@ if (MODE === 'write') {
     fs.writeFileSync(CALLS, `{\n  "block": ${BLOCK},\n  "poses": {\n${rows.join(',\n')}\n  }\n}\n`);
     fs.writeFileSync(FULL, draw().find(([name]) => name === FULL_POSE)[1].join('\n') + '\n');
   });
-} else if (MODE.startsWith('dump:')) {
+} else if (MODE.startsWith('dump:') || MODE.startsWith('dump-pack:')) {
   test('dumps the record of every pose', () => {
-    const dir = MODE.slice(5);
+    const dir = MODE.slice(MODE.indexOf(':') + 1);
     fs.mkdirSync(dir, { recursive: true });
-    for (const [name, lines] of draw()) fs.writeFileSync(path.join(dir, name.replace(/[^\w.!?-]+/g, '_') + '.log'), lines.join('\n') + '\n');
+    for (const [name, lines] of draw(MODE.startsWith('dump-pack:'))) fs.writeFileSync(path.join(dir, name.replace(/[^\w.!?-]+/g, '_') + '.log'), lines.join('\n') + '\n');
   });
 } else {
   const stored = JSON.parse(fs.readFileSync(CALLS, 'utf8'));
   assert.equal(stored.block, BLOCK);
-  const drawn = draw();
 
-  test('the stored record covers exactly the poses drawn', () => {
-    assert.deepEqual(drawn.map(([name]) => name), Object.keys(stored.poses));
+  for (const [path_, dev] of Object.entries(PATHS)) {
+    const drawn = draw(dev), from = path_ === 'pack' ? 'from the base pack' : 'from code';
+
+    test(`${from}: the stored record covers exactly the poses drawn`, () => {
+      assert.equal(drawn.length, 98);
+      assert.deepEqual(drawn.map(([name]) => name), Object.keys(stored.poses));
+    });
+
+    test(`${from}: every pose draws the stored calls, number for number`, async t => {
+      for (const [name, lines] of drawn) {
+        await t.test(name, () => {
+          const want = stored.poses[name];
+          assert.ok(want, `${name}: no stored record`);
+          if (sha(lines.join('\n')) === want.sha256) return;
+          const got = blocks(lines), exp = want.blocks.split(' ');
+          let i = 0; while (i < got.length && got[i] === exp[i]) i++;
+          const at = i * BLOCK, to = Math.min(lines.length, at + BLOCK);
+          assert.fail(`${name}: ${lines.length} calls drawn against ${want.calls} stored. The first difference lies in calls ` +
+            `${at} to ${to - 1}, which are now:\n` + lines.slice(at, to).join('\n'));
+        });
+      }
+    });
+
+    test(`${from}: the pose "${FULL_POSE}" draws the stored full record, call by call`, () => {
+      const want = fs.readFileSync(FULL, 'utf8').trimEnd().split('\n'), got = drawn.find(([name]) => name === FULL_POSE)[1];
+      for (let i = 0; i < Math.max(want.length, got.length); i++) {
+        if (got[i] !== want[i]) assert.fail(`call ${i}: drew ${JSON.stringify(got[i])}, stored ${JSON.stringify(want[i])}`);
+      }
+    });
+  }
+
+  /* ---- The choice of path, and the pack path's own workings ---------------------------------- */
+
+  test('a dev page draws the knight from the unsigned base pack, and says so', () => {
+    const { K, status } = load(true);
+    assert.equal(K.source, 'pack');
+    assert.equal(K.status, status);
+    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.0.0', signed: false });
+    assert.deepEqual(plain(status.refused), []);
+    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, unsigned');
   });
 
-  test('every pose draws the stored calls, number for number', async t => {
-    for (const [name, lines] of drawn) {
-      await t.test(name, () => {
-        const want = stored.poses[name];
-        assert.ok(want, `${name}: no stored record`);
-        if (sha(lines.join('\n')) === want.sha256) return;
-        const got = blocks(lines), exp = want.blocks.split(' ');
-        let i = 0; while (i < got.length && got[i] === exp[i]) i++;
-        const from = i * BLOCK, to = Math.min(lines.length, from + BLOCK);
-        assert.fail(`${name}: ${lines.length} calls drawn against ${want.calls} stored. The first difference lies in calls ` +
-          `${from} to ${to - 1}, which are now:\n` + lines.slice(from, to).join('\n'));
-      });
-    }
+  test('a deployed page refuses the unsigned base pack at the signature step and draws from code', () => {
+    const { K, status } = load(false);
+    assert.equal(K.source, 'code');
+    assert.equal(status.base, null);
+    assert.deepEqual(plain(status.refused), [{ id: 'kw.base', step: 'signature', reason: 'sig: is missing, and this page accepts only signed packs' }]);
+    assert.equal(status.note, 'knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs');
   });
 
-  test(`the pose "${FULL_POSE}" draws the stored full record, call by call`, () => {
-    const want = fs.readFileSync(FULL, 'utf8').trimEnd().split('\n'), got = drawn.find(([name]) => name === FULL_POSE)[1];
-    for (let i = 0; i < Math.max(want.length, got.length); i++) {
-      if (got[i] !== want[i]) assert.fail(`call ${i}: drew ${JSON.stringify(got[i])}, stored ${JSON.stringify(want[i])}`);
-    }
+  test('with no base pack, a broken one or no pack library, the knight is drawn from code', () => {
+    const text = fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8');
+    assert.equal(load(true, []).status.note, 'knightwatcher: the knight is drawn from code: no base pack is loaded');
+    let s = load(true, ['not json']).status;
+    assert.equal(s.source, 'code');
+    assert.deepEqual(plain(s.refused), [{ id: null, step: 'json', reason: 'the file is not valid JSON' }]);
+    s = load(true, [text.replace('"version": "1.0.0"', '"version": "1.0"')]).status;
+    assert.equal(s.note, 'knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the fields step: pack.version: must be major.minor.patch, each 0 to 999');
+    const box = load(true);
+    assert.equal(box.K.source, 'pack');
+    box.KW.pack = undefined;
+    assert.equal(box.K.start(box.KW.packText, true).note, 'knightwatcher: the knight is drawn from code: the pack library is not loaded');
+    assert.equal(box.K.source, 'code');
+  });
+
+  test('the console line cuts a long reason short', () => {
+    const box = load(true), lib = box.KW.pack;
+    box.KW.pack = Object.assign({}, lib, { read: () => ({ ok: false, step: 'fields', reason: 'r'.repeat(300), id: 'kw.base' }) });
+    const s = box.K.start(box.KW.packText, true);
+    assert.equal(s.source, 'code');
+    assert.equal(s.note, 'knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the fields step: ' + 'r'.repeat(117) + '...');
+    assert.equal(s.refused[0].reason.length, 300, 'the status keeps the reason whole');
+  });
+
+  test('the pack path draws what the pack says: a changed tabard colour shows, and nothing else changes', () => {
+    const text = fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8');
+    const red = text.replace('"blue": { "name": "Blue", "entries": { "0": "#6f9eff", "1": "#3f74e0"', '"blue": { "name": "Blue", "entries": { "0": "#6f9eff", "1": "#ab0102"');
+    assert.notEqual(red, text);
+    const a = load(true), b = load(true, [red]);
+    assert.equal(b.status.source, 'pack');
+    const at0 = K => at(K, 'idle', 2300);
+    a.K.draw(at0(a.K)); b.K.draw(at0(b.K));
+    const diff = a.log.map((l, i) => [l, b.log[i]]).filter(([x, y]) => x !== y);
+    assert.equal(a.log.length, b.log.length);
+    assert.ok(diff.length > 10, 'the tabard\'s middle band fills many rows');
+    assert.ok(diff.every(([x, y]) => x === 's #3f74e0' && y === 's #ab0102'), 'only that colour changes');
+  });
+
+  test('the pack path clamps drop and bloat into the library\'s ranges, and allocates no new arrays', () => {
+    const { KW, K } = load(true), seen = [], draw0 = KW.pack.draw;
+    KW.pack.draw = (list, A, V, P, face) => { seen.push([A, V, V[KW.pack.VALUE.drop], V[KW.pack.VALUE.bloat]]); return draw0(list, A, V, P, face); };
+    K.draw(at(K, 'idle', 2300, { bloat: 20, crouch: 12, bob: 1 }));
+    K.draw(at(K, 'memory_tight', 2300));
+    assert.ok(seen.length > 10);
+    const [A, V] = seen[0];
+    assert.equal(Object.prototype.toString.call(A), '[object Float64Array]');
+    assert.equal(Object.prototype.toString.call(V), '[object Float64Array]');
+    assert.ok(seen.every(s => s[0] === A && s[1] === V), 'the same two arrays every frame');
+    const first = seen.filter(s => s[2] === 40 && s[3] === 60), second = seen.filter(s => s[2] === 5 && s[3] === 30);
+    assert.equal(first.length + second.length, seen.length, 'drop 65 and bloat 100 clamped to 40 and 60; drop 5 and bloat 30 unchanged');
+    assert.ok(first.length && second.length);
   });
 
   /* ---- The rig ------------------------------------------------------------------------------ */

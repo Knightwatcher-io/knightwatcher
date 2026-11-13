@@ -16,17 +16,19 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie, fire, sky and stars, flies, the goblin, the crate and its parachute |
-| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble; `build` holds the knight's measurements |
+| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code as `start()` chose (see [The knight from the base pack](#the-knight-from-the-base-pack)), `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble; `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
-| `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. Not loaded by `index.html` yet; when it is, it goes before `pack.js`. See [packs.md](./packs.md#the-verifier) |
-| `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them. Not loaded by `index.html` yet; see [packs.md](./packs.md) |
+| `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
+| `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
+| `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events, drawing order |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
-| `js/main.js` | start-up, sizing, the clock and the words over the scene, the choice of mode, the check for a new version |
+| `js/main.js` | start-up (where the knight is drawn from, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
-earlier file put on `KW` at load time, and anything at all when its functions run.
+earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
+`KW.packText`, so it comes after `knight.js`; `ed25519.js` comes before `pack.js`.
 
 ## One grid
 
@@ -118,6 +120,59 @@ and down but not sideways, as it always has.
 
 `rig` fills the same object on every call and returns it, so a frame allocates nothing for it and a
 caller that keeps the result sees it change at the next call.
+
+**The library's arrays.** On the pack path each frame copies the rig into the two `Float64Array`s
+that `draw()` in `pack.js` reads, made once by `newAnchors()` and `newValues()`:
+
+- the anchors, x then y of each, in the order of `ANCHORS` in `pack.js` (`root`, `footL`, `footR`,
+  `hipL`, `hipR`, `hem`, `belt`, `neck`, `shoulderL`, `shoulderR`, `head`, `handL`, `handR`,
+  `main`, `off`, `rest`). The rig has no `off` or `rest` yet, and they stay at 0: the base look
+  has no shield, and nothing on the knight hangs on `rest`. After them, at `FRAME_SX` and
+  `FRAME_SY`, the weapon frame's direction, `sin(a)` and `-cos(a)` of `main`'s angle;
+- the values in the order of `VALUES`: `drop`, `bloat`, `stepL`, `stepR`, `sway`. `drop` is
+  clamped to 0 to 40 and `bloat` to 0 to 60, the ranges `RANGE` in `pack.js` states and every
+  pack's shapes were checked over. The present knight stays inside them (a drop of 10 at most and
+  a bloat of 30), and the anchors keep the unclamped numbers. The build's differences are not in
+  the array: the look folds them in when it is compiled, and the rig takes the look's
+  measurements.
+
+On the pack path the two hand stations along the weapon are the weapon's own `grip.hands`, which
+for the base pack's greatsword are the same 6 and -30.
+
+## The knight from the base pack
+
+At start-up, before the first frame, `main.js` calls `KW.knight.start(KW.packText, dev)` with `dev`
+true only when the page's version is `dev`. `start` reads the packs the carriers pushed, gathers
+them and resolves the default look. If a look resolves, the knight is drawn from the base pack;
+otherwise from code. A `dev` page accepts the unsigned base pack and takes the pack path. A
+deployed page refuses it at the `signature` step and takes the code path until a signed base pack
+ships. The two paths draw the same pixels. The choice is made once, printed in one line to the
+console, and kept in `KW.knight.source` (`'pack'` or `'code'`) and `KW.knight.status`; nothing about
+it is drawn on screen. [packs.md](./packs.md#on-the-page) has the details, and why the code path
+stays.
+
+On the pack path `draw(o)` runs the rig, fills the library's arrays, picks the grip mode (`none`,
+`hammer`, or `twoR` or `twoL` by the side the blade leans to) and walks the order that
+`sequence(mode, helmet)` in `pack.js` gives. It draws each of the look's lists with the library's
+`draw()` and the primitives of `draw.js`, and draws the engine's own steps by code at their places
+in that order: the crates first, the face after the head group, the drumstick after the face, the
+hammer between the right arm and its gauntlet, and sweat, steam, the marks, the thought bubble,
+the progress bar, the hearts and the speech bubble last. `@skin.face` takes the skin swatch's sick
+ramp when the knight is ill and its hot ramp when overheated. A frame allocates nothing for the
+pack path beyond what the primitives and the engine's own steps allocate.
+
+Three things stay as they were:
+
+- the face is drawn by the same code on both paths, in its own colours, which equal the base
+  pack's swatches;
+- a pose that asks for the drooping plume (`droop`) is drawn by code, since the pack format has no
+  drooping plume. No pose of the page sets it;
+- the scenes still draw the gear at rest from their own code: the helmet on the house's stool, the
+  sword on the pegs and the anvil, and the smithy's hot tip.
+
+`head()`, the sleeper's bare head in the house, follows the knight: on the pack path it draws the
+look's helmet-off head group and then the face, with the same calls as the code. `speech()` is
+drawn by code on both paths.
 
 ## The scene interface
 
@@ -222,7 +277,8 @@ minutes are up before reloading again. Where `sessionStorage` is refused the rec
 memory, which a reload loses, so such a page may reload once on each load. A failed fetch, or a
 file that names no version, does nothing. The repository's own `index.html` says `dev`, and a page
 whose version is `dev` never checks, so the page still opens from disk, or is served straight from
-`web/`, with no build step.
+`web/`, with no build step. The same version decides whether the page accepts an unsigned pack: only
+a `dev` page does (see [The knight from the base pack](#the-knight-from-the-base-pack)).
 
 The mapping is the pure function `KW.state.map(file, nowMs)`. Beside it, `judge(view, lastGood,
 nowMs)` decides between showing a file, holding the last one, NO SIGNAL and the demo, and
@@ -271,8 +327,9 @@ alone and deleting any other file that `web/` no longer has. It then stamps the 
 copy, with a version: the first 12 hex characters of a sha256 over the names and contents of the
 files of `web/`, in a stable order and leaving `data/` out. It writes `version.json` as
 `{"version": "<hash>"}`, sets the `kw-version` meta tag of `index.html` to the version, and appends
-`?v=<hash>` to every local script and stylesheet address there, so a new version is fetched under
-addresses no cache has seen. The fonts the stylesheet loads are not stamped. A deploy that changes
+`?v=<hash>` to every local script and stylesheet address there, the pack carriers included, so a
+new version is fetched under addresses no cache has seen. A deployed copy's version is not `dev`, so
+it refuses the unsigned base pack and draws the knight from code. The fonts the stylesheet loads are not stamped. A deploy that changes
 nothing in `web/` gives the same version and reloads no open page. The version does not depend on
 git, so the tool works from an exported copy too. It refuses a folder that is `web/`, lies inside
 it or holds it, and an `index.html` whose meta tag it cannot find. Open displays reload within
@@ -283,38 +340,56 @@ about five minutes of a deploy that changes something.
 Syntax, from the repository's root:
 
 ```bash
-for f in $(find web/js -name '*.js'); do node --check "$f" || exit 1; done
+for f in $(find web/js web/packs -name '*.js'); do node --check "$f" || exit 1; done
 ```
 
-The mapping from a state file, `judge`, the rules for events and the decision to reload, and the
-knight's drawing and rig:
+The mapping from a state file, `judge`, the rules for events and the decision to reload, the
+knight's drawing and rig on both paths, the base pack, and the pack library:
 
 ```bash
 node --test tests/web/
 ```
 
-`tests/web/knight.test.js` checks the knight call by call. It loads `draw.js`, `sprites.js`,
-`props.js` and `knight.js` under Node with an empty `window` and a fake canvas context that records
-every call and every property set, draws the knight in about a hundred poses, and compares each
-record with the one stored in `tests/web/fixtures/knight/`. For every pose that holds the number of
-calls, a hash of the whole record and a hash of each block of 128 calls; for one pose it holds the
-full record. Equal calls mean equal pixels, so a change that should leave the knight alone is
-checked in about a second, before the screenshots. A failure names the pose and the block of calls
-where the first difference lies, or the exact call in the pose stored in full. To see every call
-that differs, dump the records of both trees and compare the folders:
+`tests/web/knight.test.js` checks the knight call by call. It loads the scripts `index.html` loads
+that the knight's drawing needs (`draw.js`, `sprites.js`, `props.js`, `knight.js`, `ed25519.js`,
+`pack.js` and the carriers, in the page's order) under Node with an empty `window` and a fake canvas
+context that records every call and every property set. It chooses the knight's source as
+`main.js` does, draws the knight in 98 poses, and compares each record with the one stored in
+`tests/web/fixtures/knight/`. It does this twice: once as a deployed page, which refuses the
+unsigned base pack and draws from code, and once as a `dev` page, which draws from the base pack.
+The stored record was taken from the code, and both paths must give it. For every pose it holds the
+number of calls, a hash of the whole record and a hash of each block of 128 calls; for one pose it
+holds the full record. Equal calls mean equal pixels, so a change that should leave the knight
+alone is checked in about a second, before the screenshots. A failure names the pose and the block
+of calls where the first difference lies, or the exact call in the pose stored in full.
+
+One spelling is allowed to differ on the pack path. The pack writes the helmet's translucent shade
+as `rgba(60,30,20,0.18)`, as JavaScript writes the number, where the code writes
+`rgba(60,30,20,.18)`; a canvas reads both as the same colour. Before the pack path's record is
+compared, the alpha of such a fillStyle loses its leading zero. Every other character is compared
+as drawn, and the screenshots confirm the pixels.
+
+The same file checks the choice itself: the console line on each path, the refusal at the
+`signature` step, the code path when there is no base pack, a broken one or no library, a changed
+colour in the pack showing on the knight, and the clamping of `drop` and `bloat`.
+
+To see every call that differs, dump the records of both trees and compare the folders.
+`dump-pack:` dumps the pack path's records instead of the code's:
 
 ```bash
-KNIGHT_LOG=dump:/tmp/kw-calls-old node --test tests/web/knight.test.js   # in the tree before
-KNIGHT_LOG=dump:/tmp/kw-calls-new node --test tests/web/knight.test.js   # in the tree after
+KNIGHT_LOG=dump:/tmp/kw-calls-old node --test tests/web/knight.test.js        # in the tree before
+KNIGHT_LOG=dump:/tmp/kw-calls-new node --test tests/web/knight.test.js        # in the tree after
+KNIGHT_LOG=dump-pack:/tmp/kw-calls-pack node --test tests/web/knight.test.js  # the pack path
 diff -r /tmp/kw-calls-old /tmp/kw-calls-new
 ```
 
 The stored record changes only when the knight is meant to look different. Store it again from the
 code as it is with `KNIGHT_LOG=write node --test tests/web/knight.test.js`, and look at the
-screenshots before trusting it.
+screenshots before trusting it. A change to the knight's look then changes the base pack too, so
+that both paths still give the stored record.
 
 The deploy tool, which it runs against temporary folders and copies of `web/`, never the
-repository's own:
+repository's own, and the pack carriers against their pack files:
 
 ```bash
 node --test tests/tools/
@@ -335,3 +410,10 @@ Freeze time with `t=` for screenshots, and never make the first frame wait on el
 in. With time frozen the events and the swat start before the first frame and nothing advances from
 one frame to the next, so every shot depends only on its address: two takes of the same tree come
 out byte for byte the same, on a busy machine too, apart from the clock when the minute turns.
+
+The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack.
+A reference set taken from a copy of an older tree (`PAGE=/path/to/old/web/index.html`) that drew
+the knight from code compares the two paths. A deployed copy draws from code. `shots.sh` shoots
+only from disk, so to compare a deployed copy, serve it on the loopback address and point the
+headless browser at `index.html?demo#<hash>` by hand: `?demo` starts the demo at once instead of
+waiting for a state file.
