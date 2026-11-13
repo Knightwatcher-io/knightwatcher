@@ -16,6 +16,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie, fire, sky and stars, flies, the goblin, the crate and its parachute |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble; `build` holds the knight's measurements |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
+| `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. Not loaded by `index.html` yet; when it is, it goes before `pack.js`. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them. Not loaded by `index.html` yet; see [packs.md](./packs.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events, drawing order |
