@@ -1,4 +1,4 @@
-/* Knightwatch: reading the state file (docs/state.md) and turning it into what the engine needs.
+/* Knightwatcher: reading the state file (docs/state.md) and turning it into what the engine needs.
    Everything above start() is pure and loads under Node, for the tests in tests/web/. */
 (function (KW) {
   'use strict';

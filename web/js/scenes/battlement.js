@@ -1,4 +1,4 @@
-/* Knightwatch scene: the battlement at night, on the fine grid. A quiet scene, and the scene for an
+/* Knightwatcher scene: the battlement at night, on the fine grid. A quiet scene, and the scene for an
    attack or a lost WAN, which cuts the rope of the bell. The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';

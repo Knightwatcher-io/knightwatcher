@@ -43,7 +43,7 @@ The collector:
 ```bash
 python3 -m unittest discover -s tests/collector -v
 uvx ruff check collector tests && uvx ruff format --check collector tests
-docker build -t knightwatch-collector:dev .
+docker build -t knightwatcher-collector:dev .
 docker compose config -q
 python3 -m collector --config config.toml --secrets secrets.json --check-config
 ```

@@ -1,4 +1,4 @@
-/* Knightwatch scene: the cellar full of crates, on the fine grid. The scene for a disk filling up.
+/* Knightwatcher scene: the cellar full of crates, on the fine grid. The scene for a disk filling up.
    The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';

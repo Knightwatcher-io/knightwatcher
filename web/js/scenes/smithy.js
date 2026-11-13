@@ -1,4 +1,4 @@
-/* Knightwatch scene: the smithy, on the fine grid. The scene for an update, where the knight hammers
+/* Knightwatcher scene: the smithy, on the fine grid. The scene for an update, where the knight hammers
    his greatsword on the anvil. The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';

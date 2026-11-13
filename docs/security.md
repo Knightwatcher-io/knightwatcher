@@ -58,7 +58,7 @@ The page is static. It fetches `state.json` from its own origin and nothing else
 third-party script, and sends nothing anywhere.
 
 `state.json` is not public information. Whoever serves the page must put authentication in front
-of it. Knightwatch provides none.
+of it. Knightwatcher provides none.
 
 ## Commits
 

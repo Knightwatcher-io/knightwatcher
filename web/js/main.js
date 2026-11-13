@@ -1,4 +1,4 @@
-/* Knightwatch: start-up. Reads the address, sizes the canvas to the screen, keeps the clock and
+/* Knightwatcher: start-up. Reads the address, sizes the canvas to the screen, keeps the clock and
    the words over the scene, runs the frames, and chooses between the demo and live data.
    docs/page.md describes the modes and the address's test hooks. */
 (function (KW) {

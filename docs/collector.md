@@ -174,8 +174,8 @@ python3 -m collector                    # poll until stopped
 ```
 
 `--config` and `--secrets` name the two files. They default to the environment variables
-`KNIGHTWATCH_CONFIG` and `KNIGHTWATCH_SECRETS`, and where those are unset to
-`/etc/knightwatch/config.toml` and `/etc/knightwatch/secrets.json`, the paths inside the
+`KNIGHTWATCHER_CONFIG` and `KNIGHTWATCHER_SECRETS`, and where those are unset to
+`/etc/knightwatcher/config.toml` and `/etc/knightwatcher/secrets.json`, the paths inside the
 container. The collector takes an exclusive lock on its state folder, so a second collector
 pointed at the same folder exits at once.
 

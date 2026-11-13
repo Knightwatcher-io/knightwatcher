@@ -1,6 +1,6 @@
 # Design
 
-Knightwatch is a wall display for a homelab. A pixel-art knight fills a tablet's screen, and his
+Knightwatcher is a wall display for a homelab. A pixel-art knight fills a tablet's screen, and his
 scene and state mirror the machines he watches: he sweats when the CPU is pinned, takes to his bed
 when a container is unhealthy, and goes to the king's court when someone opens a shell. A
 headline over the top says why in words, beside a wall clock.
@@ -99,7 +99,7 @@ a module and leaves the rest alone.
 
 The page is static files. Any web server will do, and it is the operator's job to put
 authentication in front of it: `state.json` holds container names, addresses and what is being
-watched. Knightwatch opens no port of its own.
+watched. Knightwatcher opens no port of its own.
 
 ## Decisions not yet made
 
