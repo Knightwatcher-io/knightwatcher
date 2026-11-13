@@ -41,6 +41,8 @@ SHOTS=(
   "feast|bar=0&t=1800&is=house&e=feast"
   "helm-off-l|bar=0&t=2300&is=yard&h=off&hs=l&on=cpu"
   "kx|bar=0&t=2300&is=camp&kx=60"
+  "mon-b|bar=0&t=3450&on=ssh&mon=b"
+  "mon-c|bar=0&t=3450&on=ssh&mon=c"
 )
 
 take() {

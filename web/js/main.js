@@ -13,11 +13,11 @@
   H0.slice(1).split('&').forEach(kv => { const [k, v] = kv.split('='); if (k in S && v != null) S[k] = decodeURIComponent(v); });
   for (const k of Object.keys(OPTS)) if (!(S[k] in OPTS[k])) S[k] = Object.keys(OPTS[k])[0];
   const hv = k => (H0.match(new RegExp('[#&]' + k + '=([\\w.-]+)')) || [])[1];
-  /* t=<ms> freezes time for screenshots, t=0 included, and kx=<x> places the knight (in units of
-     U). frozen says whether the address holds a t= with a number, and t is the frozen time, or 0
-     without one. */
+  /* t=<ms> freezes time for screenshots, t=0 included, kx=<x> places the knight (in units of U),
+     and mon= chooses the monarch at court: a, b or c, and a for anything else. frozen says whether
+     the address holds a t= with a number, and t is the frozen time, or 0 without one. */
   const tHook = hv('t') == null ? NaN : +hv('t');
-  KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx') };
+  KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'), mon: ['a', 'b', 'c'].includes(hv('mon')) ? hv('mon') : 'a' };
   const freeze = KW.hooks.frozen;
 
   /* ---- The words over the scene ------------------------------------------------------------- */
