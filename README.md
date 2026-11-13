@@ -31,4 +31,5 @@ collector write its file to `web/data/`, behind whatever authentication you use.
 - [The collector](docs/collector.md): one poll, conditions, events, sources and how to add one
 - [Configuration](docs/configuration.md): `config.toml`, `secrets.json` and `.env`
 - [Security](docs/security.md): what never enters this repository, and the collector's privileges
+- [A monitor on the host](docs/monitor.md): showing the display on a screen wired to a headless host
 - [Development](docs/development.md): layout, checks, and the rules for changes
