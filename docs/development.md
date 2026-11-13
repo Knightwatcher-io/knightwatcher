@@ -21,6 +21,7 @@ tests/
   tools/             node tests for tools/deploy.sh
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version
+  icons.sh           regenerates the favicon and the app icons from the drawings in icons/
   shots.sh           regression screenshots of the page
   check-private.sh   the check that no private detail is tracked
 docs/                this documentation
@@ -76,6 +77,19 @@ tried. [page.md](./page.md) has the rest.
 hundred poses against a fake canvas and compares every call with a stored record, in about a
 second. The record is stored again only when the knight is meant to change; [page.md](./page.md#checks)
 says how.
+
+## The logo and the icons
+
+`web/logo.svg` is the logo, with `logo-dark.svg` for dark surfaces and `logo-mono.svg` in one
+colour. `web/favicon.svg` is the favicon, and changes its outline with the browser's light or dark
+theme. The raster icons (`favicon.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`) are
+never edited by hand: they are made from the drawings in `tools/icons/` by
+
+```bash
+CHROME=/path/to/chrome-headless-shell tools/icons.sh
+```
+
+and a second run gives the same bytes.
 
 ## Deploying the page
 
