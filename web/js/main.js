@@ -1,5 +1,6 @@
 /* Knightwatcher: start-up. Reads the address, sizes the canvas to the screen, keeps the clock and
-   the words over the scene, runs the frames, and chooses between the demo and live data.
+   the words over the scene, runs the frames, chooses between the demo and live data, and reloads
+   the page when a new version of it has been deployed.
    docs/page.md describes the modes and the address's test hooks. */
 (function (KW) {
   'use strict';
@@ -126,6 +127,36 @@
   // Only a real tap may ask for full screen; a scripted click would be refused by the browser.
   surface.addEventListener('click', e => { if (mode === 'live' && e.isTrusted) { toggleFullScreen(); keepAwake(); } });
   document.addEventListener('visibilitychange', keepAwake);
+
+  /* ---- New versions of the page ---------------------------------------------------------------
+     A deployed copy carries its version in a meta tag, and version.json beside it names the one
+     deployed now. Served over HTTP, in every mode, the page reads version.json five minutes after
+     load and every five minutes after, and reloads at once when the versions differ. A failed or
+     malformed fetch does nothing. KW.state.reloadDue() decides, from the mark the last reload left
+     in sessionStorage, or in memory where sessionStorage is refused. The repository's own page
+     says 'dev' and never checks. */
+  const VERSION_CHECK_MS = 5 * 60 * 1000, MARK_KEY = 'kw-reload';
+  const ownVersion = (document.querySelector('meta[name="kw-version"]') || {}).content || 'dev';
+  let markInMemory = null;
+  function readMark() {
+    try { const s = sessionStorage.getItem(MARK_KEY); return s ? JSON.parse(s) : markInMemory; } catch (e) { return markInMemory; }
+  }
+  function writeMark(m) {
+    markInMemory = m;
+    try { sessionStorage.setItem(MARK_KEY, JSON.stringify(m)); } catch (e) { /* refused: the mark in memory stands */ }
+  }
+  async function checkVersion() {
+    let fetched = null;
+    const ctl = new AbortController(), cut = setTimeout(() => ctl.abort(), 4000);
+    try {
+      const r = await fetch('version.json', { cache: 'no-store', signal: ctl.signal });
+      if (r.ok) fetched = ST.versionOf(await r.json());
+    } catch (e) { /* unreachable or unreadable: nothing to do */ }
+    clearTimeout(cut);
+    const now = Date.now();
+    if (ST.reloadDue(ownVersion, fetched, readMark(), now)) { writeMark({ version: fetched, at: now }); location.reload(); }
+  }
+  if (/^https?:$/.test(location.protocol) && ownVersion !== 'dev') setInterval(checkVersion, VERSION_CHECK_MS);
 
   /* ---- Go ----------------------------------------------------------------------------------- */
   let lastT = -1e9;
