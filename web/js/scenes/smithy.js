@@ -1,13 +1,17 @@
 /* Knightwatcher scene: the smithy, on the fine grid. The scene for an update, where the knight hammers
-   the greatsword on the anvil. The scene interface is in docs/page.md. */
+   their own weapon on the anvil. The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';
-  const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C;
+  const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, K = KW.knight, C = D.C;
   const { alpha, glow, Rh, Rv, ell, rrect, poly, strip, hsh, ease, STEEL2, STEEL3 } = D;
 
   const WALL = ['#1d1411', '#21170f', '#1a120e', '#241913'];
   const BRICK = ['#3a1b14', '#43201a', '#331813', '#4a2419'];
   const IRON = [[.15, '#7d899b'], [.5, '#525c6e'], [1, '#353b48']];
+  /* The place for the knight's gear at rest (docs/page.md): the anvil, where the weapon lies under
+     the hammer, x and y the middle of its grip and a its angle, which lays it flat. x is counted
+     from the knight's spot, s.kx, so the blade lies where the hammer falls. */
+  const RESTS = { anvil: { x: 50, y: 425, a: Math.PI / 2 } };
 
   /* The hammer rises slowly and falls fast, once every 1.3 seconds, and a progress bar fills. */
   function act(t, s) {
@@ -57,24 +61,29 @@
     for (let j = 0; j < 4; j++) { const y = HFL + 3 + j * 20; Rh(HL, y + 18, HR - HL, 2, '#130d0a'); for (let x = Math.floor(HL / 110) * 110 + (j % 2) * 55; x < HR; x += 110) { Rh(x, y, 2, 18, '#130d0a'); Rh(x + 2, y, 1, 18, '#33251c'); } }
     for (let i = 0; i < 30; i++) Rh(700 + hsh(i, 91) % 300, HFL + 4 + hsh(i, 92) % 30, 3, 2, '#2e2a2a');
     anvil();
-    // the greatsword across the anvil, under the hammer
-    P.swordHD(kx + 50, 425, Math.PI / 2);
+    // the weapon across the anvil, under the hammer
+    K.rest.draw('main', kx + RESTS.anvil.x, RESTS.anvil.y, RESTS.anvil.a);
   }
 
   function draw(t, s) {
-    const { HFL } = V, gx = s.kx + 50, gy = 425;
+    const gx = s.kx + RESTS.anvil.x, gy = RESTS.anvil.y, b = K.rest.blade();
     // the fire in the forge
     glow(840, 410, 230, '#ff4a3d', .11 + .03 * Math.sin(t / 140));
     const f = Math.floor(t / 170) % 2;
     for (let i = 0; i < 9; i++) { const x = 780 + i * 14, h = hsh(i, 61) % 8; ell(x + 6, 440 - h, 9, 7, (i + f) % 3 ? '#cc352c' : '#ff8676'); }
     P.flameHD(812, 436, .55, t); P.flameHD(842, 438, .7, t + 300); P.flameHD(872, 436, .5, t + 700);
     for (let i = 0; i < 9; i++) Rh(782 + i * 14 + hsh(i, 62) % 6, 432 + hsh(i, 63) % 8, 4, 3, (i + f) % 2 ? '#fff3a0' : '#ffb000');
-    // the blade's hot tip
-    glow(gx + 232, gy, 56, '#ff8a3d', .14 + .03 * Math.sin(t / 120));
-    D.dith(gx + 176, gy - 14, 14, 29, '#7a2a1d');
-    for (const [x0, x1, c] of [[190, 206, '#8f231d'], [206, 220, '#cc352c'], [220, 233, '#ff5a1e']]) Rh(gx + x0, gy - 15, x1 - x0, 31, c);
-    poly([[gx + 233, gy - 15], [gx + 263, gy], [gx + 233, gy + 15]], '#ffb000'); poly([[gx + 236, gy - 8], [gx + 252, gy], [gx + 236, gy + 8]], '#fff3a0');
-    Rh(gx + 192, gy - 12, 42, 2, 'rgba(255,240,180,.55)'); Rh(gx + 192, gy + 9, 42, 2, 'rgba(60,10,0,.35)');
+    // The blade's hot tip, at the weapon's point (to along the blade) and between its edges (half
+    // either side), in bands that start 73, 57 and 43 short of the point. A weapon that gives no
+    // blade shows none.
+    if (b) {
+      const to = b.to, h = b.half;
+      glow(gx + (to - 31), gy, 56, '#ff8a3d', .14 + .03 * Math.sin(t / 120));
+      D.dith(gx + (to - 87), gy - (h - 1), 14, 2 * h - 1, '#7a2a1d');
+      for (const [x0, x1, c] of [[73, 57, '#8f231d'], [57, 43, '#cc352c'], [43, 30, '#ff5a1e']]) Rh(gx + (to - x0), gy - h, x0 - x1, 2 * h + 1, c);
+      poly([[gx + (to - 30), gy - h], [gx + to, gy], [gx + (to - 30), gy + h]], '#ffb000'); poly([[gx + (to - 27), gy - (h - 7)], [gx + (to - 11), gy], [gx + (to - 27), gy + (h - 7)]], '#fff3a0');
+      Rh(gx + (to - 71), gy - (h - 3), 42, 2, 'rgba(255,240,180,.55)'); Rh(gx + (to - 71), gy + (h - 6), 42, 2, 'rgba(60,10,0,.35)');
+    }
     // the pie, and sparks where the hammer strikes
     KW.things.draw(t, s);
     if (s.strike) {
@@ -96,5 +105,5 @@
     g3: { cls: 'ground', kind: 'floor', x: 40, y: 568, w: 88, h: 112, front: true }
   };
 
-  KW.scenes.smithy = { spot: 88, places: PLACES, helmet: false, key: s => String(Math.round(s.kx)), act, paint, draw };
+  KW.scenes.smithy = { spot: 88, places: PLACES, rests: RESTS, helmet: false, key: s => Math.round(s.kx) + '|' + K.rest.key('main'), act, paint, draw };
 })(window.KW);

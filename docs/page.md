@@ -16,7 +16,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie and the other watched things (`KINDS`), fire, sky and stars, flies, the goblin, the crate and its parachute |
-| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code as `start()` chose (see [The knight from the base pack](#the-knight-from-the-base-pack)), `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble; `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
+| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code as `start()` chose (see [The knight from the base pack](#the-knight-from-the-base-pack)), `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
@@ -126,8 +126,9 @@ that `draw()` in `pack.js` reads, made once by `newAnchors()` and `newValues()`:
 
 - the anchors, x then y of each, in the order of `ANCHORS` in `pack.js` (`root`, `footL`, `footR`,
   `hipL`, `hipR`, `hem`, `belt`, `neck`, `shoulderL`, `shoulderR`, `head`, `handL`, `handR`,
-  `main`, `off`, `rest`). The rig has no `off` or `rest` yet, and they stay at 0: the base look
-  has no shield, and nothing on the knight hangs on `rest`. After them, at `FRAME_SX` and
+  `main`, `off`, `rest`). The rig has no `off` or `rest`, and they stay at 0: the base look has
+  no shield, and nothing on the knight hangs on `rest`, which the gear at rest sets in arrays of
+  its own (see [Gear at rest](#gear-at-rest)). After them, at `FRAME_SX` and
   `FRAME_SY`, the weapon frame's direction, `sin(a)` and `-cos(a)` of `main`'s angle;
 - the values in the order of `VALUES`: `drop`, `bloat`, `stepL`, `stepR`, `sway`. `drop` is
   clamped to 0 to 40 and `bloat` to 0 to 60, the ranges `RANGE` in `pack.js` states and every
@@ -161,18 +162,65 @@ the progress bar, the hearts and the speech bubble last. `@skin.face` takes the 
 ramp when the knight is ill and its hot ramp when overheated. A frame allocates nothing for the
 pack path beyond what the primitives and the engine's own steps allocate.
 
-Three things stay as they were:
+Two things stay as they were:
 
 - the face is drawn by the same code on both paths, in its own colours, which equal the base
   pack's swatches;
 - a pose that asks for the drooping plume (`droop`) is drawn by code, since the pack format has no
-  drooping plume. No pose of the page sets it;
-- the scenes still draw the gear at rest from their own code: the helmet on the house's stool, the
-  sword on the pegs and the anvil, and the smithy's hot tip.
+  drooping plume. No pose of the page sets it.
 
 `head()`, the sleeper's bare head in the house, follows the knight: on the pack path it draws the
-look's helmet-off head group and then the face, with the same calls as the code. `speech()` is
-drawn by code on both paths.
+look's helmet-off head group and then the face, with the same calls as the code. The gear the
+scenes show at rest follows it too; see the next section. `speech()` is drawn by code on both paths.
+
+## Gear at rest
+
+The house and the smithy show the knight's gear off the knight: the helmet on the house's stool
+while the helmet is off, and the weapon on the house's pegs and across the smithy's anvil. They
+show what the knight has equipped, from the same source as the knight: the look's lists on the
+pack path, and on the code path the code in `knight.js` and `props.js`, which draws what the
+scenes always drew. A scene asks for each item by its slot, in its own `paint` or `draw`, so the
+item stays layered with the scene's art. It does so through `KW.knight.rest`, which makes the
+choice of path itself:
+
+| Call | Does |
+|---|---|
+| `draw(slot, x, y, a)` | draws the equipped item of `slot` at rest. `'helmet'`: the helmet's rest view on the `rest` anchor at `(x, y)`, the middle of its foot on a surface, with the plume's rest view behind it on the view's plume mount. `'main'`: the weapon's worn shapes on a frame with the middle of its grip at `(x, y)` along the angle `a` (0 is straight up, and `Math.PI / 2` lays it flat with the point to the right). Any other slot draws nothing |
+| `blade()` | the equipped weapon's `blade`, `{ from, to, half }` in frame units, or `null` when it gives none. On the code path, the greatsword's `{ from: 34, to: 263, half: 15 }` |
+| `key(slot)` | the equipped item's name, `<pack>/<item>`, or `''` when the slot is empty; `'code'` on the code path |
+
+On the pack path a helmet with no rest view shows nothing on the stool, and a helmet whose rest
+view has no plume mount rests without its plume. Gear at rest does not move with the knight, so it
+is drawn with every named value 0, from anchor and value arrays of its own made once at start-up; a
+call allocates nothing.
+
+**The places.** A scene declares the places where it sets gear down in its `rests` field, beside
+`places`, which holds the watched things' places. The engine does not read `rests`: the scene
+passes a place's numbers to `draw`.
+
+| Scene | Place | Holds | Fields |
+|---|---|---|---|
+| house | `stool` | the helmet | `kind: 'surface'`, `x` 460 and `y` 476 the middle of the stool's top, `w` 76 by `h` 80 the room above it |
+| house | `pegs` | the weapon | `x` 618 and `y` 228 the middle of the grip, `a` `Math.PI / 2` |
+| smithy | `anvil` | the weapon | `x` 50, counted from the knight's spot `s.kx` so that the blade lies where the hammer falls; `y` 425; `a` `Math.PI / 2` |
+
+The stool's `kind`, `w` and `h` give the place in the shape the pack format gives places; nothing
+checks a rest view's `fits` and `box` against them yet. The pegs are spaced for the greatsword's
+length. A shield on the wall beside the pegs, for one-handed weapons, would be one more place and
+one more slot for `draw`; neither exists yet.
+
+**The hot tip.** The smithy draws the glowing tip of the blade on the anvil from `blade()`, in
+frame units along the blade from `to`, the point, and across it from `half`, the distance from the
+middle to each edge: three bands of heat starting 73, 57 and 43 short of the point and reaching to
+30 short of it, each `2 * half + 1` tall, then the point itself, a light along each edge and a glow
+around it. For the greatsword these are the numbers the smithy always drew. A weapon with no
+`blade` has no hot tip.
+
+**The backdrop key.** The house and the smithy paint the weapon into their cached backdrop, so
+each adds `KW.knight.rest.key('main')` to its key, and a change of weapon paints the backdrop
+again: on the pack path the house's key is `tv|kw.base/main.greatsword` with the television on, and
+the smithy's `440|kw.base/main.greatsword` at its spot. The helmet on the stool is drawn every
+frame, so it adds nothing.
 
 ## The scene interface
 
@@ -184,10 +232,11 @@ before it calls `paint`, `draw` and `over`.
 |---|---|---|
 | `spot` | yes | where the knight stands on arrival, in units of `U` across the grid |
 | `places` | yes | the places for watched things: `pie`, three high ones (`h1` to `h3`) and three on the ground (`g1` to `g3`); see [Watched things](#watched-things) |
+| `rests` | no | the places where the scene sets the knight's gear down, by name; the scene reads them itself, see [Gear at rest](#gear-at-rest) |
 | `draw(t, s)` | yes | draws the scene at time `t` in ms: everything on a scene without `paint`, otherwise what moves. It calls `KW.things.draw(t, s)` at the point where the things behind the knight belong in its drawing order |
 | `rounds` | no | the spots the knight strolls between while free to move: `[{ x, act, dur }]`, `x` in units of `U`, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles |
 | `paint(s)` | no | the still part, painted once into a cached canvas and kept until the key or the screen's shape changes |
-| `key(s)` | no | a string; the cached backdrop is painted again when it changes |
+| `key(s)` | no | a string; the cached backdrop is painted again when it changes. A scene that paints the knight's gear at rest into its backdrop includes `KW.knight.rest.key(slot)` for each such item |
 | `act(t, s)` | no | called each frame after strolling and before the swat and events; may change the knight's pose `s.o` |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
 | `wallAt(x)` | no | the y of the top of whatever the goblin climbs over at grid x; the ground when absent |
@@ -211,10 +260,12 @@ before it calls `paint`, `draw` and `over`.
 | `strike` | free for a scene's `act` to pass to its `draw` (the smithy's hammer blow) |
 | `mon` | the monarch at court, from the address's `mon=` hook: `a`, `b` or `c` |
 
-Some scenes reach further. The house draws the sleeper's head with `KW.knight.head` and its Zs
-at night in `over`. The court paints the monarch that `s.mon` names into its backdrop, keyed on
-the choice, sets the knight talking in `draw` and draws the monarch's speech bubble with
-`KW.knight.speech`. The smithy's `act` sets the hammer and `strike`. The yard keeps
+Some scenes reach further. The house draws the sleeper's head with `KW.knight.head`, the helmet on
+the stool and the weapon on the pegs with `KW.knight.rest`, and its Zs at night in `over`. The
+court paints the monarch that `s.mon` names into its backdrop, keyed on the choice, sets the knight
+talking in `draw` and draws the monarch's speech bubble with `KW.knight.speech`. The smithy's `act`
+sets the hammer and `strike`, its `paint` lays the weapon across the anvil with `KW.knight.rest`,
+and its `draw` puts the hot tip on the blade. The yard keeps
 the time the dummy was last struck and swings the knight's sword in `act`.
 
 ## Modes
@@ -447,10 +498,13 @@ node --test tests/web/
 ```
 
 `tests/web/knight.test.js` checks the knight call by call. It loads the scripts `index.html` loads
-that the knight's drawing needs (`draw.js`, `sprites.js`, `props.js`, `knight.js`, `ed25519.js`,
-`pack.js` and the carriers, in the page's order) under Node with an empty `window` and a fake canvas
-context that records every call and every property set. It chooses the knight's source as
-`main.js` does, draws the knight in 98 poses, and compares each record with the one stored in
+that the knight's drawing needs (`draw.js`, `sprites.js`, `props.js`, `knight.js`, the house and the
+smithy, `ed25519.js`, `pack.js` and the carriers, in the page's order) under Node with an empty
+`window` and a fake canvas context that records every call and every property set;
+`KW.things.draw` writes one line in the record. It chooses the knight's source as `main.js` does
+and draws 112 records: the knight in 98 poses, the bare head in bed, the speech bubble, the helmet
+and the weapon at rest, and the house and the smithy, each painted and drawn in the states that
+show the gear at rest. It compares each record with the one stored in
 `tests/web/fixtures/knight/`. It does this twice: once as a deployed page, which refuses the
 unsigned base pack and draws from code, and once as a `dev` page, which draws from the base pack.
 The stored record was taken from the code, and both paths must give it. For every pose it holds the
@@ -474,7 +528,12 @@ the calls each part costs.
 
 The same knight test checks the choice itself: the console line on each path, the refusal at the
 `signature` step, the code path when there is no base pack, a broken one or no library, a changed
-colour in the pack showing on the knight, and the clamping of `drop` and `bloat`.
+colour in the pack showing on the knight, and the clamping of `drop` and `bloat`. For the gear at
+rest it checks the blade and the backdrop keys on each path, that a slot with nothing at rest draws
+nothing, that a pack's plume and jewel colours show on the helmet and the weapon at rest, that a
+helmet with no rest view shows nothing and one with no plume mount at rest shows no plume, that a
+weapon with no `blade` has no hot tip in the smithy, and that the gear at rest is drawn with every
+value 0 from arrays made once.
 
 To see every call that differs, dump the records of both trees and compare the folders.
 `dump-pack:` dumps the pack path's records instead of the code's:
@@ -526,3 +585,18 @@ the knight from code compares the two paths. A deployed copy draws from code. `s
 only from disk, so to compare a deployed copy, serve it on the loopback address and point the
 headless browser at `index.html?demo#<hash>` by hand: `?demo` starts the demo at once instead of
 waiting for a state file.
+
+To shoot the code path from disk instead, copy `web/` to a folder outside the repository and give
+the copy's `kw-version` meta tag any value but `dev`; a page opened from disk runs the demo whatever
+its version, and that copy refuses the unsigned base pack. Do it before and after a change and
+compare each path's two sets:
+
+```bash
+cp -r web /tmp/kw-code && sed -i 's/name="kw-version" content="dev"/name="kw-version" content="code"/' /tmp/kw-code/index.html
+CHROME=/path/to/chrome-headless-shell PAGE=/tmp/kw-code/index.html tools/shots.sh take /tmp/kw-ref-code
+```
+
+The comparison prints `identical bytes` only when both sets show the same minute on the clock;
+otherwise `pixels equal outside the clock` is the same result. To get identical bytes, take the
+reference and the result back to back within one minute (a set takes about ten seconds), from a
+copy of the old tree and the new one.

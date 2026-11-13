@@ -81,15 +81,17 @@ it looks. With time frozen each shot depends only on its address, however many f
 machine paints. Take one set at a time all the same: two browsers shooting at once have not been
 tried. [page.md](./page.md) has the rest.
 
-`node --test tests/web/` includes a faster check for the knight: it draws the knight in 98 poses
-against a fake canvas, once from code and once from the base pack, and compares every call with a
-stored record, in about a second. The record is stored again only when the knight is meant to
-change; [page.md](./page.md#checks) says how. `node --test tests/tools/` also checks that every
-pack carrier matches its pack file.
+`node --test tests/web/` includes a faster check for the knight: it draws the knight in 98 poses,
+the gear at rest, and the house and the smithy, which show that gear, against a fake canvas, once
+from code and once from the base pack, and compares every call with a stored record, in about a
+second. The record is stored again only when the knight or those scenes are meant to change;
+[page.md](./page.md#checks) says how. `node --test tests/tools/` also checks that every pack
+carrier matches its pack file.
 
 The repository's own page draws the knight from the base pack and a deployed copy draws it from
 code, so the screenshots of the repository's page check the pack path, and the knight test checks
-both.
+both. To shoot the code path as well, take a second pair of sets from a copy of `web/` whose
+`kw-version` is not `dev`; [page.md](./page.md#checks) shows how.
 
 ## The logo and the icons
 

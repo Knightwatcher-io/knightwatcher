@@ -1,26 +1,26 @@
 /* Knightwatcher scene: the knight's house at night, on the fine grid. A quiet scene, and the scene for
    an unhealthy container (in bed), an overdue backup, a silent Pi, a stream on the television and
-   the night (in bed). The knight's head in bed is drawn here, from the knight's own bare head. The
-   scene interface is in docs/page.md. */
+   the night (in bed). The knight's head in bed is drawn here, from the knight's own bare head, and
+   the helmet on the stool and the weapon on the pegs are the knight's own gear at rest. The scene
+   interface is in docs/page.md. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, K = KW.knight, C = D.C;
-  const { alpha, glow, Rh, Rv, ell, rrect, poly, strip, hsh, STEEL, STEEL2, STEEL3 } = D;
+  const { alpha, glow, Rh, Rv, ell, rrect, poly, strip, hsh, STEEL3 } = D;
 
   const PLANK = ['#2a1d14', '#2d1f15', '#261a11', '#301f14'];
   const BEAM = [[.2, '#5a3a1e'], [.6, '#47301a'], [1, '#2e1d0f']];
   const STONE = ['#2b2333', '#2f2738', '#272030', '#332a3d'];
   const BLANKET = [[.12, C.B0], [.5, C.B1], [.85, C.B2], [1, C.B3]];
 
-  /* The helmet resting on the stool, x its middle and y its foot. */
-  function helmet(x, y) {
-    ell(x + 6, y - 58, 18, 10, C.K); ell(x + 6, y - 58, 15, 7, [[.3, C.R0], [.75, C.R1], [1, C.R2]]); ell(x + 18, y - 52, 9, 6, C.K); ell(x + 18, y - 52, 6, 4, C.R2);
-    rrect(x - 32, y - 56, 64, 54, 24, C.K); rrect(x - 29, y - 53, 58, 48, 21, STEEL);
-    Rh(x - 2, y - 52, 3, 16, C.S0); Rh(x + 1, y - 52, 1, 16, C.S3);
-    rrect(x - 20, y - 38, 40, 30, 9, C.K); rrect(x - 17, y - 35, 34, 24, 7, [[.5, '#14101c'], [1, '#0b0810']]);
-    rrect(x - 28, y - 10, 56, 9, 3, C.K); rrect(x - 26, y - 9, 52, 6, 2, STEEL2);
-    for (const dx of [-24, 24]) { ell(x + dx, y - 24, 2, 2, C.S4); }
-  }
+  /* The places for the knight's gear at rest (docs/page.md): the stool, a surface where the
+     helmet rests, x and y the middle of its top and w by h the room above it; and the pegs on the
+     wall, where the weapon hangs, x and y the middle of its grip and a its angle, which lays it
+     flat. The pegs are spaced for the greatsword. */
+  const RESTS = {
+    stool: { kind: 'surface', x: 460, y: V.HFL - 54, w: 76, h: 80 },
+    pegs: { x: 618, y: 228, a: Math.PI / 2 }
+  };
 
   /* The window over the bed, with the night sky in it. */
   function windowHD() {
@@ -75,10 +75,10 @@
     }
     for (let x = Math.floor((HL - 10) / 236) * 236 + 10; x < HR; x += 236) { rrect(x - 3, 176, 24, HFL - 176, 2, C.K); rrect(x, 176, 18, HFL - 176, 2, [[.25, '#5a3a1e'], [.6, '#47301a'], [1, '#2e1d0f']]); }
     rrect(HL - 4, 152, HR - HL + 8, 28, 2, C.K); Rv(HL, 155, HR - HL, 22, BEAM);
-    // moonlight through the window, the window, the sword on its pegs
+    // moonlight through the window, the window, the weapon on its pegs
     glow(300, 260, 110, '#6f9eff', .05); windowHD();
     for (const x of [680, 836]) { rrect(x - 7, 242, 14, 24, 3, C.K); rrect(x - 5, 244, 10, 20, 2, [[.3, C.N0], [1, C.N2]]); }
-    P.swordHD(618, 228, Math.PI / 2);
+    K.rest.draw('main', RESTS.pegs.x, RESTS.pegs.y, RESTS.pegs.a);
     hearth();
     // the floor of boards and the rug
     Rh(HL, HFL, HR - HL, HH - HFL + 20, '#2b1f15'); Rh(HL, HFL, HR - HL, 3, '#5a3f26');
@@ -120,7 +120,6 @@
   }
 
   function draw(t, s) {
-    const { HFL } = V;
     // the hearth's fire
     glow(895, 480, 190, '#ffb000', .09 + .025 * Math.sin(t / 130));
     P.flameHD(880, 512, .62, t); P.flameHD(908, 514, .52, t + 500); P.flameHD(893, 516, .78, t + 900);
@@ -146,7 +145,7 @@
       rrect(158, 410, 231, 56, 10, C.K); rrect(161, 413, 225, 50, 8, BLANKET);
       rrect(161, 413, 30, 50, 6, [[.3, C.W], [1, C.S1]]); Rh(191, 415, 2, 46, C.S2);
     }
-    if (s.helmOff) helmet(460, HFL - 54);
+    if (s.helmOff) K.rest.draw('helmet', RESTS.stool.x, RESTS.stool.y);
   }
 
   /* At night the engine dims the screen, and the sleeper's Zs rise from the bed over it. */
@@ -171,8 +170,8 @@
   };
 
   KW.scenes.house = {
-    spot: 114, places: PLACES, bed: true, helmet: false, sword: false,
+    spot: 114, places: PLACES, rests: RESTS, bed: true, helmet: false, sword: false,
     rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 100, act: 'yawn', dur: 14 }, { x: 110, act: 'look', dur: 14 }],
-    key: s => (s.tv ? 'tv' : ''), paint, draw, over
+    key: s => (s.tv ? 'tv' : '') + '|' + K.rest.key('main'), paint, draw, over
   };
 })(window.KW);
