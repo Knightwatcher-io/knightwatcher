@@ -47,6 +47,15 @@ SHOTS=(
   "things-court|bar=0&t=3600&on=ssh&th=pi,camera!,machine,camera,vm-,x"
   "thing-down|bar=0&t=2300&is=camp&on=thing&th=pi,camera,camera,machine,vm!,x"
   "places-yard|bar=0&t=2300&is=yard&pl=1&th=pi,camera!,camera,camera,machine,vm-,x!"
+  # the arming sword and the heater shield (arm=one): the stance, the practice swing mid-cut, the
+  # attack, the gear at rest in the house and the smithy, and the swat to the left at the moment the
+  # sword passes behind the shield
+  "arm-battlement|bar=0&t=2300&is=battlement&arm=one"
+  "arm-yard|bar=0&t=2470&on=cpu&arm=one"
+  "arm-attack|bar=0&t=2300&on=attack&arm=one"
+  "arm-house|bar=0&t=2300&is=house&arm=one"
+  "arm-update|bar=0&t=1250&on=update&arm=one"
+  "arm-swat-left|bar=0&t=1330&is=battlement&f=6&sw=1&arm=one"
 )
 
 take() {

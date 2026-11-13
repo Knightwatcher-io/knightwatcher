@@ -1042,8 +1042,32 @@ test('the one-handed sword and the shield: hold point folded in, shield drawn on
   const two = PK.resolve(library(), { items: { off: 'kw.base/off.round' } });
   assert.equal(two.shapes, baseLook().shapes, 'with the greatsword the shield is never drawn');
   assert.deepEqual(PK.sequence('one', true).slice(6, 12), ['armL', 'gauntL', 'off', 'armR', 'main', 'gauntR']);
+  // crossed: both arms before the blade, the shield last
+  assert.deepEqual(PK.sequence('oneCrossed', true).slice(6, 12), ['armL', 'gauntL', 'armR', 'main', 'gauntR', 'off']);
   assert.deepEqual(PK.sequence('oneCrossed', false).slice(2, 3), ['headOff']);
   assert.equal(PK.sequence('sideways'), null);
+});
+
+test('a shield goes only with a one-handed weapon: without one it falls back to none, with a reason', () => {
+  const reason = 'a shield is carried only with a one-handed weapon';
+  const two = PK.resolve(library(), { items: { off: 'kw.base/off.round' } });
+  assert.equal(two.look.items.off, undefined);
+  assert.equal(two.lists.off.length + two.lists.restOff.length, 0);
+  assert.deepEqual(two.fallbacks.filter(f => f.key === 'off'), [{ kind: 'item', key: 'off', wanted: 'kw.base/off.round', used: null, reason }]);
+  // a one-handed weapon the look cannot have falls back to the greatsword, and the shield with it
+  const gone = PK.resolve(library(), { items: { main: 'kw.gone/main.x', off: 'kw.base/off.round' } });
+  assert.equal(gone.look.items.main, 'kw.base/main.greatsword');
+  assert.equal(gone.look.items.off, undefined);
+  assert.deepEqual(gone.fallbacks.filter(f => f.key === 'off').map(f => f.reason), [reason]);
+  // with the one-handed sword the shield stays, and nothing falls back
+  const one = PK.resolve(library(), { items: { main: 'kw.base/main.arming', off: 'kw.base/off.round' } });
+  assert.equal(one.look.items.off, 'kw.base/off.round');
+  assert.deepEqual(one.fallbacks.filter(f => f.key === 'off' || f.key === 'main'), []);
+  // a one-handed sword alone is a look of its own: no shield, no fallback for one
+  const bare = PK.resolve(library(), { items: { main: 'kw.base/main.arming' } });
+  assert.equal(bare.grip.kind, 'one');
+  assert.equal(bare.lists.off.length, 0);
+  assert.deepEqual(bare.fallbacks.filter(f => f.key === 'off'), []);
 });
 
 test('the rest views: the helmet at rest carries the plume\'s rest view on its mount, behind it', () => {
@@ -1059,8 +1083,10 @@ test('the rest views: the helmet at rest carries the plume\'s rest view on its m
   R.log.length = 0;
   PK.draw(bare.lists.restHelmet, A, PK.newValues(), R.P);
   assert.deepEqual(R.log[0], ['rrect', 268, 344, 64, 54, 24, K]);
-  const S = PK.resolve(library(), { items: { off: 'kw.base/off.round' } });
+  const S = PK.resolve(library(), { items: { main: 'kw.base/main.arming', off: 'kw.base/off.round' } });
   assert.equal(S.lists.restOff.length, 2);
+  // with the greatsword the shield is not equipped, so it rests nowhere either
+  assert.equal(PK.resolve(library(), { items: { off: 'kw.base/off.round' } }).lists.restOff.length, 0);
 });
 
 test('pix shapes draw through a fixed lookup, made once', () => {

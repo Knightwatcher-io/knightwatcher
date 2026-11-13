@@ -1301,8 +1301,8 @@
 
   /* Turns a look { build, items: { slot: "<pack>/<item>" }, swatches: { set: "<pack>/<swatch>" } }
      into the lists the engine draws, falling back to the base pack's defaults for anything that is
-     missing or unusable, for a plume that would leave its helmet's reach, and for a look over the
-     shape cap or the cost cap. Returns { ok: false, reason: 'no base pack' } when the
+     missing or unusable, for a shield without a one-handed weapon, for a plume that would leave its
+     helmet's reach, and for a look over the shape cap or the cost cap. Returns { ok: false, reason: 'no base pack' } when the
      base pack is not loaded. Otherwise { ok: true, look, fallbacks, ignored, m, diffs, colours,
      grip, blade, plumeShown, shapes, cost, lists }; each fallback is { kind, key, wanted, used, reason }. */
   function resolve(lib, lookIn) {
@@ -1375,12 +1375,14 @@
       fallbacks.push({ kind: 'item', key: slot, wanted: name(chosen[slot]), used: name(defaults[slot]), reason });
       chosen[slot] = defaults[slot];
     };
-    /* Fall back until the plume stays within reach of its helmet's mount and the look is within the
-       shape cap and the cost cap: the plume and then the helmet for the first, slot by slot in
-       drawing order and then the build for the caps. Each step puts one more thing back to its
-       default, and the base pack's default look passes both, so the loop ends. */
+    /* Fall back until a shield goes only with a one-handed weapon, the plume stays within reach of
+       its helmet's mount and the look is within the shape cap and the cost cap: the shield for the
+       first, the plume and then the helmet for the second, slot by slot in drawing order and then
+       the build for the caps. Each step puts one more thing back to its default, and the base
+       pack's default look passes all three, so the loop ends. */
     let t;
     for (let guard = 0; guard < 64; guard++) {
+      if (chosen.off && !(chosen.main && itemOf(chosen.main).grip.kind === 'one')) { drop('off', 'a shield is carried only with a one-handed weapon'); continue; }
       const h = chosen.helmet, pl = chosen.plume;
       const problem = h && pl ? plumeProblem(itemOf(pl), itemOf(h), diffsOf()) : '';
       if (problem) {
@@ -1458,11 +1460,14 @@
 
   /* The drawing order of one frame for each grip mode, as names: the lists of a resolved look, and
      the engine's own steps (crates, face, drumstick, hammer, effects). twoR and twoL are the
-     two-handed grip leaning right and left; one draws the shield's group first and oneCrossed the
-     sword's, when the sword hand crosses to the shield's side. The sword is in the right hand. */
+     two-handed grip leaning right and left. The one-handed sword is in the right hand: one draws the
+     shield's group first and then the sword's; oneCrossed, when the sword hand crosses to the
+     shield's side, draws both arms before the blade and the shield last, so the blade may pass over
+     the shield arm but never under it, and goes behind the shield. The off gauntlet lies behind the
+     shield in every pose. */
   const HANDS = { none: ['armL', 'gauntL', 'armR', 'gauntR'], hammer: ['armL', 'gauntL', 'armR', 'hammer', 'gauntR'],
     twoR: ['armR', 'main', 'armL', 'gauntR', 'gauntL'], twoL: ['armL', 'main', 'armR', 'gauntL', 'gauntR'],
-    one: ['armL', 'gauntL', 'off', 'armR', 'main', 'gauntR'], oneCrossed: ['armR', 'main', 'gauntR', 'armL', 'gauntL', 'off'] };
+    one: ['armL', 'gauntL', 'off', 'armR', 'main', 'gauntR'], oneCrossed: ['armL', 'gauntL', 'armR', 'main', 'gauntR', 'off'] };
   const ORDERS = freeze(Object.keys(HANDS).reduce((o, m) => {
     const seq = head => ['crates', 'body', head, 'face', 'drumstick', 'pauldrons'].concat(HANDS[m], ['effects']);
     o[m] = { on: seq('headOn'), off: seq('headOff') };

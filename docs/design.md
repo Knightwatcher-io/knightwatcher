@@ -38,10 +38,29 @@ Rules that follow from this, each decided by the owner:
 
 ## The knight
 
-Open-faced helm, red plume, blue tabard, and a greatsword held and swung in both hands. No shield.
-No arm is ever drawn over the blade or its guard: the arm on the side the blade leans to goes
-behind it. The helmet comes off in the house and the smithy. Gear is drawn in slots (head, weapon,
-hands) over one body so that new items can be added later.
+Open-faced helm, red plume, blue tabard, and a greatsword held and swung in both hands. That is the
+default look. The base pack also carries a one-handed arming sword and a heater shield, free, which
+the owner chose to ship beside the greatsword: the shield's field is in the tabard's colours, so it
+follows the tabard, with the gold eye of the watch on it, as on the tabard and the banners. The
+knight holds the sword in the right hand and the shield in front of the chest with the left; in
+the attack the sword goes up over the right shoulder and the shield comes in to the middle, and in
+a swing to the left the shield lifts out of the blade's way. A shield is carried only with a
+one-handed weapon, and a one-handed weapon without a shield leaves the other hand hanging free.
+
+No arm is ever drawn over the blade or its guard, nor over the face of a shield. With the
+greatsword the arm on the side the blade leans to goes behind the blade; the one exception is the
+greatsword's guard, which an arm crosses for a few frames of a swing as the blade passes upright.
+With the sword and shield the shield's arm goes behind the shield and the sword's arm behind the
+sword, and while the sword crosses the body both arms go behind it and it goes behind the shield.
+A test draws every frame of the swings and the attack and checks this pixel by pixel
+([page.md](./page.md#the-knights-rig)). The helmet comes off in the house and the
+smithy. Gear is drawn in slots (head, weapon, shield, hands) over one body so that new items can be
+added later.
+
+The gear the knight is not holding is at rest where it belongs: the helmet on the stool in the
+house, the weapon on the house's pegs and across the smithy's anvil, and the shield on the wall
+beside the pegs and on the smithy's wall over the quench barrel. Where the knight carries no
+weapon (the cellar's crates, the house), the shield is put away with it.
 
 The Raspberry Pi that watches the main host is a steaming raspberry pie, present in every scene.
 It is a fruit pie in a white dish, with a lattice crust and a large raspberry on top, drawn as a
@@ -97,7 +116,7 @@ and a state of the knight. Highest first:
 | `cpu_hot` | warning | training yard | training frantically, sweating |
 | `memory_tight` | warning | the quiet scene of the moment | bloated |
 | `ssh_session` | at work | royal court | talking with the monarch |
-| `updating` | at work | smithy | hammering the greatsword |
+| `updating` | at work | smithy | hammering the weapon |
 | `streaming` | quiet | house | watching the television |
 | `night` | asleep | house | in bed, screen dimmed |
 

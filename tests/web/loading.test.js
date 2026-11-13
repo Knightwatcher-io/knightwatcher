@@ -254,7 +254,7 @@ test('a deployed page reads a downloaded pack signed with a key it knows, and re
 
 test('each refused pack is listed in the status and written to the console once', () => {
   const s = deployed();
-  assert.deepEqual(s.lines, [['info', 'knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, signed']]);
+  assert.deepEqual(s.lines, [['info', 'knightwatcher: the knight is drawn from the base pack kw.base 1.1.0, signed']]);
   s.lines.length = 0;
   s.K.add({ files: [{ file: 'extra.pack.json', text: EXTRA }], refused: [{ id: null, file: 'index.json', step: 'index', reason: 'the index is not valid JSON' }] });
   assert.equal(s.lines.length, 2);
@@ -292,13 +292,23 @@ test('a missing item, swatch or build in the look takes the base pack\'s default
   for (const [id, t] of [['idle', 2300], ['attack', 94], ['memory_tight', 600]]) assert.deepEqual(frame(s, at(s.K, id, t)), frame(base, at(base.K, id, t)), id);
 });
 
-test('a one-handed weapon in the look gives way to the default, since every pose holds one in both hands', () => {
+test('a one-handed weapon in the look is held in one hand, from any pack', () => {
   const env = extraEnv(p => { p.items['main.greatsword'].grip = { kind: 'one', hands: [0] }; });
   const s = page(true, [UNSIGNED, fileOf(env)], { look: { items: { main: 'test.extra/main.greatsword' } } });
   if (s.status.refused.length) return assert.fail(s.status.refused[0].reason);
   assert.equal(s.status.source, 'pack');
-  const f = s.status.fallbacks.find(x => x.key === 'main');
-  assert.deepEqual(plain(f), { kind: 'item', key: 'main', wanted: 'test.extra/main.greatsword', used: 'kw.base/main.greatsword', reason: 'the poses hold the weapon in both hands' });
+  assert.equal(s.status.fallbacks.find(x => x.key === 'main' && x.reason !== 'not set'), undefined);
+  assert.equal(s.K.rig(at(s.K, 'idle', 2300)).grip, 'one');
+  assert.equal(s.K.rest.key('main'), 'test.extra/main.greatsword');
+});
+
+test('a shield without a one-handed weapon falls back to none, and the knight is the default knight', () => {
+  const s = page(true, null, { look: { items: { off: 'kw.base/off.heater' } } }), base = page(true);
+  assert.equal(s.status.source, 'pack');
+  const f = s.status.fallbacks.find(x => x.key === 'off');
+  assert.deepEqual(plain(f), { kind: 'item', key: 'off', wanted: 'kw.base/off.heater', used: null, reason: 'a shield is carried only with a one-handed weapon' });
+  assert.equal(s.K.rest.key('off'), '');
+  for (const [id, t] of [['idle', 2300], ['attack', 94]]) assert.deepEqual(frame(s, at(s.K, id, t)), frame(base, at(base.K, id, t)), id);
 });
 
 /* ---- The knight from code ------------------------------------------------------------------------ */
