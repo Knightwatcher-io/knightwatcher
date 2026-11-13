@@ -3,11 +3,18 @@
 ## Layout
 
 ```
-web/        the page: static files, no build step
-collector/  the collector: Python, standard library only
-tools/      scripts for checks and for making art
-art/        adopted art and its sources
-docs/       this documentation
+web/                 the page: static files, no build step (index.html, css/, fonts/, js/)
+  js/scenes/         one file per scene
+collector/           the collector: Python, standard library only
+  sources/           one module per source
+tests/
+  collector/         unittest tests for the collector
+  web/               node tests for web/js/state.js
+tools/
+  shots.sh           regression screenshots of the page
+  check-private.sh   the check that no private detail is tracked
+docs/                this documentation
+compose.yaml  Dockerfile  config.example.toml  secrets.example.json  pyproject.toml
 ```
 
 ## Rules

@@ -76,7 +76,7 @@ The `[collector]` and `[conditions]` tables can be left out entirely to take the
 |---|---|---|
 | `server` | `"127.0.0.1"` | DNS server to ask. |
 | `port` | `53` | Its port. |
-| `name` | `"example.com"` | Name to look up. An answer of any kind, including "no such name", counts as up. |
+| `name` | `"example.com"` | Name to look up. An answer of no error or of "no such name" counts as up. |
 
 ### [sources.backup]
 

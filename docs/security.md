@@ -23,17 +23,19 @@ Before any push, this must print nothing:
 tools/check-private.sh
 ```
 
-It searches the tracked files for the patterns of private detail listed in `tools/private-patterns.txt`,
-which is itself ignored by git, since the list names the things it protects.
+It searches the tracked files for the patterns of private detail listed in
+`tools/private-patterns.txt`, which is itself ignored by git, since the list names the things it
+protects.
 
 ## The collector's privileges
 
-The collector reads and never writes, except for its one output file.
+The collector reads and never writes, except for its output file and its memory folder.
 
 - It has no Docker socket. Container state comes from a Docker API proxy that allows read calls
   alone.
 - It runs as a non-root user with a read-only root filesystem and no capabilities.
-- It mounts host paths read-only, and only the ones a source needs.
+- It mounts host paths read-only, and only the ones a source needs, apart from the output folder
+  and the memory folder.
 - It opens no listening port.
 
 It mounts the host's `/proc` read-only, for load, memory and the lock table. A process can read
