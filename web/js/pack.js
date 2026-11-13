@@ -1460,13 +1460,14 @@
 
   /* The drawing order of one frame for each grip mode, as names: the lists of a resolved look, and
      the engine's own steps (crates, face, drumstick, hammer, effects). twoR and twoL are the
-     two-handed grip leaning right and left. The one-handed sword is in the right hand: one draws the
-     shield's group first and then the sword's; oneCrossed, when the sword hand crosses to the
-     shield's side, draws both arms before the blade and the shield last, so the blade may pass over
-     the shield arm but never under it, and goes behind the shield. The off gauntlet lies behind the
-     shield in every pose. */
+     two-handed grip leaning right and left: both arms before the blade, the one on the side it
+     leans to first, and the gauntlets after it, the upper hand's first. The one-handed sword is in
+     the right hand: one draws the shield's group first and then the sword's; oneCrossed, when the
+     sword hand crosses to the shield's side, draws both arms before the blade and the shield last,
+     so the blade may pass over the shield arm but never under it, and goes behind the shield. The
+     off gauntlet lies behind the shield in every pose. */
   const HANDS = { none: ['armL', 'gauntL', 'armR', 'gauntR'], hammer: ['armL', 'gauntL', 'armR', 'hammer', 'gauntR'],
-    twoR: ['armR', 'main', 'armL', 'gauntR', 'gauntL'], twoL: ['armL', 'main', 'armR', 'gauntL', 'gauntR'],
+    twoR: ['armR', 'armL', 'main', 'gauntR', 'gauntL'], twoL: ['armL', 'armR', 'main', 'gauntL', 'gauntR'],
     one: ['armL', 'gauntL', 'off', 'armR', 'main', 'gauntR'], oneCrossed: ['armL', 'gauntL', 'armR', 'main', 'gauntR', 'off'] };
   const ORDERS = freeze(Object.keys(HANDS).reduce((o, m) => {
     const seq = head => ['crates', 'body', head, 'face', 'drumstick', 'pauldrons'].concat(HANDS[m], ['effects']);

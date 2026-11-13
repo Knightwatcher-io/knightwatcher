@@ -147,7 +147,7 @@ function rig(o, d) {
   if (o.hammer != null) { mode = 'hammer'; set('handL', X + 45, Y - 104 + u); set('handR', X + 80 + b, Y - 122 + u); }
   else if (o.sword !== false) {
     const a = o.wang || 0, gx = ox + o.gx * U, gy = oy + o.gy * U + u, sx = Math.sin(a), sy = -Math.cos(a);
-    const up = [gx + sx * 6, gy + sy * 6], low = [gx - sx * 30, gy - sy * 30], right = sx >= 0;
+    const up = [gx + sx * 2, gy + sy * 2], low = [gx - sx * 30, gy - sy * 30], right = sx >= 0;
     set('main', gx, gy); A[PK.FRAME_SX] = sx; A[PK.FRAME_SY] = sy;
     set(right ? 'handR' : 'handL', up[0], up[1]); set(right ? 'handL' : 'handR', low[0], low[1]);
     mode = right ? 'twoR' : 'twoL';
@@ -966,7 +966,7 @@ test('an empty look is the base pack\'s defaults, each reported as not set', () 
   assert.ok(L.fallbacks.every(f => f.reason === 'not set' && f.wanted === null));
   assert.equal(L.fallbacks.length, 1 + 10 + 4);
   assert.deepEqual(L.colours.brow, '#8a5a2b');
-  assert.deepEqual(L.grip, { kind: 'two', hands: [6, -30] });
+  assert.deepEqual(L.grip, { kind: 'two', hands: [2, -30] });
   assert.deepEqual(L.blade, { from: 34, to: 263, half: 15 });
 });
 

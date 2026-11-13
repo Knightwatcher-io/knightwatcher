@@ -281,13 +281,16 @@ The order of one frame, front to back reading down; the engine's own steps are i
 |---|---|
 | `none` | arm L, gauntlet L, arm R, gauntlet R |
 | `hammer` | arm L, gauntlet L, arm R, [the hammer], gauntlet R |
-| `twoR`, the two-handed blade leaning right | arm R, the weapon, arm L, gauntlet R, gauntlet L |
-| `twoL`, leaning left | arm L, the weapon, arm R, gauntlet L, gauntlet R |
+| `twoR`, the two-handed blade leaning right | arm R, arm L, the weapon, gauntlet R, gauntlet L |
+| `twoL`, leaning left | arm L, arm R, the weapon, gauntlet L, gauntlet R |
 | `one`, one-handed | arm L, gauntlet L, the shield, arm R, the weapon, gauntlet R |
 | `oneCrossed`, the sword hand left of the root | arm L, gauntlet L, arm R, the weapon, gauntlet R, the shield |
 
 In the two-handed modes the arm on the lean side reaches the upper hand, so the engine puts the
-upper hand on that side's hand anchor. The one-handed orders hold the sword in the right hand and
+upper hand on that side's hand anchor. Both arms go before the weapon, so neither is ever drawn
+over the blade or the guard, and the gauntlets after it, closing on the grip; a two-handed
+weapon's upper station must sit low enough that its gauntlet stays below the guard, as the base
+pack's greatsword's 2 does. The one-handed orders hold the sword in the right hand and
 the shield in the left. In `one` the shield's group goes first, so the sword arm and the sword lie
 over the shield's edge where they meet and no arm crosses the shield's face. In `oneCrossed`,
 while the sword hand is across the body, both arms go before the weapon and the shield goes last:

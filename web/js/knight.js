@@ -24,9 +24,10 @@
      also the reference: the values dShoulder to dHead are a build's measurements less these, so for
      the present knight they are all 0 and the terms that use them move nothing. */
   const BUILD = Object.freeze({ shoulder: 54, chest: 46, waist: 46, hip: 46, stance: 24, leg: 74, height: 132, head: 51 });
-  /* The greatsword's two hand stations along its frame, upper and lower. On the pack path they are
-     the weapon's own, which for the base pack's greatsword are the same two. */
-  let HANDS = [6, -30];
+  /* The greatsword's two hand stations along its frame, upper and lower: the upper 2 above the grip's
+     middle, low enough that its gauntlet stays clear of the guard, which starts 17 up. On the pack
+     path they are the weapon's own, which for the base pack's greatsword are the same two. */
+  let HANDS = [2, -30];
   /* Whether the look's weapon is held in one hand, and whether a shield is in the other. rebuild()
      sets them from the resolved look; pose(), swing() and rig() read them. Only the pack path can
      hold a one-handed weapon: the code path is the greatsword. */
@@ -245,12 +246,13 @@
       armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); gauntHD(handL[0], handL[1]);
       armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); hammerHD(main); gauntHD(handR[0], handR[1]);
     } else if (r.grip === 'two') {
-      // Both hands on the grip. The arm on the side the blade leans to is drawn first, so the
-      // blade and its guard pass in front of it and no arm crosses over the steel.
+      // Both hands on the grip. Both arms are drawn before the blade, the one on the side it leans
+      // to first, so the blade and its guard pass in front of them and no arm crosses the steel;
+      // then the gauntlets, which close on the grip below the guard.
       const right = Math.sin(main[2]) >= 0, up = right ? handR : handL, low = right ? handL : handR;
-      if (right) armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); else armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]);
+      if (right) { armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); }
+      else { armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); }
       P.swordHD(main[0], main[1], main[2]);
-      if (right) armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); else armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]);
       gauntHD(up[0], up[1]); gauntHD(low[0], low[1]);
     } else {
       armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); gauntHD(handL[0], handL[1]);
@@ -410,7 +412,7 @@
   /* Gathers the packs not marked bad, resolves the look and chooses the source. */
   function rebuild() {
     const st = PK.st, lib = PK.lib;
-    PK.look = null; PK.packs = null; HANDS = [6, -30]; ONE = false; SHIELD = false;
+    PK.look = null; PK.packs = null; HANDS = [2, -30]; ONE = false; SHIELD = false;
     st.base = null; st.fallbacks = [];
     if (!lib) { st.refused = PK.extra.concat(PK.faults); st.source = 'code'; st.note = 'knightwatcher: the knight is drawn from code: the pack library is not loaded'; return; }
     const g = lib.gather(PK.entries.filter(e => !PK.bad.has(e.result)).map(e => e.result));
