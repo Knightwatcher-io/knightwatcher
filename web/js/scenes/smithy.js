@@ -84,5 +84,5 @@
     }
   }
 
-  KW.scenes.smithy = { grid: 'fine', spot: 88, helmet: false, key: s => String(Math.round(s.kx)), act, paint, draw };
+  KW.scenes.smithy = { spot: 88, helmet: false, key: s => String(Math.round(s.kx)), act, paint, draw };
 })(window.KW);

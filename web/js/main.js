@@ -54,7 +54,7 @@
     cv.style.width = V.LW * s / dpr + 'px'; cv.style.height = V.LH * s / dpr + 'px'; cv.style.imageRendering = f >= 2 || Math.abs(f - 1) < .01 ? 'pixelated' : 'auto';
     cv.style.left = Math.round((dW - V.LW * s) / 2) / dpr + 'px'; cv.style.top = (dH - V.LH * s) / dpr + 'px';
     V.X0 = Math.floor((V.LW - V.HW) / 2); V.Y0 = V.LH - V.HH; V.HL = -V.X0 - 16; V.HR = V.LW - V.X0 + 16; V.HT = -V.Y0 - 2;
-    V.L = V.HL / V.U; V.RR = V.HR / V.U; V.TP = V.HT / V.U; V.RW = V.RR - V.L; V.SC = s / dpr; E.invalidate();
+    V.SC = s / dpr; E.invalidate();
     hl.style.fontSize = ''; const row = hl.closest('.hrow'), room = row.clientWidth - clock.offsetWidth - row.clientWidth * .04;
     if (hl.offsetWidth > room) hl.style.fontSize = parseFloat(getComputedStyle(hl).fontSize) * room / hl.offsetWidth + 'px';
     const mc = document.createElement('canvas').getContext('2d'), mm = px => Math.round(px / hpx * 196.5);

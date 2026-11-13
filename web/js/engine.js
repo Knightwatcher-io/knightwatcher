@@ -73,8 +73,8 @@
      the screen changes shape. */
   function backdrop(key, sc, s, sway) {
     if (bgCache.key !== key) {
-      bgCache.cv.width = V.LW + 32; bgCache.cv.height = V.LH; const c = bgCache.cv.getContext('2d'), k = sc.grid === 'fine' ? 1 : U;
-      D.setCtx(c); c.setTransform(k, 0, 0, k, V.X0 + 16, V.Y0); sc.paint(s); D.setCtx(main); bgCache.key = key;
+      bgCache.cv.width = V.LW + 32; bgCache.cv.height = V.LH; const c = bgCache.cv.getContext('2d');
+      D.setCtx(c); c.setTransform(1, 0, 0, 1, V.X0 + 16, V.Y0); sc.paint(s); D.setCtx(main); bgCache.key = key;
     }
     main.setTransform(1, 0, 0, 1, 0, 0); main.drawImage(bgCache.cv, sway - 16, 0);
   }
@@ -131,11 +131,10 @@
 
     // draw, with a slow sway of the whole picture against burn-in
     const sway = freeze ? 0 : Math.round(Math.sin(t / 61000) * 8);
-    const fine = () => main.setTransform(1, 0, 0, 1, V.X0 + sway, V.Y0), coarse = () => main.setTransform(U, 0, 0, U, V.X0 + sway, V.Y0);
-    const own = sc.grid === 'fine' ? fine : coarse;
+    const fine = () => main.setTransform(1, 0, 0, 1, V.X0 + sway, V.Y0);
     D.setCtx(main); main.setTransform(1, 0, 0, 1, 0, 0); main.imageSmoothingEnabled = false; alpha(1); main.fillStyle = '#000'; main.fillRect(0, 0, V.LW, V.LH);
     if (sc.paint) backdrop(scene + '|' + (sc.key ? sc.key(s) : ''), sc, s, sway);
-    own(); sc.draw(t, s); fine();
+    fine(); sc.draw(t, s); fine();
     if (live === 'goblin' && el <= hitAt) {
       main.save(); main.beginPath(); main.rect(HL, HT, HR - HL, wallY - HT); main.clip(); P.goblinHD(gx, wallY - 46 * ease(clamp01(el / 700))); main.restore();
     }
@@ -155,7 +154,7 @@
     }
     if (w.id === 'attack') { alpha(.08 + .07 * Math.sin(t / 220)); Rh(HL, HT, HR - HL, HH - HT + 20, D.C.R1); alpha(1); }
     if (w.id === 'night' && inBed) { alpha(.5); Rh(HL, HT, HR - HL, HH - HT + 20, '#000'); alpha(1); }
-    if (sc.over) { own(); sc.over(t, s); fine(); }
+    if (sc.over) { fine(); sc.over(t, s); fine(); }
     const fd = 1 - (t - fadeAt) / 420; if (fd > 0 && !freeze) { alpha(fd); Rh(HL, HT, HR - HL, HH - HT + 20, '#000'); alpha(1); }
     E.note = !flies.some(f => !f.dead) ? 'no flies' : !funOK ? 'flies wait: ' + (serious ? 'a warning is up' : 'indoors')
       : swat ? 'swatting' : 'next swat in ' + Math.max(0, Math.ceil((30000 - (t - lastSwat)) / 1000)) + ' s';
