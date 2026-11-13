@@ -14,10 +14,10 @@ from kw_helpers import Clock, make_config
 
 
 class Fake(Source):
-    """A source whose fetch does whatever the test sets."""
+    """A source whose fetch does whatever the test sets. Read every poll unless every_s says."""
 
-    def __init__(self, name, section, config, facts=None, events=None):
-        super().__init__({}, config)
+    def __init__(self, name, section, config, facts=None, events=None, every_s=0):
+        super().__init__({"every_s": every_s}, config)
         self.name = name
         self.section = section
         self.facts = facts
@@ -55,7 +55,7 @@ class RunnerTest(unittest.TestCase):
                 "collector": {
                     "output_dir": self.out,
                     "state_dir": self.var,
-                    "interval_s": 3,
+                    "interval_s": 5,
                     "http_timeout_s": 1.0,
                 }
             },
@@ -63,9 +63,9 @@ class RunnerTest(unittest.TestCase):
         )
         self.clock = Clock()
 
-    def runner(self, sources, memory=None):
+    def runner(self, sources, memory=None, config=None):
         memory = memory or Memory(self.var)
-        return Runner(self.config, memory, sources=sources, clock=self.clock)
+        return Runner(config or self.config, memory, sources=sources, clock=self.clock)
 
     def read_state(self):
         with open(os.path.join(self.out, "state.json"), encoding="utf-8") as fh:
@@ -78,7 +78,7 @@ class RunnerTest(unittest.TestCase):
         state = self.read_state()
         self.assertEqual(contract.validate(state), [])
         self.assertEqual(state["schema"], 1)
-        self.assertEqual(state["interval_s"], 3)
+        self.assertEqual(state["interval_s"], 5)
         self.assertEqual(state["facts"]["wan"], {"up": True})
         self.assertIsNone(state["facts"]["host"])  # not configured, so null
         self.assertEqual(set(state["facts"]), set(contract.FACT_SECTIONS))
@@ -107,23 +107,175 @@ class RunnerTest(unittest.TestCase):
 
     def test_a_slow_source_does_not_stall_the_poll(self):
         slow = Fake("wan", "wan", self.config, {"up": True})
-        slow.delay = 5
+        slow.delay = 3
         quick = Fake("pi", "pi", self.config, {"up": True})
         r = self.runner([slow, quick])
+        r._deadline_s = lambda: 0.3
         started = time.monotonic()
         r.cycle()
-        self.assertLess(time.monotonic() - started, 3)
+        self.assertLess(time.monotonic() - started, 1)
         state = self.read_state()
         self.assertEqual(state["sources"]["wan"]["error"], "timed out")
         # A hung read must never keep the process alive at exit.
         self.assertTrue(r._inflight["wan"].thread.daemon)
         self.assertEqual(state["facts"]["pi"], {"up": True})
         # Still running at the next poll: it is not started a second time.
+        self.clock.advance(5)
         r.cycle()
         self.assertEqual(
             self.read_state()["sources"]["wan"]["error"], "previous read still running"
         )
         self.assertEqual(slow.calls, 1)
+        # A read given up on does not hold up later polls.
+        r._deadline_s = lambda: 2.0
+        started = time.monotonic()
+        r.cycle()
+        self.assertLess(time.monotonic() - started, 1)
+
+    def test_a_read_that_outlasts_the_poll_carries_on_into_the_next(self):
+        # Read every 30 s with polls every 10: the read may take 0.66 of 30 s, not of 10.
+        config = self.interval_10()
+        wan = Fake("wan", "wan", config, {"up": True}, every_s=30)
+        r = self.runner([wan], config=config)
+        r.cycle()  # 0 s: the first read
+        wan.delay = 0.5
+        wan.facts = {"up": False}
+        r._deadline_s = lambda: 0.1  # so the limit for this source is 0.3 s
+        self.clock.advance(30)
+        r.cycle()  # 30 s: the second read has not finished, the first reading stands
+        state = self.read_state()
+        self.assertEqual(state["facts"]["wan"], {"up": True})
+        self.assertEqual(state["sources"]["wan"]["at"], "2026-01-15T21:00:00Z")
+        r._deadline_s = lambda: 1.0  # the poll now waits long enough for it
+        self.clock.advance(10)
+        r.cycle()  # 40 s: it finishes and counts as read at 30 s
+        state = self.read_state()
+        self.assertEqual(state["facts"]["wan"], {"up": False})
+        self.assertEqual(
+            state["sources"]["wan"], {"ok": True, "at": "2026-01-15T21:00:30Z", "error": ""}
+        )
+        self.assertEqual(wan.calls, 2)
+
+    def test_the_first_read_still_running_has_a_status(self):
+        slow = Fake("wan", "wan", self.config, {"up": True})
+        slow.delay = 0.5
+        r = self.runner([slow])
+        r._deadline_s = lambda: 0.1
+        r._limit_s = lambda source: 5.0
+        r.cycle()
+        state = self.read_state()
+        self.assertEqual(
+            state["sources"]["wan"],
+            {"ok": False, "at": "2026-01-15T21:00:00Z", "error": "first read still running"},
+        )
+        self.assertIsNone(state["facts"]["wan"])
+        self.assertEqual(contract.validate(state), [])
+
+    # Pace ----------------------------------------------------------------------------------
+
+    def interval_10(self):
+        return make_config(
+            {"collector": {"output_dir": self.out, "state_dir": self.var, "interval_s": 10}}
+        )
+
+    def test_a_slow_paced_source_is_read_once_in_three_polls(self):
+        config = self.interval_10()
+        ad = Fake("adblock", "adblock", config, {"blocked_today": 1}, every_s=30)
+        host = Fake("host", "host", config, {"cpu_pct": 1.0}, every_s=10)
+        r = self.runner([ad, host], config=config)
+        r.cycle()  # 0 s: both read; the first sight records and raises nothing
+        ad.events = [{"type": "ad_blocked", "count": 2, "text": ""}]
+        ad.facts = {"blocked_today": 7}
+        seen = []
+        for _ in range(3):  # 10, 20, 30 s
+            self.clock.advance(10)
+            r.cycle()
+            state = self.read_state()
+            seen.append(
+                (
+                    state["generated_at"][-3:-1],
+                    ad.calls,
+                    host.calls,
+                    state["facts"]["adblock"]["blocked_today"],
+                    state["sources"]["adblock"]["at"][-3:-1],
+                    [e["seq"] for e in state["events"]],
+                )
+            )
+        self.assertEqual(
+            seen,
+            [
+                # At 10 and 20 s the adblock reading of 0 s stands, keeps its time and raises
+                # nothing; the host is read at every poll.
+                ("10", 1, 2, 1, "00", []),
+                ("20", 1, 3, 1, "00", []),
+                # At 30 s it is read again, and only that read is observed.
+                ("30", 2, 4, 7, "30", [1]),
+            ],
+        )
+
+    def test_a_reused_reading_is_not_observed(self):
+        config = self.interval_10()
+        ad = Fake("adblock", "adblock", config, {"blocked_today": 1}, every_s=30)
+        observed = []
+        orig = ad.observe
+        ad.observe = lambda reading, memory, now: observed.append(now) or orig(reading, memory, now)
+        r = self.runner([ad], config=config)
+        for _ in range(7):  # 0 .. 60 s
+            r.cycle()
+            self.clock.advance(10)
+        self.assertEqual([t.second for t in observed], [0, 30, 0])
+        self.assertEqual(ad.calls, 3)
+
+    def test_a_failed_read_is_retried_at_the_sources_pace(self):
+        config = self.interval_10()
+        pi = Fake("pi", "pi", config, {"up": True}, every_s=30)
+        pi.fail = SourceError("no route")
+        r = self.runner([pi], config=config)
+        for _ in range(3):  # 0, 10, 20 s
+            r.cycle()
+            state = self.read_state()
+            self.assertEqual(
+                state["sources"]["pi"],
+                {"ok": False, "at": "2026-01-15T21:00:00Z", "error": "no route"},
+            )
+            self.assertIsNone(state["facts"]["pi"])
+            self.clock.advance(10)
+        self.assertEqual(pi.calls, 1)
+        pi.fail = None
+        r.cycle()  # 30 s
+        self.assertEqual(pi.calls, 2)
+        self.assertEqual(self.read_state()["facts"]["pi"], {"up": True})
+
+    def test_a_pace_below_the_interval_means_every_poll(self):
+        config = self.interval_10()
+        ssh = Fake("ssh", "ssh", config, {"count": 0, "sources": []}, every_s=3)
+        r = self.runner([ssh], config=config)
+        for _ in range(4):
+            r.cycle()
+            self.clock.advance(10)
+        self.assertEqual(ssh.calls, 4)
+
+    def test_a_poll_a_little_early_still_reads_a_source_that_is_due(self):
+        config = self.interval_10()
+        wan = Fake("wan", "wan", config, {"up": True}, every_s=30)
+        r = self.runner([wan], config=config)
+        r.cycle()
+        self.clock.advance(29.995)
+        r.cycle()
+        self.assertEqual(wan.calls, 2)
+
+    def test_failed_checks_count_fresh_reads_only(self):
+        config = self.interval_10()
+        wan = Fake("wan", "wan", config, {"up": False}, every_s=30)
+        r = self.runner([wan], config=config)
+        raised = []
+        for _ in range(4):  # 0, 10, 20, 30 s
+            r.cycle()
+            raised.append([c["id"] for c in self.read_state()["conditions"]])
+            self.clock.advance(10)
+        # Two failed checks are the reads at 0 and 30 s, not the polls at 0 and 10 s.
+        self.assertEqual(raised, [[], [], [], ["wan_down"]])
+        self.assertEqual(wan.calls, 2)
 
     def test_auth_error_pauses_the_source_and_survives_a_restart(self):
         ad = Fake("adblock", "adblock", self.config, {"blocked_today": 1})
@@ -138,6 +290,7 @@ class RunnerTest(unittest.TestCase):
             self.clock.advance(300)  # 15 minutes in all
             r.cycle()
         self.assertEqual(ad.calls, 1)
+        self.assertIn("paused until 21:20", self.read_state()["sources"]["adblock"]["error"])
         # A restart does not reset the pause.
         r2 = self.runner([ad], Memory(self.var))
         r2.memory.load()

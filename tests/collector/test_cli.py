@@ -65,14 +65,34 @@ class CliTest(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.var, "memory.json")))
         self.assertEqual(self.run_cli("--health")[0], 0)
 
+    def age_state(self, seconds):
+        old = time.time() - seconds
+        os.utime(os.path.join(self.out, "state.json"), (old, old))
+
     def test_health_fails_when_the_file_is_old_or_missing(self):
         self.assertEqual(self.run_cli("--health")[0], 1)
         self.run_cli("--once")
-        old = time.time() - 3 * 30 - 5
-        os.utime(os.path.join(self.out, "state.json"), (old, old))
+        self.age_state(3 * 10 + 5)  # three of the default 10-second intervals and more
         code, _, err = self.run_cli("--health")
         self.assertEqual(code, 1)
-        self.assertIn("old", err)
+        self.assertRegex(err, r"unhealthy: state.json is 3[56] s old")
+
+    def test_health_passes_within_three_intervals(self):
+        self.run_cli("--once")
+        self.age_state(25)  # two polls missed, and a third under way
+        self.assertEqual(self.run_cli("--health")[0], 0)
+
+    def test_health_follows_the_configured_interval(self):
+        self.write_config("")
+        with open(self.config, encoding="utf-8") as fh:
+            text = fh.read().replace("[collector]\n", "[collector]\ninterval_s = 30\n", 1)
+        with open(self.config, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        self.run_cli("--once")
+        self.age_state(60)
+        self.assertEqual(self.run_cli("--health")[0], 0)
+        self.age_state(95)
+        self.assertEqual(self.run_cli("--health")[0], 1)
 
     def test_health_does_not_need_the_secrets(self):
         self.run_cli("--once")

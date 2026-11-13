@@ -1,4 +1,9 @@
-"""One poll: read every source in parallel, judge the conditions, write state.json."""
+"""One poll: read the sources that are due in parallel, judge the conditions, write state.json.
+
+Each source is read at its own pace (`every_s`). Between reads its last reading stands: it is
+shown and judged again, but it is not observed again, so it raises no events, and its entry in
+`sources` keeps the time of the real read.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +26,9 @@ log = logging.getLogger("collector")
 
 EVENTS_KEPT = 20
 STATE_FILE = "state.json"
+# Polls start a few milliseconds late or early, so a source this close to its pace is read now
+# rather than a whole interval later.
+PACE_SLACK_S = 1.0
 
 
 def utcnow() -> dt.datetime:
@@ -30,6 +38,9 @@ def utcnow() -> dt.datetime:
 class _Job:
     def __init__(self, source: Source, now: dt.datetime):
         self.source = source
+        self.now = now  # the collector's clock when the read began
+        self.started = time.monotonic()
+        self.timed_out = False
         self.reading: Reading | None = None
         self.error: BaseException | None = None
         self.thread = threading.Thread(
@@ -57,6 +68,9 @@ class Runner:
         self.clock = clock
         self.conditions = Conditions(config)
         self._inflight: dict[str, _Job] = {}
+        # When each source's last read began, and what that read gave once observed.
+        self._read_at: dict[str, dt.datetime] = {}
+        self._last: dict[str, tuple[Reading | None, dict]] = {}
         self._last_ok: dict[str, bool] = {}
         self._secrets = sorted(config.secret_values(), key=len, reverse=True)
         self.out_path = os.path.join(config.collector["output_dir"], STATE_FILE)
@@ -76,15 +90,63 @@ class Runner:
     # Reading -----------------------------------------------------------------------------------
 
     def _deadline_s(self) -> float:
-        # Long enough for a source that tries two addresses in turn, short enough that a slow
-        # source never delays the file past its interval.
+        # How long a poll waits for its reads, so that a slow source never delays the file past
+        # its interval. A read still running then carries on into later polls (see _limit_s).
         return max(1.0, self.config.interval_s * 0.66)
 
-    def read_sources(self, now: dt.datetime) -> tuple[dict[str, Reading | None], dict]:
+    @staticmethod
+    def _every_s(source: Source) -> float:
+        return float(source.settings.get("every_s", 0))
+
+    def _limit_s(self, source: Source) -> float:
+        """How long one read may run before it counts as timed out.
+
+        The same share of the source's own pace as a poll waits of the interval, so a source
+        read every 30 seconds keeps about 20 seconds for a read that tries two addresses in turn
+        while the polls run every 10.
+        """
+        return self._deadline_s() * max(1.0, self._every_s(source) / self.config.interval_s)
+
+    def _due(self, source: Source, now: dt.datetime) -> bool:
+        last = self._read_at.get(source.name)
+        if last is None:
+            return True
+        elapsed = (now - last).total_seconds()
+        # A clock that went back would otherwise hold the source until it caught up.
+        return elapsed < 0 or elapsed + PACE_SLACK_S >= self._every_s(source)
+
+    def _outcome(self, job: _Job, now: dt.datetime) -> tuple[Reading | None, dict]:
+        """The reading and status of a read that has finished."""
+        name = job.source.name
+        at = text.iso(job.now)
+        if job.error is None:
+            return job.reading, {"ok": True, "at": at, "error": ""}
+        message = self._describe(job.error)
+        if isinstance(job.error, AuthError):
+            until = now + dt.timedelta(seconds=self.config.collector["auth_backoff_s"])
+            self.memory.data["backoff"][name] = {
+                "until": text.iso(until),
+                "at": at,
+                "error": message,
+            }
+            local = until.astimezone(self.config.tz)
+            message = f"{message}; paused until {local:%H:%M}"
+        elif not isinstance(job.error, SourceError):
+            log.error("source %s failed", name, exc_info=job.error)
+        return None, {"ok": False, "at": at, "error": message}
+
+    def read_sources(
+        self, now: dt.datetime
+    ) -> tuple[dict[str, Reading | None], dict[str, dict], set[str]]:
+        """Read the sources that are due and return (readings, status, fresh).
+
+        fresh names the sources whose reading comes from a read that finished at this poll.
+        Every other source shows its last reading and status again, or nothing while paused.
+        """
         readings: dict[str, Reading | None] = {}
         status: dict[str, dict] = {}
+        fresh: set[str] = set()
         backoff = self.memory.data["backoff"]
-        jobs: list[_Job] = []
         for source in self.sources:
             name = source.name
             paused = backoff.get(name)
@@ -98,54 +160,52 @@ class Runner:
                 readings[name] = None
                 continue
             backoff.pop(name, None)
-            busy = self._inflight.get(name)
-            if busy is not None and busy.thread.is_alive():
-                status[name] = {
-                    "ok": False,
-                    "at": text.iso(now),
-                    "error": "previous read still running",
-                }
-                readings[name] = None
-                continue
-            job = _Job(source, now)
-            self._inflight[name] = job
-            job.thread.start()
-            jobs.append(job)
+            if name not in self._inflight and self._due(source, now):
+                job = _Job(source, now)
+                self._inflight[name] = job
+                self._read_at[name] = now
+                job.thread.start()
 
+        # Wait for every read in flight, including one started at an earlier poll, but not for
+        # one already given up on: a hung read would otherwise hold up every poll.
         deadline = time.monotonic() + self._deadline_s()
-        for job in jobs:
-            job.thread.join(max(0.0, deadline - time.monotonic()))
+        for job in list(self._inflight.values()):
+            if not job.timed_out:
+                job.thread.join(max(0.0, deadline - time.monotonic()))
 
-        for job in jobs:
-            name = job.source.name
-            at = text.iso(now)
-            if job.thread.is_alive():
-                readings[name] = None
-                status[name] = {"ok": False, "at": at, "error": "timed out"}
+        for source in self.sources:
+            name = source.name
+            if name in status:
                 continue
-            if job.error is not None:
-                readings[name] = None
-                message = self._describe(job.error)
-                if isinstance(job.error, AuthError):
-                    until = now + dt.timedelta(seconds=self.config.collector["auth_backoff_s"])
-                    backoff[name] = {"until": text.iso(until), "at": at, "error": message}
-                    local = until.astimezone(self.config.tz)
-                    message = f"{message}; paused until {local:%H:%M}"
-                elif not isinstance(job.error, SourceError):
-                    log.error("source %s failed", name, exc_info=job.error)
-                status[name] = {"ok": False, "at": at, "error": message}
-                continue
-            readings[name] = job.reading
-            status[name] = {"ok": True, "at": at, "error": ""}
-        return readings, status
+            job = self._inflight.get(name)
+            if job is not None and not job.thread.is_alive():
+                del self._inflight[name]
+                if not job.timed_out:
+                    readings[name], status[name] = self._outcome(job, now)
+                    fresh.add(name)
+                    continue
+                # A read that ran past its limit is dropped, and the source is read again at its
+                # own pace, counted from when that read began.
+            elif job is not None and time.monotonic() - job.started > self._limit_s(source):
+                error = "previous read still running" if job.timed_out else "timed out"
+                job.timed_out = True
+                self._last[name] = (None, {"ok": False, "at": text.iso(job.now), "error": error})
+            last = self._last.get(name)
+            if last is None:
+                # Only a first read that is still within its limit gets here.
+                at = text.iso(job.now if job is not None else now)
+                last = (None, {"ok": False, "at": at, "error": "first read still running"})
+            readings[name], status[name] = last[0], dict(last[1])
+        return readings, status, fresh
 
     # Events ------------------------------------------------------------------------------------
 
-    def observe(self, readings, status, now) -> list[dict]:
+    def observe(self, readings, status, now, fresh: set[str] | None = None) -> list[dict]:
+        """Turn fresh readings into events. A reused reading was observed when it was read."""
         found = []
         for source in self.sources:
             reading = readings.get(source.name)
-            if reading is None:
+            if reading is None or (fresh is not None and source.name not in fresh):
                 continue
             try:
                 found += source.observe(reading, self.memory.source(source.name), now)
@@ -200,9 +260,11 @@ class Runner:
 
     def cycle(self) -> dict:
         now = self.clock()
-        readings, status = self.read_sources(now)
-        self.observe(readings, status, now)
-        conditions = self.conditions.evaluate(readings, now)
+        readings, status, fresh = self.read_sources(now)
+        self.observe(readings, status, now, fresh)
+        for name in fresh:
+            self._last[name] = (readings[name], status[name])
+        conditions = self.conditions.evaluate(readings, now, fresh)
 
         security = readings.get("security")
         if security is not None:
