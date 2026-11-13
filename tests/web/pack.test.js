@@ -50,7 +50,8 @@ function rejected(edit, step, re) {
   const r = load(edited(edit));
   assert.equal(r.ok, false, 'expected the pack to be refused');
   assert.equal(r.step, step, r.reason);
-  if (re) assert.match(r.reason, re);
+  assert.ok(re, 'every refusal test names the reason it expects');
+  if (typeof re === 'string') assert.equal(r.reason, re); else assert.match(r.reason, re);
   return r;
 }
 function accepted(edit) {
@@ -329,6 +330,9 @@ for (const [name, make] of Object.entries(POSES)) {
     });
     assert.ok(code.length > 100);
     follows(code, pieces);
+    // the look's cost bounds what the lists drew
+    const drawn = pieces.filter(p => p !== GAP).reduce((n, p) => n + p.length, 0);
+    assert.ok(drawn <= L.cost, drawn + ' fills drawn, more than the cost ' + L.cost);
   });
 }
 
@@ -336,238 +340,238 @@ for (const [name, make] of Object.entries(POSES)) {
 
 const RULES = [
   // 3.11 the format
-  ['format: the major version must be 1', 'format', p => { p.format = [2, 0]; }, /major version 2/],
-  ['format: a minor version newer than the engine\'s is refused', 'format', p => { p.format = [1, 1]; }, /newer than this engine/],
-  ['format: must be two whole numbers', 'format', p => { p.format = [1]; }],
-  ['format: must not be a string', 'format', p => { p.format = '1.0'; }],
-  ['format: is required', 'format', p => { delete p.format; }],
+  ['format: the major version must be 1', 'format', p => { p.format = [2, 0]; }, "pack.format: is major version 2, and this engine reads major version 1"],
+  ['format: a minor version newer than the engine\'s is refused', 'format', p => { p.format = [1, 1]; }, "pack.format: is 1.1, newer than this engine's 1.0"],
+  ['format: must be two whole numbers', 'format', p => { p.format = [1]; }, "pack.format: must be [major, minor], two whole numbers"],
+  ['format: must not be a string', 'format', p => { p.format = '1.0'; }, "pack.format: must be [major, minor], two whole numbers"],
+  ['format: is required', 'format', p => { delete p.format; }, "pack.format: must be [major, minor], two whole numbers"],
   // 3.2 the pack
-  ['pack: no unknown field', 'fields', p => { p.colour = 'blue'; }, /pack\.colour: is not a field here/],
-  ['pack: id is required', 'fields', p => { delete p.id; }, /pack\.id: is missing/],
-  ['pack: id is lower case', 'fields', p => { p.id = 'Kw.base'; }, /pack\.id: must be an id/],
-  ['pack: id of one character', 'fields', p => { p.id = 'k'; }],
-  ['pack: id with a later segment of 32 characters', 'fields', p => { p.id = 'kw.' + 'x'.repeat(32); }],
-  ['pack: id with a first segment of 33 characters', 'fields', p => { p.id = 'k'.repeat(33); }],
-  ['pack: id of five segments', 'fields', p => { p.id = 'kw.a.b.c.d'; }],
-  ['pack: name is required', 'fields', p => { delete p.name; }],
-  ['pack: name of 49 characters', 'fields', p => { p.name = 'n'.repeat(49); }, /pack\.name/],
-  ['pack: name must be one line', 'fields', p => { p.name = 'Two\nlines'; }],
-  ['pack: name must not be empty', 'fields', p => { p.name = ''; }],
-  ['pack: version must have three parts', 'fields', p => { p.version = '1.0'; }, /pack\.version/],
-  ['pack: version parts stop at 999', 'fields', p => { p.version = '1.0.1000'; }],
-  ['pack: version parts have no leading zero', 'fields', p => { p.version = '01.0.0'; }],
-  ['pack: licence of 201 characters', 'fields', p => { p.licence = 'l'.repeat(201); }, /pack\.licence/],
-  ['pack: licence must be one line', 'fields', p => { p.licence = 'One\nTwo'; }],
-  ['pack: provides must be an array', 'fields', p => { p.provides = 'items'; }],
-  ['pack: provides names only the sections', 'fields', p => { p.provides.push('defaults'); }],
-  ['pack: provides names each section once', 'fields', p => { p.provides.push('items'); }],
-  ['pack: provides must list every section the pack holds', 'rules', p => { p.provides = p.provides.filter(s => s !== 'palettes'); }, /must list "palettes"/],
-  ['pack: provides must not list a section the pack lacks', 'rules', p => { delete p.decorations; }, /lists "decorations"/],
-  ['pack: companions must be an object', 'fields', p => { p.companions = []; }, /companions/],
-  ['pack: ext must be an object', 'fields', p => { p.ext = 'x'; }, /pack\.ext/],
-  ['ids: an item id must match the local pattern', 'fields', p => { p.items.Helm = p.items['helm.open']; }, /not a valid id/],
-  ['ids: an item id of 49 characters', 'fields', p => { p.items['h' + 'x'.repeat(48)] = backItem(1, 1); }],
+  ['pack: no unknown field', 'fields', p => { p.colour = 'blue'; }, "pack.colour: is not a field here"],
+  ['pack: id is required', 'fields', p => { delete p.id; }, "pack.id: is missing"],
+  ['pack: id is lower case', 'fields', p => { p.id = 'Kw.base'; }, "pack.id: must be an id matching ^[a-z][a-z0-9-]{1,31}(\\.[a-z0-9-]{1,31}){0,3}$"],
+  ['pack: id of one character', 'fields', p => { p.id = 'k'; }, "pack.id: must be an id matching ^[a-z][a-z0-9-]{1,31}(\\.[a-z0-9-]{1,31}){0,3}$"],
+  ['pack: id with a later segment of 32 characters', 'fields', p => { p.id = 'kw.' + 'x'.repeat(32); }, "pack.id: must be an id matching ^[a-z][a-z0-9-]{1,31}(\\.[a-z0-9-]{1,31}){0,3}$"],
+  ['pack: id with a first segment of 33 characters', 'fields', p => { p.id = 'k'.repeat(33); }, "pack.id: must be an id matching ^[a-z][a-z0-9-]{1,31}(\\.[a-z0-9-]{1,31}){0,3}$"],
+  ['pack: id of five segments', 'fields', p => { p.id = 'kw.a.b.c.d'; }, "pack.id: must be an id matching ^[a-z][a-z0-9-]{1,31}(\\.[a-z0-9-]{1,31}){0,3}$"],
+  ['pack: name is required', 'fields', p => { delete p.name; }, "pack.name: is missing"],
+  ['pack: name of 49 characters', 'fields', p => { p.name = 'n'.repeat(49); }, "pack.name: must be 1 to 48 characters, not 49"],
+  ['pack: name must be one line', 'fields', p => { p.name = 'Two\nlines'; }, "pack.name: must be one line, with no control characters"],
+  ['pack: name must not be empty', 'fields', p => { p.name = ''; }, "pack.name: must be 1 to 48 characters, not 0"],
+  ['pack: version must have three parts', 'fields', p => { p.version = '1.0'; }, "pack.version: must be major.minor.patch, each 0 to 999"],
+  ['pack: version parts stop at 999', 'fields', p => { p.version = '1.0.1000'; }, "pack.version: must be major.minor.patch, each 0 to 999"],
+  ['pack: version parts have no leading zero', 'fields', p => { p.version = '01.0.0'; }, "pack.version: must be major.minor.patch, each 0 to 999"],
+  ['pack: licence of 201 characters', 'fields', p => { p.licence = 'l'.repeat(201); }, "pack.licence: must be 1 to 200 characters, not 201"],
+  ['pack: licence must be one line', 'fields', p => { p.licence = 'One\nTwo'; }, "pack.licence: must be one line, with no control characters"],
+  ['pack: provides must be an array', 'fields', p => { p.provides = 'items'; }, "pack.provides: must be an array"],
+  ['pack: provides names only the sections', 'fields', p => { p.provides[4] = 'defaults'; }, "pack.provides[4]: must be one of \"builds\", \"items\", \"palettes\", \"swatches\", \"decorations\""],
+  ['pack: provides names each section once', 'fields', p => { p.provides[4] = 'items'; }, "pack.provides[4]: appears twice"],
+  ['pack: provides must list every section the pack holds', 'rules', p => { p.provides = p.provides.filter(s => s !== 'palettes'); }, "pack.provides: must list \"palettes\", which the pack holds"],
+  ['pack: provides must not list a section the pack lacks', 'rules', p => { delete p.decorations; }, "pack.provides: lists \"decorations\", which the pack does not hold"],
+  ['pack: companions must be an object', 'fields', p => { p.companions = []; }, "pack.companions: must be an object"],
+  ['pack: ext must be an object', 'fields', p => { p.ext = 'x'; }, "pack.ext: must be an object"],
+  ['ids: an item id must match the local pattern', 'fields', p => { p.items.Helm = p.items['helm.open']; }, "pack.items.Helm: is not a valid id"],
+  ['ids: an item id of 49 characters', 'fields', p => { p.items['h' + 'x'.repeat(48)] = backItem(1, 1); }, "pack.items[\"hxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\"]: is not a valid id"],
   // 3.3 colours, palettes and swatches
-  ['palettes: a pack may not define a reserved set', 'fields', p => { p.palettes.tabard = { 0: '#000000' }; }, /reserved set name/],
-  ['palettes: a set name cannot hold a dot', 'fields', p => { p.palettes['a.b'] = { x: '#000000' }; }],
-  ['palettes: 17 sets', 'fields', p => { for (const i of range(16)) p.palettes['set' + i] = { a: '#000000' }; }, /0 to 16 sets, not 17/],
-  ['palettes: 33 entries in a set', 'fields', p => { for (const i of range(31)) p.palettes.lantern['e' + i] = '#000000'; }, /1 to 32 entries/],
-  ['palettes: an empty set', 'fields', p => { p.palettes.empty = {}; }],
-  ['palettes: may refer only to @base', 'references', p => { p.palettes.lantern.rim = '@tabard.1'; }, /only to @base/],
-  ['palettes: a reference to a missing base entry', 'references', p => { p.palettes.lantern.rim = '@base.zz'; }, /does not have/],
-  ['colours: hex must be six lower-case digits', 'fields', p => { tab(p)[0].fill = '#1A1524'; }, /fill/],
-  ['colours: hex must be six digits', 'fields', p => { tab(p)[0].fill = '#fff'; }],
-  ['colours: a reference starts with @', 'fields', p => { tab(p)[0].fill = 'base.k'; }],
-  ['colours: translucent needs a', 'fields', p => { tab(p)[0].fill = { rgb: '#000000' }; }, /fill\.a: is missing/],
-  ['colours: translucent a of 0', 'fields', p => { tab(p)[0].fill = { rgb: '#000000', a: 0 }; }],
-  ['colours: translucent a above 1', 'fields', p => { tab(p)[0].fill = { rgb: '#000000', a: 1.001 }; }],
-  ['colours: translucent has only rgb and a', 'fields', p => { tab(p)[0].fill = { rgb: '#000000', a: 0.5, b: 1 }; }],
-  ['colours: a reference to an unknown set', 'references', p => { tab(p)[0].fill = '@cloak.1'; }, /"cloak", that does not exist/],
-  ['colours: a reference to a missing entry', 'references', p => { tab(p)[0].fill = '@base.s9'; }, /"s9"/],
-  ['colours: a band list cannot hold a band list', 'references', p => { tab(p)[0].fill = [[0.5, '@base.steel'], [1, '@base.k']]; }, /needs a single colour/],
-  ['colours: a pix key must be a single colour', 'references', p => { p.items['back.pennant'].parts[0].shapes[0].key.k = '@skin.face'; }, /single colour/],
-  ['bands: at least one band', 'fields', p => { tab(p)[0].fill = []; }],
-  ['bands: 9 bands', 'fields', p => { tab(p)[0].fill = range(9).map(i => [i === 8 ? 1 : Math.round((i + 1) / 9 * 1000) / 1000, '@base.k']); }, /1 to 8 entries/],
-  ['bands: fractions must rise', 'fields', p => { tab(p)[0].fill = [[0.5, '@base.k'], [0.5, '@base.w'], [1, '@base.k']]; }, /must rise/],
-  ['bands: the first fraction is above 0', 'fields', p => { tab(p)[0].fill = [[0, '@base.k'], [1, '@base.w']]; }],
-  ['bands: the last fraction is 1', 'fields', p => { tab(p)[0].fill = [[0.5, '@base.k'], [0.9, '@base.w']]; }, /last fraction/],
-  ['bands: a band is a pair', 'fields', p => { tab(p)[0].fill = [[1, '@base.k', 2]]; }],
-  ['swatches: only the four user sets', 'fields', p => { p.swatches.cloak = p.swatches.tabard; }, /cloak/],
-  ['swatches: every entry of the set', 'fields', p => { delete p.swatches.tabard.blue.entries[3]; }, /is missing/],
-  ['swatches: no entry outside the set', 'fields', p => { p.swatches.tabard.blue.entries[4] = '#000000'; }],
-  ['swatches: entries are literal colours', 'fields', p => { p.swatches.tabard.blue.entries[0] = '@base.b0'; }],
-  ['swatches: the skin ramps are band lists', 'fields', p => { p.swatches.skin.warm.entries.face = '#ffe3c4'; }, /band list/],
-  ['swatches: a swatch needs a name', 'fields', p => { delete p.swatches.hair.brown.name; }],
-  ['swatches: 33 in a set', 'fields', p => { for (const i of range(31)) p.swatches.tabard['t' + i] = p.swatches.tabard.blue; }, /1 to 32 swatches/],
+  ['palettes: a pack may not define a reserved set', 'fields', p => { p.palettes.tabard = { 0: '#000000' }; }, "pack.palettes.tabard: is a reserved set name"],
+  ['palettes: a set name cannot hold a dot', 'fields', p => { p.palettes['a.b'] = { x: '#000000' }; }, "pack.palettes[\"a.b\"]: is not a valid id"],
+  ['palettes: 17 sets', 'fields', p => { for (const i of range(16)) p.palettes['set' + i] = { a: '#000000' }; }, "pack.palettes: must hold 0 to 16 sets, not 17"],
+  ['palettes: 33 entries in a set', 'fields', p => { for (const i of range(31)) p.palettes.lantern['e' + i] = '#000000'; }, "pack.palettes.lantern: must hold 1 to 32 entries, not 33"],
+  ['palettes: an empty set', 'fields', p => { p.palettes.empty = {}; }, "pack.palettes.empty: must hold 1 to 32 entries, not 0"],
+  ['palettes: may refer only to @base', 'references', p => { p.palettes.lantern.rim = '@tabard.1'; }, "pack.palettes.lantern.rim: a palette of the pack may refer only to @base"],
+  ['palettes: a reference to a missing base entry', 'references', p => { p.palettes.lantern.rim = '@base.zz'; }, "pack.palettes.lantern.rim: names an entry, \"zz\", that set \"base\" does not have"],
+  ['colours: hex must be six lower-case digits', 'fields', p => { tab(p)[0].fill = '#1A1524'; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill: must be a hex colour, a reference such as \"@base.k\" or a translucent colour"],
+  ['colours: hex must be six digits', 'fields', p => { tab(p)[0].fill = '#fff'; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill: must be a hex colour, a reference such as \"@base.k\" or a translucent colour"],
+  ['colours: a reference starts with @', 'fields', p => { tab(p)[0].fill = 'base.k'; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill: must be a hex colour, a reference such as \"@base.k\" or a translucent colour"],
+  ['colours: translucent needs a', 'fields', p => { tab(p)[0].fill = { rgb: '#000000' }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill.a: is missing"],
+  ['colours: translucent a of 0', 'fields', p => { tab(p)[0].fill = { rgb: '#000000', a: 0 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill.a: must be a number from 0.01 to 1"],
+  ['colours: translucent a above 1', 'fields', p => { tab(p)[0].fill = { rgb: '#000000', a: 1.001 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill.a: must be a number from 0.01 to 1"],
+  ['colours: translucent has only rgb and a', 'fields', p => { tab(p)[0].fill = { rgb: '#000000', a: 0.5, b: 1 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill.b: is not a field here"],
+  ['colours: a reference to an unknown set', 'references', p => { tab(p)[0].fill = '@cloak.1'; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill: names a palette set, \"cloak\", that does not exist"],
+  ['colours: a reference to a missing entry', 'references', p => { tab(p)[0].fill = '@base.s9'; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill: names an entry, \"s9\", that set \"base\" does not have"],
+  ['colours: a band list cannot hold a band list', 'references', p => { tab(p)[0].fill = [[0.5, '@base.steel'], [1, '@base.k']]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill[0][1]: needs a single colour here, and \"@base.steel\" is a band list"],
+  ['colours: a pix key must be a single colour', 'references', p => { p.items['back.pennant'].parts[0].shapes[0].key.k = '@skin.face'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].key.k: needs a single colour here, and \"@skin.face\" is a band list"],
+  ['bands: at least one band', 'fields', p => { tab(p)[0].fill = []; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill: must hold 1 to 8 entries, not 0"],
+  ['bands: 9 bands', 'fields', p => { tab(p)[0].fill = range(9).map(i => [i === 8 ? 1 : Math.round((i + 1) / 9 * 1000) / 1000, '@base.k']); }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill: must hold 1 to 8 entries, not 9"],
+  ['bands: fractions must rise', 'fields', p => { tab(p)[0].fill = [[0.5, '@base.k'], [0.5, '@base.w'], [1, '@base.k']]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill[1][0]: fractions must rise from above 0 to 1"],
+  ['bands: the first fraction is above 0', 'fields', p => { tab(p)[0].fill = [[0, '@base.k'], [1, '@base.w']]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill[0][0]: fractions must rise from above 0 to 1"],
+  ['bands: the last fraction is 1', 'fields', p => { tab(p)[0].fill = [[0.5, '@base.k'], [0.9, '@base.w']]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill: the last fraction must be 1"],
+  ['bands: a band is a pair', 'fields', p => { tab(p)[0].fill = [[1, '@base.k', 2]]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].fill[0]: must be a [fraction, colour] pair"],
+  ['swatches: only the four user sets', 'fields', p => { p.swatches.cloak = p.swatches.tabard; }, "pack.swatches.cloak: is not a field here"],
+  ['swatches: every entry of the set', 'fields', p => { delete p.swatches.tabard.blue.entries[3]; }, "pack.swatches.tabard.blue.entries[\"3\"]: is missing"],
+  ['swatches: no entry outside the set', 'fields', p => { p.swatches.tabard.blue.entries[4] = '#000000'; }, "pack.swatches.tabard.blue.entries[\"4\"]: is not a field here"],
+  ['swatches: entries are literal colours', 'fields', p => { p.swatches.tabard.blue.entries[0] = '@base.b0'; }, "pack.swatches.tabard.blue.entries[\"0\"]: must be a hex colour such as \"#3f74e0\" or a translucent colour"],
+  ['swatches: the skin ramps are band lists', 'fields', p => { p.swatches.skin.warm.entries.face = '#ffe3c4'; }, "pack.swatches.skin.warm.entries.face: must be a band list"],
+  ['swatches: a swatch needs a name', 'fields', p => { delete p.swatches.hair.brown.name; }, "pack.swatches.hair.brown.name: is missing"],
+  ['swatches: 33 in a set', 'fields', p => { for (const i of range(31)) p.swatches.tabard['t' + i] = p.swatches.tabard.blue; }, "pack.swatches.tabard: must hold 1 to 32 swatches, not 33"],
   // 3.4 builds and defaults
-  ['builds: only the base pack carries builds', 'fields', p => { p.id = 'kw.other'; }, /only the base pack/],
-  ['builds: the base pack must carry builds and defaults', 'fields', p => { delete p.builds; delete p.defaults; p.provides = p.provides.filter(s => s !== 'builds'); }, /must carry builds and defaults/],
-  ['builds: 5 builds', 'fields', p => { for (const i of range(3)) p.builds['build.x' + i] = p.builds['build.a']; }, /1 to 4 builds/],
-  ['builds: name of 33 characters', 'fields', p => { p.builds['build.a'].name = 'b'.repeat(33); }],
-  ['builds: every measurement is required', 'fields', p => { delete p.builds['build.a'].m.stance; }, /stance: is missing/],
-  ['builds: no unknown measurement', 'fields', p => { p.builds['build.a'].m.neck = 10; }],
-  ['builds: measurements are whole numbers', 'fields', p => { p.builds['build.a'].m.shoulder = 54.5; }],
-  ['builds: shoulder below 40', 'fields', p => { p.builds['build.a'].m.shoulder = 39; }, /from 40 to 70/],
-  ['builds: shoulder above 70', 'fields', p => { p.builds['build.a'].m.shoulder = 71; }],
-  ['builds: chest below 32', 'fields', p => { p.builds['build.a'].m.chest = 31; }],
-  ['builds: chest above 64', 'fields', p => { p.builds['build.a'].m.chest = 65; }],
-  ['builds: waist below 28', 'fields', p => { p.builds['build.a'].m.waist = 27; }],
-  ['builds: waist above 64', 'fields', p => { p.builds['build.a'].m.waist = 65; }],
-  ['builds: hip below 32', 'fields', p => { p.builds['build.a'].m.hip = 31; }],
-  ['builds: hip above 64', 'fields', p => { p.builds['build.a'].m.hip = 65; }],
-  ['builds: stance below 16', 'fields', p => { p.builds['build.a'].m.stance = 15; }],
-  ['builds: stance above 34', 'fields', p => { p.builds['build.a'].m.stance = 35; }],
-  ['builds: leg below 60', 'fields', p => { p.builds['build.a'].m.leg = 59; }],
-  ['builds: leg above 100', 'fields', p => { p.builds['build.a'].m.leg = 101; }],
-  ['builds: height below 110', 'fields', p => { p.builds['build.a'].m.height = 109; }],
-  ['builds: height above 160', 'fields', p => { p.builds['build.a'].m.height = 161; }],
-  ['builds: head below 42', 'fields', p => { p.builds['build.a'].m.head = 41; }],
-  ['builds: head above 60', 'fields', p => { p.builds['build.a'].m.head = 61; }],
-  ['builds: the head item must exist', 'references', p => { p.builds['build.a'].head = 'head.none'; }, /does not have/],
-  ['builds: the head item must have slot head', 'references', p => { p.builds['build.a'].head = 'hair.short'; }, /not head/],
-  ['defaults: every slot but back and off', 'fields', p => { delete p.defaults.items.arms; }, /arms: is missing/],
-  ['defaults: the head comes from the build', 'fields', p => { p.defaults.items.head = 'head.plain'; }, /head: is not a field here/],
-  ['defaults: a swatch for each set', 'fields', p => { delete p.defaults.swatches.plume; }],
-  ['defaults: only the base pack', 'fields', p => { const q = extra('kw.other', { defaults: p.defaults }); Object.keys(p).forEach(k => delete p[k]); Object.assign(p, q); }, /only the base pack, kw\.base, may carry defaults/],
-  ['defaults: the build must exist', 'references', p => { p.defaults.build = 'build.z'; }],
-  ['defaults: the item must exist', 'references', p => { p.defaults.items.legs = 'legs.none'; }],
-  ['defaults: the item must fit the slot', 'references', p => { p.defaults.items.legs = 'boots.leather'; }, /not legs/],
-  ['defaults: the swatch must exist', 'references', p => { p.defaults.swatches.tabard = 'purple'; }],
+  ['builds: only the base pack carries builds', 'fields', p => { p.id = 'kw.other'; }, "pack.builds: only the base pack, kw.base, may carry builds"],
+  ['builds: the base pack must carry builds and defaults', 'fields', p => { delete p.builds; delete p.defaults; p.provides = p.provides.filter(s => s !== 'builds'); }, "pack: the base pack must carry builds and defaults"],
+  ['builds: 5 builds', 'fields', p => { for (const i of range(3)) p.builds['build.x' + i] = p.builds['build.a']; }, "pack.builds: must hold 1 to 4 builds, not 5"],
+  ['builds: name of 33 characters', 'fields', p => { p.builds['build.a'].name = 'b'.repeat(33); }, "pack.builds[\"build.a\"].name: must be 1 to 32 characters, not 33"],
+  ['builds: every measurement is required', 'fields', p => { delete p.builds['build.a'].m.stance; }, "pack.builds[\"build.a\"].m.stance: is missing"],
+  ['builds: no unknown measurement', 'fields', p => { p.builds['build.a'].m.neck = 10; }, "pack.builds[\"build.a\"].m.neck: is not a field here"],
+  ['builds: measurements are whole numbers', 'fields', p => { p.builds['build.a'].m.shoulder = 54.5; }, "pack.builds[\"build.a\"].m.shoulder: must be a whole number from 40 to 70"],
+  ['builds: shoulder below 40', 'fields', p => { p.builds['build.a'].m.shoulder = 39; }, "pack.builds[\"build.a\"].m.shoulder: must be a whole number from 40 to 70"],
+  ['builds: shoulder above 70', 'fields', p => { p.builds['build.a'].m.shoulder = 71; }, "pack.builds[\"build.a\"].m.shoulder: must be a whole number from 40 to 70"],
+  ['builds: chest below 32', 'fields', p => { p.builds['build.a'].m.chest = 31; }, "pack.builds[\"build.a\"].m.chest: must be a whole number from 32 to 64"],
+  ['builds: chest above 64', 'fields', p => { p.builds['build.a'].m.chest = 65; }, "pack.builds[\"build.a\"].m.chest: must be a whole number from 32 to 64"],
+  ['builds: waist below 28', 'fields', p => { p.builds['build.a'].m.waist = 27; }, "pack.builds[\"build.a\"].m.waist: must be a whole number from 28 to 64"],
+  ['builds: waist above 64', 'fields', p => { p.builds['build.a'].m.waist = 65; }, "pack.builds[\"build.a\"].m.waist: must be a whole number from 28 to 64"],
+  ['builds: hip below 32', 'fields', p => { p.builds['build.a'].m.hip = 31; }, "pack.builds[\"build.a\"].m.hip: must be a whole number from 32 to 64"],
+  ['builds: hip above 64', 'fields', p => { p.builds['build.a'].m.hip = 65; }, "pack.builds[\"build.a\"].m.hip: must be a whole number from 32 to 64"],
+  ['builds: stance below 16', 'fields', p => { p.builds['build.a'].m.stance = 15; }, "pack.builds[\"build.a\"].m.stance: must be a whole number from 16 to 34"],
+  ['builds: stance above 34', 'fields', p => { p.builds['build.a'].m.stance = 35; }, "pack.builds[\"build.a\"].m.stance: must be a whole number from 16 to 34"],
+  ['builds: leg below 60', 'fields', p => { p.builds['build.a'].m.leg = 59; }, "pack.builds[\"build.a\"].m.leg: must be a whole number from 60 to 100"],
+  ['builds: leg above 100', 'fields', p => { p.builds['build.a'].m.leg = 101; }, "pack.builds[\"build.a\"].m.leg: must be a whole number from 60 to 100"],
+  ['builds: height below 110', 'fields', p => { p.builds['build.a'].m.height = 109; }, "pack.builds[\"build.a\"].m.height: must be a whole number from 110 to 160"],
+  ['builds: height above 160', 'fields', p => { p.builds['build.a'].m.height = 161; }, "pack.builds[\"build.a\"].m.height: must be a whole number from 110 to 160"],
+  ['builds: head below 42', 'fields', p => { p.builds['build.a'].m.head = 41; }, "pack.builds[\"build.a\"].m.head: must be a whole number from 42 to 60"],
+  ['builds: head above 60', 'fields', p => { p.builds['build.a'].m.head = 61; }, "pack.builds[\"build.a\"].m.head: must be a whole number from 42 to 60"],
+  ['builds: the head item must exist', 'references', p => { p.builds['build.a'].head = 'head.none'; }, "pack.builds[\"build.a\"].head: names an item, \"head.none\", that the pack does not have"],
+  ['builds: the head item must have slot head', 'references', p => { p.builds['build.a'].head = 'hair.short'; }, "pack.builds[\"build.a\"].head: names \"hair.short\", whose slot is hair, not head"],
+  ['defaults: every slot but back and off', 'fields', p => { delete p.defaults.items.arms; }, "pack.defaults.items.arms: is missing"],
+  ['defaults: the head comes from the build', 'fields', p => { p.defaults.items.head = 'head.plain'; }, "pack.defaults.items.head: is not a field here"],
+  ['defaults: a swatch for each set', 'fields', p => { delete p.defaults.swatches.plume; }, "pack.defaults.swatches.plume: is missing"],
+  ['defaults: only the base pack', 'fields', p => { const q = extra('kw.other', { defaults: p.defaults }); Object.keys(p).forEach(k => delete p[k]); Object.assign(p, q); }, "pack.defaults: only the base pack, kw.base, may carry defaults"],
+  ['defaults: the build must exist', 'references', p => { p.defaults.build = 'build.z'; }, "pack.defaults.build: names a build, \"build.z\", that the pack does not have"],
+  ['defaults: the item must exist', 'references', p => { p.defaults.items.legs = 'legs.none'; }, "pack.defaults.items.legs: names an item, \"legs.none\", that the pack does not have"],
+  ['defaults: the item must fit the slot', 'references', p => { p.defaults.items.legs = 'boots.leather'; }, "pack.defaults.items.legs: names \"boots.leather\", whose slot is boots, not legs"],
+  ['defaults: the swatch must exist', 'references', p => { p.defaults.swatches.tabard = 'purple'; }, "pack.defaults.swatches.tabard: names a tabard swatch, \"purple\", that the pack does not have"],
   // 3.5 items
-  ['items: an unknown slot', 'fields', p => { p.items['legs.plate'].slot = 'tail'; }, /slot: must be one of/],
-  ['items: slot is required', 'fields', p => { delete p.items['legs.plate'].slot; }],
-  ['items: name is required', 'fields', p => { delete p.items['legs.plate'].name; }],
-  ['items: name of 49 characters', 'fields', p => { p.items['legs.plate'].name = 'n'.repeat(49); }],
-  ['items: at least one part', 'fields', p => { p.items['legs.plate'].parts = []; }],
-  ['items: 17 parts', 'fields', p => { p.items['back.x'] = backItem(17, 1); }, /1 to 16 entries/],
-  ['items: no field the slot does not take', 'fields', p => { p.items['legs.plate'].mounts = { plume: [0, 0] }; }, /mounts: is not a field here/],
-  ['items: views only on hair', 'fields', p => { helm(p).views = { helmeted: [] }; }],
-  ['items: rest only on helmet, plume and off', 'fields', p => { p.items['legs.plate'].rest = helm(p).rest; }],
-  ['items: a main item needs a grip', 'fields', p => { delete sword(p).grip; }, /grip: is missing/],
-  ['items: grip kind two or one', 'fields', p => { sword(p).grip.kind = 'three'; }],
-  ['items: a two grip has two stations', 'rules', p => { sword(p).grip.hands = [6]; }, /has 2 stations/],
-  ['items: a one grip has one station', 'rules', p => { p.items['main.arming'].grip.hands = [0, 4]; }, /has 1 station/],
-  ['items: blade from below to', 'rules', p => { sword(p).blade.from = 300; }, /from must be below to/],
-  ['items: an off item needs hold', 'fields', p => { delete p.items['off.round'].hold; }],
-  ['items: an off item\'s face is [x, y, w, h]', 'fields', p => { p.items['off.round'].face = [0, 0, 10]; }],
-  ['parts: side is L or R', 'fields', p => { p.items['boots.leather'].parts[0].side = 'X'; }],
-  ['parts: arms need a side', 'fields', p => { delete p.items['arms.plate'].parts[0].side; }, /side: is required in arms/],
-  ['parts: gauntlets need a side', 'fields', p => { delete p.items['gauntlets.plate'].parts[1].side; }, /side: is required in gauntlets/],
-  ['parts: arms have one part for each side', 'rules', p => { p.items['arms.plate'].parts[1].side = 'L'; }, /exactly one part for each side/],
-  ['parts: gauntlets have one part for each side', 'rules', p => { p.items['gauntlets.plate'].parts.push(clone(p.items['gauntlets.plate'].parts[0])); }],
-  ['parts: at least one shape', 'fields', p => { tab(p).length = 0; }],
-  ['parts: 129 shapes', 'fields', p => { p.items['back.x'] = backItem(1, 129); }, /1 to 128 entries/],
-  ['parts: an unknown anchor', 'references', p => { p.items['legs.plate'].parts[0].at = 'elbow'; }, /does not hang anything on "elbow"/],
-  ['parts: an anchor the slot does not allow', 'references', p => { p.items['torso.tabard'].parts[0].at = 'head'; }],
-  ['parts: a sided anchor needs a side', 'references', p => { delete p.items['boots.leather'].parts[0].side; }, /needs a part drawn for one side/],
-  ['parts: a shape\'s own anchor must be one the slot allows', 'references', p => { tab(p)[0].at = 'hipL'; }],
-  ['parts: an anchored point must be one the slot allows', 'references', p => { p.items['arms.plate'].parts[0].shapes[0].p1.at = 'head'; }],
+  ['items: an unknown slot', 'fields', p => { p.items['legs.plate'].slot = 'tail'; }, "pack.items[\"legs.plate\"].slot: must be one of \"back\", \"legs\", \"boots\", \"torso\", \"head\", \"hair\", \"plume\", \"helmet\", \"pauldrons\", \"arms\", \"gauntlets\", \"main\", \"off\", \"companion\""],
+  ['items: slot is required', 'fields', p => { delete p.items['legs.plate'].slot; }, "pack.items[\"legs.plate\"].slot: is missing"],
+  ['items: name is required', 'fields', p => { delete p.items['legs.plate'].name; }, "pack.items[\"legs.plate\"].name: is missing"],
+  ['items: name of 49 characters', 'fields', p => { p.items['legs.plate'].name = 'n'.repeat(49); }, "pack.items[\"legs.plate\"].name: must be 1 to 48 characters, not 49"],
+  ['items: at least one part', 'fields', p => { p.items['legs.plate'].parts = []; }, "pack.items[\"legs.plate\"].parts: must hold 1 to 16 entries, not 0"],
+  ['items: 17 parts', 'fields', p => { p.items['back.x'] = backItem(17, 1); }, "pack.items[\"back.x\"].parts: must hold 1 to 16 entries, not 17"],
+  ['items: no field the slot does not take', 'fields', p => { p.items['legs.plate'].mounts = { plume: [0, 0] }; }, "pack.items[\"legs.plate\"].mounts: is not a field here"],
+  ['items: views only on hair', 'fields', p => { helm(p).views = { helmeted: [] }; }, "pack.items[\"helm.open\"].views: is not a field here"],
+  ['items: rest only on helmet, plume and off', 'fields', p => { p.items['legs.plate'].rest = helm(p).rest; }, "pack.items[\"legs.plate\"].rest: is not a field here"],
+  ['items: a main item needs a grip', 'fields', p => { delete sword(p).grip; }, "pack.items[\"main.greatsword\"].grip: is missing"],
+  ['items: grip kind two or one', 'fields', p => { sword(p).grip.kind = 'three'; }, "pack.items[\"main.greatsword\"].grip.kind: must be one of \"two\", \"one\""],
+  ['items: a two grip has two stations', 'rules', p => { sword(p).grip.hands = [6]; }, "pack.items[\"main.greatsword\"].grip.hands: a \"two\" grip has 2 stations"],
+  ['items: a one grip has one station', 'rules', p => { p.items['main.arming'].grip.hands = [0, 4]; }, "pack.items[\"main.arming\"].grip.hands: a \"one\" grip has 1 station"],
+  ['items: blade from below to', 'rules', p => { sword(p).blade.from = 300; }, "pack.items[\"main.greatsword\"].blade: from must be below to"],
+  ['items: an off item needs hold', 'fields', p => { delete p.items['off.round'].hold; }, "pack.items[\"off.round\"].hold: is missing"],
+  ['items: an off item\'s face is [x, y, w, h]', 'fields', p => { p.items['off.round'].face = [0, 0, 10]; }, "pack.items[\"off.round\"].face: must be [x, y, w, h]"],
+  ['parts: side is L or R', 'fields', p => { p.items['boots.leather'].parts[0].side = 'X'; }, "pack.items[\"boots.leather\"].parts[0].side: must be one of \"L\", \"R\""],
+  ['parts: arms need a side', 'fields', p => { delete p.items['arms.plate'].parts[0].side; }, "pack.items[\"arms.plate\"].parts[0].side: is required in arms"],
+  ['parts: gauntlets need a side', 'fields', p => { delete p.items['gauntlets.plate'].parts[1].side; }, "pack.items[\"gauntlets.plate\"].parts[1].side: is required in gauntlets"],
+  ['parts: arms have one part for each side', 'rules', p => { p.items['arms.plate'].parts[1].side = 'L'; }, "pack.items[\"arms.plate\"].parts: arms must have exactly one part for each side, L and R"],
+  ['parts: gauntlets have one part for each side', 'rules', p => { p.items['gauntlets.plate'].parts.push(clone(p.items['gauntlets.plate'].parts[0])); }, "pack.items[\"gauntlets.plate\"].parts: gauntlets must have exactly one part for each side, L and R"],
+  ['parts: at least one shape', 'fields', p => { tab(p).length = 0; }, "pack.items[\"torso.tabard\"].parts[0].shapes: must hold 1 to 128 entries, not 0"],
+  ['parts: 129 shapes', 'fields', p => { p.items['back.x'] = backItem(1, 129); }, "pack.items[\"back.x\"].parts[0].shapes: must hold 1 to 128 entries, not 129"],
+  ['parts: an unknown anchor', 'references', p => { p.items['legs.plate'].parts[0].at = 'elbow'; }, "pack.items[\"legs.plate\"].parts[0].at: the slot legs does not hang anything on \"elbow\""],
+  ['parts: an anchor the slot does not allow', 'references', p => { p.items['torso.tabard'].parts[0].at = 'head'; }, "pack.items[\"torso.tabard\"].parts[0].at: the slot torso does not hang anything on \"head\""],
+  ['parts: a sided anchor needs a side', 'references', p => { delete p.items['boots.leather'].parts[0].side; }, "pack.items[\"boots.leather\"].parts[0].at: \"foot\" needs a part drawn for one side"],
+  ['parts: a shape\'s own anchor must be one the slot allows', 'references', p => { tab(p)[0].at = 'hipL'; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].at: the slot torso does not hang anything on \"hipL\""],
+  ['parts: an anchored point must be one the slot allows', 'references', p => { p.items['arms.plate'].parts[0].shapes[0].p1.at = 'head'; }, "pack.items[\"arms.plate\"].parts[0].shapes[0].p1.at: the slot arms does not hang anything on \"head\""],
   // 3.6 shapes
-  ['shapes: an unknown kind', 'fields', p => { tab(p)[0].k = 'circle'; }],
-  ['shapes: a missing field', 'fields', p => { delete tab(p)[0].r; }, /\.r: is missing/],
-  ['shapes: a field the kind does not take', 'fields', p => { tab(p)[2].clip = [0, 1]; }, /clip: is not a field here/],
-  ['shapes: g only in a decoration', 'fields', p => { tab(p)[0].g = 'flame'; }],
-  ['shapes: no own anchor in a rest view', 'fields', p => { helm(p).rest.shapes[0].at = 'head'; }],
-  ['shapes: no own anchor in a decoration', 'fields', p => { lantern(p).shapes[0].at = 'head'; }],
-  ['scalars: an offset past 512', 'fields', p => { tab(p)[2].p = [512.125, 0]; }, /from -512 to 512/],
-  ['scalars: an offset past -512', 'fields', p => { tab(p)[2].p = [-512.125, 0]; }],
-  ['scalars: offsets are multiples of 1/8', 'fields', p => { tab(p)[2].p = [0.1, 0]; }, /multiple of 1\/8/],
-  ['scalars: a length below 0', 'fields', p => { tab(p)[2].w = -0.125; }],
-  ['scalars: a length past 512', 'fields', p => { tab(p)[2].w = 512.125; }],
-  ['scalars: a radius past 256', 'fields', p => { tab(p)[0].r = 256.125; }],
-  ['scalars: a strip half-width past 64', 'fields', p => { sword(p).parts[0].shapes[2].hw0 = 64.125; }],
-  ['scalars: a coefficient past 8', 'fields', p => { tab(p)[0].w = { c: 98, bloat: 8.125 }; }, /from -8 to 8/],
-  ['scalars: a coefficient past -8', 'fields', p => { tab(p)[0].w = { c: 98, bloat: -9 }; }],
-  ['scalars: coefficients are multiples of 1/8', 'fields', p => { tab(p)[0].w = { c: 98, bloat: 0.3 }; }],
-  ['scalars: a term key must be a name', 'fields', p => { tab(p)[0].w = { c: 98, 'b-x': 1 }; }],
-  ['scalars: an unknown named value', 'references', p => { tab(p)[0].w = { c: 98, wobble: 1 }; }, /wobble: is not a named value/],
-  ['scalars: step only in a part for one side', 'references', p => { tab(p)[0].w = { c: 98, step: 1 }; }, /"step" needs a part drawn for one side/],
-  ['scalars: no per-frame value in a rest view', 'references', p => { helm(p).rest.shapes[0].w = { c: 64, drop: 1 }; }, /in a rest view/],
-  ['scalars: no per-frame value in a mount', 'references', p => { helm(p).mounts.plume = [{ c: 2, sway: 1 }, -74]; }, /in a mount point/],
-  ['scalars: no named value in a decoration', 'references', p => { lantern(p).shapes[0].w = { c: 2, dHead: 1 }; }, /in a decoration/],
-  ['points: a pair has two entries', 'fields', p => { tab(p)[2].p = [0, 0, 0]; }],
-  ['points: an anchored point needs x and y', 'fields', p => { delete p.items['arms.plate'].parts[0].shapes[0].p1.y; }],
-  ['points: a framed point names the main frame', 'fields', p => { sword(p).parts[0].shapes[2].p0.frame = 'off'; }],
-  ['points: frame values within 400', 'fields', p => { sword(p).parts[0].shapes[2].p0.s = 400.125; }, /from -400 to 400/],
-  ['points: framed points only in the main slot', 'references', p => { tab(p)[2].p = { frame: 'main', s: 0, p: 0 }; }, /only in the main slot/],
-  ['points: only pairs in a rest view', 'fields', p => { helm(p).rest.shapes[0].p = { at: 'rest', x: 0, y: 0 }; }],
-  ['poly: dir is required', 'fields', p => { delete sword(p).parts[0].shapes[0].dir; }],
-  ['poly: dir is rows, cols or frame', 'fields', p => { sword(p).parts[0].shapes[0].dir = 'diag'; }],
-  ['poly: dir frame only in the main slot', 'references', p => { tab(p)[0] = { k: 'poly', dir: 'frame', pts: [[0, 0], [10, 0], [0, 10]], fill: '@base.k' }; }],
-  ['poly: at least 3 points', 'fields', p => { sword(p).parts[0].shapes[0].pts.length = 2; }],
-  ['poly: 17 points', 'fields', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: ngon(17, 200), fill: '@base.k' }; }, /3 to 16 entries/],
-  ['poly: convex', 'rules', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: [[0, 0], [20, 0], [10, 5], [20, 20], [0, 20]], fill: '@base.k' }; }, /convex/],
-  ['poly: not wound twice round', 'rules', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: [[0, -10], [9, 6], [-9, -3], [9, -3], [-9, 6]], fill: '@base.k' }; }, /convex/],
-  ['poly: not every point on one line', 'rules', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: [[0, 0], [5, 0], [10, 0]], fill: '@base.k' }; }],
-  ['poly: all pairs or all framed', 'rules', p => { sword(p).parts[0].shapes[0].pts[0] = [0, 0]; }, /all pairs or all framed/],
-  ['poly: framed points carry no screen offset', 'rules', p => { sword(p).parts[0].shapes[0].pts[0].x = 1; }],
-  ['clip: is [top, bottom]', 'fields', p => { helm(p).parts[0].shapes[2].clip = [26]; }],
-  ['pix: 65 rows', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0] = pix(4, 65); }, /1 to 64 entries/],
-  ['pix: a row of 65', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0] = pix(65, 1); }, /at most 64 characters/],
-  ['pix: rows of one length', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].rows[1] = 'kb'; }],
-  ['pix: printable characters only', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].rows[0] = 'k k.'; }],
-  ['pix: every character in the key', 'references', p => { p.items['back.pennant'].parts[0].shapes[0].rows[0] = 'kkz.'; }, /"z"/],
-  ['pix: 17 keys', 'fields', p => { const s = p.items['back.pennant'].parts[0].shapes[0]; for (const c of 'CDEFGHIJLMNOPQR') s.key[c] = '@base.k'; }, /1 to 16 characters/],
-  ['pix: a key is one character', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].key.kk = '@base.k'; }],
-  ['pix: "." is not a key', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].key['.'] = '@base.k'; }],
+  ['shapes: an unknown kind', 'fields', p => { tab(p)[0].k = 'circle'; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].k: must be one of \"rect\", \"ell\", \"rrect\", \"poly\", \"strip\", \"pix\""],
+  ['shapes: a missing field', 'fields', p => { delete tab(p)[0].r; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].r: is missing"],
+  ['shapes: a field the kind does not take', 'fields', p => { tab(p)[2].clip = [0, 1]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[2].clip: is not a field here"],
+  ['shapes: g only in a decoration', 'fields', p => { tab(p)[0].g = 'flame'; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].g: is not a field here"],
+  ['shapes: no own anchor in a rest view', 'fields', p => { helm(p).rest.shapes[0].at = 'head'; }, "pack.items[\"helm.open\"].rest.shapes[0].at: is not a field here"],
+  ['shapes: no own anchor in a decoration', 'fields', p => { lantern(p).shapes[0].at = 'head'; }, "pack.decorations.lantern.shapes[0].at: is not a field here"],
+  ['scalars: an offset past 512', 'fields', p => { tab(p)[2].p = [512.125, 0]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[2].p[0]: must be a multiple of 1/8 from -512 to 512"],
+  ['scalars: an offset past -512', 'fields', p => { tab(p)[2].p = [-512.125, 0]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[2].p[0]: must be a multiple of 1/8 from -512 to 512"],
+  ['scalars: offsets are multiples of 1/8', 'fields', p => { tab(p)[2].p = [0.1, 0]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[2].p[0]: must be a multiple of 1/8 from -512 to 512"],
+  ['scalars: a length below 0', 'fields', p => { tab(p)[2].w = -0.125; }, "pack.items[\"torso.tabard\"].parts[0].shapes[2].w: must be a multiple of 1/8 from 0 to 512"],
+  ['scalars: a length past 512', 'fields', p => { tab(p)[2].w = 512.125; }, "pack.items[\"torso.tabard\"].parts[0].shapes[2].w: must be a multiple of 1/8 from 0 to 512"],
+  ['scalars: a radius past 256', 'fields', p => { tab(p)[0].r = 256.125; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].r: must be a multiple of 1/8 from 0 to 256"],
+  ['scalars: a strip half-width past 64', 'fields', p => { sword(p).parts[0].shapes[2].hw0 = 64.125; }, "pack.items[\"main.greatsword\"].parts[0].shapes[2].hw0: must be a multiple of 1/8 from 0 to 64"],
+  ['scalars: a coefficient past 8', 'fields', p => { tab(p)[0].w = { c: 98, bloat: 8.125 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].w.bloat: must be a multiple of 1/8 from -8 to 8"],
+  ['scalars: a coefficient past -8', 'fields', p => { tab(p)[0].w = { c: 98, bloat: -9 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].w.bloat: must be a multiple of 1/8 from -8 to 8"],
+  ['scalars: coefficients are multiples of 1/8', 'fields', p => { tab(p)[0].w = { c: 98, bloat: 0.3 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].w.bloat: must be a multiple of 1/8 from -8 to 8"],
+  ['scalars: a term key must be a name', 'fields', p => { tab(p)[0].w = { c: 98, 'b-x': 1 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].w[\"b-x\"]: is not a name"],
+  ['scalars: an unknown named value', 'references', p => { tab(p)[0].w = { c: 98, wobble: 1 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].w.wobble: is not a named value"],
+  ['scalars: step only in a part for one side', 'references', p => { tab(p)[0].w = { c: 98, step: 1 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].w.step: \"step\" needs a part drawn for one side"],
+  ['scalars: no per-frame value in a rest view', 'references', p => { helm(p).rest.shapes[0].w = { c: 64, drop: 1 }; }, "pack.items[\"helm.open\"].rest.shapes[0].w.drop: cannot be used in a rest view"],
+  ['scalars: no per-frame value in a mount', 'references', p => { helm(p).mounts.plume = [{ c: 2, sway: 1 }, -74]; }, "pack.items[\"helm.open\"].mounts.plume[0].sway: cannot be used in a mount point"],
+  ['scalars: no named value in a decoration', 'references', p => { lantern(p).shapes[0].w = { c: 2, dHead: 1 }; }, "pack.decorations.lantern.shapes[0].w.dHead: cannot be used in a decoration"],
+  ['points: a pair has two entries', 'fields', p => { tab(p)[2].p = [0, 0, 0]; }, "pack.items[\"torso.tabard\"].parts[0].shapes[2].p: must be a pair [x, y]"],
+  ['points: an anchored point needs x and y', 'fields', p => { delete p.items['arms.plate'].parts[0].shapes[0].p1.y; }, "pack.items[\"arms.plate\"].parts[0].shapes[0].p1.y: is missing"],
+  ['points: a framed point names the main frame', 'fields', p => { sword(p).parts[0].shapes[2].p0.frame = 'off'; }, "pack.items[\"main.greatsword\"].parts[0].shapes[2].p0.frame: must be \"main\""],
+  ['points: frame values within 400', 'fields', p => { sword(p).parts[0].shapes[2].p0.s = 400.125; }, "pack.items[\"main.greatsword\"].parts[0].shapes[2].p0.s: must be a multiple of 1/8 from -400 to 400"],
+  ['points: framed points only in the main slot', 'references', p => { tab(p)[2].p = { frame: 'main', s: 0, p: 0 }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[2].p: a framed point is allowed only in the main slot"],
+  ['points: only pairs in a rest view', 'fields', p => { helm(p).rest.shapes[0].p = { at: 'rest', x: 0, y: 0 }; }, "pack.items[\"helm.open\"].rest.shapes[0].p: must be a pair [x, y] here"],
+  ['poly: dir is required', 'fields', p => { delete sword(p).parts[0].shapes[0].dir; }, "pack.items[\"main.greatsword\"].parts[0].shapes[0].dir: is missing"],
+  ['poly: dir is rows, cols or frame', 'fields', p => { sword(p).parts[0].shapes[0].dir = 'diag'; }, "pack.items[\"main.greatsword\"].parts[0].shapes[0].dir: must be one of \"rows\", \"cols\", \"frame\""],
+  ['poly: dir frame only in the main slot', 'references', p => { tab(p)[0] = { k: 'poly', dir: 'frame', pts: [[0, 0], [10, 0], [0, 10]], fill: '@base.k' }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].dir: \"frame\" is allowed only in a part of a main item"],
+  ['poly: at least 3 points', 'fields', p => { sword(p).parts[0].shapes[0].pts.length = 2; }, "pack.items[\"main.greatsword\"].parts[0].shapes[0].pts: must hold 3 to 16 entries, not 2"],
+  ['poly: 17 points', 'fields', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: ngon(17, 200), fill: '@base.k' }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].pts: must hold 3 to 16 entries, not 17"],
+  ['poly: convex', 'rules', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: [[0, 0], [20, 0], [10, 5], [20, 20], [0, 20]], fill: '@base.k' }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].pts: must be a convex polygon, its points in order"],
+  ['poly: not wound twice round', 'rules', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: [[0, -10], [9, 6], [-9, -3], [9, -3], [-9, 6]], fill: '@base.k' }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].pts: must be a convex polygon, its points in order"],
+  ['poly: not every point on one line', 'rules', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: [[0, 0], [5, 0], [10, 0]], fill: '@base.k' }; }, "pack.items[\"torso.tabard\"].parts[0].shapes[0].pts: must be a convex polygon, its points in order"],
+  ['poly: all pairs or all framed', 'rules', p => { sword(p).parts[0].shapes[0].pts[0] = [0, 0]; }, "pack.items[\"main.greatsword\"].parts[0].shapes[0].pts: must be all pairs or all framed points"],
+  ['poly: framed points carry no screen offset', 'rules', p => { sword(p).parts[0].shapes[0].pts[0].x = 1; }, "pack.items[\"main.greatsword\"].parts[0].shapes[0].pts: framed points of a polygon cannot carry a screen offset"],
+  ['clip: is [top, bottom]', 'fields', p => { helm(p).parts[0].shapes[2].clip = [26]; }, "pack.items[\"helm.open\"].parts[0].shapes[2].clip: must be [top, bottom]"],
+  ['pix: 65 rows', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0] = pix(4, 65); }, "pack.items[\"back.pennant\"].parts[0].shapes[0].rows: must hold 1 to 64 entries, not 65"],
+  ['pix: a row of 65', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0] = pix(65, 1); }, "pack.items[\"back.pennant\"].parts[0].shapes[0].rows[0]: must be at most 64 characters"],
+  ['pix: rows of one length', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].rows[1] = 'kb'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].rows[1]: must be as long as the first row"],
+  ['pix: printable characters only', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].rows[0] = 'k k.'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].rows[0]: must be a string of printable characters"],
+  ['pix: every character in the key', 'references', p => { p.items['back.pennant'].parts[0].shapes[0].rows[0] = 'kkz.'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].rows[0]: uses \"z\", which the key does not map"],
+  ['pix: 17 keys', 'fields', p => { const s = p.items['back.pennant'].parts[0].shapes[0]; for (const c of 'CDEFGHIJLMNOPQR') s.key[c] = '@base.k'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].key: must map 1 to 16 characters, not 17"],
+  ['pix: a key is one character', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].key.kk = '@base.k'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].key.kk: must be one printable character other than \".\""],
+  ['pix: "." is not a key', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].key['.'] = '@base.k'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].key[\".\"]: must be one printable character other than \".\""],
   // 3.7 rest views
-  ['rest: fits is hang, surface or floor', 'fields', p => { helm(p).rest.fits = 'wall'; }],
-  ['rest: box of 241', 'fields', p => { helm(p).rest.box = [241, 70]; }, /from 1 to 240/],
-  ['rest: box of 0', 'fields', p => { helm(p).rest.box = [0, 70]; }],
-  ['rest: mounts only on a helmet', 'fields', p => { p.items['off.round'].rest.mounts = { plume: [0, 0] }; }],
-  ['rest: a plume\'s rest view has shapes only', 'fields', p => { p.items['plume.crest'].rest.fits = 'surface'; }],
-  ['rest: 65 shapes', 'fields', p => { helm(p).rest.shapes = range(65).map(() => rect()); }, /1 to 64 entries/],
+  ['rest: fits is hang, surface or floor', 'fields', p => { helm(p).rest.fits = 'wall'; }, "pack.items[\"helm.open\"].rest.fits: must be one of \"hang\", \"surface\", \"floor\""],
+  ['rest: box of 241', 'fields', p => { helm(p).rest.box = [241, 70]; }, "pack.items[\"helm.open\"].rest.box[0]: must be a whole number from 1 to 240"],
+  ['rest: box of 0', 'fields', p => { helm(p).rest.box = [0, 70]; }, "pack.items[\"helm.open\"].rest.box[0]: must be a whole number from 1 to 240"],
+  ['rest: mounts only on a helmet', 'fields', p => { p.items['off.round'].rest.mounts = { plume: [0, 0] }; }, "pack.items[\"off.round\"].rest.mounts: is not a field here"],
+  ['rest: a plume\'s rest view has shapes only', 'fields', p => { p.items['plume.crest'].rest.fits = 'surface'; }, "pack.items[\"plume.crest\"].rest.fits: is not a field here"],
+  ['rest: 65 shapes', 'fields', p => { helm(p).rest.shapes = range(65).map(() => rect()); }, "pack.items[\"helm.open\"].rest.shapes: must hold 1 to 64 entries, not 65"],
   // 3.8 decorations
-  ['decorations: name is required', 'fields', p => { delete lantern(p).name; }],
-  ['decorations: fits names at least one kind', 'fields', p => { lantern(p).fits = []; }],
-  ['decorations: fits names each kind once', 'fields', p => { lantern(p).fits = ['hang', 'hang']; }, /appears twice/],
-  ['decorations: fits names only kinds', 'fields', p => { lantern(p).fits = ['wall']; }],
-  ['decorations: box of 241', 'rules', p => { lantern(p).box = [241, 70]; }, /at most 240 by 240/],
-  ['decorations: box of 241 high', 'rules', p => { lantern(p).box = [40, 241]; }],
-  ['decorations: 9 groups', 'fields', p => { for (const i of range(8)) lantern(p).groups['g' + i] = { pivot: [0, 0] }; }, /0 to 8 groups/],
-  ['decorations: a group has a pivot', 'fields', p => { lantern(p).groups.flame = {}; }],
-  ['decorations: a shape names a declared group', 'references', p => { lantern(p).shapes[3].g = 'smoke'; }, /does not declare/],
-  ['decorations: 65 shapes', 'fields', p => { lantern(p).shapes = range(65).map(() => rect()); }, /1 to 64 entries/],
-  ['decorations: only pairs for points', 'fields', p => { lantern(p).shapes[0].p = { at: 'head', x: 0, y: 0 }; }],
-  ['anim: period below 0.2', 'fields', p => { lantern(p).anim.period = 0.199; }, /from 0.2 to 600/],
-  ['anim: period above 600', 'fields', p => { lantern(p).anim.period = 600.001; }],
-  ['anim: loop is required', 'fields', p => { delete lantern(p).anim.loop; }],
-  ['anim: loop is true or false', 'fields', p => { lantern(p).anim.loop = 1; }],
-  ['anim: phase from 0 to 1', 'fields', p => { lantern(p).anim.phase = 1.5; }],
-  ['anim: 17 tracks', 'fields', p => { lantern(p).anim.tracks = range(17).map(() => lantern(p).anim.tracks[0]); }, /1 to 16 entries/],
-  ['tracks: 33 keys', 'fields', p => { lantern(p).anim.tracks[0].keys = range(33).map(i => [Math.round(i / 32 * 1000) / 1000, 0]); }, /1 to 32 entries/],
-  ['tracks: times rise', 'fields', p => { lantern(p).anim.tracks[0].keys = [[0.5, 0], [0.5, 1]]; }, /times must rise/],
-  ['tracks: times from 0 to 1', 'fields', p => { lantern(p).anim.tracks[0].keys = [[0, 0], [1.5, 1]]; }],
-  ['tracks: a channel of the list', 'fields', p => { lantern(p).anim.tracks[0].ch = 'spin'; }],
-  ['tracks: show is always step', 'fields', p => { lantern(p).anim.tracks[1].ease = 'linear'; }, /must be "step"/],
-  ['tracks: an ease is required on dx, dy, scale and alpha', 'fields', p => { delete lantern(p).anim.tracks[0].ease; }],
-  ['tracks: an ease of the list', 'fields', p => { lantern(p).anim.tracks[0].ease = 'bounce'; }],
-  ['tracks: scale from 0.25 to 4', 'fields', p => { lantern(p).anim.tracks[0] = { g: 'flame', ch: 'scale', ease: 'linear', keys: [[0, 1], [1, 4.001]] }; }],
-  ['tracks: alpha from 0 to 1', 'fields', p => { lantern(p).anim.tracks[0] = { g: 'flame', ch: 'alpha', ease: 'linear', keys: [[0, 1.5]] }; }],
-  ['tracks: show is 0 or 1', 'fields', p => { lantern(p).anim.tracks[1].keys = [[0, 2]]; }],
-  ['tracks: dx in eighths', 'fields', p => { lantern(p).anim.tracks[0].keys = [[0, 0.3]]; }],
-  ['tracks: a palette track takes hex colours', 'fields', p => { lantern(p).anim.tracks[2].keys = [[0, '@base.k']]; }],
-  ['tracks: a group track names a declared group', 'references', p => { lantern(p).anim.tracks[0].g = 'smoke'; }],
-  ['tracks: a palette track changes only the pack\'s own sets', 'references', p => { lantern(p).anim.tracks[2].pal = 'tabard.1'; }, /palette set of this pack/],
-  ['tracks: a palette track names an existing entry', 'references', p => { lantern(p).anim.tracks[2].pal = 'lantern.wick'; }],
-  ['tracks: a palette track names a single hex colour', 'references', p => { lantern(p).anim.tracks[2].pal = 'lantern.rim'; }, /hex colour/],
-  ['tracks: one track for each thing it drives', 'rules', p => { lantern(p).anim.tracks.push(clone(lantern(p).anim.tracks[0])); }, /already drives/],
+  ['decorations: name is required', 'fields', p => { delete lantern(p).name; }, "pack.decorations.lantern.name: is missing"],
+  ['decorations: fits names at least one kind', 'fields', p => { lantern(p).fits = []; }, "pack.decorations.lantern.fits: must hold 1 to 3 entries, not 0"],
+  ['decorations: fits names each kind once', 'fields', p => { lantern(p).fits = ['hang', 'hang']; }, "pack.decorations.lantern.fits[1]: appears twice"],
+  ['decorations: fits names only kinds', 'fields', p => { lantern(p).fits = ['wall']; }, "pack.decorations.lantern.fits[0]: must be one of \"hang\", \"surface\", \"floor\""],
+  ['decorations: box of 241', 'rules', p => { lantern(p).box = [241, 70]; }, "pack.decorations.lantern.box: must be at most 240 by 240"],
+  ['decorations: box of 241 high', 'rules', p => { lantern(p).box = [40, 241]; }, "pack.decorations.lantern.box: must be at most 240 by 240"],
+  ['decorations: 9 groups', 'fields', p => { for (const i of range(8)) lantern(p).groups['g' + i] = { pivot: [0, 0] }; }, "pack.decorations.lantern.groups: must hold 0 to 8 groups, not 9"],
+  ['decorations: a group has a pivot', 'fields', p => { lantern(p).groups.flame = {}; }, "pack.decorations.lantern.groups.flame.pivot: is missing"],
+  ['decorations: a shape names a declared group', 'references', p => { lantern(p).shapes[3].g = 'smoke'; }, "pack.decorations.lantern.shapes[3].g: names a group, \"smoke\", that the decoration does not declare"],
+  ['decorations: 65 shapes', 'fields', p => { lantern(p).shapes = range(65).map(() => rect()); }, "pack.decorations.lantern.shapes: must hold 1 to 64 entries, not 65"],
+  ['decorations: only pairs for points', 'fields', p => { lantern(p).shapes[0].p = { at: 'head', x: 0, y: 0 }; }, "pack.decorations.lantern.shapes[0].p: must be a pair [x, y] here"],
+  ['anim: period below 0.2', 'fields', p => { lantern(p).anim.period = 0.199; }, "pack.decorations.lantern.anim.period: must be a number from 0.2 to 600"],
+  ['anim: period above 600', 'fields', p => { lantern(p).anim.period = 600.001; }, "pack.decorations.lantern.anim.period: must be a number from 0.2 to 600"],
+  ['anim: loop is required', 'fields', p => { delete lantern(p).anim.loop; }, "pack.decorations.lantern.anim.loop: is missing"],
+  ['anim: loop is true or false', 'fields', p => { lantern(p).anim.loop = 1; }, "pack.decorations.lantern.anim.loop: must be true or false"],
+  ['anim: phase from 0 to 1', 'fields', p => { lantern(p).anim.phase = 1.5; }, "pack.decorations.lantern.anim.phase: must be a number from 0 to 1"],
+  ['anim: 17 tracks', 'fields', p => { lantern(p).anim.tracks = range(17).map(() => lantern(p).anim.tracks[0]); }, "pack.decorations.lantern.anim.tracks: must hold 1 to 16 entries, not 17"],
+  ['tracks: 33 keys', 'fields', p => { lantern(p).anim.tracks[0].keys = range(33).map(i => [Math.round(i / 32 * 1000) / 1000, 0]); }, "pack.decorations.lantern.anim.tracks[0].keys: must hold 1 to 32 entries, not 33"],
+  ['tracks: times rise', 'fields', p => { lantern(p).anim.tracks[0].keys = [[0.5, 0], [0.5, 1]]; }, "pack.decorations.lantern.anim.tracks[0].keys[1][0]: times must rise"],
+  ['tracks: times from 0 to 1', 'fields', p => { lantern(p).anim.tracks[0].keys = [[0, 0], [1.5, 1]]; }, "pack.decorations.lantern.anim.tracks[0].keys[1][0]: must be a number from 0 to 1"],
+  ['tracks: a channel of the list', 'fields', p => { lantern(p).anim.tracks[0].ch = 'spin'; }, "pack.decorations.lantern.anim.tracks[0].ch: must be one of \"dx\", \"dy\", \"scale\", \"alpha\", \"show\""],
+  ['tracks: show is always step', 'fields', p => { lantern(p).anim.tracks[1].ease = 'linear'; }, "pack.decorations.lantern.anim.tracks[1].ease: must be \"step\" on a show track"],
+  ['tracks: an ease is required on dx, dy, scale and alpha', 'fields', p => { delete lantern(p).anim.tracks[0].ease; }, "pack.decorations.lantern.anim.tracks[0].ease: is missing"],
+  ['tracks: an ease of the list', 'fields', p => { lantern(p).anim.tracks[0].ease = 'bounce'; }, "pack.decorations.lantern.anim.tracks[0].ease: must be one of \"step\", \"linear\", \"smooth\""],
+  ['tracks: scale from 0.25 to 4', 'fields', p => { lantern(p).anim.tracks[0] = { g: 'flame', ch: 'scale', ease: 'linear', keys: [[0, 1], [1, 4.001]] }; }, "pack.decorations.lantern.anim.tracks[0].keys[1][1]: must be a number from 0.25 to 4"],
+  ['tracks: alpha from 0 to 1', 'fields', p => { lantern(p).anim.tracks[0] = { g: 'flame', ch: 'alpha', ease: 'linear', keys: [[0, 1.5]] }; }, "pack.decorations.lantern.anim.tracks[0].keys[0][1]: must be a number from 0 to 1"],
+  ['tracks: show is 0 or 1', 'fields', p => { lantern(p).anim.tracks[1].keys = [[0, 2]]; }, "pack.decorations.lantern.anim.tracks[1].keys[0][1]: must be a whole number from 0 to 1"],
+  ['tracks: dx in eighths', 'fields', p => { lantern(p).anim.tracks[0].keys = [[0, 0.3]]; }, "pack.decorations.lantern.anim.tracks[0].keys[0][1]: must be a multiple of 1/8 from -512 to 512"],
+  ['tracks: a palette track takes hex colours', 'fields', p => { lantern(p).anim.tracks[2].keys = [[0, '@base.k']]; }, "pack.decorations.lantern.anim.tracks[2].keys[0][1]: must be a hex colour"],
+  ['tracks: a group track names a declared group', 'references', p => { lantern(p).anim.tracks[0].g = 'smoke'; }, "pack.decorations.lantern.anim.tracks[0].g: names a group, \"smoke\", that the decoration does not declare"],
+  ['tracks: a palette track changes only the pack\'s own sets', 'references', p => { lantern(p).anim.tracks[2].pal = 'tabard.1'; }, "pack.decorations.lantern.anim.tracks[2].pal: must name a palette set of this pack, and \"tabard\" is not one"],
+  ['tracks: a palette track names an existing entry', 'references', p => { lantern(p).anim.tracks[2].pal = 'lantern.wick'; }, "pack.decorations.lantern.anim.tracks[2].pal: names an entry, \"wick\", that set \"lantern\" does not have"],
+  ['tracks: a palette track names a single hex colour', 'references', p => { lantern(p).anim.tracks[2].pal = 'lantern.rim'; }, "pack.decorations.lantern.anim.tracks[2].pal: must name an entry that is a hex colour"],
+  ['tracks: one track for each thing it drives', 'rules', p => { lantern(p).anim.tracks.push(clone(lantern(p).anim.tracks[0])); }, "pack.decorations.lantern.anim.tracks[3]: drives what an earlier track already drives"],
   // 2.7 the face box
-  ['face box: a helmet needs a @skin.face shape', 'rules', p => { opening(p).fill = '@base.k'; }, /face box/],
-  ['face box: the opening must cover x from -28', 'rules', p => { opening(p).p = [-27, -21]; }],
-  ['face box: the opening must cover y to 20', 'rules', p => { opening(p).h = 40; }],
-  ['face box: a clip may not cut into it', 'rules', p => { opening(p).clip = [-21, 10]; }],
-  ['face box: it must hold for every build', 'rules', p => { opening(p).w = { c: 74, dHead: 2 }; }],
-  ['face box: it must hold in every frame', 'rules', p => { opening(p).p = [-37, { c: -21, drop: 1 }]; }],
+  ['face box: a helmet needs a @skin.face shape', 'rules', p => { opening(p).fill = '@base.k'; }, "pack.items[\"helm.open\"].parts: a helmet needs a shape filled with @skin.face whose box holds the face box, x from -28 to 28 and y from -20 to 20 around the head anchor, for every build"],
+  ['face box: the opening must cover x from -28', 'rules', p => { opening(p).p = [-27, -21]; }, "pack.items[\"helm.open\"].parts: a helmet needs a shape filled with @skin.face whose box holds the face box, x from -28 to 28 and y from -20 to 20 around the head anchor, for every build"],
+  ['face box: the opening must cover y to 20', 'rules', p => { opening(p).h = 40; }, "pack.items[\"helm.open\"].parts: a helmet needs a shape filled with @skin.face whose box holds the face box, x from -28 to 28 and y from -20 to 20 around the head anchor, for every build"],
+  ['face box: a clip may not cut into it', 'rules', p => { opening(p).clip = [-21, 10]; }, "pack.items[\"helm.open\"].parts: a helmet needs a shape filled with @skin.face whose box holds the face box, x from -28 to 28 and y from -20 to 20 around the head anchor, for every build"],
+  ['face box: it must hold for every build', 'rules', p => { opening(p).w = { c: 74, dHead: 2 }; }, "pack.items[\"helm.open\"].parts: a helmet needs a shape filled with @skin.face whose box holds the face box, x from -28 to 28 and y from -20 to 20 around the head anchor, for every build"],
+  ['face box: it must hold in every frame', 'rules', p => { opening(p).p = [-37, { c: -21, drop: 1 }]; }, "pack.items[\"helm.open\"].parts: a helmet needs a shape filled with @skin.face whose box holds the face box, x from -28 to 28 and y from -20 to 20 around the head anchor, for every build"],
   // 6.2 counts
-  ['counts: 257 items', 'counts', p => { const n = 257 - Object.keys(p.items).length; for (const i of range(n)) p.items['back.f' + i] = backItem(1, 1); }, /257 items/],
-  ['counts: 401 shapes in one item', 'counts', p => { p.items['back.x'] = backItem(4, 100); p.items['back.x'].parts[0].shapes.push(rect()); }, /401 shapes/],
-  ['counts: 401 shapes counting views and rest', 'counts', p => { p.items['hair.long'].views.helmeted.push(...[100, 100, 100, 91].map(n => ({ at: 'head', shapes: range(n).map(() => rect()) }))); }, /401 shapes/],
-  ['counts: 16 385 pixels in one pack', 'counts', p => { delete p.items['back.pennant']; p.items['back.x'] = { slot: 'back', name: 'Big', parts: [{ at: 'neck', shapes: [pix(64, 64), pix(64, 64), pix(64, 64), pix(64, 64), pix(1, 1)] }] }; }, /16385 pixels/],
-  ['counts: 65 decorations', 'counts', p => { for (const i of range(64)) p.decorations['d' + i] = lantern(p); }, /65 decorations/],
+  ['counts: 257 items', 'counts', p => { const n = 257 - Object.keys(p.items).length; for (const i of range(n)) p.items['back.f' + i] = backItem(1, 1); }, "pack.items: holds 257 items, more than 256"],
+  ['counts: 401 shapes in one item', 'counts', p => { p.items['back.x'] = backItem(4, 100); p.items['back.x'].parts[0].shapes.push(rect()); }, "pack.items[\"back.x\"]: holds 401 shapes in its parts and views, more than 400"],
+  ['counts: 401 shapes counting views and rest', 'counts', p => { p.items['hair.long'].views.helmeted.push(...[100, 100, 100, 91].map(n => ({ at: 'head', shapes: range(n).map(() => rect()) }))); }, "pack.items[\"hair.long\"]: holds 401 shapes in its parts and views, more than 400"],
+  ['counts: 16 385 pixels in one pack', 'counts', p => { delete p.items['back.pennant']; p.items['back.x'] = { slot: 'back', name: 'Big', parts: [{ at: 'neck', shapes: [pix(64, 64), pix(64, 64), pix(64, 64), pix(64, 64), pix(1, 1)] }] }; }, "pack: holds 16385 pixels in pix shapes, more than 16384"],
+  ['counts: 65 decorations', 'counts', p => { for (const i of range(64)) p.decorations['d' + i] = lantern(p); }, "pack.decorations: holds 65 decorations, more than 64"],
   ['counts: the default look over 1200 shapes', 'counts', p => {
     for (const s of ['legs', 'boots', 'torso']) { p.items[s + '.big'] = backItem(4, 100); p.items[s + '.big'].slot = s; p.items[s + '.big'].parts.forEach(pt => { pt.at = s === 'legs' ? 'hipL' : s === 'boots' ? 'footL' : 'neck'; }); p.defaults.items[s] = s + '.big'; }
-  }, /draws 1\d{3} shapes/]
+  }, "pack.defaults: the default look draws 1269 shapes with build \"build.a\", more than 1200"]
 ];
 for (const [rule, step, edit, re] of RULES) test('refused at ' + step + ': ' + rule, () => { rejected(edit, step, re); });
 
@@ -590,7 +594,7 @@ const EDGES = [
   ['400 shapes in an item', p => { p.items['back.x'] = backItem(4, 100); }],
   ['256 items', p => { const n = 256 - Object.keys(p.items).length; for (const i of range(n)) p.items['back.f' + i] = backItem(1, 1); }],
   ['offsets at 512 and -512, lengths at 0 and 512, radius 256, half-width 64', p => { tab(p)[2].p = [512, -512]; tab(p)[2].w = 0; tab(p)[2].h = 512; tab(p)[0].r = 256; sword(p).parts[0].shapes[2].hw0 = 64; }],
-  ['coefficients at 8 and -8', p => { tab(p)[0].w = { c: 98, bloat: 8, dChest: -8 }; }],
+  ['coefficients at 8 and -8', p => { tab(p)[2].p = [{ c: -2, sway: 8, dHead: -8 }, -22]; }],
   ['frame values at 400 and -400', p => { sword(p).parts[0].shapes[2].p0.s = 400; sword(p).parts[0].shapes[2].p1.s = -400; }],
   ['a convex polygon of 16 points', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: ngon(16, 200), fill: '@base.k' }; }],
   ['a pix of 64 by 64 with 16 keys', p => { const s = pix(64, 64); for (const c of 'bcdefghijklmnop') s.key[c] = '@base.w'; p.items['back.pennant'].parts[0].shapes[0] = s; }],
@@ -672,7 +676,7 @@ test('numbers JSON cannot spell, or that the canonical form cannot hold, are ref
     assert.equal(r.step, 'json', bad);
     assert.match(r.reason, /pack\.items\["torso\.tabard"\]\.parts\[0\]\.shapes\[0\]\.r/);
   }
-  rejected(p => { tab(p)[0].r = 14.1; }, 'fields', /multiple of 1\/8/);
+  rejected(p => { tab(p)[0].r = 14.1; }, 'fields', 'pack.items["torso.tabard"].parts[0].shapes[0].r: must be a multiple of 1/8 from 0 to 256');
 });
 
 test('keys that could reach a prototype are refused anywhere, and nothing is polluted', () => {
@@ -684,7 +688,7 @@ test('keys that could reach a prototype are refused anywhere, and nothing is pol
     assert.deepEqual([r.ok, r.step], [false, 'json'], r.reason);
     assert.match(r.reason, /not allowed anywhere/);
   }
-  rejected(p => { p.ext = JSON.parse('{"__proto__":{"polluted":1}}'); }, 'json');
+  rejected(p => { p.ext = JSON.parse('{"__proto__":{"polluted":1}}'); }, 'json', 'pack.ext.__proto__: this key is not allowed anywhere in a pack');
   assert.equal({}.polluted, undefined);
   assert.equal(Object.prototype.polluted, undefined);
 });
@@ -730,7 +734,7 @@ test('unknown keys are refused at every level', () => {
     p => { sword(p).grip.z = 1; },
     p => { sword(p).blade.z = 1; },
     p => { p.items['hair.long'].views.z = 1; }];
-  for (const edit of levels) assert.match(rejected(edit, 'fields').reason, /\.z: is not a field here/);
+  for (const edit of levels) rejected(edit, 'fields', /\.z: is not a field here$/);
 });
 
 test('the reader never throws, on truncated and mangled copies of a pack', () => {
@@ -840,6 +844,13 @@ test('the sig must be well formed', () => {
     Object.assign({}, good, { value: good.value.replace(/==$/, '=A') }), Object.assign({}, good, { value: good.value.slice(0, -3) + 'B==' }),
     { alg: 'ed25519', kid: 'kw1' }];
   for (const sig of cases) assert.equal(readEnv({ kwpack: 1, pack: p, sig }).step, 'signature', JSON.stringify(sig));
+  // the same 64 bytes spelt with one unused bit of the last character set: refused for its spelling,
+  // though it would decode to the very bytes that verify
+  const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/', last = good.value.length - 3;
+  const respelt = good.value.slice(0, last) + B64[B64.indexOf(good.value[last]) ^ 1] + '==';
+  assert.ok(Buffer.from(respelt, 'base64').equals(Buffer.from(good.value, 'base64')));
+  assert.equal(readEnv({ kwpack: 1, pack: p, sig: Object.assign({}, good, { value: respelt }) }).reason, 'sig.value: must be 64 bytes in base64');
+  assert.equal(readEnv({ kwpack: 1, pack: p, sig: Object.assign({}, good, { alg: 'rsa' }) }).reason, 'sig.alg: must be "ed25519"');
 });
 
 test('an unsigned pack passes only with allowUnsigned, and a bad signature fails either way', () => {
@@ -890,9 +901,12 @@ test('gather keeps the higher version of one id and at most 32 packs', () => {
   const many = range(32).map(i => load(extra('extra-' + i, { swatches: { tabard: { t: BASE().swatches.tabard.blue } } })));
   assert.ok(many.every(r => r.ok));
   assert.equal(PK.gather(many).packs.size, 32);
+  // the base pack is always admitted, even after 32 others; the cap turns away the last of those
   const over = PK.gather(many.concat([base]));
   assert.equal(over.packs.size, 32);
-  assert.deepEqual([over.rejected[0].id, over.rejected[0].step], ['kw.base', 'counts']);
+  assert.equal(over.packs.get('kw.base'), base);
+  assert.deepEqual([over.rejected[0].id, over.rejected[0].step], ['extra-31', 'counts']);
+  assert.equal(PK.gather(many.concat([base, newer])).packs.get('kw.base'), newer);
 });
 
 // ---- Looks and fallbacks --------------------------------------------------------------------------------
@@ -1105,4 +1119,297 @@ test('the fixture\'s lantern: the flame bobs, goes out at 0.92 and the glass war
   assert.equal(PK.fitsPlace(d, { kind: 'hang', w: 40, h: 70 }), true);
   assert.equal(PK.fitsPlace(d, { kind: 'hang', w: 39, h: 70 }), false);
   assert.equal(PK.fitsPlace(d, { kind: 'floor', w: 400, h: 400 }), false);
+});
+
+// ---- Values after arithmetic --------------------------------------------------------------------------
+
+const TAB = 'pack.items["torso.tabard"].parts[0].shapes';
+const RANGES = [
+  ['a length that goes negative with the build', p => { tab(p)[2].w = { c: 0, dHeight: -8 }; }, TAB + '[2].w: the length reaches -224 at its least, below 0'],
+  ['a length past 512 with the build', p => { tab(p)[2].h = { c: 500, dHeight: 1 }; }, TAB + '[2].h: the length reaches 528 at its greatest, above 512'],
+  ['an offset past 512 with the bloat at 60', p => { tab(p)[2].p = [{ c: 460, bloat: 1 }, 0]; }, TAB + '[2].p[0]: the offset reaches 520 at its greatest, above 512'],
+  ['an offset past -512 with the drop at 40', p => { tab(p)[2].p = [0, { c: -500, drop: -1 }]; }, TAB + '[2].p[1]: the offset reaches -540 at its least, below -512'],
+  ['a length that goes negative with the drop at 40', p => { p.items['legs.plate'].parts[0].shapes[0].h = { c: 56, drop: -2 }; }, 'pack.items["legs.plate"].parts[0].shapes[0].h: the length reaches -24 at its least, below 0'],
+  ['an offset past -512 with a lifted step', p => { p.items['boots.leather'].parts[0].shapes[0].p = [-28, { c: -510, step: -6 }]; }, 'pack.items["boots.leather"].parts[0].shapes[0].p[1]: the offset reaches -516 at its least, below -512'],
+  ['an offset past 512 with the sway', p => { p.items['plume.crest'].parts[0].shapes[0].p = [{ c: 510, sway: 1 }, 0]; }, 'pack.items["plume.crest"].parts[0].shapes[0].p[0]: the offset reaches 514 at its greatest, above 512'],
+  ['a radius past 256 with the head', p => { tab(p)[0].r = { c: 250, dHead: 1 }; }, TAB + '[0].r: the radius reaches 259 at its greatest, above 256'],
+  ['an ellipse radius of 0', p => { tab(p)[11].ry = 0; }, TAB + '[11].ry: the radius reaches 0 at its least, below 1'],
+  ['an ellipse radius that reaches 0 with the build', p => { tab(p)[11].rx = { c: 9, dHead: 1 }; }, TAB + '[11].rx: the radius reaches 0 at its least, below 1'],
+  ['a half-width past 64 with the head', p => { sword(p).parts[0].shapes[2].hw0 = { c: 60, dHead: 1 }; }, 'pack.items["main.greatsword"].parts[0].shapes[2].hw0: the half-width reaches 69 at its greatest, above 64'],
+  ['a half-width below 0 with the head', p => { sword(p).parts[0].shapes[2].hw1 = { c: 0, dHead: 1 }; }, 'pack.items["main.greatsword"].parts[0].shapes[2].hw1: the half-width reaches -9 at its least, below 0'],
+  ['a clip past 512', p => { helm(p).parts[0].shapes[2].clip = [{ c: 500, dHead: 2 }, null]; }, 'pack.items["helm.open"].parts[0].shapes[2].clip[0]: the offset reaches 518 at its greatest, above 512'],
+  ['a framed point\'s screen offset past 512', p => { sword(p).parts[0].shapes[21].p.x = { c: 510, sway: 1 }; }, 'pack.items["main.greatsword"].parts[0].shapes[21].p.x: the offset reaches 514 at its greatest, above 512'],
+  ['an anchored point past 512', p => { p.items['arms.plate'].parts[0].shapes[0].p1.x = { c: 510, bloat: 1 }; }, 'pack.items["arms.plate"].parts[0].shapes[0].p1.x: the offset reaches 570 at its greatest, above 512'],
+  ['a shield whose hold point carries a shape past 512', p => { p.items['off.round'].hold = [0, 500]; p.items['off.round'].parts[0].shapes[0].p = [0, -20]; },
+    'pack.items["off.round"].parts[0].shapes[0].p[1]: with the hold point folded in, the offset reaches -520 at its least, below -512'],
+  ['a shield whose hold point carries a clip past 512', p => { p.items['off.round'].hold = [0, -505]; p.items['off.round'].parts[0].shapes[2].clip = [10, null]; }, 'pack.items["off.round"].parts[0].shapes[2].clip[0]: with the hold point folded in, the offset reaches 515 at its greatest, above 512'],
+  ['a helmet mount past 512', p => { helm(p).mounts.plume = [2, { c: -510, dHead: -1 }]; }, 'pack.items["helm.open"].mounts.plume[1]: the offset reaches -519 at its least, below -512'],
+  ['a rest mount past 512', p => { helm(p).rest.mounts.plume = [{ c: 510, dHead: 1 }, 0]; }, 'pack.items["helm.open"].rest.mounts.plume[0]: the offset reaches 519 at its greatest, above 512'],
+  ['a rest view length that goes negative with the build', p => { helm(p).rest.shapes[0].w = { c: 0, dChest: 1 }; }, 'pack.items["helm.open"].rest.shapes[0].w: the length reaches -14 at its least, below 0'],
+  ['hair\'s helmeted view past 512', p => { p.items['hair.long'].views.helmeted[0].shapes[0].pts[2] = [{ c: -500, dHead: 2 }, 76]; }, 'pack.items["hair.long"].views.helmeted[0].shapes[0].pts[2][0]: the offset reaches -518 at its least, below -512'],
+  ['a decoration ellipse radius of 0', p => { lantern(p).shapes[3].rx = 0; }, 'pack.decorations.lantern.shapes[3].rx: the radius reaches 0 at its least, below 1'],
+  ['the default plume past 512 on the default helmet\'s mount', p => { helm(p).mounts.plume = [2, { c: -500, dHead: -1 }]; },
+    'pack.defaults: the default plume on the default helmet: the plume\'s parts[0].shapes[4].p[1]: with the helmet\'s mount folded in, the offset reaches -516 at its least, below -512']
+];
+for (const [name, edit, reason] of RANGES) test('refused at rules, bounded over every value: ' + name, () => {
+  const r = load(edited(edit));
+  assert.equal(r.ok, false, 'expected the pack to be refused');
+  assert.equal(r.step, /default plume/.test(name) ? 'counts' : 'rules', r.reason);
+  assert.equal(r.reason, reason);
+});
+
+test('the named values have stated ranges, frozen', () => {
+  assert.deepEqual(clone(PK.RANGE), { drop: [0, 40], bloat: [0, 60], stepL: [0, 1], stepR: [0, 1], step: [0, 1], sway: [-4, 4],
+    dShoulder: [-14, 16], dChest: [-14, 18], dWaist: [-18, 18], dHip: [-14, 18], dStance: [-8, 10], dLeg: [-14, 26], dHeight: [-22, 28], dHead: [-9, 9] });
+  assert.ok(Object.isFrozen(PK.RANGE) && Object.isFrozen(PK.RANGE.drop));
+});
+
+test('every value a list hands a primitive stays in range at the extremes of every named value', () => {
+  // the fixture's every build and look, drawn with the values at each end of their ranges
+  const lib = PK.gather([load(BASE())]);
+  for (const look of [{}, { build: 'kw.base/build.b' }, { items: { hair: 'kw.base/hair.long', back: 'kw.base/back.pennant', main: 'kw.base/main.arming', off: 'kw.base/off.round' } }]) {
+    const L = PK.resolve(lib, look);
+    for (const [drop, bloat, step, sway] of [[0, 0, 0, -4], [40, 60, 1, 4]]) {
+      const R = recorder(), A = PK.newAnchors(), V = PK.newValues();
+      V[PK.VALUE.drop] = drop; V[PK.VALUE.bloat] = bloat; V[PK.VALUE.stepL] = step; V[PK.VALUE.stepR] = step; V[PK.VALUE.sway] = sway;
+      A[PK.FRAME_SX] = Math.sin(1); A[PK.FRAME_SY] = -Math.cos(1);
+      for (const n of Object.keys(L.lists)) PK.draw(L.lists[n], A, V, R.P);
+      for (const [k, ...a] of R.log) {
+        const size = { Rh: [2, 3], Rv: [2, 3], rrect: [2, 3, 4], ell: [2, 3], strip: [4, 5] }[k] || [];
+        for (const i of size) assert.ok(a[i] >= (k === 'ell' ? 1 : 0) && a[i] <= 512, k + ' size ' + a[i]);
+        const pts = k === 'poly' ? a[0] : k === 'strip' ? [[a[0], a[1]], [a[2], a[3]]] : [[a[0], a[1]]];
+        for (const [x, y] of pts) assert.ok(Math.abs(x) <= 512 + 270 && Math.abs(y) <= 512 + 270, k + ' point ' + x + ',' + y);
+      }
+    }
+  }
+});
+
+// ---- Cost ------------------------------------------------------------------------------------------------
+
+const BANDS8 = range(8).map(i => [(i + 1) / 8, i % 2 ? '#000000' : '#ffffff']);
+// Shapes of a known total cost: an rrect h rows high costs h calls in one colour and 8h in 8 bands.
+function costly(n, at) {
+  const shapes = [], rr = (h, fill) => ({ k: 'rrect', p: [0, 0], w: 4, h, r: 0, fill });
+  for (; n >= 4096; n -= 4096) shapes.push(rr(512, BANDS8));
+  if (n >= 8) { shapes.push(rr(Math.floor(n / 8), BANDS8)); n %= 8; }
+  if (n > 0) shapes.push(rr(n, '@base.k'));
+  return [{ at, shapes }];
+}
+const costlyItem = (slot, at, n) => ({ slot, name: 'Costly', parts: costly(n, at) });
+
+test('a shape\'s cost is the most fillRect calls draw.js can make for it', () => {
+  const r = load(BASE());
+  assert.equal(PK.LIMITS.itemCost, 8000);
+  assert.equal(PK.LIMITS.lookCost, 40000);
+  assert.equal(PK.LIMITS.decorCost, 8000);
+  assert.equal(PK.ANCHOR_SPAN, 400);
+  // a rect: 1 call, or one per band; a pix: one per run
+  assert.deepEqual(r.sums['back.pennant'].parts, { n: 1, cost: 8 });
+  const c = n => load(edited(p => { p.items['back.x'] = { slot: 'back', name: 'X', parts: [{ at: 'neck', shapes: n }] }; })).sums['back.x'].parts.cost;
+  assert.equal(c([{ k: 'ell', p: [0, 0], rx: 4, ry: 7, fill: '@base.k' }]), 15);
+  assert.equal(c([{ k: 'ell', p: [0, 0], rx: 4, ry: { c: 10, dHead: 1 }, fill: '@base.steel' }]), (2 * 19 + 1) * 4);
+  assert.equal(c([{ k: 'ell', p: [0, 0], rx: 40, ry: 40, fill: '@base.k', clip: [0, 9] }]), 10);
+  assert.equal(c([{ k: 'rrect', p: [0, 0], w: 9, h: { c: 20, drop: 1 }, r: 3, fill: '@skin.face' }]), 60 * 8);
+  assert.equal(c([{ k: 'poly', dir: 'rows', pts: [[0, 0], [10, 0], [0, 10.5]], fill: '@base.k' }]), 12);
+  assert.equal(c([{ k: 'strip', p0: [0, 0], p1: [30, 0], hw0: 2, hw1: 3, fill: '@base.k' }]), 36);
+  assert.equal(c([{ k: 'strip', p0: [0, 0], p1: { at: 'handL', x: 0, y: 0 }, hw0: 2, hw1: 3, fill: '@base.k' }]), 6 + 400 + 1);
+  assert.equal(c([{ k: 'pix', p: [0, 0], rows: ['aab.a', '.....', 'ab..b'], key: { a: '@base.k', b: '@base.w' } }]), 6);
+});
+
+test('the cost bound holds: draw.js makes no more fills than the cost, at the extremes', () => {
+  const ctx = vm.createContext({ window: {} });
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'web/js/draw.js'), 'utf8'), ctx);
+  let fills = 0;
+  ctx.window.KW.draw.setCtx({ fillRect() { fills++; }, set fillStyle(v) {}, globalAlpha: 1 });
+  const lib = PK.gather([load(BASE())]);
+  for (const look of [{ build: 'kw.base/build.b' }, { items: { hair: 'kw.base/hair.long', main: 'kw.base/main.arming', off: 'kw.base/off.round', back: 'kw.base/back.pennant' } }]) {
+    const L = PK.resolve(lib, look);
+    for (const ang of [0, 0.7, 1.6, 2.4]) for (const [drop, bloat, step, sway] of [[0, 0, 0, -4], [40, 60, 1, 4]]) {
+      const g = rig({ x: 480, floor: 530, t: 0, gx: 26, gy: 45, wang: ang }, L.diffs);
+      g.V[PK.VALUE.drop] = drop; g.V[PK.VALUE.bloat] = bloat; g.V[PK.VALUE.stepL] = step; g.V[PK.VALUE.stepR] = step; g.V[PK.VALUE.sway] = sway;
+      fills = 0;
+      for (const n of ['body', 'headOn', 'pauldrons', 'armL', 'armR', 'gauntL', 'gauntR', 'main', 'off']) PK.draw(L.lists[n], g.A, g.V, ctx.window.KW.draw, L.colours.face);
+      assert.ok(fills > 1000 && fills <= L.cost, fills + ' fills against a cost of ' + L.cost);
+    }
+  }
+});
+
+test('the present knight\'s cost, by grip mode', () => {
+  const r = load(BASE()), S = r.sums, it = id => S[id].parts.cost;
+  const common = it('legs.plate') + it('boots.leather') + it('torso.tabard') + it('pauldrons.plate') + it('arms.plate') + it('gauntlets.plate');
+  const headOn = it('plume.crest') + it('helm.open'), headOff = it('head.plain') + it('hair.short');
+  assert.deepEqual([common, headOn, headOff, it('main.greatsword')], [5560, 1720, 1632, 4652]);
+  assert.equal(baseLook().cost, common + headOn + it('main.greatsword'));
+  assert.equal(baseLook().cost, 11932);
+});
+
+test('refused at counts: an item over 8000, and accepted at 8000', () => {
+  assert.equal(load(edited(p => { p.items['back.x'] = costlyItem('back', 'neck', 8000); })).sums['back.x'].parts.cost, 8000);
+  rejected(p => { p.items['back.x'] = costlyItem('back', 'neck', 8001); }, 'counts', 'pack.items["back.x"]: costs up to 8001 fills in its parts and views, more than 8000');
+  // the views and the rest view count too
+  rejected(p => { p.items['hair.long'].views.helmeted.push(...costly(8000 - 541 + 1, 'head')); }, 'counts', 'pack.items["hair.long"]: costs up to 8001 fills in its parts and views, more than 8000');
+});
+
+test('refused at counts: a decoration over 8000, its scale counted, and accepted at 8000', () => {
+  const big = (n, scale) => p => {
+    const shapes = costly(n, 'x')[0].shapes.map(s => Object.assign({ g: 'flame' }, s));
+    lantern(p).shapes = shapes;
+    lantern(p).anim.tracks[0] = { g: 'flame', ch: 'scale', ease: 'linear', keys: [[0, 1], [1, scale]] };
+  };
+  assert.equal(load(edited(big(4000, 2))).decorations.lantern.cost, 8000);
+  rejected(big(4001, 2), 'counts', 'pack.decorations.lantern: costs up to 8002 fills, more than 8000');
+  rejected(big(8001, 1), 'counts', 'pack.decorations.lantern: costs up to 8001 fills, more than 8000');
+});
+
+test('refused at counts: a default look over the cost cap', () => {
+  rejected(p => {
+    for (const [s, at] of [['legs', 'hipL'], ['boots', 'footL'], ['torso', 'neck'], ['pauldrons', 'shoulderL']]) { p.items[s + '.big'] = costlyItem(s, at, 8000); p.defaults.items[s] = s + '.big'; }
+  }, 'counts', 'pack.defaults: the default look costs up to 41944 fills with build "build.a", more than 40000');
+});
+
+test('a look at a cost of exactly 40000 is kept, and one over falls back slot by slot until it fits', () => {
+  const pack = n => extra('kw.costly', { items: { 'legs.c': costlyItem('legs', 'hipL', n), 'boots.c': costlyItem('boots', 'footL', 7514),
+    'torso.c': costlyItem('torso', 'neck', 7514), 'pauldrons.c': costlyItem('pauldrons', 'shoulderL', 7514), 'back.c': costlyItem('back', 'neck', 8000) } });
+  const look = { items: { legs: 'kw.costly/legs.c', boots: 'kw.costly/boots.c', torso: 'kw.costly/torso.c', pauldrons: 'kw.costly/pauldrons.c' } };
+  const at = PK.resolve(PK.gather([load(BASE()), load(pack(7514))]), look);
+  assert.equal(at.cost, 40000);
+  assert.equal(at.fallbacks.filter(f => /cap/.test(f.reason)).length, 0);
+  const over = PK.resolve(PK.gather([load(BASE()), load(pack(7515))]), look);
+  assert.deepEqual(over.fallbacks.filter(f => /cap/.test(f.reason)), [{ kind: 'item', key: 'legs', wanted: 'kw.costly/legs.c', used: 'kw.base/legs.plate', reason: 'over the cost cap of 40000 fills' }]);
+  assert.equal(over.cost, 40001 - 7515 + 559);
+  const far = PK.resolve(PK.gather([load(BASE()), load(pack(7514))]), Object.assign({}, look, { items: Object.assign({ back: 'kw.costly/back.c' }, look.items) }));
+  assert.deepEqual(far.fallbacks.filter(f => /cap/.test(f.reason)).map(f => f.key), ['back']);
+  assert.ok(far.cost <= 40000);
+});
+
+// ---- The plume on another pack's helmet -------------------------------------------------------------------
+
+test('a plume that a helmet\'s mount would carry past 512 falls back, and then the helmet', () => {
+  const tall = { slot: 'helmet', name: 'Tall', mounts: { plume: [0, -490] }, parts: [{ at: 'head', shapes: [{ k: 'rrect', p: [-37, -21], w: 74, h: 44, r: 9, fill: '@skin.face' }] }] };
+  const lower = { slot: 'plume', name: 'Low', parts: [{ at: 'plume', shapes: [{ k: 'ell', p: [0, -30], rx: 10, ry: 10, fill: '@plume.1' }] }] };
+  const lib = PK.gather([load(BASE()), load(extra('kw.hats', { items: { 'helm.tall': tall, 'plume.low': lower, 'helm.taller': Object.assign({}, tall, { mounts: { plume: [0, -510] } }) } }))]);
+  // the low plume reaches -520 on the tall helmet: the plume falls back to the crest, which fits
+  const a = PK.resolve(lib, { items: { helmet: 'kw.hats/helm.tall', plume: 'kw.hats/plume.low' } });
+  assert.equal(a.look.items.helmet, 'kw.hats/helm.tall');
+  assert.equal(a.look.items.plume, 'kw.base/plume.crest');
+  assert.deepEqual(a.fallbacks.find(f => f.key === 'plume' && f.kind === 'item'), { kind: 'item', key: 'plume', wanted: 'kw.hats/plume.low', used: 'kw.base/plume.crest',
+    reason: 'does not fit the helmet: the plume\'s parts[0].shapes[0].p[1]: with the helmet\'s mount folded in, the offset reaches -520 at its least, below -512' });
+  // the crest itself reaches -517 on the taller helmet: the helmet falls back
+  const b = PK.resolve(lib, { items: { helmet: 'kw.hats/helm.taller' } });
+  assert.equal(b.look.items.helmet, 'kw.base/helm.open');
+  assert.match(b.fallbacks.find(f => f.key === 'helmet' && f.reason !== 'not set').reason, /^its mount carries the plume out of range: the plume's parts\[0\]\.shapes\[4\]\.p\[1\]: .* reaches -517 at its least/);
+});
+
+// ---- Polygons, and dir "frame" everywhere ---------------------------------------------------------------
+
+test('a polygon may not repeat a point, which would hide a reflex angle', () => {
+  const at = pts => p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts, fill: '@base.k' }; };
+  rejected(at([[0, -24], [24, -16], [16, 8], [8, -8], [-24, -24]]), 'rules', TAB + '[0].pts: must be a convex polygon, its points in order');
+  rejected(at([[0, -24], [24, -16], [16, 8], [8, -8], [8, -8], [-24, -24]]), 'rules', TAB + '[0].pts[4]: is the same point as the one before it');
+  rejected(at([[0, 0], [20, 0], [20, 20], [0, 0]]), 'rules', TAB + '[0].pts[0]: is the same point as the one before it');
+  rejected(at([[0, 0], [20, 0], [10, 0], [10, 10]]), 'rules', TAB + '[0].pts: must be a convex polygon, its points in order');
+  accepted(at([[0, 0], [10, 0], [20, 0], [20, 20], [0, 20]]));
+});
+
+test('dir "frame" is refused in a rest view and in a decoration, as in any part but a main item\'s', () => {
+  const tri = { k: 'poly', dir: 'frame', pts: [[0, 0], [20, 0], [0, 20]], fill: '@base.k' };
+  rejected(p => { helm(p).rest.shapes[0] = tri; }, 'references', 'pack.items["helm.open"].rest.shapes[0].dir: "frame" is allowed only in a part of a main item');
+  rejected(p => { lantern(p).shapes[0] = tri; }, 'references', 'pack.decorations.lantern.shapes[0].dir: "frame" is allowed only in a part of a main item');
+  rejected(p => { p.items['hair.long'].views.helmeted[0].shapes[0].dir = 'frame'; }, 'references', 'pack.items["hair.long"].views.helmeted[0].shapes[0].dir: "frame" is allowed only in a part of a main item');
+});
+
+// ---- The minor findings ---------------------------------------------------------------------------------
+
+test('keyframes stay finite and colours well formed for any t', () => {
+  const one = load(edited(p => { const a = lantern(p).anim; a.period = 0.2; a.tracks[2].keys = [[0.5, '#fff3a0']]; })).decorations.lantern;
+  const two = load(edited(p => { lantern(p).anim.period = 0.2; })).decorations.lantern;
+  for (const d of [one, two]) for (const t of [1e3, 1e15, 1e300, 1e308, Number.MAX_VALUE, -1e308, NaN, Infinity, -Infinity, 0.1]) {
+    const out = PK.animate(d, t);
+    assert.ok(Number.isFinite(out.groups.flame.dy) && (out.groups.flame.show === 0 || out.groups.flame.show === 1), String(t));
+    assert.match(out.pal['lantern.glass'], /^#[0-9a-f]{6}$/, String(t));
+  }
+});
+
+test('read never throws, even when the options are a revoked proxy', () => {
+  const { proxy, revoke } = Proxy.revocable({}, {});
+  revoke();
+  const r = PK.read(envText(BASE()), proxy);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'the pack could not be checked');
+  assert.equal(PK.read(proxy, OPTS).step, 'size');
+});
+
+test('a reason is cut to 300 characters, and text from the pack in it to 40', () => {
+  const p = BASE();
+  p['<img src=x onerror=alert(1)>' + 'A'.repeat(400000)] = 1;
+  const r = PK.read(JSON.stringify({ kwpack: 1, pack: p }), { allowUnsigned: true });
+  assert.equal(r.reason, 'pack["<img src=x onerror=alert(1)>AAAAAAAAA..."]: is not a field here');
+  const long = 'x'.repeat(200);
+  const q = load(edited(p => { p.builds['build.a'].head = 'h' + long.slice(0, 47); }));
+  assert.equal(q.reason, 'pack.builds["build.a"].head: names an item, "' + ('h' + long).slice(0, 37) + '...", that the pack does not have');
+  // the reason as a whole never runs past 300, whatever the pack holds
+  const many = load(edited(p => { p.decorations[long.slice(0, 48)] = { name: 'Wide', fits: ['wall' + long] }; }));
+  assert.equal(many.reason, 'pack.decorations["' + long.slice(0, 37) + '..."].box: is missing');
+  assert.ok(many.reason.length <= PK.LIMITS.reason && PK.LIMITS.reason === 300 && PK.LIMITS.quote === 40);
+});
+
+test('canonical refuses anything but plain JSON values', () => {
+  for (const v of [new Map([['a', 1]]), new Set([1]), new Date(0), /x/, new Uint8Array(2), [new Map()], { a: new Date(0) }]) assert.throws(() => PK.canonical(v), TypeError);
+  assert.equal(PK.canonical(Object.assign(Object.create(null), { b: 1, a: [null, false] })), '{"a":[null,false],"b":1}');
+  assert.equal(PK.canonical(vm.runInNewContext('({ z: 1, y: [2] })')), '{"y":[2],"z":1}');
+});
+
+test('the face check: a clip that cuts the top of the face box is refused', () => {
+  rejected(p => { opening(p).clip = [-10, null]; }, 'rules', /^pack\.items\["helm\.open"\]\.parts: a helmet needs a shape filled with @skin\.face/);
+  accepted(p => { opening(p).clip = [-20, 20]; });
+});
+
+test('looks naming what every object has fall back cleanly', () => {
+  const lib = library();
+  for (const n of ['toString', 'constructor', '__proto__', 'hasOwnProperty', 'valueOf', 'prototype']) {
+    const look = { build: 'kw.base/' + n, items: {}, swatches: {} };
+    for (const s of ['back', 'legs', 'boots', 'torso', 'hair', 'plume', 'helmet', 'pauldrons', 'arms', 'gauntlets', 'main', 'off']) look.items[s] = 'kw.base/' + n;
+    for (const s of ['skin', 'hair', 'tabard', 'plume']) look.swatches[s] = 'kw.base/' + n;
+    for (const pk of ['kw.base', n]) {
+      const named = JSON.parse(JSON.stringify(look).split('kw.base/').join(pk + '/'));
+      let L;
+      assert.doesNotThrow(() => { L = PK.resolve(lib, named); }, n);
+      assert.equal(L.ok, true);
+      assert.deepEqual(L.look, baseLook().look);
+      assert.equal(L.fallbacks.length, 1 + 10 + 4 + (pk === 'kw.base' ? 2 : 2));
+      assert.ok(L.fallbacks.every(f => ['no such build', 'no such item', 'no such swatch', 'pack not loaded'].includes(f.reason)), JSON.stringify(L.fallbacks));
+    }
+  }
+});
+
+// ---- Values of the wrong type -------------------------------------------------------------------------
+
+const WRONG_TYPES = [
+  ['a helmet\'s mounts that are not an object', p => { helm(p).mounts = 5; }, 'pack.items["helm.open"].mounts: must be an object'],
+  ['palettes that are an array', p => { p.palettes = []; }, 'pack.palettes: must be an object'],
+  ['a name that is a number', p => { p.name = 5; }, 'pack.name: must be a string'],
+  ['a length that is a string', p => { tab(p)[0].w = 'x'; }, TAB + '[0].w: must be a number or a term object'],
+  ['a point that is a number', p => { tab(p)[0].p = 5; }, TAB + '[0].p: must be a point'],
+  ['an anchored point whose anchor is a number', p => { p.items['arms.plate'].parts[0].shapes[0].p1.at = 5; }, 'pack.items["arms.plate"].parts[0].shapes[0].p1.at: must be an anchor name'],
+  ['a hold point that is a number', p => { p.items['off.round'].hold = 5; }, 'pack.items["off.round"].hold: must be a pair [x, y]'],
+  ['a fill that is a number', p => { tab(p)[0].fill = 5; }, TAB + '[0].fill: must be a colour'],
+  ['a translucent colour whose rgb is a number', p => { tab(p)[0].fill = { rgb: 5, a: 1 }; }, TAB + '[0].fill.rgb: must be a hex colour'],
+  ['a decoration box that is a number', p => { lantern(p).box = 5; }, 'pack.decorations.lantern.box: must be [w, h]'],
+  ['a shape that is a number', p => { tab(p)[0] = 5; }, TAB + '[0]: must be an object'],
+  ['a shape\'s anchor that is a number', p => { tab(p)[0].at = 5; }, TAB + '[0].at: must be an anchor name'],
+  ['a pix key that is an array', p => { p.items['back.pennant'].parts[0].shapes[0].key = []; }, 'pack.items["back.pennant"].parts[0].shapes[0].key: must be an object'],
+  ['a part\'s anchor that is a number', p => { p.items['torso.tabard'].parts[0].at = 5; }, 'pack.items["torso.tabard"].parts[0].at: must be an anchor name'],
+  ['an item that is an array', p => { p.items['legs.plate'] = []; }, 'pack.items["legs.plate"]: must be an object'],
+  ['a track that is a number', p => { lantern(p).anim.tracks[0] = 5; }, 'pack.decorations.lantern.anim.tracks[0]: must be an object'],
+  ['a palette track naming a number', p => { lantern(p).anim.tracks[2].pal = 5; }, 'pack.decorations.lantern.anim.tracks[2].pal: must name a palette entry as "set.entry"'],
+  ['a key that is a number', p => { lantern(p).anim.tracks[0].keys = [5]; }, 'pack.decorations.lantern.anim.tracks[0].keys[0]: must be a [time, value] pair']
+];
+for (const [name, edit, reason] of WRONG_TYPES) test('refused at fields, a value of the wrong type: ' + name, () => { rejected(edit, 'fields', reason); });
+
+test('the envelope and the sig refuse values of the wrong type with their own reasons', () => {
+  for (const t of ['[]', 'null', '42']) assert.equal(PK.read(t, OPTS).reason, 'the file must hold a JSON object, the envelope');
+  const p = BASE(), good = sigOf(p);
+  assert.equal(readEnv({ kwpack: 1, pack: p, sig: Object.assign({}, good, { kid: 5 }) }).reason, 'sig.kid: must be a key id');
+  assert.equal(readEnv({ kwpack: 1, pack: p, sig: Object.assign({}, good, { value: good.value.slice(0, -4) }) }).reason, 'sig.value: must be 64 bytes in base64');
+  assert.equal(readEnv({ kwpack: 1, pack: p, sig: Object.assign({}, good, { value: 5 }) }).reason, 'sig.value: must be 64 bytes in base64');
 });
