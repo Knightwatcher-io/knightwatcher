@@ -454,12 +454,44 @@ key is looked up by `sig.kid` in a table of 32-byte public keys. The table `KEYS
 ships empty, so until a key is added there no signed pack is accepted unless the caller passes
 keys of its own. The check itself is done by a verifier `verify(publicKey, message, signature)`
 that returns `true` for a good signature: the one the caller passes, or `KW.ed25519.verify` when a
-script has defined it. A verifier that is missing, throws or answers anything but `true` refuses
-the pack.
+script has defined it, as `web/js/ed25519.js` does (see [The verifier](#the-verifier)). A verifier
+that is missing, throws or answers anything but `true` refuses the pack.
 
 With `allowUnsigned`, meant for a page whose version is `dev`, a pack with no `sig` is accepted
 and marked `signed: false`. A pack that does carry a `sig` is checked the same way on every page,
 and refused if the key is unknown or the signature fails.
+
+### The verifier
+
+`web/js/ed25519.js` defines `KW.ed25519.verify(publicKey, message, signature)`, and exports the
+same object under Node. The page needs a verifier of its own because `crypto.subtle` is missing on
+a page served over plain HTTP. `index.html` does not load the file yet.
+
+It implements the verification of RFC 8032 section 5.1.7 for pure Ed25519 (no context, no
+prehash), with SHA-512 written in the file and the curve's arithmetic on `BigInt`. It verifies and
+does nothing else: there is no signing or key generation, and no secret passes through it. Every
+input is public, so the arithmetic is not constant-time.
+
+The arguments are `Uint8Array`s of 32 bytes, any length and 64 bytes; a Node `Buffer` and a view
+at an offset into a larger buffer work too. It returns `true` for a good signature and `false` for
+anything else, wrong types and lengths included, and never throws.
+
+The checks are strict. A signature is refused when:
+
+- its `S` is not below the group order `L`;
+- the key or its `R` is not the canonical encoding of a point on the curve: a `y` of `p` or more, a
+  `y` with no `x`, or `x = 0` with the sign bit set;
+- the key or its `R` is one of the eight points of small order. A key of small order would let one
+  signature verify for many messages. A correct signer makes an `R` of small order with a chance
+  of about 2^-252, and `node:crypto` refuses one too.
+
+The group equation is the cofactorless `[S]B = R + [k]A`, with `k` reduced mod `L`, as in the
+RFC's reference code and in `node:crypto`. Every signature a correct signer makes satisfies it.
+The cofactored `[8][S]B = [8]R + [8][k]A` would also accept a signature whose two sides differ by
+a point of small order, which takes a key or an `R` given a small-order component on purpose; this
+verifier refuses those, and so does `node:crypto`.
+
+One signature over 500 KiB takes about 15 ms under Node, and one over 15 KiB about 2 ms.
 
 ## Looks
 
@@ -588,3 +620,14 @@ with a key `node:crypto` generates for the run, verifying through `crypto.verify
 form written separately in the test. It refuses one copy of the pack for each rule, with the rule
 in the test's name, accepts each limit at its edge, and feeds the reader hostile and mangled text.
 The source of `pack.js` is checked to hold neither `eval` nor `Function(`.
+
+`tests/web/ed25519.test.js` tests the verifier. It checks every Ed25519 vector of RFC 8032 section
+7.1 with one bit changed in each part, and SHA-512 against the digests of RFC 6234 and against
+`node:crypto`. It compares the verifier with `node:crypto` on 200 generated keys, their signatures
+and one-bit changes to each. For each strictness case it builds signatures that satisfy the
+cofactorless equation, using curve arithmetic written apart from the verifier, and requires them
+refused. No such signature can be made for a non-canonical key or `R` that is not also of small
+order, so the decoding is tested by itself against every encoding with `y` of `p` or more and 300
+random ones. Wrong arguments, the fixture pack read through `pack.js` with this verifier in place,
+and the same check of the source as for `pack.js` complete it. Under Node 26, `node:crypto` gave
+the same answer as this verifier for every signature the tests put to both.
