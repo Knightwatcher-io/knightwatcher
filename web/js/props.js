@@ -69,14 +69,60 @@
       ell(x, by, w, w, c); poly([[x - w, by], [x + sw, by - h], [x + w, by]], c);
     }
   }
+  /* ---- The raspberry pie ------------------------------------------------------------------------
+     A fruit pie seen from the side and a little above, its middle at x + 32 and its dish standing
+     on a surface at y + 31: a fluted white dish, a domed crust with a crimped edge and a lattice
+     over raspberry filling, a raspberry on top, and steam, which is all that moves. With ok false
+     the dish stands empty but for crumbs, under a question mark. */
+  const CRUST = ['#ffd98a', '#f2ac4e', '#cc7f32', '#93521d'], FILLING = ['#d2325f', '#9a1640', '#5c0a24'];
+  const DISH = [[.1, C.W], [.42, C.S0], [.74, C.S1], [1, C.S2]];
+  /* The pie's top, in the dish's frame: u across from the middle, v down from the rim's middle. The
+     rim is a flat ellipse, and behind its middle the crust rises in a dome. */
+  const RIM = [38, 9], DOME = [32, 21], CRIMP = 35;
+  const rimAt = (u, v) => (u / RIM[0]) ** 2 + (v / RIM[1]) ** 2;
+  const onTop = (u, v) => rimAt(u, v) <= 1 || (v <= 0 && (u / DOME[0]) ** 2 + (v / DOME[1]) ** 2 <= 1);
+  function crustAt(u, v) {
+    if (!onTop(u, v)) return null;
+    if (!onTop(u - 2, v) || !onTop(u + 2, v) || !onTop(u, v - 2) || !onTop(u, v + 2)) return C.K;
+    const lit = -u / RIM[0] * .7 - v / DOME[1] * .5, tone = lit > .3 ? 0 : lit > -.2 ? 1 : lit > -.55 ? 2 : 3;
+    // the band of crust round the rim, in front of the dome
+    const r = rimAt(u, v), inDome = v < 0 && (u / DOME[0]) ** 2 + (v / DOME[1]) ** 2 <= .78;
+    if (r > .55 && !inDome) return CRUST[Math.max(0, tone - (r < .75 ? 1 : 0))];
+    // the lattice: two sets of strips on the diagonal, woven over and under, the filling between
+    const P = 16, W = 6, a = u + v * 1.6 + 320, b = u - v * 1.6 + 320, pa = a % P, pb = b % P;
+    if (pa < W || pb < W) {
+      const over = pa < W && pb < W ? ((Math.floor(a / P) + Math.floor(b / P)) % 2 ? pa : pb) : pa < W ? pa : pb;
+      return CRUST[Math.max(0, Math.min(3, tone + (over < 1 ? -1 : over >= W - 1 ? 1 : 0)))];
+    }
+    return FILLING[pa < W + 2 || pb < W + 2 ? 2 : tone < 2 ? 0 : 1];
+  }
+  function pieDish(cx, y) {
+    poly([[cx - 38, y + 6], [cx + 38, y + 6], [cx + 33, y + 31], [cx - 33, y + 31]], C.K);
+    poly([[cx - 35, y + 6], [cx + 35, y + 6], [cx + 30, y + 28], [cx - 30, y + 28]], DISH);
+    for (let i = -6; i <= 6; i++) strip(cx + i * 5.3, y + 9, cx + i * 4.5, y + 27, .6, .6, i < -2 ? C.S1 : i < 3 ? C.S2 : C.S3);
+  }
   function pieHD(x, y, t, ok) {
-    ell(x + 32, y + 24, 35, 7, C.S4); ell(x + 32, y + 22, 33, 5, [[.3, C.S1], [1, C.S2]]);
-    if (!ok) { for (const [cx, cy] of [[18, 20], [30, 22], [44, 19], [38, 23]]) Rh(x + cx, y + cy, 3, 2, C.G2); if (Math.floor(t / 400) % 2) SP.mark(x + 32, y - 46, '?'); return; }
-    rrect(x + 1, y + 7, 62, 18, 8, C.K); rrect(x + 3, y + 9, 58, 14, 6, GOLD);
-    ell(x + 32, y + 9, 27, 9, C.K); ell(x + 32, y + 9, 25, 7, [[.3, '#ff6b6b'], [1, C.R2]]);
-    for (let i = 0; i < 7; i++) { const bx = x + 12 + i * 7, by = y + 7 + (i % 2) * 4; ell(bx, by, 4, 3, i % 3 ? C.R1 : '#ff8fb0'); Rh(bx - 2, by - 2, 2, 1, C.W); }
-    strip(x + 10, y + 12, x + 54, y + 4, 1.5, 1.5, C.G0); strip(x + 10, y + 4, x + 54, y + 12, 1.5, 1.5, C.G0);
-    for (let i = 0; i < 3; i++) { const ph = ((t / 1800) + i / 3) % 1; alpha(.8 - ph * .8); ell(x + 20 + i * 12 + Math.sin(ph * 7 + i * 2) * 5, y - 8 - ph * 46, 4 - ph * 2, 7, C.W); alpha(1); }
+    const cx = x + 32, ry = y + 6;
+    pieDish(cx, y);
+    if (!ok) {
+      ell(cx, ry, 40, 10, C.K); ell(cx, ry, 37, 8, DISH); ell(cx, ry + 1, 32, 6, [[.3, C.S3], [1, C.S4]]); ell(cx, ry + 3, 27, 4, [[.3, C.S1], [1, C.S2]]);
+      for (const [dx, dy, c] of [[-15, 3, CRUST[2]], [-5, 5, CRUST[1]], [8, 3, CRUST[3]], [16, 4, CRUST[2]], [1, 3, FILLING[1]], [-9, 2, FILLING[2]]]) Rh(cx + dx, ry + dy, 3, 2, c);
+      Rh(cx - 46, y + 29, 3, 2, CRUST[2]); Rh(cx + 43, y + 30, 2, 2, CRUST[1]);
+      if (Math.floor(t / 400) % 2) SP.mark(cx, y - 62, '?');
+      return;
+    }
+    D.pix(cx - RIM[0] - 3, ry - DOME[1] - 1, 2 * RIM[0] + 7, DOME[1] + RIM[1] + 3, (i, j) => crustAt(i - RIM[0] - 3, j - DOME[1] - 1));
+    // the crimping along the near edge
+    for (let u = -CRIMP; u <= CRIMP; u += 7) {
+      const px = cx + u, py = ry + RIM[1] * Math.sqrt(1 - (u / RIM[0]) ** 2) - 1, tone = u < -12 ? 1 : u < 14 ? 2 : 3;
+      ell(px, py, 5, 4, C.K); ell(px, py, 3, 2, CRUST[tone]); Rh(px - 2, py - 2, 2, 1, CRUST[tone - 1]);
+    }
+    // a raspberry on the top of the dome
+    const bx = cx - 2, by = ry - DOME[1] - 3;
+    ell(bx, by, 7, 7, C.K); ell(bx, by, 5, 5, [[.3, '#ff5c84'], [.75, '#d81e4f'], [1, '#9c0f36']]);
+    for (const [dx, dy] of [[-2, -2], [2, -2], [0, 0], [-3, 2], [3, 1], [0, 3]]) Rh(bx + dx, by + dy, 1, 1, '#8a0d30');
+    Rh(bx - 3, by - 4, 2, 2, C.W);
+    for (let i = 0; i < 3; i++) { const ph = ((t / 1800) + i / 3) % 1; alpha(.8 - ph * .8); ell(cx - 14 + i * 14 + Math.sin(ph * 7 + i * 2) * 5, ry - DOME[1] - 16 - ph * 46, 4 - ph * 2, 7, C.W); alpha(1); }
   }
   function crateHD(x, y) {
     Rh(x, y, 60, 50, C.K); Rh(x + 3, y + 3, 54, 44, C.N1);

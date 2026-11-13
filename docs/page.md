@@ -143,7 +143,7 @@ before it calls `paint`, `draw` and `over`.
 | Field | Meaning |
 |---|---|
 | `w` | the winning condition: `{ id, lv, st, scene, hl, sub }`, or the idle one with id `idle` |
-| `piOK` | whether the pie is on its plate |
+| `piOK` | whether the pie is in its dish |
 | `tv` | whether the television is on |
 | `kx` | the knight's x on the grid |
 | `o` | the knight's pose for this frame |
@@ -182,7 +182,7 @@ hides the review bar and drives the display:
 - With no known condition the quiet scenes take turns ten minutes each (`LIVE_TURN_MS` in
   `main.js`), and `quiet_line` is the small line.
 - `facts.pi.up === false`, or a `pi_silent` condition anywhere in the list, empties the pie
-  plate. `facts.streams.count > 0`, or a `streaming` condition, turns the television on.
+  dish. `facts.streams.count > 0`, or a `streaming` condition, turns the television on.
 - Events. The first valid file's events are adopted without playing. After that each event with
   a higher `seq`, oldest first: `ad_blocked` adds `count` flies (at most 100 for one event;
   eight on screen, the rest queued for the next swat), `ip_banned` plays the goblin, `import`

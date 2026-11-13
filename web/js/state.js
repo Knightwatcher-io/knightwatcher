@@ -53,7 +53,7 @@
        more       { n, crit }: the other known conditions at warning or critical, and whether any
                   of them is critical
        quietLine  the line shown when w is null
-       piOK, tv   whether the pie is on its plate, and whether the television is on
+       piOK, tv   whether the pie is in its dish, and whether the television is on
        events     the events of a known type, oldest first: { seq, act, count, text }
        maxSeq     the highest seq in the file, or null when it has no events
        intervalS  how often the collector says it writes the file, in seconds */

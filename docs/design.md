@@ -44,7 +44,8 @@ behind it. The helmet comes off in the house and the smithy. Gear is drawn in sl
 hands) over one body so that new items can be added later.
 
 The Raspberry Pi that watches the main host is a steaming raspberry pie, present in every scene.
-When the Pi stops answering, the pie is gone and an empty plate is left.
+It is a fruit pie in a white dish, with a lattice crust and a raspberry on top. When the Pi stops
+answering, the pie is gone and the empty dish is left, with a few crumbs.
 
 ## Conditions and scenes
 
@@ -58,7 +59,7 @@ and a state of the knight. Highest first:
 | `container_unhealthy` | warning | house | in bed, thermometer |
 | `disk_full` | warning | cellar | carrying a tower of crates |
 | `backup_overdue` | warning | house | hungry, thinking of food |
-| `pi_silent` | warning | house | staring at the empty plate |
+| `pi_silent` | warning | house | staring at the empty dish |
 | `cpu_hot` | warning | training yard | training frantically, sweating |
 | `memory_tight` | warning | the quiet scene of the moment | bloated |
 | `ssh_session` | at work | royal court | talking with the monarch |
