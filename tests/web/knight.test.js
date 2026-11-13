@@ -248,10 +248,10 @@ if (MODE === 'write') {
   /* What a page says when it draws from a base pack, signed or not. */
   const fromPack = (status, signed) => {
     assert.equal(status.source, 'pack', status.note);
-    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.0.0', signed });
+    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.1.0', signed });
     assert.deepEqual(plain(status.refused), []);
     assert.deepEqual(plain(status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), []);
-    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, ' + (signed ? 'signed' : 'unsigned'));
+    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.1.0, ' + (signed ? 'signed' : 'unsigned'));
   };
   const MISSING = 'sig: is missing, and this page accepts only signed packs';
   /* The unsigned base pack signed with a key made for the run: { text, kw1 }, kw1 the public key in
@@ -322,7 +322,7 @@ if (MODE === 'write') {
     let s = load(true, ['not json']).status;
     assert.equal(s.source, 'code');
     assert.deepEqual(plain(s.refused), [{ id: null, file: null, step: 'json', reason: 'the file is not valid JSON' }]);
-    const v = load(true, [text.replace('"version": "1.0.0"', '"version": "1.0"')]);
+    const v = load(true, [text.replace('"version": "1.1.0"', '"version": "1.1"')]);
     assert.equal(v.status.note, CODE + 'the base pack kw.base was refused at the fields step');
     assert.deepEqual(v.lines[0], ['warn', 'knightwatcher: the pack kw.base was refused at the fields step: pack.version: must be major.minor.patch, each 0 to 999']);
     const box = load(true);
@@ -542,7 +542,171 @@ if (MODE === 'write') {
     const r1 = K.rig(at(K, 'idle', 2300)), root = r1.anchors.root, main = r1.anchors.main;
     const r2 = K.rig(at(K, 'attack', 94));
     assert.equal(r1, r2); assert.equal(r2.anchors.root, root); assert.equal(r2.anchors.main, main);
-    assert.deepEqual(Object.keys(r2.anchors), [...NAMES, 'handL', 'handR', 'main']);
+    assert.deepEqual(Object.keys(r2.anchors), [...NAMES, 'handL', 'handR', 'main', 'off']);
     assert.deepEqual(Object.keys(r2.values), ['drop', 'bloat', 'stepL', 'stepR', 'sway', ...DIFFS]);
+  });
+
+  /* ---- The arming sword and the heater shield ---------------------------------------------- */
+
+  /* A dev page drawing from the base pack with the look given, as main.js starts it for arm=one. */
+  const ONE_LOOK = { items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater' } };
+  const withLook = look => { const b = load(true); b.status = b.K.start(b.KW.packText, true, { look }); return b; };
+
+  test('the one-handed grip: the sword hand on the weapon\'s one station, the shield hand where the pose puts it', () => {
+    const { K, status } = withLook(ONE_LOOK);
+    assert.equal(status.source, 'pack');
+    assert.deepEqual(plain(status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), []);
+    const o = at(K, 'idle', 2300, { bob: 1 }), r = K.rig(o);
+    assert.equal(r.grip, 'one');
+    assert.deepEqual([o.gx, o.gy, o.wang, o.fx, o.fy], [37.6, 40.8, 0.3, 20, 38.4], 'the one-handed stance');
+    const gx = X - 120 + 37.6 * 5, gy = FLOOR - 300 + 40.8 * 5 + 5;
+    assert.deepEqual([...r.anchors.main], [gx, gy, 0.3]);
+    assert.deepEqual([...r.anchors.handR], [gx, gy], 'the station is the grip\'s middle');
+    assert.deepEqual([...r.anchors.handL], [X - 20, FLOOR - 108 + 5]);
+    assert.deepEqual([...r.anchors.off], [...r.anchors.handL]);
+    // the attack raises the sword and brings the shield in, with the same tremble
+    const a = at(K, 'attack', 94);
+    assert.deepEqual([a.gx, a.gy, a.fx, a.fy, a.mark, a.shake], [40, 24.4, 19.6, 37.6, '!', Math.round(Math.sin(94 / 60))]);
+    assert.equal(a.wang, 0.2 + Math.sin(94 / 90) * 0.12);
+    // the sword put away and the hammer are as before
+    assert.equal(K.rig(at(K, 'idle', 2300, { sword: false })).grip, 'none');
+    assert.equal(K.rig(at(K, 'updating', 2300, { sword: false, hammer: 0.5 })).grip, 'hammer');
+    // the swing keeps the greatsword's angles at the wind-up and the cut, so the swat's hit test holds
+    for (const dir of [1, -1]) {
+      const w = at(K, 'idle', 2300); K.swing(w, 0.3, dir);
+      const c = at(K, 'idle', 2300); K.swing(c, 0.55, dir);
+      assert.deepEqual([w.wang, c.wang], [-1.0 * dir, 2.0 * dir]);
+    }
+  });
+
+  test('a one-handed weapon with no shield: the free hand hangs at the side', () => {
+    const { K, status } = withLook({ items: { main: 'kw.base/main.arming' } });
+    assert.equal(status.source, 'pack');
+    const r = K.rig(at(K, 'idle', 2300, { bloat: 5, bob: 1 }));
+    assert.equal(r.grip, 'one');
+    assert.deepEqual([...r.anchors.handL], [X - 89, FLOOR - 79]);
+    assert.equal(K.rest.key('off'), '');
+  });
+
+  test('the shield is drawn where the order says: in front of the sword arm, behind the sword while the hand is across', () => {
+    const { KW, K } = withLook(ONE_LOOK), modes = [], seq0 = KW.pack.sequence;
+    KW.pack.sequence = (mode, helmet) => { modes.push(mode); return seq0(mode, helmet); };
+    K.draw(at(K, 'idle', 2300));
+    for (let q = 0; q <= 1.0001; q += 0.01) { const o = at(K, 'idle', 2300); K.swing(o, q, -1); K.draw(o); }
+    assert.equal(modes[0], 'one');
+    const crossed = modes.filter(m => m === 'oneCrossed').length;
+    assert.ok(crossed > 5 && crossed < 40, crossed + ' crossed frames in the swing to the left');
+    assert.deepEqual([...new Set(modes)].sort(), ['one', 'oneCrossed']);
+  });
+
+  /* The rule of docs/design.md: no arm is ever drawn over a blade or its guard, nor over the face of
+     a shield. Every frame the engine can draw with the weapon held is drawn into a context that
+     keeps the pixels each of the look's lists fills: the swing both ways at every hundredth of its
+     length, the attack's tremble every 10 ms for two seconds, the stance of every condition that
+     holds the weapon, and the largest bloat. In the order the frame was drawn in, an arm drawn
+     after the weapon may not fill a pixel of the weapon that lies at least from along the frame
+     from the grip's middle; and neither an arm nor a gauntlet drawn after the shield may fill a
+     pixel of the shield. Returns the breaches, as text.
+
+     from is 17 for the one-handed sword, where both swords' guards begin, so its guard is checked
+     with its blade. The greatsword is checked from 40, its blade clear of the guard: in its swing,
+     as the blade passes upright and the arm in front changes sides, an arm crosses the guard and
+     grazes the guard's edge for a few frames, which is the two-handed drawing as it has always
+     been. */
+  const ENGINE_STEPS = ['crates', 'face', 'drumstick', 'hammer', 'effects'];
+  function breaches(look, from) {
+    const { KW, K } = withLook(look), lib = KW.pack, seq0 = lib.sequence, draw0 = lib.draw;
+    let names = [], i = 0, cur = null, seq = null;
+    const px = {};
+    KW.draw.setCtx(new Proxy({}, {
+      set() { return true; },
+      get(_, k) {
+        if (k === 'fillRect') return (x, y, w, h) => { if (!cur) return; const set = px[cur] || (px[cur] = new Set()); for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) set.add(yy * 4096 + xx); };
+        return () => {};
+      },
+    }));
+    lib.sequence = (mode, helmet) => { seq = seq0(mode, helmet); names = seq.filter(n => !ENGINE_STEPS.includes(n)); i = 0; return seq; };
+    lib.draw = (list, A, V, P, face) => { cur = names[i++]; try { return draw0(list, A, V, P, face); } finally { cur = null; } };
+    const blade = K.rest.blade(), found = [];
+    const check = (label, o) => {
+      for (const k of Object.keys(px)) delete px[k];
+      K.draw(o);
+      const m = K.rig(o).anchors.main, sx = Math.sin(m[2]), sy = -Math.cos(m[2]);
+      const after = n => (seq.includes(n) ? seq.slice(seq.indexOf(n) + 1) : []);
+      const hit = (a, b, keep) => { let n = 0; if (a && b) for (const p of a) if (b.has(p) && (!keep || keep(p))) n++; return n; };
+      const steel = p => { const x = (p % 4096) + 0.5, y = Math.floor(p / 4096) + 0.5; return (x - m[0]) * sx + (y - m[1]) * sy >= from; };
+      for (const n of after('main')) if (n.startsWith('arm')) { const c = hit(px[n], px.main, steel); if (c) found.push(`${label}: ${n} over the blade, ${c} pixels`); }
+      for (const n of after('off')) if (n.startsWith('arm') || n.startsWith('gaunt')) { const c = hit(px[n], px.off); if (c) found.push(`${label}: ${n} over the shield, ${c} pixels`); }
+    };
+    assert.ok(blade && blade.from === 34, 'both swords\' blades start at 34');
+    for (const dir of [1, -1]) for (let k = 0; k <= 100; k++) { const o = at(K, 'idle', 2300); K.swing(o, k / 100, dir); check(`swing ${dir} q${k / 100}`, o); }
+    for (let t = 0; t < 2000; t += 10) check(`attack t${t}`, at(K, 'attack', t));
+    for (const id of ['idle', 'wan_down', 'thing_down', 'memory_tight', 'ssh_session', 'cpu_hot', 'streaming', 'night']) check(id, at(K, id, 2300));
+    check('bloat 6', at(K, 'memory_tight', 2300, { bloat: 6 }));
+    return found;
+  }
+
+  test('no arm is drawn over the blade, frame by frame: the greatsword', () => {
+    assert.deepEqual(breaches({}, 40), []);
+  });
+  test('no arm is drawn over a blade, its guard or the shield, frame by frame: the arming sword and the heater shield', () => {
+    assert.deepEqual(breaches(ONE_LOOK, 17), []);
+  });
+  test('no arm is drawn over a blade or its guard, frame by frame: the arming sword alone', () => {
+    assert.deepEqual(breaches({ items: { main: 'kw.base/main.arming' } }, 17), []);
+  });
+
+  test('the gear at rest with the arming sword: the pegs under its blade, the shield on the wall, the keys', () => {
+    const b = withLook(ONE_LOOK), H = b.KW.scenes.house, S = b.KW.scenes.smithy;
+    assert.deepEqual(plain(b.K.rest.blade()), { from: 34, to: 175, half: 10 });
+    assert.equal(b.K.rest.key('off'), 'kw.base/off.heater');
+    assert.equal(H.key({ tv: false }), '|kw.base/main.arming|kw.base/off.heater');
+    assert.equal(S.key({ kx: 440 }), '440|kw.base/main.arming|kw.base/off.heater');
+    assert.deepEqual(plain(H.rests.wall), { kind: 'hang', x: 844, y: 164, w: 100, h: 140 });
+    assert.deepEqual(plain(S.rests.wall), { kind: 'hang', x: 145, y: 312, w: 100, h: 132 });
+    // the shield's rest view on the house's wall: the strap first, from the nail
+    b.log.length = 0;
+    b.K.rest.draw('off', 844, 164);
+    assert.ok(b.log.length > 50);
+    assert.equal(b.log[0], 's #1a1524');
+    // the pegs: 28 past where the blade starts and 45 short of its point
+    b.log.length = 0; H.paint({ tv: false });
+    // each peg's outline is 14 wide on its straight rows, from 7 left of the peg's middle
+    const pegs = b.log.filter(l => /^r \d+ 254 14 1$/.test(l)).map(l => +l.split(' ')[1] + 7);
+    assert.deepEqual([...new Set(pegs)], [618 + 34 + 28, 618 + 175 - 45]);
+    // the shield clears the sword's point on the pegs
+    const shield = [844 - 44, 844 + 44];
+    assert.ok(618 + 180 < shield[0], 'clear of the sword\'s point');
+  });
+
+  /* The box of everything drawn since the log was last emptied, from its fillRects. */
+  const drawnBox = log => {
+    let b = null;
+    for (const l of log) {
+      const m = /^r (-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+)$/.exec(l);
+      if (!m) continue;
+      const [x, y, w, h] = m.slice(1).map(Number);
+      b = b ? [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x + w), Math.max(b[3], y + h)] : [x, y, x + w, y + h];
+    }
+    return b;
+  };
+  const meets = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+
+  test('the camera at the house\'s h2 and its question mark clear the gear on the wall, the window and the knight', () => {
+    for (const look of [{}, ONE_LOOK]) {
+      const b = withLook(look), H = b.KW.scenes.house, P = b.KW.props, h2 = H.places.h2, tag = look.items ? 'sword and shield' : 'greatsword';
+      const take = f => { b.log.length = 0; f(); return drawnBox(b.log); };
+      const cam = [true, false].map(ok => take(() => P.KINDS.camera.draw(h2.x, h2.y, 2300, ok, 'still')));
+      const mark = take(() => b.KW.sprites.mark(h2.x, h2.y - P.KINDS.camera.mark, '?'));
+      const camera = [...cam, mark];
+      const gear = [['the weapon on the pegs', take(() => b.K.rest.draw('main', H.rests.pegs.x, H.rests.pegs.y, H.rests.pegs.a))],
+        ['the shield on the wall', take(() => b.K.rest.draw('off', H.rests.wall.x, H.rests.wall.y))], ['the window', [224, 192, 376, 328]]];
+      // the knight at every spot of the house's rounds, helmet off as indoors and on as h=on gives
+      for (const r of H.rounds) for (const helmet of [false, true]) for (const t of [0, 900]) {
+        gear.push([`the knight at ${r.x}, helmet ${helmet ? 'on' : 'off'}`, take(() => b.K.draw(at(b.K, 'idle', t, { x: r.x * 5, sword: false, helmet })))]);
+      }
+      for (const [what, box] of gear) if (box) for (const c of camera) assert.ok(!meets(c, box), `${tag}: h2 meets ${what}`);
+      assert.ok(cam.every(c => c[2] <= 960), `${tag}: the camera stays on the grid`);
+    }
   });
 }

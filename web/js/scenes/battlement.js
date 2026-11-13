@@ -63,7 +63,7 @@
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
     pie: { cls: 'pie', kind: 'surface', x: 800, y: 416, w: 88, h: 112 },
-    h1: { cls: 'high', kind: 'surface', x: 928, y: 300, w: 88, h: 112, pole: 413 },
+    h1: { cls: 'high', kind: 'surface', x: 926, y: 300, w: 88, h: 112, pole: 413 },
     h2: { cls: 'high', kind: 'surface', x: 858, y: 300, w: 88, h: 112, pole: 466 },
     h3: { cls: 'high', kind: 'surface', x: 37, y: 300, w: 88, h: 112, flip: true, pole: 413 },
     g1: { cls: 'ground', kind: 'floor', x: 150, y: 566, w: 88, h: 112, front: true },

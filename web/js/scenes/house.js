@@ -14,13 +14,24 @@
   const BLANKET = [[.12, C.B0], [.5, C.B1], [.85, C.B2], [1, C.B3]];
 
   /* The places for the knight's gear at rest (docs/page.md): the stool, a surface where the
-     helmet rests, x and y the middle of its top and w by h the room above it; and the pegs on the
+     helmet rests, x and y the middle of its top and w by h the room above it; the pegs on the
      wall, where the weapon hangs, x and y the middle of its grip and a its angle, which lays it
-     flat. The pegs are spaced for the greatsword. */
+     flat; and the wall right of the pegs, where a shield hangs by its strap from a nail in the
+     beam, x and y the nail and w by h the room below it. */
   const RESTS = {
     stool: { kind: 'surface', x: 460, y: V.HFL - 54, w: 76, h: 80 },
-    pegs: { x: 618, y: 228, a: Math.PI / 2 }
+    pegs: { x: 618, y: 228, a: Math.PI / 2 },
+    wall: { kind: 'hang', x: 844, y: 164, w: 100, h: 140 }
   };
+  /* The two pegs under the weapon, from its blade: 28 past where the blade starts and 45 short of
+     its point. For the greatsword they are at 680 and 836, where the house always had them; a
+     weapon that gives no blade gets the greatsword's. */
+  function pegXs() {
+    const b = K.rest.blade() || { from: 34, to: 263 };
+    return [RESTS.pegs.x + b.from + 28, RESTS.pegs.x + b.to - 45];
+  }
+  /* What the shield on the wall adds to the backdrop key: '|' and its name when one is equipped. */
+  const offKey = () => { const k = K.rest.key('off'); return k && k !== 'code' ? '|' + k : ''; };
 
   /* The window over the bed, with the night sky in it. */
   function windowHD() {
@@ -75,10 +86,11 @@
     }
     for (let x = Math.floor((HL - 10) / 236) * 236 + 10; x < HR; x += 236) { rrect(x - 3, 176, 24, HFL - 176, 2, C.K); rrect(x, 176, 18, HFL - 176, 2, [[.25, '#5a3a1e'], [.6, '#47301a'], [1, '#2e1d0f']]); }
     rrect(HL - 4, 152, HR - HL + 8, 28, 2, C.K); Rv(HL, 155, HR - HL, 22, BEAM);
-    // moonlight through the window, the window, the weapon on its pegs
+    // moonlight through the window, the window, the weapon on its pegs and the shield beside them
     glow(300, 260, 110, '#6f9eff', .05); windowHD();
-    for (const x of [680, 836]) { rrect(x - 7, 242, 14, 24, 3, C.K); rrect(x - 5, 244, 10, 20, 2, [[.3, C.N0], [1, C.N2]]); }
+    for (const x of pegXs()) { rrect(x - 7, 242, 14, 24, 3, C.K); rrect(x - 5, 244, 10, 20, 2, [[.3, C.N0], [1, C.N2]]); }
     K.rest.draw('main', RESTS.pegs.x, RESTS.pegs.y, RESTS.pegs.a);
+    K.rest.draw('off', RESTS.wall.x, RESTS.wall.y);
     hearth();
     // the floor of boards and the rug
     Rh(HL, HFL, HR - HL, HH - HFL + 20, '#2b1f15'); Rh(HL, HFL, HR - HL, 3, '#5a3f26');
@@ -166,12 +178,12 @@
     h3: { cls: 'high', kind: 'surface', x: 70, y: 300, w: 88, h: 112, flip: true },
     g1: { cls: 'ground', kind: 'floor', x: 120, y: 594, w: 88, h: 112, front: true },
     g2: { cls: 'ground', kind: 'floor', x: 300, y: 594, w: 88, h: 112, front: true },
-    g3: { cls: 'ground', kind: 'floor', x: 748, y: 530, w: 88, h: 112 }
+    g3: { cls: 'ground', kind: 'floor', x: 760, y: 530, w: 88, h: 112 }
   };
 
   KW.scenes.house = {
     spot: 114, places: PLACES, rests: RESTS, bed: true, helmet: false, sword: false,
     rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 100, act: 'yawn', dur: 14 }, { x: 110, act: 'look', dur: 14 }],
-    key: s => (s.tv ? 'tv' : '') + '|' + K.rest.key('main'), paint, draw, over
+    key: s => (s.tv ? 'tv' : '') + '|' + K.rest.key('main') + offKey(), paint, draw, over
   };
 })(window.KW);

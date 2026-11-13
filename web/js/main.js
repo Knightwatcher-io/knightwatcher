@@ -36,7 +36,10 @@
      no usable base pack the knight is drawn from code, the full knight. KW.knight writes one line
      to the console for each refused pack and one for where the knight is drawn from. The packs
      the collector downloaded are added below, once the page knows it is served. */
-  KW.knight.start(KW.packText, ownVersion === 'dev');
+  // The look: the base pack's defaults, the greatsword. Until the settings screen chooses a look,
+  // the address's arm=one asks for the arming sword and the heater shield instead.
+  const LOOK = hv('arm') === 'one' ? { items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater' } } : {};
+  KW.knight.start(KW.packText, ownVersion === 'dev', { look: LOOK });
 
   /* ---- The words over the scene ------------------------------------------------------------- */
   const $ = id => document.getElementById(id);

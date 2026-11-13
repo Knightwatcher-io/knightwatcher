@@ -174,7 +174,7 @@ Grid pixels, y growing downwards; left and right are the viewer's.
 | `head` | the middle of the eye line | `(X, Y - 206 + drop)`, moved by the head's shifts |
 | `handL`, `handR` | the hands, wherever the pose puts them | from the pose |
 | `main` | the weapon's frame: a point and an angle | from the pose |
-| `off` | the off hand when it holds a shield | from the pose |
+| `off` | the left hand, which holds the shield; the same point as `handL` | from the pose |
 | `plume` | the plume's mount on the worn helmet | the helmet's `mounts.plume` from `head` |
 | `rest` | where a scene sets down gear | from the scene |
 
@@ -263,7 +263,7 @@ arithmetic as the greatsword's drawing in `props.js`.
 | `arms` | `shoulder`, `hand` | one part for each side |
 | `gauntlets` | `hand` | one part for each side |
 | `main` | `main` | the weapon |
-| `off` | `off` | the shield; drawn only with a one-handed weapon |
+| `off` | `off` | the shield; carried only with a one-handed weapon (see [Fallbacks](#when-packs-fail)) |
 | `companion` | | reserved: an item of this slot is skipped unread |
 
 The order of one frame, front to back reading down; the engine's own steps are in brackets.
@@ -284,10 +284,20 @@ The order of one frame, front to back reading down; the engine's own steps are i
 | `twoR`, the two-handed blade leaning right | arm R, the weapon, arm L, gauntlet R, gauntlet L |
 | `twoL`, leaning left | arm L, the weapon, arm R, gauntlet L, gauntlet R |
 | `one`, one-handed | arm L, gauntlet L, the shield, arm R, the weapon, gauntlet R |
-| `oneCrossed`, the sword hand across the middle | arm R, the weapon, gauntlet R, arm L, gauntlet L, the shield |
+| `oneCrossed`, the sword hand left of the root | arm L, gauntlet L, arm R, the weapon, gauntlet R, the shield |
 
 In the two-handed modes the arm on the lean side reaches the upper hand, so the engine puts the
-upper hand on that side's hand anchor. The one-handed orders hold the sword in the right hand.
+upper hand on that side's hand anchor. The one-handed orders hold the sword in the right hand and
+the shield in the left. In `one` the shield's group goes first, so the sword arm and the sword lie
+over the shield's edge where they meet and no arm crosses the shield's face. In `oneCrossed`,
+while the sword hand is across the body, both arms go before the weapon and the shield goes last:
+the blade may pass over the shield arm but never under it, and goes behind the shield. The off
+gauntlet lies behind the shield in every pose. With a one-handed weapon and no shield the left
+hand hangs at the side as in `none`, and the orders are the same with no shield in them.
+
+The poses with each grip belong to the engine, not to the weapon: every one-handed weapon is held,
+swung and raised the same way, whatever its length. [page.md](./page.md#the-knights-rig) gives the
+numbers.
 
 ## Items
 
@@ -311,7 +321,8 @@ is required in `arms` and `gauntlets`, which must each have exactly one part for
 side R; elsewhere it sets what `foot`, `hip`, `shoulder`, `hand` and `step` mean.
 
 A shield's shapes are written in its own coordinates and drawn with its `hold` point on the off
-hand.
+hand, upright: a shield never turns. Its `face` is not drawn; it records the box the poses keep
+clear of arms, which the engine's test checks pixel by pixel against what the shield draws.
 
 ### Shapes
 
@@ -372,9 +383,10 @@ rest view and so behind it, as the worn plume is drawn behind the worn helmet. A
 rest view: a scene draws its worn shapes on a frame of its own. Its `blade` tells a scene where the
 blade lies along that frame, for the smithy's hot tip.
 
-The page shows two rest views and one weapon at rest today; see [Gear at rest](#gear-at-rest). The
-shield's rest view is checked and compiled, and nothing draws it yet. `fits` and `box` are checked
-and are not yet compared with the place a scene puts the view in.
+The page shows three rest views (the helmet, its plume and the shield) and one weapon at rest; see
+[Gear at rest](#gear-at-rest). `fits` and `box` are checked and are not yet compared with the place
+a scene puts the view in. The base pack's shield fits `hang`: its rest view hangs it by a strap
+from a nail at the rest anchor, the top middle of the place.
 
 ## Decorations
 
@@ -653,6 +665,7 @@ use, and reports each in `fallbacks` as `{ kind, key, wanted, used, reason }`. T
 | `the item is for the <slot> slot` | the item exists but belongs to another slot |
 | `does not fit the helmet: ...` | the plume would pass 512 from the head on the chosen helmet's mount |
 | `its mount carries the plume out of range: ...` | the default plume would pass 512 on this helmet's mount |
+| `a shield is carried only with a one-handed weapon` | the look names a shield and its weapon, as chosen or after its own fallback, is not one-handed; `used` is null |
 | `over the 1200-shape cap` | dropped to bring the look under the shape cap |
 | `over the cost cap of 40000 fills` | dropped to bring the look under the cost cap |
 
@@ -666,15 +679,18 @@ grip is one-handed.
 
 `resolve` then falls back, one step at a time, until the look passes:
 
-1. A plume that would pass 512 from the head on the chosen helmet's mount falls back to the default
+1. A shield with a weapon that is not one-handed falls back to no shield, and is drawn nowhere,
+   worn or at rest. A one-handed weapon with no shield is a look of its own: the free hand hangs
+   at the side.
+2. A plume that would pass 512 from the head on the chosen helmet's mount falls back to the default
    plume; if the default plume does not fit that helmet either, the helmet falls back.
-2. A look over either cap falls back its first slot not already at its default, in the order
+3. A look over either cap falls back its first slot not already at its default, in the order
    `back`, `legs`, `boots`, `torso`, `hair`, `plume`, `helmet`, `pauldrons`, `arms`, `gauntlets`,
    `main`, `off`, and then the build.
 
-Each step puts one more thing back to its default. The base pack's default look passes both caps
-with every one of its builds, and its default plume fits its default helmet, so the fallback
-always ends.
+Each step puts one more thing back to its default. The base pack's default look has no shield,
+passes both caps with every one of its builds, and its default plume fits its default helmet, so
+the fallback always ends.
 
 With no base pack loaded, `resolve` returns `{ ok: false, reason: 'no base pack' }`. The page then
 draws the knight from code (see [When packs fail](#when-packs-fail)).
@@ -768,22 +784,32 @@ Constants: `FORMAT`, `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STE
 
 ### The base pack
 
-`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.0.0.
-Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight and nothing the display does not draw today:
+`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.1.0.
+Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, the free one-handed sword and shield, and nothing the display does not draw today:
 
 - one build, `build.a`, with the present knight's eight measurements and the plain head;
 - eleven items, one for each slot the present drawing has: `legs.plate`, `boots.leather`,
   `torso.tabard`, `head.plain`, `hair.short`, `helm.open`, `plume.crest`, `pauldrons.plate`,
   `arms.plate`, `gauntlets.plate` and `main.greatsword`;
+- two more, new in 1.1.0: `main.arming`, an arming sword held in one hand (grip `{"kind": "one",
+  "hands": [0]}`, blade `{"from": 34, "to": 175, "half": 10}`, 22 shapes), and `off.heater`, a
+  heater shield (hold `[0, -6]`, face `[-44, -44, 88, 110]`, 20 shapes worn and 26 in its rest
+  view, which hangs it from a nail). The shield's field is painted in the tabard's four colours
+  (`@tabard.0` to `@tabard.3`, in the tabard's own bands), so it follows the tabard swatch, and it
+  carries the tabard's gold eye in the fixed `@base` colours;
 - one swatch for each of the four user sets, in the present colours: skin `warm`, hair `brown`,
   tabard `blue` and plume `red`;
-- `defaults` naming all of them. It has no palettes of its own and no decorations.
+- `defaults` naming the greatsword and the eleven others, so the default look is the present
+  knight; nothing names the sword and shield until a look asks for them. It has no palettes of its
+  own and no decorations.
 
 The helmet and the plume carry the rest views of the helmet on the house's stool, and the
 greatsword its `blade`, `{"from": 34, "to": 263, "half": 15}`, for the smithy's hot tip; see [Gear
-at rest](#gear-at-rest). The items and swatches are the test fixture's, unchanged; the
-fixture also carries extras the tests need (a second build, long hair, an arming sword, a shield, a
-pennant and a lantern). Its default look costs 11 932 and draws at most 99 shapes.
+at rest](#gear-at-rest). The eleven items and the swatches are the test fixture's, unchanged; the
+fixture also carries extras the tests need (a second build, long hair, a smaller arming sword of its
+own, a round shield, a pennant and a lantern). The two new items are kept, as approved, in
+`tests/web/fixtures/base-onehand.items.json`. The default look costs 11 932 and draws at most 99
+shapes; the look with the sword and shield draws at most 119.
 
 ### Carriers
 
@@ -813,11 +839,12 @@ pushes its file's text byte for byte.
 
 ### Where the knight is drawn from
 
-`main.js` calls `KW.knight.start(KW.packText, allowUnsigned)` once at start-up, before the first
-frame, with `allowUnsigned` true only when the page's `kw-version` meta tag says `dev`, the way it
-reads the version for the reload check. `start` reads every carried text with `read()`, gathers the
-results and resolves the look (`resolve(packs, look)`, with the base pack's defaults while no
-settings screen chooses one). When the downloaded packs arrive, `KW.knight.add()` reads them with
+`main.js` calls `KW.knight.start(KW.packText, allowUnsigned, { look })` once at start-up, before
+the first frame, with `allowUnsigned` true only when the page's `kw-version` meta tag says `dev`,
+the way it reads the version for the reload check. `start` reads every carried text with `read()`,
+gathers the results and resolves the look (`resolve(packs, look)`). The look is `{}`, the base
+pack's defaults, while no settings screen chooses one; the address's `arm=one` makes it `{ items:
+{ main: "kw.base/main.arming", off: "kw.base/off.heater" } }` (see [page.md](./page.md#the-address)). When the downloaded packs arrive, `KW.knight.add()` reads them with
 the same options and resolves the look again (see [Downloaded packs](#downloaded-packs)):
 
 - **A `dev` page** (the repository's own, opened from disk or served straight from `web/`) accepts
@@ -827,17 +854,20 @@ the same options and resolves the look again (see [Downloaded packs](#downloaded
   accepts only signed packs`), and one whose signature does not verify or names a key it does not
   know.
 
-**Today the base pack ships signed with `kw1`, so a deployed page draws the knight from it.** When
-no base pack can be used the page draws the knight from the code in `knight.js`, the full knight as
-it shipped before packs (see [When packs fail](#when-packs-fail)).
+**Today the base pack ships unsigned.** Version 1.1.0, which added the sword and shield, had its
+signature taken off when it was edited, and the release signs it again with `kw1`. Until then a
+`dev` page draws the knight from it and a deployed page refuses it at the `signature` step and
+draws the knight from the code in `knight.js`, the full knight as it shipped before packs, which
+looks the same as the default look (see [When packs fail](#when-packs-fail)). The sword and shield
+need the base pack: from code the knight always holds the greatsword.
 
 Nothing is drawn on screen about the choice. `knight.js` writes to the console one line for each
 refused pack, and one line, `console.info` for the base pack and `console.warn` for code, each
 time the source changes:
 
 ```
-knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, signed
-knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, unsigned
+knightwatcher: the knight is drawn from the base pack kw.base 1.1.0, signed
+knightwatcher: the knight is drawn from the base pack kw.base 1.1.0, unsigned
 knightwatcher: the pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
 knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step
 ```
@@ -855,7 +885,8 @@ step the base pack was refused at. `KW.knight.source` holds `'pack'` or `'code'`
 `start` makes a new status; `add` and a pack marked bad update that one in place, so the settings
 screen's status panel can keep it and read it again. The knight is drawn from code when no base
 pack is carried, when the base pack fails any step or is marked bad, when the pack library is
-missing, and when the base pack's weapon is not held in both hands, since every pose holds one so.
+missing, and when the look's weapon has no grip the poses can hold, which the checks make
+impossible: the poses hold a weapon in both hands at two stations or in one hand at one.
 
 `start(texts, allowUnsigned, opts)` takes in `opts` a `look` to draw, and `keys`, which replaces
 `KEYS` in `read()` and is for the tests only; the page passes neither.
@@ -908,14 +939,17 @@ The knight never vanishes. In order:
    screen's status panel (not built yet) shows the list. A panel must show the entries as text.
 2. **An item, swatch or build in the look is missing**, because its pack was refused, removed or
    never downloaded: that slot, set or build takes the base pack's default, as `resolve` does, and
-   `status.fallbacks` says so. A weapon that is not held in both hands also takes the default,
-   with the reason `the poses hold the weapon in both hands`.
+   `status.fallbacks` says so. A shield in a look whose weapon is not one-handed, the greatsword
+   included, falls back to no shield, with `used` null and the reason `a shield is carried only
+   with a one-handed weapon`; it is then drawn nowhere, worn or at rest. This holds too when the
+   one-handed weapon itself falls back to the greatsword.
 3. **No base pack can be used.** The knight is drawn from code: the full knight as it shipped
    before packs, with the open helm, the red plume, the blue tabard and the greatsword, by
    `codeHD` in `knight.js`. The sleeper's head in the house is drawn by `bareHD`, and the gear at
    rest by code too: the helmet on the stool, the greatsword on the pegs and across the anvil, and
    the hot tip from the greatsword's blade. `rest.blade()` is `{ from: 34, to: 263, half: 15 }` and
-   `rest.key()` is `'code'`. The reason is in the status and the console. Nothing plainer than this
+   `rest.key()` is `'code'`. The code path has the greatsword only, as the owner decided: a look
+   with the sword and shield is drawn with the greatsword, and no shield hangs anywhere. The reason is in the status and the console. Nothing plainer than this
    knight is ever drawn.
 4. **A compiled list throws while drawing**, which the checks should make impossible. The throw is
    caught for that frame, and the packs that gave the list's slots are marked bad (the base pack
@@ -927,9 +961,12 @@ The knight never vanishes. In order:
 ### Gear at rest
 
 The house and the smithy show the knight's gear off the knight, and on the pack path they show
-what the look equips: the helmet on the house's stool from the look's `restHelmet` list, and the
+what the look equips: the helmet on the house's stool from the look's `restHelmet` list, the
 weapon on the house's pegs and across the smithy's anvil from its `main` list, the same shapes the
-knight holds, on a frame the scene fixes. The smithy draws the hot tip of the blade from the
+knight holds, on a frame the scene fixes, and the shield, when one is equipped, on the house's wall
+beside the pegs and the smithy's wall from its `restOff` list. The house places its two pegs from
+the weapon's `blade`, 28 past where the blade starts and 45 short of its point, which keeps the
+greatsword's pegs at 680 and 836; a weapon with no `blade` gets the greatsword's pegs. The smithy draws the hot tip of the blade from the
 weapon's `blade`, and draws none for a weapon without one. A scene asks for each by the item's slot
 in its own `paint` or `draw`, through `KW.knight.rest`, which draws from code on the code path, so
 no scene looks at which path is in use:
@@ -937,11 +974,13 @@ no scene looks at which path is in use:
 ```js
 K.rest.draw('helmet', 460, 476);                // the house's draw: the helmet on the stool
 K.rest.draw('main', 618, 228, Math.PI / 2);     // the house's paint: the weapon on the pegs
+K.rest.draw('off', 844, 164);                   // the house's paint: the shield on the wall, from its nail
 const b = K.rest.blade();                       // the smithy's draw: { from, to, half } or null
 ```
 
-The house and the smithy paint the weapon into their cached backdrop, so their backdrop keys carry
-`K.rest.key('main')`, the equipped weapon's name. [page.md](./page.md#gear-at-rest) has the places
+The house and the smithy paint the weapon and the shield into their cached backdrop, so their
+backdrop keys carry `K.rest.key('main')`, the equipped weapon's name, and the shield's name when
+one is equipped. [page.md](./page.md#gear-at-rest) has the places
 each scene declares in its `rests` field, the numbers of the hot tip and the key.
 
 ## Tests
@@ -976,8 +1015,10 @@ the same answer as this verifier for every signature the tests put to both.
 unsigned copy (the shipped file with any `sig` taken off) is read on a `dev` page and refused at
 the `signature` step otherwise; the file as it ships is read on every page when it carries a
 signature, and on a `dev` page alone when it does not. It also checks one build with the present measurements, one item for each slot the
-present drawing has and nothing more, each item and swatch equal to the fixture's, and a default
-look that resolves with nothing missing at a cost of 11 932. `tests/web/knight.test.js` draws the
+present drawing has, the arming sword and the heater shield, and nothing more, each item and swatch
+equal to the fixture's or, for the two new items, to `fixtures/base-onehand.items.json`, a default
+look that resolves with nothing missing at a cost of 11 932, and the look with the sword and shield
+resolving with nothing missing, one-handed, at 119 shapes. `tests/web/knight.test.js` draws the
 knight's 98 poses, the gear at rest, and the house and the smithy painted and drawn, from the base
 pack as the page does, and compares every call with the record taken from the code. It draws the
 code path from the unsigned copy, which a deployed page always refuses, and edits only that copy, so
@@ -986,7 +1027,10 @@ it is signed and from code when it is not, and, with a key made for the run swap
 sandbox's `KEYS`, that a deployed page reads a signed base pack through `KW.ed25519.verify` and
 draws from code when no verifier is loaded. It also checks
 that a pack's colours reach the gear at rest, and that a helmet with no rest view and a weapon with
-no `blade` show nothing there. [page.md](./page.md#checks) describes it.
+no `blade` show nothing there. With the sword and shield it checks the one-handed grip, the stance
+and the attack, the free hand hanging when there is no shield, the change to `oneCrossed` in the
+swing to the left, the pegs, the shield's places and the backdrop keys, and, frame by frame, that
+no arm is drawn over a blade or a shield ([page.md](./page.md#the-knights-rig)). [page.md](./page.md#checks) describes it.
 
 `tests/web/loading.test.js` checks loading and failure. For the index: its shape, more than 32
 names, and names that carry a path or are not a pack file's. For the fetch, against a fake `fetch`:
@@ -998,8 +1042,9 @@ with its name and id. On a deployed page an unsigned downloaded pack and one sig
 kid or by the wrong key are refused, and one signed with a key made for the run and passed through
 `keys` is read and drawn; a `dev` page reads the unsigned one. Each refusal is in the status and
 written to the console once. A look naming a missing build, item or swatch falls back to the
-base pack's defaults and draws what the default look draws, and a one-handed weapon gives way to
-the default. With no base pack, a broken one, an unsigned one or one signed by an unknown kid on
+base pack's defaults and draws what the default look draws; a one-handed weapon from another pack
+is held in one hand; and a shield without one falls back to none, with its reason, and the knight
+draws as the default knight does. With no base pack, a broken one, an unsigned one or one signed by an unknown kid on
 a deployed page, no pack library, and after a throw inside the base pack's lists, the page draws
 from code, and 28 records of the knight, the sleeper's head, the gear at rest, the house and the
 smithy must equal, call for call, the records `knight.test.js` stores from the code. A throw

@@ -24,7 +24,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events, drawing order, and the watched things in their places (`KW.things`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
-| `js/main.js` | start-up (starting the knight and fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
+| `js/main.js` | start-up (starting the knight with its look, the greatsword or with `arm=one` the sword and shield, and fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
@@ -74,6 +74,7 @@ knight's 240 by 300 box, 120 left of the root and 300 above it.
 | `head` | the middle of the eye line | `(X + 5 * headDx, Y - 206 + drop + 5 * headDy)` |
 | `handL`, `handR` | the hands, placed by the grip | see below |
 | `main` | the weapon's frame, `[x, y, angle]` | see below |
+| `off` | the hand that holds the shield, always the left; the same point as `handL` | see below |
 
 Every anchor is an `[x, y]` pair apart from `main`, and "left" is the viewer's left.
 
@@ -112,6 +113,39 @@ shoulders, and `head` raises the head, so that a bigger skull grows upwards from
 - `two`, the greatsword in both hands: `main` is the middle of the grip and the blade's angle. The
   hand on the side the blade leans to holds the grip 6 pixels up the blade, the other 30 down it.
   The arm on the lean side is drawn before the blade and the other after it.
+- `one`, a weapon in one hand, on the pack path only: `main` is placed as for `two`, and the right
+  hand holds the weapon at its one station along the frame (the arming sword's is the grip's
+  middle). The left hand, which is also `off`, holds the shield where the pose's `fx` and `fy`
+  put it, in units of `U` from the old corner as `gx` and `gy` are; with no shield equipped it
+  hangs at the side as in `none`. The shield's group (left arm, left gauntlet, shield) is drawn
+  before the sword's (right arm, sword, right gauntlet); while the sword hand is left of the root,
+  across the body, the order is `oneCrossed`: both arms, the sword, the right gauntlet, and the
+  shield last.
+
+**The poses with the sword and shield.** `pose()` and `swing()` give the one-handed fields when
+the look's weapon is one-handed, from three sets of numbers beside the greatsword's `BASE`:
+
+| Pose | Sword grip `gx`, `gy`, angle | Shield hand `fx`, `fy` | On the grid, from the root |
+|---|---|---|---|
+| `BASE1`, the stance | 37.6, 40.8, 0.3 | 20, 38.4 | sword hand at (+68, -96), shield hand at (-20, -108) |
+| `ATTACK1`, the attack | 40, 24.4, 0.2 with the tremble of 0.12 | 19.6, 37.6 | sword hand at (+80, -178), shield hand at (-22, -112) |
+| `SWING1`, to the right: wind-up, cut | 33.2, 24.8, -1.0; 44.8, 38.4, 2.0 | 16, 38; 14, 40 | the shield stays in front |
+| `SWING1`, to the left: wind-up, cut | 38.8, 23.2, 1.0; 17.2, 40.8, -2.0 | 12, 37.6; 3.2, 26.4 | the shield lifts up and out of the blade's way |
+
+The swing's angles at the wind-up and the cut are the greatsword's, so the swat's hit test in
+`engine.js` holds for both weapons. Every other condition keeps its pose; the sword is put away
+where the scene says so (`sword: false` in the house and the cellar, the hammer in the smithy), and
+the shield with it.
+
+**No arm over a blade or a shield.** `tests/web/knight.test.js` draws every frame the engine can
+draw with the weapon held (both swings at every hundredth of their length, the attack's tremble
+every 10 ms for two seconds, the stance of each condition that holds a weapon, and the largest
+bloat), keeps the pixels each of the look's lists fills, and checks, in the order the frame was
+drawn in, that no arm drawn after the weapon fills a pixel of it and no arm or gauntlet drawn after
+the shield fills a pixel of the shield. For the arming sword the check takes the blade and the
+guard, from 17 along the frame; for the greatsword it takes the blade from 40, clear of its guard,
+since in the greatsword's swing an arm crosses the guard for a few frames as the blade passes
+upright, which is how the two-handed knight has always been drawn.
 
 The engine's own drawing hangs on the same anchors: the face on `head`; the crates, sweat, steam,
 the mark, the thought bubble, the progress bar and the speech bubble on `neck`; the hearts on
@@ -126,9 +160,9 @@ that `draw()` in `pack.js` reads, made once by `newAnchors()` and `newValues()`:
 
 - the anchors, x then y of each, in the order of `ANCHORS` in `pack.js` (`root`, `footL`, `footR`,
   `hipL`, `hipR`, `hem`, `belt`, `neck`, `shoulderL`, `shoulderR`, `head`, `handL`, `handR`,
-  `main`, `off`, `rest`). The rig has no `off` or `rest`, and they stay at 0: the base look has
-  no shield, and nothing on the knight hangs on `rest`, which the gear at rest sets in arrays of
-  its own (see [Gear at rest](#gear-at-rest)). After them, at `FRAME_SX` and
+  `main`, `off`, `rest`). The rig has no `rest`, which stays at 0: nothing on the knight hangs on
+  it, and the gear at rest sets it in arrays of its own (see [Gear at rest](#gear-at-rest)). After
+  them, at `FRAME_SX` and
   `FRAME_SY`, the weapon frame's direction, `sin(a)` and `-cos(a)` of `main`'s angle;
 - the values in the order of `VALUES`: `drop`, `bloat`, `stepL`, `stepR`, `sway`. `drop` is
   clamped to 0 to 40 and `bloat` to 0 to 60, the ranges `RANGE` in `pack.js` states and every
@@ -137,16 +171,18 @@ that `draw()` in `pack.js` reads, made once by `newAnchors()` and `newValues()`:
   the array: the look folds them in when it is compiled, and the rig takes the look's
   measurements.
 
-On the pack path the two hand stations along the weapon are the weapon's own `grip.hands`, which
-for the base pack's greatsword are the same 6 and -30.
+On the pack path the hand stations along the weapon are the weapon's own `grip.hands`: for the
+base pack's greatsword the same 6 and -30, and for its arming sword the one station 0.
 
 ## The knight from the base pack
 
-At start-up, before the first frame, `main.js` calls `KW.knight.start(KW.packText, dev)` with `dev`
-true only when the page's version is `dev`. `start` reads the packs the carriers pushed, gathers
-them and resolves the look, the base pack's defaults while nothing chooses another. If a look
-resolves, the knight is drawn from the base pack; otherwise from the code in `knight.js`, the full
-knight as it shipped before packs, which draws the same knight. A `dev` page accepts packs signed or unsigned. A
+At start-up, before the first frame, `main.js` calls `KW.knight.start(KW.packText, dev, { look })`
+with `dev` true only when the page's version is `dev`. `start` reads the packs the carriers pushed,
+gathers them and resolves the look. The look is the base pack's defaults, the greatsword, until the
+settings screen chooses another; meanwhile the address's `arm=one` asks for the arming sword and the
+heater shield (see [The address](#the-address)). If a look resolves, the knight is drawn from the
+base pack; otherwise from the code in `knight.js`, the full knight as it shipped before packs, which
+draws the default look: the greatsword, and no shield anywhere. A `dev` page accepts packs signed or unsigned. A
 deployed page accepts a pack only when it carries a signature that verifies against a key in
 `KEYS`, and refuses it at the `signature` step otherwise. [packs.md](./packs.md#where-the-knight-is-drawn-from)
 says which state ships today.
@@ -164,7 +200,8 @@ line, for the settings screen's status panel. What happens when packs fail, in o
 [packs.md](./packs.md#when-packs-fail).
 
 On the pack path `draw(o)` runs the rig, fills the library's arrays, picks the grip mode (`none`,
-`hammer`, or `twoR` or `twoL` by the side the blade leans to) and walks the order that
+`hammer`, `twoR` or `twoL` by the side the blade leans to, or `one` or `oneCrossed` by the side of
+the root the sword hand is on) and walks the order that
 `sequence(mode, helmet)` in `pack.js` gives. It draws each of the look's lists with the library's
 `draw()` and the primitives of `draw.js`, and draws the engine's own steps by code at their places
 in that order: the crates first, the face after the head group, the drumstick after the face, the
@@ -192,7 +229,8 @@ drawn by code on both paths.
 ## Gear at rest
 
 The house and the smithy show the knight's gear off the knight: the helmet on the house's stool
-while the helmet is off, and the weapon on the house's pegs and across the smithy's anvil. They
+while the helmet is off, the weapon on the house's pegs and across the smithy's anvil, and the
+shield, when one is equipped, on the wall beside the pegs and on the smithy's wall. They
 show what the knight has equipped, from the same source as the knight: the look's lists on the
 pack path, and on the code path the code in `knight.js` and `props.js`, which draws what the
 scenes always drew. A scene asks for each item by its slot, in its own `paint` or `draw`, so the
@@ -201,12 +239,14 @@ choice of path itself:
 
 | Call | Does |
 |---|---|
-| `draw(slot, x, y, a)` | draws the equipped item of `slot` at rest. `'helmet'`: the helmet's rest view on the `rest` anchor at `(x, y)`, the middle of its foot on a surface, with the plume's rest view behind it on the view's plume mount. `'main'`: the weapon's worn shapes on a frame with the middle of its grip at `(x, y)` along the angle `a` (0 is straight up, and `Math.PI / 2` lays it flat with the point to the right). Any other slot draws nothing |
+| `draw(slot, x, y, a)` | draws the equipped item of `slot` at rest. `'helmet'`: the helmet's rest view on the `rest` anchor at `(x, y)`, the middle of its foot on a surface, with the plume's rest view behind it on the view's plume mount. `'off'`: the shield's rest view on the `rest` anchor at `(x, y)`, the top middle of a `hang` place, which for the base pack's shield is the nail it hangs from. `'main'`: the weapon's worn shapes on a frame with the middle of its grip at `(x, y)` along the angle `a` (0 is straight up, and `Math.PI / 2` lays it flat with the point to the right). Any other slot draws nothing, and on the code path `'off'` draws nothing, since the code path has no shield |
 | `blade()` | the equipped weapon's `blade`, `{ from, to, half }` in frame units, or `null` when it gives none. On the code path, the greatsword's `{ from: 34, to: 263, half: 15 }` |
 | `key(slot)` | the equipped item's name, `<pack>/<item>`, or `''` when the slot is empty; `'code'` on the code path |
 
 On the pack path a helmet with no rest view shows nothing on the stool, and a helmet whose rest
-view has no plume mount rests without its plume. Gear at rest does not move with the knight, so it
+view has no plume mount rests without its plume. A shield with no rest view, or no shield, shows
+nothing on the wall; and a shield is equipped only with a one-handed weapon, so with the
+greatsword no shield hangs anywhere. Gear at rest does not move with the knight, so it
 is drawn with every named value 0, from anchor and value arrays of its own made once at start-up; a
 call allocates nothing.
 
@@ -218,12 +258,18 @@ passes a place's numbers to `draw`.
 |---|---|---|---|
 | house | `stool` | the helmet | `kind: 'surface'`, `x` 460 and `y` 476 the middle of the stool's top, `w` 76 by `h` 80 the room above it |
 | house | `pegs` | the weapon | `x` 618 and `y` 228 the middle of the grip, `a` `Math.PI / 2` |
+| house | `wall` | the shield | `kind: 'hang'`, `x` 844 and `y` 164 the nail in the beam right of the pegs, `w` 100 by `h` 140 the room below it |
 | smithy | `anvil` | the weapon | `x` 50, counted from the knight's spot `s.kx` so that the blade lies where the hammer falls; `y` 425; `a` `Math.PI / 2` |
+| smithy | `wall` | the shield | `kind: 'hang'`, `x` 145 and `y` 312 the nail on the wall over the quench barrel, `w` 100 by `h` 132 the room below it |
 
-The stool's `kind`, `w` and `h` give the place in the shape the pack format gives places; nothing
-checks a rest view's `fits` and `box` against them yet. The pegs are spaced for the greatsword's
-length. A shield on the wall beside the pegs, for one-handed weapons, would be one more place and
-one more slot for `draw`; neither exists yet.
+The `kind`, `w` and `h` give a place in the shape the pack format gives places; nothing checks a
+rest view's `fits` and `box` against them yet. The house's two pegs sit under the weapon's blade,
+28 past where it starts and 45 short of its point, from `blade()`: for the greatsword at 680 and
+836, where they always were, and for the arming sword at 680 and 748. A weapon with no `blade` gets
+the greatsword's pegs. The house's shield clears the arming sword's point on the pegs, the jug on
+the mantel and a camera at the house's high place `h2`, which stays where it was, at 926; a test
+draws that camera and its question mark and checks them against both swords on the pegs, the
+shield, the window and the knight at every spot of the house's rounds.
 
 **The hot tip.** The smithy draws the glowing tip of the blade on the anvil from `blade()`, in
 frame units along the blade from `to`, the point, and across it from `half`, the distance from the
@@ -232,11 +278,13 @@ middle to each edge: three bands of heat starting 73, 57 and 43 short of the poi
 around it. For the greatsword these are the numbers the smithy always drew. A weapon with no
 `blade` has no hot tip.
 
-**The backdrop key.** The house and the smithy paint the weapon into their cached backdrop, so
-each adds `KW.knight.rest.key('main')` to its key, and a change of weapon paints the backdrop
+**The backdrop key.** The house and the smithy paint the weapon and the shield into their cached
+backdrop, so each adds `KW.knight.rest.key('main')` to its key, and `'|'` and
+`KW.knight.rest.key('off')` when a shield is equipped, and a change of gear paints the backdrop
 again: on the pack path the house's key is `tv|kw.base/main.greatsword` with the television on, and
-the smithy's `440|kw.base/main.greatsword` at its spot. The helmet on the stool is drawn every
-frame, so it adds nothing.
+the smithy's `440|kw.base/main.greatsword` at its spot; with the sword and shield the house's is
+`|kw.base/main.arming|kw.base/off.heater` with the television off. The helmet on the stool is drawn
+every frame, so it adds nothing.
 
 ## The scene interface
 
@@ -407,6 +455,12 @@ the fires, the moon, the sword on its pegs and the sleeper's Zs; a camera's ques
 highest thing drawn, and its top is never higher than y 172. Ground places keep clear of every
 spot the knight stands at, of the swings, and of the knight's boots. `pl=1` shows them all.
 
+Whatever a place may show is drawn wholly on the 960 by 600 grid, which is all a display exactly
+960 wide shows: every kind that may stand there, up and gone, its question mark and its pole. No
+two places in a scene draw over each other. `tests/web/places.test.js` draws each of them and checks
+both, from what is painted rather than from a place's declared box: a place's 88 by 112 box is the
+room it was planned with, and may reach past the grid's edge where its drawing does not.
+
 **The kinds.** `KW.props.KINDS` holds each kind's `draw(x, y, t, ok, part)`, standing on the base
 `(x, y)`, and `mark`, the height above the base of the top of its question mark:
 
@@ -462,8 +516,8 @@ knight.
 
 ## The address
 
-The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `mon=` and
-`pl=` also work in live mode. `f=`, `e=`, `sw=` and `th=` act in the demo and do nothing
+The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `mon=`,
+`pl=` and `arm=` also work in live mode. `f=`, `e=`, `sw=` and `th=` act in the demo and do nothing
 elsewhere.
 
 | Key | Meaning |
@@ -481,6 +535,7 @@ elsewhere.
 | `kx=` | places the knight, in units of `U` |
 | `mon=` | the monarch at court: `a` the king, `b` the queen, `c` the monarch who is neither. Anything else, or no hook, gives `a` |
 | `th=` | the demo's list of watched things: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `th=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `thing_down` on, the knight looks towards the first thing that is down and alerts |
+| `arm=one` | the knight's look: the base pack's arming sword in one hand and its heater shield in the other, in place of the greatsword. Anything else, or no hook, gives the default look, the greatsword. It stands in for the settings screen until that chooses the look. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
 | `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box, the 80 by 64 a thing may fill inside it, and the base. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
 
 `e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time.
@@ -489,7 +544,7 @@ starts one, and a knight placed away from their spot by `kx=` stays exactly ther
 rather than walking a step in each frame.
 
 The demo rewrites the hash as its settings change, with the contract's ids in `on=`. The test hooks
-(`t=`, `kx=`, `mon=`, `th=`, `pl=`, `f=`, `e=` and `sw=`) are read once when the page loads, and
+(`t=`, `kx=`, `mon=`, `th=`, `pl=`, `arm=`, `f=`, `e=` and `sw=`) are read once when the page loads, and
 the rewritten hash leaves them out, so they last until the page is opened again.
 
 ## Deploying
@@ -611,6 +666,15 @@ devices, a camera and a machine down and one device with no place left (`things-
 with the same mix (`things-court`), `thing_down` in the camp (`thing-down`) and the yard's places
 outlined (`places-yard`). Every other shot has no `th=`, so a change to watched
 things that leaves a Pi-only setup alone leaves those shots byte for byte the same.
+
+The six `arm-` shots draw the arming sword and the heater shield (`arm=one`): the quiet battlement
+(`arm-battlement`), the yard's practice swing mid-cut (`arm-yard`), the attack (`arm-attack`), the
+house with the sword on the pegs and the shield on the wall (`arm-house`), the smithy with the
+sword on the anvil and the shield on the wall (`arm-update`), and the swat to the left at the
+moment the sword passes behind the shield (`arm-swat-left`). Every other shot has no `arm=`, so a
+change to the one-handed look leaves them byte for byte the same. A copy of the page from before
+the hook draws the greatsword in the `arm-` shots, so against such a reference those six differ
+and the rest compare as usual.
 
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
 Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade

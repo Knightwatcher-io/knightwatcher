@@ -8,10 +8,13 @@
   const WALL = ['#1d1411', '#21170f', '#1a120e', '#241913'];
   const BRICK = ['#3a1b14', '#43201a', '#331813', '#4a2419'];
   const IRON = [[.15, '#7d899b'], [.5, '#525c6e'], [1, '#353b48']];
-  /* The place for the knight's gear at rest (docs/page.md): the anvil, where the weapon lies under
-     the hammer, x and y the middle of its grip and a its angle, which lays it flat. x is counted
-     from the knight's spot, s.kx, so the blade lies where the hammer falls. */
-  const RESTS = { anvil: { x: 50, y: 425, a: Math.PI / 2 } };
+  /* The places for the knight's gear at rest (docs/page.md): the anvil, where the weapon lies under
+     the hammer, x and y the middle of its grip and a its angle, which lays it flat, x counted from
+     the knight's spot, s.kx, so that the blade lies where the hammer falls; and the wall over the
+     quench barrel, where a shield hangs from a nail, x and y the nail and w by h the room below. */
+  const RESTS = { anvil: { x: 50, y: 425, a: Math.PI / 2 }, wall: { kind: 'hang', x: 145, y: 312, w: 100, h: 132 } };
+  /* What the shield on the wall adds to the backdrop key: '|' and its name when one is equipped. */
+  const offKey = () => { const k = K.rest.key('off'); return k && k !== 'code' ? '|' + k : ''; };
 
   /* The hammer rises slowly and falls fast, once every 1.3 seconds, and a progress bar fills. */
   function act(t, s) {
@@ -61,7 +64,8 @@
     for (let j = 0; j < 4; j++) { const y = HFL + 3 + j * 20; Rh(HL, y + 18, HR - HL, 2, '#130d0a'); for (let x = Math.floor(HL / 110) * 110 + (j % 2) * 55; x < HR; x += 110) { Rh(x, y, 2, 18, '#130d0a'); Rh(x + 2, y, 1, 18, '#33251c'); } }
     for (let i = 0; i < 30; i++) Rh(700 + hsh(i, 91) % 300, HFL + 4 + hsh(i, 92) % 30, 3, 2, '#2e2a2a');
     anvil();
-    // the weapon across the anvil, under the hammer
+    // the shield on the wall, and the weapon across the anvil, under the hammer
+    K.rest.draw('off', RESTS.wall.x, RESTS.wall.y);
     K.rest.draw('main', kx + RESTS.anvil.x, RESTS.anvil.y, RESTS.anvil.a);
   }
 
@@ -105,5 +109,5 @@
     g3: { cls: 'ground', kind: 'floor', x: 40, y: 568, w: 88, h: 112, front: true }
   };
 
-  KW.scenes.smithy = { spot: 88, places: PLACES, rests: RESTS, helmet: false, key: s => Math.round(s.kx) + '|' + K.rest.key('main'), act, paint, draw };
+  KW.scenes.smithy = { spot: 88, places: PLACES, rests: RESTS, helmet: false, key: s => Math.round(s.kx) + '|' + K.rest.key('main') + offKey(), act, paint, draw };
 })(window.KW);

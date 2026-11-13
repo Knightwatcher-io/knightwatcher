@@ -1,5 +1,6 @@
 /* Knightwatcher: the knight, on the fine grid. Open helm, red plume, blue tabard, a greatsword held
-   in both hands. pose() turns a condition into the knight's pose, rig() turns a pose into the points
+   in both hands, or from the base pack an arming sword in one hand and a heater shield in the
+   other. pose() turns a condition into the knight's pose, rig() turns a pose into the points
    the knight is drawn on, and draw() draws it there: from the base pack when start() found one it
    can use (packHD), and otherwise from the code below (codeHD), which draws the same knight as it
    shipped before packs. rest.draw() draws the knight's gear where a scene sets it down, from the
@@ -26,16 +27,20 @@
   /* The greatsword's two hand stations along its frame, upper and lower. On the pack path they are
      the weapon's own, which for the base pack's greatsword are the same two. */
   let HANDS = [6, -30];
+  /* Whether the look's weapon is held in one hand, and whether a shield is in the other. rebuild()
+     sets them from the resolved look; pose(), swing() and rig() read them. Only the pack path can
+     hold a one-handed weapon: the code path is the greatsword. */
+  let ONE = false, SHIELD = false;
 
   /* The rig's result, filled in place on every call so that drawing a frame allocates nothing for it.
-     Each anchor is an [x, y] pair, except main, the weapon's frame, which is [x, y, angle]. The
-     anchor off (the off hand) comes with the one-handed grip and is not here yet; the plume's mount
-     is folded into the plume's shapes by pack.js, and rest is a scene's place, which KW.knight.rest
-     sets, not the rig. grip is the grip mode: 'none', 'hammer' or 'two'. */
+     Each anchor is an [x, y] pair, except main, the weapon's frame, which is [x, y, angle]. off is
+     the hand that holds the shield, which is always the left hand; the plume's mount is folded into
+     the plume's shapes by pack.js, and rest is a scene's place, which KW.knight.rest sets, not the
+     rig. grip is the grip mode: 'none', 'hammer', 'two' or 'one'. */
   const RIG = {
     grip: 'none',
     anchors: { root: [0, 0], footL: [0, 0], footR: [0, 0], hipL: [0, 0], hipR: [0, 0], hem: [0, 0], belt: [0, 0], neck: [0, 0],
-      shoulderL: [0, 0], shoulderR: [0, 0], head: [0, 0], handL: [0, 0], handR: [0, 0], main: [0, 0, 0] },
+      shoulderL: [0, 0], shoulderR: [0, 0], head: [0, 0], handL: [0, 0], handR: [0, 0], main: [0, 0, 0], off: [0, 0] },
     values: { drop: 0, bloat: 0, stepL: 0, stepR: 0, sway: 0, dShoulder: 0, dChest: 0, dWaist: 0, dHip: 0, dStance: 0, dLeg: 0, dHeight: 0, dHead: 0 },
   };
   const put = (p, x, y) => { p[0] = x; p[1] = y; };
@@ -71,6 +76,16 @@
       RIG.grip = 'hammer';
       put(A.handL, X + 45, Y - 104 + d); put(A.handR, X + 80 + bw, Y - 122 + d);
       m[0] = A.handR[0]; m[1] = A.handR[1]; m[2] = lerp(-.25, 1.75, o.hammer);
+    } else if (o.sword !== false && ONE) {
+      // One hand on the grip, at the weapon's one station along the frame, which the pose gives as
+      // for the greatsword. The left hand holds the shield where the pose puts it, fx and fy in units
+      // of U from the old corner; with no shield it hangs at the side as when the sword is away.
+      RIG.grip = 'one';
+      const a = o.wang || 0, gx = X - 120 + o.gx * U, gy = Y - 300 + o.gy * U + d, sx = Math.sin(a), sy = -Math.cos(a);
+      m[0] = gx; m[1] = gy; m[2] = a;
+      put(A.handR, gx + sx * HANDS[0], gy + sy * HANDS[0]);
+      if (SHIELD) put(A.handL, X - 120 + o.fx * U, Y - 300 + o.fy * U + d);
+      else put(A.handL, X - (64 + bw), Y - 84 + d);
     } else if (o.sword !== false) {
       // Both hands on the grip, whose middle the pose gives in units of U from the old corner. The
       // hand on the side the blade leans to holds the upper station. The sums keep the order the
@@ -86,6 +101,7 @@
       put(A.handL, X - (64 + bw), Y - 84 + d); put(A.handR, X + (64 + bw), Y - 84 + d);
       m[0] = X; m[1] = Y; m[2] = 0;
     }
+    put(A.off, A.handL[0], A.handL[1]);
     return RIG;
   }
 
@@ -271,7 +287,9 @@
     const r = rig(o, PK.look.m), lib = PK.lib, L = PK.look.lists, A = PK.A, Vs = PK.Vs;
     fillArrays(r);
     const { root, neck, head, main } = r.anchors, face = faceRamp(o);
-    const mode = r.grip === 'two' ? (A[lib.FRAME_SX] >= 0 ? 'twoR' : 'twoL') : r.grip;
+    // In one hand, the sword's group goes behind the shield's while the sword hand is across the
+    // middle line, on the shield's side.
+    const mode = r.grip === 'two' ? (A[lib.FRAME_SX] >= 0 ? 'twoR' : 'twoL') : r.grip === 'one' ? (r.anchors.handR[0] < root[0] ? 'oneCrossed' : 'one') : r.grip;
     const seq = lib.sequence(mode, o.helmet !== false);
     for (let i = 0; i < seq.length; i++) {
       switch (seq[i]) {
@@ -315,7 +333,9 @@
      The helmet is drawn from its rest view, with the plume's rest view on the view's plume mount,
      on the rest anchor at the scene's place. A helmet with no rest view shows nothing there. The
      weapon needs no rest view: its worn shapes are drawn on a frame the scene fixes, and an angle of
-     pi/2 lays it flat. Neither moves with the knight, so every named value is 0 for them. */
+     pi/2 lays it flat. The shield hangs on a wall from its rest view, the rest anchor at the top
+     middle of the scene's 'hang' place; with no shield equipped, or one with no rest view, nothing
+     hangs there. None of them moves with the knight, so every named value is 0 for them. */
 
   /* The open helm resting on a surface, its small plume on top, x its middle and y its foot. */
   function helmRestHD(x, y) {
@@ -331,8 +351,9 @@
   const SWORD_BLADE = Object.freeze({ from: 34, to: 263, half: 15 });
 
   /* Draws the equipped item of slot at rest: 'helmet' with the rest anchor at (x, y), its foot's
-     middle on a surface, or 'main' with the middle of its grip at (x, y) along the angle a (0 is
-     straight up). Any other slot draws nothing. */
+     middle on a surface; 'off' with the rest anchor at (x, y), the top middle of a 'hang' place; or
+     'main' with the middle of its grip at (x, y) along the angle a (0 is straight up). Any other
+     slot draws nothing, and so does 'off' on the code path, which has no shield. */
   function restHD(slot, x, y, a) {
     if (!PK.look) { if (slot === 'helmet') helmRestHD(x, y); else if (slot === 'main') P.swordHD(x, y, a); return; }
     const lib = PK.lib, A = PK.rA;
@@ -341,6 +362,11 @@
         const r = 2 * lib.ANCHOR.rest;
         A[r] = x; A[r + 1] = y;
         PK.cur = 'restHelmet'; lib.draw(PK.look.lists.restHelmet, A, PK.rV, D); PK.cur = null;
+      } else if (slot === 'off') {
+        // the shield's rest view, hung on the rest anchor at the top middle of a 'hang' place
+        const r = 2 * lib.ANCHOR.rest;
+        A[r] = x; A[r + 1] = y;
+        PK.cur = 'restOff'; lib.draw(PK.look.lists.restOff, A, PK.rV, D); PK.cur = null;
       } else if (slot === 'main') {
         const m = 2 * lib.ANCHOR.main;
         A[m] = x; A[m + 1] = y; A[lib.FRAME_SX] = Math.sin(a); A[lib.FRAME_SY] = -Math.cos(a);
@@ -384,7 +410,7 @@
   /* Gathers the packs not marked bad, resolves the look and chooses the source. */
   function rebuild() {
     const st = PK.st, lib = PK.lib;
-    PK.look = null; PK.packs = null; HANDS = [6, -30];
+    PK.look = null; PK.packs = null; HANDS = [6, -30]; ONE = false; SHIELD = false;
     st.base = null; st.fallbacks = [];
     if (!lib) { st.refused = PK.extra.concat(PK.faults); st.source = 'code'; st.note = 'knightwatcher: the knight is drawn from code: the pack library is not loaded'; return; }
     const g = lib.gather(PK.entries.filter(e => !PK.bad.has(e.result)).map(e => e.result));
@@ -392,26 +418,21 @@
       const e = PK.entries.find(x => x.result === r) || PK.entries.find(x => x.result.ok && r && x.result.id === r.id && g.packs.get(r.id) !== x.result);
       return refusal(r, e && e.file);
     }).concat(PK.extra, PK.faults);
-    let look = lib.resolve(g.packs, PK.wanted), why = '';
-    const twoHanded = l => !!(l.grip && l.grip.kind === 'two' && l.grip.hands.length === 2);
-    if (look.ok && !twoHanded(look) && look.look.items.main !== lib.BASE_ID + '/' + g.packs.get(lib.BASE_ID).data.defaults.items.main) {
-      // every pose holds the weapon in both hands, so a one-handed weapon gives way to the default
-      const wanted = look.look.items.main, items = Object.assign({}, PK.wanted.items);
-      delete items.main;
-      look = lib.resolve(g.packs, Object.assign({}, PK.wanted, { items }));
-      if (look.ok) {
-        look.fallbacks = look.fallbacks.filter(f => !(f.kind === 'item' && f.key === 'main'));
-        look.fallbacks.push({ kind: 'item', key: 'main', wanted, used: look.look.items.main || null, reason: 'the poses hold the weapon in both hands' });
-      }
-    }
+    const look = lib.resolve(g.packs, PK.wanted);
+    // The poses hold a weapon in both hands at two stations, or in one hand at one. The library's
+    // checks make any other grip impossible; this is the last guard before the poses rely on it.
+    const held = l => !!(l.grip && ((l.grip.kind === 'two' && l.grip.hands.length === 2) || (l.grip.kind === 'one' && l.grip.hands.length === 1)));
+    let why = '';
     if (!look.ok) {
       // the base pack's last refusal names the step; its reason has a line of its own
       const no = st.refused.filter(r => r.id === lib.BASE_ID).pop();
       why = no ? 'the base pack ' + lib.BASE_ID + ' was refused at the ' + no.step + ' step' : 'no base pack is loaded';
-    } else if (!twoHanded(look)) why = 'the base pack\'s weapon is not held in both hands, as every pose holds one';
+    } else if (!held(look)) why = 'the look\'s weapon has no grip the poses can hold';
     if (why) { st.source = 'code'; st.note = 'knightwatcher: the knight is drawn from code: ' + why; return; }
     const base = g.packs.get(lib.BASE_ID);
     PK.look = look; PK.packs = g.packs; HANDS = look.grip.hands.slice();
+    // resolve() keeps a shield only with a one-handed weapon
+    ONE = look.grip.kind === 'one'; SHIELD = ONE && !!look.look.items.off;
     st.source = 'pack'; st.base = { id: base.id, version: base.version, signed: base.signed }; st.fallbacks = look.fallbacks;
     st.note = 'knightwatcher: the knight is drawn from the base pack ' + base.id + ' ' + base.version + (base.signed ? ', signed' : ', unsigned');
   }
@@ -554,10 +575,16 @@
 
   /* The state of the knight for a condition id (see docs/state.md), at time t. gx and gy place the
      middle of the sword's grip in units of U from the knight's old corner (see rig), wang is the
-     blade's angle. */
+     blade's angle, and with a weapon in one hand fx and fy place the shield hand in the same units.
+     BASE is the greatsword's stance. BASE1 is the one-handed stance: the sword hand low at the
+     right with the blade up and a little out, the shield in front of the chest. ATTACK1 raises the
+     sword over the right shoulder and brings the shield in to the middle. */
   const BASE = { gx: 26, gy: 45, a: .45 };
+  const BASE1 = { gx: 37.6, gy: 40.8, a: .3, fx: 20, fy: 38.4 };
+  const ATTACK1 = { gx: 40, gy: 24.4, a: .2, fx: 19.6, fy: 37.6 };
   function pose(id, t) {
     const o = { t, eyes: 'open', mouth: 'flat', bob: Math.floor(t / 900) % 2, gx: BASE.gx, gy: BASE.gy, wang: BASE.a };
+    if (ONE) { o.gx = BASE1.gx; o.gy = BASE1.gy; o.wang = BASE1.a; o.fx = BASE1.fx; o.fy = BASE1.fy; }
     if (t % 5200 < 160) o.eyes = 'closed';
     switch (id) {
       case 'container_unhealthy': o.eyes = Math.floor(t / 1300) % 2 ? 'dizzy' : 'half'; o.mouth = 'frown'; o.face = 'L'; o.thermo = 1; o.icebag = 1; o.headDx = Math.round(Math.sin(t / 900)); break;
@@ -571,21 +598,36 @@
       case 'updating': o.eyes = 'happy'; o.mouth = 'smile'; break;
       case 'streaming': o.look = 1; o.mouth = 'smile'; break;
       case 'wan_down': o.look = Math.floor(t / 1400) % 2 ? 1 : -1; o.mouth = 'o'; o.mark = '?'; break;
-      case 'attack': o.eyes = 'angry'; o.mouth = 'open'; o.gx = 30; o.gy = 37; o.wang = .7 + Math.sin(t / 90) * .12; o.mark = '!'; o.shake = Math.round(Math.sin(t / 60)); break;
+      case 'attack':
+        o.eyes = 'angry'; o.mouth = 'open'; o.mark = '!'; o.shake = Math.round(Math.sin(t / 60));
+        if (ONE) { o.gx = ATTACK1.gx; o.gy = ATTACK1.gy; o.wang = ATTACK1.a + Math.sin(t / 90) * .12; o.fx = ATTACK1.fx; o.fy = ATTACK1.fy; }
+        else { o.gx = 30; o.gy = 37; o.wang = .7 + Math.sin(t / 90) * .12; }
+        break;
       case 'night': o.eyes = 'closed'; break;
       case 'ssh_session': o.look = 1; break;
     }
     return o;
   }
-  /* A two-handed swing: wind up over one shoulder, cut across, recover. dir +1 cuts to the right.
-     Returns whether the blade is in the cut. */
+  /* The one-handed swing's wind-up and cut, by direction: to the right, the sword's own side, the
+     shield stays in front; to the left, across the body, the shield swings up and out of the
+     blade's way. The blade's angles are the two-handed swing's, so the swat's hit test is the same
+     for both weapons. */
+  const SWING1 = {
+    1: { wind: { gx: 33.2, gy: 24.8, a: -1.0, fx: 16, fy: 38 }, hit: { gx: 44.8, gy: 38.4, a: 2.0, fx: 14, fy: 40 } },
+    '-1': { wind: { gx: 38.8, gy: 23.2, a: 1.0, fx: 12, fy: 37.6 }, hit: { gx: 17.2, gy: 40.8, a: -2.0, fx: 3.2, fy: 26.4 } }
+  };
+  /* A swing: wind up over one shoulder, cut across, recover. dir +1 cuts to the right. In both hands
+     the keyframes follow from dir; in one hand they are SWING1's, and the shield hand moves with
+     the sword. Returns whether the blade is in the cut. */
   function swing(o, q, dir) {
-    const wind = { gx: 24 - dir * 2, gy: 36, a: -1.0 * dir }, hit = { gx: 24 + dir * 10, gy: 46, a: 2.0 * dir };
+    const one = ONE ? SWING1[dir > 0 ? 1 : -1] : null, base = one ? BASE1 : BASE;
+    const wind = one ? one.wind : { gx: 24 - dir * 2, gy: 36, a: -1.0 * dir }, hit = one ? one.hit : { gx: 24 + dir * 10, gy: 46, a: 2.0 * dir };
     let from, to, k;
-    if (q < .3) { from = BASE; to = wind; k = ease(q / .3); }
+    if (q < .3) { from = base; to = wind; k = ease(q / .3); }
     else if (q < .55) { from = wind; to = hit; k = (q - .3) / .25; k = k * k * (3 - 2 * k); }
-    else { from = hit; to = BASE; k = ease((q - .55) / .45); }
+    else { from = hit; to = base; k = ease((q - .55) / .45); }
     o.gx = lerp(from.gx, to.gx, k); o.gy = lerp(from.gy, to.gy, k); o.wang = lerp(from.a, to.a, k);
+    if (one) { o.fx = lerp(from.fx, to.fx, k); o.fy = lerp(from.fy, to.fy, k); }
     if (q > .2 && q < .6) o.eyes = 'angry';
     return q >= .3 && q < .56;
   }
