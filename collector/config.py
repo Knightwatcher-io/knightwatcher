@@ -1,7 +1,8 @@
 """Configuration: config.toml for settings, secrets.json for credentials.
 
 Every setting has a default here, and docs/configuration.md documents each one. A source runs
-when its table is present in config.toml and its `enabled` is not false.
+when its table is present in config.toml and its `enabled` is not false. Watched things are the
+`[[thing]]` tables, checked here and turned into one list with the Pi of `[sources.pi]` first.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ import copy
 import json
 import re
 import tomllib
+import urllib.parse
 import zoneinfo
 from dataclasses import dataclass, field
 from typing import Any
@@ -21,6 +23,7 @@ CONDITION_IDS = [
     "disk_full",
     "backup_overdue",
     "pi_silent",
+    "thing_down",
     "cpu_hot",
     "memory_tight",
     "ssh_session",
@@ -48,6 +51,7 @@ CONDITION_DEFAULTS: dict[str, Any] = {
     "disk_full": {"pct": 90.0},
     "backup_overdue": {"hours": 30.0},
     "pi_silent": {"for_s": 180},
+    "thing_down": {},
     "cpu_hot": {"pct": 85.0, "window_s": 30},
     "memory_tight": {"available_pct": 10.0, "window_s": 30},
     "ssh_session": {"min_sessions": 1, "show_for_s": 600},
@@ -124,6 +128,30 @@ MIN_WINDOW_S = 10
 
 _HHMM = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
+# Watched things: the [[thing]] tables.
+THING_KINDS = ("pi", "camera", "machine", "vm")
+MAX_THINGS = 32  # the Pi of [sources.pi] included
+MAX_THING_PORTS = 3
+THING_EVERY_S = (10, 3600)
+MAX_DOWN_AFTER_S = 86400
+# Every setting a [[thing]] table may have. name and kind have no default; host, port, ports and
+# url have none either, and which of them are given decides the check.
+THING_DEFAULTS: dict[str, Any] = {
+    "refused_counts": False,
+    "verify_tls": False,
+    "every_s": 30,
+    "down_after_s": 180,
+    "alert": True,
+    "enabled": True,
+}
+THING_SETTINGS = ("name", "kind", "host", "port", "ports", "url", *THING_DEFAULTS)
+# 1 to 20 printable ASCII characters, with no space at either end.
+_THING_NAME = re.compile(r"^[!-~](?:[ -~]{0,18}[!-~])?$")
+# A web address is printable ASCII with no space in it.
+_PLAIN_URL = re.compile(r"^[!-~]+$")
+# The name the Pi of [sources.pi] has as a thing.
+PI_NAME = "Pi"
+
 
 class ConfigError(Exception):
     """Raised with every problem found, one per line."""
@@ -139,6 +167,8 @@ class Config:
     conditions: dict[str, Any]
     sources: dict[str, dict[str, Any]]
     secrets: dict[str, dict[str, str]] = field(default_factory=dict, repr=False)
+    # Every enabled watched thing, the Pi of [sources.pi] first; see _things.
+    things: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def interval_s(self) -> int:
@@ -313,6 +343,218 @@ def _validate_source(name: str, s: dict, problems: list[str]) -> None:
                 problems.append(f"sources.ssh.ignore_sources: {net!r} is not an address range")
 
 
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_port(value: Any) -> bool:
+    return _is_int(value) and 0 < value < 65536
+
+
+def _url_problem(url: Any) -> str | None:
+    """What is wrong with a thing's url, or None."""
+    if not isinstance(url, str) or not re.match(r"^https?://", url):
+        return "must start with http:// or https://"
+    if not _PLAIN_URL.match(url):
+        return "not a valid web address"
+    parts = urllib.parse.urlsplit(url)
+    if "@" in parts.netloc:
+        return "must not carry a user name or password"
+    try:
+        parts.port  # noqa: B018 - raises on a port that is out of range or not a number
+    except ValueError:
+        return "not a valid web address"
+    if not parts.hostname:
+        return "not a valid web address"
+    return None
+
+
+def _thing(w: str, t: dict, problems: list[str]) -> dict[str, Any]:
+    """Check one [[thing]] table and return it with its defaults filled in."""
+    for key in t:
+        if key not in THING_SETTINGS:
+            problems.append(f"{w}.{key}: unknown setting")
+    out = {**THING_DEFAULTS, **{k: v for k, v in t.items() if k in THING_DEFAULTS}}
+
+    name = t.get("name")
+    if "name" not in t:
+        problems.append(f"{w}.name: required")
+    elif not isinstance(name, str) or not _THING_NAME.match(name):
+        problems.append(f"{w}.name: 1 to 20 printable ASCII characters, no space at either end")
+    kind = t.get("kind")
+    if "kind" not in t:
+        problems.append(f"{w}.kind: required")
+    elif not isinstance(kind, str):
+        problems.append(f"{w}.kind: expected str")
+    elif "/" in kind:
+        problems.append(f"{w}.kind: kinds from packs are not supported yet")
+    elif kind not in THING_KINDS:
+        kinds = f"{', '.join(THING_KINDS[:-1])} or {THING_KINDS[-1]}"
+        problems.append(f'{w}.kind: unknown kind "{kind}"; use {kinds}')
+
+    for key in ("refused_counts", "verify_tls", "alert", "enabled"):
+        if not isinstance(out[key], bool):
+            problems.append(f"{w}.{key}: expected bool")
+    every = out["every_s"]
+    low, high = THING_EVERY_S
+    if not _is_int(every) or not low <= every <= high:
+        problems.append(f"{w}.every_s: must be from {low} to {high}")
+    floor = every if _is_int(every) else THING_DEFAULTS["every_s"]
+    if not _is_int(out["down_after_s"]) or not floor <= out["down_after_s"] <= MAX_DOWN_AFTER_S:
+        problems.append(
+            f"{w}.down_after_s: must be at least every_s ({floor}) and at most {MAX_DOWN_AFTER_S}"
+        )
+
+    host = t.get("host")
+    if "host" in t and (not isinstance(host, str) or not host or not _PLAIN_URL.match(host)):
+        problems.append(f"{w}.host: must be an address or a name")
+    if "port" in t and not _is_port(t["port"]):
+        problems.append(f"{w}.port: must be a port number from 1 to 65535")
+    ports = t.get("ports")
+    if "ports" in t and (
+        not isinstance(ports, list)
+        or not 1 <= len(ports) <= MAX_THING_PORTS
+        or not all(_is_port(p) for p in ports)
+    ):
+        problems.append(f"{w}.ports: 1 to {MAX_THING_PORTS} port numbers from 1 to 65535")
+    if "url" in t:
+        why = _url_problem(t["url"])
+        if why:
+            problems.append(f"{w}.url: {why}")
+
+    by_tcp = any(k in t for k in ("host", "port", "ports"))
+    by_url = "url" in t
+    if by_tcp == by_url:
+        problems.append(f"{w}: give host with port or ports, or url, and not both")
+    elif by_tcp:
+        if "port" in t and "ports" in t:
+            problems.append(f"{w}: give port or ports, not both")
+        elif "host" not in t:
+            problems.append(f"{w}.host: required with port or ports")
+        elif "port" not in t and "ports" not in t:
+            problems.append(f"{w}: give host with port or ports, or url, and not both")
+    if "refused_counts" in t and not (by_tcp and not by_url):
+        problems.append(f"{w}.refused_counts: only applies with host")
+    https = by_url and not by_tcp and isinstance(t["url"], str) and t["url"].startswith("https://")
+    if "verify_tls" in t and not https:
+        problems.append(f"{w}.verify_tls: only applies with an https url")
+
+    if "port" in t:
+        out["ports"] = [t["port"]]
+    elif isinstance(ports, list):
+        out["ports"] = list(dict.fromkeys(ports))  # the same port twice is tried once
+    else:
+        out["ports"] = []
+    out.update(
+        name=name,
+        kind=kind,
+        host=host if by_tcp else "",
+        url=t.get("url", "") if by_url else "",
+        source=f"thing:{name}",
+        legacy=False,
+    )
+    return out
+
+
+def _url_host(url: Any) -> str:
+    try:
+        return urllib.parse.urlsplit(url).hostname or ""
+    except (TypeError, ValueError, AttributeError):
+        return ""
+
+
+def _say_names(names: list[str]) -> str:
+    """Vault; Vault and Gate cam; Vault, Gate cam and Buildbox."""
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def _things(raw: Any, sources: dict, conditions: dict, problems: list[str]) -> list[dict]:
+    """Check the [[thing]] tables and return every enabled thing, the Pi of [sources.pi] first.
+
+    The Pi keeps the rules of [sources.pi]: its ports are tried as given, a refused connection
+    counts as an answer, and it is silent after pi_silent's for_s. It raises pi_silent rather
+    than thing_down, and only when the priority list names pi_silent.
+    """
+    priority = conditions["priority"]
+    things: list[dict] = []
+    pi = sources.get("pi")
+    if pi is not None:
+        things.append(
+            {
+                "name": PI_NAME,
+                "kind": "pi",
+                "host": pi["host"],
+                "ports": list(pi["ports"]),
+                "url": "",
+                "refused_counts": True,
+                "verify_tls": False,
+                "every_s": pi["every_s"],
+                "down_after_s": conditions["pi_silent"]["for_s"],
+                "alert": "pi_silent" in priority,
+                "enabled": True,
+                "source": "pi",
+                "legacy": True,
+            }
+        )
+    if raw is None:
+        return things
+    if not isinstance(raw, list):
+        problems.append("thing: expected [[thing]] tables")
+        return things
+
+    named: dict[str, int] = {}
+    for i, t in enumerate(raw):
+        w = f"thing[{i}]"
+        if not isinstance(t, dict):
+            problems.append(f"{w}: expected a table")
+            continue
+        thing = _thing(w, t, problems)
+        name = thing["name"]
+        if isinstance(name, str) and name:
+            key = name.lower()
+            if pi is not None and key == PI_NAME.lower():
+                problems.append(f'{w}.name: "{name}" is taken by [sources.pi]')
+            elif key in named:
+                problems.append(f'{w}.name: "{name}" is already the name of thing[{named[key]}]')
+            else:
+                named[key] = i
+        if pi is not None and pi["host"]:
+            watched = pi["host"].lower()
+            if isinstance(thing["host"], str) and thing["host"].lower() == watched:
+                problems.append(
+                    f"{w}.host: {thing['host']} is already watched by [sources.pi]; remove one"
+                )
+            elif thing["url"] and _url_host(thing["url"]).lower() == watched:
+                problems.append(
+                    f"{w}.url: {_url_host(thing['url'])} is already watched by [sources.pi]; "
+                    "remove one"
+                )
+        if thing["enabled"] is True:
+            things.append(thing)
+
+    if len(things) > MAX_THINGS:
+        problems.append(f"thing: at most {MAX_THINGS} things")
+    alerting = [str(t["name"]) for t in things if not t["legacy"] and t["alert"] is True]
+    if alerting and "thing_down" not in priority:
+        # Say where it goes: after the nearest condition above it in the default order that the
+        # list names, or before the nearest one below it.
+        at = CONDITION_IDS.index("thing_down")
+        above = [c for c in CONDITION_IDS[:at] if c in priority]
+        below = [c for c in CONDITION_IDS[at + 1 :] if c in priority]
+        if above:
+            where = f'add it after "{above[-1]}"'
+        elif below:
+            where = f'add it before "{below[0]}"'
+        else:
+            where = "add it to the list"
+        it = "it" if len(alerting) == 1 else "them"
+        problems.append(
+            f'conditions.priority: leaves out "thing_down", so {_say_names(alerting)} would '
+            f"never alert; {where}, or set alert = false on {it}"
+        )
+    return things
+
+
 def build(raw: dict, secrets: dict | None = None) -> Config:
     """Validate a parsed config.toml and fill in the defaults.
 
@@ -321,7 +563,7 @@ def build(raw: dict, secrets: dict | None = None) -> Config:
     """
     problems: list[str] = []
     for key in raw:
-        if key not in ("collector", "conditions", "sources"):
+        if key not in ("collector", "conditions", "sources", "thing"):
             problems.append(f"{key}: unknown table")
     collector = _merge("collector", COLLECTOR_DEFAULTS, raw.get("collector", {}), problems)
     conditions = _merge("conditions", CONDITION_DEFAULTS, raw.get("conditions", {}), problems)
@@ -341,6 +583,7 @@ def build(raw: dict, secrets: dict | None = None) -> Config:
         _validate_conditions(conditions, problems)
         for name, s in sources.items():
             _validate_source(name, s, problems)
+    things = _things(raw.get("thing"), sources, conditions, problems)
     for name in sources if secrets is not None else []:
         need = SECRET_FIELDS.get(name)
         if not need:
@@ -355,7 +598,7 @@ def build(raw: dict, secrets: dict | None = None) -> Config:
                 problems.append(f"secrets.json: {section_name}.{f} missing (for {name})")
     if problems:
         raise ConfigError(problems)
-    return Config(collector, conditions, sources, secrets or {})
+    return Config(collector, conditions, sources, secrets or {}, things)
 
 
 def load(config_path: str, secrets_path: str | None) -> Config:

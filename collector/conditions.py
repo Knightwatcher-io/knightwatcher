@@ -6,6 +6,11 @@ and clears only once the cause has been absent for `clear_after_s` seconds, so i
 A source that could not be read counts as the cause being absent, so a dead source cannot hold a
 condition up for ever. CPU and memory are judged on averages over a window, which the host
 source works out from its own history.
+
+Watched things are judged apart, each by its own watch: a check that ran out of time counts as
+silence for them, since a machine that cannot answer in time has not answered. `pi_silent` and
+`thing_down` are raised from the watches. `pi_silent` keeps the rule it had before there were
+things: raised once the Pi has not answered at every poll for `for_s`.
 """
 
 from __future__ import annotations
@@ -31,6 +36,7 @@ LEVELS = {
     "disk_full": "warning",
     "backup_overdue": "warning",
     "pi_silent": "warning",
+    "thing_down": "warning",
     "cpu_hot": "warning",
     "memory_tight": "warning",
     "ssh_session": "work",
@@ -52,6 +58,12 @@ class Cause:
 # Conditions that count reads, and the source whose fresh reads they count. A poll that reuses
 # a source's last reading is not a new check.
 COUNTS_READS_OF = {"wan_down": "wan"}
+
+# The headline's word for a thing that is down, by kind, and for a kind not listed.
+KIND_WORDS = {"pi": "SILENT", "camera": "DARK", "machine": "DOWN", "vm": "DOWN"}
+OTHER_KIND_WORD = "DOWN"
+# The status of a source whose first read has not finished: its thing is not yet known.
+FIRST_READ = "first read still running"
 
 
 class Tracker:
@@ -92,6 +104,75 @@ class Tracker:
         return self.active
 
 
+class Watch:
+    """What the collector knows of one watched thing since it started.
+
+    A thing is unknown until it answers or is judged down. An answer makes it up at once and
+    ends its silence. A silence starts at the first poll that finds no answer, and the thing is
+    down once the silence has lasted its down_after_s, counted from that poll. A thing silent for
+    less is as it was.
+    """
+
+    def __init__(self, index: int, thing: dict):
+        self.index = index  # its position in facts.things.list
+        self.thing = thing
+        self.seen = False  # whether it has answered since the collector started
+        self.answered: bool | None = None  # at the last poll, or None before the first check
+        self.silent_since: dt.datetime | None = None
+        self.state = "unknown"
+        self.since: dt.datetime | None = None  # when the present state began
+
+    def update(self, answered: bool | None, now: dt.datetime) -> None:
+        """Judge one poll. answered is None when no check has finished yet."""
+        if answered is None:
+            return
+        self.answered = answered
+        if answered:
+            self.seen = True
+            self.silent_since = None
+            if self.state != "up":
+                self.state, self.since = "up", now
+            return
+        if self.silent_since is None or now < self.silent_since:
+            # A clock that went back starts the silence again, rather than leaving its start in
+            # the future where it would hold the thing up until the clock caught up.
+            self.silent_since = now
+        held = (now - self.silent_since).total_seconds()
+        if held >= self.thing["down_after_s"] and self.state != "down":
+            self.state, self.since = "down", self.silent_since
+
+    def fact(self) -> dict:
+        return {
+            "name": self.thing["name"],
+            "kind": self.thing["kind"],
+            "state": self.state,
+            "alert": self.thing["alert"],
+            "seen": self.seen,
+            "since": text.iso(self.since) if self.since and self.state != "unknown" else None,
+        }
+
+
+def _answered(reading: Reading | None, status: dict | None) -> bool | None:
+    """A thing's answer at this poll: yes, no, or None while its first check is running."""
+    if reading is not None:
+        answered = reading.data.get("answered")
+        if answered is None and reading.facts is not None:
+            answered = reading.facts.get("up")
+        return None if answered is None else bool(answered)
+    # No reading: a check that ran out of time has not answered.
+    error = (status or {}).get("error", FIRST_READ)
+    return None if error == FIRST_READ else False
+
+
+def _names(names: list[str], limit: int) -> str:
+    """Names joined while they fit, with +N for the rest: Vault, Gate cam +2."""
+    for n in range(len(names), 0, -1):
+        line = ", ".join(names[:n]) + (f" +{len(names) - n}" if n < len(names) else "")
+        if len(line) <= limit:
+            return line
+    return text.clip(names[0], limit)
+
+
 def _facts(readings: dict[str, Reading | None], name: str) -> dict | None:
     r = readings.get(name)
     return r.facts if r is not None else None
@@ -124,6 +205,10 @@ class Conditions:
             for_reads=c["wan_down"]["failed_checks"], clear_after_s=clear
         )
         self.trackers["pi_silent"] = Tracker(for_s=c["pi_silent"]["for_s"], clear_after_s=clear)
+        # thing_down needs no duration of its own: the watches judge when a thing is down, and
+        # pass the start of its silence as the cause's since.
+        self.watches = [Watch(i, t) for i, t in enumerate(config.things)]
+        self.started: dt.datetime | None = None
         # Per-container short history: name -> (first seen bad, kind, status).
         self.bad_since: dict[str, tuple[dt.datetime, str, str]] = {}
         # SSH connections seen: (address, port) -> first seen, or None if open at the first
@@ -182,8 +267,30 @@ class Conditions:
         return Cause(now > due, since=due, context=last)
 
     def _pi_silent(self, r, now) -> Cause:
-        f = _facts(r, "pi")
-        return Cause(f is not None and not f["up"])
+        w = next((w for w in self.watches if w.thing["legacy"]), None)
+        return Cause(w is not None and w.answered is False)
+
+    def _thing_down(self, r, now) -> Cause:
+        down = [
+            w
+            for w in self.watches
+            if w.state == "down" and w.thing["alert"] and not w.thing["legacy"]
+        ]
+        if not down:
+            return Cause(False)
+        down.sort(key=lambda w: (w.silent_since, w.index))
+        # A copy, so that words held through the clearing period keep what they said.
+        context = [
+            {
+                "index": w.index,
+                "name": w.thing["name"],
+                "kind": w.thing["kind"],
+                "seen": w.seen,
+                "silent_since": w.silent_since,
+            }
+            for w in down
+        ]
+        return Cause(True, since=min(w.silent_since for w in down), context=context)
 
     @staticmethod
     def _window_start(now: dt.datetime, span_s: float) -> dt.datetime:
@@ -291,6 +398,8 @@ class Conditions:
             return "BACKUP OVERDUE", f"last backup {age} ago"
         if cid == "pi_silent":
             return "PI SILENT", f"no answer for {held}"
+        if cid == "thing_down":
+            return self._thing_words(ctx, now)
         if cid == "cpu_hot":
             return "CPU HOT", f"{ctx['cpu_pct']:.0f}% for {held}{text.SEP}load {ctx['load1']:.1f}"
         if cid == "memory_tight":
@@ -311,22 +420,53 @@ class Conditions:
             return "NIGHT", f"quiet hours until {ctx}"
         raise KeyError(cid)
 
+    def _thing_words(self, down: list[dict], now: dt.datetime) -> tuple[str, str]:
+        if len(down) > 1:
+            return f"{len(down)} DOWN", _names([d["name"] for d in down], text.DETAIL_MAX)
+        d = down[0]
+        word = KIND_WORDS.get(d["kind"], OTHER_KIND_WORD)
+        name = " ".join(d["name"].split())
+        # The name is repeated in the detail only when the headline had to cut it.
+        cut = len(name) > text.HEADLINE_MAX - len(word) - 1
+        if d["seen"]:
+            why = f"no answer for {text.duration((now - d['silent_since']).total_seconds())}"
+        else:
+            up_for = text.duration((now - (self.started or now)).total_seconds())
+            if cut:
+                why = f"not answered in {up_for} since start"
+            else:
+                why = f"not answered since the collector started {up_for} ago"
+        return _named(name, word), f"{name}{text.SEP}{why}" if cut else why
+
     def _window(self) -> str:
         return text.duration(self.config.conditions["attack"]["window_s"])
 
     # Evaluation -------------------------------------------------------------------------------
+
+    def watch(
+        self, readings: dict[str, Reading | None], status: dict[str, dict], now: dt.datetime
+    ) -> None:
+        """Bring every thing's watch up to this poll."""
+        for w in self.watches:
+            name = w.thing["source"]
+            w.update(_answered(readings.get(name), status.get(name)), now)
 
     def evaluate(
         self,
         readings: dict[str, Reading | None],
         now: dt.datetime,
         fresh: set[str] | None = None,
+        status: dict[str, dict] | None = None,
     ) -> list[dict]:
         """Judge every condition for one poll.
 
         fresh names the sources read afresh at this poll; the others' readings are reused from
-        an earlier read. None means every reading is fresh.
+        an earlier read. None means every reading is fresh. status is each source's entry in
+        `sources`, which says whether a thing with no reading ran out of time.
         """
+        if self.started is None:
+            self.started = now
+        self.watch(readings, status or {}, now)
         out = []
         for cid in self.priority:
             try:
@@ -355,16 +495,24 @@ class Conditions:
             shown = self.causes[cid]
             since = tracker.since or now
             head, det = self._words(cid, shown, since, now)
-            out.append(
-                {
-                    "id": cid,
-                    "level": LEVELS[cid],
-                    "since": text.iso(since),
-                    "headline": text.headline(head),
-                    "detail": text.detail(det),
-                }
-            )
+            entry = {
+                "id": cid,
+                "level": LEVELS[cid],
+                "since": text.iso(since),
+                "headline": text.headline(head),
+                "detail": text.detail(det),
+            }
+            if cid == "thing_down":
+                # Where the page finds the things: their positions in facts.things.list.
+                entry["things"] = [d["index"] for d in shown.context]
+            out.append(entry)
         return out
 
     def active(self, cid: str) -> bool:
         return self.trackers[cid].active
+
+    def things(self) -> dict | None:
+        """facts.things: every enabled thing in order, or None when there is none."""
+        if not self.watches:
+            return None
+        return {"list": [w.fact() for w in self.watches]}

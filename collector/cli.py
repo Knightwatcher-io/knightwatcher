@@ -68,7 +68,11 @@ def main(argv: list[str] | None = None) -> int:
         return _health(config)
     if args.check_config:
         names = ", ".join(config.sources) or "none"
-        print(f"config ok: {len(config.sources)} sources enabled ({names})")
+        line = f"config ok: {len(config.sources)} sources enabled ({names})"
+        if config.things:
+            watched = ", ".join(t["name"] for t in config.things)
+            line += f"; {len(config.things)} watched ({watched})"
+        print(line)
         return 0
 
     for key in ("output_dir", "state_dir"):

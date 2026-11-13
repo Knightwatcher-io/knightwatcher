@@ -59,6 +59,9 @@ docker compose config -q
 python3 -m collector --config config.toml --secrets secrets.json --check-config
 ```
 
+The collector's TLS test needs `openssl` on the path, to make a self-signed certificate that is
+thrown away after the run; without it that test is skipped and says why.
+
 The last two need a `.env`, a `config.toml` and a `secrets.json` in place; see
 [configuration.md](./configuration.md).
 

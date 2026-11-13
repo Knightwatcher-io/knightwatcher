@@ -61,10 +61,10 @@ def build_sources(config: Config) -> list[Source]:
         dns,
         host,
         imports,
-        pi,
         security,
         ssh,
         streams,
+        things,
         updates,
         wan,
     )
@@ -75,7 +75,6 @@ def build_sources(config: Config) -> list[Source]:
         "wan": wan.WanSource,
         "dns": dns.DnsSource,
         "backup": backup.BackupSource,
-        "pi": pi.PiSource,
         "updates": updates.UpdatesSource,
         "ssh": ssh.SshSource,
         "streams": streams.StreamsSource,
@@ -84,4 +83,13 @@ def build_sources(config: Config) -> list[Source]:
         "sonarr": imports.SonarrSource,
         "radarr": imports.RadarrSource,
     }
-    return [classes[name](settings, config) for name, settings in config.sources.items()]
+    built: list[Source] = []
+    for name, settings in config.sources.items():
+        if name == "pi":
+            # The Pi of [sources.pi] is a watched thing, kept in its place among the sources.
+            pi = next(t for t in config.things if t["legacy"])
+            built.append(things.ThingSource(pi, config))
+        else:
+            built.append(classes[name](settings, config))
+    built += [things.ThingSource(t, config) for t in config.things if not t["legacy"]]
+    return built
