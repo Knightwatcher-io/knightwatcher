@@ -2,8 +2,9 @@
 
 Read this page before changing anything, and [security.md](./security.md) before committing.
 The design is in [design.md](./design.md), and the contract between the collector and the page
-is in [state.md](./state.md). Read [page.md](./page.md) before touching `web/` and
-[collector.md](./collector.md) before touching `collector/`.
+is in [state.md](./state.md). Read [page.md](./page.md) before touching `web/`,
+[collector.md](./collector.md) before touching `collector/`, and [packs.md](./packs.md) before
+touching `web/js/pack.js` or a pack file.
 
 ## Layout
 
@@ -14,7 +15,9 @@ collector/           the collector: Python, standard library only
   sources/           one module per source
 tests/
   collector/         unittest tests for the collector
-  web/               node tests for web/js/state.js
+  web/               node tests for the page's scripts
+    fixtures/knight/ the stored call record of the knight's drawing
+    fixtures/        a fixture pack for the pack library's tests
   tools/             node tests for tools/deploy.sh
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version
@@ -68,6 +71,11 @@ The screenshots compare the page with itself before and after a change that shou
 it looks. With time frozen each shot depends only on its address, however many frames a busy
 machine paints. Take one set at a time all the same: two browsers shooting at once have not been
 tried. [page.md](./page.md) has the rest.
+
+`node --test tests/web/` includes a faster check for the knight: it draws the knight in about a
+hundred poses against a fake canvas and compares every call with a stored record, in about a
+second. The record is stored again only when the knight is meant to change; [page.md](./page.md#checks)
+says how.
 
 ## Deploying the page
 
