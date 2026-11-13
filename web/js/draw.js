@@ -4,7 +4,7 @@
   'use strict';
 
   /* The view. Every scene is composed on a 960 by 600 grid with the ground at 530. The engine
-     places the knight in coarse units, U fine pixels each. The canvas is cut to the screen's own
+     places the knight in units of U grid pixels. The canvas is cut to the screen's own
      shape in whole device pixels, so its real edges lie outside the grid: HL, HR and HT. fit() in
      main.js sets them, and every backdrop is filled out to them. X0 and Y0 place the grid on the
      canvas, LW and LH are the canvas's size, and SC is one canvas pixel in CSS pixels. */
