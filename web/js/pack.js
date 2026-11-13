@@ -19,7 +19,10 @@
     text: 512 * 1024, depth: 12, packs: 32, items: 256, parts: 16, partShapes: 128, itemShapes: 400,
     polyPoints: 16, pixSide: 64, pixShape: 4096, pixPack: 16384, pixKeys: 16, sets: 16, setEntries: 32,
     swatches: 32, bands: 8, builds: 4, decorations: 64, decorShapes: 64, groups: 8, tracks: 16, keys: 32,
-    restShapes: 64, box: 240, lookShapes: 1200 });
+    restShapes: 64, box: 240, lookShapes: 1200, itemCost: 8000, lookCost: 40000, decorCost: 8000, reason: 300, quote: 40 });
+  /* The farthest apart two anchors of one frame may lie, which the cost of a shape spanning two
+     anchors assumes. The rig in knight.js keeps them within 273 of each other in every pose. */
+  const ANCHOR_SPAN = 400;
   const STEPS = Object.freeze(['size', 'json', 'envelope', 'signature', 'format', 'fields', 'references', 'rules', 'counts', 'compile']);
 
   const SLOTS = Object.freeze(['back', 'legs', 'boots', 'torso', 'head', 'hair', 'plume', 'helmet', 'pauldrons', 'arms', 'gauntlets', 'main', 'off', 'companion']);
@@ -48,9 +51,11 @@
   const MEASURES = Object.freeze([['shoulder', 54, 40, 70], ['chest', 46, 32, 64], ['waist', 46, 28, 64], ['hip', 46, 32, 64],
     ['stance', 24, 16, 34], ['leg', 74, 60, 100], ['height', 132, 110, 160], ['head', 51, 42, 60]].map(Object.freeze));
   const DIFFS = MEASURES.map(m => 'd' + m[0][0].toUpperCase() + m[0].slice(1));
-  /* The range of each name, for the face-box check. Names missing here have no bound. */
-  const RANGE = { sway: [-4, 4] };
+  /* The range of every named value. The engine clamps drop and bloat into theirs when it fills the
+     values array; the rest cannot leave theirs. Every scalar is checked over these ranges. */
+  const RANGE = { drop: [0, 40], bloat: [0, 60], stepL: [0, 1], stepR: [0, 1], step: [0, 1], sway: [-4, 4] };
   MEASURES.forEach((m, i) => { RANGE[DIFFS[i]] = [m[2] - m[1], m[3] - m[1]]; });
+  freeze(RANGE);
 
   /* The base palette: a frozen copy of KW.draw.C and its band lists, written into format 1. */
   const C = { k: '#1a1524', w: '#ffffff', s0: '#f6f9fc', s1: '#d8e0ea', s2: '#aab6c6', s3: '#7d899b', s4: '#525c6e',
@@ -99,15 +104,18 @@
   }
   const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-  const quote = s => '"' + s + '"';
+  /* Text from a pack that goes into a reason is cut to LIMITS.quote characters, and a reason to
+     LIMITS.reason, each ending in three full stops when cut. */
+  const cut = (s, n) => (s.length > n ? s.slice(0, n - 3) + '...' : s);
+  const quote = s => '"' + cut(String(s), LIMITS.quote) + '"';
   function key(path, k) {
-    const seg = PLAIN_KEY.test(k) ? k : '[' + JSON.stringify(k) + ']';
+    const seg = PLAIN_KEY.test(k) && k.length <= LIMITS.quote ? k : '["' + cut(JSON.stringify(k).slice(1, -1), LIMITS.quote) + '"]';
     return !path ? seg : seg[0] === '[' ? path + seg : path + '.' + seg;
   }
   const idx = (path, i) => path + '[' + i + ']';
 
   /* A refusal. read() catches it and turns it into { ok: false, step, reason }. */
-  function Reject(step, reason) { this.step = step; this.reason = reason; }
+  function Reject(step, reason) { this.step = step; this.reason = cut(reason, LIMITS.reason); }
   let step = '';
   function fail(path, msg) { throw new Reject(step, path ? path + ': ' + msg : msg); }
 
@@ -167,6 +175,8 @@
       case 'string': return JSON.stringify(v);
       case 'object': {
         if (Array.isArray(v)) { let s = '['; for (let i = 0; i < v.length; i++) s += (i ? ',' : '') + canonical(v[i]); return s + ']'; }
+        const pr = Object.getPrototypeOf(v);
+        if (pr !== null && Object.getPrototypeOf(pr) !== null) throw new TypeError('canonical: only plain objects, arrays, strings, finite numbers, booleans and null');
         const ks = Object.keys(v).sort();
         let s = '{';
         for (let i = 0; i < ks.length; i++) s += (i ? ',' : '') + JSON.stringify(ks[i]) + ':' + canonical(v[ks[i]]);
@@ -195,7 +205,7 @@
         if (top && top.keys && top.want) {
           let k;
           try { k = JSON.parse(text.slice(i, j + 1)); } catch (e) { return ''; }
-          if (top.keys.has(k)) return 'the key ' + JSON.stringify(k) + ' appears twice in one object';
+          if (top.keys.has(k)) return 'the key ' + quote(k) + ' appears twice in one object';
           top.keys.add(k); top.want = false;
         }
         i = j;
@@ -550,7 +560,6 @@
       for (const s of Object.keys(d.swatches)) id(d.swatches[s], key(key(dp, 'swatches'), s), LOCAL_ID);
     }
     if (base && (!has(pack, 'builds') || !has(pack, 'defaults'))) fail(P, 'the base pack must carry builds and defaults');
-    if (has(pack, 'builds') && !has(pack, 'defaults')) fail(key(P, 'defaults'), 'is required when the pack carries builds');
     if (has(pack, 'items')) {
       const ip = key(P, 'items');
       for (const i of table(pack.items, ip, LOCAL_ID, 0, Infinity, 'items')) item(pack.items[i], key(ip, i));
@@ -604,10 +613,10 @@
     if (typeof v !== 'string' || v[0] !== '@') return;
     const m = REF.exec(v), set = m[1];
     if (baseOnly && set !== 'base') fail(path, 'a palette of the pack may refer only to @base');
-    if (set !== 'base' && !has(USER_SETS, set) && !(pack.palettes && has(pack.palettes, set))) fail(path, 'names a palette set, "' + set + '", that does not exist');
+    if (set !== 'base' && !has(USER_SETS, set) && !(pack.palettes && has(pack.palettes, set))) fail(path, 'names a palette set, ' + quote(set) + ', that does not exist');
     const kind = refKind(pack, set, m[2]);
-    if (kind === null) fail(path, 'names an entry, "' + m[2] + '", that set "' + set + '" does not have');
-    if (single && kind === 'bands') fail(path, 'needs a single colour here, and ' + v + ' is a band list');
+    if (kind === null) fail(path, 'names an entry, ' + quote(m[2]) + ', that set ' + quote(set) + ' does not have');
+    if (single && kind === 'bands') fail(path, 'needs a single colour here, and ' + quote(v) + ' is a band list');
   }
   /* The anchor a name means in a part of this slot drawn for side (or no side), or null. */
   function anchorAllowed(slot, name, side) {
@@ -623,20 +632,21 @@
           if (isObj(q) && has(q, 'at') && !anchorAllowed(ctx.slot, q.at, ctx.side)) fail(key(p, 'at'), badAnchor(ctx, q.at));
           if (isObj(q) && has(q, 'frame') && ctx.slot !== 'main') fail(p, 'a framed point is allowed only in the main slot');
         }, sp);
-        if (s.k === 'poly' && s.dir === 'frame' && ctx.slot !== 'main') fail(key(sp, 'dir'), '"frame" is allowed only in the main slot');
       }
-      if (has(s, 'g') && !(ctx.groups && has(ctx.groups, s.g))) fail(key(sp, 'g'), 'names a group, "' + s.g + '", that the decoration does not declare');
+      // the weapon's frame exists only for the parts of a main item: not in rest views or decorations
+      if (s.k === 'poly' && s.dir === 'frame' && !(ctx.kind === 'worn' && ctx.slot === 'main')) fail(key(sp, 'dir'), '"frame" is allowed only in a part of a main item');
+      if (has(s, 'g') && !(ctx.groups && has(ctx.groups, s.g))) fail(key(sp, 'g'), 'names a group, ' + quote(s.g) + ', that the decoration does not declare');
       eachScalar(s, (v, p) => names(v, p, ctx), sp);
       if (has(s, 'fill')) eachColour(s.fill, (c, p, single) => refColour(pack, c, p, single, false), key(sp, 'fill'));
       if (s.k === 'pix') {
         for (const k of Object.keys(s.key)) refColour(pack, s.key[k], key(key(sp, 'key'), k), true, false);
-        s.rows.forEach((r, j) => { for (const ch of r) if (ch !== '.' && !has(s.key, ch)) fail(idx(key(sp, 'rows'), j), 'uses "' + ch + '", which the key does not map'); });
+        s.rows.forEach((r, j) => { for (const ch of r) if (ch !== '.' && !has(s.key, ch)) fail(idx(key(sp, 'rows'), j), 'uses ' + quote(ch) + ', which the key does not map'); });
       }
     });
   }
   function badAnchor(ctx, name) {
-    if (!SLOT_AT[ctx.slot].includes(name)) return 'the slot ' + ctx.slot + ' does not hang anything on "' + name + '"';
-    return '"' + name + '" needs a part drawn for one side';
+    if (!SLOT_AT[ctx.slot].includes(name)) return 'the slot ' + ctx.slot + ' does not hang anything on ' + quote(name);
+    return quote(name) + ' needs a part drawn for one side';
   }
   const WHERE = { decor: 'a decoration', rest: 'a rest view', mount: 'a mount point' };
   /* The names a scalar may lean on, by where it is: anything in a worn part, the build's
@@ -677,20 +687,20 @@
     }
     if (pack.builds) for (const b of Object.keys(pack.builds)) {
       const h = pack.builds[b].head, hp = key(key(key(P, 'builds'), b), 'head');
-      if (!has(items, h)) fail(hp, 'names an item, "' + h + '", that the pack does not have');
-      if (items[h].slot !== 'head') fail(hp, 'names "' + h + '", whose slot is ' + items[h].slot + ', not head');
+      if (!has(items, h)) fail(hp, 'names an item, ' + quote(h) + ', that the pack does not have');
+      if (items[h].slot !== 'head') fail(hp, 'names ' + quote(h) + ', whose slot is ' + items[h].slot + ', not head');
     }
     if (pack.defaults) {
       const d = pack.defaults, dp = key(P, 'defaults');
-      if (!has(pack.builds, d.build)) fail(key(dp, 'build'), 'names a build, "' + d.build + '", that the pack does not have');
+      if (!has(pack.builds, d.build)) fail(key(dp, 'build'), 'names a build, ' + quote(d.build) + ', that the pack does not have');
       for (const s of Object.keys(d.items)) {
         const it = d.items[s], p = key(key(dp, 'items'), s);
-        if (!has(items, it)) fail(p, 'names an item, "' + it + '", that the pack does not have');
-        if (items[it].slot !== s) fail(p, 'names "' + it + '", whose slot is ' + items[it].slot + ', not ' + s);
+        if (!has(items, it)) fail(p, 'names an item, ' + quote(it) + ', that the pack does not have');
+        if (items[it].slot !== s) fail(p, 'names ' + quote(it) + ', whose slot is ' + items[it].slot + ', not ' + s);
       }
       for (const s of Object.keys(d.swatches)) {
         const sw = d.swatches[s];
-        if (!(pack.swatches && has(pack.swatches, s) && has(pack.swatches[s], sw))) fail(key(key(dp, 'swatches'), s), 'names a ' + s + ' swatch, "' + sw + '", that the pack does not have');
+        if (!(pack.swatches && has(pack.swatches, s) && has(pack.swatches[s], sw))) fail(key(key(dp, 'swatches'), s), 'names a ' + s + ' swatch, ' + quote(sw) + ', that the pack does not have');
       }
     }
     if (pack.decorations) for (const d of Object.keys(pack.decorations)) {
@@ -698,11 +708,11 @@
       refShapes(pack, v.shapes, key(dp, 'shapes'), { kind: 'decor', groups: v.groups || {} });
       if (v.anim) v.anim.tracks.forEach((t, i) => {
         const tp = idx(key(key(dp, 'anim'), 'tracks'), i);
-        if (has(t, 'g') && !(v.groups && has(v.groups, t.g))) fail(key(tp, 'g'), 'names a group, "' + t.g + '", that the decoration does not declare');
+        if (has(t, 'g') && !(v.groups && has(v.groups, t.g))) fail(key(tp, 'g'), 'names a group, ' + quote(t.g) + ', that the decoration does not declare');
         if (has(t, 'pal')) {
           const m = PAL.exec(t.pal), own = pack.palettes && has(pack.palettes, m[1]) ? pack.palettes[m[1]] : null;
-          if (!own) fail(key(tp, 'pal'), 'must name a palette set of this pack, and "' + m[1] + '" is not one');
-          if (!has(own, m[2])) fail(key(tp, 'pal'), 'names an entry, "' + m[2] + '", that set "' + m[1] + '" does not have');
+          if (!own) fail(key(tp, 'pal'), 'must name a palette set of this pack, and ' + quote(m[1]) + ' is not one');
+          if (!has(own, m[2])) fail(key(tp, 'pal'), 'names an entry, ' + quote(m[2]) + ', that set ' + quote(m[1]) + ' does not have');
           if (typeof own[m[2]] !== 'string' || !HEX.test(own[m[2]])) fail(key(tp, 'pal'), 'must name an entry that is a hex colour');
         }
       });
@@ -723,16 +733,21 @@
     for (const n of Object.keys(b.k)) f.k[n] = (f.k[n] || 0) + sb * b.k[n];
     return f;
   }
-  function bound(f, hi) {
+  /* The least (hi false) or greatest (hi true) value of a form over the ranges of its names; a name
+     in fixed takes that one value. */
+  function bound(f, hi, fixed) {
     let s = f.c;
     for (const n of Object.keys(f.k)) {
       const k = f.k[n];
       if (k === 0) continue;
-      if (!has(RANGE, n)) return hi ? Infinity : -Infinity;
-      s += hi ? Math.max(k * RANGE[n][0], k * RANGE[n][1]) : Math.min(k * RANGE[n][0], k * RANGE[n][1]);
+      const r = fixed && has(fixed, n) ? [fixed[n], fixed[n]] : has(RANGE, n) ? RANGE[n] : null;
+      if (!r) return hi ? Infinity : -Infinity;
+      s += hi ? Math.max(k * r[0], k * r[1]) : Math.min(k * r[0], k * r[1]);
     }
     return s;
   }
+  /* A form with a shift folded in: a number, or another form. */
+  const shifted = (f, d) => (typeof d === 'number' ? { c: f.c + d, k: f.k } : plus(f, d, 1));
   /* The face box, around the head anchor: no helmet may leave it uncovered by skin. */
   const FACE_BOX = [-28, -20, 28, 20];
   function coversFace(s) {
@@ -750,17 +765,75 @@
     if (s.clip && s.clip[1] !== null) bottom = Math.min(bottom, bound(form(s.clip[1]), false));
     return bound(x0, true) <= FACE_BOX[0] && bound(x1, false) >= FACE_BOX[2] && top <= FACE_BOX[1] && bottom >= FACE_BOX[3];
   }
-  /* Convex and simple: the turns all go one way, and x and y each change direction at most twice
-     round the loop. Pairs are taken with every named value at 0; framed points in their own frame. */
+
+  /* The range each size takes, at both ends: name, least, greatest, what it is called. An ell's
+     radii are at least 1, since draw.js divides by them. */
+  const SIZE = { w: [0, 512, 'length'], h: [0, 512, 'length'], r: [0, 256, 'radius'], rx: [1, 256, 'radius'], ry: [1, 256, 'radius'], hw0: [0, 64, 'half-width'], hw1: [0, 64, 'half-width'] };
+  function within(f, lo, hi, path, what, fixed) {
+    const a = bound(f, false, fixed), b = bound(f, true, fixed);
+    if (a < lo) fail(path, what + ' reaches ' + a + ' at its least, below ' + lo);
+    if (b > hi) fail(path, what + ' reaches ' + b + ' at its greatest, above ' + hi);
+  }
+  /* Every scalar of a shape within its range at both ends. dx and dy are folded into its offsets
+     first (a shield's hold point, a plume's mount), and folded names the fold in the reason. */
+  function shapeRanges(s, path, dx, dy, folded, fixed) {
+    const off = folded ? 'with ' + folded + ' folded in, the offset' : 'the offset';
+    eachPoint(s, (q, p) => {
+      if (Array.isArray(q)) { within(shifted(form(q[0]), dx), -512, 512, idx(p, 0), off, fixed); within(shifted(form(q[1]), dy), -512, 512, idx(p, 1), off, fixed); return; }
+      const fr = has(q, 'frame'), ex = fr ? 0 : dx, ey = fr ? 0 : dy, o = fr ? 'the offset' : off;
+      if (has(q, 'x')) within(shifted(form(q.x), ex), -512, 512, key(p, 'x'), o, fixed);
+      if (has(q, 'y')) within(shifted(form(q.y), ey), -512, 512, key(p, 'y'), o, fixed);
+    }, path);
+    for (const f of Object.keys(SIZE)) if (has(s, f)) within(form(s[f]), SIZE[f][0], SIZE[f][1], key(path, f), 'the ' + SIZE[f][2], fixed);
+    if (has(s, 'clip')) s.clip.forEach((c, i) => { if (c !== null) within(shifted(form(c), dy), -512, 512, idx(key(path, 'clip'), i), off, fixed); });
+  }
+  function ranges(pack) {
+    const P = 'pack', items = pack.items || {};
+    for (const i of live(items)) {
+      const v = items[i], ip = key(key(P, 'items'), i);
+      const dx = v.slot === 'off' ? -v.hold[0] : 0, dy = v.slot === 'off' ? -v.hold[1] : 0, fold = v.slot === 'off' ? 'the hold point' : '';
+      v.parts.forEach((pt, j) => pt.shapes.forEach((s, k) => shapeRanges(s, idx(key(idx(key(ip, 'parts'), j), 'shapes'), k), dx, dy, fold)));
+      if (v.views) v.views.helmeted.forEach((pt, j) => pt.shapes.forEach((s, k) => shapeRanges(s, idx(key(idx(key(key(ip, 'views'), 'helmeted'), j), 'shapes'), k), 0, 0, '')));
+      if (v.mounts) v.mounts.plume.forEach((c, j) => within(form(c), -512, 512, idx(key(key(ip, 'mounts'), 'plume'), j), 'the offset'));
+      if (v.rest) {
+        const rp = key(ip, 'rest');
+        v.rest.shapes.forEach((s, k) => shapeRanges(s, idx(key(rp, 'shapes'), k), 0, 0, ''));
+        if (v.rest.mounts) v.rest.mounts.plume.forEach((c, j) => within(form(c), -512, 512, idx(key(key(rp, 'mounts'), 'plume'), j), 'the offset'));
+      }
+    }
+    for (const d of Object.keys(pack.decorations || {})) pack.decorations[d].shapes.forEach((s, k) => shapeRanges(s, idx(key(key(key(P, 'decorations'), d), 'shapes'), k), 0, 0, ''));
+  }
+  /* Whether a plume hung on a helmet's mounts stays within 512 of the head, worn and at rest. The
+     two items may come from different packs, so this is checked when a look is resolved. */
+  function plumeProblem(plume, helmet, fixed) {
+    try {
+      if (helmet.mounts) {
+        const m = helmet.mounts.plume.map(form);
+        plume.parts.forEach((pt, j) => pt.shapes.forEach((s, k) => shapeRanges(s, 'the plume\'s parts[' + j + '].shapes[' + k + ']', m[0], m[1], 'the helmet\'s mount', fixed)));
+      }
+      if (helmet.rest && helmet.rest.mounts && plume.rest) {
+        const m = helmet.rest.mounts.plume.map(form);
+        plume.rest.shapes.forEach((s, k) => shapeRanges(s, 'the plume\'s rest.shapes[' + k + ']', m[0], m[1], 'the helmet\'s rest mount', fixed));
+      }
+    } catch (e) {
+      if (e instanceof Reject) return e.reason;
+      throw e;
+    }
+    return '';
+  }
+  /* Convex and simple: no two consecutive points the same, the turns all go one way, no edge
+     doubling back on the last, and x and y each change direction at most twice round the loop.
+     Pairs are taken with every named value at 0; framed points in their own frame. */
   function convex(pts) {
     let turn = 0;
     const n = pts.length, dx = [], dy = [];
+    for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; if (a[0] === b[0] && a[1] === b[1]) return false; }
     for (let i = 0; i < n; i++) {
       const a = pts[i], b = pts[(i + 1) % n], c = pts[(i + 2) % n];
-      const cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
-      if (cr !== 0) { if (turn === 0) turn = Math.sign(cr); else if (Math.sign(cr) !== turn) return false; }
-      if (b[0] !== a[0]) dx.push(Math.sign(b[0] - a[0]));
-      if (b[1] !== a[1]) dy.push(Math.sign(b[1] - a[1]));
+      const ux = b[0] - a[0], uy = b[1] - a[1], vx = c[0] - b[0], vy = c[1] - b[1], cr = ux * vy - uy * vx;
+      if (cr === 0) { if (ux * vx + uy * vy < 0) return false; } else if (turn === 0) turn = Math.sign(cr); else if (Math.sign(cr) !== turn) return false;
+      if (ux !== 0) dx.push(Math.sign(ux));
+      if (uy !== 0) dy.push(Math.sign(uy));
     }
     const flips = d => d.reduce((m, s, i) => m + (s !== d[(i + 1) % d.length] ? 1 : 0), 0);
     return turn !== 0 && flips(dx) <= 2 && flips(dy) <= 2;
@@ -770,6 +843,10 @@
     if (framed !== s.pts.length && pairs !== s.pts.length) fail(key(path, 'pts'), 'must be all pairs or all framed points');
     if (framed && s.pts.some(q => has(q, 'x') || has(q, 'y'))) fail(key(path, 'pts'), 'framed points of a polygon cannot carry a screen offset');
     const at0 = framed ? s.pts.map(q => [q.p, -q.s]) : s.pts.map(q => [form(q[0]).c, form(q[1]).c]);
+    for (let i = 0; i < at0.length; i++) {
+      const a = at0[i], b = at0[(i + 1) % at0.length];
+      if (a[0] === b[0] && a[1] === b[1]) fail(idx(key(path, 'pts'), (i + 1) % at0.length), 'is the same point as the one before it');
+    }
     if (!convex(at0)) fail(key(path, 'pts'), 'must be a convex polygon, its points in order');
   }
   function eachShape(pack, fn) {
@@ -801,6 +878,7 @@
       }
       if (v.blade && !(v.blade.from < v.blade.to)) fail(key(ip, 'blade'), 'from must be below to');
     }
+    ranges(pack);
     eachShape(pack, (s, p) => { if (s.k === 'poly') polyRule(s, p); });
     for (const d of Object.keys(pack.decorations || {})) {
       const v = pack.decorations[d], dp = key(key(P, 'decorations'), d);
@@ -816,38 +894,124 @@
     }
   }
 
-  /* ---- Step 8: counts ------------------------------------------------------------------------- */
+  /* ---- Step 8: counts, and what a shape costs -------------------------------------------------- */
 
-  const shapeCount = list => list.reduce((n, pt) => n + pt.shapes.length, 0);
+  /* How many bands a fill paints a row in: 1 for a colour. A band list of the user's skin may hold
+     up to LIMITS.bands. */
+  function bandCount(pack, f) {
+    if (Array.isArray(f)) return f.length;
+    if (typeof f !== 'string' || f[0] !== '@') return 1;
+    const m = REF.exec(f);
+    if (m[1] === 'base') return Array.isArray(BASE[m[2]]) ? BASE[m[2]].length : 1;
+    if (has(USER_SETS, m[1])) return USER_SETS[m[1]][m[2]] === 'bands' ? LIMITS.bands : 1;
+    return bandCount(pack, pack.palettes[m[1]][m[2]]);
+  }
+  const span2 = v => { const f = form(v); return [bound(f, false), bound(f, true)]; };
+  /* Where a point can be: its anchor's name, and the x and y it reaches from that anchor. A framed
+     point can turn to any angle, so it reaches the length of (s, p) every way. */
+  function reach(q, at) {
+    if (Array.isArray(q)) return { a: at, x: span2(q[0]), y: span2(q[1]) };
+    if (has(q, 'frame')) {
+      const r = Math.hypot(q.s, q.p), x = has(q, 'x') ? span2(q.x) : [0, 0], y = has(q, 'y') ? span2(q.y) : [0, 0];
+      return { a: 'main', x: [x[0] - r, x[1] + r], y: [y[0] - r, y[1] + r] };
+    }
+    return { a: q.at, x: span2(q.x), y: span2(q.y) };
+  }
+  /* How far a set of points can stretch along x or y, each grown by its own margin; points on more
+     than one anchor add ANCHOR_SPAN. */
+  function extent(rs, axis, grow) {
+    let lo = Infinity, hi = -Infinity;
+    const as = new Set();
+    rs.forEach((r, i) => { const g = grow ? grow[i] : 0; lo = Math.min(lo, r[axis][0] - g); hi = Math.max(hi, r[axis][1] + g); as.add(r.a); });
+    return hi - lo + (as.size > 1 ? ANCHOR_SPAN : 0);
+  }
+  const rowsOver = ext => Math.ceil(Math.max(0, ext)) + 1;
+  function clipRows(s) {
+    if (!s.clip || s.clip[0] === null || s.clip[1] === null) return Infinity;
+    return Math.max(0, Math.ceil(span2(s.clip[1])[1] - span2(s.clip[0])[0]) + 1);
+  }
+  /* The most fillRect calls draw.js can make for a shape, at the extremes of every value it leans
+     on: a row (or column) of an ell, rrect, poly or strip costs one call per band; a rect one call
+     per band; a pix one call per run of a character in a row. */
+  function shapeCost(pack, s, at) {
+    const nb = s.k === 'pix' ? 1 : bandCount(pack, s.fill);
+    switch (s.k) {
+      case 'rect': return nb;
+      case 'ell': return Math.min(2 * Math.ceil(span2(s.ry)[1]) + 1, clipRows(s)) * nb;
+      case 'rrect': return Math.min(Math.max(0, Math.round(span2(s.h)[1])), clipRows(s)) * nb;
+      case 'poly': {
+        const rs = s.pts.map(q => reach(q, at));
+        const ext = s.dir === 'rows' ? extent(rs, 'y') : s.dir === 'cols' ? extent(rs, 'x') : Math.max(extent(rs, 'x'), extent(rs, 'y'));
+        return rowsOver(ext) * nb;
+      }
+      case 'strip': {
+        const rs = [reach(s.p0, at), reach(s.p1, at)], g = [span2(s.hw0)[1], span2(s.hw1)[1]];
+        return rowsOver(Math.max(extent(rs, 'x', g), extent(rs, 'y', g))) * nb;
+      }
+      default: {
+        let n = 0;
+        for (const row of s.rows) for (let i = 0; i < row.length; i++) if (row[i] !== '.' && row[i] !== row[i - 1]) n++;
+        return n;
+      }
+    }
+  }
+  /* The shapes and the cost of an item's parts, of hair's helmeted view and of its rest view. */
+  function itemSums(pack, v) {
+    const sum = list => { const o = { n: 0, cost: 0 }; for (const pt of list) for (const s of pt.shapes) { o.n++; o.cost += shapeCost(pack, s, has(s, 'at') ? s.at : pt.at); } return o; };
+    const rest = { n: 0, cost: 0 };
+    if (v.rest) for (const s of v.rest.shapes) { rest.n++; rest.cost += shapeCost(pack, s, 'rest'); }
+    return { parts: sum(v.parts), view: v.views ? sum(v.views.helmeted) : { n: 0, cost: 0 }, rest };
+  }
+  /* A decoration's cost, each shape's multiplied by the largest scale its group reaches. */
+  function decorCost(pack, v) {
+    const scale = {};
+    if (v.anim) for (const t of v.anim.tracks) if (t.ch === 'scale') scale[t.g] = Math.max(1, ...t.keys.map(k => k[1]));
+    return v.shapes.reduce((n, s) => n + Math.ceil(shapeCost(pack, s, 'place') * (has(s, 'g') && has(scale, s.g) ? scale[s.g] : 1)), 0);
+  }
   function counts(pack) {
-    const P = 'pack', items = pack.items || {}, ids = Object.keys(items);
+    const P = 'pack', items = pack.items || {}, ids = Object.keys(items), sums = {};
     if (ids.length > LIMITS.items) fail(key(P, 'items'), 'holds ' + ids.length + ' items, more than ' + LIMITS.items);
     for (const i of live(items)) {
-      const v = items[i];
-      const n = shapeCount(v.parts) + (v.views ? shapeCount(v.views.helmeted) : 0) + (v.rest ? v.rest.shapes.length : 0);
-      if (n > LIMITS.itemShapes) fail(key(key(P, 'items'), i), 'holds ' + n + ' shapes in its parts and views, more than ' + LIMITS.itemShapes);
+      const s = sums[i] = itemSums(pack, items[i]), ip = key(key(P, 'items'), i);
+      const n = s.parts.n + s.view.n + s.rest.n, c = s.parts.cost + s.view.cost + s.rest.cost;
+      if (n > LIMITS.itemShapes) fail(ip, 'holds ' + n + ' shapes in its parts and views, more than ' + LIMITS.itemShapes);
+      if (c > LIMITS.itemCost) fail(ip, 'costs up to ' + c + ' fills in its parts and views, more than ' + LIMITS.itemCost);
     }
     let px = 0;
     eachShape(pack, s => { if (s.k === 'pix') px += s.rows.length * s.rows[0].length; });
     if (px > LIMITS.pixPack) fail(P, 'holds ' + px + ' pixels in pix shapes, more than ' + LIMITS.pixPack);
-    const decs = Object.keys(pack.decorations || {}).length;
-    if (decs > LIMITS.decorations) fail(key(P, 'decorations'), 'holds ' + decs + ' decorations, more than ' + LIMITS.decorations);
-    if (pack.defaults) {
-      const d = pack.defaults, it = s => (has(d.items, s) ? items[d.items[s]] : null);
-      const n = lookCount({ build: { pack, b: pack.builds[d.build] }, items: s => (it(s) ? { pack, item: it(s) } : null) });
-      if (n > LIMITS.lookShapes) fail(key(P, 'defaults'), 'the default look draws ' + n + ' shapes, more than ' + LIMITS.lookShapes);
+    const decs = Object.keys(pack.decorations || {}), decor = {};
+    if (decs.length > LIMITS.decorations) fail(key(P, 'decorations'), 'holds ' + decs.length + ' decorations, more than ' + LIMITS.decorations);
+    for (const d of decs) {
+      const c = decor[d] = decorCost(pack, pack.decorations[d]);
+      if (c > LIMITS.decorCost) fail(key(key(P, 'decorations'), d), 'costs up to ' + c + ' fills, more than ' + LIMITS.decorCost);
     }
+    if (pack.defaults) {
+      const d = pack.defaults, it = s => (has(d.items, s) ? { item: items[d.items[s]], sum: sums[d.items[s]] } : null);
+      for (const b of Object.keys(pack.builds)) {
+        const h = pack.builds[b].head, t = lookTotals({ items: it, head: { item: items[h], sum: sums[h] } }), dp = key(P, 'defaults');
+        if (t.n > LIMITS.lookShapes) fail(dp, 'the default look draws ' + t.n + ' shapes with build ' + quote(b) + ', more than ' + LIMITS.lookShapes);
+        if (t.cost > LIMITS.lookCost) fail(dp, 'the default look costs up to ' + t.cost + ' fills with build ' + quote(b) + ', more than ' + LIMITS.lookCost);
+      }
+      const problem = plumeProblem(items[d.items.plume], items[d.items.helmet]);
+      if (problem) fail(key(P, 'defaults'), 'the default plume on the default helmet: ' + problem);
+    }
+    return { sums, decor };
   }
-  /* The most shapes a look draws for the knight in one frame: the body, the larger head group, the
-     pauldrons, both arms and gauntlets, and the weapon, with the shield when the grip is one-handed. */
-  function lookCount(c) {
-    const n = s => { const x = c.items(s); return x ? shapeCount(x.item.parts) : 0; };
-    const helmet = c.items('helmet'), hair = c.items('hair'), main = c.items('main');
-    const headOn = (hair && hair.item.views ? shapeCount(hair.item.views.helmeted) : 0) + (helmet && helmet.item.mounts ? n('plume') : 0) + n('helmet');
-    const head = c.build.pack.items[c.build.b.head];
-    const headOff = shapeCount(head.parts) + n('hair');
-    const one = main && main.item.grip.kind === 'one';
-    return n('back') + n('legs') + n('boots') + n('torso') + Math.max(headOn, headOff) + n('pauldrons') + n('arms') + n('gauntlets') + n('main') + (one ? n('off') : 0);
+  /* The most shapes, and the most fills, a look draws for the knight in one frame, over every grip
+     mode and helmet state: the body, the larger head group, the pauldrons, both arms and gauntlets,
+     and the weapon, with the shield when the grip is one-handed. c.items(slot) gives { item, sum },
+     c.head the build's head item. */
+  function lookTotals(c) {
+    const g = (s, part, what) => { const x = c.items(s); return x ? x.sum[part][what] : 0; };
+    const helmet = c.items('helmet'), main = c.items('main'), plume = !!(helmet && helmet.item.mounts);
+    const one = !!(main && main.item.grip.kind === 'one');
+    const t = what => {
+      const headOn = g('hair', 'view', what) + (plume ? g('plume', 'parts', what) : 0) + g('helmet', 'parts', what);
+      const headOff = c.head.sum.parts[what] + g('hair', 'parts', what);
+      return ['back', 'legs', 'boots', 'torso', 'pauldrons', 'arms', 'gauntlets', 'main'].reduce((a, s) => a + g(s, 'parts', what), 0) + Math.max(headOn, headOff) + (one ? g('off', 'parts', what) : 0);
+    };
+    return { n: t('n'), cost: t('cost') };
   }
 
   /* ---- Step 9 and looks: compiling to records --------------------------------------------------- */
@@ -993,8 +1157,8 @@
       tracks: a.tracks.map(t => ({ g: has(t, 'g') ? t.g : null, ch: has(t, 'ch') ? t.ch : null, pal: has(t, 'pal') ? t.pal : null,
         ease: t.ch === 'show' ? 0 : EASE[t.ease], times: t.keys.map(k => k[0]), values: t.keys.map(k => (has(t, 'pal') ? rgb(k[1]) : k[1])) })) });
   }
-  function compileDecoration(v) {
-    return freeze({ name: v.name, fits: v.fits.slice(), box: v.box.slice(),
+  function compileDecoration(v, cost) {
+    return freeze({ name: v.name, fits: v.fits.slice(), box: v.box.slice(), cost,
       groups: Object.keys(v.groups || {}).map(n => ({ name: n, pivot: v.groups[n].pivot.slice() })), anim: v.anim ? compileAnim(v.anim) : null });
   }
 
@@ -1009,7 +1173,7 @@
     if (v.rest) { cshapes(v.rest.shapes, at0, env, out); if (v.rest.mounts) mount(v.rest.mounts.plume, env); }
     return out;
   }
-  function load(pack, signed) {
+  function load(pack, signed, c) {
     const own = ownPalettes(pack), items = pack.items || {}, pal = Object.assign({ own }, NEUTRAL);
     for (const i of live(items)) compileItem(items[i], pal);
     const swatches = {};
@@ -1022,9 +1186,9 @@
       }
     }
     const decorations = {};
-    for (const d of Object.keys(pack.decorations || {})) decorations[d] = compileDecoration(pack.decorations[d]);
+    for (const d of Object.keys(pack.decorations || {})) decorations[d] = compileDecoration(pack.decorations[d], c.decor[d]);
     return freeze({ ok: true, id: pack.id, version: pack.version, name: pack.name, licence: pack.licence, format: pack.format.slice(),
-      provides: pack.provides.slice(), signed, data: freeze(pack), own, swatches, decorations });
+      provides: pack.provides.slice(), signed, data: freeze(pack), own, swatches, decorations, sums: freeze(c.sums) });
   }
 
   /* ---- read() ----------------------------------------------------------------------------------- */
@@ -1035,10 +1199,10 @@
      by default). Returns the loaded pack, or { ok: false, step, reason, id } where id is the pack's
      id when it could be read. Never throws. */
   function read(textIn, opts) {
-    const o = isObj(opts) ? opts : {};
     let pid;
     try {
       step = 'size';
+      const o = isObj(opts) ? opts : {};
       if (typeof textIn !== 'string') fail('', 'a pack must be given as text');
       if (textIn.length > LIMITS.text || utf8Length(textIn) > LIMITS.text) fail('', 'the file is larger than 512 KiB');
       step = 'json';
@@ -1064,9 +1228,9 @@
       step = 'fields'; fields(env.pack);
       step = 'references'; references(env.pack);
       step = 'rules'; rules(env.pack);
-      step = 'counts'; counts(env.pack);
+      step = 'counts'; const c = counts(env.pack);
       step = 'compile';
-      return load(env.pack, signed);
+      return load(env.pack, signed, c);
     } catch (e) {
       const out = e instanceof Reject ? { ok: false, step: e.step, reason: e.reason } : { ok: false, step: step || 'size', reason: 'the pack could not be checked' };
       if (pid) out.id = pid;
@@ -1082,7 +1246,7 @@
     if (sig.alg !== 'ed25519') fail('sig.alg', 'must be "ed25519"');
     if (typeof sig.kid !== 'string' || !KID.test(sig.kid)) fail('sig.kid', 'must be a key id');
     const keys = isObj(o.keys) ? o.keys : KEYS, pub = has(keys, sig.kid) ? keys[sig.kid] : null;
-    if (!(pub instanceof Uint8Array) || pub.length !== 32) fail('sig.kid', 'names a key this page does not know, "' + sig.kid + '"');
+    if (!(pub instanceof Uint8Array) || pub.length !== 32) fail('sig.kid', 'names a key this page does not know, ' + quote(sig.kid));
     const bytes = base64(sig.value);
     if (!bytes || bytes.length !== 64) fail('sig.value', 'must be 64 bytes in base64');
     const verify = typeof o.verify === 'function' ? o.verify : KW.ed25519 && typeof KW.ed25519.verify === 'function' ? KW.ed25519.verify : null;
@@ -1090,7 +1254,7 @@
     let good = false;
     try { good = verify(pub, message(env.pack), bytes) === true; } catch (e) { good = false; }
     step = 'signature';
-    if (!good) fail('sig.value', 'does not verify for this pack with key "' + sig.kid + '"');
+    if (!good) fail('sig.value', 'does not verify for this pack with key ' + quote(sig.kid));
     return true;
   }
 
@@ -1102,10 +1266,12 @@
     return 0;
   }
   /* Gathers the results of read() into the set of packs in use: the higher version of two with one
-     id, and at most LIMITS.packs packs. Returns { packs: Map(id -> pack), rejected, superseded }. */
+     id, and at most LIMITS.packs packs. The base pack is taken first, so the cap never turns it
+     away. Returns { packs: Map(id -> pack), rejected, superseded }. */
   function gather(results) {
-    const packs = new Map(), rejected = [], superseded = [];
-    for (const r of Array.isArray(results) ? results : []) {
+    const packs = new Map(), rejected = [], superseded = [], list = Array.isArray(results) ? results : [];
+    const ordered = list.filter(r => r && r.ok === true && r.id === BASE_ID).concat(list.filter(r => !(r && r.ok === true && r.id === BASE_ID)));
+    for (const r of ordered) {
       if (!r || r.ok !== true) { rejected.push(r); continue; }
       const old = packs.get(r.id);
       if (old) {
@@ -1133,9 +1299,10 @@
 
   /* Turns a look { build, items: { slot: "<pack>/<item>" }, swatches: { set: "<pack>/<swatch>" } }
      into the lists the engine draws, falling back to the base pack's defaults for anything that is
-     missing, unusable or over the shape cap. Returns { ok: false, reason: 'no base pack' } when the
+     missing or unusable, for a plume that would leave its helmet's reach, and for a look over the
+     shape cap or the cost cap. Returns { ok: false, reason: 'no base pack' } when the
      base pack is not loaded. Otherwise { ok: true, look, fallbacks, ignored, m, diffs, colours,
-     grip, blade, shapes, lists }; each fallback is { kind, key, wanted, used, reason }. */
+     grip, blade, plumeShown, shapes, cost, lists }; each fallback is { kind, key, wanted, used, reason }. */
   function resolve(lib, lookIn) {
     const packs = packMap(lib), base = packs.get(BASE_ID);
     if (!base) return { ok: false, reason: 'no base pack', fallbacks: [], ignored: [] };
@@ -1192,40 +1359,55 @@
     if (isObj(look.swatches)) for (const k of Object.keys(look.swatches)) if (!has(USER_SETS, k)) ignored.push({ key: k, reason: 'not a swatch set' });
     const palCache = new Map();
     const pal = p => { if (!palCache.has(p.id)) palCache.set(p.id, Object.assign({ own: p.own }, sw)); return palCache.get(p.id); };
-    const compile = () => {
+    const itemOf = c => c.pack.data.items[c.id];
+    const same = (a, b) => !!(a && b && a.pack === b.pack && a.id === b.id);
+    const name = c => (c ? c.pack.id + '/' + c.id : null);
+    const diffsOf = () => {
       const b = base.data.builds[build], diffs = {};
       MEASURES.forEach((m, i) => { diffs[DIFFS[i]] = b.m[m[0]] - m[1]; });
-      const items = {};
-      for (const slot of LOOK_SLOTS) if (chosen[slot]) items[slot] = { pack: chosen[slot].pack.data, item: chosen[slot].pack.data.items[chosen[slot].id], id: chosen[slot].pack.id };
-      const bld = { pack: base.data, b };
-      const n = lookCount({ build: bld, items: s => items[s] || null });
-      return { b, diffs, items, bld, n };
+      return diffs;
     };
-    // the shape cap: fall back slot by slot, then the build, until the look fits
-    let cur = compile();
-    for (const slot of LOOK_SLOTS.concat(['build'])) {
-      if (cur.n <= LIMITS.lookShapes) break;
-      if (slot === 'build') {
-        if (build === D.build) continue;
-        fallbacks.push({ kind: 'build', key: 'build', wanted: BASE_ID + '/' + build, used: BASE_ID + '/' + D.build, reason: 'over the ' + LIMITS.lookShapes + '-shape cap' });
-        build = D.build;
-      } else {
-        const d = defaults[slot], c = chosen[slot];
-        if (!c || (d && c.pack === d.pack && c.id === d.id)) continue;
-        fallbacks.push({ kind: 'item', key: slot, wanted: c.pack.id + '/' + c.id, used: d ? BASE_ID + '/' + d.id : null, reason: 'over the ' + LIMITS.lookShapes + '-shape cap' });
-        chosen[slot] = d;
+    const totals = () => lookTotals({ items: s => (chosen[s] ? { item: itemOf(chosen[s]), sum: chosen[s].pack.sums[chosen[s].id] } : null),
+      head: { item: base.data.items[base.data.builds[build].head], sum: base.sums[base.data.builds[build].head] } });
+    const drop = (slot, reason) => {
+      fallbacks.push({ kind: 'item', key: slot, wanted: name(chosen[slot]), used: name(defaults[slot]), reason });
+      chosen[slot] = defaults[slot];
+    };
+    /* Fall back until the plume stays within reach of its helmet's mount and the look is within the
+       shape cap and the cost cap: the plume and then the helmet for the first, slot by slot in
+       drawing order and then the build for the caps. Each step puts one more thing back to its
+       default, and the base pack's default look passes both, so the loop ends. */
+    let t;
+    for (let guard = 0; guard < 64; guard++) {
+      const h = chosen.helmet, pl = chosen.plume;
+      const problem = h && pl ? plumeProblem(itemOf(pl), itemOf(h), diffsOf()) : '';
+      if (problem) {
+        if (!same(pl, defaults.plume)) drop('plume', 'does not fit the helmet: ' + problem);
+        else if (!same(h, defaults.helmet)) drop('helmet', 'its mount carries the plume out of range: ' + problem);
+        else break;
+        continue;
       }
-      cur = compile();
+      t = totals();
+      const over = t.n > LIMITS.lookShapes ? 'over the ' + LIMITS.lookShapes + '-shape cap' : t.cost > LIMITS.lookCost ? 'over the cost cap of ' + LIMITS.lookCost + ' fills' : '';
+      if (!over) break;
+      const slot = LOOK_SLOTS.find(s => chosen[s] && !same(chosen[s], defaults[s]));
+      if (slot) { drop(slot, over); continue; }
+      if (build === D.build) break;
+      fallbacks.push({ kind: 'build', key: 'build', wanted: BASE_ID + '/' + build, used: BASE_ID + '/' + D.build, reason: over });
+      build = D.build;
     }
+    t = totals();
+    const b = base.data.builds[build], diffs = diffsOf(), items = {};
+    for (const slot of LOOK_SLOTS) if (chosen[slot]) items[slot] = { pack: chosen[slot].pack.data, item: itemOf(chosen[slot]), id: chosen[slot].pack.id };
     const byId = new Map(Array.from(packs.values()).map(p => [p.data, p]));
-    const lists = compileLists({ diffs: cur.diffs, build: cur.bld, items: cur.items, pal: data => pal(byId.get(data)) });
+    const lists = compileLists({ diffs, build: { pack: base.data, b }, items, pal: data => pal(byId.get(data)) });
     const used = { build: BASE_ID + '/' + build, items: {}, swatches: swName };
-    for (const slot of LOOK_SLOTS) if (chosen[slot]) used.items[slot] = chosen[slot].pack.id + '/' + chosen[slot].id;
-    const main = cur.items.main ? cur.items.main.item : null, m = {};
-    MEASURES.forEach(x => { m[x[0]] = cur.b.m[x[0]]; });
-    return { ok: true, look: used, fallbacks, ignored, m, diffs: cur.diffs, shapes: cur.n,
+    for (const slot of LOOK_SLOTS) if (chosen[slot]) used.items[slot] = name(chosen[slot]);
+    const main = items.main ? items.main.item : null, m = {};
+    MEASURES.forEach(x => { m[x[0]] = b.m[x[0]]; });
+    return { ok: true, look: used, fallbacks, ignored, m, diffs, shapes: t.n, cost: t.cost,
       colours: { face: sw.skin.face, sick: sw.skin.sick, hot: sw.skin.hot, cheek: sw.skin.cheek, puff: sw.skin.puff, brow: sw.hair.brow },
-      grip: main ? main.grip : null, blade: main && main.blade ? main.blade : null, plumeShown: !!(cur.items.helmet && cur.items.helmet.item.mounts && cur.items.plume), lists };
+      grip: main ? main.grip : null, blade: main && main.blade ? main.blade : null, plumeShown: !!(items.helmet && items.helmet.item.mounts && items.plume), lists };
   }
 
   /* ---- Drawing ---------------------------------------------------------------------------------- */
@@ -1290,7 +1472,7 @@
 
   function sample(tr, u) {
     const T = tr.times, V = tr.values, n = T.length;
-    if (u <= T[0]) return V[0];
+    if (n === 1 || u <= T[0]) return V[0];
     if (u >= T[n - 1]) return V[n - 1];
     let i = 0;
     while (T[i + 1] <= u) i++;
@@ -1303,13 +1485,21 @@
   }
   const hex2 = n => (n < 16 ? '0' : '') + n.toString(16);
   /* A decoration's groups and palette entries at t seconds after it appeared: { groups: { name:
-     { dx, dy, scale, alpha, show } }, pal: { "set.entry": "#rrggbb" } }. A pure function of t. */
+     { dx, dy, scale, alpha, show } }, pal: { "set.entry": "#rrggbb" } }. A pure function of t; a t
+     that is not a finite number counts as 0, and a negative one as 0. A vast t on a looping clock
+     still lands inside one period. */
   function animate(dec, t) {
     const out = { groups: {}, pal: {} }, a = dec && dec.anim;
     for (const g of (dec && dec.groups) || []) out.groups[g.name] = { dx: 0, dy: 0, scale: 1, alpha: 1, show: 1 };
     if (!a) return out;
-    const x = a.phase + (Number.isFinite(t) ? Math.max(0, t) : 0) / a.period;
-    const u = a.loop ? x - Math.floor(x) : Math.min(1, x);
+    const tt = Number.isFinite(t) && t > 0 ? t : 0;
+    let u;
+    if (a.loop) {
+      // below 2^52 periods the quotient keeps its fraction; past that, the remainder does
+      const q = tt / a.period, x = a.phase + (q < 4503599627370496 ? q - Math.floor(q) : (tt % a.period) / a.period);
+      u = x - Math.floor(x);
+    } else u = Math.min(1, a.phase + tt / a.period);
+    if (!(u >= 0 && u <= 1)) u = 0;
     for (const tr of a.tracks) {
       const v = sample(tr, u);
       if (tr.pal) out.pal[tr.pal] = '#' + hex2(v[0]) + hex2(v[1]) + hex2(v[2]);
@@ -1320,7 +1510,7 @@
   /* Whether a decoration may go in a scene's place { kind, w, h }. */
   const fitsPlace = (dec, pl) => !!(dec && pl && dec.fits.includes(pl.kind) && dec.box[0] <= pl.w && dec.box[1] <= pl.h);
 
-  const api = { FORMAT, PREFIX, BASE_ID, LIMITS, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, VALUES, VALUE, MEASURES, BASE, KEYS, ORDERS,
+  const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, VALUES, VALUE, MEASURES, BASE, KEYS, ORDERS,
     read, canonical, message, gather, resolve, draw, sequence, animate, fitsPlace, newAnchors, newValues };
   KW.pack = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

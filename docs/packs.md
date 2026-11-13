@@ -11,9 +11,11 @@ records, and draws a list by calling the primitives. It loads under Node for the
 `tests/web/pack.test.js`, like `state.js`.
 
 The library is not yet wired into the page: `index.html` does not load it, and the knight is still
-drawn by `knight.js`. Not built yet either: the engine's rig that fills the anchors each frame, the
-script carriers for packs shipped with the page, fetching downloaded packs, the plain stand-in
-figure drawn when there is no base pack, and drawing decorations into a scene's places.
+drawn from code by `knight.js`, whose `rig(o)` works out the anchors and named values each frame.
+Not built yet either: the script carriers for packs shipped with the page, fetching downloaded
+packs, the plain stand-in figure drawn when there is no base pack, and anything that draws a
+decoration. A decoration's fields and shapes are checked and its cost counted, but only its
+keyframes are compiled; its shapes are not.
 
 This page describes format 1.0 as the library implements it.
 
@@ -33,9 +35,9 @@ A pack file is UTF-8 JSON holding an envelope:
 |---|---|
 | `kwpack` | `1` |
 | `pack` | an object, the pack (below) |
-| `sig` | `alg` `"ed25519"`, `kid` the name of a public key, `value` the signature in base64; see [Signing](#signing) |
+| `sig` | an object: `alg` `"ed25519"`, `kid` the name of a public key, `value` the signature in base64; see [Signing](#signing) |
 
-No other key is allowed. A page may accept a pack with no `sig` only when it asks for that (see
+`kwpack` and `pack` are required. No other key is allowed. A page may accept a pack with no `sig` only when it asks for that (see
 `allowUnsigned` under [The library](#the-library)).
 
 ## The pack
@@ -178,16 +180,21 @@ In a part drawn for one side, `foot`, `hip`, `shoulder` and `hand` mean that sid
 
 ### Named values
 
-A shape may lean on these names. All are whole numbers when the engine sets them.
+A shape may lean on these names. All are whole numbers when the engine sets them, and each has a
+range that every check below works over.
 
-| Name | Meaning |
-|---|---|
-| `drop` | how far the upper body sinks (bob and crouch), in pixels |
-| `bloat` | how far each side swells when memory is tight, in pixels |
-| `stepL`, `stepR` | 1 while that foot is lifted in the walk, else 0 |
-| `step` | in a part drawn for one side, that side's step |
-| `sway` | the plume's sway, -4 to 4 |
-| `dShoulder`, `dChest`, `dWaist`, `dHip`, `dStance`, `dLeg`, `dHeight`, `dHead` | the build's differences from the present knight |
+| Name | Meaning | Range |
+|---|---|---|
+| `drop` | how far the upper body sinks (bob and crouch), in pixels | 0 to 40 |
+| `bloat` | how far each side swells when memory is tight, in pixels | 0 to 60 |
+| `stepL`, `stepR` | 1 while that foot is lifted in the walk, else 0 | 0 to 1 |
+| `step` | in a part drawn for one side, that side's step | 0 to 1 |
+| `sway` | the plume's sway | -4 to 4 |
+| `dShoulder`, `dChest`, `dWaist`, `dHip`, `dStance`, `dLeg`, `dHeight`, `dHead` | the build's differences from the present knight | from the measurement ranges: `dShoulder` -14 to 16, `dChest` -14 to 18, `dWaist` -18 to 18, `dHip` -14 to 18, `dStance` -8 to 10, `dLeg` -14 to 26, `dHeight` -22 to 28, `dHead` -9 to 9 |
+
+The engine clamps `drop` and `bloat` into their ranges when it fills the values array for a pack.
+The present knight stays inside them: its drop reaches 10 and its bloat 30. `RANGE` in `pack.js`
+holds the table.
 
 Where a name may be used:
 
@@ -204,12 +211,23 @@ plus each named value times its coefficient; `c` may be left out and means 0. Ev
 scalar is a multiple of 1/8, and coefficients lie from -8 to 8. With whole-number values every sum
 is then exact in floating point, so the order of adding cannot change a result.
 
-| Scalar | Range of the number or `c` |
+The range of a scalar bounds its value as evaluated, not only `c`. The `rules` step works out each
+scalar's least and greatest value over the ranges of the names it leans on, and refuses the pack
+when either end leaves the scalar's range, naming the field and the end that breaks it. So no
+negative size and no offset past 512 can reach a primitive, whatever the build and the frame.
+
+| Scalar | Range, at both ends |
 |---|---|
 | offsets (the x and y of points, clips, pivots, mounts, `hold`) | -512 to 512 |
 | lengths `w`, `h` | 0 to 512 |
-| radii `r`, `rx`, `ry` | 0 to 256 |
+| corner radius `r` of an `rrect` | 0 to 256 |
+| radii `rx`, `ry` of an `ell` | 1 to 256 (`draw.js` divides by them) |
 | strip half-widths `hw0`, `hw1` | 0 to 64 |
+
+The offsets folded in later are checked folded. A shield's points and clips are checked with its
+`hold` point taken off them. A plume and its helmet may come from different packs, so a plume is
+checked on its helmet's mount (worn) and rest mount (at rest) when a look is resolved; see
+[Looks](#looks). The base pack's default plume must fit its default helmet at every build.
 
 A **point** is one of:
 
@@ -311,11 +329,15 @@ part's for that shape alone.
   rows between them are drawn.
 - `poly` has 3 to 16 points, convex and in order. They must be all pairs or all framed points, and
   framed points of a polygon carry no `x` or `y`. Convexity is checked with every named value at 0,
-  and framed points in the frame's own terms. `dir` is `rows`, `cols` or `frame`; `frame` fills by
-  columns when the weapon lies nearer horizontal than vertical, and is allowed only in `main`.
-- `pix` gives the shape row by row: 1 to 64 rows of equal length, 1 to 64 printable ASCII
-  characters each, `.` for clear and any other character a key of `key`. `key` maps 1 to 16 single
-  characters to single colours.
+  and framed points in the frame's own terms. No point may equal the one before it (the last and
+  the first included), since a doubled point would hide a reflex angle, and no edge may double back
+  along the one before. `dir` is `rows`, `cols` or `frame`; `frame` fills by columns when the weapon
+  lies nearer horizontal than vertical, and is allowed only in a part of a `main` item: never in a
+  rest view or a decoration.
+- `pix` gives the shape row by row: 1 to 64 rows of equal length, each 1 to 64 characters from `!`
+  to `~` (printable ASCII without the space), `.` for clear and any other character a key of
+  `key`. `key` maps 1 to 16 single characters, each from `!` to `~` and not `.`, to single
+  colours.
 
 ### The face
 
@@ -323,9 +345,13 @@ The engine draws the face (eyes, brows, cheeks, mouth, the thermometer) after th
 fixed offsets from `head`, so no helmet can cover it. A helmet must also show skin there: it needs a
 `rect`, `rrect` or `ell` filled with exactly `@skin.face`, placed by a pair, whose box holds the
 face box, `x` from -28 to 28 and `y` from -20 to 20 around `head`. The box is `[x, x + w]` by
-`[y, y + h]` (centre plus and minus the radii for an ellipse), cut by any clip. It must hold for
-every build in range and every sway, so the shape may lean on the build's differences and `sway`
-but on no other name.
+`[y, y + h]` (centre plus and minus the radii for an ellipse), cut by any clip. It must hold at both
+ends of the range of every name the shape leans on.
+
+The check proves that a skin-coloured shape covers the face box. It does not prove that nothing is
+painted over that shape afterwards: the fixture's own helmet lays a translucent shade over the top
+of its opening. What keeps the face visible is the drawing order, in which the engine paints the
+face last.
 
 ### Rest views
 
@@ -392,19 +418,23 @@ refused whole.
 |---|---|
 | `size` | the input is text of at most 512 KiB, counted in UTF-8 bytes |
 | `json` | nesting no deeper than 12 and no key twice in one object, checked on the raw text before parsing; then `JSON.parse`; then every number finite, below 1,000,000 in size and with at most 3 decimals, every string and key free of unpaired surrogates, and no key `__proto__`, `constructor` or `prototype` anywhere, `ext` and `companions` included |
-| `envelope` | the envelope's three fields |
+| `envelope` | the file holds a JSON object; `kwpack` is 1 and `pack` an object, both present; `sig`, when present, is an object; no other key |
 | `signature` | the signature, against the key named by `kid` |
 | `format` | `format` is `[1, 0]` |
 | `fields` | every field against its table, with no unknown keys outside `ext` and `companions`: types, ranges, multiples of 1/8, id patterns, text lengths, rising band fractions, and the counts the tables give |
-| `references` | every `@set.entry` exists and is the right kind, every anchor is one the slot allows, every named value is on the list and allowed where it is, every `g` is a declared group, every palette track names a hex entry of the pack's own palettes, each build's head item exists with slot `head`, and every default exists |
-| `rules` | `provides` matches the sections, `arms` and `gauntlets` have one part for each side, each helmet passes the face check, each grip has as many stations as its kind, each blade's `from` is below its `to`, each polygon is convex, each decoration's box is at most 240 by 240, no two tracks drive one thing |
-| `counts` | the per-pack counts below, and that the base pack's default look draws at most 1200 shapes |
+| `references` | every `@set.entry` exists and is the right kind, every anchor is one the slot allows, every named value is on the list and allowed where it is, `dir: "frame"` appears only in a part of a `main` item, every `g` is a declared group, every palette track names a hex entry of the pack's own palettes, each build's head item exists with slot `head`, and every default exists |
+| `rules` | `provides` matches the sections, `arms` and `gauntlets` have one part for each side, each helmet passes the face check, each grip has as many stations as its kind, each blade's `from` is below its `to`, every scalar stays in its range at both ends (folded where something is folded in), each polygon is convex with no point repeated, each decoration's box is at most 240 by 240, no two tracks drive one thing |
+| `counts` | the per-pack counts and costs below; that the base pack's default look, with each of its builds, draws at most 1200 shapes and costs at most 40 000; and that its default plume fits its default helmet |
 | `compile` | every item and decoration compiles |
 
 A refusal is `{ ok: false, step, reason, id }`. The reason names the field at fault as a path,
 such as `pack.items["helm.open"].parts[0].shapes[8].p[0]: must be a multiple of 1/8 from -512 to
 512`, and `id` is the pack's id when it could be read. The reader never throws, whatever it is
-given.
+given, options included.
+
+A reason holds text from the pack: its keys and ids. Each key or value quoted in it is cut to 40
+characters and the whole reason to 300, each ending in three full stops when cut. A reason is
+text, and a page must show it as text, never as markup.
 
 ### Limits
 
@@ -428,9 +458,41 @@ given.
 | keyframe period | 0.2 to 600 seconds |
 | rest view | 64 shapes, a box of 240 by 240 |
 | one frame of the knight | 1200 shapes, counted when a look is compiled |
+| the cost of an item, its parts and views together | 8000 |
+| the cost of one frame of the knight, in any grip mode and helmet state | 40 000 |
+| the cost of a decoration | 8000 |
 
 The depth of 12 is the deepest a valid pack can nest: a term inside a point of a polygon in hair's
 `helmeted` view, or a translucent colour in one of its band lists.
+
+### Cost
+
+A count of shapes says little about the work of drawing them: one ellipse of radius 256 in 8 bands
+makes over 4000 calls to `fillRect`. So every shape has a cost, the most `fillRect` calls `draw.js`
+can make for it, worked out at the ends of the range of every value it leans on:
+
+| Shape | Cost |
+|---|---|
+| `rect` | 1 for a colour; one per band for a band list |
+| `ell` | its rows, twice the greatest `ry` rounded up plus 1, times its bands |
+| `rrect` | its rows, the greatest `h` rounded, times its bands |
+| `poly` | the rows (or columns) its points can span, plus 1, times its bands |
+| `strip` | the rows or columns its ends and half-widths can span, plus 1, times its bands |
+| `pix` | one per run of a character in a row |
+
+A clip with both ends set caps the rows of an `ell` or `rrect`. A band list of the user's skin
+counts as 8 bands. A framed point may turn to any angle, so it reaches the length of its `(s, p)`
+in every direction. A shape whose points hang on two anchors adds `ANCHOR_SPAN`, 400: the
+farthest apart two anchors of one frame may lie. The present rig keeps well inside it: over every
+pose, every point of a swing, the smallest and largest builds and a bloat of 60, its anchors lie at
+most 273 apart (the left shoulder and the hammer hand at the anvil). A decoration's shape counts as many times over as the largest scale its
+group's keyframes reach.
+
+The cost is a bound, not a count. The present knight costs 11 932 in its heaviest mode (the
+greatsword, helmet on): 5560 for the legs, boots, tabard, pauldrons, arms and gauntlets, 1720 for
+the plume and helmet, and 4652 for the greatsword. Drawn through `draw.js` it makes between
+about 5800 and 6500 calls in the poses measured, the face included. With the helmet off the head
+group costs 1632; with the sword put away, or at the anvil, the greatsword's 4652 drops out.
 
 ## Signing
 
@@ -518,17 +580,30 @@ use, and reports each in `fallbacks` as `{ kind, key, wanted, used, reason }`. T
 | `pack not loaded` | no loaded pack has that id |
 | `no such item`, `no such swatch`, `no such build` | the pack is loaded but lacks it |
 | `the item is for the <slot> slot` | the item exists but belongs to another slot |
-| `over the 1200-shape cap` | dropped to bring the look under the cap |
+| `does not fit the helmet: ...` | the plume would pass 512 from the head on the chosen helmet's mount |
+| `its mount carries the plume out of range: ...` | the default plume would pass 512 on this helmet's mount |
+| `over the 1200-shape cap` | dropped to bring the look under the shape cap |
+| `over the cost cap of 40000 fills` | dropped to bring the look under the cost cap |
 
 `back` and `off` have no default unless the base pack names one; a look that leaves them out
 draws nothing there and reports nothing.
 
-**The shape cap.** The most a look may draw for the knight in one frame is 1200 shapes, counted
-as the body, the larger of the two head groups, the pauldrons, both arms and gauntlets, and the
-weapon, with the shield only when the grip is one-handed. A look over it falls back slot by slot,
-in the order `back`, `legs`, `boots`, `torso`, `hair`, `plume`, `helmet`, `pauldrons`, `arms`,
-`gauntlets`, `main`, `off` and then the build, skipping slots already at their default, until it
-fits. The base pack's own default look must fit, so the fallback always ends.
+**The caps.** A look may draw at most 1200 shapes for the knight in one frame, and cost at most
+40 000. Both are counted for the heaviest frame the look can draw: the body, the larger of the two
+head groups, the pauldrons, both arms and gauntlets, and the weapon, with the shield only when the
+grip is one-handed.
+
+`resolve` then falls back, one step at a time, until the look passes:
+
+1. A plume that would pass 512 from the head on the chosen helmet's mount falls back to the default
+   plume; if the default plume does not fit that helmet either, the helmet falls back.
+2. A look over either cap falls back its first slot not already at its default, in the order
+   `back`, `legs`, `boots`, `torso`, `hair`, `plume`, `helmet`, `pauldrons`, `arms`, `gauntlets`,
+   `main`, `off`, and then the build.
+
+Each step puts one more thing back to its default. The base pack's default look passes both caps
+with every one of its builds, and its default plume fits its default helmet, so the fallback
+always ends.
 
 With no base pack loaded, `resolve` returns `{ ok: false, reason: 'no base pack' }`, and the caller
 draws its stand-in.
@@ -571,7 +646,8 @@ normal ramp is used.
 
 A test draws the fixture's whole knight this way through `draw.js`, in eleven poses (standing,
 bloated, attacking, unwell, walking, helmet off, sword away, at the anvil, mid-swing both ways),
-and requires every fill to equal what `knight.js` draws, pixel for pixel.
+and requires every fill to equal what `knight.js` draws, pixel for pixel, and the number of fills
+to stay within the look's cost.
 
 ## The library
 
@@ -580,7 +656,7 @@ and requires every fill to equal what `knight.js` draws, pixel for pixel.
 | Function | Returns |
 |---|---|
 | `read(text, opts)` | the loaded pack, or `{ ok: false, step, reason, id }` |
-| `canonical(value)` | the canonical form, as a string; throws a `TypeError` on anything JSON cannot hold |
+| `canonical(value)` | the canonical form, as a string; throws a `TypeError` on anything but a plain object, an array, a string, a finite number, a boolean or `null` (a `Map`, `Set` or `Date` included) |
 | `message(pack)` | the signed bytes, a `Uint8Array` |
 | `gather(results)` | `{ packs, rejected, superseded }`: the packs in use as a `Map` by id |
 | `resolve(packs, look)` | the compiled look, or `{ ok: false, reason: 'no base pack' }` |
@@ -594,20 +670,26 @@ and requires every fill to equal what `knight.js` draws, pixel for pixel.
 `kid` to 32-byte `Uint8Array`, in place of `KEYS`) and `verify` (in place of `KW.ed25519.verify`).
 
 A loaded pack is frozen: `{ ok: true, id, version, name, licence, format, provides, signed, data,
-own, swatches, decorations }`, where `data` is the pack as read, `own` its palettes resolved,
-`swatches` its swatches resolved and `decorations` each decoration's groups and compiled keyframes.
+own, swatches, decorations, sums }`, where `data` is the pack as read, `own` its palettes resolved,
+`swatches` its swatches resolved, `decorations` each decoration's groups, compiled keyframes and
+`cost`, and `sums` each item's shapes and cost as `{ parts, view, rest }`, each `{ n, cost }`.
 
 `gather` keeps the higher `version` of two packs with one id (the first of two equal ones) and at
-most 32 packs, refusing the rest with step `counts`. `resolve` accepts its result, a `Map` or an
+most 32 packs, refusing the rest with step `counts`. The base pack is always among the 32: it is
+taken first, and the cap turns away the last of the others. `resolve` accepts its result, a `Map` or an
 array of loaded packs.
 
 A resolved look is `{ ok: true, look, fallbacks, ignored, m, diffs, colours, grip, blade, plumeShown,
-shapes, lists }`: `look` names what is drawn, `m` and `diffs` are the build's measurements and
+shapes, cost, lists }`: `look` names what is drawn, `m` and `diffs` are the build's measurements and
 differences, `colours` holds the skin's `face`, `sick`, `hot`, `cheek` and `puff` and the hair's
-`brow` for the engine's face, and `shapes` is the count against the cap.
+`brow` for the engine's face, and `shapes` and `cost` are the counts against the caps.
 
-Constants: `FORMAT`, `PREFIX`, `BASE_ID`, `LIMITS`, `STEPS`, `SLOTS`, `ANCHORS`, `ANCHOR`,
-`FRAME_SX`, `FRAME_SY`, `VALUES`, `VALUE`, `MEASURES`, `BASE`, `KEYS`, `ORDERS`.
+`animate(decoration, t)` takes a `t` that is not a finite number, or is negative, as 0, and returns
+finite values and well-formed colours for every `t`.
+
+Constants: `FORMAT`, `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STEPS`, `SLOTS`,
+`ANCHORS`, `ANCHOR`, `FRAME_SX`, `FRAME_SY`, `VALUES`, `VALUE`, `MEASURES`, `BASE`, `KEYS`,
+`ORDERS`.
 
 ## Tests
 
@@ -618,7 +700,10 @@ node --test tests/web/
 `tests/web/pack.test.js` reads `tests/web/fixtures/base.pack.json`, a base-like pack, and signs it
 with a key `node:crypto` generates for the run, verifying through `crypto.verify` and a canonical
 form written separately in the test. It refuses one copy of the pack for each rule, with the rule
-in the test's name, accepts each limit at its edge, and feeds the reader hostile and mangled text.
+in the test's name and the exact reason it expects, refuses values of the wrong type, accepts each
+limit at its edge, and feeds the reader hostile and mangled text. Scalars are refused at each end of their ranges, costs at the
+limits and one past them, and the cost is checked against the calls `draw.js` makes with every
+value at the ends of its range.
 The source of `pack.js` is checked to hold neither `eval` nor `Function(`.
 
 `tests/web/ed25519.test.js` tests the verifier. It checks every Ed25519 vector of RFC 8032 section
