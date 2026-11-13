@@ -10,7 +10,10 @@ const ST = require('../../web/js/state.js');
 const doc = fs.readFileSync(path.join(__dirname, '../../docs/state.md'), 'utf8');
 // The example from the docs, with its interval pinned: the times in these tests are worked out
 // for a file written every 30 seconds, whatever interval the docs' example shows.
-const EXAMPLE = Object.assign(JSON.parse(doc.match(/```json\n([\s\S]*?)\n```/)[1]), { interval_s: 30 });
+const BLOCKS = [...doc.matchAll(/```json\n([\s\S]*?)\n```/g)].map(m => JSON.parse(m[1]));
+const EXAMPLE = Object.assign(BLOCKS[0], { interval_s: 30 });
+// The second example in the docs: a NAS and a camera down, under one thing_down.
+const DOWN = Object.assign(BLOCKS[1], { interval_s: 30 });
 const GEN = Date.parse(EXAMPLE.generated_at);
 
 // A copy of the example with some fields replaced.
@@ -25,7 +28,9 @@ test('the example in docs/state.md maps to the unhealthy container in the house'
   assert.deepEqual(v.w, { id: 'container_unhealthy', lv: 3, level: 'warning', st: 'warn', scene: 'house', hl: 'RADARR UNWELL', sub: 'unhealthy for 12 min · restarted twice' });
   assert.deepEqual(v.more, { n: 0, crit: false });
   assert.equal(v.quietLine, EXAMPLE.quiet_line);
-  assert.equal(v.piOK, true);
+  assert.deepEqual(v.things, [
+    { place: 'pie', kind: 'pi', ok: true, alert: true }, { place: 'g1', kind: 'machine', ok: true, alert: true },
+    { place: 'h1', kind: 'camera', ok: true, alert: true }, { place: 'g2', kind: 'machine', ok: false, alert: false }]);
   assert.equal(v.tv, true);
   assert.equal(v.maxSeq, 4411);
   assert.deepEqual(v.events, [
@@ -36,7 +41,7 @@ test('the example in docs/state.md maps to the unhealthy container in the house'
 test('every id maps to the scene and rank docs/design.md gives it', () => {
   const want = {
     attack: ['battlement', 4], wan_down: ['battlement', 4], container_unhealthy: ['house', 3], disk_full: ['cellar', 3],
-    backup_overdue: ['house', 3], pi_silent: ['house', 3], cpu_hot: ['yard', 3], memory_tight: [null, 3],
+    backup_overdue: ['house', 3], pi_silent: ['house', 3], thing_down: [null, 3], cpu_hot: ['yard', 3], memory_tight: [null, 3],
     ssh_session: ['court', 2], updating: ['smithy', 2], streaming: ['house', 2], night: ['house', 1] };
   assert.deepEqual(Object.keys(ST.CONDITIONS), Object.keys(want));
   for (const [id, [scene, lv]] of Object.entries(want)) {
@@ -101,12 +106,138 @@ test('a file the page cannot read is malformed', () => {
   assert.equal(ST.map(file({ interval_s: '30' }), at(0)).problem, 'malformed');
 });
 
-test('the pie goes when the Pi is down or silent', () => {
-  const facts = pi => Object.assign({}, EXAMPLE.facts, { pi });
-  assert.equal(ST.map(file({ facts: facts({ up: false }) }), at(0)).piOK, false);
-  assert.equal(ST.map(file({ facts: facts(null) }), at(0)).piOK, true);
-  assert.equal(ST.map(file({ facts: null }), at(0)).piOK, true);
-  assert.equal(ST.map(file({ conditions: [cond('attack', 'critical'), cond('pi_silent', 'warning')] }), at(0)).piOK, false);
+// A copy of the example whose facts.things is replaced (undefined leaves it out).
+const withThings = (things, over) => {
+  const f = file(over);
+  f.facts = Object.assign({}, f.facts);
+  if (things === undefined) delete f.facts.things; else f.facts.things = things;
+  return f;
+};
+const PIE = (ok = true) => [{ place: 'pie', kind: 'pi', ok, alert: true }];
+const entry = (kind, state = 'up', alert = true) => ({ name: kind + state, kind, state, alert, seen: true, since: null });
+const drawn = list => ST.map(withThings({ list }), at(0)).things;
+
+test('without a things section the pie stands alone, gone while the Pi is down or silent', () => {
+  const pi = (p, over) => { const f = withThings(undefined, over); f.facts.pi = p; return ST.map(f, at(0)).things; };
+  assert.deepEqual(pi({ up: true }), PIE(true));
+  assert.deepEqual(pi({ up: false }), PIE(false));
+  assert.deepEqual(pi(null), PIE(true));
+  assert.deepEqual(pi({ up: true }, { conditions: [cond('attack', 'critical'), cond('pi_silent', 'warning')] }), PIE(false));
+  // an older file with neither section, and one with no facts at all
+  assert.deepEqual(pi(undefined), PIE(true));
+  assert.deepEqual(ST.map(file({ facts: null }), at(0)).things, PIE(true));
+});
+
+test('a things section of the wrong shape falls back to the pie', () => {
+  for (const bad of [null, 'list', 3, [], [{ kind: 'machine', state: 'down' }], { list: null }, { list: 'pi' }, { list: { 0: {} } }, { items: [] }]) {
+    const f = withThings(bad); f.facts.pi = { up: false };
+    assert.deepEqual(ST.map(f, at(0)).things, PIE(false), JSON.stringify(bad));
+  }
+});
+
+test('with a things list the pie leaves only when the Pi is judged down, whatever facts.pi says', () => {
+  const f1 = withThings({ list: [entry('pi', 'up')] }); f1.facts.pi = { up: false };
+  assert.deepEqual(ST.map(f1, at(0)).things, PIE(true));
+  const f2 = withThings({ list: [entry('pi', 'down')] }); f2.facts.pi = { up: true };
+  assert.deepEqual(ST.map(f2, at(0)).things, PIE(false));
+  // pi_silent no longer empties the dish once there is a list: the list carries the state
+  assert.deepEqual(ST.map(withThings({ list: [entry('pi')] }, { conditions: [cond('pi_silent', 'warning')] }), at(0)).things, PIE(true));
+  assert.deepEqual(drawn([]), []);
+});
+
+test('cameras fill the high places and the other devices the ground places, each in the order of the list', () => {
+  const places = list => drawn(list).map(t => t.place + ':' + t.kind);
+  assert.deepEqual(places([entry('machine'), entry('camera'), entry('pi'), entry('vm'), entry('camera'), entry('box')]),
+    ['g1:machine', 'h1:camera', 'pie:pi', 'g2:vm', 'h2:camera', 'g3:box']);
+  // six cameras: three are drawn, the rest wait for a high place that never comes
+  assert.deepEqual(places(Array.from({ length: 6 }, () => entry('camera'))), ['h1:camera', 'h2:camera', 'h3:camera']);
+  // five machines and a camera: three machines on the ground, the camera high whatever its position
+  assert.deepEqual(places([entry('machine'), entry('machine'), entry('machine'), entry('machine'), entry('machine'), entry('camera')]),
+    ['g1:machine', 'g2:machine', 'g3:machine', 'h1:camera']);
+  // kinds the page does not know are devices too, and stand on the ground
+  assert.deepEqual(places([entry('printer'), entry('acme.devices/nas'), entry('camera'), entry(''), entry('__proto__')]),
+    ['g1:printer', 'g2:acme.devices/nas', 'h1:camera', 'g3:']);
+  // only the first pi has a place
+  assert.deepEqual(places([entry('pi'), entry('pi'), entry('camera')]), ['pie:pi', 'h1:camera']);
+});
+
+test('a place depends only on the list, never on which things are up', () => {
+  const list = [entry('camera'), entry('machine'), entry('camera'), entry('vm'), entry('pi')];
+  const where = l => drawn(l).map(t => t.place);
+  const before = where(list);
+  for (let i = 0; i < list.length; i++) for (const state of ['down', 'unknown', 'mystery']) {
+    const l = list.map((e, j) => (j === i ? Object.assign({}, e, { state }) : e));
+    assert.deepEqual(where(l), before, `${i} ${state}`);
+  }
+});
+
+test('an entry the page cannot read takes no place, and the others keep their order', () => {
+  const list = [null, 'Vault', entry('machine', 'down'), 7, [], entry('camera', 'up', false), { kind: 'vm' }];
+  assert.deepEqual(drawn(list), [
+    { place: 'g1', kind: 'machine', ok: false, alert: true }, { place: 'h1', kind: 'camera', ok: true, alert: false },
+    { place: 'g2', kind: 'vm', ok: true, alert: false }]);
+  // the page reads 32 entries at most
+  const long = Array.from({ length: 40 }, () => entry('box')).concat([entry('camera')]);
+  assert.deepEqual(drawn(long).map(t => t.place), ['g1', 'g2', 'g3']);
+});
+
+test('each field of an entry is read on its own, and only "down" draws a thing gone', () => {
+  const one = e => drawn([e])[0];
+  assert.deepEqual(one({ kind: 'vm', state: 'unknown', alert: true }), { place: 'g1', kind: 'vm', ok: true, alert: true });
+  assert.deepEqual(one({ kind: 'vm', state: 'DOWN', alert: 'true' }), { place: 'g1', kind: 'vm', ok: true, alert: false });
+  assert.deepEqual(one({ kind: 'vm', alert: 1 }), { place: 'g1', kind: 'vm', ok: true, alert: false });
+  assert.deepEqual(one({ state: 'down', alert: true }), { place: 'g1', kind: '', ok: false, alert: true });
+  assert.deepEqual(one({ kind: 42, state: 'down' }), { place: 'g1', kind: '', ok: false, alert: false });
+  assert.deepEqual(one({ kind: 'k'.repeat(200) }), { place: 'g1', kind: 'k'.repeat(200), ok: true, alert: false });
+  assert.deepEqual(one({ kind: 'k'.repeat(201) }), { place: 'g1', kind: '', ok: true, alert: false });
+  assert.equal(one({ kind: 'camera', state: 'down' }).place, 'h1');
+});
+
+test('thing_down from the docs: the quiet scene, the words, and the place the knight looks to', () => {
+  const v = ST.map(DOWN, Date.parse(DOWN.generated_at));
+  assert.deepEqual(v.w, { id: 'thing_down', lv: 3, level: 'warning', st: 'warn', scene: null, hl: '2 DOWN', sub: 'Vault, Gate cam', place: 'g1' });
+  assert.deepEqual(v.things, [
+    { place: 'pie', kind: 'pi', ok: true, alert: true }, { place: 'g1', kind: 'machine', ok: false, alert: true },
+    { place: 'h1', kind: 'camera', ok: false, alert: true }, { place: 'g2', kind: 'machine', ok: true, alert: false }]);
+  assert.deepEqual(v.more, { n: 0, crit: false });
+});
+
+test('the knight looks to the place of the first named thing that is drawn, or straight ahead', () => {
+  // positions: 0..3 machines (g1, g2, g3, none), 4 unreadable, 5 camera (h1), 6 pi (pie), 7 pi (none)
+  const list = [entry('machine'), entry('machine'), entry('machine'), entry('machine'), 'x', entry('camera'), entry('pi'), entry('pi')];
+  const place = (things, l = list) => ST.map(withThings({ list: l }, { conditions: [Object.assign(cond('thing_down', 'warning'), things === undefined ? {} : { things })] }), at(0)).w.place;
+  assert.equal(place([5, 0]), 'h1');
+  assert.equal(place([3, 7, 2]), 'g3');
+  assert.equal(place([4, 6]), 'pie');
+  assert.equal(place([3]), null);
+  assert.equal(place([4]), null);
+  assert.equal(place([2.5, -1, '0', null, 1]), 'g2');
+  assert.equal(place([40]), null);
+  assert.equal(place([]), null);
+  assert.equal(place(undefined), null);
+  assert.equal(place('0'), null);
+  // without a things list the positions name nothing
+  assert.equal(ST.map(withThings(undefined, { conditions: [Object.assign(cond('thing_down', 'warning'), { things: [0] })] }), at(0)).w.place, null);
+});
+
+test('thing_down counts once in the badge, and carries no place when it does not win', () => {
+  const v = ST.map(file({ conditions: [cond('attack', 'critical'), Object.assign(cond('thing_down', 'warning'), { things: [1, 2, 3] }), cond('cpu_hot', 'warning')] }), at(0));
+  assert.equal(v.w.id, 'attack');
+  assert.equal('place' in v.w, false);
+  assert.deepEqual(v.more, { n: 2, crit: false });
+});
+
+test('the th= hook gives a list in the contract\'s shape, placed by the same rule', () => {
+  assert.deepEqual(ST.listFromHook('pi,camera!,machine,vm-,x'), [
+    { kind: 'pi', state: 'up', alert: false }, { kind: 'camera', state: 'down', alert: true }, { kind: 'machine', state: 'up', alert: false },
+    { kind: 'vm', state: 'down', alert: false }, { kind: 'x', state: 'up', alert: false }]);
+  assert.deepEqual(ST.listFromHook('pi,,my-kind,-'), [{ kind: 'pi', state: 'up', alert: false }, null, { kind: 'my-kind', state: 'up', alert: false }, null]);
+  assert.deepEqual(ST.listFromHook('camera%21'), [{ kind: 'camera', state: 'down', alert: true }]);
+  assert.deepEqual(ST.listFromHook('%zz'), [null]);
+  assert.deepEqual(ST.listFromHook('a b,<x>'), [null, null]);
+  const r = ST.arrange(ST.listFromHook('camera,pi,machine-,camera!'));
+  assert.deepEqual(r.at, ['h1', 'pie', 'g1', 'h2']);
+  assert.equal(ST.lookPlace([2, 3], r.at), 'g1');
 });
 
 test('the television is on while something streams', () => {

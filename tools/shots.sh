@@ -43,6 +43,10 @@ SHOTS=(
   "kx|bar=0&t=2300&is=camp&kx=60"
   "mon-b|bar=0&t=3450&on=ssh&mon=b"
   "mon-c|bar=0&t=3450&on=ssh&mon=c"
+  "things-camp|bar=0&t=2300&is=camp&th=pi,camera,camera!,machine-,vm,x,machine"
+  "things-court|bar=0&t=3600&on=ssh&th=pi,camera!,machine,camera,vm-,x"
+  "thing-down|bar=0&t=2300&is=camp&on=thing&th=pi,camera,camera,machine,vm!,x"
+  "places-yard|bar=0&t=2300&is=yard&pl=1&th=pi,camera!,camera,camera,machine,vm-,x!"
 )
 
 take() {

@@ -115,3 +115,8 @@ deletes files `web/` no longer has, and stamps the copy with a version so that o
 reload themselves onto it within about five minutes. It needs bash, rsync and coreutils, and
 changes nothing under `web/`. Run it against a folder outside the repository; it refuses `web/`,
 a folder inside it and any folder that holds it. [page.md](./page.md#deploying) has the details.
+
+**The page goes first.** When a change touches both the page and the collector, deploy the page
+before the collector. A new page reads files from an old collector and from a new one, while an
+old page skips what it does not know: a page from before watched things ignores `facts.things` and
+`thing_down`, so behind a new collector it would show nothing when a watched machine goes down.

@@ -99,12 +99,24 @@
 
   function draw(t, s) {
     glow(346, 314, 120, '#ffb000', .09 + .025 * Math.sin(t / 140)); P.flameHD(346, 330, .62, t);
-    P.pieHD(248, 432, t, s.piOK);
+    KW.things.draw(t, s);
     dummy(t);
   }
 
+  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+     on the ground for the other devices. x is the middle and y the base. */
+  const PLACES = {
+    pie: { cls: 'pie', kind: 'surface', x: 280, y: 463, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 905, y: 300, w: 88, h: 112 },
+    h2: { cls: 'high', kind: 'surface', x: 250, y: 310, w: 88, h: 112, flip: true },
+    h3: { cls: 'high', kind: 'surface', x: 40, y: 300, w: 88, h: 112, flip: true },
+    g1: { cls: 'ground', kind: 'floor', x: 160, y: 568, w: 88, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 870, y: 568, w: 88, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 40, y: 568, w: 88, h: 112, front: true }
+  };
+
   KW.scenes.yard = {
-    spot: 104, outdoors: true,
+    spot: 104, places: PLACES, outdoors: true,
     rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 80, act: 'look', dur: 14 }],
     act, paint, draw
   };
