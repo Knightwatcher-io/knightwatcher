@@ -3,7 +3,7 @@
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C, U = V.U;
-  const { alpha, Rh, ell, rrect, poly, strip, sprS, lerp, ease, STEEL, STEEL2, STEEL3, GOLD, LEATHER } = D;
+  const { alpha, Rh, ell, rrect, poly, strip, lerp, ease, STEEL, STEEL2, STEEL3, GOLD, LEATHER } = D;
   const SKINS = { F: [[.14, C.F0], [.72, C.F1], [1, C.F2]], L: [[.14, '#dff3bd'], [.72, '#b9dd92'], [1, '#94bd6e']], P: [[.14, '#ffc9b8'], [.72, '#ff9f8c'], [1, '#e07a66']] };
 
   function faceHD(ax, ay, o) {
@@ -64,23 +64,14 @@
     ell(ax + 116, ay + 24, 11, 10, C.K); ell(ax + 116, ay + 24, 8, 7, C.N0);
     faceHD(ax, ay, o);
   }
-  function swordHD(gx, gy, a) {
-    const sx = Math.sin(a), sy = -Math.cos(a), px = -sy, py = sx, at = (s, p) => [gx + sx * s + px * p, gy + sy * s + py * p], cols = Math.abs(sx) > Math.abs(sy);
-    const seg = (p, q, hw, b) => strip(p[0], p[1], q[0], q[1], hw, hw, b);
-    poly([at(31, -19), at(236, -19), at(270, 0), at(236, 19), at(31, 19)], C.K, cols);
-    poly([at(34, -15), at(233, -15), at(263, 0), at(233, 15), at(34, 15)], [[.16, C.S0], [.47, C.S1], [.55, C.S3], [.84, C.S2], [1, C.S3]], cols);
-    seg(at(-50, 0), at(22, 0), 9, C.K); seg(at(-48, 0), at(20, 0), 6, [[.35, C.N1], [1, C.N3]]);
-    for (let s = -42; s < 16; s += 10) seg(at(s, -6), at(s + 4, 6), 1.5, C.N3);
-    const pm = at(-58, 0); ell(pm[0], pm[1], 13, 13, C.K); ell(pm[0], pm[1], 10, 10, GOLD);
-    const g0 = at(27, -50), g1 = at(27, 50), gc = at(27, 0); seg(g0, g1, 10, C.K); seg(g0, g1, 7, GOLD);
-    for (const g of [g0, g1]) { ell(g[0], g[1], 12, 12, C.K); ell(g[0], g[1], 9, 9, GOLD); }
-    ell(gc[0], gc[1], 12, 12, C.K); ell(gc[0], gc[1], 9, 9, [[.3, C.G1], [1, C.G2]]); ell(gc[0], gc[1], 5, 5, C.R1); Rh(gc[0] - 3, gc[1] - 3, 2, 2, C.W);
-  }
   function armHD(sx, sy, hx, hy) { strip(sx, sy, hx, hy, 11, 10, C.K); strip(sx, sy, hx, hy, 8, 7, STEEL2); }
   function gauntHD(hx, hy) { ell(hx, hy, 14, 13, C.K); ell(hx, hy, 11, 10, STEEL); Rh(hx - 7, hy + 3, 14, 2, C.S3); }
-  function speechHD(x, y, t) {
-    rrect(x - 3, y - 3, 80, 46, 16, C.K); poly([[x + 12, y + 36], [x + 4, y + 58], [x + 34, y + 40]], C.K);
-    rrect(x, y, 74, 40, 14, C.W); poly([[x + 14, y + 34], [x + 8, y + 52], [x + 30, y + 38]], C.W);
+  /* A speech bubble with its top left at (x, y) and its tail at the lower left, or at the lower right
+     when flip is set. */
+  function speechHD(x, y, t, flip) {
+    const f = flip ? p => [2 * x + 74 - p[0], p[1]] : p => p;
+    rrect(x - 3, y - 3, 80, 46, 16, C.K); poly([[x + 12, y + 36], [x + 4, y + 58], [x + 34, y + 40]].map(f), C.K);
+    rrect(x, y, 74, 40, 14, C.W); poly([[x + 14, y + 34], [x + 8, y + 52], [x + 30, y + 38]].map(f), C.W);
     const n = Math.floor(t / 320) % 4; for (let i = 0; i < n; i++) ell(x + 20 + i * 17, y + 20, 5, 5, C.K);
   }
 
@@ -106,7 +97,7 @@
     ell(ox + 120, ty + 28, 24, 14, C.G2); ell(ox + 120, ty + 28, 22, 12, GOLD); ell(ox + 120, ty + 28, 16, 7, C.B3); ell(ox + 120, ty + 28, 7, 6, C.W); ell(ox + 120, ty + 28, 3, 3, C.K);
     // head, then the pauldrons
     (o.helmet === false ? bareHD : helmHD)(ax, ay, o);
-    if (o.food) sprS(ox + 138, ay + 88 + (Math.floor(t / 160) % 2) * 5, SP.DRUM, 5);
+    if (o.food) SP.drum(ox + 138, ay + 88 + (Math.floor(t / 160) % 2) * 5);
     ell(ox + 70 - bw, oy + 161 + u, 25, 20, C.K); ell(ox + 70 - bw, oy + 160 + u, 22, 17, STEEL); Rh(ox + 63 - bw, oy + 155 + u, 4, 4, C.S3);
     ell(ox + 170 + bw, oy + 161 + u, 25, 20, C.K); ell(ox + 170 + bw, oy + 160 + u, 22, 17, STEEL2); Rh(ox + 173 + bw, oy + 155 + u, 4, 4, C.S4);
     const lsx = ox + 66 - bw, rsx = ox + 174 + bw, shy = oy + 168 + u;
@@ -122,7 +113,7 @@
       const a = o.wang || 0, gx = ox + o.gx * U, gy = oy + o.gy * U + u, sx = Math.sin(a), sy = -Math.cos(a);
       const up = [gx + sx * 6, gy + sy * 6], low = [gx - sx * 30, gy - sy * 30], right = sx >= 0;
       if (right) armHD(rsx, shy, up[0], up[1]); else armHD(lsx, shy, up[0], up[1]);
-      swordHD(gx, gy, a);
+      P.swordHD(gx, gy, a);
       if (right) armHD(lsx, shy, low[0], low[1]); else armHD(rsx, shy, low[0], low[1]);
       gauntHD(up[0], up[1]); gauntHD(low[0], low[1]);
     } else { armHD(lsx, shy, ox + 56 - bw, oy + 216 + u); gauntHD(ox + 56 - bw, oy + 216 + u); armHD(rsx, shy, ox + 184 + bw, oy + 216 + u); gauntHD(ox + 184 + bw, oy + 216 + u); }
@@ -135,10 +126,10 @@
       }
     }
     if (o.steam) for (let i = 0; i < 3; i++) { const ph = ((t / 900) + i / 3) % 1; alpha(1 - ph); ell(ox + 78 + i * 40 + Math.sin(ph * 6 + i) * 10, oy + 16 + u - ph * 66, 9 - ph * 4, 9 - ph * 4, C.W); alpha(1); }
-    if (o.mark && Math.floor(t / 320) % 3 !== 2) sprS(ox + (o.mark === '!' ? 112 : 106), oy - 66 + u, o.mark === '!' ? SP.EXCL : SP.QUES, 5);
-    if (o.bubble) { rrect(ox - 82, oy - 94 + u, 112, 82, 30, C.K); rrect(ox - 78, oy - 90 + u, 104, 74, 26, C.W); ell(ox + 24, oy + 2 + u, 9, 9, C.W); ell(ox + 44, oy + 26 + u, 6, 6, C.W); sprS(ox - 46, oy - 74 + u, SP.DRUM, 5); }
+    if (o.mark && Math.floor(t / 320) % 3 !== 2) SP.mark(ox + 120, oy - 74 + u, o.mark);
+    if (o.bubble) { rrect(ox - 82, oy - 94 + u, 112, 82, 30, C.K); rrect(ox - 78, oy - 90 + u, 104, 74, 26, C.W); ell(ox + 24, oy + 2 + u, 9, 9, C.W); ell(ox + 44, oy + 26 + u, 6, 6, C.W); SP.drum(ox - 46, oy - 74 + u); }
     if (o.progress != null) { rrect(ox + 52, oy - 52 + u, 136, 30, 8, C.W); rrect(ox + 57, oy - 47 + u, 126, 20, 5, C.K); rrect(ox + 61, oy - 43 + u, Math.max(6, 118 * o.progress), 12, 3, '#7fe9ff'); }
-    if (o.hearts) for (let i = 0; i < 3; i++) { const ph = ((t / 1100) + i / 3) % 1; alpha(1 - ph * .8); sprS(ox + 30 + i * 70, oy + 10 - ph * 70, SP.HEART, 5); alpha(1); }
+    if (o.hearts) for (let i = 0; i < 3; i++) { const ph = ((t / 1100) + i / 3) % 1; alpha(1 - ph * .8); SP.heart(ox + 37 + i * 70, oy + 20 - ph * 70); alpha(1); }
     if (o.speak) speechHD(ox + 150, oy - 62 + u, t);
   }
 
@@ -177,5 +168,6 @@
     return q >= .3 && q < .56;
   }
 
-  KW.knight = { draw: knightHD, pose, swing };
+  /* head draws his bare head with its corner at (ax, ay), as in bed; speech draws a speech bubble. */
+  KW.knight = { draw: knightHD, pose, swing, head: bareHD, speech: speechHD };
 })(window.KW);

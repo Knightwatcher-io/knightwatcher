@@ -1,52 +1,30 @@
-/* Knightwatch: the drawing primitives for both grids, the palettes, and the view they draw into.
+/* Knightwatch: the drawing primitives, the palette, and the view they draw into.
    Every file of the page shares the one namespace object, KW. */
 (function (KW) {
   'use strict';
 
-  /* The coarse palette, one letter per colour, used by the letter sprites and R(). */
-  const COL = { K:'#17121f', S:'#dfe6ee', s:'#9aa6b6', d:'#5d6878', W:'#ffffff', R:'#ff4a3d', r:'#a92b23',
-    F:'#f6cda4', f:'#d9a077', E:'#17121f', B:'#3f74e0', b:'#284c9e', G:'#ffb000', g:'#b97500', N:'#96622f',
-    n:'#5c3c1c', L:'#8fe07a', l:'#4f9a45', C:'#7fe9ff', P:'#ff8fb0', Y:'#fff3a0', T:'#2b2333', t:'#3b3247',
-    D:'#1c4426', M:'#2f6b3a' };
-
-  /* The view. The scenes are composed on a coarse 192 by 120 grid with the ground at 106, or on a
-     fine 960 by 600 grid with the ground at 530, five times finer. The canvas is cut to the screen's
-     own shape in whole device pixels, so its real edges lie outside both grids: L, RR and TP on the
-     coarse grid (RW is the width between them), HL, HR and HT on the fine one. fit() in main.js sets
-     them, and every backdrop is filled out to them. X0 and Y0 place the fine grid on the canvas, LW
-     and LH are the canvas's size, and SC is one canvas pixel in CSS pixels. */
-  const V = KW.view = { W: 192, H: 120, FL: 106, HW: 960, HH: 600, HFL: 530, U: 5,
-    L: 0, RR: 192, TP: 0, RW: 192, HL: 0, HR: 960, HT: 0, X0: 0, Y0: 0, LW: 192, LH: 120, SC: 1 };
+  /* The view. Every scene is composed on a 960 by 600 grid with the ground at 530. The engine
+     places the knight in coarse units, U fine pixels each. The canvas is cut to the screen's own
+     shape in whole device pixels, so its real edges lie outside the grid: HL, HR and HT. fit() in
+     main.js sets them, and every backdrop is filled out to them. X0 and Y0 place the grid on the
+     canvas, LW and LH are the canvas's size, and SC is one canvas pixel in CSS pixels. */
+  const V = KW.view = { HW: 960, HH: 600, HFL: 530, U: 5, HL: 0, HR: 960, HT: 0, X0: 0, Y0: 0, LW: 960, LH: 600, SC: 1 };
 
   /* Everything draws into ctx: the display's canvas, or a backdrop's while that is being painted. */
   let ctx = null;
   const setCtx = c => { ctx = c; }, getCtx = () => ctx;
 
-  /* ---- Coarse primitives --------------------------------------------------------------------- */
-  function R(x, y, w, h, c) { ctx.fillStyle = COL[c] || c; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
-  function spr(x, y, rows) {
-    x = Math.round(x); y = Math.round(y);
-    for (let j = 0; j < rows.length; j++) for (let i = 0; i < rows[j].length; i++) {
-      const ch = rows[j][i]; if (ch !== '.') { ctx.fillStyle = COL[ch]; ctx.fillRect(x + i, y + j, 1, 1); }
-    }
-  }
-  function tline(x0, y0, x1, y1, t, c) {
-    const n = Math.max(1, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)))), h = t / 2;
-    ctx.fillStyle = COL[c] || c;
-    for (let i = 0; i <= n; i++) ctx.fillRect(Math.round(x0 + (x1 - x0) * i / n - h), Math.round(y0 + (y1 - y0) * i / n - h), t, t);
-  }
   function alpha(a) { ctx.globalAlpha = a; }
+  /* A soft light: three discs of falling strength. */
   function glow(x, y, r, c, a) {
-    ctx.fillStyle = COL[c] || c;
+    ctx.fillStyle = c;
     for (const [k, f] of [[1, .5], [.7, .8], [.42, 1]]) { ctx.globalAlpha = a * f; ctx.beginPath(); ctx.arc(x, y, r * k, 0, 6.2832); ctx.fill(); }
     ctx.globalAlpha = 1;
   }
   function hash(n) { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15); return n >>> 0; }
   const lerp = (a, b, q) => a + (b - a) * q, clamp01 = q => Math.max(0, Math.min(1, q)), ease = q => 1 - (1 - q) * (1 - q);
-  /* Fills the whole canvas, out to its real edges, on the coarse grid. */
-  const fill = c => R(V.L, V.TP, V.RW, V.H - V.TP, c);
 
-  /* ---- The fine grid -------------------------------------------------------------------------
+  /* ---- The primitives ------------------------------------------------------------------------
      Shapes are filled row by row in whole pixels, and a shape's colour may be a list of
      [fraction, colour] bands across its width, which shades a curve the way its outline runs. */
   const C = { K: '#1a1524', W: '#ffffff', S0: '#f6f9fc', S1: '#d8e0ea', S2: '#aab6c6', S3: '#7d899b', S4: '#525c6e',
@@ -105,15 +83,29 @@
     const dx = x1 - x0, dy = y1 - y0, n = Math.hypot(dx, dy) || 1, px = -dy / n, py = dx / n;
     poly([[x0 - px * hw0, y0 - py * hw0], [x1 - px * hw1, y1 - py * hw1], [x1 + px * hw1, y1 + py * hw1], [x0 + px * hw0, y0 + py * hw0]], b, Math.abs(dx) > Math.abs(dy));
   }
-  /* A letter sprite drawn at k fine pixels to the letter. */
-  function sprS(x, y, rows, k) {
+  /* A rectangle shaded in bands from top to bottom, for beams, shelves and ledges. */
+  function Rv(x, y, w, h, b) {
+    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+    if (typeof b === 'string') { ctx.fillStyle = b; ctx.fillRect(x, y, w, h); return; }
+    let p = 0; for (const [f, c] of b) { const e = Math.round(h * f); if (e > p) { ctx.fillStyle = c; ctx.fillRect(x, y + p, w, e - p); p = e; } }
+  }
+  /* A shape given pixel by pixel: f(i, j) returns the colour at (x + i, y + j), or null for clear.
+     Each pixel is painted once, so a shape drawn at partial alpha shows no seams where its parts
+     overlap. */
+  function pix(x, y, w, h, f) {
     x = Math.round(x); y = Math.round(y);
-    for (let j = 0; j < rows.length; j++) for (let i = 0; i < rows[j].length; i++) { const ch = rows[j][i]; if (ch !== '.') { ctx.fillStyle = COL[ch]; ctx.fillRect(x + i * k, y + j * k, k, k); } }
+    for (let j = 0; j < h; j++) {
+      let run = null, i0 = 0;
+      for (let i = 0; i <= w; i++) {
+        const c = i < w ? f(i, j) : null;
+        if (c !== run) { if (run) { ctx.fillStyle = run; ctx.fillRect(x + i0, y + j, i - i0, 1); } run = c; i0 = i; }
+      }
+    }
   }
   const hsh = (a, b) => hash(Math.round(a) * 7919 + b * 104729 + 13);
   function dith(x, y, w, h, c) { ctx.fillStyle = c; x = Math.round(x); y = Math.round(y); for (let j = 0; j < h; j += 2) for (let i = (j / 2 % 2) * 2; i < w; i += 4) ctx.fillRect(x + i, y + j, 2, 2); }
 
-  KW.draw = { COL, C, STEEL, STEEL2, STEEL3, GOLD, LEATHER, setCtx, getCtx,
-    R, spr, tline, alpha, glow, hash, lerp, clamp01, ease, fill, Rh, hrow, hcol, ell, rrect, poly, strip, sprS, hsh, dith };
+  KW.draw = { C, STEEL, STEEL2, STEEL3, GOLD, LEATHER, setCtx, getCtx,
+    alpha, glow, hash, lerp, clamp01, ease, Rh, Rv, hrow, hcol, ell, rrect, poly, strip, pix, hsh, dith };
   KW.scenes = KW.scenes || {};
 })(window.KW = window.KW || {});
