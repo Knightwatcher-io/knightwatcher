@@ -33,6 +33,9 @@
     { on: 'disk_full', dur: 8000 }, { on: 'pi_silent', dur: 7000 }, { on: 'updating', dur: 8000 }, { on: 'wan_down', dur: 6500 },
     { on: 'attack,memory_tight,ssh_session', dur: 8000 }, { on: 'night', dur: 8000 } ];
 
+  /* How long each quiet scene lasts while they take turns in the demo. */
+  const DEMO_TURN_MS = 60 * 1000;
+
   let S = null, E = null, running = false, built = false, flyTimer = 0, demoAt = 0, demoI = -1, swatNote = null;
   let ads = 4812;
   const idleLine = () => 'ALL QUIET · 29 up · backup 03:12 · ' + ads.toLocaleString('en-GB') + ' ads slain';
@@ -52,7 +55,7 @@
     document.getElementById('demo').setAttribute('aria-pressed', String(S.demo === '1'));
     document.body.classList.toggle('nobar', S.bar === '0');
     const act = active(), w = act[0] || IDLE, others = act.slice(1).filter(c => c.lv >= 3);
-    E.input = { w, is: S.is, piOK: !isOn('pi_silent'), tv: isOn('streaming'), helmet: S.h };
+    E.input = { w, is: S.is, turnMs: DEMO_TURN_MS, piOK: !isOn('pi_silent'), tv: isOn('streaming'), helmet: S.h };
     KW.ui.show({ st: w.st, hl: w.hl, sub: w.sub, quiet: idleLine(), more: { n: others.length, crit: others.some(c => c.lv >= 4) } });
     history.replaceState(null, '', '#' + Object.entries(S).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&'));
   }

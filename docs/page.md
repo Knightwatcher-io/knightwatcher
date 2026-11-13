@@ -79,7 +79,8 @@ time the dummy was last struck and swings the knight's sword in `act`.
 
 ## Modes
 
-**Demo.** Invented conditions, the review bar, and a loop through every scene and state. It runs
+**Demo.** Invented conditions, the review bar, and a loop through every scene and state. The
+quiet scenes take turns a minute each (`DEMO_TURN_MS` in `demo.js`). The demo runs
 when the page has never had a valid state file: opened from disk, served with no
 `data/state.json`, or with a stale or unreadable one. `?demo` in the address forces it even when
 a state file exists. Browsers refuse to fetch from disk, so from disk the page does not try.
@@ -97,8 +98,8 @@ display:
   id the page does not know is skipped and plays no part in the badge.
 - The "+N MORE" badge counts the other known conditions at warning or critical, and turns red
   when any of them is critical.
-- With no known condition the quiet scenes take turns a minute each, and `quiet_line` is the
-  small line.
+- With no known condition the quiet scenes take turns ten minutes each (`LIVE_TURN_MS` in
+  `main.js`), and `quiet_line` is the small line.
 - `facts.pi.up === false`, or a `pi_silent` condition anywhere in the list, empties the pie
   plate. `facts.streams.count > 0`, or a `streaming` condition, turns the television on.
 - Events. The first valid file's events are adopted without playing. After that each event with
@@ -109,13 +110,27 @@ display:
   act out only while nothing at warning or above is up and in the scenes that suit them; the
   caption shows regardless.
 
-**No signal.** Once the page has had a valid file, a failed fetch, a file that is unreadable, a
-`schema` other than 1, or a file older than three times `interval_s` keeps the current scene and
-the knight's state under a red `NO SIGNAL`, with `collector silent for N min` counted from the
-last valid file's `generated_at`. The next valid file restores live mode.
+**Holding on.** Once the page has had a valid file, a fetch that fails or a file that cannot be
+read changes nothing on screen while that last valid file is no older than three of its own
+intervals (its `interval_s`). The page keeps showing it and plays no events.
 
-The mapping is the pure function `KW.state.map(file, nowMs)`, with `takeEvents()` and
-`noSignal()` beside it. `state.js` loads under Node for the tests.
+**No signal.** A fetched file that is stale (older than three times its `interval_s`) or has a
+`schema` other than 1 shows NO SIGNAL at once. So does a failed or unreadable fetch once the last
+valid file has passed three of its intervals. The current scene and the knight's state stay, under
+a red `NO SIGNAL` with `collector silent for N min`, counted from the newest `generated_at` the
+page has seen. The next valid file restores live mode.
+
+**On the tablet.** In live mode there is no visible control. A tap or click on the display
+toggles full screen. The page asks for a screen wake lock on entering live mode, on every tap,
+and whenever it becomes visible again, since browsers release the lock when a page is hidden.
+Where the browser refuses either (a wake lock needs a secure context, and full screen a user
+gesture), nothing happens and nothing is logged. The demo's review bar keeps its own Full screen
+button.
+
+The mapping is the pure function `KW.state.map(file, nowMs)`. Beside it, `judge(view, lastGood,
+nowMs)` decides between showing a file, holding the last one, NO SIGNAL and the demo, and
+`takeEvents()` picks the events to play and `noSignal()` builds the knight's NO SIGNAL state.
+`state.js` loads under Node for the tests.
 
 ## The address
 

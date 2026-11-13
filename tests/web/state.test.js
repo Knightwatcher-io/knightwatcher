@@ -159,3 +159,43 @@ test('no signal keeps the knight\'s state under a red headline', () => {
   assert.equal(ST.noSignal(null, 30).id, 'idle');
   assert.equal(ST.noSignal(null, -30).sub, 'collector silent for 0 min');
 });
+
+test('a valid view carries the interval it was written at', () => {
+  assert.equal(ST.map(EXAMPLE, at(0)).intervalS, 30);
+  assert.equal(ST.map(file({ interval_s: 12.5 }), at(0)).intervalS, 12.5);
+});
+
+test('a valid file is shown, and before the first one the page runs the demo', () => {
+  const good = ST.map(EXAMPLE, at(0));
+  assert.deepEqual(ST.judge(good, null, at(0)), { kind: 'live', ageS: 0 });
+  assert.equal(ST.judge(ST.map(EXAMPLE, at(20)), good, at(20)).kind, 'live');
+  for (const v of [{ ok: false, problem: 'unreachable', generatedAt: null }, ST.map(EXAMPLE, at(91)), ST.map(file({ schema: 2 }), at(0)), ST.map(null, at(0))]) {
+    assert.deepEqual(ST.judge(v, null, at(0)), { kind: 'demo', ageS: null });
+  }
+});
+
+test('a failed or unreadable fetch keeps the last valid state while that file is young enough', () => {
+  const good = ST.map(EXAMPLE, at(0)), failed = { ok: false, problem: 'unreachable', generatedAt: null };
+  assert.deepEqual(ST.judge(failed, good, at(5)), { kind: 'hold', ageS: 5 });
+  assert.deepEqual(ST.judge(failed, good, at(90)), { kind: 'hold', ageS: 90 });
+  assert.deepEqual(ST.judge(ST.map(file({ generated_at: 'soon' }), at(30)), good, at(30)), { kind: 'hold', ageS: 30 });
+});
+
+test('a failed fetch shows NO SIGNAL once the last valid file is older than three of its intervals', () => {
+  const failed = { ok: false, problem: 'unreachable', generatedAt: null };
+  assert.deepEqual(ST.judge(failed, ST.map(EXAMPLE, at(0)), at(91)), { kind: 'silent', ageS: 91 });
+  const slow = ST.map(file({ interval_s: 300 }), at(0));
+  assert.equal(ST.judge(failed, slow, at(899)).kind, 'hold');
+  assert.deepEqual(ST.judge(failed, slow, at(901)), { kind: 'silent', ageS: 901 });
+});
+
+test('a stale file or an unknown schema shows NO SIGNAL at once', () => {
+  const good = ST.map(EXAMPLE, at(0));
+  assert.deepEqual(ST.judge(ST.map(file({ schema: 2 }), at(10)), good, at(10)), { kind: 'silent', ageS: 10 });
+  // a stale file older than the last valid one: the age is the last valid file's
+  const old = ST.map(file({ generated_at: new Date(GEN - 600e3).toISOString() }), at(10));
+  assert.equal(old.problem, 'stale');
+  assert.deepEqual(ST.judge(old, good, at(10)), { kind: 'silent', ageS: 10 });
+  // the same file grown stale: its own age
+  assert.deepEqual(ST.judge(ST.map(EXAMPLE, at(120)), good, at(120)), { kind: 'silent', ageS: 120 });
+});

@@ -67,34 +67,65 @@
   /* ---- Modes ---------------------------------------------------------------------------------
      wait: served over HTTP, before the first answer for the state file. The quiet scene, no words.
      demo: no valid state file yet, opened from disk, or ?demo in the address.
-     live: a valid state file has arrived. A file that later fails, goes stale or changes schema
-           keeps the last scene under NO SIGNAL until a valid one comes back. */
-  let mode = 'wait', lastGood = null, lastSeq = null, shown = '';
+     live: a valid state file has arrived. A fetch that fails, or a file that cannot be read, keeps
+           the last valid state until that file is older than three of its intervals. From then,
+           and at once for a stale file or an unknown schema, the last scene stays under NO SIGNAL
+           until a valid file comes back. A tap on the display toggles full screen, and the page
+           keeps the screen awake where the browser allows. */
+  /* How long each quiet scene lasts while they take turns in live mode. */
+  const LIVE_TURN_MS = 10 * 60 * 1000;
+  let mode = 'wait', lastGood = null, lastSeq = null, shown = '', wakeLock = null, asking = false;
   const fromDisk = location.protocol === 'file:', forceDemo = new URLSearchParams(location.search).has('demo');
 
   function showOnce(t) { const key = JSON.stringify(t); if (key !== shown) { shown = key; KW.ui.show(t); } }
   function startDemo() { mode = 'demo'; Demo.start(); fit(); Demo.hooks(); }
+  /* Shows a valid view's state; its events are played separately. */
+  function showLive(v) {
+    E.input = { w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, piOK: v.piOK, tv: v.tv, helmet: S.h };
+    showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more } : { st: 'ok', hl: '', sub: '', quiet: v.quietLine, more: { n: 0, crit: false } });
+  }
   function onView(v) {
-    if (v.ok) {
+    const j = ST.judge(v, lastGood, Date.now());
+    if (j.kind === 'live') {
       if (mode === 'demo') Demo.stop();
-      if (mode !== 'live') { mode = 'live'; E.reset(); document.body.classList.add('nobar'); }
-      lastGood = v;
-      E.input = { w: v.w || ST.IDLE, is: 'auto', piOK: v.piOK, tv: v.tv, helmet: S.h };
-      showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more } : { st: 'ok', hl: '', sub: '', quiet: v.quietLine, more: { n: 0, crit: false } });
+      if (mode !== 'live') { mode = 'live'; E.reset(); document.body.classList.add('nobar'); keepAwake(); }
+      lastGood = v; showLive(v);
       const r = ST.takeEvents(v, lastSeq); lastSeq = r.lastSeq;
       for (const e of r.play) {
         if (e.act === 'flies') { const t = performance.now(); for (let i = 0; i < e.count; i++) E.addFly(t + i * 40); }
         else E.fireEvent(e.act, e.text);
       }
-    } else if (!lastGood) {
+    } else if (j.kind === 'demo') {
       if (mode !== 'demo') startDemo();
+    } else if (j.kind === 'hold') {
+      showLive(lastGood);
     } else {
-      const at = v.problem === 'stale' && v.generatedAt > lastGood.generatedAt ? v.generatedAt : lastGood.generatedAt;
-      const w = ST.noSignal(lastGood.w, (Date.now() - at) / 1000);
+      const w = ST.noSignal(lastGood.w, j.ageS);
       E.input = Object.assign({}, E.input, { w, is: E.scene() || 'auto' });
       showOnce({ st: w.st, hl: w.hl, sub: w.sub, quiet: '', more: { n: 0, crit: false } });
     }
   }
+
+  /* ---- Live mode on the tablet: full screen on a tap, and the screen kept awake ---------------
+     Both fail quietly where the browser refuses, as it does outside a secure context. */
+  function keepAwake() {
+    if (mode !== 'live' || wakeLock || asking || document.visibilityState !== 'visible' || !navigator.wakeLock) return;
+    asking = true;
+    try {
+      navigator.wakeLock.request('screen').then(l => { wakeLock = l; l.addEventListener('release', () => { wakeLock = null; }); }, () => {})
+        .then(() => { asking = false; });
+    } catch (e) { asking = false; }
+  }
+  function toggleFullScreen() {
+    const d = document; if (!d.fullscreenEnabled) return;
+    try {
+      const p = d.fullscreenElement ? d.exitFullscreen() : d.documentElement.requestFullscreen();
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) { /* refused */ }
+  }
+  // Only a real tap may ask for full screen; a scripted click would be refused by the browser.
+  surface.addEventListener('click', e => { if (mode === 'live' && e.isTrusted) { toggleFullScreen(); keepAwake(); } });
+  document.addEventListener('visibilitychange', keepAwake);
 
   /* ---- Go ----------------------------------------------------------------------------------- */
   let lastT = -1e9;
@@ -106,7 +137,7 @@
     E.draw(now);
     if (mode === 'demo') Demo.note(E.note);
   }
-  E.input = { w: ST.IDLE, is: 'auto', piOK: true, tv: false, helmet: S.h };
+  E.input = { w: ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, piOK: true, tv: false, helmet: S.h };
   if (fromDisk || forceDemo) { mode = 'demo'; Demo.start(); }
   else { document.body.classList.add('nobar'); showOnce({ st: 'ok', hl: '', sub: '', quiet: '', more: { n: 0, crit: false } }); }
   fit();

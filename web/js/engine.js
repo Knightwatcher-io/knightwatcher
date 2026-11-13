@@ -3,6 +3,7 @@
    KW.engine.input, which the demo (demo.js) or the state file (main.js) sets:
      w       the condition that wins, as KW.state makes it: { id, lv, st, scene, hl, sub }
      is      'auto' for the quiet scenes to take turns, or the name of the one to keep
+     turnMs  how long each quiet scene lasts while they take turns
      piOK    whether the pie is on its plate
      tv      whether the television in the house is on
      helmet  'auto' (off indoors), 'on' or 'off' */
@@ -12,12 +13,12 @@
   const { alpha, Rh, lerp, clamp01, ease, hash } = D;
 
   const E = KW.engine = {
-    input: { w: KW.state.IDLE, is: 'auto', piOK: true, tv: false, helmet: 'auto' },
+    input: { w: KW.state.IDLE, is: 'auto', turnMs: 60000, piOK: true, tv: false, helmet: 'auto' },
     note: ''
   };
   const frozen = () => KW.hooks.t;
 
-  /* The quiet scenes take turns a minute each. */
+  /* The quiet scenes take turns, each for the input's turnMs. */
   const TURNS = ['battlement', 'camp', 'house', 'yard'];
   /* Each event lasts dur ms and plays only in the scenes listed. */
   const OUTDOORS = Object.keys(KW.scenes).filter(k => KW.scenes[k].outdoors);
@@ -30,7 +31,7 @@
   const flies = []; let swat = null, lastSwat = -1e9, pendingFlies = 0;
   const bgCache = { key: '', cv: document.createElement('canvas') };
 
-  function idleScene(t) { const is = E.input.is; return is === 'auto' ? TURNS[Math.floor((t - sceneT0) / 60000) % TURNS.length] : is; }
+  function idleScene(t) { const { is, turnMs } = E.input; return is === 'auto' ? TURNS[Math.floor((t - sceneT0) / turnMs) % TURNS.length] : is; }
 
   /* A blocked advert becomes a fly. Eight at most are on screen; the rest wait for the next swat. */
   function addFly(t) {
