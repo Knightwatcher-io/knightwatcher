@@ -629,5 +629,6 @@
         }
       }
     }
-  }
+  },
+  "sig": { "alg": "ed25519", "kid": "kw1", "value": "3FUSSzAWx97bMJD2BElD+jj3TSv4eH6PaZJJCjRDRPwQ0agZBmkjq0G6wtSrJCFMUrPDYoRhMeu5x/TmVHN4CQ==" }
 }
