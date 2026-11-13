@@ -81,7 +81,7 @@ test('the default look resolves with nothing missing, at the present knight\'s c
   const L = PK.resolve([PK.read(TEXT, { allowUnsigned: true, verify })], {});
   assert.equal(L.ok, true);
   assert.deepEqual(L.fallbacks.map(f => f.reason).filter(r => r !== 'not set'), []);
-  assert.deepEqual(L.grip, { kind: 'two', hands: [6, -30] });
+  assert.deepEqual(L.grip, { kind: 'two', hands: [2, -30] });
   assert.equal(L.cost, 11932);
   assert.equal(L.shapes, 99);
   assert.ok(L.plumeShown);

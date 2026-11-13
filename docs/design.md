@@ -47,9 +47,9 @@ the attack the sword goes up over the right shoulder and the shield comes in to 
 a swing to the left the shield lifts out of the blade's way. A shield is carried only with a
 one-handed weapon, and a one-handed weapon without a shield leaves the other hand hanging free.
 
-No arm is ever drawn over the blade or its guard, nor over the face of a shield. With the
-greatsword the arm on the side the blade leans to goes behind the blade; the one exception is the
-greatsword's guard, which an arm crosses for a few frames of a swing as the blade passes upright.
+No arm or gauntlet is ever drawn over a blade or its guard, nor over the face of a shield. With
+the greatsword both arms go behind the blade, the one on the side it leans to first, and the hands
+close on the grip below the guard, the upper one far enough down that it never covers the guard.
 With the sword and shield the shield's arm goes behind the shield and the sword's arm behind the
 sword, and while the sword crosses the body both arms go behind it and it goes behind the shield.
 A test draws every frame of the swings and the attack and checks this pixel by pixel

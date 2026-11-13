@@ -111,8 +111,10 @@ shoulders, and `head` raises the head, so that a bigger skull grows upwards from
   right swings the hammer from `(X + 80 + bloat, Y - 122 + drop)`, which is also `main`, with the
   hammer's angle.
 - `two`, the greatsword in both hands: `main` is the middle of the grip and the blade's angle. The
-  hand on the side the blade leans to holds the grip 6 pixels up the blade, the other 30 down it.
-  The arm on the lean side is drawn before the blade and the other after it.
+  hand on the side the blade leans to holds the grip 2 pixels up the blade, the other 30 down it.
+  Both arms are drawn before the blade, the one on the lean side first, and the gauntlets after
+  it, the upper hand's first. The upper hand sits low enough that its gauntlet stays below the
+  guard, which starts 17 up the blade.
 - `one`, a weapon in one hand, on the pack path only: `main` is placed as for `two`, and the right
   hand holds the weapon at its one station along the frame (the arming sword's is the grip's
   middle). The left hand, which is also `off`, holds the shield where the pose's `fx` and `fy`
@@ -141,11 +143,10 @@ the shield with it.
 draw with the weapon held (both swings at every hundredth of their length, the attack's tremble
 every 10 ms for two seconds, the stance of each condition that holds a weapon, and the largest
 bloat), keeps the pixels each of the look's lists fills, and checks, in the order the frame was
-drawn in, that no arm drawn after the weapon fills a pixel of it and no arm or gauntlet drawn after
-the shield fills a pixel of the shield. For the arming sword the check takes the blade and the
-guard, from 17 along the frame; for the greatsword it takes the blade from 40, clear of its guard,
-since in the greatsword's swing an arm crosses the guard for a few frames as the blade passes
-upright, which is how the two-handed knight has always been drawn.
+drawn in, that no arm or gauntlet drawn after the weapon fills a pixel of its blade or guard and
+none drawn after the shield fills a pixel of the shield. For both swords the check takes the blade and the guard,
+everything from 17 along the frame, where both guards begin, and checks the gauntlets as well as
+the arms.
 
 The engine's own drawing hangs on the same anchors: the face on `head`; the crates, sweat, steam,
 the mark, the thought bubble, the progress bar and the speech bubble on `neck`; the hearts on
@@ -172,7 +173,7 @@ that `draw()` in `pack.js` reads, made once by `newAnchors()` and `newValues()`:
   measurements.
 
 On the pack path the hand stations along the weapon are the weapon's own `grip.hands`: for the
-base pack's greatsword the same 6 and -30, and for its arming sword the one station 0.
+base pack's greatsword the same 2 and -30, and for its arming sword the one station 0.
 
 ## The knight from the base pack
 

@@ -380,7 +380,7 @@
       "main.greatsword": {
         "slot": "main",
         "name": "Greatsword",
-        "grip": { "kind": "two", "hands": [6, -30] },
+        "grip": { "kind": "two", "hands": [2, -30] },
         "blade": { "from": 34, "to": 263, "half": 15 },
         "parts": [
           {

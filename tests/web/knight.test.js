@@ -533,7 +533,7 @@ if (MODE === 'write') {
       const gx = X - 120 + o.gx * 5, gy = FLOOR - 300 + o.gy * 5 + 5, a = o.wang, sx = Math.sin(a), sy = -Math.cos(a);
       assert.equal(r.grip, 'two');
       assert.deepEqual([...r.anchors.main], [gx, gy, a]);
-      const up = [gx + sx * 6, gy + sy * 6], low = [gx - sx * 30, gy - sy * 30];
+      const up = [gx + sx * 2, gy + sy * 2], low = [gx - sx * 30, gy - sy * 30];
       assert.deepEqual([[...r.anchors.handL], [...r.anchors.handR]], sx >= 0 ? [low, up] : [up, low], `dir ${dir}`);
     }
   });
@@ -603,18 +603,14 @@ if (MODE === 'write') {
      a shield. Every frame the engine can draw with the weapon held is drawn into a context that
      keeps the pixels each of the look's lists fills: the swing both ways at every hundredth of its
      length, the attack's tremble every 10 ms for two seconds, the stance of every condition that
-     holds the weapon, and the largest bloat. In the order the frame was drawn in, an arm drawn
-     after the weapon may not fill a pixel of the weapon that lies at least from along the frame
-     from the grip's middle; and neither an arm nor a gauntlet drawn after the shield may fill a
-     pixel of the shield. Returns the breaches, as text.
-
-     from is 17 for the one-handed sword, where both swords' guards begin, so its guard is checked
-     with its blade. The greatsword is checked from 40, its blade clear of the guard: in its swing,
-     as the blade passes upright and the arm in front changes sides, an arm crosses the guard and
-     grazes the guard's edge for a few frames, which is the two-handed drawing as it has always
-     been. */
+     holds the weapon, and the largest bloat. In the order the frame was drawn in, neither an arm
+     nor a gauntlet drawn after the weapon may fill a pixel of its blade or guard, which are the
+     weapon's pixels at least 17 along the frame from the grip's middle, where both swords' guards
+     begin; and neither may one drawn after the shield fill a pixel of the shield. Returns the
+     breaches, as text. */
   const ENGINE_STEPS = ['crates', 'face', 'drumstick', 'hammer', 'effects'];
-  function breaches(look, from) {
+  const FROM = 17;
+  function breaches(look) {
     const { KW, K } = withLook(look), lib = KW.pack, seq0 = lib.sequence, draw0 = lib.draw;
     let names = [], i = 0, cur = null, seq = null;
     const px = {};
@@ -634,8 +630,8 @@ if (MODE === 'write') {
       const m = K.rig(o).anchors.main, sx = Math.sin(m[2]), sy = -Math.cos(m[2]);
       const after = n => (seq.includes(n) ? seq.slice(seq.indexOf(n) + 1) : []);
       const hit = (a, b, keep) => { let n = 0; if (a && b) for (const p of a) if (b.has(p) && (!keep || keep(p))) n++; return n; };
-      const steel = p => { const x = (p % 4096) + 0.5, y = Math.floor(p / 4096) + 0.5; return (x - m[0]) * sx + (y - m[1]) * sy >= from; };
-      for (const n of after('main')) if (n.startsWith('arm')) { const c = hit(px[n], px.main, steel); if (c) found.push(`${label}: ${n} over the blade, ${c} pixels`); }
+      const steel = p => { const x = (p % 4096) + 0.5, y = Math.floor(p / 4096) + 0.5; return (x - m[0]) * sx + (y - m[1]) * sy >= FROM; };
+      for (const n of after('main')) if (n.startsWith('arm') || n.startsWith('gaunt')) { const c = hit(px[n], px.main, steel); if (c) found.push(`${label}: ${n} over the blade or guard, ${c} pixels`); }
       for (const n of after('off')) if (n.startsWith('arm') || n.startsWith('gaunt')) { const c = hit(px[n], px.off); if (c) found.push(`${label}: ${n} over the shield, ${c} pixels`); }
     };
     assert.ok(blade && blade.from === 34, 'both swords\' blades start at 34');
@@ -646,14 +642,14 @@ if (MODE === 'write') {
     return found;
   }
 
-  test('no arm is drawn over the blade, frame by frame: the greatsword', () => {
-    assert.deepEqual(breaches({}, 40), []);
+  test('no arm is drawn over a blade or its guard, frame by frame: the greatsword', () => {
+    assert.deepEqual(breaches({}), []);
   });
   test('no arm is drawn over a blade, its guard or the shield, frame by frame: the arming sword and the heater shield', () => {
-    assert.deepEqual(breaches(ONE_LOOK, 17), []);
+    assert.deepEqual(breaches(ONE_LOOK), []);
   });
   test('no arm is drawn over a blade or its guard, frame by frame: the arming sword alone', () => {
-    assert.deepEqual(breaches({ items: { main: 'kw.base/main.arming' } }, 17), []);
+    assert.deepEqual(breaches({ items: { main: 'kw.base/main.arming' } }), []);
   });
 
   test('the gear at rest with the arming sword: the pegs under its blade, the shield on the wall, the keys', () => {
