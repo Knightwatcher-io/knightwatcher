@@ -89,17 +89,19 @@ tried. [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 98 poses,
 the gear at rest, and the house and the smithy, which show that gear, against a fake canvas, once
-from code and once from the base pack, and compares every call with a stored record, in about a
-second. The record is stored again only when the knight or those scenes are meant to change;
+from code and once from the base pack, and compares every call with a
+stored record, in about a second. The record is stored again only when the knight or those scenes are meant to change;
 [page.md](./page.md#checks) says how. `node --test tests/tools/` also checks that every pack
 carrier matches its pack file, tests the signing tool with keys generated for the run, and checks
 that every pack in `web/packs/` that carries a `sig` verifies against the key table in `pack.js`.
+`tests/web/loading.test.js` checks the downloaded packs, the refusals and the knight drawn from code
+when no base pack can be used; its signed packs use keys generated for the run.
 
 The repository's own page draws the knight from the base pack, so the screenshots of the
 repository's page check the pack path, and the knight test checks both paths. A deployed copy
-draws from code while the base pack ships unsigned; to shoot the code path as well, take a second
-pair of sets from a copy of `web/` whose `kw-version` is not `dev` and whose base pack carries no
-signature; [page.md](./page.md#checks) shows how.
+draws from the base pack while it ships signed, and from code otherwise; to shoot the code path as
+well, take a second pair of sets from a copy of `web/` whose `kw-version` is not `dev` and whose
+base pack carries no signature; [page.md](./page.md#checks) shows how.
 
 ## The logo and the icons
 
@@ -136,7 +138,7 @@ steps 1 and 3 is refused there and needs another run. [packs.md](./packs.md#sign
 describes the tool, and how a fork signs with a key of its own.
 
 Whether the base pack ships signed today, and what a deployed page draws in each case, is in
-[packs.md](./packs.md#two-paths). The page's tests hold in either state, so carrying a signature
+[packs.md](./packs.md#where-the-knight-is-drawn-from). The page's tests hold in either state, so carrying a signature
 across changes no test.
 
 ## Deploying the page

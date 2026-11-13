@@ -1,7 +1,7 @@
-/* Knightwatcher: start-up. Reads the address, chooses whether the knight is drawn from the base pack
-   or from code, sizes the canvas to the screen, keeps the clock and the words over the scene, runs
-   the frames, chooses between the demo and live data, and reloads the page when a new version of
-   it has been deployed.
+/* Knightwatcher: start-up. Reads the address, starts the knight from the packs the page ships with
+   and adds the ones the collector downloaded, sizes the canvas to the screen, keeps the clock and
+   the words over the scene, runs the frames, chooses between the demo and live data, and reloads
+   the page when a new version of it has been deployed.
    docs/page.md describes the modes and the address's test hooks. */
 (function (KW) {
   'use strict';
@@ -31,11 +31,12 @@
   const ownVersion = (document.querySelector('meta[name="kw-version"]') || {}).content || 'dev';
 
   /* ---- The knight: from the base pack, or from code ------------------------------------------
-     Chosen once, here. The packs that ship with the page come in through their carriers. Only a
-     'dev' page accepts an unsigned pack; a deployed page refuses one at the signature step and
-     draws the knight from code, which draws the same knight. One line in the console says which. */
-  const knight = KW.knight.start(KW.packText, ownVersion === 'dev');
-  if (knight.source === 'pack') console.info(knight.note); else console.warn(knight.note);
+     The packs that ship with the page come in through their carriers, before the first frame. Only
+     a 'dev' page accepts an unsigned pack; a deployed page refuses one at the signature step. With
+     no usable base pack the knight is drawn from code, the full knight. KW.knight writes one line
+     to the console for each refused pack and one for where the knight is drawn from. The packs
+     the collector downloaded are added below, once the page knows it is served. */
+  KW.knight.start(KW.packText, ownVersion === 'dev');
 
   /* ---- The words over the scene ------------------------------------------------------------- */
   const $ = id => document.getElementById(id);
@@ -195,4 +196,13 @@
   requestAnimationFrame(frame);
   // Browsers refuse to fetch from disk, so a page opened from disk does not try.
   if (!fromDisk && !forceDemo) ST.start(onView);
+  /* The packs the collector downloaded, in data/packs/, fetched once at load in every mode while
+     served. From disk the page shows the packs it ships with. A page whose packs changed paints its
+     backdrops again, since a scene may paint the knight's gear into one. */
+  if (!fromDisk) {
+    KW.knight.fetchPacks((url, init) => fetch(url, init)).then(got => {
+      if (!got.files.length && !got.refused.length) return;
+      KW.knight.add(got); E.invalidate();
+    }, () => {});
+  }
 })(window.KW);

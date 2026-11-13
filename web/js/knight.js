@@ -1,8 +1,10 @@
 /* Knightwatcher: the knight, on the fine grid. Open helm, red plume, blue tabard, a greatsword held
    in both hands. pose() turns a condition into the knight's pose, rig() turns a pose into the points
    the knight is drawn on, and draw() draws it there: from the base pack when start() found one it
-   can use (packHD), and otherwise from the code below (codeHD), which draws the same knight.
-   rest.draw() draws the knight's gear where a scene sets it down, from the same source. */
+   can use (packHD), and otherwise from the code below (codeHD), which draws the same knight as it
+   shipped before packs. rest.draw() draws the knight's gear where a scene sets it down, from the
+   same source. start() and add() load the packs, and fetchPacks() fetches the ones the collector
+   downloaded. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C, U = V.U;
@@ -196,7 +198,7 @@
 
   /* Draws the knight from code, from the pose o: o.x is the middle of the body on the fine grid,
      o.floor the ground underfoot. Every position comes from the rig. This is the path when no base
-     pack can be used, as on a deployed page until the base pack is signed. */
+     pack can be used: the full knight, never anything plainer. */
   function codeHD(o) {
     const r = rig(o);
     const { root, footL, footR, hipL, hipR, hem, belt, neck, shoulderL, shoulderR, head, handL, handR, main } = r.anchors;
@@ -242,15 +244,13 @@
   }
 
   /* ---- Drawing from the base pack ---------------------------------------------------------------
-     start() reads the packs the carriers pushed, gathers them and resolves the default look. When
-     that gives a look, the knight is drawn from its lists (packHD); otherwise from codeHD. The
-     choice is made once, and KW.knight.source says which: 'pack' or 'code'.
-
      Each frame packHD runs the rig, copies its anchors and values into the two arrays pack.js's
      draw() reads, and walks the order sequence() gives for the grip and the helmet, drawing the
-     look's lists and, between them, the engine's own steps above. Nothing is allocated for it. */
-  const PK = { lib: null, look: null, A: null, Vs: null, from: null, iDrop: 0, iBloat: 0, iStepL: 0, iStepR: 0, iSway: 0,
-    drop: [0, 0], bloat: [0, 0], hA: null, hV: null, rA: null, rV: null };
+     look's lists and, between them, the engine's own steps above. Nothing is allocated for it.
+     PK.cur names the list being drawn, so that a throw inside one can be put down to its packs. */
+  const PK = { lib: null, look: null, packs: null, A: null, Vs: null, from: null, iDrop: 0, iBloat: 0, iStepL: 0, iStepR: 0, iSway: 0,
+    drop: [0, 0], bloat: [0, 0], hA: null, hV: null, rA: null, rV: null, cur: null,
+    st: null, wanted: {}, readOpts: null, entries: [], extra: [], faults: [], bad: new Set(), logged: new Set(), lastNote: '' };
   const clampTo = (v, r) => (v < r[0] ? r[0] : v > r[1] ? r[1] : v);
   /* The pose's anchors and values into the library's arrays, in its order, the weapon frame's
      direction after the anchors, drop and bloat clamped into the ranges the library states. */
@@ -280,7 +280,7 @@
         case 'drumstick': drumHD(o, neck, head); break;
         case 'hammer': hammerHD(main); break;
         case 'effects': effectsHD(o, neck, root); break;
-        default: lib.draw(L[seq[i]], A, Vs, D, face);
+        default: PK.cur = seq[i]; lib.draw(L[seq[i]], A, Vs, D, face); PK.cur = null;
       }
     }
   }
@@ -289,10 +289,22 @@
   function packHead(hx, hy, o) {
     const A = PK.hA, h = 2 * PK.lib.ANCHOR.head;
     A[h] = hx; A[h + 1] = hy;
-    PK.lib.draw(PK.look.lists.headOff, A, PK.hV, D, faceRamp(o));
+    try { PK.cur = 'headOff'; PK.lib.draw(PK.look.lists.headOff, A, PK.hV, D, faceRamp(o)); PK.cur = null; } catch (e) { caught(e); return; }
     faceHD(hx, hy, o);
   }
-  function knightHD(o) { if (PK.look) packHD(o); else codeHD(o); }
+  /* A throw inside a compiled list, which the checks should make impossible: the packs behind the
+     list are marked bad, and the knight is drawn by the rules of start() from the next frame. A
+     throw anywhere else is not a pack's and goes on. */
+  function caught(e) {
+    const list = PK.cur;
+    PK.cur = null;
+    if (!list) throw e;
+    fault(list, e);
+  }
+  function knightHD(o) {
+    if (!PK.look) { codeHD(o); return; }
+    try { packHD(o); } catch (e) { caught(e); }
+  }
 
   /* ---- Gear at rest -----------------------------------------------------------------------------
      The house and the smithy show the knight's gear off the knight: the helmet on the stool, the
@@ -322,17 +334,19 @@
      middle on a surface, or 'main' with the middle of its grip at (x, y) along the angle a (0 is
      straight up). Any other slot draws nothing. */
   function restHD(slot, x, y, a) {
-    if (slot === 'helmet') {
-      if (!PK.look) { helmRestHD(x, y); return; }
-      const A = PK.rA, r = 2 * PK.lib.ANCHOR.rest;
-      A[r] = x; A[r + 1] = y;
-      PK.lib.draw(PK.look.lists.restHelmet, A, PK.rV, D);
-    } else if (slot === 'main') {
-      if (!PK.look) { P.swordHD(x, y, a); return; }
-      const lib = PK.lib, A = PK.rA, m = 2 * lib.ANCHOR.main;
-      A[m] = x; A[m + 1] = y; A[lib.FRAME_SX] = Math.sin(a); A[lib.FRAME_SY] = -Math.cos(a);
-      lib.draw(PK.look.lists.main, A, PK.rV, D);
-    }
+    if (!PK.look) { if (slot === 'helmet') helmRestHD(x, y); else if (slot === 'main') P.swordHD(x, y, a); return; }
+    const lib = PK.lib, A = PK.rA;
+    try {
+      if (slot === 'helmet') {
+        const r = 2 * lib.ANCHOR.rest;
+        A[r] = x; A[r + 1] = y;
+        PK.cur = 'restHelmet'; lib.draw(PK.look.lists.restHelmet, A, PK.rV, D); PK.cur = null;
+      } else if (slot === 'main') {
+        const m = 2 * lib.ANCHOR.main;
+        A[m] = x; A[m + 1] = y; A[lib.FRAME_SX] = Math.sin(a); A[lib.FRAME_SY] = -Math.cos(a);
+        PK.cur = 'main'; lib.draw(PK.look.lists.main, A, PK.rV, D); PK.cur = null;
+      }
+    } catch (e) { caught(e); }
   }
   /* The equipped weapon's blade, { from, to, half } in frame units, for a scene that draws on it
      (the smithy's hot tip), or null when the weapon gives none. */
@@ -341,37 +355,201 @@
      '<pack>/<item>', or '' when none is equipped; 'code' on the code path. */
   const restKey = slot => (PK.look ? PK.look.look.items[slot] || '' : 'code');
 
-  /* Chooses, once at start-up, where the knight is drawn from. texts are the packs' files (the page
-     passes KW.packText), and allowUnsigned is true only on a page whose version is 'dev'. Reads
-     every text, gathers the packs and resolves the default look; if that gives a look with a
-     two-handed weapon, the knight is drawn from it. Returns, and keeps in KW.knight.status,
-     { source, base, refused, note }: base is { id, version, signed } of the base pack in use or
-     null, refused lists { id, step, reason } for every pack turned away, and note is the one line
-     for the console. */
+  /* ---- Loading the packs ------------------------------------------------------------------------
+     start() reads the packs that ship with the page, add() the ones fetchPacks() fetched, and each
+     time the packs in use are gathered again and the look resolved (rebuild). Every pack goes
+     through KW.pack.read with the same options: a signature is required unless the page is 'dev'.
+     The rules of docs/packs.md, "When packs fail", in order:
+
+     1. A pack refused by read(), turned away by gather(), or whose list throws while drawing goes
+        into status.refused as { id, file, step, reason }, and to the console once.
+     2. Anything the look names that is missing takes the base pack's default (resolve() does it);
+        status.fallbacks lists each.
+     3. With no usable base pack the knight is drawn from code, the full knight as it shipped
+        before packs.
+     4. A throw inside a compiled list marks the packs behind that list bad (see fault()).
+
+     The console gets one line for each refused pack and one each time the source changes:
+     console.info when the knight is drawn from the base pack and console.warn when from code. */
   const cutTo = (s, n) => (s.length > n ? s.slice(0, n - 3) + '...' : s);
-  function start(texts, allowUnsigned) {
-    const lib = KW.pack, st = { source: 'code', base: null, refused: [], note: '' };
-    const done = why => { st.note = 'knightwatcher: the knight is drawn from code: ' + why; KW.knight.source = st.source; KW.knight.status = st; return st; };
-    PK.lib = null; PK.look = null; HANDS = [6, -30];
-    if (!lib || typeof lib.read !== 'function') return done('the pack library is not loaded');
-    const results = (Array.isArray(texts) ? texts : []).map(t => lib.read(t, { allowUnsigned: allowUnsigned === true }));
-    const g = lib.gather(results);
-    st.refused = g.rejected.map(r => ({ id: (r && r.id) || null, step: r && r.step, reason: String((r && r.reason) || '') }));
-    const look = lib.resolve(g.packs, {});
-    if (!look.ok) {
-      const no = st.refused.find(r => r.id === lib.BASE_ID);
-      return done(no ? 'the base pack ' + no.id + ' was refused at the ' + no.step + ' step: ' + cutTo(no.reason, 120) : 'no base pack is loaded');
+  const say = (level, line) => { const c = typeof console !== 'undefined' ? console : null; if (c && typeof c[level] === 'function') c[level](line); };
+  const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const refusal = (r, file) => ({ id: (r && typeof r.id === 'string' && r.id) || null, file: typeof file === 'string' ? file : null,
+    step: String((r && r.step) || 'size'), reason: String((r && r.reason) || '') });
+  /* The slots behind each list, to put a throw down to the packs that gave them. head is the
+     build's head item, which is always the base pack's. */
+  const LIST_SLOTS = { body: ['back', 'legs', 'boots', 'torso'], headOn: ['hair', 'plume', 'helmet'], headOff: ['head', 'hair'], pauldrons: ['pauldrons'],
+    armL: ['arms'], armR: ['arms'], gauntL: ['gauntlets'], gauntR: ['gauntlets'], main: ['main'], off: ['off'], restHelmet: ['helmet', 'plume'], restOff: ['off'] };
+
+  /* Gathers the packs not marked bad, resolves the look and chooses the source. */
+  function rebuild() {
+    const st = PK.st, lib = PK.lib;
+    PK.look = null; PK.packs = null; HANDS = [6, -30];
+    st.base = null; st.fallbacks = [];
+    if (!lib) { st.refused = PK.extra.concat(PK.faults); st.source = 'code'; st.note = 'knightwatcher: the knight is drawn from code: the pack library is not loaded'; return; }
+    const g = lib.gather(PK.entries.filter(e => !PK.bad.has(e.result)).map(e => e.result));
+    st.refused = g.rejected.map(r => {
+      const e = PK.entries.find(x => x.result === r) || PK.entries.find(x => x.result.ok && r && x.result.id === r.id && g.packs.get(r.id) !== x.result);
+      return refusal(r, e && e.file);
+    }).concat(PK.extra, PK.faults);
+    let look = lib.resolve(g.packs, PK.wanted), why = '';
+    const twoHanded = l => !!(l.grip && l.grip.kind === 'two' && l.grip.hands.length === 2);
+    if (look.ok && !twoHanded(look) && look.look.items.main !== lib.BASE_ID + '/' + g.packs.get(lib.BASE_ID).data.defaults.items.main) {
+      // every pose holds the weapon in both hands, so a one-handed weapon gives way to the default
+      const wanted = look.look.items.main, items = Object.assign({}, PK.wanted.items);
+      delete items.main;
+      look = lib.resolve(g.packs, Object.assign({}, PK.wanted, { items }));
+      if (look.ok) {
+        look.fallbacks = look.fallbacks.filter(f => !(f.kind === 'item' && f.key === 'main'));
+        look.fallbacks.push({ kind: 'item', key: 'main', wanted, used: look.look.items.main || null, reason: 'the poses hold the weapon in both hands' });
+      }
     }
-    if (!look.grip || look.grip.kind !== 'two' || look.grip.hands.length !== 2) return done('the base pack\'s weapon is not two-handed, and the poses hold one in both hands');
+    if (!look.ok) {
+      // the base pack's last refusal names the step; its reason has a line of its own
+      const no = st.refused.filter(r => r.id === lib.BASE_ID).pop();
+      why = no ? 'the base pack ' + lib.BASE_ID + ' was refused at the ' + no.step + ' step' : 'no base pack is loaded';
+    } else if (!twoHanded(look)) why = 'the base pack\'s weapon is not held in both hands, as every pose holds one';
+    if (why) { st.source = 'code'; st.note = 'knightwatcher: the knight is drawn from code: ' + why; return; }
     const base = g.packs.get(lib.BASE_ID);
-    Object.assign(PK, { lib, look, A: lib.newAnchors(), Vs: lib.newValues(), hA: lib.newAnchors(), hV: lib.newValues(), rA: lib.newAnchors(), rV: lib.newValues(),
-      from: lib.ANCHORS.map(n => RIG.anchors[n] || null), drop: lib.RANGE.drop, bloat: lib.RANGE.bloat,
-      iDrop: lib.VALUE.drop, iBloat: lib.VALUE.bloat, iStepL: lib.VALUE.stepL, iStepR: lib.VALUE.stepR, iSway: lib.VALUE.sway });
-    HANDS = look.grip.hands.slice();
-    st.source = 'pack'; st.base = { id: base.id, version: base.version, signed: base.signed };
+    PK.look = look; PK.packs = g.packs; HANDS = look.grip.hands.slice();
+    st.source = 'pack'; st.base = { id: base.id, version: base.version, signed: base.signed }; st.fallbacks = look.fallbacks;
     st.note = 'knightwatcher: the knight is drawn from the base pack ' + base.id + ' ' + base.version + (base.signed ? ', signed' : ', unsigned');
+  }
+  /* Writes what is new to the console: each refused pack once, and the source when it changed. */
+  function report() {
+    const st = PK.st;
+    for (const r of st.refused) {
+      const k = [r.id, r.file, r.step, r.reason].join('\u0000');
+      if (PK.logged.has(k)) continue;
+      PK.logged.add(k);
+      say('warn', 'knightwatcher: the pack ' + (r.id || r.file || 'with no id') + ' was refused at the ' + r.step + ' step: ' + cutTo(r.reason, 120));
+    }
+    if (st.note !== PK.lastNote) { PK.lastNote = st.note; say(st.source === 'pack' ? 'info' : 'warn', st.note); }
     KW.knight.source = st.source; KW.knight.status = st;
+  }
+  /* A throw inside the list named: the packs that gave its slots are marked bad, the base pack only
+     when no other pack gave any, and the knight is drawn without them from the next frame. */
+  function fault(list, err) {
+    const lib = PK.lib, items = PK.look.look.items, base = PK.packs.get(lib.BASE_ID), suspects = [];
+    for (const slot of LIST_SLOTS[list] || []) {
+      const n = slot === 'head' ? lib.BASE_ID + '/' : items[slot];
+      const p = typeof n === 'string' ? PK.packs.get(n.slice(0, n.indexOf('/'))) : null;
+      if (p && !suspects.includes(p)) suspects.push(p);
+    }
+    const others = suspects.filter(p => p !== base), blame = others.length ? others : [base];
+    let msg = '';
+    try { msg = String(err && err.message !== undefined ? err.message : err); } catch (e2) { msg = 'something that cannot be named'; }
+    for (const p of blame) {
+      PK.bad.add(p);
+      const e = PK.entries.find(x => x.result === p);
+      PK.faults.push(refusal({ id: p.id, step: 'draw', reason: 'the ' + list + ' list threw while drawing: ' + cutTo(msg, 120) }, e && e.file));
+    }
+    rebuild(); report();
+  }
+
+  /* Starts the knight from the texts of the packs that ship with the page (the page passes
+     KW.packText), once at start-up. allowUnsigned is true only on a page whose version is 'dev'.
+     opts may hold look, the look to draw ({} by default, the base pack's defaults), and keys, which
+     replaces KEYS in read() and is for the tests only. Returns, and keeps in KW.knight.status,
+     { source, base, refused, fallbacks, note }: source is 'pack' or 'code', base is { id,
+     version, signed } of the base pack in use or null, refused lists { id, file, step, reason } for
+     every pack turned away, fallbacks lists what of the look took the base pack's default, and note
+     is the line for the console. */
+  function start(texts, allowUnsigned, opts) {
+    const o = isObj(opts) ? opts : {}, lib = KW.pack && typeof KW.pack.read === 'function' ? KW.pack : null;
+    const st = { source: 'code', base: null, refused: [], fallbacks: [], note: '' };
+    Object.assign(PK, { lib, look: null, packs: null, cur: null, st, wanted: isObj(o.look) ? o.look : {}, readOpts: { allowUnsigned: allowUnsigned === true },
+      entries: [], extra: [], faults: [], bad: new Set(), logged: new Set(), lastNote: '' });
+    if (isObj(o.keys)) PK.readOpts.keys = o.keys;
+    if (lib) {
+      Object.assign(PK, { A: lib.newAnchors(), Vs: lib.newValues(), hA: lib.newAnchors(), hV: lib.newValues(), rA: lib.newAnchors(), rV: lib.newValues(),
+        from: lib.ANCHORS.map(n => RIG.anchors[n] || null), drop: lib.RANGE.drop, bloat: lib.RANGE.bloat,
+        iDrop: lib.VALUE.drop, iBloat: lib.VALUE.bloat, iStepL: lib.VALUE.stepL, iStepR: lib.VALUE.stepR, iSway: lib.VALUE.sway });
+      for (const t of Array.isArray(texts) ? texts : []) PK.entries.push({ result: lib.read(t, PK.readOpts), file: null });
+    }
+    rebuild(); report();
     return st;
+  }
+  /* Adds what fetchPacks() found, { files: [{ file, text }], refused }, to the packs in use: each
+     file is read with the options start() was given, and the look resolved again. Returns the
+     status, or null before start(). */
+  function add(got) {
+    if (!PK.st) return null;
+    const g = isObj(got) ? got : {};
+    for (const r of Array.isArray(g.refused) ? g.refused : []) PK.extra.push(refusal(r, r && r.file));
+    for (const f of Array.isArray(g.files) ? g.files : []) {
+      if (!isObj(f)) continue;
+      PK.entries.push({ result: PK.lib ? PK.lib.read(f.text, PK.readOpts) : { ok: false, step: 'size', reason: 'the pack library is not loaded' }, file: typeof f.file === 'string' ? f.file : null });
+    }
+    rebuild(); report();
+    return PK.st;
+  }
+  /* ---- Downloaded packs -------------------------------------------------------------------------
+     The packs the collector downloads lie in data/packs/ beside state.json, with index.json naming
+     them: { "packs": ["<file>.pack.json", ...] }, names only. fetchPacks(get) fetches the index and
+     then each file it names, as text, with get (the page passes window.fetch): never as script,
+     never from outside data/packs/, each fetch with cache 'no-store', no redirects, and cut off after
+     four seconds. A missing index (404) means no packs and is silent. Returns { files: [{ file, text
+     }], refused }, which add() takes; nothing is read here. */
+  const PACK_DIR = 'data/packs/', CUT_MS = 4000;
+  const INDEX = Object.freeze({ files: 32, bytes: 16 * 1024, name: 64 });
+  /* A pack file's name: lower-case letters, digits, '-' and '_', dots between them but never two in
+     a row, ending in .pack.json. No slash, so no path. */
+  const PACK_FILE = /^[a-z0-9](?:[a-z0-9_-]|\.(?!\.))*\.pack\.json$/;
+  /* Checks a parsed index. Returns { ok: false, reason } when the index as a whole cannot be used,
+     and otherwise { ok: true, files, refused }: the names to fetch, and a refusal for each entry
+     that is not a pack file's name or is listed twice. Other keys are ignored. */
+  function packIndex(v) {
+    if (!isObj(v)) return { ok: false, reason: 'the index must be a JSON object' };
+    if (!Array.isArray(v.packs)) return { ok: false, reason: 'packs: must be a list of file names' };
+    if (v.packs.length > INDEX.files) return { ok: false, reason: 'packs: lists ' + v.packs.length + ' files, and at most ' + INDEX.files + ' are read' };
+    const files = [], refused = [];
+    v.packs.forEach((n, i) => {
+      const why = typeof n !== 'string' ? 'is not a file name'
+        : n.length > INDEX.name ? 'is longer than ' + INDEX.name + ' characters'
+        : !PACK_FILE.test(n) ? 'is not the name of a pack file in data/packs/ (a name only, ending in .pack.json)'
+        : files.includes(n) ? 'is listed twice' : '';
+      if (why) refused.push({ id: null, file: typeof n === 'string' ? cutTo(n, INDEX.name) : null, step: 'index', reason: 'packs[' + i + ']: ' + why });
+      else files.push(n);
+    });
+    return { ok: true, files, refused };
+  }
+  /* One fetch as text: { ok: true, text }, { missing: true } for a 404, or { ok: false, reason }. */
+  async function fetchText(get, url, max) {
+    const ctl = new AbortController(), cut = setTimeout(() => ctl.abort(), CUT_MS);
+    try {
+      const r = await get(url, { cache: 'no-store', redirect: 'error', signal: ctl.signal });
+      if (r.status === 404) return { missing: true };
+      if (!r.ok) return { ok: false, reason: 'the server answered ' + r.status };
+      const len = Number(r.headers && typeof r.headers.get === 'function' ? r.headers.get('content-length') : NaN);
+      if (len > max) return { ok: false, reason: 'the file is larger than ' + max / 1024 + ' KiB' };
+      const text = await r.text();
+      if (typeof text !== 'string') return { ok: false, reason: 'the file could not be read as text' };
+      if (text.length > max) return { ok: false, reason: 'the file is larger than ' + max / 1024 + ' KiB' };
+      return { ok: true, text };
+    } catch (e) {
+      return { ok: false, reason: ctl.signal.aborted ? 'no answer within four seconds' : 'the file could not be fetched' };
+    } finally { clearTimeout(cut); }
+  }
+  async function fetchPacks(get) {
+    const out = { files: [], refused: [] };
+    const no = (file, step, reason) => { out.refused.push({ id: null, file, step, reason }); };
+    if (typeof get !== 'function') return out;
+    const ix = await fetchText(get, PACK_DIR + 'index.json', INDEX.bytes);
+    if (ix.missing) return out;
+    if (!ix.ok) { no('index.json', 'index', ix.reason); return out; }
+    let v;
+    try { v = JSON.parse(ix.text); } catch (e) { no('index.json', 'index', 'the index is not valid JSON'); return out; }
+    const list = packIndex(v);
+    if (!list.ok) { no('index.json', 'index', list.reason); return out; }
+    out.refused.push(...list.refused);
+    const max = KW.pack && KW.pack.LIMITS ? KW.pack.LIMITS.text : 512 * 1024;
+    const got = await Promise.all(list.files.map(f => fetchText(get, PACK_DIR + f, max)));
+    got.forEach((g, i) => {
+      if (g.ok) out.files.push({ file: list.files[i], text: g.text });
+      else no(list.files[i], 'fetch', g.missing ? 'the file the index names is missing' : g.reason);
+    });
+    return out;
   }
 
   /* The state of the knight for a condition id (see docs/state.md), at time t. gx and gy place the
@@ -415,10 +593,10 @@
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
      knight is. speech draws a speech bubble. rest holds what a scene calls for the gear at rest
-     (described above): draw(slot, x, y, a), blade() and key(slot). rig and start are described
-     above, build is the present knight's measurements, source is 'pack' or 'code' and status what
-     start() found. */
+     (described above): draw(slot, x, y, a), blade() and key(slot). rig, start, add, fetchPacks and
+     packIndex are described above, build is the present knight's measurements, source is 'pack' or
+     'code' and status what start() found. */
   const headAtCorner = (ax, ay, o) => (PK.look ? packHead(ax + 120, ay + 94, o) : bareHD(ax + 120, ay + 94, o));
   KW.knight = { draw: knightHD, rig, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD,
-    rest: { draw: restHD, blade: restBlade, key: restKey }, start, source: 'code', status: null };
+    rest: { draw: restHD, blade: restBlade, key: restKey }, start, add, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);

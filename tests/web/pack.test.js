@@ -991,7 +991,7 @@ test('a look naming the head or an unknown slot is told so, and the head comes f
   assert.equal(L.lists.headOff.length, 6 + 8);
 });
 
-test('with no base pack the result says so, for the caller to draw its stand-in', () => {
+test('with no base pack the result says so, for the caller to draw the knight from code', () => {
   assert.deepEqual(PK.resolve(PK.gather([load(EXTRA())]), {}), { ok: false, reason: 'no base pack', fallbacks: [], ignored: [] });
   assert.equal(PK.resolve(null, null).reason, 'no base pack');
 });

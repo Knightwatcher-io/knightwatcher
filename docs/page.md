@@ -16,7 +16,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie and the other watched things (`KINDS`), fire, sky and stars, flies, the goblin, the crate and its parachute |
-| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code as `start()` chose (see [The knight from the base pack](#the-knight-from-the-base-pack)), `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
+| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs and `fetchPacks()` fetches the downloaded ones, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
@@ -24,7 +24,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events, drawing order, and the watched things in their places (`KW.things`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
-| `js/main.js` | start-up (where the knight is drawn from, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
+| `js/main.js` | start-up (starting the knight and fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
@@ -144,14 +144,24 @@ for the base pack's greatsword are the same 6 and -30.
 
 At start-up, before the first frame, `main.js` calls `KW.knight.start(KW.packText, dev)` with `dev`
 true only when the page's version is `dev`. `start` reads the packs the carriers pushed, gathers
-them and resolves the default look. If a look resolves, the knight is drawn from the base pack;
-otherwise from code. A `dev` page accepts the base pack signed or unsigned and takes the pack path.
-A deployed page takes the pack path when the base pack carries a signature that verifies against a
-key in `KEYS`, and the code path otherwise, refusing the pack at the `signature` step.
-[packs.md](./packs.md#two-paths) says which state ships today. The two paths draw the same pixels. The choice is made once, printed in one line to the
-console, and kept in `KW.knight.source` (`'pack'` or `'code'`) and `KW.knight.status`; nothing about
-it is drawn on screen. [packs.md](./packs.md#on-the-page) has the details, and why the code path
-stays.
+them and resolves the look, the base pack's defaults while nothing chooses another. If a look
+resolves, the knight is drawn from the base pack; otherwise from the code in `knight.js`, the full
+knight as it shipped before packs, which draws the same knight. A `dev` page accepts packs signed or unsigned. A
+deployed page accepts a pack only when it carries a signature that verifies against a key in
+`KEYS`, and refuses it at the `signature` step otherwise. [packs.md](./packs.md#where-the-knight-is-drawn-from)
+says which state ships today.
+
+Served over HTTP, `main.js` then fetches the packs the collector downloaded into `data/packs/`, once
+at load and in every mode, with `KW.knight.fetchPacks(fetch)`, and hands them to `KW.knight.add()`,
+which reads them with the same rule and resolves the look again; the page then paints its
+backdrops again. From disk it fetches nothing. A missing `data/packs/index.json` means no packs and
+is silent. [packs.md](./packs.md#downloaded-packs) has the index's shape and its limits.
+
+`knight.js` writes one line to the console for each refused pack, and one each time the source
+changes; nothing about either is drawn on screen. `KW.knight.source` holds `'pack'` or `'code'`,
+and `KW.knight.status` the base pack in use, the refused packs, the look's fallbacks and the last
+line, for the settings screen's status panel. What happens when packs fail, in order, is in
+[packs.md](./packs.md#when-packs-fail).
 
 On the pack path `draw(o)` runs the rig, fills the library's arrays, picks the grip mode (`none`,
 `hammer`, or `twoR` or `twoL` by the side the blade leans to) and walks the order that
@@ -161,7 +171,11 @@ in that order: the crates first, the face after the head group, the drumstick af
 hammer between the right arm and its gauntlet, and sweat, steam, the marks, the thought bubble,
 the progress bar, the hearts and the speech bubble last. `@skin.face` takes the skin swatch's sick
 ramp when the knight is ill and its hot ramp when overheated. A frame allocates nothing for the
-pack path beyond what the primitives and the engine's own steps allocate.
+pack path beyond what the primitives and the engine's own steps allocate. A throw inside one of
+the look's lists is caught, its packs are marked bad, and the next frame is drawn without them.
+
+On the code path `draw(o)` runs the rig and draws the same knight by code, `codeHD`, in the same
+order. The two paths give the same calls, which the call record checks.
 
 Two things stay as they were:
 
@@ -171,8 +185,9 @@ Two things stay as they were:
   drooping plume. No pose of the page sets it.
 
 `head()`, the sleeper's bare head in the house, follows the knight: on the pack path it draws the
-look's helmet-off head group and then the face, with the same calls as the code. The gear the
-scenes show at rest follows it too; see the next section. `speech()` is drawn by code on both paths.
+look's helmet-off head group and then the face, with the same calls as the code, and on the code
+path `bareHD`. The gear the scenes show at rest follows it too; see the next section. `speech()` is
+drawn by code on both paths.
 
 ## Gear at rest
 
@@ -490,8 +505,9 @@ files of `web/`, in a stable order and leaving `data/` out. It writes `version.j
 `{"version": "<hash>"}`, sets the `kw-version` meta tag of `index.html` to the version, and appends
 `?v=<hash>` to every local script and stylesheet address there, the pack carriers included, so a
 new version is fetched under addresses no cache has seen. A deployed copy's version is not `dev`, so
-it draws the knight from the base pack only when the pack carries a signature that verifies, and
-from code otherwise. The fonts the stylesheet loads are not stamped. A deploy that changes
+it reads only packs that carry a signature that verifies, and draws the knight from code when the
+base pack does not. The tool leaves `data/packs/`, where the collector writes the packs it downloads, alone
+with the rest of `data/`. The fonts the stylesheet loads are not stamped. A deploy that changes
 nothing in `web/` gives the same version and reloads no open page. The version does not depend on
 git, so the tool works from an exported copy too. It refuses a folder that is `web/`, lies inside
 it or holds it, and an `index.html` whose meta tag it cannot find. Open displays reload within
@@ -507,7 +523,8 @@ for f in $(find web/js web/packs -name '*.js'); do node --check "$f" || exit 1; 
 
 The mapping from a state file (the watched things and the fallback to the pie among it), `judge`,
 the rules for events and the decision to reload, the props of the watched things, the knight's
-drawing and rig on both paths, the base pack, and the pack library:
+drawing and rig on both paths, the base pack, the pack library, and loading the packs with what
+is drawn when they fail:
 
 ```bash
 node --test tests/web/
@@ -543,9 +560,9 @@ time; that gone differs from up; and that the pie in parts draws what the whole 
 raspberry it checks that it lights on the lamps' loops, up and down, is not in the up pie's still
 part, and stays inside the pie's place. It prints the calls each part costs.
 
-The same knight test checks the choice itself: the console line on each path, the refusal at the
-`signature` step, the code path when there is no base pack, a broken one or no library, a changed
-colour in the pack showing on the knight, and the clamping of `drop` and `bloat`. For the gear at
+The same knight test checks the choice itself: the console lines, the refusal at the `signature`
+step, the code path when there is no base pack, a broken one or no library, a changed colour in the
+pack showing on the knight, and the clamping of `drop` and `bloat`. For the gear at
 rest it checks the blade and the backdrop keys on each path, that a slot with nothing at rest draws
 nothing, that a pack's plume and jewel colours show on the helmet and the weapon at rest, that a
 helmet with no rest view shows nothing and one with no plume mount at rest shows no plume, that a
@@ -561,6 +578,11 @@ KNIGHT_LOG=dump:/tmp/kw-calls-new node --test tests/web/knight.test.js        # 
 KNIGHT_LOG=dump-pack:/tmp/kw-calls-pack node --test tests/web/knight.test.js  # the pack path
 diff -r /tmp/kw-calls-old /tmp/kw-calls-new
 ```
+
+`tests/web/loading.test.js` checks the downloaded packs, the refusals and their console lines, the
+fallback to the base pack's defaults, the code path in every case of failure and a throw inside a
+draw list; see
+[packs.md](./packs.md#tests).
 
 The stored record changes only when the knight is meant to look different. Store it again from the
 code as it is with `KNIGHT_LOG=write node --test tests/web/knight.test.js`, and look at the
@@ -597,22 +619,22 @@ one frame to the next, so every shot depends only on its address: two takes of t
 out byte for byte the same, on a busy machine too, apart from the clock when the minute turns.
 
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack.
-A reference set taken from a copy of an older tree (`PAGE=/path/to/old/web/index.html`) that drew
-the knight from code compares the two paths. A deployed copy draws from code unless the base pack
-carries a signature that verifies. `shots.sh` shoots
-only from disk, so to compare a deployed copy, serve it on the loopback address and point the
-headless browser at `index.html?demo#<hash>` by hand: `?demo` starts the demo at once instead of
-waiting for a state file.
+A deployed copy draws from the base pack too while it ships signed, and from code otherwise.
+`shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
+on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
+starts the demo at once instead of waiting for a state file, and a served page fetches
+`data/packs/` in every mode.
 
-To shoot the code path from disk instead, copy `web/` to a folder outside the repository and give
-the copy's `kw-version` meta tag any value but `dev`; a page opened from disk runs the demo whatever
+To shoot the code path from disk, copy `web/` to a folder outside the repository and give the
+copy's `kw-version` meta tag any value but `dev`; a page opened from disk runs the demo whatever
 its version. Take the copy's signature off its base pack with
 `node tools/sign-pack.js --unsign <copy>/packs/base.pack.json`, so that the copy refuses it and
-draws from code whichever state ships. Do it before and after a change and
-compare each path's two sets:
+draws from code whichever state ships. Do it before and after a change and compare each path's two
+sets:
 
 ```bash
 cp -r web /tmp/kw-code && sed -i 's/name="kw-version" content="dev"/name="kw-version" content="code"/' /tmp/kw-code/index.html
+node tools/sign-pack.js --unsign /tmp/kw-code/packs/base.pack.json
 CHROME=/path/to/chrome-headless-shell PAGE=/tmp/kw-code/index.html tools/shots.sh take /tmp/kw-ref-code
 ```
 
