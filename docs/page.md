@@ -10,10 +10,11 @@ share one global object, `KW`. ES modules would fail from `file://`.
 |---|---|
 | `index.html` | the markup: the review bar, the display surface, the script tags in load order |
 | `css/display.css` | the display, the text colours by status, the review bar |
-| `js/draw.js` | `KW.view` (the grids and the canvas's real edges), the palettes, the drawing primitives for both grids |
-| `js/sprites.js` | the small letter sprites |
-| `js/props.js` | props used by more than one scene or drawn by the engine: the pie, sky and stars, fire, the coarse greatsword, flies, the goblin, the crate |
-| `js/knight.js` | the knight: `pose(id, t)` turns a condition into his state, `draw(o)` draws him, `swing()` animates a cut |
+| `fonts/` | the VT323 typeface and its licence |
+| `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
+| `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
+| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie, fire, sky and stars, flies, the goblin, the crate and its parachute |
+| `js/knight.js` | the knight: `pose(id, t)` turns a condition into his state, `draw(o)` draws him, `swing()` animates a cut, `head()` draws his bare head and `speech()` a speech bubble |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events, drawing order |
@@ -23,38 +24,43 @@ share one global object, `KW`. ES modules would fail from `file://`.
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run.
 
-## Two grids
+## One grid
 
-The knight, the battlement and the camp are drawn on a fine grid of 960 by 600 with the ground at
-530. The house, yard, cellar, smithy and court are drawn on the older coarse grid of 192 by 120
-with the ground at 106, painted through a fivefold scale. `KW.view` holds both: `W`, `H` and `FL`
-for the coarse grid, `HW`, `HH` and `HFL` for the fine one, and `U` (5) between them.
+Every scene, the knight and the props are drawn on one grid of 960 by 600 whole pixels with the
+ground at y 530. `KW.view` holds it: `HW` and `HH` are the grid's width and height and `HFL` is
+the ground. `U` (5) is the unit the engine places the knight in. A scene's `spot`, the `x` of its
+`rounds` and the `kx=` hook all count in units of `U`, so a `spot` of 96 is x 480 on the grid.
 
-The canvas is cut to the screen's shape, so its real edges lie outside both grids. `fit()` in
-`main.js` sets them on every resize: `HL`, `HR` and `HT` on the fine grid, `L`, `RR`, `TP` and
-the width `RW` on the coarse one. A backdrop fills out to these edges, never to the grid's.
+The canvas is cut to the screen's shape, so it reaches past the grid at the sides and the top.
+`fit()` in `main.js` sets the real edges on every resize: `HL` and `HR` for the left and right,
+`HT` for the top, `X0` and `Y0` for where the grid's corner sits on the canvas, `LW` and `LH` for
+the canvas's size in its own pixels, and `SC` for one canvas pixel in CSS pixels. A backdrop fills
+out to `HL`, `HR` and `HT`, never to the grid's edges. The canvas's bottom edge is the grid's.
 
 The primitives draw into whichever context `KW.draw.setCtx()` last set: the display's canvas, or
-a backdrop's while it is painted. The coarse ones (`R`, `spr`, `tline`, `glow`, `fill`) take
-colours as palette letters. The fine ones (`Rh`, `ell`, `rrect`, `poly`, `strip`, `sprS`) take
-a colour or a list of `[fraction, colour]` bands across the shape.
+a backdrop's while it is painted. The shapes fill whole pixels. `Rh` fills a rectangle with one
+colour and `Rv` fills one in bands from top to bottom. `ell`, `rrect`, `poly` and `strip` (a
+tapering bar between two points) take a colour or a list of `[fraction, colour]` bands across the
+shape. `pix` draws a shape given pixel by pixel, painting each pixel once so that the shape can
+fade without seams. `glow` lays a soft light and `dith` a dithered band. The palette is
+`KW.draw.C`, with lists of bands for steel, gold and leather.
 
 ## The scene interface
 
 Each file in `js/scenes/` registers one object on `KW.scenes` under the scene's name, and draws
-nothing outside it. The engine calls only what is listed here.
+nothing outside it. The engine reads only what is listed here, and sets the grid's transform
+before it calls `paint`, `draw` and `over`.
 
 | Field | Required | Meaning |
 |---|---|---|
-| `grid` | yes | `'fine'` or `'coarse'`: the transform the engine sets before `paint`, `draw` and `over` |
-| `spot` | yes | where the knight stands on arrival, in coarse units across the grid |
+| `spot` | yes | where the knight stands on arrival, in units of `U` across the grid |
 | `draw(t, s)` | yes | draws the scene at time `t` in ms: everything on a scene without `paint`, otherwise what moves |
-| `rounds` | no | the spots the knight strolls between while nothing pins him: `[{ x, act, dur }]`, `x` in coarse units, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles |
+| `rounds` | no | the spots the knight strolls between while nothing pins him: `[{ x, act, dur }]`, `x` in units of `U`, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles |
 | `paint(s)` | no | the still part, painted once into a cached canvas and kept until the key or the screen's shape changes |
 | `key(s)` | no | a string; the cached backdrop is painted again when it changes |
 | `act(t, s)` | no | called each frame after strolling and before the swat and events; may change the knight's pose `s.o` |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
-| `wallAt(x)` | no | the height on the fine grid of what the goblin climbs over at fine `x`; the ground when absent |
+| `wallAt(x)` | no | the y of the top of whatever the goblin climbs over at grid x; the ground when absent |
 | `outdoors` | no | `true` where flies are swatted and the crate may land |
 | `bed` | no | `true` where the knight takes to his bed for `night` and `container_unhealthy` |
 | `helmet` | no | `false` where the helmet comes off (unless the address says otherwise) |
@@ -67,15 +73,16 @@ nothing outside it. The engine calls only what is listed here.
 | `w` | the winning condition: `{ id, lv, st, scene, hl, sub }`, or the idle one with id `idle` |
 | `piOK` | whether the pie is on its plate |
 | `tv` | whether the television is on |
-| `kx` | the knight's x on the fine grid |
+| `kx` | the knight's x on the grid |
 | `o` | the knight's pose for this frame |
 | `here` | where the knight stands in his round, `{ act, el }` with `el` the ms spent there, or `null` |
 | `inBed`, `helmOff` | whether he is in bed, and whether his helmet is off |
 | `strike` | free for a scene's `act` to pass to its `draw` (the smithy's hammer blow) |
 
-Some scenes reach further. The house draws the knight's head in bed itself, from coarse parts,
-and its Zs at night in `over`. The court sets the knight talking in `draw`. The yard keeps the
-time the dummy was last struck and swings the knight's sword in `act`.
+Some scenes reach further. The house draws the sleeper's head with `KW.knight.head` and its Zs
+at night in `over`. The court sets the knight talking in `draw` and draws the King's speech
+bubble with `KW.knight.speech`. The smithy's `act` sets the hammer and `strike`. The yard keeps
+the time the dummy was last struck and swings the knight's sword in `act`.
 
 ## Modes
 
@@ -88,9 +95,9 @@ a state file exists. Browsers refuse to fetch from disk, so from disk the page d
 **Wait.** Served over HTTP, the page draws the quiet scene with no words and no bar until the
 first answer for the state file arrives.
 
-**Live.** The page fetches `data/state.json`, relative to itself and with `cache: "no-store"`,
-at start and five seconds after each answer. A valid file hides the review bar and drives the
-display:
+**Live.** The page fetches `data/state.json`, relative to itself and with `cache: "no-store"`, at
+start and five seconds after each answer, and cuts a fetch off after four seconds. A valid file
+hides the review bar and drives the display:
 
 - The first condition with a known id wins. Its id chooses the scene and the knight's state from
   the table in [design.md](./design.md), its `level` the text colour (critical red, warning
@@ -114,11 +121,11 @@ display:
 read changes nothing on screen while that last valid file is no older than three of its own
 intervals (its `interval_s`). The page keeps showing it and plays no events.
 
-**No signal.** A fetched file that is stale (older than three times its `interval_s`) or has a
-`schema` other than 1 shows NO SIGNAL at once. So does a failed or unreadable fetch once the last
-valid file has passed three of its intervals. The current scene and the knight's state stay, under
-a red `NO SIGNAL` with `collector silent for N min`, counted from the newest `generated_at` the
-page has seen. The next valid file restores live mode.
+**No signal.** Once the page has had a valid file, a fetched file that is stale (older than three
+times its `interval_s`) or has a `schema` other than 1 shows NO SIGNAL at once. So does a failed or
+unreadable fetch once the last valid file has passed three of its intervals. The current scene and
+the knight's state stay, under a red `NO SIGNAL` with `collector silent for N min`, counted from
+the newest `generated_at` the page has seen. The next valid file restores live mode.
 
 **On the tablet.** In live mode there is no visible control. A tap or click on the display
 toggles full screen. The page asks for a screen wake lock on entering live mode, on every tap,
@@ -134,21 +141,22 @@ nowMs)` decides between showing a file, holding the last one, NO SIGNAL and the 
 
 ## The address
 
-The hash holds the demo's settings and a set of test hooks. All of them work in the demo.
+The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=` and `kx=` also work
+in live mode. `f=`, `e=` and `sw=` start something in the demo and do nothing elsewhere.
 
 | Key | Meaning |
 |---|---|
 | `on=` | active conditions, comma separated, by the contract's id or the short alias (`attack`, `wan`, `sick`, `disk`, `backup`, `pi`, `cpu`, `swap`, `ssh`, `update`, `plex`, `night`) |
-| `is=` | the quiet scene: `auto`, `battlement`, `camp`, `house`, `yard` |
-| `h=` | the helmet: `auto`, `on`, `off` (also read in live mode) |
-| `hs=` | the headline size: `s`, `m`, `l` (also read in live mode) |
+| `is=` | the quiet scene: `auto`, `battlement`, `camp`, `house`, `yard`. The cellar, smithy and court come from conditions |
+| `h=` | the helmet: `auto` (off in the house and the smithy), `on`, `off` |
+| `hs=` | the headline size: `s`, `m`, `l` |
 | `bar=0` | hides the review bar |
 | `demo=1` | runs the demo loop |
 | `t=` | freezes time at that many ms, for screenshots |
 | `e=` | plays an event: `goblin`, `crate`, `feast` |
 | `f=` | starts with that many flies |
 | `sw=1` | starts a swat |
-| `kx=` | places the knight, in coarse units |
+| `kx=` | places the knight, in units of `U` |
 
 The demo rewrites the hash as its settings change, with the contract's ids in `on=`.
 
@@ -160,7 +168,7 @@ Syntax, from the repository's root:
 for f in $(find web/js -name '*.js'); do node --check "$f" || exit 1; done
 ```
 
-The mapping from a state file:
+The mapping from a state file, `judge` and the rules for events:
 
 ```bash
 node --test tests/web/

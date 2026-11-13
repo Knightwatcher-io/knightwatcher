@@ -27,8 +27,8 @@ Rules that follow from this, each decided by the owner:
 - Text colour is the status: green when quiet, amber for a warning, red when critical, blue while
   something is at work.
 - Movement is kept small. A fire flickers, the knight strolls to another spot every 12 to 22
-  seconds. There is enough movement to spare an OLED panel and not enough to keep catching the eye.
-  The whole picture and the text also drift a few pixels over minutes.
+  seconds in the quiet scenes. There is enough movement to spare an OLED panel and not enough to
+  keep catching the eye. The whole picture and the text also drift a few pixels over minutes.
 - Serious outranks fun. The conditions have one order, and the highest one active wins the scene,
   the knight's state and the headline. Small reactions to events (an advert blocked, an address
   banned, a download imported) play only while nothing at warning level or above is active.
@@ -39,8 +39,8 @@ Rules that follow from this, each decided by the owner:
 
 Open-faced helm, red plume, blue tabard, and a greatsword held and swung in both hands. No shield.
 No arm is ever drawn over the blade or its guard: the arm on the side the blade leans to goes
-behind it. The helmet comes off indoors. Gear is drawn in slots (head, weapon, hands) over one
-body so that new items can be added later.
+behind it. The helmet comes off in the house and the smithy. Gear is drawn in slots (head, weapon,
+hands) over one body so that new items can be added later.
 
 The Raspberry Pi that watches the main host is a steaming raspberry pie, present in every scene.
 When the Pi stops answering, the pie is gone and an empty plate is left.
@@ -69,12 +69,15 @@ With no condition active the quiet scenes take turns: battlement, camp, house, t
 
 ## Art
 
-Scenes are composed on a 960 by 600 grid with the ground at 530, drawn in whole pixels and scaled
-by a whole number of device pixels where the screen allows (three on the target tablet). The
-still part of a scene is painted once and kept. Only what moves is drawn each frame.
+All seven scenes (battlement, camp, house, training yard, cellar, smithy and court), the knight
+and the props are drawn by code on one grid of 960 by 600 with the ground at 530, in whole pixels,
+scaled by a whole number of device pixels where the screen allows (three on the target tablet).
+The still part of a scene is painted once and kept. Only what moves is drawn each frame.
 
-The first art is drawn by code. Generated or hand-drawn sprite sheets may replace it, as one
-complete set and never piecemeal, so that two styles never share a screen.
+A generated set was tried and not adopted, because it was too coarse and its swing frames did not
+hold the sword in both hands. [art.md](./art.md) records the tools and the outcome. Any other
+generated or hand-drawn set would replace the code-drawn art as one complete set and never
+piecemeal, so that two styles never share a screen.
 
 ## The collector
 
@@ -82,11 +85,11 @@ A small Python program with no third-party dependencies, run as a container:
 
 - no Docker socket: container state comes from a read-only Docker API proxy over HTTP;
 - a non-root user, a read-only root filesystem, no capabilities;
-- host figures from read-only mounts, everything else from the HTTP APIs of the services it
-  watches;
+- host figures from read-only mounts, everything else by asking the services it watches over
+  HTTP, DNS or a TCP connection;
 - one output, written atomically: `state.json` in a folder the web server already serves.
 
-It keeps the short history that sustained conditions need (a CPU that has been hot for nine
+It keeps the short history that sustained conditions need (a CPU that has been hot for five
 minutes is a condition; a spike is not), so the page stays stateless. Every source may fail on its
 own: the collector reports the source as unavailable and carries on.
 
@@ -104,4 +107,5 @@ watched. Knightwatch opens no port of its own.
 - A licence, to be chosen before the repository is made public.
 - Whether generated art is ever committed, given how unsettled its copyright position is.
 - How the display behaves overnight on the tablet itself (dimming, sleep), which belongs to the
-  kiosk browser more than to this project.
+  kiosk browser more than to this project. The page asks for a screen wake lock in live mode and
+  goes full screen on a tap, and leaves the rest open.

@@ -2,7 +2,7 @@
 
 `state.json` is the only thing the collector and the page share. The collector writes it whole,
 to a temporary name and then renamed into place, so the page never reads half a file. The page
-fetches it every few seconds.
+fetches it every five seconds.
 
 Every value below is invented.
 
@@ -49,7 +49,8 @@ Every value below is invented.
 
 ## Fields
 
-- **`schema`** is `1`. A page that meets a number it does not know shows its "no signal" state.
+- **`schema`** is `1`. A page that meets a number it does not know shows NO SIGNAL once it has had
+  a valid file; see [page.md](./page.md).
 - **`generated_at`** and **`interval_s`**: when the file was written and how often it should be.
   The page treats the file as stale once it is older than three intervals, and says so on screen.
   It measures that age against the clock of the device showing the page, so that clock and the
@@ -61,6 +62,7 @@ Every value below is invented.
     `pi_silent`, `cpu_hot`, `memory_tight`, `ssh_session`, `updating`, `streaming`, `night`. The
     page ignores an id it does not know.
   - `level` is `critical`, `warning`, `work`, `quiet` or `sleep`. It sets the text colour.
+  - `since` is when the cause began, as a UTC timestamp.
   - `headline` is at most 16 characters, in capitals. `detail` is at most 60 characters.
 - **`quiet_line`** is shown when `conditions` is empty. At most 52 characters.
 - **`events`** are things that happened, for the page to act out once. `seq` only ever rises, and
@@ -68,8 +70,8 @@ Every value below is invented.
   `ad_blocked`, `ip_banned`, `import`, `backup_done`. `text` is a caption of at most 44
   characters, empty for `ad_blocked`. `count` says how many the event stands for.
 - **`facts`** are the figures behind the conditions, for a page that wants to show them. Any
-  section is `null` when its source is unavailable.
-- **`sources`** says, for each source, whether its last read worked.
+  section is `null` when its source is unavailable or not enabled.
+- **`sources`** says, for each enabled source, whether its last read worked, when, and why not.
 
 ## Who decides what
 

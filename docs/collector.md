@@ -1,13 +1,14 @@
 # The collector
 
-The collector reads the homelab every 30 seconds and writes `state.json`, the file described in
-[state.md](./state.md). It is a Python package in `collector/` that uses the standard library
-alone, and it runs as a container. Its settings are in [configuration.md](./configuration.md).
+The collector reads the homelab every `interval_s` seconds (30 by default) and writes `state.json`,
+the file described in [state.md](./state.md). It is a Python package in `collector/` that uses the
+standard library alone, and it runs as a container. Its settings are in
+[configuration.md](./configuration.md).
 
 ## One poll
 
 1. **Read.** Every enabled source is read at once, each in its own thread. The poll waits for
-   them until two thirds of the interval has passed (20 seconds at the default 30), and a
+   them until 66 percent of the interval has passed (about 20 seconds at the default 30), and a
    source still running at that point is reported as `timed out` for this poll. It is not
    started again while that read is still running, so a source that hangs costs one thread and
    never piles up. Every network call has its own timeout as well (`http_timeout_s`).
@@ -50,10 +51,10 @@ up indefinitely; the per-container timers are kept through a failed read.
 Memory is judged by `MemAvailable` and never by swap, which a busy host can keep full for
 weeks without being short of memory.
 
-The attack signal is a ban in one of the configured jails (`sshd` by default) within the last
-ten minutes, or at least `bans` bans in that window. Bans are counted from the rise in the
-24-hour ban count between polls and from changes in the last ban, so a ban that both arrives
-and ages out of the 24-hour window between two polls can be missed.
+The attack signal is a ban in one of the configured jails (`sshd` by default) within the attack
+window (`window_s`, ten minutes by default), or at least `bans` bans in that window. Bans are
+counted from the rise in the 24-hour ban count between polls and from changes in the last ban, so a
+ban that both arrives and ages out of the 24-hour window between two polls can be missed.
 
 The history behind all of this lives in memory and starts again when the collector restarts.
 
@@ -145,10 +146,11 @@ python3 -m collector --health           # exit 1 if state.json is older than thr
 python3 -m collector                    # poll until stopped
 ```
 
-`--config` and `--secrets` name the two files. They default to `/etc/knightwatch/config.toml`
-and `/etc/knightwatch/secrets.json`, the paths inside the container. The collector takes an
-exclusive lock on its state folder, so a second collector pointed at the same folder exits at
-once.
+`--config` and `--secrets` name the two files. They default to the environment variables
+`KNIGHTWATCH_CONFIG` and `KNIGHTWATCH_SECRETS`, and where those are unset to
+`/etc/knightwatch/config.toml` and `/etc/knightwatch/secrets.json`, the paths inside the
+container. The collector takes an exclusive lock on its state folder, so a second collector
+pointed at the same folder exits at once.
 
 The container definition is `compose.yaml`: a non-root user (uid and gid 1000), a read-only
 root filesystem, no capabilities, `no-new-privileges`, the host's network, no published port

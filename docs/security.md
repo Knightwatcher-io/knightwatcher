@@ -9,7 +9,9 @@ history, is written as though it already were.
 - **The operator's own details**: real hostnames, domains, IP addresses, usernames, email
   addresses, device names, the titles of what is being watched.
 - **Real output** of the collector. `state.json` describes a private network.
-- **Generated art that has not been adopted**, and the ledger of paid calls that made it.
+- **Generated art that has not been adopted**, and the ledger of paid calls that made it, both
+  under `art/`. The scripts that name where the art tools' keys are kept (`tools/artgen/local-*`)
+  stay out too.
 
 Examples, tests and screenshots use invented data. Addresses come from the documentation ranges
 (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`) and names from `example.com`.
@@ -24,17 +26,19 @@ Before any push, this must print nothing:
 tools/check-private.sh
 ```
 
-It searches the tracked files for the patterns of private detail listed in `tools/private-patterns.txt`,
-which is itself ignored by git, since the list names the things it protects.
+It searches the tracked files for the patterns of private detail listed in
+`tools/private-patterns.txt`, which is itself ignored by git, since the list names the things it
+protects.
 
 ## The collector's privileges
 
-The collector reads and never writes, except for its one output file.
+The collector reads and never writes, except for its output file and its memory folder.
 
 - It has no Docker socket. Container state comes from a Docker API proxy that allows read calls
   alone.
 - It runs as a non-root user with a read-only root filesystem and no capabilities.
-- It mounts host paths read-only, and only the ones a source needs.
+- It mounts host paths read-only, and only the ones a source needs, apart from the output folder
+  and the memory folder.
 - It opens no listening port.
 
 It mounts the host's `/proc` read-only, for load, memory and the lock table. A process can read
