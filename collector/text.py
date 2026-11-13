@@ -64,6 +64,18 @@ def count(n: int) -> str:
     return f"{int(n):,}"
 
 
+def short_count(n: int) -> str:
+    """A whole number in few characters: 4,812, then 11.3k, 240k, 1.4M."""
+    n = int(n)
+    if n < 10_000:
+        return count(n)
+    if n < 100_000:
+        return f"{n / 1000:.1f}k"
+    if n < 1_000_000:
+        return f"{n // 1000}k"
+    return f"{n / 1_000_000:.1f}M"
+
+
 def times(n: int) -> str:
     return {1: "once", 2: "twice"}.get(n, f"{n} times")
 

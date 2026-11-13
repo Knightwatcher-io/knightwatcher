@@ -64,7 +64,9 @@ Every value below is invented.
   - `level` is `critical`, `warning`, `work`, `quiet` or `sleep`. It sets the text colour.
   - `since` is when the cause began, as a UTC timestamp.
   - `headline` is at most 16 characters, in capitals. `detail` is at most 60 characters.
-- **`quiet_line`** is shown when `conditions` is empty. At most 52 characters.
+- **`quiet_line`** is shown when `conditions` is empty. At most 52 characters. The collector
+  shortens the blocked count to fit (`11.3k ads blocked`, then `11.3k blocked`) before it drops
+  a part from the end.
 - **`events`** are things that happened, for the page to act out once. `seq` only ever rises, and
   the page remembers the highest it has played. The collector keeps the last 20. `type` is one of
   `ad_blocked`, `ip_banned`, `import`, `backup_done`. `text` is a caption of at most 44

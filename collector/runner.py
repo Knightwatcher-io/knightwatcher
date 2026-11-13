@@ -185,7 +185,17 @@ class Runner:
             parts.append(f"backup {when:%H:%M}")
         adblock = readings.get("adblock")
         if adblock is not None:
-            parts.append(f"{text.count(adblock.facts['blocked_today'])} ads blocked")
+            # The longest wording that fits; a busy network's count is shortened before it is
+            # dropped.
+            n = adblock.facts["blocked_today"]
+            for part in (
+                f"{text.count(n)} ads blocked",
+                f"{text.short_count(n)} ads blocked",
+                f"{text.short_count(n)} blocked",
+            ):
+                if len(text.SEP.join([*parts, part])) <= text.QUIET_LINE_MAX:
+                    parts.append(part)
+                    break
         return text.join_fitting(parts, text.QUIET_LINE_MAX)
 
     def cycle(self) -> dict:
