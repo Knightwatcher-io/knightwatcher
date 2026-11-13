@@ -523,7 +523,10 @@
   }
   const FOES = {
     goblin: { pose: foeSprites(goblinHD, GOB_POSES), poses: Object.keys(GOB_POSES), anchor: [SPR.ax, SPR.ay], size: [SPR.w, SPR.h], h: 160, w: 40, mid: 78,
-      crown: [[-83, -119], [-80, -112], [-36, -133], [-31, -152], [-23, -160], [0, -160], [17, -160], [30, -133], [54, -146], [76, -114]] }
+      // the outline of its top as it flinches: the near ear's upper edge and tip, the pot's rim,
+      // its rounded corners and top, its handle, and the far ear's tip
+      crown: [[-83, -119], [-80, -112], [-70, -121], [-58, -123], [-45, -125], [-36, -133], [-36, -141], [-31, -150], [-30, -155], [-27, -159], [-23, -160],
+        [-10, -160], [0, -160], [10, -160], [17, -160], [21, -159], [24, -155], [25, -150], [30, -141], [30, -133], [40, -143], [54, -146], [59, -147], [76, -114]] }
   };
 
   /* ---- What a foe leaves by ---------------------------------------------------------------------

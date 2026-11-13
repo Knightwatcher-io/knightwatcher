@@ -15,14 +15,14 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `fonts/` | the VT323 typeface and its licence |
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
-| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie and the other watched things (`KINDS`), fire, sky and stars, flies, the goblin, the crate and its parachute |
+| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie and the other watched things (`KINDS`), fire, sky and stars, flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs and `fetchPacks()` fetches the downloaded ones, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
-| `js/engine.js` | the frame: scene choice, strolling, the swat, events, drawing order, and the watched things in their places (`KW.things`) |
+| `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the watched things in their places (`KW.things`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
 | `js/main.js` | start-up (starting the knight with its look, the greatsword or with `arm=one` the sword and shield, and fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 
@@ -304,7 +304,7 @@ before it calls `paint`, `draw` and `over`.
 | `act(t, s)` | no | called each frame after strolling and before the swat and events; may change the knight's pose `s.o` |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
 | `wallAt(x)` | no | the y of the top of whatever a foe climbs over at grid x; without it a foe digs up out of the ground |
-| `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a watched thing on the ground or the pie, and 150 to 240 pixels from the knight's middle; with no room the event shows its caption alone. A scene without it hosts no foe |
+| `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a watched thing on the ground or the pie, and 150 to 240 pixels from the knight's middle, within the reach of the weapon the knight holds; with no room the event shows its caption alone. A scene without it hosts no foe |
 | `outdoors` | no | `true` where flies are swatted and the crate may land |
 | `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy` |
 | `helmet` | no | `false` where the helmet comes off (unless the address says otherwise) |
@@ -366,7 +366,9 @@ hides the review bar and drives the display:
   as tall as the knight's shoulders: it climbs over the battlement's wall or digs up out of the
   camp's grass beside the knight, pulls a face, is bonked on the saucepan it wears, and vanishes
   in a puff of smoke. The knight's swing stops where the blade meets the pot, so the blade never
-  passes through it; nothing gory is shown. A foe is described in `KW.props.FOES` and played by
+  passes through it; nothing gory is shown. The goblin stands where the weapon the knight holds
+  reaches it, the greatsword or the arming sword alike, and does not come where none can; the
+  burst on the pot lasts the 80 ms the blade bounces off it. A foe is described in `KW.props.FOES` and played by
   the engine's foe player from its tables (`KW.engine.foe.FOE`), so a later foe reuses the
   entrance, the strike and the exit. A `seq` lower than the
   highest played means the collector started again, and its events are adopted unplayed. Events
@@ -621,6 +623,17 @@ part is only its lamp, inside the place, in both states; that the lamp fades gre
 time; that gone differs from up; and that the pie in parts draws what the whole pie drew. For the
 raspberry it checks that it lights on the lamps' loops, up and down, is not in the up pie's still
 part, and stays inside the pie's place. It prints the calls each part costs.
+
+`tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
+foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
+the entrance runs in order and the poof is over within the event's 3.4 seconds; that the goblin
+stands in the scene's `foeZone`, clear of the knight, the pie and every watched thing on the
+ground, and does not come when there is no room; and, for the greatsword from the base pack and
+from code and for the arming sword, at every spot the knight strolls to in both scenes, that the
+goblin stands within the weapon's reach, that the blade comes within 3 pixels of its crown at the
+hit and of a drawn pixel of its sprite, that the hit pose plays only from that moment, and that the
+blade never enters any drawn pixel of the goblin by more than 2. A blade too short to reach it
+anywhere keeps the goblin away.
 
 The same knight test checks the choice itself: the console lines, the refusal at the `signature`
 step, the code path when there is no base pack, a broken one or no library, a changed colour in the

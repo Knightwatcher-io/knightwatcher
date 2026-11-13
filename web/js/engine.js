@@ -86,8 +86,13 @@
        the exit      what the foe leaves by; the one exit built is the poof.
      Times are in ms from the start of the event; an exit's are from the moment of the hit. */
   const FOE = {
-    // the distance from the knight's middle to the foe's, least, wanted and most
+    // the distance from the knight's middle to the foe's, least, wanted and most. The least keeps
+    // the foe clear of the knight; the weapon's reach can bring the other two in (foeGaps), so the
+    // blade always meets the foe, whatever the weapon
     gap: [150, 210, 240],
+    // how far inside the weapon's furthest reach the foe wants to stand, as a share of the blade's
+    // length, so the blade meets it a little short of the point
+    reachIn: .12,
     // how far a foe keeps from the box of a watched thing's place, beyond its own half width
     clear: 0,
     enter: { open: [60, 260], rise: [250, 650], peek: [650, 850], hop: [850, 1150], land: [1150, 1230], taunt: [1230, 1480], brace: 1480,
@@ -97,9 +102,10 @@
       holeLine: 4 },
     strike: { at: 1250, dur: 900, rebound: 80, recover: 560, kick: .32, eyes: 500 },
     exits: {
-      // gone in a puff of smoke: struck (squashed for 120 ms), the cloud at 140, the foe hidden
-      // at 170 behind it, sparkles from 240, the knight pleased at 640, a hole closed by 1190
-      poof: { struck: 140, squash: [120, .1, .08], cloud: 140, gone: 170, sparkles: 240, pleased: 640, close: [840, 1190], impact: 160 }
+      // gone in a puff of smoke: struck (squashed for 120 ms, a burst on the pot for the 80 ms the
+      // blade bounces off it), the cloud at 140, the foe hidden at 170 behind it, sparkles from
+      // 240, the knight pleased at 640, a hole closed by 1190
+      poof: { struck: 140, squash: [120, .1, .08], cloud: 140, gone: 170, sparkles: 240, pleased: 640, close: [840, 1190], impact: 80 }
     }
   };
   const segQ = (el, a, b) => clamp01((el - a) / (b - a));
@@ -108,16 +114,17 @@
      no room. The scene's foeZone gives the side tried first and the spans of ground clear of its
      own props; the places that hold a watched thing on the ground or the pie's are kept clear too.
      The spot is the one nearest the wanted gap on the first side that has room. */
-  function foeSpot(F, sc, things, places, kx) {
+  function foeSpot(F, sc, things, places, kx, gaps) {
     const z = sc.foeZone; if (!z) return null;
-    const [gMin, gWant, gMax] = FOE.gap, m = F.w + FOE.clear, blocked = [];
+    const m = F.w + FOE.clear, blocked = [];
     for (const th of things || []) {
       const pl = th && places && places[th.place];
       if (pl && (pl.cls === 'pie' || pl.cls === 'ground')) blocked.push([pl.x - pl.w / 2 - m, pl.x + pl.w / 2 + m]);
     }
     const first = z.side < 0 ? -1 : 1;
     for (const side of [first, -first]) {
-      const want = kx + side * gWant, lo = side > 0 ? kx + gMin : kx - gMax, hi = side > 0 ? kx + gMax : kx - gMin;
+      const g = gaps ? gaps[side] : FOE.gap; if (!g) continue;
+      const [gMin, gWant, gMax] = g, want = kx + side * gWant, lo = side > 0 ? kx + gMin : kx - gMax, hi = side > 0 ? kx + gMax : kx - gMin;
       const ok = x => x >= lo && x <= hi && z.spans.some(([a, b]) => x >= a && x <= b) && !blocked.some(([a, b]) => x > a && x < b);
       const cands = [want, lo, hi];
       for (const sp of z.spans.concat(blocked)) cands.push(sp[0], sp[1]);
@@ -128,54 +135,81 @@
     return null;
   }
 
-  /* The blade in the knight's pose o: its frame and its extent along it, outline included. */
+  /* The blade in the knight's pose o: its frame and its extent along it, outline included. The
+     outline is 4 pixels wide along the edges and, at the point, longer as the blade is broader: 7
+     on the greatsword, 5 on the arming sword. */
   function bladeOf(o) {
     const b = K.rest.blade() || { from: 34, to: 263, half: 15 }, m = K.rig(o).anchors.main;
-    return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: b.to + 7, half: b.half + 4 };
+    return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: b.to + Math.round(b.half * 7 / 15), half: b.half + 4 };
   }
-  /* How far the blade is short of the nearest point of the foe's crown, in pixels: below 0 once
-     it touches. dir is the way the swing cuts; a point the blade has not reached is ahead of it. */
-  function bladeGap(bl, F, fx, side, floor, dir) {
-    const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), nx = Math.cos(bl.a) * dir, ny = Math.sin(bl.a) * dir;
-    let gap = Infinity;
+  /* The nearest point of the foe's crown that lies beside the blade, as { gap, x, y }: gap is how
+     far the blade's outline is from it in pixels, 0 or below once it is within, and x and y where
+     it is on the grid. A point beyond either end of the blade is not beside it. The crown is given
+     as drawn, facing left: a foe right of the knight (side 1) faces left, one left of it is drawn
+     the other way round. */
+  function crownNear(bl, F, fx, side, floor) {
+    const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), nx = Math.cos(bl.a), ny = Math.sin(bl.a);
+    let near = { gap: Infinity, x: fx, y: floor };
     for (const [cx, cy] of F.crown) {
-      const px = fx - side * cx - bl.x, py = floor + cy - bl.y, along = px * sx + py * sy;
-      if (along >= bl.from && along <= bl.to) gap = Math.min(gap, px * nx + py * ny - bl.half);
+      const x = fx + side * cx, y = floor + cy, px = x - bl.x, py = y - bl.y, along = px * sx + py * sy;
+      if (along < bl.from || along > bl.to) continue;
+      const gap = Math.abs(px * nx + py * ny) - bl.half;
+      if (gap < near.gap) near = { gap, x, y };
     }
-    return gap;
+    return near;
   }
+  const bladeGap = (bl, F, fx, side, floor) => crownNear(bl, F, fx, side, floor).gap;
   /* How far through the swing (0 to 1) the blade meets the foe's crown, the knight in pose o (at
      rest, its bob still) at o.x; 1 when it never does. Found to a thousandth of the swing. */
   function contactQ(F, fx, side, o) {
-    const p = Object.assign({}, o, { bob: 0 }), at = q => { Object.assign(p, { gx: o.gx, gy: o.gy, wang: o.wang }); K.swing(p, q, side); return bladeGap(bladeOf(p), F, fx, side, o.floor, side); };
+    const p = Object.assign({}, o, { bob: 0 }), at = q => { Object.assign(p, { gx: o.gx, gy: o.gy, wang: o.wang }); K.swing(p, q, side); return bladeGap(bladeOf(p), F, fx, side, o.floor); };
     let lo = 0, hi = null;
     for (let q = 0; q <= .55 + 1e-9; q += .005) { if (at(q) <= 0) { hi = q; break; } lo = q; }
     if (hi === null) return 1;
     for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (at(mid) <= 0) hi = mid; else lo = mid; }
     return lo;
   }
+  /* The gaps at which the equipped weapon, cutting towards side, meets the foe F: [least, wanted,
+     most], or null when it cannot meet it even at the least. The most is the furthest gap at which
+     the blade still reaches the crown, to a pixel, and no more than FOE.gap's; the wanted is
+     FOE.reachIn of the blade's length inside that, and no more than FOE.gap's. With the greatsword
+     they are FOE.gap's own. */
+  function foeGaps(F, o, side) {
+    const [gMin, gWant, gMax] = FOE.gap, meets = g => contactQ(F, o.x + side * g, side, o) < 1;
+    if (!meets(gMin)) return null;
+    let most = gMax;
+    if (!meets(gMax)) { let lo = gMin, hi = gMax; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (meets(mid)) lo = mid; else hi = mid; } most = lo; }
+    const b = K.rest.blade() || { from: 34, to: 263 }, inside = Math.round(FOE.reachIn * (b.to - b.from));
+    return [gMin, Math.max(gMin, Math.min(gWant, most - inside)), most];
+  }
   /* The plan of a foe's event, worked out once on its first frame: the foe, where it stands, the
-     line it comes over, and when the blade meets it. null when it has no room. */
+     line it comes over, and when the blade meets it. null when it has no room within the weapon's
+     reach, so a foe never plays a hit the blade did not give. */
   function foePlan(type, sc, s, o) {
-    const e = EVENTS[type], F = P.FOES[e.foe], spot = F && foeSpot(F, sc, s.things, s.places, o.x);
+    const e = EVENTS[type], F = P.FOES[e.foe]; if (!F) return null;
+    const gaps = { 1: foeGaps(F, o, 1), '-1': foeGaps(F, o, -1) }, spot = foeSpot(F, sc, s.things, s.places, o.x, gaps);
     if (!spot) return null;
+    const q = contactQ(F, spot.x, spot.side, o), S = FOE.strike; if (q >= 1) return null;
     const burrow = !sc.wallAt, lineAt = burrow ? () => V.HFL + FOE.enter.holeLine : sc.wallAt;
-    const q = contactQ(F, spot.x, spot.side, o), S = FOE.strike;
-    return { F, x: spot.x, side: spot.side, burrow, lineAt, q, hit: q < 1 ? Math.round(S.at + q * S.dur) : S.at + S.dur, exit: FOE.exits[e.exit] };
+    // where the blade touches, for the burst
+    const p = Object.assign({}, o, { bob: 0 }); K.swing(p, q, spot.side);
+    const touch = crownNear(bladeOf(p), F, spot.x, spot.side, o.floor);
+    return { F, x: spot.x, side: spot.side, burrow, lineAt, q, hit: Math.round(S.at + q * S.dur), touch: [Math.round(touch.x), Math.round(touch.y)], exit: FOE.exits[e.exit] };
   }
 
   /* The strike on the knight's pose o at el: the swing until the hit, then the bounce back and the
-     return to the stance the pose began in. */
+     return to the stance the pose began in. With a weapon in one hand the shield hand (fx, fy)
+     comes back with it. */
   function strike(o, el, pl) {
-    const S = FOE.strike, base = { gx: o.gx, gy: o.gy, wang: o.wang };
+    const S = FOE.strike, one = o.fx != null, base = { gx: o.gx, gy: o.gy, wang: o.wang, fx: o.fx, fy: o.fy };
     if (el < S.at) return;
     if (el < pl.hit) { K.swing(o, (el - S.at) / S.dur, pl.side); return; }
-    if (pl.q >= 1) { if (el < S.at + S.dur) K.swing(o, (el - S.at) / S.dur, pl.side); return; }
     const r = el - pl.hit; if (r >= S.rebound + S.recover) return;
-    const c = { gx: 0, gy: 0, wang: 0 }; K.swing(c, pl.q, pl.side);
-    const b = { gx: c.gx - pl.side * .5, gy: c.gy - 2, wang: c.wang - pl.side * S.kick };
+    const c = { gx: 0, gy: 0, wang: 0, fx: o.fx, fy: o.fy }; K.swing(c, pl.q, pl.side);
+    const b = { gx: c.gx - pl.side * .5, gy: c.gy - 2, wang: c.wang - pl.side * S.kick, fx: c.fx, fy: c.fy };
     const [f, t, k] = r < S.rebound ? [c, b, ease(r / S.rebound)] : [b, base, ease(clamp01((r - S.rebound) / S.recover))];
     o.gx = lerp(f.gx, t.gx, k); o.gy = lerp(f.gy, t.gy, k); o.wang = lerp(f.wang, t.wang, k); o.eyes = 'angry';
+    if (one) { o.fx = lerp(f.fx, t.fx, k); o.fy = lerp(f.fy, t.fy, k); }
   }
 
   /* What the foe looks like at el: its pose, its feet, which way it faces, its squash, whether it
@@ -195,10 +229,10 @@
     if (el >= N.taunt[0] && el < N.taunt[1]) st.pose = Math.floor((el - N.taunt[0]) / N.tauntFrame) % 2 ? 'taunt1' : 'taunt0';
     if (el >= N.brace && el < pl.hit) st.pose = 'brace';
     if (el < pl.hit) return st;
-    const r = el - pl.hit, top = F.crown.reduce((a, c) => (c[1] < a[1] ? c : a));
+    const r = el - pl.hit;
     st.pose = 'hit';
     const k = Math.sin(segQ(r, 0, X.squash[0]) * Math.PI); st.sy = 1 - X.squash[1] * k; st.sx = 1 + X.squash[2] * k;
-    if (r < X.impact) st.fx.push({ kind: 'impact', x: pl.x - pl.side * top[0], y: HFL + top[1] - 2 });
+    if (r < X.impact) st.fx.push({ kind: 'impact', x: pl.touch[0], y: pl.touch[1] - 2 });
     if (r >= X.gone) st.show = false;
     if (r >= X.cloud && r < X.cloud + P.CLOUD_MS) st.fx.push({ kind: 'cloud', x: pl.x, y: HFL - F.mid, el: r - X.cloud });
     if (r >= X.sparkles && r < X.sparkles + P.SPARKLE_MS) st.fx.push({ kind: 'sparkles', x: pl.x, y: HFL - F.mid, el: r - X.sparkles });
@@ -422,7 +456,7 @@
     EVENTS, TURNS,
     /* The foe player's parts, for the tests: the tables, where a foe stands, when the blade meets
        it, the plan of an event, the strike on a pose and the foe at a moment. */
-    foe: { FOE, spot: foeSpot, contactQ, bladeOf, bladeGap, plan: foePlan, strike, at: foeAt },
+    foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bladeGap, crownNear, plan: foePlan, strike, at: foeAt },
     init(ctx) { main = ctx; D.setCtx(ctx); },
     draw, addFly, startSwat, fireEvent,
     /* The scene on screen now. */
