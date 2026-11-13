@@ -211,6 +211,23 @@ class RunnerTest(unittest.TestCase):
         self.runner([containers, adblock]).cycle()
         self.assertEqual(self.read_state()["quiet_line"], "ALL QUIET · 29 up · 4,812 ads blocked")
 
+    def test_quiet_line_shortens_a_count_that_does_not_fit(self):
+        r = self.runner([])
+        backup = Reading({"last_ok": "2026-01-15T03:12:00Z", "age_h": 1.0})
+
+        def line(up, n):
+            readings = {
+                "containers": Reading({"running": up}),
+                "backup": backup,
+                "adblock": Reading({"blocked_today": n}),
+            }
+            return r.quiet_line(readings)
+
+        self.assertEqual(line(29, 4812), "ALL QUIET · 29 up · backup 03:12 · 4,812 ads blocked")
+        self.assertEqual(line(29, 11283), "ALL QUIET · 29 up · backup 03:12 · 11.3k ads blocked")
+        self.assertEqual(line(100, 11283), "ALL QUIET · 100 up · backup 03:12 · 11.3k blocked")
+        self.assertEqual(line(100, 1355686), "ALL QUIET · 100 up · backup 03:12 · 1.4M ads blocked")
+
     def test_attack_fact_follows_the_condition(self):
         sec = Fake(
             "security",

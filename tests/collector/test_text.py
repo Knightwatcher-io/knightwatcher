@@ -57,6 +57,10 @@ class FormatTest(unittest.TestCase):
 
     def test_count_and_plural(self):
         self.assertEqual(text.count(4812), "4,812")
+        self.assertEqual(text.short_count(4812), "4,812")
+        self.assertEqual(text.short_count(11283), "11.3k")
+        self.assertEqual(text.short_count(240500), "240k")
+        self.assertEqual(text.short_count(1355686), "1.4M")
         self.assertEqual(text.plural(1, "ban"), "1 ban")
         self.assertEqual(text.plural(3, "ban"), "3 bans")
 
