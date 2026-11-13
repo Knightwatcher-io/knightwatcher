@@ -521,8 +521,16 @@ which `canonical(value)` writes:
 
 `sig.value` is the 64-byte Ed25519 signature in padded base64; any other spelling is refused. The
 key is looked up by `sig.kid` in a table of 32-byte public keys. The table `KEYS` in `pack.js`
-ships empty, so until a key is added there no signed pack is accepted unless the caller passes
-keys of its own. The check itself is done by a verifier `verify(publicKey, message, signature)`
+holds one key, `kw1`, the project's own:
+
+```
+kw1   L6J33tuj/6eKJTc+T6hHVATAS0m1bJnsgdOSgYYtxf4=   (base64 of the 32 bytes)
+```
+
+The table is frozen. A `Uint8Array` cannot be frozen, so `KEYS.kw1` is a getter that decodes the
+key afresh on each read with the library's own strict base64 decoder: changing the bytes it hands
+out changes nothing for the next reader. A caller may pass keys of its own in place of the table
+(`keys` under [The library](#the-library)). The check itself is done by a verifier `verify(publicKey, message, signature)`
 that returns `true` for a good signature: the one the caller passes, or `KW.ed25519.verify` when a
 script has defined it, as `web/js/ed25519.js` does (see [The verifier](#the-verifier)). A verifier
 that is missing, throws or answers anything but `true` refuses the pack.
@@ -531,12 +539,66 @@ With `allowUnsigned`, meant for a page whose version is `dev`, a pack with no `s
 and marked `signed: false`. A pack that does carry a `sig` is checked the same way on every page,
 and refused if the key is unknown or the signature fails.
 
+### Signing a pack
+
+`tools/sign-pack.js` signs pack files. It is a Node script with no dependencies beyond Node's own
+modules, and it signs with the page's own code: it reads and checks each file with `pack.js`,
+builds the signed bytes with `message()` and so the page's `canonical()`, and checks the result
+with `ed25519.js`. Nothing about the signed bytes is written twice.
+
+```bash
+PACK_KEY_KW1="$(...)" node tools/sign-pack.js web/packs/base.pack.json   # sign with kw1
+node tools/sign-pack.js --kid kw2 web/packs/*.pack.json                  # sign with kw2, from PACK_KEY_KW2
+node tools/sign-pack.js --unsign web/packs/base.pack.json                # take the signature off
+```
+
+- The private key comes only from the environment variable `PACK_KEY_<KID>`: the kid in capitals,
+  with any character other than a letter or a digit written as `_`, so `PACK_KEY_KW1` for `kw1`. It
+  holds the key as PKCS#8 PEM (`-----BEGIN PRIVATE KEY-----`). The tool never prints, logs or
+  writes it, and refuses to run when the variable is missing or empty, when it holds anything but
+  an Ed25519 private key, and when the key's public half is not the one `KEYS` holds under the kid.
+- Each file is checked first, as a `dev` page reads it, with any `sig` it already carries set
+  aside, so a pack edited after signing can be signed again. Every file is checked and its
+  signature made before any file is written, so one bad file leaves all of them as they were.
+- The signature goes into the envelope's `sig` as `{ "alg": "ed25519", "kid": ..., "value": ... }`.
+  The rest of the file keeps its layout and key order byte for byte: an existing `sig` has its
+  value replaced where it stands, and a new one goes after the last member, on a line of its own
+  in a file laid out over lines.
+- The written file is read back from disk through `pack.js` with signatures required and
+  `ed25519.js` as the verifier. If it does not verify, the file is put back as it was and the tool
+  fails.
+- `--unsign` takes the `sig` out, with the comma before it, and needs no key.
+- Either way the tool writes the file's carrier again with `tools/pack-carrier.js`.
+
+**The private key is held outside the repository**, by a private release process that runs the
+tool with the variable set; it is never written to a file beside a checkout. The signature itself
+is public, and the signed file is committed like any other change.
+
+**A shipped pack edited after it was signed must be signed again or unsigned.** Its signature no
+longer covers it, so every page, `dev` pages included, refuses it at the `signature` step, and
+`tests/tools/sign-pack.test.js` fails until it is put right. To keep working on a signed pack
+before the next signing run, take the signature off with `--unsign`: a `dev` page still reads it.
+
+**A fork signs with a key of its own.** The engine is open and only the key is private. A fork
+generates an Ed25519 key pair, puts the public half in `KEYS` under a kid of its own, keeps the
+private half out of its repository, and runs the tool with `--kid` and the matching variable. To
+make a key pair with Node alone:
+
+```bash
+node -e "const k = require('node:crypto').generateKeyPairSync('ed25519');
+  console.log(Buffer.from(k.publicKey.export({ format: 'jwk' }).x, 'base64url').toString('base64'));
+  console.log(k.privateKey.export({ type: 'pkcs8', format: 'pem' }))"
+```
+
+The first line is the public key for `KEYS`, and the rest the private key to store away. A page
+built from a fork accepts only packs signed with the keys in its own table.
+
 ### The verifier
 
 `web/js/ed25519.js` defines `KW.ed25519.verify(publicKey, message, signature)`, and exports the
 same object under Node. The page needs a verifier of its own because `crypto.subtle` is missing on
-a page served over plain HTTP. `index.html` loads it before `pack.js`. No signed pack ships yet,
-so today it is never called on the page.
+a page served over plain HTTP. `index.html` loads it before `pack.js`. On the page it is called
+only for a pack that carries a `sig`.
 
 It implements the verification of RFC 8032 section 5.1.7 for pure Ed25519 (no context, no
 prehash), with SHA-512 written in the file and the curve's arithmetic on `BigInt`. It verifies and
@@ -707,8 +769,8 @@ Constants: `FORMAT`, `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STE
 
 ### The base pack
 
-`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.0.0,
-unsigned. It holds the present knight and nothing the display does not draw today:
+`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.0.0.
+Whether it ships signed is said under [Two paths](#two-paths). It holds the present knight and nothing the display does not draw today:
 
 - one build, `build.a`, with the present knight's eight measurements and the plain head;
 - eleven items, one for each slot the present drawing has: `legs.plate`, `boots.leather`,
@@ -759,21 +821,25 @@ and resolves the default look (`resolve(packs, {})`). The choice it makes holds 
 loaded again:
 
 - **A `dev` page** (the repository's own, opened from disk or served straight from `web/`) accepts
-  the unsigned base pack and draws the knight from it.
-- **A deployed page** refuses the unsigned base pack at the `signature` step (`sig: is missing, and
-  this page accepts only signed packs`), so no look resolves and the page draws the knight from the
-  code in `knight.js`.
+  the base pack signed or unsigned, and draws the knight from it. A `sig` it carries must verify
+  all the same.
+- **A deployed page** draws the knight from the base pack when the pack carries a signature that
+  verifies against a key in `KEYS`. It refuses an unsigned base pack at the `signature` step (`sig:
+  is missing, and this page accepts only signed packs`), and one whose signature does not verify,
+  so no look resolves and the page draws the knight from the code in `knight.js`.
 
-The code path stays because the key the base pack will be signed with does not exist yet, and a
-deployed page accepts only signed packs. Until a signed base pack ships, the code keeps every
-deployed display drawing the present knight. Both paths give the same pixels: the call record
-and the screenshots prove it (see [page.md](./page.md#checks)). Once a signed base pack ships, the
-plain stand-in figure is meant to take the code's place as the drawing for "no usable base pack".
+**Today the base pack ships unsigned, so a deployed page draws the knight from code.**
+
+The code path keeps a deployed display drawing the present knight whenever its base pack is
+refused. Both paths give the same pixels: the call record and the screenshots prove it (see
+[page.md](./page.md#checks)). Once the base pack ships signed, the plain stand-in figure, not built
+yet, is meant to take the code's place as the drawing for "no usable base pack".
 
 Nothing is drawn on screen about the choice. The console gets one line, `console.info` for the
 pack and `console.warn` for code:
 
 ```
+knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, signed
 knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, unsigned
 knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
 ```
@@ -821,7 +887,9 @@ in the test's name and the exact reason it expects, refuses values of the wrong 
 limit at its edge, and feeds the reader hostile and mangled text. Scalars are refused at each end of their ranges, costs at the
 limits and one past them, and the cost is checked against the calls `draw.js` makes with every
 value at the ends of its range.
-The source of `pack.js` is checked to hold neither `eval` nor `Function(`.
+The source of `pack.js` is checked to hold neither `eval` nor `Function(`. The shipped `KEYS` is
+checked to hold `kw1` alone, as the 32 bytes above, in a frozen table whose bytes cannot be changed
+from outside, and a pack signed by any other key under `kw1` is refused against it.
 
 `tests/web/ed25519.test.js` tests the verifier. It checks every Ed25519 vector of RFC 8032 section
 7.1 with one bit changed in each part, and SHA-512 against the digests of RFC 6234 and against
@@ -834,12 +902,19 @@ random ones. Wrong arguments, the fixture pack read through `pack.js` with this 
 and the same check of the source as for `pack.js` complete it. Under Node 26, `node:crypto` gave
 the same answer as this verifier for every signature the tests put to both.
 
-`tests/web/base-pack.test.js` checks the base pack: read on a `dev` page and refused at the
-`signature` step otherwise, one build with the present measurements, one item for each slot the
+`tests/web/base-pack.test.js` checks the base pack, and holds whether it ships signed or not. An
+unsigned copy (the shipped file with any `sig` taken off) is read on a `dev` page and refused at
+the `signature` step otherwise; the file as it ships is read on every page when it carries a
+signature, and on a `dev` page alone when it does not. It also checks one build with the present measurements, one item for each slot the
 present drawing has and nothing more, each item and swatch equal to the fixture's, and a default
 look that resolves with nothing missing at a cost of 11 932. `tests/web/knight.test.js` draws the
 knight's 98 poses, the gear at rest, and the house and the smithy painted and drawn, from the base
-pack as the page does, and compares every call with the record taken from the code; it also checks
+pack as the page does, and compares every call with the record taken from the code. It draws the
+code path from the unsigned copy, which a deployed page always refuses, and edits only that copy, so
+it too holds in either state. It checks that a deployed page draws from the shipped base pack when
+it is signed and from code when it is not, and, with a key made for the run swapped into the
+sandbox's `KEYS`, that a deployed page reads a signed base pack through `KW.ed25519.verify` and
+draws from code when no verifier is loaded. It also checks
 that a pack's colours reach the gear at rest, and that a helmet with no rest view and a weapon with
 no `blade` show nothing there. [page.md](./page.md#checks) describes it.
 
@@ -849,3 +924,14 @@ node --test tests/tools/
 
 `tests/tools/pack-carrier.test.js` checks the carriers against their pack files and the tool
 itself.
+
+`tests/tools/sign-pack.test.js` checks the signing tool with key pairs generated for the run and
+held in memory; no key of any kind is in the repository, and the files signed are copies in a
+temporary folder. A copy of the fixture pack is signed and must verify through `pack.js` and
+`ed25519.js`, and through `node:crypto` on the bytes `message()` gives, with only the `sig` added to
+the file and the carrier matching. An edit after signing must be refused until the pack is signed
+again. The tool must refuse to run without its variable, with a key whose public half is not the
+table's, with a key that is not Ed25519 and with a kid the table lacks, writing nothing and never
+printing the key, and must write nothing when any one of several files is refused. `--unsign` must
+give back the unsigned file byte for byte. Last, every pack in `web/packs/` that carries a `sig`
+must verify against the shipped `KEYS` with the page's verifier.

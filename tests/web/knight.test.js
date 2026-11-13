@@ -28,9 +28,21 @@ const CALLS = path.join(FIX, 'calls.json'), FULL = path.join(FIX, 'idle.log');
 const FULL_POSE = 'idle t2300';
 const BLOCK = 128;
 const MODE = process.env.KNIGHT_LOG || '';
-/* The two paths: from code, as on a deployed page, which refuses the unsigned base pack, and from
-   the base pack, as on a 'dev' page, which accepts it. */
-const PATHS = { code: false, pack: true };
+const PK = require('../../web/js/pack.js');
+const SIGN = require('../../tools/sign-pack.js');
+
+/* The base pack as it ships, whether it carries a signature, and an unsigned copy of it. A deployed
+   page draws from the shipped base pack when it carries a signature that verifies against KEYS,
+   and from code otherwise. Every test here holds in either state: the code path is drawn from the
+   unsigned copy, which a deployed page always refuses, and anything that edits the pack edits the
+   unsigned copy, since an edit breaks a signature. */
+const SHIPPED = fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8');
+const SIGNED = Object.prototype.hasOwnProperty.call(JSON.parse(SHIPPED), 'sig');
+const UNSIGNED = SIGN.withoutSig(SHIPPED);
+/* The two paths, each as the page that takes it: from code, as on a deployed page given the
+   unsigned base pack, and from the base pack as it ships, as on a 'dev' page, which reads it signed
+   or not. */
+const PATHS = { code: () => load(false, [UNSIGNED]), pack: () => load(true) };
 
 /* The scripts index.html loads, in its order, that the knight's drawing needs: everything but the
    files that drive the page (state, engine, demo, main) and the scenes other than the two that show
@@ -44,8 +56,9 @@ const SCRIPTS = [...fs.readFileSync(path.join(WEB, 'index.html'), 'utf8').matchA
    object, chooses the knight's source as main.js does, for a 'dev' page when dev is true, and
    points the drawing at a context that writes one line per call: "s" for a fillStyle, "a" for a
    globalAlpha, "r" for a fillRect, and the name for anything else. texts, when given, replace what
-   the carriers pushed. */
-function load(dev, texts) {
+   the carriers pushed. kw1, when given, is the base64 of a public key that the sandbox's copy of
+   pack.js holds as kw1 in place of the shipped one, for a pack signed with a key made for the run. */
+function load(dev, texts, kw1) {
   const log = [];
   const ctx = new Proxy({}, {
     set(_, k, v) { log.push((k === 'fillStyle' ? 's' : k === 'globalAlpha' ? 'a' : String(k)) + ' ' + v); return true; },
@@ -58,7 +71,13 @@ function load(dev, texts) {
   for (const f of SCRIPTS) {
     // a carrier names KW as the page's global, which window.KW is in a browser
     if (box.window.KW) box.KW = box.window.KW;
-    vm.runInContext(fs.readFileSync(path.join(WEB, f), 'utf8'), box, { filename: f });
+    let src = fs.readFileSync(path.join(WEB, f), 'utf8');
+    if (kw1 && f === 'js/pack.js') {
+      const swapped = src.replace(/(get kw1\(\) \{ return base64\(')[A-Za-z0-9+/=]+'/, '$1' + kw1 + '\'');
+      assert.notEqual(swapped, src, 'the key of kw1 is swapped in the sandbox');
+      src = swapped;
+    }
+    vm.runInContext(src, box, { filename: f });
   }
   const KW = box.window.KW;
   // the engine draws the watched things where a scene's draw asks for them; here that is one line
@@ -151,7 +170,8 @@ function POSES(K, scenes) {
   return p;
 }
 
-/* The record of each pose, in order, each as an array of lines, drawn by the path dev chooses.
+/* The record of each pose, in order, each as an array of lines, drawn by the path named, 'code' or
+   'pack'.
 
    One spelling differs between the paths and nothing else may: the pack writes a translucent colour
    as rgba(60,30,20,0.18), which is how JavaScript writes the number, and the code as
@@ -159,10 +179,10 @@ function POSES(K, scenes) {
    fillStyle is written without its leading zero before the record is compared; every other
    character of every line is compared as drawn. */
 const codeSpelling = l => (l.startsWith('s rgba(') ? l.replace(/,0(\.\d+)\)$/, ',$1)') : l);
-function draw(dev) {
-  const { KW, K, log, status } = load(dev);
-  assert.equal(status.source, dev ? 'pack' : 'code', status.note);
-  return POSES(K, KW.scenes).map(([name, fn]) => { log.length = 0; fn(); return [name, dev ? log.map(codeSpelling) : log.slice()]; });
+function draw(path_) {
+  const { KW, K, log, status } = PATHS[path_]();
+  assert.equal(status.source, path_, status.note);
+  return POSES(K, KW.scenes).map(([name, fn]) => { log.length = 0; fn(); return [name, path_ === 'pack' ? log.map(codeSpelling) : log.slice()]; });
 }
 /* A value from the sandbox as plain data, to compare with values made here. */
 const plain = v => JSON.parse(JSON.stringify(v));
@@ -176,23 +196,23 @@ function blocks(lines) {
 
 if (MODE === 'write') {
   test('stores the record of the knight as drawn now', () => {
-    const rows = draw().map(([name, lines]) => '    ' + JSON.stringify(name) + ': ' + JSON.stringify({ calls: lines.length, sha256: sha(lines.join('\n')), blocks: blocks(lines).join(' ') }));
+    const rows = draw('code').map(([name, lines]) => '    ' + JSON.stringify(name) + ': ' + JSON.stringify({ calls: lines.length, sha256: sha(lines.join('\n')), blocks: blocks(lines).join(' ') }));
     fs.mkdirSync(FIX, { recursive: true });
     fs.writeFileSync(CALLS, `{\n  "block": ${BLOCK},\n  "poses": {\n${rows.join(',\n')}\n  }\n}\n`);
-    fs.writeFileSync(FULL, draw().find(([name]) => name === FULL_POSE)[1].join('\n') + '\n');
+    fs.writeFileSync(FULL, draw('code').find(([name]) => name === FULL_POSE)[1].join('\n') + '\n');
   });
 } else if (MODE.startsWith('dump:') || MODE.startsWith('dump-pack:')) {
   test('dumps the record of every pose', () => {
     const dir = MODE.slice(MODE.indexOf(':') + 1);
     fs.mkdirSync(dir, { recursive: true });
-    for (const [name, lines] of draw(MODE.startsWith('dump-pack:'))) fs.writeFileSync(path.join(dir, name.replace(/[^\w.!?-]+/g, '_') + '.log'), lines.join('\n') + '\n');
+    for (const [name, lines] of draw(MODE.startsWith('dump-pack:') ? 'pack' : 'code')) fs.writeFileSync(path.join(dir, name.replace(/[^\w.!?-]+/g, '_') + '.log'), lines.join('\n') + '\n');
   });
 } else {
   const stored = JSON.parse(fs.readFileSync(CALLS, 'utf8'));
   assert.equal(stored.block, BLOCK);
 
-  for (const [path_, dev] of Object.entries(PATHS)) {
-    const drawn = draw(dev), from = path_ === 'pack' ? 'from the base pack' : 'from code';
+  for (const path_ of Object.keys(PATHS)) {
+    const drawn = draw(path_), from = path_ === 'pack' ? 'from the base pack' : 'from code';
 
     test(`${from}: the stored record covers exactly the poses drawn`, () => {
       assert.equal(drawn.length, 112);
@@ -224,25 +244,76 @@ if (MODE === 'write') {
 
   /* ---- The choice of path, and the pack path's own workings ---------------------------------- */
 
-  test('a dev page draws the knight from the unsigned base pack, and says so', () => {
+  /* What a page says when it draws from a base pack, signed or not. */
+  const fromPack = (status, signed) => {
+    assert.equal(status.source, 'pack', status.note);
+    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.0.0', signed });
+    assert.deepEqual(plain(status.refused), []);
+    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, ' + (signed ? 'signed' : 'unsigned'));
+  };
+  const MISSING = 'sig: is missing, and this page accepts only signed packs';
+  /* The unsigned base pack signed with a key made for the run: { text, kw1 }, kw1 the public key in
+     base64 for load(). */
+  const signedForRun = () => {
+    const k = crypto.generateKeyPairSync('ed25519');
+    const value = crypto.sign(null, Buffer.from(PK.message(JSON.parse(UNSIGNED).pack)), k.privateKey).toString('base64');
+    return { text: SIGN.withSig(UNSIGNED, { alg: 'ed25519', kid: 'kw1', value }), kw1: Buffer.from(k.publicKey.export({ format: 'jwk' }).x, 'base64url').toString('base64') };
+  };
+
+  test('a dev page draws the knight from the base pack as it ships, signed or not, and says so', () => {
     const { K, status } = load(true);
     assert.equal(K.source, 'pack');
     assert.equal(K.status, status);
-    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.0.0', signed: false });
-    assert.deepEqual(plain(status.refused), []);
-    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, unsigned');
+    fromPack(status, SIGNED);
   });
 
-  test('a deployed page refuses the unsigned base pack at the signature step and draws from code', () => {
-    const { K, status } = load(false);
+  test('a dev page draws the knight from an unsigned base pack, and says so', () => {
+    fromPack(load(true, [UNSIGNED]).status, false);
+  });
+
+  test('a deployed page refuses an unsigned base pack at the signature step and draws from code', () => {
+    const { K, status } = load(false, [UNSIGNED]);
     assert.equal(K.source, 'code');
     assert.equal(status.base, null);
-    assert.deepEqual(plain(status.refused), [{ id: 'kw.base', step: 'signature', reason: 'sig: is missing, and this page accepts only signed packs' }]);
-    assert.equal(status.note, 'knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs');
+    assert.deepEqual(plain(status.refused), [{ id: 'kw.base', step: 'signature', reason: MISSING }]);
+    assert.equal(status.note, 'knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step: ' + MISSING);
+  });
+
+  test('a deployed page draws from the base pack as it ships when it is signed, and from code when it is not', () => {
+    const { K, status } = load(false);
+    if (SIGNED) {
+      assert.equal(K.source, 'pack');
+      fromPack(status, true);
+    } else {
+      assert.equal(K.source, 'code');
+      assert.deepEqual(plain(status.refused), [{ id: 'kw.base', step: 'signature', reason: MISSING }]);
+    }
+  });
+
+  test('a deployed page reads a signed base pack through KW.ed25519.verify, and draws from code without a verifier', () => {
+    const run = signedForRun(), box = load(false, [run.text], run.kw1);
+    fromPack(box.status, true);
+    // a dev page reads it the same way
+    fromPack(load(true, [run.text], run.kw1).status, true);
+    // the verifier asked is the one the page loaded
+    const asked = [], verify = box.KW.ed25519.verify;
+    box.KW.ed25519.verify = (...a) => { const r = verify(...a); asked.push(r); return r; };
+    fromPack(box.K.start([run.text], false), true);
+    assert.deepEqual(asked, [true]);
+    // with no verifier loaded, the signature cannot be checked
+    box.KW.ed25519 = undefined;
+    const none = box.K.start([run.text], false);
+    assert.equal(none.source, 'code');
+    assert.deepEqual(plain(none.refused), [{ id: 'kw.base', step: 'signature', reason: 'sig: cannot be checked: no verifier is loaded' }]);
+    // and a page whose kw1 is another key refuses it
+    const other = load(false, [run.text]).status;
+    assert.equal(other.source, 'code');
+    assert.equal(other.refused[0].step, 'signature');
+    assert.match(other.refused[0].reason, /does not verify/);
   });
 
   test('with no base pack, a broken one or no pack library, the knight is drawn from code', () => {
-    const text = fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8');
+    const text = UNSIGNED;
     assert.equal(load(true, []).status.note, 'knightwatcher: the knight is drawn from code: no base pack is loaded');
     let s = load(true, ['not json']).status;
     assert.equal(s.source, 'code');
@@ -266,7 +337,7 @@ if (MODE === 'write') {
   });
 
   test('the pack path draws what the pack says: a changed tabard colour shows, and nothing else changes', () => {
-    const text = fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8');
+    const text = UNSIGNED;
     const red = text.replace('"blue": { "name": "Blue", "entries": { "0": "#6f9eff", "1": "#3f74e0"', '"blue": { "name": "Blue", "entries": { "0": "#6f9eff", "1": "#ab0102"');
     assert.notEqual(red, text);
     const a = load(true), b = load(true, [red]);
@@ -296,15 +367,15 @@ if (MODE === 'write') {
 
   /* ---- The gear at rest ---------------------------------------------------------------------- */
 
-  /* The base pack's file as text, after edit(pack) has changed the parsed pack. */
+  /* The unsigned base pack's file as text, after edit(pack) has changed the parsed pack. */
   const editedPack = edit => {
-    const env = JSON.parse(fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8'));
+    const env = JSON.parse(UNSIGNED);
     edit(env.pack);
     return JSON.stringify(env);
   };
 
   test('the blade and the backdrop key name the equipped weapon on the pack path, and the greatsword on the code path', () => {
-    const code = load(false), pack = load(true);
+    const code = PATHS.code(), pack = PATHS.pack();
     assert.deepEqual(plain(code.K.rest.blade()), { from: 34, to: 263, half: 15 });
     assert.deepEqual(plain(pack.K.rest.blade()), { from: 34, to: 263, half: 15 });
     assert.equal(code.K.rest.key('main'), 'code');
@@ -318,10 +389,11 @@ if (MODE === 'write') {
   });
 
   test('a slot with nothing to show at rest draws nothing, on either path', () => {
-    for (const dev of [false, true]) {
-      const { K, log } = load(dev);
+    for (const [path_, open] of Object.entries(PATHS)) {
+      const { K, log, status } = open();
+      assert.equal(status.source, path_);
       for (const slot of ['off', 'legs', 'plume', 'head', 'nothing']) K.rest.draw(slot, 300, 300, 0);
-      assert.deepEqual(log, [], dev ? 'from the base pack' : 'from code');
+      assert.deepEqual(log, [], path_ === 'pack' ? 'from the base pack' : 'from code');
     }
   });
 
@@ -380,7 +452,7 @@ if (MODE === 'write') {
   });
 
   /* ---- The rig ------------------------------------------------------------------------------ */
-  const { K } = load();
+  const { K } = PATHS.code();
   const NAMES = ['root', 'footL', 'footR', 'hipL', 'hipR', 'hem', 'belt', 'neck', 'shoulderL', 'shoulderR', 'head'];
   const DIFFS = ['dShoulder', 'dChest', 'dWaist', 'dHip', 'dStance', 'dLeg', 'dHeight', 'dHead'];
   /* The fixed anchors as the specification of the rig gives them for the present knight. */

@@ -145,9 +145,10 @@ for the base pack's greatsword are the same 6 and -30.
 At start-up, before the first frame, `main.js` calls `KW.knight.start(KW.packText, dev)` with `dev`
 true only when the page's version is `dev`. `start` reads the packs the carriers pushed, gathers
 them and resolves the default look. If a look resolves, the knight is drawn from the base pack;
-otherwise from code. A `dev` page accepts the unsigned base pack and takes the pack path. A
-deployed page refuses it at the `signature` step and takes the code path until a signed base pack
-ships. The two paths draw the same pixels. The choice is made once, printed in one line to the
+otherwise from code. A `dev` page accepts the base pack signed or unsigned and takes the pack path.
+A deployed page takes the pack path when the base pack carries a signature that verifies against a
+key in `KEYS`, and the code path otherwise, refusing the pack at the `signature` step.
+[packs.md](./packs.md#two-paths) says which state ships today. The two paths draw the same pixels. The choice is made once, printed in one line to the
 console, and kept in `KW.knight.source` (`'pack'` or `'code'`) and `KW.knight.status`; nothing about
 it is drawn on screen. [packs.md](./packs.md#on-the-page) has the details, and why the code path
 stays.
@@ -356,8 +357,8 @@ second Pi is not drawn: a pie has only the one place that looks right. The first
 `h1`, the second `h2` and the third `h3`. Every other kind, `machine`, `vm`, a kind the page does
 not know and a pack's kind among them, takes the next free ground place. A thing with no free
 place of its class is not drawn, though it is still watched and still alerts, and an entry that is
-not an object takes no place. A thing's place therefore depends on the list alone, never on which
-things are up, and does not move while the list stays the same.
+not an object takes no place. Places depend on the list alone, never on which things are up, so a
+thing does not move while the list stays the same.
 
 **What `map` gives the engine.** `things`, the things drawn, each `{ place, kind, ok, alert }`.
 `kind` is the entry's `kind` when that is a string of at most 200 characters, and `''` otherwise.
@@ -489,7 +490,8 @@ files of `web/`, in a stable order and leaving `data/` out. It writes `version.j
 `{"version": "<hash>"}`, sets the `kw-version` meta tag of `index.html` to the version, and appends
 `?v=<hash>` to every local script and stylesheet address there, the pack carriers included, so a
 new version is fetched under addresses no cache has seen. A deployed copy's version is not `dev`, so
-it refuses the unsigned base pack and draws the knight from code. The fonts the stylesheet loads are not stamped. A deploy that changes
+it draws the knight from the base pack only when the pack carries a signature that verifies, and
+from code otherwise. The fonts the stylesheet loads are not stamped. A deploy that changes
 nothing in `web/` gives the same version and reloads no open page. The version does not depend on
 git, so the tool works from an exported copy too. It refuses a folder that is `web/`, lies inside
 it or holds it, and an `index.html` whose meta tag it cannot find. Open displays reload within
@@ -596,14 +598,17 @@ out byte for byte the same, on a busy machine too, apart from the clock when the
 
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack.
 A reference set taken from a copy of an older tree (`PAGE=/path/to/old/web/index.html`) that drew
-the knight from code compares the two paths. A deployed copy draws from code. `shots.sh` shoots
+the knight from code compares the two paths. A deployed copy draws from code unless the base pack
+carries a signature that verifies. `shots.sh` shoots
 only from disk, so to compare a deployed copy, serve it on the loopback address and point the
 headless browser at `index.html?demo#<hash>` by hand: `?demo` starts the demo at once instead of
 waiting for a state file.
 
 To shoot the code path from disk instead, copy `web/` to a folder outside the repository and give
 the copy's `kw-version` meta tag any value but `dev`; a page opened from disk runs the demo whatever
-its version, and that copy refuses the unsigned base pack. Do it before and after a change and
+its version. Take the copy's signature off its base pack with
+`node tools/sign-pack.js --unsign <copy>/packs/base.pack.json`, so that the copy refuses it and
+draws from code whichever state ships. Do it before and after a change and
 compare each path's two sets:
 
 ```bash

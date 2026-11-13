@@ -71,8 +71,9 @@
     hair: { 0: 'colour', 1: 'colour', 2: 'colour', brow: 'colour' }, tabard: { 0: 'colour', 1: 'colour', 2: 'colour', 3: 'colour' },
     plume: { 0: 'colour', 1: 'colour', 2: 'colour', 3: 'colour' } };
 
-  /* The public keys packs are signed with, by kid: 32 bytes each. Empty until the key exists. */
-  const KEYS = Object.freeze({});
+  /* The public keys packs are signed with, by kid: 32 bytes each. A Uint8Array cannot be frozen, so
+     each read decodes a fresh copy that nothing can have changed. */
+  const KEYS = Object.freeze({ get kw1() { return base64('L6J33tuj/6eKJTc+T6hHVATAS0m1bJnsgdOSgYYtxf4='); } });
 
   const FITS = ['hang', 'surface', 'floor'];
   const KINDS = ['rect', 'ell', 'rrect', 'poly', 'strip', 'pix'];
