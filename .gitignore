@@ -25,3 +25,10 @@ dist/
 
 # The list of private patterns names what it protects
 /tools/private-patterns.txt
+
+# Local wrappers that name where keys are kept
+/tools/artgen/local-*
+
+# The collector's memory between restarts, and lock files of tools run here
+/var/
+uv.lock
