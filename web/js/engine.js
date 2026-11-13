@@ -4,7 +4,7 @@
      w       the condition that wins, as KW.state makes it: { id, lv, st, scene, hl, sub }
      is      'auto' for the quiet scenes to take turns, or the name of the one to keep
      turnMs  how long each quiet scene lasts while they take turns
-     piOK    whether the pie is on its plate
+     piOK    whether the pie is in its dish
      tv      whether the television in the house is on
      helmet  'auto' (off indoors), 'on' or 'off' */
 (function (KW) {
