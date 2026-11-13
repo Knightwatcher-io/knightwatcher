@@ -46,7 +46,15 @@ class CliTest(unittest.TestCase):
     def test_check_config_ok(self):
         code, out, _ = self.run_cli("--check-config")
         self.assertEqual(code, 0)
-        self.assertIn("config ok: 3 sources enabled (host, ssh, updates)", out)
+        self.assertIn("config ok: 3 sources enabled (host, ssh, updates)\n", out)
+        self.write_config(
+            '[sources.pi]\nhost = "192.0.2.4"\n'
+            '[[thing]]\nname = "Vault"\nkind = "machine"\nhost = "192.0.2.40"\nport = 445\n'
+        )
+        code, out, _ = self.run_cli("--check-config")
+        self.assertEqual(
+            out, "config ok: 4 sources enabled (host, ssh, updates, pi); 2 watched (Pi, Vault)\n"
+        )
 
     def test_check_config_reports_problems(self):
         self.write_config('[sources.adblock]\nurl = "http://192.0.2.53"\n')

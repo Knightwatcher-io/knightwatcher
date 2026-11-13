@@ -7,21 +7,20 @@ import threading
 import unittest
 from unittest import mock
 
-from collector.net import AuthError, SourceError, dns_query, tcp_reachable
-from collector.sources import Reading
+from collector.net import AuthError, SourceError, dns_query
+from collector.sources import Reading, build_sources
 from collector.sources.adblock import AdblockSource, blocked_since_midnight, normal_rate
 from collector.sources.backup import BackupSource, parse_when
 from collector.sources.containers import ContainersSource, classify, ignored
 from collector.sources.dns import DnsSource
 from collector.sources.host import HostSource, Sample, cpu_average, mem_average
 from collector.sources.imports import RadarrSource, SonarrSource
-from collector.sources.pi import PiSource
 from collector.sources.security import SecuritySource
 from collector.sources.ssh import SshSource, decode_address
 from collector.sources.streams import StreamsSource, title_of
 from collector.sources.updates import UpdatesSource
 from collector.sources.wan import WanSource
-from kw_helpers import T0, FakeHttp, FakeProc, at, make_config
+from kw_helpers import T0, FakeHttp, FakeProc, at, closed_port, make_config
 
 SECRETS = {
     "adguard": {"username": "kw", "password": "pw-example"},
@@ -242,19 +241,28 @@ class WanDnsPiTest(unittest.TestCase):
         s.timeout = 0.5
         self.assertEqual(s.fetch(T0).facts, {"up": False})
 
-    def test_tcp_reachable_counts_a_refusal_as_an_answer(self):
+    def _pi(self, host, ports):
+        config = make_config({"sources": {"pi": {"host": host, "ports": ports}}})
+        (pi,) = build_sources(config)
+        pi.timeout = 0.3
+        return pi
+
+    def test_the_pi_counts_a_refusal_as_an_answer(self):
         listener = socket.socket()
         listener.bind(("127.0.0.1", 0))
         listener.listen()
         self.addCleanup(listener.close)
-        self.assertTrue(tcp_reachable("127.0.0.1", listener.getsockname()[1], 1))
-        self.assertTrue(tcp_reachable("127.0.0.1", 9, 1))  # nothing listens: refused
+        open_port = listener.getsockname()[1]
+        pi = self._pi("127.0.0.1", [open_port])
+        self.assertEqual((pi.name, pi.section), ("pi", "pi"))
+        self.assertEqual(pi.fetch(T0).facts, {"up": True})
+        self.assertEqual(self._pi("127.0.0.1", [closed_port()]).fetch(T0).facts, {"up": True})
 
     def test_pi_unreachable(self):
         # 192.0.2.0/24 is reserved for documentation and is not routed.
-        s = source(PiSource, "pi", {"host": "192.0.2.4", "ports": [22]})
-        s.timeout = 0.3
-        self.assertEqual(s.fetch(T0).facts, {"up": False})
+        reading = self._pi("192.0.2.4", [22]).fetch(T0)
+        self.assertEqual(reading.facts, {"up": False})
+        self.assertEqual(reading.data, {"answered": False})
 
 
 class SshTest(unittest.TestCase):
@@ -769,7 +777,6 @@ class InterfaceTest(unittest.TestCase):
     def test_every_source_has_a_name_and_returns_a_reading(self):
         from collector.config import SOURCE_DEFAULTS
         from collector.contract import FACT_SECTIONS
-        from collector.sources import build_sources
 
         raw = {"sources": {n: {"enabled": True} for n in SOURCE_DEFAULTS}}
         for name in ("containers", "streams", "adblock", "security", "sonarr", "radarr"):

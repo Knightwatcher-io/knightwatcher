@@ -92,7 +92,8 @@ A small Python program with no third-party dependencies, run as a container:
 - no Docker socket: container state comes from a read-only Docker API proxy over HTTP;
 - a non-root user, a read-only root filesystem, no capabilities;
 - host figures from read-only mounts, everything else by asking the services it watches over
-  HTTP, DNS or a TCP connection;
+  HTTP, DNS or a TCP connection, and the machines listed as watched things by a TCP connection
+  or one web request each;
 - one output, written atomically: `state.json` in a folder the web server already serves.
 
 It keeps the short history that its judgements need (a CPU averaging 85 percent or more over the

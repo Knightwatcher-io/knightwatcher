@@ -2,15 +2,18 @@ import json
 import os
 import stat
 import tempfile
+import threading
 import time
 import unittest
+from typing import ClassVar
+from unittest import mock
 
 from collector import contract
 from collector.net import AuthError, SourceError
 from collector.runner import Runner
 from collector.sources import Reading, Source
 from collector.store import Memory
-from kw_helpers import Clock, make_config
+from kw_helpers import Clock, FakeHttp, closed_port, listener, make_config, unanswering
 
 
 class Fake(Source):
@@ -404,6 +407,293 @@ class RunnerTest(unittest.TestCase):
         state = self.read_state()
         self.assertTrue(state["facts"]["security"]["attack"])
         self.assertEqual(state["conditions"][0]["id"], "attack")
+
+
+class ThingsRunnerTest(unittest.TestCase):
+    """Watched things through the whole poll, against local sockets."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.out = os.path.join(self.tmp.name, "out")
+        self.var = os.path.join(self.tmp.name, "var")
+        os.mkdir(self.out)
+        os.mkdir(self.var)
+        self.clock = Clock()
+        self.open = listener(64)
+        self.addCleanup(self.open.close)
+        hung, fillers = unanswering()
+        self.addCleanup(hung.close)
+        for f in fillers:
+            self.addCleanup(f.close)
+        self.hung = hung.getsockname()[1]
+
+    def runner(self, raw):
+        raw = {
+            **raw,
+            "collector": {
+                "output_dir": self.out,
+                "state_dir": self.var,
+                **raw.get("collector", {}),
+            },
+        }
+        return Runner(make_config(raw), Memory(self.var), clock=self.clock)
+
+    def read_state(self):
+        with open(os.path.join(self.out, "state.json"), encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def test_twenty_things_with_five_that_hang_fit_the_poll(self):
+        things = [
+            {
+                "name": f"Box {i:02d}",
+                "kind": "machine",
+                "host": "127.0.0.1",
+                "port": self.hung if i % 4 == 3 else self.open.getsockname()[1],
+                "every_s": 10,
+                "down_after_s": 10,
+            }
+            for i in range(20)
+        ]
+        # Polls every 5 s, waiting at most 3.3 s; each check gives up after 1 s.
+        r = self.runner({"collector": {"interval_s": 5, "http_timeout_s": 1.0}, "thing": things})
+        for poll in range(3):  # 0, 10, 20 s
+            started = time.monotonic()
+            state = r.cycle()
+            self.assertLess(time.monotonic() - started, 5)
+            self.assertEqual(contract.validate(state), [])
+            # Every reading is collected at the poll that started it.
+            for name in (f"thing:Box {i:02d}" for i in range(20)):
+                self.assertEqual(
+                    state["sources"][name], {"ok": True, "at": state["generated_at"], "error": ""}
+                )
+            listed = state["facts"]["things"]["list"]
+            hanging = [t for i, t in enumerate(listed) if i % 4 == 3]
+            answering = [t for i, t in enumerate(listed) if i % 4 != 3]
+            self.assertTrue(all(t["state"] == "up" for t in answering))
+            self.assertEqual({t["state"] for t in hanging}, {"unknown" if poll == 0 else "down"})
+            self.clock.advance(10)
+        (c,) = state["conditions"]
+        self.assertEqual(
+            (c["id"], c["headline"], c["things"]), ("thing_down", "5 DOWN", [3, 7, 11, 15, 19])
+        )
+        self.assertEqual(c["detail"], "Box 03, Box 07, Box 11, Box 15, Box 19")
+
+    def test_a_check_that_outlasts_its_limit_counts_as_silence(self):
+        release = threading.Event()
+        self.addCleanup(release.set)
+
+        def check(host, ports, timeout, refused_counts):
+            if host == "192.0.2.41":
+                release.wait(10)
+            return True
+
+        things = [
+            {
+                "name": "Vault",
+                "kind": "machine",
+                "host": "192.0.2.40",
+                "port": 445,
+                "every_s": 10,
+                "down_after_s": 10,
+            },
+            {
+                "name": "Buildbox",
+                "kind": "vm",
+                "host": "192.0.2.41",
+                "port": 22,
+                "every_s": 10,
+                "down_after_s": 10,
+            },
+        ]
+        with mock.patch("collector.sources.things.tcp_any", check):
+            r = self.runner({"thing": things})
+            r._deadline_s = lambda: 0.05
+            r._limit_s = lambda source: 0.1
+            state = r.cycle()  # 0 s: Buildbox's first check is still running
+            self.assertEqual(
+                state["sources"]["thing:Buildbox"]["error"], "first read still running"
+            )
+            self.assertEqual(
+                [t["state"] for t in state["facts"]["things"]["list"]], ["up", "unknown"]
+            )
+            time.sleep(0.15)
+            self.clock.advance(10)
+            state = r.cycle()  # 10 s: past its limit, timed out: silent from now
+            self.assertEqual(state["sources"]["thing:Buildbox"]["error"], "timed out")
+            self.assertEqual(state["conditions"], [])
+            self.clock.advance(10)
+            state = r.cycle()  # 20 s: still hanging, silent for 10 s
+            self.assertEqual(
+                state["sources"]["thing:Buildbox"]["error"], "previous read still running"
+            )
+            self.assertEqual([t["state"] for t in state["facts"]["things"]["list"]], ["up", "down"])
+            self.assertEqual(
+                [(c["id"], c["headline"], c["things"]) for c in state["conditions"]],
+                [("thing_down", "BUILDBOX DOWN", [1])],
+            )
+            self.assertEqual(contract.validate(state), [])
+
+    def test_a_thing_goes_down_and_comes_back_by_tcp_and_by_web_address(self):
+        http = FakeHttp()
+        self.addCleanup(http.close)
+        http.routes["/"] = (401, b"")
+        up_url, down_url = http.url + "/", f"http://127.0.0.1:{closed_port()}/"
+        up_port = self.open.getsockname()[1]
+        r = self.runner(
+            {
+                "collector": {"http_timeout_s": 0.3},
+                "thing": [
+                    {
+                        "name": "Vault",
+                        "kind": "machine",
+                        "host": "127.0.0.1",
+                        "port": up_port,
+                        "every_s": 10,
+                        "down_after_s": 20,
+                    },
+                    {
+                        "name": "Gate cam",
+                        "kind": "camera",
+                        "url": up_url,
+                        "every_s": 10,
+                        "down_after_s": 20,
+                    },
+                ],
+            }
+        )
+        vault, cam = r.sources
+        seen = []
+        # Both answer, both fall silent for 30 s, then both answer again.
+        for step in "UUSSSSUUUUU":
+            vault.settings["ports"] = [up_port if step == "U" else self.hung]
+            cam.settings["url"] = up_url if step == "U" else down_url
+            state = r.cycle()
+            headline = state["conditions"][0]["headline"] if state["conditions"] else ""
+            seen.append(([t["state"] for t in state["facts"]["things"]["list"]], headline))
+            self.clock.advance(10)
+        up, down = ["up", "up"], ["down", "down"]
+        self.assertEqual(
+            seen,
+            [
+                (up, ""),  # 0 s
+                (up, ""),
+                (up, ""),  # 20 s: silent from here
+                (up, ""),
+                (down, "2 DOWN"),  # 40 s: silent for 20 s
+                (down, "2 DOWN"),
+                (up, "2 DOWN"),  # 60 s: back, the warning held for 30 s
+                (up, "2 DOWN"),
+                (up, "2 DOWN"),
+                (up, ""),  # 90 s
+                (up, ""),
+            ],
+        )
+
+    def test_the_file_with_things(self):
+        refused = closed_port()
+        r = self.runner(
+            {
+                "sources": {"pi": {"host": "localhost", "ports": [refused]}},
+                "thing": [
+                    {
+                        "name": "Vault",
+                        "kind": "machine",
+                        "host": "127.0.0.1",
+                        "port": self.open.getsockname()[1],
+                    },
+                    {
+                        "name": "Laptop",
+                        "kind": "machine",
+                        "host": "127.0.0.1",
+                        "port": refused,
+                        "refused_counts": True,
+                        "alert": False,
+                    },
+                    {"name": "Gate cam", "kind": "camera", "host": "127.0.0.1", "port": refused},
+                ],
+            }
+        )
+        state = r.cycle()
+        self.assertEqual(contract.validate(state), [])
+        self.assertEqual(state["facts"]["pi"], {"up": True})
+        self.assertEqual(
+            [(t["name"], t["state"], t["seen"]) for t in state["facts"]["things"]["list"]],
+            [
+                ("Pi", "up", True),
+                ("Vault", "up", True),
+                ("Laptop", "up", True),
+                ("Gate cam", "unknown", False),
+            ],
+        )
+        self.assertEqual(
+            list(state["sources"]), ["pi", "thing:Vault", "thing:Laptop", "thing:Gate cam"]
+        )
+        # With no thing at all, the section is null.
+        self.assertIsNone(self.runner({}).cycle()["facts"]["things"])
+
+    # The record of facts.pi, sources.pi and pi_silent at each poll, taken from the collector as
+    # it was before watched things, for these same inputs: (facts.pi.up, sources.pi.ok, the end of
+    # sources.pi.at, sources.pi.error, (the end of pi_silent's since, its detail) or None).
+    PI_BEFORE_THINGS: ClassVar[list] = [
+        (True, True, "0:00Z", "", None),
+        (True, True, "0:00Z", "", None),
+        (False, True, "0:20Z", "", None),
+        (False, True, "0:20Z", "", None),
+        (False, True, "0:40Z", "", None),
+        (False, True, "0:40Z", "", ("0:20Z", "no answer for 30 s")),
+        (False, True, "1:00Z", "", ("0:20Z", "no answer for 40 s")),
+        (False, True, "1:00Z", "", ("0:20Z", "no answer for 50 s")),
+        (True, True, "1:20Z", "", ("0:20Z", "no answer for 1 min")),
+        (True, True, "1:20Z", "", ("0:20Z", "no answer for 1 min")),
+        (False, True, "1:40Z", "", ("0:20Z", "no answer for 1 min")),
+        (False, True, "1:40Z", "", ("0:20Z", "no answer for 1 min")),
+        (False, True, "2:00Z", "", ("0:20Z", "no answer for 1 min")),
+        (False, True, "2:00Z", "", ("0:20Z", "no answer for 1 min")),
+        (False, True, "2:20Z", "", ("0:20Z", "no answer for 2 min")),
+        (False, True, "2:20Z", "", ("0:20Z", "no answer for 2 min")),
+        (False, True, "2:40Z", "", ("0:20Z", "no answer for 2 min")),
+        (False, True, "2:40Z", "", ("0:20Z", "no answer for 2 min")),
+        (False, True, "3:00Z", "", ("0:20Z", "no answer for 2 min")),
+        (False, True, "3:00Z", "", ("0:20Z", "no answer for 2 min")),
+        (False, True, "3:20Z", "", ("0:20Z", "no answer for 3 min")),
+        (False, True, "3:20Z", "", ("0:20Z", "no answer for 3 min")),
+        (False, True, "3:40Z", "", ("0:20Z", "no answer for 3 min")),
+        (False, True, "3:40Z", "", ("0:20Z", "no answer for 3 min")),
+        (False, True, "4:00Z", "", ("0:20Z", "no answer for 3 min")),
+        (False, True, "4:00Z", "", ("0:20Z", "no answer for 3 min")),
+        (True, True, "4:20Z", "", ("0:20Z", "no answer for 4 min")),
+        (True, True, "4:20Z", "", ("0:20Z", "no answer for 4 min")),
+        (True, True, "4:40Z", "", None),
+        (True, True, "4:40Z", "", None),
+        (True, True, "5:00Z", "", None),
+    ]
+
+    def test_sources_pi_alone_writes_what_it_wrote_before(self):
+        # U answers, N never does (its check times out), R refuses, which counts for the Pi.
+        refused = closed_port()
+        ports = {"U": [self.open.getsockname()[1]], "N": [self.hung], "R": [refused]}
+        r = self.runner(
+            {
+                "collector": {"interval_s": 10, "http_timeout_s": 0.1},
+                "conditions": {"clear_after_s": 20, "pi_silent": {"for_s": 30}},
+                "sources": {"pi": {"host": "127.0.0.1", "ports": [1], "every_s": 20}},
+            }
+        )
+        (pi,) = r.sources
+        rows = []
+        for step in "UUNNNNNURNNNNNNUNNNNNNNNNUUUUUU":
+            pi.settings["ports"] = ports[step]
+            state = r.cycle()
+            s, f = state["sources"]["pi"], state["facts"]["pi"]
+            silent = [
+                (c["since"][-5:], c["detail"])
+                for c in state["conditions"]
+                if c["id"] == "pi_silent"
+            ]
+            rows.append((f["up"], s["ok"], s["at"][-5:], s["error"], silent[0] if silent else None))
+            self.clock.advance(10)
+        self.assertEqual(rows, self.PI_BEFORE_THINGS)
 
 
 class MemoryTest(unittest.TestCase):

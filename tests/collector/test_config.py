@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import tempfile
 import unittest
 
@@ -217,6 +218,302 @@ class BuildTest(unittest.TestCase):
             build({"sources": {"host": {"disks": [{"mount": "/data"}]}}})
 
 
+def vault(**over):
+    return {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445, **over}
+
+
+def problems(raw: dict) -> list[str]:
+    try:
+        build(raw)
+    except ConfigError as exc:
+        return exc.problems
+    return []
+
+
+PI = {"pi": {"host": "192.0.2.4"}}
+
+
+class ThingConfigTest(unittest.TestCase):
+    """The [[thing]] tables: defaults, the Pi of [sources.pi], and every message."""
+
+    def assertProblems(self, raw, *expected):
+        self.assertEqual(problems(raw), list(expected))
+
+    def assertThing(self, table, *expected):
+        self.assertProblems({"thing": [table]}, *expected)
+
+    def test_defaults(self):
+        c = build({"thing": [vault()]})
+        self.assertEqual(
+            c.things,
+            [
+                {
+                    "name": "Vault",
+                    "kind": "machine",
+                    "host": "192.0.2.40",
+                    "ports": [445],
+                    "url": "",
+                    "refused_counts": False,
+                    "verify_tls": False,
+                    "every_s": 30,
+                    "down_after_s": 180,
+                    "alert": True,
+                    "enabled": True,
+                    "source": "thing:Vault",
+                    "legacy": False,
+                }
+            ],
+        )
+        self.assertEqual(build({}).things, [])
+
+    def test_thing_down_follows_pi_silent_in_the_default_priority(self):
+        self.assertEqual(CONDITION_IDS[CONDITION_IDS.index("pi_silent") + 1], "thing_down")
+        self.assertEqual(build({}).conditions["thing_down"], {})
+        build({"conditions": {"thing_down": {}}})
+        self.assertProblems(
+            {"conditions": {"thing_down": {"for_s": 60}}},
+            "conditions.thing_down.for_s: unknown setting",
+        )
+
+    def test_the_pi_of_sources_pi_is_the_first_thing(self):
+        c = build(
+            {
+                "conditions": {"pi_silent": {"for_s": 120}},
+                "sources": {"pi": {"host": "192.0.2.4", "ports": [22, 80], "every_s": 20}},
+                "thing": [vault(), vault(name="Gate cam", host="198.51.100.31", enabled=False)],
+            }
+        )
+        self.assertEqual([t["name"] for t in c.things], ["Pi", "Vault"])
+        self.assertEqual(
+            c.things[0],
+            {
+                "name": "Pi",
+                "kind": "pi",
+                "host": "192.0.2.4",
+                "ports": [22, 80],
+                "url": "",
+                "refused_counts": True,
+                "verify_tls": False,
+                "every_s": 20,
+                "down_after_s": 120,
+                "alert": True,
+                "enabled": True,
+                "source": "pi",
+                "legacy": True,
+            },
+        )
+        # Left out of the priority list, the Pi does not alert, and thing_down is not needed.
+        c = build({"conditions": {"priority": ["attack"]}, "sources": PI})
+        self.assertFalse(c.things[0]["alert"])
+        # The legacy limits are not tightened.
+        legacy = {"host": "192.0.2.4", "ports": [21, 22, 23, 80, 443], "every_s": 5}
+        self.assertEqual(build({"sources": {"pi": legacy}}).things[0]["ports"], legacy["ports"])
+        self.assertEqual(build({"sources": {"pi": {**legacy, "enabled": False}}}).things, [])
+
+    def test_a_check_by_url_or_by_ports(self):
+        cam = {"name": "Gate cam", "kind": "camera", "url": "https://198.51.100.31/"}
+        nas = {k: v for k, v in vault(ports=[22, 22, 445]).items() if k != "port"}
+        c = build({"thing": [cam, nas]})
+        self.assertEqual(
+            (c.things[0]["url"], c.things[0]["host"], c.things[0]["ports"]),
+            ("https://198.51.100.31/", "", []),
+        )
+        self.assertEqual(c.things[1]["ports"], [22, 445])
+
+    def test_names(self):
+        for name in ("V", "Gate cam", "Abcdefghijklmnopqrst", "a.b-c_d (2)", "~!"):
+            self.assertProblems({"thing": [vault(name=name)]})
+        bad = "thing[0].name: 1 to 20 printable ASCII characters, no space at either end"
+        for name in ("", " Vault", "Vault ", "Abcdefghijklmnopqrstu", "Väult", "Tab\tbed", 7):
+            self.assertThing(vault(name=name), bad)
+        self.assertThing(
+            {k: v for k, v in vault().items() if k != "name"}, "thing[0].name: required"
+        )
+
+    def test_a_name_twice_ignoring_case(self):
+        self.assertProblems(
+            {
+                "thing": [
+                    vault(),
+                    vault(name="Gate cam", host="198.51.100.31"),
+                    vault(name="vault", host="192.0.2.41"),
+                ]
+            },
+            'thing[2].name: "vault" is already the name of thing[0]',
+        )
+
+    def test_the_pis_name_and_host_are_taken(self):
+        self.assertProblems(
+            {"sources": PI, "thing": [vault(name="pi"), vault(name="Nas", host="192.0.2.4")]},
+            'thing[0].name: "pi" is taken by [sources.pi]',
+            "thing[1].host: 192.0.2.4 is already watched by [sources.pi]; remove one",
+        )
+        self.assertProblems(
+            {
+                "sources": PI,
+                "thing": [{"name": "Pi web", "kind": "pi", "url": "http://192.0.2.4/"}],
+            },
+            "thing[0].url: 192.0.2.4 is already watched by [sources.pi]; remove one",
+        )
+        # Without [sources.pi], a thing may be the Pi.
+        c = build({"thing": [{"name": "Pi", "kind": "pi", "host": "192.0.2.4", "ports": [22]}]})
+        self.assertEqual(c.things[0]["source"], "thing:Pi")
+
+    def test_kinds(self):
+        for kind in ("pi", "camera", "machine", "vm"):
+            self.assertThing(vault(kind=kind))
+        self.assertThing(
+            vault(kind="camrea"),
+            'thing[0].kind: unknown kind "camrea"; use pi, camera, machine or vm',
+        )
+        self.assertThing(
+            vault(kind="Camera"),
+            'thing[0].kind: unknown kind "Camera"; use pi, camera, machine or vm',
+        )
+        self.assertThing(
+            vault(kind="base/owl"), "thing[0].kind: kinds from packs are not supported yet"
+        )
+        self.assertThing(
+            {k: v for k, v in vault().items() if k != "kind"}, "thing[0].kind: required"
+        )
+
+    def test_one_check_and_not_two(self):
+        neither = "thing[0]: give host with port or ports, or url, and not both"
+        self.assertThing({"name": "Vault", "kind": "machine"}, neither)
+        self.assertThing(vault(url="http://192.0.2.40/"), neither)
+        self.assertThing({"name": "Vault", "kind": "machine", "host": "192.0.2.40"}, neither)
+        self.assertThing(
+            {"name": "Vault", "kind": "machine", "port": 445},
+            "thing[0].host: required with port or ports",
+        )
+        self.assertThing(vault(ports=[445]), "thing[0]: give port or ports, not both")
+
+    def test_ports(self):
+        for port in (0, 65536, "22", True, 22.0):
+            self.assertThing(
+                vault(port=port), "thing[0].port: must be a port number from 1 to 65535"
+            )
+        for ports in ([], [1, 2, 3, 4], [0], [22, "80"], 22):
+            table = {k: v for k, v in vault(ports=ports).items() if k != "port"}
+            self.assertThing(table, "thing[0].ports: 1 to 3 port numbers from 1 to 65535")
+        self.assertThing(vault(host="", port=22), "thing[0].host: must be an address or a name")
+
+    def test_urls(self):
+        def cam(url, **over):
+            return {"name": "Gate cam", "kind": "camera", "url": url, **over}
+
+        for url in (
+            "http://198.51.100.31",
+            "https://cam.example.com:8443/login?x=1",
+            "http://[2001:db8::31]:8080/",
+        ):
+            self.assertThing(cam(url))
+        for url in ("ftp://198.51.100.31/", "198.51.100.31", "HTTPS://198.51.100.31/", 80):
+            self.assertThing(cam(url), "thing[0].url: must start with http:// or https://")
+        for url in (
+            "https://",
+            "http://cam era/",
+            "http://198.51.100.31:99999/",
+            "http://kamera.example/ä",
+        ):
+            self.assertThing(cam(url), "thing[0].url: not a valid web address")
+        for url in ("https://admin:pw@198.51.100.31/", "https://admin@198.51.100.31/"):
+            self.assertThing(cam(url), "thing[0].url: must not carry a user name or password")
+
+    def test_options_out_of_place(self):
+        cam = {"name": "Gate cam", "kind": "camera", "url": "https://198.51.100.31/"}
+        self.assertThing(cam | {"verify_tls": True})
+        self.assertThing(vault(refused_counts=True))
+        self.assertThing(
+            cam | {"refused_counts": False}, "thing[0].refused_counts: only applies with host"
+        )
+        self.assertThing(
+            vault(verify_tls=True), "thing[0].verify_tls: only applies with an https url"
+        )
+        self.assertThing(
+            cam | {"url": "http://198.51.100.31/", "verify_tls": False},
+            "thing[0].verify_tls: only applies with an https url",
+        )
+        self.assertThing(vault(alert="yes"), "thing[0].alert: expected bool")
+
+    def test_pace_and_silence(self):
+        self.assertThing(vault(every_s=10, down_after_s=10))
+        self.assertThing(vault(every_s=3600, down_after_s=86400))
+        for every in (9, 3601, "30", 30.5):
+            self.assertIn(
+                "thing[0].every_s: must be from 10 to 3600",
+                problems({"thing": [vault(every_s=every)]}),
+            )
+        self.assertThing(
+            vault(every_s=60, down_after_s=30),
+            "thing[0].down_after_s: must be at least every_s (60) and at most 86400",
+        )
+        self.assertThing(
+            vault(down_after_s=86401),
+            "thing[0].down_after_s: must be at least every_s (30) and at most 86400",
+        )
+
+    def test_at_most_thirty_two_things(self):
+        def many(n, **over):
+            return [vault(name=f"Box {i}", host=f"192.0.2.{100 + i}", **over) for i in range(n)]
+
+        self.assertEqual(len(build({"thing": many(32)}).things), 32)
+        self.assertEqual(len(build({"thing": many(31), "sources": PI}).things), 32)
+        # A thing that is not enabled does not count.
+        spare = vault(name="Spare", host="192.0.2.99", enabled=False)
+        self.assertEqual(len(build({"thing": [*many(32), spare]}).things), 32)
+        self.assertProblems({"thing": many(33)}, "thing: at most 32 things")
+        self.assertProblems({"thing": many(32), "sources": PI}, "thing: at most 32 things")
+
+    def test_a_typo_and_tables_that_are_not_tables(self):
+        self.assertThing(vault(prot=445), "thing[0].prot: unknown setting")
+        self.assertProblems({"thing": ["Vault"]}, "thing[0]: expected a table")
+        self.assertProblems({"thing": "Vault"}, "thing: expected [[thing]] tables")
+        self.assertProblems({"thing": vault()}, "thing: expected [[thing]] tables")
+
+    def test_every_problem_is_listed(self):
+        self.assertThing(
+            {"name": " x", "kind": "owl", "port": 0, "every_s": 5},
+            "thing[0].name: 1 to 20 printable ASCII characters, no space at either end",
+            'thing[0].kind: unknown kind "owl"; use pi, camera, machine or vm',
+            "thing[0].every_s: must be from 10 to 3600",
+            "thing[0].port: must be a port number from 1 to 65535",
+            "thing[0].host: required with port or ports",
+        )
+
+    def test_a_priority_list_without_thing_down(self):
+        cam = {"name": "Gate cam", "kind": "camera", "url": "https://198.51.100.31/"}
+        laptop = vault(name="Study laptop", host="203.0.113.45", alert=False)
+        listed = [c for c in CONDITION_IDS if c != "thing_down"]
+        self.assertProblems(
+            {"conditions": {"priority": listed}, "thing": [vault(), cam, laptop]},
+            'conditions.priority: leaves out "thing_down", so Vault and Gate cam would never '
+            'alert; add it after "pi_silent", or set alert = false on them',
+        )
+        self.assertProblems(
+            {"conditions": {"priority": ["night", "attack"]}, "thing": [vault()]},
+            'conditions.priority: leaves out "thing_down", so Vault would never alert; add it '
+            'after "attack", or set alert = false on it',
+        )
+        self.assertProblems(
+            {
+                "conditions": {"priority": ["night"]},
+                "thing": [vault(), cam, vault(name="Buildbox", host="192.0.2.50")],
+            },
+            'conditions.priority: leaves out "thing_down", so Vault, Gate cam and Buildbox would '
+            'never alert; add it before "night", or set alert = false on them',
+        )
+        self.assertProblems(
+            {"conditions": {"priority": []}, "thing": [vault()]},
+            'conditions.priority: leaves out "thing_down", so Vault would never alert; add it to '
+            "the list, or set alert = false on it",
+        )
+        # Nothing alerts: nothing is refused. Neither is a Pi from [sources.pi] alone.
+        self.assertProblems({"conditions": {"priority": listed}, "thing": [laptop]})
+        self.assertProblems({"conditions": {"priority": listed}, "thing": [vault(enabled=False)]})
+        self.assertProblems({"conditions": {"priority": listed}, "sources": PI})
+
+
 class LoadTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -251,6 +548,28 @@ class LoadTest(unittest.TestCase):
             os.path.join(root, "config.example.toml"), os.path.join(root, "secrets.example.json")
         )
         self.assertEqual(len(c.sources), 13)
+        # The examples of watched things are commented out, so the Pi is the only thing.
+        self.assertEqual([t["name"] for t in c.things], ["Pi"])
+        self.assertIn("thing_down", c.conditions["priority"])
+
+    def test_the_example_things_load_once_uncommented(self):
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        with open(os.path.join(root, "config.example.toml"), encoding="utf-8") as fh:
+            example = fh.read()
+        # A commented setting is "# key = value" or "# [[thing]]"; a commented note is not.
+        setting = re.compile(r"^# (\[\[thing\]\]|[a-z_]+ = .+)$")
+        lines = [
+            m.group(1) if (m := setting.match(line)) else line for line in example.splitlines()
+        ]
+        cfg = self._write("config.toml", "\n".join(lines) + "\n")
+        sec = os.path.join(root, "secrets.example.json")
+        c = load(cfg, sec)
+        self.assertEqual([t["name"] for t in c.things], ["Pi", "Vault", "Gate cam", "Study laptop"])
+        self.assertEqual(
+            [(t["kind"], t["every_s"], t["down_after_s"], t["alert"]) for t in c.things[1:]],
+            [("machine", 30, 180, True), ("camera", 60, 600, True), ("machine", 30, 180, False)],
+        )
+        self.assertTrue(c.things[3]["refused_counts"])
 
 
 if __name__ == "__main__":

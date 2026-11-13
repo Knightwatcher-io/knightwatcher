@@ -16,7 +16,7 @@ import time
 from collections.abc import Callable
 
 from collector import SCHEMA, contract, text
-from collector.conditions import Conditions
+from collector.conditions import FIRST_READ, Conditions
 from collector.config import Config
 from collector.net import AuthError, SourceError
 from collector.sources import Reading, Source, build_sources
@@ -194,7 +194,7 @@ class Runner:
             if last is None:
                 # Only a first read that is still within its limit gets here.
                 at = text.iso(job.now if job is not None else now)
-                last = (None, {"ok": False, "at": at, "error": "first read still running"})
+                last = (None, {"ok": False, "at": at, "error": FIRST_READ})
             readings[name], status[name] = last[0], dict(last[1])
         return readings, status, fresh
 
@@ -264,7 +264,7 @@ class Runner:
         self.observe(readings, status, now, fresh)
         for name in fresh:
             self._last[name] = (readings[name], status[name])
-        conditions = self.conditions.evaluate(readings, now, fresh)
+        conditions = self.conditions.evaluate(readings, now, fresh, status)
 
         security = readings.get("security")
         if security is not None:
@@ -274,6 +274,8 @@ class Runner:
         for section in contract.FACT_SECTIONS:
             reading = readings.get(section)
             facts[section] = reading.facts if reading is not None else None
+        # Judged by the conditions from each thing's source, as security.attack is.
+        facts["things"] = self.conditions.things()
 
         state = {
             "schema": SCHEMA,

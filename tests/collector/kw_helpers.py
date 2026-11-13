@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import atexit
 import datetime as dt
 import json
 import logging
 import os
+import shutil
+import socket
+import ssl
+import subprocess
 import tempfile
 import threading
+import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from collector.config import build
@@ -80,10 +86,57 @@ class FakeProc:
         self._tmp.cleanup()
 
 
-class FakeHttp:
-    """A local HTTP server answering from a routes table: path -> (status, body or callable)."""
+_self_signed: tuple[str | None, str] | None = None
 
-    def __init__(self):
+
+def self_signed() -> str:
+    """A self-signed certificate and its key in one file, for 127.0.0.1 and an invented name.
+
+    Made with openssl once per test run, in a temporary folder that is removed at exit, so that
+    no key is ever kept in the repository. Skips the calling test when openssl is missing or fails.
+    """
+    global _self_signed
+    if _self_signed is None:
+        _self_signed = _make_self_signed()
+    path, why = _self_signed
+    if path is None:
+        raise unittest.SkipTest(why)
+    return path
+
+
+def _make_self_signed() -> tuple[str | None, str]:
+    openssl = shutil.which("openssl")
+    if openssl is None:
+        return None, "openssl not found; it makes the certificate for the TLS tests"
+    folder = tempfile.mkdtemp(prefix="kw-tls-")
+    atexit.register(shutil.rmtree, folder, True)
+    key, cert = os.path.join(folder, "key.pem"), os.path.join(folder, "cert.pem")
+    try:
+        subprocess.run(
+            [openssl, "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
+             "-nodes", "-days", "2", "-subj", "/CN=camera.example.com",
+             "-addext", "subjectAltName=DNS:camera.example.com,IP:127.0.0.1",
+             "-keyout", key, "-out", cert],
+            check=True, capture_output=True, timeout=30,
+        )  # fmt: skip
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, f"openssl could not make a certificate ({type(exc).__name__})"
+    both = os.path.join(folder, "selfsigned.pem")
+    with open(both, "w", encoding="ascii") as out:
+        for part in (cert, key):
+            with open(part, encoding="ascii") as fh:
+                out.write(fh.read())
+    return both, ""
+
+
+class FakeHttp:
+    """A local HTTP server answering from a routes table: path -> (status, body or callable).
+
+    With tls true it serves https with a self-signed certificate, and skips the calling test
+    when that cannot be made.
+    """
+
+    def __init__(self, tls: bool = False):
         self.routes: dict[str, tuple[int, object]] = {}
         self.requests: list[tuple[str, dict]] = []
         outer = self
@@ -105,8 +158,17 @@ class FakeHttp:
             def log_message(self, *args):
                 pass
 
+        cert = self_signed() if tls else None
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
+        # A check closes once it has the status line, and the reset that leaves is expected.
+        self.server.handle_error = lambda request, client_address: None
+        scheme = "http"
+        if tls:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(cert)
+            self.server.socket = context.wrap_socket(self.server.socket, server_side=True)
+            scheme = "https"
+        self.url = f"{scheme}://127.0.0.1:{self.server.server_address[1]}"
         self.thread = threading.Thread(
             target=self.server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
         )
@@ -115,3 +177,30 @@ class FakeHttp:
     def close(self) -> None:
         self.server.shutdown()
         self.server.server_close()
+
+
+def listener(backlog: int = 16) -> socket.socket:
+    """A socket on 127.0.0.1 that accepts connections and never answers on them."""
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(backlog)
+    return sock
+
+
+def unanswering() -> tuple[socket.socket, list[socket.socket]]:
+    """A listening socket whose queue is full, so a new connection to it hangs until it times out.
+
+    Returns the listener and the connection that fills its queue; close both when done.
+    """
+    sock = listener(0)
+    filler = socket.create_connection(sock.getsockname(), timeout=1)
+    return sock, [filler]
+
+
+def closed_port() -> int:
+    """A port on 127.0.0.1 that nothing listens on, so a connection to it is refused."""
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    return port
