@@ -161,11 +161,16 @@ priority list names `pi_silent`; it never needs `thing_down`. See
 Each `[[thing]]` table, at the top level of `config.toml`, is one machine on the network to
 watch: a NAS, a camera, a laptop, a virtual machine. Each is checked at its own pace and counts as
 down once it has been silent for its `down_after_s`. The collector lists them in the state file,
-in the order of the tables, for the page to draw as props in the scene, six at most, with the
-prop of a thing that is down changed. A thing that alerts also raises `thing_down` while it is
-down. There can be 32 things, the Pi of `[sources.pi]` included, and those the page does not
-draw are checked and alert as usual. The page in this repository does not draw watched things
-or act on `thing_down` yet; until it does, only the Pi's pie shows on the display.
+in the order of the tables, for the page to draw in the scene, with the prop of a thing that is
+down changed. A thing that alerts also raises `thing_down` while it is down. There can be 32
+things, the Pi of `[sources.pi]` included, and those the page does not draw are checked and alert
+as usual.
+
+Where a thing stands depends on its kind. The first thing of kind `pi` is the pie, in its own
+place. Cameras are mounted high, and every scene has three places for them; every other kind
+stands on the ground, in three more places. Each class fills in the order of the tables, so the
+display shows the first Pi, the first three cameras and the first three other things, and a thing
+keeps its place whether it is up or down.
 
 ```toml
 # A NAS on the main LAN. Alerts after the default three minutes of silence.

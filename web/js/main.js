@@ -16,9 +16,14 @@
   const hv = k => (H0.match(new RegExp('[#&]' + k + '=([\\w.-]+)')) || [])[1];
   /* t=<ms> freezes time for screenshots, t=0 included, kx=<x> places the knight (in units of U),
      and mon= chooses the monarch at court: a, b or c, and a for anything else. frozen says whether
-     the address holds a t= with a number, and t is the frozen time, or 0 without one. */
+     the address holds a t= with a number, and t is the frozen time, or 0 without one. pl=1
+     outlines the scene's places for watched things. th= sets the demo's watched things: kinds
+     separated by commas, each followed by - for down or ! for down and alerting; th is the list
+     in the contract's shape, or null without the hook. */
   const tHook = hv('t') == null ? NaN : +hv('t');
-  KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'), mon: ['a', 'b', 'c'].includes(hv('mon')) ? hv('mon') : 'a' };
+  const thHook = (H0.match(/[#&]th=([^&]*)/) || [])[1];
+  KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'), mon: ['a', 'b', 'c'].includes(hv('mon')) ? hv('mon') : 'a',
+    pl: hv('pl') === '1', th: thHook == null ? null : ST.listFromHook(thHook) };
   const freeze = KW.hooks.frozen;
 
   /* The page's own version, from the meta tag tools/deploy.sh stamps. The repository's own page
@@ -97,7 +102,7 @@
   function startDemo() { mode = 'demo'; Demo.start(); fit(); Demo.hooks(); }
   /* Shows a valid view's state; its events are played separately. */
   function showLive(v) {
-    E.input = { w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, piOK: v.piOK, tv: v.tv, helmet: S.h };
+    E.input = { w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, things: v.things, tv: v.tv, helmet: S.h };
     showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more } : { st: 'ok', hl: '', sub: '', quiet: v.quietLine, more: { n: 0, crit: false } });
   }
   function onView(v) {
@@ -182,7 +187,7 @@
     E.draw(now);
     if (mode === 'demo') Demo.note(E.note);
   }
-  E.input = { w: ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, piOK: true, tv: false, helmet: S.h };
+  E.input = { w: ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: S.h };
   if (fromDisk || forceDemo) { mode = 'demo'; Demo.start(); }
   else { document.body.classList.add('nobar'); showOnce({ st: 'ok', hl: '', sub: '', quiet: '', more: { n: 0, crit: false } }); }
   fit();

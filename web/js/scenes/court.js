@@ -229,7 +229,7 @@
   function draw(t, s) {
     const { HL, HR } = V;
     for (let x = Math.floor((HL - 50) / 480) * 480 + 50; x < HR; x += 480) { glow(x + 25, 260, 100, '#ffb000', .09 + .025 * Math.sin(t / 140 + x)); P.flameHD(x + 25, 280, .58, t + x); }
-    P.pieHD(122, 444, t, s.piOK);
+    KW.things.draw(t, s);
     const monarchTalks = Math.floor(t / 3200) % 2 === 1;
     mouth(KX, KB, monarchTalks && Math.floor(t / 230) % 2 === 1);
     if (monarchTalks) K.speech(672, 180, t, true);
@@ -237,5 +237,17 @@
   }
 
   /* The monarch is painted into the backdrop, so the choice of monarch is part of its key. */
-  KW.scenes.court = { spot: 72, key: s => (MONARCHS[s.mon] ? s.mon : 'a'), paint, draw };
+  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+     on the ground for the other devices. x is the middle and y the base. */
+  const PLACES = {
+    pie: { cls: 'pie', kind: 'surface', x: 154, y: 475, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 620, y: 300, w: 88, h: 112 },
+    h2: { cls: 'high', kind: 'surface', x: 700, y: 355, w: 88, h: 112 },
+    h3: { cls: 'high', kind: 'surface', x: 132, y: 300, w: 88, h: 112, flip: true },
+    g1: { cls: 'ground', kind: 'floor', x: 40, y: 592, w: 88, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 900, y: 592, w: 88, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 555, y: 511, w: 88, h: 112 }
+  };
+
+  KW.scenes.court = { spot: 72, places: PLACES, key: s => (MONARCHS[s.mon] ? s.mon : 'a'), paint, draw };
 })(window.KW);

@@ -17,6 +17,11 @@ disk, the smithy during an update, the royal court while someone has a shell ope
 colour carries the status, green when quiet, amber for a warning, red when critical and blue
 while something is at work.
 
+Other machines on the network, such as a NAS, a camera or a virtual machine, can be listed as
+watched things. Each stands in the scene as the device it is, cameras mounted high and the rest on
+the ground, with a lamp that fades green while it is up and blinks red when it goes down;
+[Watched things](docs/configuration.md#watched-things) says how to list them.
+
 ## Try the page
 
 Open `web/index.html` in a browser. With no `state.json` beside it, the page runs on invented data

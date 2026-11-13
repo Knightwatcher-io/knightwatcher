@@ -127,8 +127,9 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
   - `headline` is at most 16 characters, in capitals. `detail` is at most 60 characters.
   - `things` is on `thing_down` alone, and says which watched things are down: one or more
     positions in `facts.things.list`, counted from 0, in the order their silences began. The page
-    finds each one as `facts.things.list[i]`; entry `i` stands in the scene's place `i + 1` when
-    `i` is below 6, and is not drawn otherwise. One `thing_down` covers every watched thing that
+    finds each one as `facts.things.list[i]`. Where an entry stands in the scene depends on its
+    kind and on the entries before it, and an entry with no place left is not drawn; see
+    [Watched things](./page.md#watched-things). One `thing_down` covers every watched thing that
     alerts and is down, however many there are. While it is held after the last of them has
     answered again, it keeps the positions it last had, and those things are then `up`.
 - **`quiet_line`** is shown when `conditions` is empty. At most 52 characters. The collector

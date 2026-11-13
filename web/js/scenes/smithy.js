@@ -76,7 +76,7 @@
     poly([[gx + 233, gy - 15], [gx + 263, gy], [gx + 233, gy + 15]], '#ffb000'); poly([[gx + 236, gy - 8], [gx + 252, gy], [gx + 236, gy + 8]], '#fff3a0');
     Rh(gx + 192, gy - 12, 42, 2, 'rgba(255,240,180,.55)'); Rh(gx + 192, gy + 9, 42, 2, 'rgba(60,10,0,.35)');
     // the pie, and sparks where the hammer strikes
-    P.pieHD(248, 444, t, s.piOK);
+    KW.things.draw(t, s);
     if (s.strike) {
       const c = (t % 1300) / 1300, q = (c > .5 ? c - .93 : c + .07) / .13, sx = s.kx + 132, sy = 418;
       glow(sx, sy, 44, '#fff3a0', .35 * (1 - q));
@@ -84,5 +84,17 @@
     }
   }
 
-  KW.scenes.smithy = { spot: 88, helmet: false, key: s => String(Math.round(s.kx)), act, paint, draw };
+  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+     on the ground for the other devices. x is the middle and y the base. */
+  const PLACES = {
+    pie: { cls: 'pie', kind: 'surface', x: 280, y: 475, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 560, y: 300, w: 88, h: 112 },
+    h2: { cls: 'high', kind: 'surface', x: 660, y: 300, w: 88, h: 112 },
+    h3: { cls: 'high', kind: 'surface', x: 40, y: 300, w: 88, h: 112, flip: true },
+    g1: { cls: 'ground', kind: 'floor', x: 140, y: 568, w: 88, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 820, y: 568, w: 88, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 40, y: 568, w: 88, h: 112, front: true }
+  };
+
+  KW.scenes.smithy = { spot: 88, places: PLACES, helmet: false, key: s => String(Math.round(s.kx)), act, paint, draw };
 })(window.KW);

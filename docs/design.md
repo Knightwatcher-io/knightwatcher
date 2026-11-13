@@ -44,8 +44,33 @@ behind it. The helmet comes off in the house and the smithy. Gear is drawn in sl
 hands) over one body so that new items can be added later.
 
 The Raspberry Pi that watches the main host is a steaming raspberry pie, present in every scene.
-It is a fruit pie in a white dish, with a lattice crust and a raspberry on top. When the Pi stops
-answering, the pie is gone and the empty dish is left, with a few crumbs.
+It is a fruit pie in a white dish, with a lattice crust and a raspberry on top. When the Pi is
+judged down, silent for its `down_after_s`, the pie is gone and the empty dish is left, with a few
+crumbs. A collector from before watched things gives no judgement, and with it the dish empties
+at the first missed check, as it always did.
+
+## Watched things
+
+Besides the Pi, a user may list other machines to watch (a NAS, a camera, a laptop, a virtual
+machine), each with a kind. Each kind is drawn as the device it is, by the owner's choice, though
+the scene is medieval: a white bullet camera on a wall arm, a grey tower case, the same case as a
+dotted outline for a virtual machine, and a plain small grey box for a kind the page does not know.
+They are drawn as plainly as the rest of the display, in hard pixels and the palette's steels and
+whites.
+
+Every scene has places for them where such things would be. Cameras are mounted high, at or above
+the knight's head, on a wall, a tree, a pier or a pole; the other devices stand on the ground, by
+the owner's choice. Each scene has three high places and three ground places, besides the pie's,
+and they fill in the order of the list, so a thing keeps its place whether it is up or down. A
+thing with no place left is not drawn but is still watched.
+
+Every device carries one lamp that never stops: while the machine is up it fades slowly from green
+to black and back, and while it is down it blinks slowly from red to black. A down device also
+looks broken from across the room: the camera hangs from its arm, the tower goes dark with its
+side panel off, the dotted outline breaks up into a few dots at its corners, and the box lies on
+its side with its lid off. A question mark blinks over a down thing that alerts; a thing set not
+to alert, such as a laptop that sleeps, keeps only its red lamp. Names are never written in the
+scene: a thing's name shows in the headline while it alerts.
 
 ## Conditions and scenes
 
@@ -60,6 +85,7 @@ and a state of the knight. Highest first:
 | `disk_full` | warning | cellar | carrying a tower of crates |
 | `backup_overdue` | warning | house | hungry, thinking of food |
 | `pi_silent` | warning | house | staring at the empty dish |
+| `thing_down` | warning | the quiet scene of the moment | stays put, frowning, looking towards the empty place |
 | `cpu_hot` | warning | training yard | training frantically, sweating |
 | `memory_tight` | warning | the quiet scene of the moment | bloated |
 | `ssh_session` | at work | royal court | talking with the monarch |

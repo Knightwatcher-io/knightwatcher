@@ -129,7 +129,7 @@
       glow(771, 384, 52, '#ffe28a', .11 + .02 * Math.sin(t / 170));
       const sw = Math.round(Math.sin(t / 190) * 1.5); ell(771, 382, 4, 6, '#ffb000'); poly([[767, 382], [771 + sw, 368], [775, 382]], '#ffb000'); ell(771, 383, 2, 3, '#fff3a0');
     }
-    P.pieHD(656, 404, t, s.piOK);
+    KW.things.draw(t, s);
     // the blanket, and the sleeper's head on the pillow
     if (s.inBed) {
       const o = s.o, b = Math.floor(t / 1900) % 2 * 3;
@@ -158,8 +158,20 @@
     }
   }
 
+  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+     on the ground for the other devices. x is the middle and y the base. */
+  const PLACES = {
+    pie: { cls: 'pie', kind: 'surface', x: 688, y: 435, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 406, y: 300, w: 88, h: 112 },
+    h2: { cls: 'high', kind: 'surface', x: 926, y: 300, w: 88, h: 112 },
+    h3: { cls: 'high', kind: 'surface', x: 70, y: 300, w: 88, h: 112, flip: true },
+    g1: { cls: 'ground', kind: 'floor', x: 120, y: 594, w: 88, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 300, y: 594, w: 88, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 748, y: 530, w: 88, h: 112 }
+  };
+
   KW.scenes.house = {
-    spot: 114, bed: true, helmet: false, sword: false,
+    spot: 114, places: PLACES, bed: true, helmet: false, sword: false,
     rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 100, act: 'yawn', dur: 14 }, { x: 110, act: 'look', dur: 14 }],
     key: s => (s.tv ? 'tv' : ''), paint, draw, over
   };

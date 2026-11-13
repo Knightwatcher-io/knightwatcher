@@ -48,12 +48,24 @@
     const { HL, HR, HFL } = V;
     glow(690, HFL - 40, 190, '#ffb000', .09 + .025 * Math.sin(t / 150)); P.flameHD(676, HFL - 16, 1.25, t); P.flameHD(704, HFL - 14, 1.05, t + 400); P.flameHD(690, HFL - 22, 1.5, t + 900);
     for (let i = 0; i < 4; i++) { const ph = ((t / 2300) + i / 4) % 1; alpha(1 - ph); Rh(684 + i * 6 + Math.sin(ph * 5 + i) * 14, HFL - 80 - ph * 130, 3, 3, '#ffb000'); alpha(1); }
-    P.pieHD(548, HFL - 18 - 26, t, s.piOK);
+    KW.things.draw(t, s);
     for (let i = 0; i < 7; i++) if (((t / 900 + i * 1.3) % 4) < 1.4) { const x = HL + hsh(i, 31) % (HR - HL) + Math.sin(t / 3100 + i) * 40, y = 270 + hsh(i, 32) % 200 + Math.cos(t / 2700 + i * 2) * 24; glow(x + 1, y + 1, 9, '#fff3a0', .18); Rh(x, y, 3, 3, '#fff3a0'); }
   }
 
+  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+     on the ground for the other devices. x is the middle and y the base. */
+  const PLACES = {
+    pie: { cls: 'pie', kind: 'surface', x: 580, y: 517, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 852, y: 312, w: 88, h: 112 },
+    h2: { cls: 'high', kind: 'surface', x: 80, y: 312, w: 88, h: 112, flip: true },
+    h3: { cls: 'high', kind: 'surface', x: 227, y: 312, w: 88, h: 112, flip: true, pole: 366 },
+    g1: { cls: 'ground', kind: 'floor', x: 830, y: 566, w: 88, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 120, y: 566, w: 88, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 200, y: 530, w: 88, h: 112 }
+  };
+
   KW.scenes.camp = {
-    spot: 88, outdoors: true,
+    spot: 88, places: PLACES, outdoors: true,
     rounds: [{ x: 88, act: 'sniff', dur: 22 }, { x: 68, act: 'yawn', dur: 14 }, { x: 96, act: 'look', dur: 16 }],
     paint, draw
   };

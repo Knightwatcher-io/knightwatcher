@@ -52,15 +52,27 @@
     const { HL, HR, HT, HFL } = V;
     for (let i = 0; i < 14; i++) if (((t / 1100 + i * .7) % 6) < .9) Rh(HL + hsh(i, 41) % (HR - HL), HT + hsh(i, 42) % 300, 3, 3, C.W);
     glow(160, HFL - 190, 86, '#ffb000', .1 + .03 * Math.sin(t / 140)); P.flameHD(160, HFL - 170, .9, t);
-    P.pieHD(768, HFL - 119 - 26, t, s.piOK);
+    KW.things.draw(t, s);
     if (s.w.id === 'wan_down' && Math.floor(t / 150) % 3 === 0) { Rh(740, 290, 4, 4, '#fff3a0'); Rh(760, 300, 3, 3, '#fff3a0'); Rh(748, 306, 3, 3, C.W); }
   }
 
   /* The goblin climbs over a merlon where one stands at x, and over the parapet between them. */
   function wallAt(x) { return ((((x + 70) % 160) + 160) % 160 < 80 ? V.HFL - 119 : V.HFL - 66); }
 
+  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+     on the ground for the other devices. x is the middle and y the base. */
+  const PLACES = {
+    pie: { cls: 'pie', kind: 'surface', x: 800, y: 416, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 928, y: 300, w: 88, h: 112, pole: 413 },
+    h2: { cls: 'high', kind: 'surface', x: 858, y: 300, w: 88, h: 112, pole: 466 },
+    h3: { cls: 'high', kind: 'surface', x: 37, y: 300, w: 88, h: 112, flip: true, pole: 413 },
+    g1: { cls: 'ground', kind: 'floor', x: 150, y: 566, w: 88, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 820, y: 566, w: 88, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 60, y: 566, w: 88, h: 112, front: true }
+  };
+
   KW.scenes.battlement = {
-    spot: 96, outdoors: true,
+    spot: 96, places: PLACES, outdoors: true,
     rounds: [{ x: 96, act: 'guard', dur: 18 }, { x: 66, act: 'look', dur: 16 }, { x: 126, act: 'sniff', dur: 12 }],
     key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt
   };

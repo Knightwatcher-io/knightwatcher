@@ -339,6 +339,8 @@
       case 'disk_full': o.crates = 1; o.crouch = 2; o.bob = 0; o.eyes = 'half'; o.sweat = .3; o.sword = false; break;
       case 'backup_overdue': o.eyes = 'half'; o.mouth = 'frown'; o.bubble = 1; o.headDy = 1; break;
       case 'pi_silent': o.look = 1; o.mouth = 'frown'; break;
+      // the engine turns the knight towards the gone thing's place
+      case 'thing_down': o.mouth = 'frown'; break;
       case 'updating': o.eyes = 'happy'; o.mouth = 'smile'; break;
       case 'streaming': o.look = 1; o.mouth = 'smile'; break;
       case 'wan_down': o.look = Math.floor(t / 1400) % 2 ? 1 : -1; o.mouth = 'o'; o.mark = '?'; break;

@@ -4,16 +4,17 @@
      w       the condition that wins, as KW.state makes it: { id, lv, st, scene, hl, sub }
      is      'auto' for the quiet scenes to take turns, or the name of the one to keep
      turnMs  how long each quiet scene lasts while they take turns
-     piOK    whether the pie is in its dish
+     things  the watched things standing in the scene's places, as KW.state.map() gives them:
+             { place, kind, ok, alert }, place naming one of the scene's places
      tv      whether the television in the house is on
      helmet  'auto' (off indoors), 'on' or 'off' */
 (function (KW) {
   'use strict';
-  const D = KW.draw, V = KW.view, K = KW.knight, P = KW.props, U = V.U;
-  const { alpha, Rh, lerp, clamp01, ease, hash } = D;
+  const D = KW.draw, V = KW.view, K = KW.knight, P = KW.props, SP = KW.sprites, C = D.C, U = V.U;
+  const { alpha, Rh, strip, lerp, clamp01, ease, hash } = D;
 
   const E = KW.engine = {
-    input: { w: KW.state.IDLE, is: 'auto', turnMs: 60000, piOK: true, tv: false, helmet: 'auto' },
+    input: { w: KW.state.IDLE, is: 'auto', turnMs: 60000, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: 'auto' },
     note: ''
   };
   /* Whether the address's t= hook freezes time; KW.hooks.t is then the frozen time. */
@@ -72,6 +73,97 @@
     ev = { type, t0: frozen() ? 0 : performance.now(), dur: e.dur };
   }
 
+  /* ---- Watched things in their places --------------------------------------------------------
+     Each scene names its places in its places field (docs/page.md): the pie's, three high ones
+     for cameras (h1 to h3) and three on the ground for every other device (g1 to g3). KW.state
+     puts each thing in one. The still part of each thing, with the pole a high place may have, is
+     painted once into a small canvas of its own, kept by place, kind and state, and drawn with one
+     call where the scene's draw reaches its places, so the scene's drawing order stays as it was.
+     Only what moves is drawn each frame: the pie's steam and a device's lamp, whose loop starts at
+     a different moment in each place. The question mark over a gone thing that alerts blinks, and
+     is kept in a canvas of its own too. A place in front of the ground line (front) is drawn by the
+     engine after the knight, and a place with flip shows its thing the other way round. */
+  const ORDER = ['pie', 'h1', 'h2', 'h3', 'g1', 'g2', 'g3'], PHASE_MS = 523;
+  const SPRITES = new Map(), SPRITE_MAX = 64;
+  const kindName = k => (typeof k === 'string' && Object.prototype.hasOwnProperty.call(P.KINDS, k) ? k : 'box');
+
+  /* A wooden pole from the foot of a camera's wall plate down to foot, for a high place with
+     nothing to mount on. */
+  function poleHD(x, y, foot) {
+    const len = foot - (y - 40) + 1;
+    D.rrect(x + 23, y - 40, 9, len, 2, C.K); D.rrect(x + 25, y - 40, 5, len - 2, 1, [[.3, C.N0], [.7, C.N1], [1, C.N2]]);
+    Rh(x + 21, foot - 3, 13, 4, C.K); Rh(x + 23, foot - 2, 9, 2, C.N2);
+  }
+
+  /* A canvas of w by h at (ox, oy) on the grid, painted once by paint() with the grid's
+     coordinates, mirrored about x when flip is set. */
+  function cached(key, ox, oy, w, h, flip, x, paint) {
+    let sp = SPRITES.get(key);
+    if (!sp) {
+      if (SPRITES.size >= SPRITE_MAX) SPRITES.clear();
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const c = cv.getContext('2d'), was = D.getCtx();
+      if (flip) c.setTransform(-1, 0, 0, 1, 2 * x - ox, -oy); else c.setTransform(1, 0, 0, 1, -ox, -oy);
+      D.setCtx(c); alpha(1); paint(); D.setCtx(was);
+      sp = { cv, ox, oy }; SPRITES.set(key, sp);
+    }
+    return sp;
+  }
+
+  function placeHD(name, pl, th, t) {
+    const kind = kindName(th.kind), k = P.KINDS[kind], ctx = D.getCtx(), foot = pl.pole || 0;
+    const ox = pl.x - 64, oy = pl.y - 136, h = Math.max(168, foot - oy + 8);
+    const sp = cached([pl.x, pl.y, pl.flip ? 'flip' : '', foot, kind, th.ok ? 'up' : 'gone'].join('|'), ox, oy, 128, h, pl.flip, pl.x, () => {
+      if (foot) poleHD(pl.x, pl.y, foot);
+      k.draw(pl.x, pl.y, 0, th.ok, 'still');
+    });
+    ctx.drawImage(sp.cv, sp.ox, sp.oy);
+    const tt = t + Math.max(0, ORDER.indexOf(name)) * PHASE_MS;
+    if (pl.flip) { ctx.save(); ctx.transform(-1, 0, 0, 1, 2 * pl.x, 0); k.draw(pl.x, pl.y, tt, th.ok, 'moving'); ctx.restore(); }
+    else k.draw(pl.x, pl.y, tt, th.ok, 'moving');
+    if (!th.ok && th.alert && Math.floor(t / 400) % 2) {
+      const my = pl.y - k.mark, m = cached('mark|' + pl.x + ',' + my, pl.x - 32, my - 8, 64, 80, false, pl.x, () => SP.mark(pl.x, my, '?'));
+      ctx.drawImage(m.cv, m.ox, m.oy);
+    }
+  }
+
+  /* Draws the things in the scene's places, those behind the knight (front false) or those in
+     front of it (front true). */
+  function placesHD(t, s, front) {
+    const places = s.places; if (!places) return;
+    for (const th of s.things) {
+      const pl = th && places[th.place];
+      if (pl && !pl.front === !front) placeHD(th.place, pl, th, t);
+    }
+  }
+
+  /* The address's pl=1: every place's box outlined and named, for reviewing where they stand.
+     The outer box is the place's, 88 by 112 above the base; the inner one, 80 by 64, is what a
+     thing may fill; the base is the white line. The pie's place is white, high places blue and
+     ground places amber; a place in front of the knight has a broken outline. */
+  const GLYPHS = { P: '111101111100100', H: '101101111101101', G: '111100101101111', 1: '010110010010111', 2: '111001111100111', 3: '111001111001111' };
+  const CLASS_COLOUR = { pie: C.W, high: '#7fe9ff', ground: '#ffb000' };
+  function outlineHD(s) {
+    const places = s.places; if (!places) return;
+    for (const name of ORDER) {
+      const pl = places[name]; if (!pl) continue;
+      const c = CLASS_COLOUR[pl.cls] || C.W, x0 = pl.x - pl.w / 2, y0 = pl.y - pl.h;
+      const line = (x, y, w, h) => { if (!pl.front) { Rh(x, y, w, h, c); return; } for (let k = 0; k < Math.max(w, h); k += 12) Rh(x + (w > h ? k : 0), y + (w > h ? 0 : k), w > h ? Math.min(6, w - k) : w, w > h ? h : Math.min(6, h - k), c); };
+      const box = (x, y, w, h, k) => { line(x, y, w, k); line(x, y + h - k, w, k); line(x, y, k, h); line(x + w - k, y, k, h); };
+      box(x0, y0, pl.w, pl.h, 2); box(pl.x - 40, pl.y - 64, 80, 64, 1); Rh(x0 - 6, pl.y - 1, pl.w + 12, 3, C.W);
+      const label = name === 'pie' ? 'P' : name.toUpperCase();
+      Rh(x0 + 3, y0 + 3, 4 + label.length * 12, 19, C.K);
+      for (let n = 0; n < label.length; n++) for (let j = 0; j < 15; j++) if (GLYPHS[label[n]][j] === '1') Rh(x0 + 5 + n * 12 + (j % 3) * 3, y0 + 5 + Math.floor(j / 3) * 3, 3, 3, c);
+    }
+  }
+
+  KW.things = {
+    /* For a scene's draw: the things behind the knight. */
+    draw(t, s) { placesHD(t, s, false); },
+    /* The x of a place with a thing in it, or null. */
+    placeX(s, name) { const pl = s.places && name ? s.places[name] : null; return pl && s.things.some(th => th && th.place === name) ? pl.x : null; }
+  };
+
   /* A scene's still part is painted once into its own canvas and kept until the key changes or
      the screen changes shape. */
   function backdrop(key, sc, s, sway) {
@@ -84,7 +176,7 @@
 
   function draw(t) {
     const { HL, HR, HT, HH, HFL } = V, freeze = frozen();
-    const inp = E.input, w = inp.w, scene = w.scene || idleScene(t), sc = KW.scenes[scene], piOK = inp.piOK;
+    const inp = E.input, w = inp.w, scene = w.scene || idleScene(t), sc = KW.scenes[scene], things = inp.things || [];
     if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
     const serious = w.lv >= 3, inBed = !!sc.bed && (w.id === 'night' || w.id === 'container_unhealthy');
     const funOK = !serious && !!sc.outdoors;
@@ -105,7 +197,10 @@
         if (here.act === 'yawn') { const c = el % 6500; if (c > 3800 && c < 5600) { o.eyes = 'closed'; o.mouth = 'o'; } }
       }
     }
-    const s = { w, piOK, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false, mon: KW.hooks.mon };
+    const s = { w, things, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false, mon: KW.hooks.mon };
+    // a watched thing down: the knight stays put and looks towards its place, or straight ahead
+    // when it is not drawn
+    if (w.id === 'thing_down') { const px = KW.things.placeX(s, w.place); o.look = px === null ? 0 : Math.sign(px - kx); }
     if (sc.act) sc.act(t, s);
     o.x = kx;
 
@@ -147,6 +242,7 @@
       if (p < .9 || Math.floor(t / 110) % 2) { if (q < 1) P.chuteHD(x + 30, y); P.crateHD(x, y); }
     }
     if (!inBed) K.draw(o);
+    placesHD(t, s, true);
     for (const f of flies) {
       if (!f.dead) { const [x, y] = flyPos(f, t); P.flyHD(x, y, Math.floor(t / 90 + f.ph) % 2); }
       else { const a = t - f.dead; if (a < 260) P.poofHD(f.at[0], f.at[1]); if (a < 900) Rh(f.at[0] - 3, f.at[1] + a * a / 900, 6, 5, '#3a3344'); }
@@ -159,6 +255,7 @@
     if (w.id === 'attack') { alpha(.08 + .07 * Math.sin(t / 220)); Rh(HL, HT, HR - HL, HH - HT + 20, D.C.R1); alpha(1); }
     if (w.id === 'night' && inBed) { alpha(.5); Rh(HL, HT, HR - HL, HH - HT + 20, '#000'); alpha(1); }
     if (sc.over) { fine(); sc.over(t, s); fine(); }
+    if (KW.hooks.pl) outlineHD(s);
     const fd = 1 - (t - fadeAt) / 420; if (fd > 0 && !freeze) { alpha(fd); Rh(HL, HT, HR - HL, HH - HT + 20, '#000'); alpha(1); }
     E.note = !flies.some(f => !f.dead) ? 'no flies' : !funOK ? 'flies wait: ' + (serious ? 'a warning is up' : 'indoors')
       : swat ? 'swatting' : 'next swat in ' + Math.max(0, Math.ceil((30000 - (t - lastSwat)) / 1000)) + ' s';

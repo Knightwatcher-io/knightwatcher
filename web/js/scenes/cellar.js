@@ -60,11 +60,23 @@
 
   function draw(t, s) {
     glow(478, 160, 170, '#ffb000', .09 + .025 * Math.sin(t / 150)); P.flameHD(478, 180, .62, t);
-    P.pieHD(448, 432, t, s.piOK);
+    KW.things.draw(t, s);
   }
 
+  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+     on the ground for the other devices. x is the middle and y the base. */
+  const PLACES = {
+    pie: { cls: 'pie', kind: 'surface', x: 480, y: 463, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 450, y: 320, w: 88, h: 112 },
+    h2: { cls: 'high', kind: 'surface', x: 830, y: 300, w: 88, h: 112, pole: 280 },
+    h3: { cls: 'high', kind: 'surface', x: 139, y: 300, w: 88, h: 112, flip: true, pole: 280 },
+    g1: { cls: 'ground', kind: 'floor', x: 890, y: 568, w: 88, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 400, y: 568, w: 88, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 200, y: 568, w: 88, h: 112, front: true }
+  };
+
   KW.scenes.cellar = {
-    spot: 124, sword: false,
+    spot: 124, places: PLACES, sword: false,
     rounds: [{ x: 124, act: 'guard', dur: 7 }, { x: 146, act: 'guard', dur: 7 }],
     paint, draw
   };

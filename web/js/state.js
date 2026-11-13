@@ -18,6 +18,7 @@
     disk_full:           { lv: 3, level: 'warning',  scene: 'cellar' },
     backup_overdue:      { lv: 3, level: 'warning',  scene: 'house' },
     pi_silent:           { lv: 3, level: 'warning',  scene: 'house' },
+    thing_down:          { lv: 3, level: 'warning',  scene: null },
     cpu_hot:             { lv: 3, level: 'warning',  scene: 'yard' },
     memory_tight:        { lv: 3, level: 'warning',  scene: null },
     ssh_session:         { lv: 2, level: 'work',     scene: 'court' },
@@ -31,6 +32,12 @@
 
   /* The most flies one event may add. The rest of a larger count would only lengthen the queue. */
   const MAX_FLIES = 100;
+
+  /* The places a scene has for watched things, by class: the pie's own place, three high places
+     for cameras, and three on the ground for every other device. MAX_LIST is the most entries the
+     page reads from the list, and MAX_KIND the longest kind. */
+  const PLACES = { pie: ['pie'], high: ['h1', 'h2', 'h3'], ground: ['g1', 'g2', 'g3'] };
+  const MAX_LIST = 32, MAX_KIND = 200;
 
   /* The knight's state with nothing to report. */
   const IDLE = { id: 'idle', lv: 0, st: 'ok', scene: null, hl: '', sub: '' };
@@ -46,14 +53,71 @@
     return { id: c.id, lv: k.lv, level, st: LEVELS[level], scene: k.scene, hl: str(c.headline), sub: str(c.detail) };
   }
 
+  /* The class of place a kind stands in: the first Pi's pie has its own place, a camera is
+     mounted high, and every other kind, one the page does not know included, stands on the
+     ground. */
+  const classOf = kind => (kind === 'pi' ? 'pie' : kind === 'camera' ? 'high' : 'ground');
+
+  /* Puts the watched things of a list (the contract's entries) in the scene's places. Each class
+     fills in the order of the list: the first camera takes h1, the second h2, and so on, and the
+     same for the ground places; only the first pi has a place. A thing with no free place of its
+     class is not drawn, and an entry the page cannot read takes no place. The places depend on the
+     list alone, never on which things are up. Returns
+       things  the things drawn: { place, kind, ok, alert }, ok false only for the state 'down'
+       at      for each position in the list, the place it stands in, or null */
+  function arrange(list) {
+    const free = { pie: PLACES.pie.slice(), high: PLACES.high.slice(), ground: PLACES.ground.slice() };
+    const things = [], at = [];
+    for (const e of Array.isArray(list) ? list.slice(0, MAX_LIST) : []) {
+      if (!isObj(e)) { at.push(null); continue; }
+      const kind = typeof e.kind === 'string' && e.kind.length <= MAX_KIND ? e.kind : '';
+      const place = free[classOf(kind)].shift() || null;
+      at.push(place);
+      if (place) things.push({ place, kind, ok: e.state !== 'down', alert: e.alert === true });
+    }
+    return { things, at };
+  }
+
+  /* The watched things the scene draws, from the file's facts and its known conditions, as
+     arrange() gives them. Without a things section of that shape (an older collector), the pie
+     stands alone in its place, gone while facts.pi.up is false or pi_silent is raised, as before
+     there were things. */
+  function placed(facts, known) {
+    const sec = facts.things;
+    if (isObj(sec) && Array.isArray(sec.list)) return arrange(sec.list);
+    const piUp = isObj(facts.pi) ? facts.pi.up : undefined;
+    return { things: [{ place: 'pie', kind: 'pi', ok: piUp !== false && !known.some(c => c.id === 'pi_silent'), alert: true }], at: [] };
+  }
+
+  /* The place the knight looks towards for thing_down: that of the first position among those
+     given that stands in a place, or null when none does. */
+  function lookPlace(positions, at) {
+    for (const i of Array.isArray(positions) ? positions : []) if (Number.isInteger(i) && i >= 0 && i < at.length && at[i]) return at[i];
+    return null;
+  }
+
+  /* The list of watched things the address's th= hook asks for, in the contract's shape: kinds
+     separated by commas, each followed by - for down or ! for down and alerting. An empty item, or
+     one that is not a kind, is an entry the page cannot read. */
+  function listFromHook(text) {
+    let v; try { v = decodeURIComponent(String(text)); } catch (e) { v = ''; }
+    return v.split(',').slice(0, MAX_LIST).map(e => {
+      const m = /^(\w[\w.\/-]{0,199}?)([-!]?)$/.exec(e);
+      return m ? { kind: m[1], state: m[2] ? 'down' : 'up', alert: m[2] === '!' } : null;
+    });
+  }
+
   /* Turns a parsed state file into what the page shows, at the time nowMs.
      Returns ok false with a problem ('malformed', 'schema' or 'stale') when the page must not act
      on the file, and generatedAt (ms) whenever the file says when it was written. Otherwise:
-       w          the first condition with a known id, or null when there is none
+       w          the first condition with a known id, or null when there is none. For
+                  thing_down it also carries place, the name of the place the knight looks
+                  towards, or null (see lookPlace)
        more       { n, crit }: the other known conditions at warning or critical, and whether any
                   of them is critical
        quietLine  the line shown when w is null
-       piOK, tv   whether the pie is in its dish, and whether the television is on
+       things     the watched things the scene draws, in their places (see arrange())
+       tv         whether the television is on
        events     the events of a known type, oldest first: { seq, act, count, text }
        maxSeq     the highest seq in the file, or null when it has no events
        intervalS  how often the collector says it writes the file, in seconds */
@@ -67,12 +131,13 @@
     const ageS = (nowMs - generatedAt) / 1000;
     if (ageS > 3 * interval) return { ok: false, problem: 'stale', generatedAt, ageS };
 
-    const known = (Array.isArray(file.conditions) ? file.conditions : [])
-      .filter(c => isObj(c) && has(CONDITIONS, c.id))
-      .map(condition);
-    const w = known[0] || null, rest = known.slice(1).filter(c => c.level === 'warning' || c.level === 'critical');
+    const raw = (Array.isArray(file.conditions) ? file.conditions : []).filter(c => isObj(c) && has(CONDITIONS, c.id));
+    const known = raw.map(condition);
+    const rest = known.slice(1).filter(c => c.level === 'warning' || c.level === 'critical');
     const facts = isObj(file.facts) ? file.facts : {};
-    const piUp = isObj(facts.pi) ? facts.pi.up : undefined, streams = isObj(facts.streams) ? facts.streams.count : 0;
+    const streams = isObj(facts.streams) ? facts.streams.count : 0, drawn = placed(facts, known);
+    let w = known[0] || null;
+    if (w && w.id === 'thing_down') w = Object.assign(w, { place: lookPlace(raw[0].things, drawn.at) });
 
     const events = [];
     let maxSeq = null;
@@ -89,7 +154,7 @@
       ok: true, problem: '', generatedAt, ageS, w,
       more: { n: rest.length, crit: rest.some(c => c.level === 'critical') },
       quietLine: str(file.quiet_line),
-      piOK: piUp !== false && !known.some(c => c.id === 'pi_silent'),
+      things: drawn.things,
       tv: (typeof streams === 'number' && streams > 0) || known.some(c => c.id === 'streaming'),
       events, maxSeq, intervalS: interval
     };
@@ -180,7 +245,7 @@
     poll();
   }
 
-  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, RELOAD_GUARD_MS, map, takeEvents, judge, noSignal, versionOf, reloadDue, start };
+  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, PLACES, RELOAD_GUARD_MS, map, arrange, lookPlace, listFromHook, takeEvents, judge, noSignal, versionOf, reloadDue, start };
   KW.state = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? (window.KW = window.KW || {}) : {});
