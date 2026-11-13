@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<title>Knightwatcher</title>
+<defs><mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><g transform="translate(32 40.6) scale(.375)"><g fill="#fff"><rect x="-70" y="-68" width="140" height="118" rx="52"/></g><g fill="#000"><ellipse cx="2" cy="-74" rx="45" ry="27"/><ellipse cx="24" cy="-63" rx="32" ry="19"/></g><g fill="#fff"><ellipse cx="2" cy="-74" rx="38" ry="20"/><ellipse cx="24" cy="-63" rx="25" ry="12"/></g><rect fill="#000" x="-63" y="34" width="126" height="20" rx="8"/><rect x="-57" y="39" width="114" height="9" rx="4" fill="#fff"/><rect x="-44" y="-28" width="88" height="58" rx="15" fill="#000"/><g fill="#fff"><ellipse cx="-18" cy="0" rx="7" ry="10"/><ellipse cx="18" cy="0" rx="7" ry="10"/><rect x="-6" y="16" width="12" height="3"/></g></g></mask></defs>
+<rect width="64" height="64" fill="currentColor" mask="url(#cut)"/>
+</svg>
