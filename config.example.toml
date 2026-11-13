@@ -99,6 +99,7 @@ secret = "tautulli"
 [sources.adblock]
 url = "http://192.0.2.53"
 secret = "adguard"
+fly_every_s = 300
 
 [sources.security]
 url = "http://192.0.2.1:9192"

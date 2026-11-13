@@ -117,6 +117,12 @@ The date may be ISO 8601 or the form `date` prints, such as `Thu 15 Jan 03:12:00
 | `url` | required | Base URL: Tautulli, AdGuard Home, Sonarr or Radarr. |
 | `secret` | `"tautulli"`, `"adguard"`, `"sonarr"`, `"radarr"` | Section of `secrets.json` holding its credentials. |
 
+`[sources.adblock]` takes one more:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `fly_every_s` | `300` | Average seconds between flies while blocking runs at the household's normal rate, which AdGuard Home's own statistics give. A burst brings flies faster, at most eight to an event. `0` sends one fly for every blocked query. Zero or more. |
+
 ### [sources.security]
 
 | Setting | Default | Meaning |

@@ -68,9 +68,13 @@ Every value below is invented.
 - **`events`** are things that happened, for the page to act out once. `seq` only ever rises, and
   the page remembers the highest it has played. The collector keeps the last 20. `type` is one of
   `ad_blocked`, `ip_banned`, `import`, `backup_done`. `text` is a caption of at most 44
-  characters, empty for `ad_blocked`. `count` says how many the event stands for.
+  characters, empty for `ad_blocked`. `count` says how many the event stands for. For
+  `ad_blocked` that is a number of flies, not of blocked queries: a fly stands for the blocking
+  the household normally sees in a few minutes, and one event carries at most eight unless the
+  collector's `fly_every_s` is 0 (see [collector.md](./collector.md#events)).
 - **`facts`** are the figures behind the conditions, for a page that wants to show them. Any
-  section is `null` when its source is unavailable or not enabled.
+  section is `null` when its source is unavailable or not enabled. `adblock.blocked_today`
+  counts the blocked queries since midnight in the collector's time zone.
 - **`sources`** says, for each enabled source, whether its last read worked, when, and why not.
 
 ## Who decides what

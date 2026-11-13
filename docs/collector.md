@@ -71,7 +71,7 @@ The history behind all of this lives in memory and starts again when the collect
 
 | Event | Raised when | `count` | `text` |
 |---|---|---|---|
-| `ad_blocked` | the blocked count rose since the last poll | the rise | empty |
+| `ad_blocked` | enough blocked queries have built up for at least one fly | the flies, at most 8 unless `fly_every_s` is 0 | empty |
 | `ip_banned` | the last ban changed | 1 | `BANNED 203.0.113.77 · sshd` |
 | `import` | a new import record appears in Sonarr's or Radarr's history | 1 each | `IMPORTED · The Night Shift S02E04` |
 | `backup_done` | the backup log shows a completion newer than the last one seen | 1 | `BACKUP DONE 03:12` |
@@ -84,6 +84,24 @@ event.
 
 AdGuard Home's blocked count covers a rolling window, so the count can fall when an old hour
 leaves it. A fall raises nothing and resets the marker.
+
+A fly stands for one helping of the household's normal blocking, so that normal traffic gives a
+fly every `fly_every_s` (300 seconds by default) on average and a burst gives a swarm. The
+normal rate is read afresh from `/control/stats` on every poll: `num_blocked_filtering` divided
+by the length of AdGuard Home's statistics window, counted from the first day or hour with any
+DNS queries to the current one, so a new install's mostly empty window does not understate it.
+One fly is then `rate * fly_every_s` blocked queries, and never fewer than one. Each poll's rise
+goes into a carry kept in memory; every whole fly's worth in the carry becomes a fly and the
+remainder stays for the next poll. An event carries at most eight flies, and a bigger burst
+drops the excess rather than queueing it. When the statistics give no rate (the lists missing,
+empty, all zero or malformed), a fly is 50 blocked queries. No event is raised until at least
+one fly is due. `fly_every_s = 0` restores one fly per blocked query, with `count` the rise.
+
+`blocked_today` counts from local midnight in the collector's time zone. The source keeps the
+date and the count in memory and adds each poll's rise, starting again from nought when the
+date changes. On first sight, or on the first poll after an upgrade from a version that kept no
+count, it starts from AdGuard Home's own figures for today: the last day's blocks, or with
+hourly statistics the hours since local midnight.
 
 The backup log is rotated by truncation, which leaves it without a completion line for a few
 hours each week. The last completion seen is kept in memory and reported until a newer one

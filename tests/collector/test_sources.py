@@ -7,7 +7,8 @@ import threading
 import unittest
 
 from collector.net import AuthError, SourceError, dns_query, tcp_reachable
-from collector.sources.adblock import AdblockSource
+from collector.sources import Reading
+from collector.sources.adblock import AdblockSource, blocked_since_midnight, normal_rate
 from collector.sources.backup import BackupSource, parse_when
 from collector.sources.containers import ContainersSource, classify, ignored
 from collector.sources.dns import DnsSource
@@ -352,23 +353,161 @@ class AdblockTest(unittest.TestCase):
     def setUp(self):
         self.http = FakeHttp()
         self.addCleanup(self.http.close)
+        self.stats = {"num_blocked_filtering": 4800}
+        self.http.routes["/control/stats"] = (200, lambda _h: self.stats)
 
-    def test_blocked_count_and_rise_events(self):
-        stats = {"num_blocked_filtering": 4800}
-        self.http.routes["/control/stats"] = (200, lambda _h: stats)
-        s = source(AdblockSource, "adblock", {"url": self.http.url})
-        memory = {}
-        r = s.fetch(T0)
-        self.assertEqual(r.facts, {"blocked_today": 4800})
-        self.assertEqual(s.observe(r, memory, T0), [])  # first sight
-        stats["num_blocked_filtering"] = 4803
-        self.assertEqual(
-            s.observe(s.fetch(T0), memory, T0), [{"type": "ad_blocked", "count": 3, "text": ""}]
+    def make(self, raw=None, **settings):
+        return source(AdblockSource, "adblock", {"url": self.http.url, **settings}, raw)
+
+    def poll(self, s, memory, total, when=T0):
+        self.stats["num_blocked_filtering"] = total
+        r = s.fetch(when)
+        return s.observe(r, memory, when), r.facts["blocked_today"]
+
+    def reading(self, total, rate=0.25, seed=0):
+        return Reading({"blocked_today": seed}, {"blocked": total, "rate": rate, "seed": seed})
+
+    def observe(self, s, memory, total, rate=0.25):
+        # At 0.25 blocked a second, a fly every 300 seconds stands for 75 blocked queries.
+        return s.observe(self.reading(total, rate), memory, T0)
+
+    def flies(self, events):
+        self.assertLessEqual(len(events), 1)
+        return events[0]["count"] if events else 0
+
+    def window(self):
+        # Two days with queries at the end of a 90-day window: 43,200 blocked over 172,800
+        # seconds is 0.25 a second. Today so far is the last day's 120.
+        self.stats.update(
+            {
+                "time_units": "days",
+                "dns_queries": [0] * 88 + [900, 300],
+                "blocked_filtering": [0] * 88 + [400, 120],
+                "num_blocked_filtering": 43200,
+            }
         )
-        self.assertEqual(s.observe(s.fetch(T0), memory, T0), [])  # no rise
-        stats["num_blocked_filtering"] = 100  # the rolling window moved on
-        self.assertEqual(s.observe(s.fetch(T0), memory, T0), [])
+
+    def test_rate_from_days(self):
+        self.window()
+        self.assertEqual(self.make().fetch(T0).data["rate"], 0.25)
+        self.assertEqual(normal_rate(self.stats, 43200), 0.25)
+
+    def test_rate_from_hours(self):
+        stats = {"time_units": "hours", "dns_queries": [10] * 24}
+        self.assertEqual(normal_rate(stats, 21600), 0.25)
+
+    def test_leading_empty_units_are_left_out_of_the_window(self):
+        stats = {"time_units": "hours", "dns_queries": [0] * 20 + [0, 3, 0, 8]}
+        self.assertEqual(normal_rate(stats, 2700), 0.25)  # three hours, not 24
+
+    def test_unknown_rate(self):
+        for stats in (
+            {},
+            {"time_units": "days"},
+            {"time_units": "days", "dns_queries": []},
+            {"time_units": "days", "dns_queries": [0, 0, 0]},
+            {"time_units": "days", "dns_queries": [1, "2"]},
+            {"time_units": "days", "dns_queries": [True, 1]},
+            {"time_units": "days", "dns_queries": "lots"},
+            {"time_units": "weeks", "dns_queries": [1, 2]},
+        ):
+            self.assertIsNone(normal_rate(stats, 100), stats)
+
+    def test_unknown_rate_gives_a_fly_per_fifty_blocked(self):
+        s, memory = self.make(), {}
+        self.poll(s, memory, 1000)
+        self.assertEqual(self.poll(s, memory, 1049)[0], [])
+        self.assertEqual(
+            self.poll(s, memory, 1050)[0], [{"type": "ad_blocked", "count": 1, "text": ""}]
+        )
+        self.assertEqual(memory["carry"], 0)
+
+    def test_carry_across_polls(self):
+        s, memory = self.make(), {}
+        self.observe(s, memory, 1000)
+        self.assertEqual(self.observe(s, memory, 1030), [])
+        self.assertEqual(self.observe(s, memory, 1060), [])
+        self.assertEqual(self.observe(s, memory, 1074), [])
+        self.assertEqual(memory["carry"], 74)
+        self.assertEqual(
+            self.observe(s, memory, 1075), [{"type": "ad_blocked", "count": 1, "text": ""}]
+        )
+        self.assertEqual(memory["carry"], 0)
+        self.assertEqual(self.flies(self.observe(s, memory, 1235)), 2)
+        self.assertEqual(memory["carry"], 10)
+
+    def test_a_burst_is_capped_at_eight_and_the_excess_dropped(self):
+        s, memory = self.make(), {}
+        self.observe(s, memory, 1000)
+        self.assertEqual(self.flies(self.observe(s, memory, 1000 + 75 * 20 + 7)), 8)
+        self.assertEqual(memory["carry"], 7)
+        self.assertEqual(self.flies(self.observe(s, memory, 1000 + 75 * 21)), 1)
+
+    def test_a_fly_is_never_less_than_one_blocked_query(self):
+        s, memory = self.make(fly_every_s=0.5), {}
+        self.observe(s, memory, 1000)
+        self.assertEqual(self.flies(self.observe(s, memory, 1003)), 3)
+
+    def test_zero_keeps_one_fly_per_blocked_query(self):
+        s, memory = self.make(fly_every_s=0), {}
+        self.observe(s, memory, 4800)
+        self.assertEqual(
+            self.observe(s, memory, 4803), [{"type": "ad_blocked", "count": 3, "text": ""}]
+        )
+        self.assertEqual(self.flies(self.observe(s, memory, 5303)), 500)
+
+    def test_first_sight_and_a_fall_raise_nothing(self):
+        s, memory = self.make(), {}
+        self.assertEqual(self.observe(s, memory, 1000), [])  # first sight
+        self.assertNotIn("carry", memory)
+        self.assertEqual(self.observe(s, memory, 1000), [])  # no rise
+        self.observe(s, memory, 1050)
+        self.assertEqual(self.observe(s, memory, 100), [])  # the rolling window moved on
         self.assertEqual(memory["blocked"], 100)
+        self.assertEqual(memory["carry"], 50)
+        self.assertEqual(memory["today"], 50)
+        self.assertEqual(self.flies(self.observe(s, memory, 125)), 1)
+
+    def test_memory_from_the_previous_version(self):
+        s, memory = self.make(), {"blocked": 1000}
+        reading = self.reading(1200, seed=120)
+        self.assertEqual(self.flies(s.observe(reading, memory, T0)), 2)
+        self.assertEqual(memory["carry"], 50)
+        self.assertEqual(reading.facts["blocked_today"], 120 + 200)  # seeded once, rise added
+        reading = self.reading(1210, seed=999)
+        s.observe(reading, memory, T0)
+        self.assertEqual(reading.facts["blocked_today"], 330)
+
+    def test_today_seeded_from_the_last_day(self):
+        self.window()
+        s, memory = self.make(), {}
+        self.assertEqual(self.poll(s, memory, 43200)[1], 120)
+        self.assertEqual(self.poll(s, memory, 43207)[1], 127)
+        self.assertEqual(memory["today"], 127)
+
+    def test_today_seeded_from_the_hours_since_local_midnight(self):
+        # 21:00 UTC is 22:00 in Berlin in January: the last 23 hours of the window.
+        self.stats.update(
+            {"time_units": "hours", "dns_queries": [5] * 24, "blocked_filtering": list(range(24))}
+        )
+        s, memory = self.make({"collector": {"timezone": "Europe/Berlin"}}), {}
+        self.assertEqual(self.poll(s, memory, 400)[1], sum(range(1, 24)))
+
+    def test_today_resets_at_local_midnight(self):
+        self.window()
+        s, memory = self.make({"collector": {"timezone": "Europe/Berlin"}}), {}
+        self.poll(s, memory, 43200, at(7140))
+        self.assertEqual(self.poll(s, memory, 43210, at(7170))[1], 130)  # 23:59:30 local
+        self.assertEqual(memory["day"], "2026-01-15")
+        self.assertEqual(self.poll(s, memory, 43215, at(7200))[1], 5)  # 00:00 local, no seed
+        self.assertEqual(memory["day"], "2026-01-16")
+        self.assertEqual(self.poll(s, memory, 43221, at(7230))[1], 11)
+
+    def test_unknown_shape_seeds_nothing(self):
+        s, memory = self.make(), {}
+        self.assertEqual(self.poll(s, memory, 4800)[1], 0)
+        self.assertEqual(self.poll(s, memory, 4803)[1], 3)
+        self.assertEqual(blocked_since_midnight({"time_units": "days"}, 5), 0)
 
     def test_credentials_go_with_the_first_request(self):
         self.http.routes["/control/stats"] = (200, {"num_blocked_filtering": 1})

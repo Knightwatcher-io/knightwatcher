@@ -110,6 +110,22 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(c.secret("adblock")["username"], "kw")
         self.assertEqual(c.secret_values(), ["kw", "pw-example"])
 
+    def test_adblock_fly_every_s(self):
+        def adblock(**settings):
+            return build({"sources": {"adblock": {"url": "http://192.0.2.1", **settings}}})
+
+        self.assertEqual(adblock().sources["adblock"]["fly_every_s"], 300)
+        self.assertEqual(adblock(fly_every_s=0).sources["adblock"]["fly_every_s"], 0)
+        self.assertEqual(adblock(fly_every_s=90.5).sources["adblock"]["fly_every_s"], 90.5)
+        with self.assertRaises(ConfigError) as cm:
+            adblock(fly_every_s=-1)
+        self.assertEqual(
+            cm.exception.problems, ["sources.adblock.fly_every_s: must be zero or above zero"]
+        )
+        with self.assertRaises(ConfigError) as cm:
+            adblock(fly_every_s="often")
+        self.assertEqual(cm.exception.problems, ["sources.adblock.fly_every_s: expected float"])
+
     def test_secrets_are_not_checked_when_not_given(self):
         build({"sources": {"adblock": {"url": "http://192.0.2.1"}}}, None)
 
