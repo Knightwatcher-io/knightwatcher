@@ -10,12 +10,13 @@ the pack or refuses it with the step and the field at fault, turns a look into f
 records, and draws a list by calling the primitives. It loads under Node for the tests in
 `tests/web/pack.test.js`, like `state.js`.
 
-The library is not yet wired into the page: `index.html` does not load it, and the knight is still
-drawn from code by `knight.js`, whose `rig(o)` works out the anchors and named values each frame.
-Not built yet either: the script carriers for packs shipped with the page, fetching downloaded
-packs, the plain stand-in figure drawn when there is no base pack, and anything that draws a
-decoration. A decoration's fields and shapes are checked and its cost counted, but only its
-keyframes are compiled; its shapes are not.
+The page loads the library and the base pack, `web/packs/base.pack.json`, which holds the present
+knight as data. Where the page can use the base pack it draws the knight from it, and otherwise
+from the code in `knight.js`, which draws the same knight; see [On the page](#on-the-page). Not
+built yet: fetching downloaded packs from `data/packs/`, the plain stand-in figure drawn when there
+is no base pack, the scenes' gear at rest drawn from a pack (the helmet on the stool, the sword on
+the pegs and the anvil), and anything that draws a decoration. A decoration's fields and shapes are
+checked and its cost counted, but only its keyframes are compiled; its shapes are not.
 
 This page describes format 1.0 as the library implements it.
 
@@ -192,9 +193,9 @@ range that every check below works over.
 | `sway` | the plume's sway | -4 to 4 |
 | `dShoulder`, `dChest`, `dWaist`, `dHip`, `dStance`, `dLeg`, `dHeight`, `dHead` | the build's differences from the present knight | from the measurement ranges: `dShoulder` -14 to 16, `dChest` -14 to 18, `dWaist` -18 to 18, `dHip` -14 to 18, `dStance` -8 to 10, `dLeg` -14 to 26, `dHeight` -22 to 28, `dHead` -9 to 9 |
 
-The engine clamps `drop` and `bloat` into their ranges when it fills the values array for a pack.
-The present knight stays inside them: its drop reaches 10 and its bloat 30. `RANGE` in `pack.js`
-holds the table.
+The engine clamps `drop` and `bloat` into their ranges when it fills the values array for a pack
+(`fillArrays` in `knight.js`). The present knight stays inside them: its drop reaches 10 and its
+bloat 30. `RANGE` in `pack.js` holds the table.
 
 Where a name may be used:
 
@@ -527,7 +528,8 @@ and refused if the key is unknown or the signature fails.
 
 `web/js/ed25519.js` defines `KW.ed25519.verify(publicKey, message, signature)`, and exports the
 same object under Node. The page needs a verifier of its own because `crypto.subtle` is missing on
-a page served over plain HTTP. `index.html` does not load the file yet.
+a page served over plain HTTP. `index.html` loads it before `pack.js`. No signed pack ships yet,
+so today it is never called on the page.
 
 It implements the verification of RFC 8032 section 5.1.7 for pure Ed25519 (no context, no
 prehash), with SHA-512 written in the file and the curve's arithmetic on `BigInt`. It verifies and
@@ -605,8 +607,9 @@ Each step puts one more thing back to its default. The base pack's default look 
 with every one of its builds, and its default plume fits its default helmet, so the fallback
 always ends.
 
-With no base pack loaded, `resolve` returns `{ ok: false, reason: 'no base pack' }`, and the caller
-draws its stand-in.
+With no base pack loaded, `resolve` returns `{ ok: false, reason: 'no base pack' }`. The page then
+draws the knight from code (see [On the page](#on-the-page)); the plain stand-in figure meant to
+replace that code is not built yet.
 
 ## The compiled lists
 
@@ -647,7 +650,8 @@ normal ramp is used.
 A test draws the fixture's whole knight this way through `draw.js`, in eleven poses (standing,
 bloated, attacking, unwell, walking, helmet off, sword away, at the anvil, mid-swing both ways),
 and requires every fill to equal what `knight.js` draws, pixel for pixel, and the number of fills
-to stay within the look's cost.
+to stay within the look's cost. The page's own path from the base pack is checked harder still, in
+the 98 poses of the knight's call record; see [On the page](#on-the-page).
 
 ## The library
 
@@ -691,6 +695,90 @@ Constants: `FORMAT`, `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STE
 `ANCHORS`, `ANCHOR`, `FRAME_SX`, `FRAME_SY`, `VALUES`, `VALUE`, `MEASURES`, `BASE`, `KEYS`,
 `ORDERS`.
 
+## On the page
+
+### The base pack
+
+`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.0.0,
+unsigned. It holds the present knight and nothing the display does not draw today:
+
+- one build, `build.a`, with the present knight's eight measurements and the plain head;
+- eleven items, one for each slot the present drawing has: `legs.plate`, `boots.leather`,
+  `torso.tabard`, `head.plain`, `hair.short`, `helm.open`, `plume.crest`, `pauldrons.plate`,
+  `arms.plate`, `gauntlets.plate` and `main.greatsword`;
+- one swatch for each of the four user sets, in the present colours: skin `warm`, hair `brown`,
+  tabard `blue` and plume `red`;
+- `defaults` naming all of them. It has no palettes of its own and no decorations.
+
+The helmet and the plume carry the rest views of the helmet on the house's stool, which the house
+still draws from its own code. The items and swatches are the test fixture's, unchanged; the
+fixture also carries extras the tests need (a second build, long hair, an arming sword, a shield, a
+pennant and a lantern). Its default look costs 11 932 and draws at most 99 shapes.
+
+### Carriers
+
+A page opened from disk can run a script beside it but cannot fetch a JSON file, so each pack that
+ships with the page has a carrier beside it, `web/packs/<name>.pack.js`, of one line:
+
+```js
+KW.packText.push("{\n  \"kwpack\": 1,\n  \"pack\": {\n ...");
+```
+
+The string is the pack file's text unchanged, so the page reads it exactly as it would read the
+file fetched. The only code in a carrier is the push. `knight.js` creates `KW.packText`, and
+`index.html` loads the carriers after `pack.js`. The page uses the carriers whether it is served or
+opened from disk.
+
+The carriers are written by a tool, never by hand. Run it after every change to a pack file:
+
+```bash
+node tools/pack-carrier.js                            # every web/packs/*.pack.json
+node tools/pack-carrier.js web/packs/base.pack.json   # one file
+```
+
+It is written in JavaScript because `JSON.stringify` writes a string literal that JavaScript reads
+back to exactly the same text, whatever the file holds; a shell script would need its own escaping.
+`tests/tools/pack-carrier.test.js` checks that every pack file has a carrier and that every carrier
+pushes its file's text byte for byte.
+
+### Two paths
+
+`main.js` calls `KW.knight.start(KW.packText, allowUnsigned)` once at start-up, with
+`allowUnsigned` true only when the page's `kw-version` meta tag says `dev`, the way it reads the
+version for the reload check. `start` reads every carried text with `read()`, gathers the results
+and resolves the default look (`resolve(packs, {})`). The choice it makes holds until the page is
+loaded again:
+
+- **A `dev` page** (the repository's own, opened from disk or served straight from `web/`) accepts
+  the unsigned base pack and draws the knight from it.
+- **A deployed page** refuses the unsigned base pack at the `signature` step (`sig: is missing, and
+  this page accepts only signed packs`), so no look resolves and the page draws the knight from the
+  code in `knight.js`.
+
+The code path stays because the key the base pack will be signed with does not exist yet, and a
+deployed page accepts only signed packs. Until a signed base pack ships, the code keeps every
+deployed display drawing the present knight. Both paths give the same pixels: the call record
+and the screenshots prove it (see [page.md](./page.md#checks)). Once a signed base pack ships, the
+plain stand-in figure is meant to take the code's place as the drawing for "no usable base pack".
+
+Nothing is drawn on screen about the choice. The console gets one line, `console.info` for the
+pack and `console.warn` for code:
+
+```
+knightwatcher: the knight is drawn from the base pack kw.base 1.0.0, unsigned
+knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
+```
+
+The reason in that line is cut to 120 characters. `KW.knight.source` holds `'pack'` or `'code'`, and
+`KW.knight.status` holds `{ source, base, refused, note }`: `base` is `{ id, version, signed }` of
+the base pack in use, or `null`; `refused` lists `{ id, step, reason }` for every pack turned away,
+with the reason whole; `note` is the console line. A settings screen can read both. The code path
+is also taken when no base pack is carried, when the base pack fails any other step, when the pack
+library is missing, and when the default weapon is not held in both hands, since every pose holds
+one so.
+
+Each frame on the pack path is described under [the rig in page.md](./page.md#the-knights-rig).
+
 ## Tests
 
 ```bash
@@ -716,3 +804,17 @@ order, so the decoding is tested by itself against every encoding with `y` of `p
 random ones. Wrong arguments, the fixture pack read through `pack.js` with this verifier in place,
 and the same check of the source as for `pack.js` complete it. Under Node 26, `node:crypto` gave
 the same answer as this verifier for every signature the tests put to both.
+
+`tests/web/base-pack.test.js` checks the base pack: read on a `dev` page and refused at the
+`signature` step otherwise, one build with the present measurements, one item for each slot the
+present drawing has and nothing more, each item and swatch equal to the fixture's, and a default
+look that resolves with nothing missing at a cost of 11 932. `tests/web/knight.test.js` draws the
+knight's 98 poses from the base pack as the page does and compares every call with the record
+taken from the code; [page.md](./page.md#checks) describes it.
+
+```bash
+node --test tests/tools/
+```
+
+`tests/tools/pack-carrier.test.js` checks the carriers against their pack files and the tool
+itself.

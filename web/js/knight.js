@@ -1,11 +1,15 @@
 /* Knightwatcher: the knight, on the fine grid. Open helm, red plume, blue tabard, a greatsword held
    in both hands. pose() turns a condition into the knight's pose, rig() turns a pose into the points
-   the knight is drawn on, and knightHD() draws it there. */
+   the knight is drawn on, and draw() draws it there: from the base pack when start() found one it
+   can use (packHD), and otherwise from the code below (codeHD), which draws the same knight. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C, U = V.U;
   const { alpha, Rh, ell, rrect, poly, strip, lerp, ease, STEEL, STEEL2, STEEL3, GOLD, LEATHER } = D;
   const SKINS = { F: [[.14, C.F0], [.72, C.F1], [1, C.F2]], L: [[.14, '#dff3bd'], [.72, '#b9dd92'], [1, '#94bd6e']], P: [[.14, '#ffc9b8'], [.72, '#ff9f8c'], [1, '#e07a66']] };
+  /* The texts of the packs that ship with the page. Each carrier in packs/, loaded after this file,
+     pushes its pack's file onto it, and start() reads them. */
+  KW.packText = KW.packText || [];
 
   /* ---- The rig ----------------------------------------------------------------------------------
      Each frame rig(o) works out, from the pose and the build, the named points the knight is drawn
@@ -16,8 +20,9 @@
      also the reference: the values dShoulder to dHead are a build's measurements less these, so for
      the present knight they are all 0 and the terms that use them move nothing. */
   const BUILD = Object.freeze({ shoulder: 54, chest: 46, waist: 46, hip: 46, stance: 24, leg: 74, height: 132, head: 51 });
-  /* The greatsword's two hand stations along its frame, upper and lower. */
-  const HANDS = [6, -30];
+  /* The greatsword's two hand stations along its frame, upper and lower. On the pack path they are
+     the weapon's own, which for the base pack's greatsword are the same two. */
+  let HANDS = [6, -30];
 
   /* The rig's result, filled in place on every call so that drawing a frame allocates nothing for it.
      Each anchor is an [x, y] pair, except main, the weapon's frame, which is [x, y, angle]. The
@@ -152,14 +157,49 @@
     const n = Math.floor(t / 320) % 4; for (let i = 0; i < n; i++) ell(x + 20 + i * 17, y + 20, 5, 5, C.K);
   }
 
-  /* Draws the knight from the pose o: o.x is the middle of the body on the fine grid, o.floor the
-     ground underfoot. Every position comes from the rig. */
-  function knightHD(o) {
-    const t = o.t, r = rig(o);
+  /* ---- The engine's own steps ------------------------------------------------------------------
+     Drawn by code on both paths, at their places in the order of one frame: the crates before
+     everything, the drumstick after the face, the hammer between the right arm and its gauntlet,
+     and what floats around the knight after everything. */
+  function cratesHD(o, neck) {
+    // the crates, carried overhead
+    if (o.crates) { const w = Math.round(Math.sin(o.t / 900) * 5); P.crateHD(neck[0] - 30, neck[1] - 160); P.crateHD(neck[0] - 26 + w, neck[1] - 210); P.crateHD(neck[0] - 30 + 2 * w, neck[1] - 260); }
+  }
+  /* The drumstick follows the head up and down but not sideways. */
+  function drumHD(o, neck, head) { if (o.food) SP.drum(neck[0] + 18, head[1] - 6 + (Math.floor(o.t / 160) % 2) * 5); }
+  /* The smith's hammer, swung from the weapon's frame. */
+  function hammerHD(main) {
+    const ex = main[0] + Math.sin(main[2]) * 50, ey = main[1] - Math.cos(main[2]) * 50;
+    strip(main[0], main[1], ex, ey, 4, 4, [[.4, C.N0], [1, C.N2]]);
+    rrect(ex - 20, ey - 14, 40, 28, 5, C.K); rrect(ex - 17, ey - 11, 34, 22, 3, STEEL3);
+  }
+  /* What floats around the knight, hung on the neck so that it rises and sinks with the body. The
+     hearts rise from a fixed height and do not sink with the body. */
+  function effectsHD(o, neck, root) {
+    const t = o.t;
+    if (o.sweat) {
+      const n = o.sweat >= 1 ? 6 : 2;
+      for (let i = 0; i < n; i++) {
+        const ph = ((t / 620) + i / n) % 1, side = i % 2 ? 1 : -1;
+        if (ph < .9) { const x = neck[0] - 2 + side * (76 + ph * 50), y = neck[1] - 78 - Math.sin(ph * Math.PI) * 36 + ph * 90; poly([[x, y - 10], [x - 5, y + 2], [x + 5, y + 2]], '#7fe9ff'); ell(x, y + 3, 5, 5, '#7fe9ff'); Rh(x - 3, y + 1, 2, 3, C.W); }
+      }
+    }
+    if (o.steam) for (let i = 0; i < 3; i++) { const ph = ((t / 900) + i / 3) % 1; alpha(1 - ph); ell(neck[0] - 42 + i * 40 + Math.sin(ph * 6 + i) * 10, neck[1] - 122 - ph * 66, 9 - ph * 4, 9 - ph * 4, C.W); alpha(1); }
+    if (o.mark && Math.floor(t / 320) % 3 !== 2) SP.mark(neck[0], neck[1] - 212, o.mark);
+    if (o.bubble) { rrect(neck[0] - 202, neck[1] - 232, 112, 82, 30, C.K); rrect(neck[0] - 198, neck[1] - 228, 104, 74, 26, C.W); ell(neck[0] - 96, neck[1] - 136, 9, 9, C.W); ell(neck[0] - 76, neck[1] - 112, 6, 6, C.W); SP.drum(neck[0] - 166, neck[1] - 212); }
+    if (o.progress != null) { rrect(neck[0] - 68, neck[1] - 190, 136, 30, 8, C.W); rrect(neck[0] - 63, neck[1] - 185, 126, 20, 5, C.K); rrect(neck[0] - 59, neck[1] - 181, Math.max(6, 118 * o.progress), 12, 3, '#7fe9ff'); }
+    if (o.hearts) for (let i = 0; i < 3; i++) { const ph = ((t / 1100) + i / 3) % 1; alpha(1 - ph * .8); SP.heart(root[0] - 83 + i * 70, root[1] - 280 - ph * 70); alpha(1); }
+    if (o.speak) speechHD(neck[0] + 30, neck[1] - 200, t);
+  }
+
+  /* Draws the knight from code, from the pose o: o.x is the middle of the body on the fine grid,
+     o.floor the ground underfoot. Every position comes from the rig. This is the path when no base
+     pack can be used, as on a deployed page until the base pack is signed. */
+  function codeHD(o) {
+    const r = rig(o);
     const { root, footL, footR, hipL, hipR, hem, belt, neck, shoulderL, shoulderR, head, handL, handR, main } = r.anchors;
     const { drop, bloat, stepL, stepR, sway } = r.values;
-    // the crates, carried overhead
-    if (o.crates) { const w = Math.round(Math.sin(t / 900) * 5); P.crateHD(neck[0] - 30, neck[1] - 160); P.crateHD(neck[0] - 26 + w, neck[1] - 210); P.crateHD(neck[0] - 30 + 2 * w, neck[1] - 260); }
+    cratesHD(o, neck);
     // greaves, knee cops, boots
     rrect(hipL[0] - 17, hipL[1], 34, 56 - drop, 8, C.K); rrect(hipL[0] - 14, hipL[1] + 3, 28, 50 - drop, 6, STEEL2);
     rrect(hipR[0] - 17, hipR[1], 34, 56 - drop, 8, C.K); rrect(hipR[0] - 14, hipR[1] + 3, 28, 50 - drop, 6, STEEL3);
@@ -176,16 +216,14 @@
     ell(neck[0], ty + 28, 24, 14, C.G2); ell(neck[0], ty + 28, 22, 12, GOLD); ell(neck[0], ty + 28, 16, 7, C.B3); ell(neck[0], ty + 28, 7, 6, C.W); ell(neck[0], ty + 28, 3, 3, C.K);
     // head, then the pauldrons. The drumstick follows the head up and down but not sideways.
     if (o.helmet === false) bareHD(head[0], head[1], o); else helmHD(head[0], head[1], o, sway);
-    if (o.food) SP.drum(neck[0] + 18, head[1] - 6 + (Math.floor(t / 160) % 2) * 5);
+    drumHD(o, neck, head);
     ell(shoulderL[0] + 4, shoulderL[1] - 7, 25, 20, C.K); ell(shoulderL[0] + 4, shoulderL[1] - 8, 22, 17, STEEL); Rh(shoulderL[0] - 3, shoulderL[1] - 13, 4, 4, C.S3);
     ell(shoulderR[0] - 4, shoulderR[1] - 7, 25, 20, C.K); ell(shoulderR[0] - 4, shoulderR[1] - 8, 22, 17, STEEL2); Rh(shoulderR[0] - 1, shoulderR[1] - 13, 4, 4, C.S4);
     // the arms and hands, by grip
     if (r.grip === 'hammer') {
       // the left hand steadies the work, the right swings a hammer
-      const ex = main[0] + Math.sin(main[2]) * 50, ey = main[1] - Math.cos(main[2]) * 50;
       armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); gauntHD(handL[0], handL[1]);
-      armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); strip(main[0], main[1], ex, ey, 4, 4, [[.4, C.N0], [1, C.N2]]);
-      rrect(ex - 20, ey - 14, 40, 28, 5, C.K); rrect(ex - 17, ey - 11, 34, 22, 3, STEEL3); gauntHD(handR[0], handR[1]);
+      armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); hammerHD(main); gauntHD(handR[0], handR[1]);
     } else if (r.grip === 'two') {
       // Both hands on the grip. The arm on the side the blade leans to is drawn first, so the
       // blade and its guard pass in front of it and no arm crosses over the steel.
@@ -198,21 +236,93 @@
       armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); gauntHD(handL[0], handL[1]);
       armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); gauntHD(handR[0], handR[1]);
     }
-    // what floats around the knight, hung on the neck so that it rises and sinks with the body
-    if (o.sweat) {
-      const n = o.sweat >= 1 ? 6 : 2;
-      for (let i = 0; i < n; i++) {
-        const ph = ((t / 620) + i / n) % 1, side = i % 2 ? 1 : -1;
-        if (ph < .9) { const x = neck[0] - 2 + side * (76 + ph * 50), y = neck[1] - 78 - Math.sin(ph * Math.PI) * 36 + ph * 90; poly([[x, y - 10], [x - 5, y + 2], [x + 5, y + 2]], '#7fe9ff'); ell(x, y + 3, 5, 5, '#7fe9ff'); Rh(x - 3, y + 1, 2, 3, C.W); }
+    effectsHD(o, neck, root);
+  }
+
+  /* ---- Drawing from the base pack ---------------------------------------------------------------
+     start() reads the packs the carriers pushed, gathers them and resolves the default look. When
+     that gives a look, the knight is drawn from its lists (packHD); otherwise from codeHD. The
+     choice is made once, and KW.knight.source says which: 'pack' or 'code'.
+
+     Each frame packHD runs the rig, copies its anchors and values into the two arrays pack.js's
+     draw() reads, and walks the order sequence() gives for the grip and the helmet, drawing the
+     look's lists and, between them, the engine's own steps above. Nothing is allocated for it. */
+  const PK = { lib: null, look: null, A: null, Vs: null, from: null, iDrop: 0, iBloat: 0, iStepL: 0, iStepR: 0, iSway: 0,
+    drop: [0, 0], bloat: [0, 0], hA: null, hV: null };
+  const clampTo = (v, r) => (v < r[0] ? r[0] : v > r[1] ? r[1] : v);
+  /* The pose's anchors and values into the library's arrays, in its order, the weapon frame's
+     direction after the anchors, drop and bloat clamped into the ranges the library states. */
+  function fillArrays(r) {
+    const A = PK.A, from = PK.from, Vs = PK.Vs, v = r.values, m = r.anchors.main, lib = PK.lib;
+    for (let i = 0; i < from.length; i++) { const p = from[i]; if (p) { A[2 * i] = p[0]; A[2 * i + 1] = p[1]; } }
+    A[lib.FRAME_SX] = Math.sin(m[2]); A[lib.FRAME_SY] = -Math.cos(m[2]);
+    Vs[PK.iDrop] = clampTo(v.drop, PK.drop); Vs[PK.iBloat] = clampTo(v.bloat, PK.bloat);
+    Vs[PK.iStepL] = v.stepL; Vs[PK.iStepR] = v.stepR; Vs[PK.iSway] = v.sway;
+  }
+  /* The skin ramp for @skin.face: the swatch's sick ramp when the knight is ill, its hot ramp when
+     overheated, and the list's own (the normal ramp) otherwise. */
+  const faceRamp = o => (o.face === 'L' ? PK.look.colours.sick : o.face === 'P' ? PK.look.colours.hot : undefined);
+  function packHD(o) {
+    // The format has no drooping plume, so a pose that asks for one is drawn by code. No pose of
+    // the page sets it.
+    if (o.droop) { codeHD(o); return; }
+    const r = rig(o, PK.look.m), lib = PK.lib, L = PK.look.lists, A = PK.A, Vs = PK.Vs;
+    fillArrays(r);
+    const { root, neck, head, main } = r.anchors, face = faceRamp(o);
+    const mode = r.grip === 'two' ? (A[lib.FRAME_SX] >= 0 ? 'twoR' : 'twoL') : r.grip;
+    const seq = lib.sequence(mode, o.helmet !== false);
+    for (let i = 0; i < seq.length; i++) {
+      switch (seq[i]) {
+        case 'crates': cratesHD(o, neck); break;
+        case 'face': faceHD(head[0], head[1], o); break;
+        case 'drumstick': drumHD(o, neck, head); break;
+        case 'hammer': hammerHD(main); break;
+        case 'effects': effectsHD(o, neck, root); break;
+        default: lib.draw(L[seq[i]], A, Vs, D, face);
       }
     }
-    if (o.steam) for (let i = 0; i < 3; i++) { const ph = ((t / 900) + i / 3) % 1; alpha(1 - ph); ell(neck[0] - 42 + i * 40 + Math.sin(ph * 6 + i) * 10, neck[1] - 122 - ph * 66, 9 - ph * 4, 9 - ph * 4, C.W); alpha(1); }
-    if (o.mark && Math.floor(t / 320) % 3 !== 2) SP.mark(neck[0], neck[1] - 212, o.mark);
-    if (o.bubble) { rrect(neck[0] - 202, neck[1] - 232, 112, 82, 30, C.K); rrect(neck[0] - 198, neck[1] - 228, 104, 74, 26, C.W); ell(neck[0] - 96, neck[1] - 136, 9, 9, C.W); ell(neck[0] - 76, neck[1] - 112, 6, 6, C.W); SP.drum(neck[0] - 166, neck[1] - 212); }
-    if (o.progress != null) { rrect(neck[0] - 68, neck[1] - 190, 136, 30, 8, C.W); rrect(neck[0] - 63, neck[1] - 185, 126, 20, 5, C.K); rrect(neck[0] - 59, neck[1] - 181, Math.max(6, 118 * o.progress), 12, 3, '#7fe9ff'); }
-    // the hearts rise from a fixed height and do not sink with the body
-    if (o.hearts) for (let i = 0; i < 3; i++) { const ph = ((t / 1100) + i / 3) % 1; alpha(1 - ph * .8); SP.heart(root[0] - 83 + i * 70, root[1] - 280 - ph * 70); alpha(1); }
-    if (o.speak) speechHD(neck[0] + 30, neck[1] - 200, t);
+  }
+  /* The bare head with its head anchor at (hx, hy), as the house's sleeper wears it: the look's
+     head group with the helmet off, and the face. */
+  function packHead(hx, hy, o) {
+    const A = PK.hA, h = 2 * PK.lib.ANCHOR.head;
+    A[h] = hx; A[h + 1] = hy;
+    PK.lib.draw(PK.look.lists.headOff, A, PK.hV, D, faceRamp(o));
+    faceHD(hx, hy, o);
+  }
+  function knightHD(o) { if (PK.look) packHD(o); else codeHD(o); }
+
+  /* Chooses, once at start-up, where the knight is drawn from. texts are the packs' files (the page
+     passes KW.packText), and allowUnsigned is true only on a page whose version is 'dev'. Reads
+     every text, gathers the packs and resolves the default look; if that gives a look with a
+     two-handed weapon, the knight is drawn from it. Returns, and keeps in KW.knight.status,
+     { source, base, refused, note }: base is { id, version, signed } of the base pack in use or
+     null, refused lists { id, step, reason } for every pack turned away, and note is the one line
+     for the console. */
+  const cutTo = (s, n) => (s.length > n ? s.slice(0, n - 3) + '...' : s);
+  function start(texts, allowUnsigned) {
+    const lib = KW.pack, st = { source: 'code', base: null, refused: [], note: '' };
+    const done = why => { st.note = 'knightwatcher: the knight is drawn from code: ' + why; KW.knight.source = st.source; KW.knight.status = st; return st; };
+    PK.lib = null; PK.look = null; HANDS = [6, -30];
+    if (!lib || typeof lib.read !== 'function') return done('the pack library is not loaded');
+    const results = (Array.isArray(texts) ? texts : []).map(t => lib.read(t, { allowUnsigned: allowUnsigned === true }));
+    const g = lib.gather(results);
+    st.refused = g.rejected.map(r => ({ id: (r && r.id) || null, step: r && r.step, reason: String((r && r.reason) || '') }));
+    const look = lib.resolve(g.packs, {});
+    if (!look.ok) {
+      const no = st.refused.find(r => r.id === lib.BASE_ID);
+      return done(no ? 'the base pack ' + no.id + ' was refused at the ' + no.step + ' step: ' + cutTo(no.reason, 120) : 'no base pack is loaded');
+    }
+    if (!look.grip || look.grip.kind !== 'two' || look.grip.hands.length !== 2) return done('the base pack\'s weapon is not two-handed, and the poses hold one in both hands');
+    const base = g.packs.get(lib.BASE_ID);
+    Object.assign(PK, { lib, look, A: lib.newAnchors(), Vs: lib.newValues(), hA: lib.newAnchors(), hV: lib.newValues(),
+      from: lib.ANCHORS.map(n => RIG.anchors[n] || null), drop: lib.RANGE.drop, bloat: lib.RANGE.bloat,
+      iDrop: lib.VALUE.drop, iBloat: lib.VALUE.bloat, iStepL: lib.VALUE.stepL, iStepR: lib.VALUE.stepR, iSway: lib.VALUE.sway });
+    HANDS = look.grip.hands.slice();
+    st.source = 'pack'; st.base = { id: base.id, version: base.version, signed: base.signed };
+    st.note = 'knightwatcher: the knight is drawn from the base pack ' + base.id + ' ' + base.version + (base.signed ? ', signed' : ', unsigned');
+    KW.knight.source = st.source; KW.knight.status = st;
+    return st;
   }
 
   /* The state of the knight for a condition id (see docs/state.md), at time t. gx and gy place the
@@ -252,8 +362,9 @@
   }
 
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
-     the head anchor is 120 right of that corner and 94 below it. speech draws a speech bubble. rig
-     is described above, and build is the present knight's measurements. */
-  const headAtCorner = (ax, ay, o) => bareHD(ax + 120, ay + 94, o);
-  KW.knight = { draw: knightHD, rig, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD };
+     the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
+     knight is. speech draws a speech bubble. rig and start are described above, build is the
+     present knight's measurements, source is 'pack' or 'code' and status what start() found. */
+  const headAtCorner = (ax, ay, o) => (PK.look ? packHead(ax + 120, ay + 94, o) : bareHD(ax + 120, ay + 94, o));
+  KW.knight = { draw: knightHD, rig, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD, start, source: 'code', status: null };
 })(window.KW);

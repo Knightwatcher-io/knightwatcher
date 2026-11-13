@@ -9,8 +9,9 @@ touching `web/js/pack.js` or a pack file.
 ## Layout
 
 ```
-web/                 the page: static files, no build step (index.html, css/, fonts/, js/)
+web/                 the page: static files, no build step (index.html, css/, fonts/, js/, packs/)
   js/scenes/         one file per scene
+  packs/             the packs that ship with the page, each a .pack.json and its .pack.js carrier
 collector/           the collector: Python, standard library only
   sources/           one module per source
 tests/
@@ -18,9 +19,10 @@ tests/
   web/               node tests for the page's scripts
     fixtures/knight/ the stored call record of the knight's drawing
     fixtures/        a fixture pack for the pack library's tests
-  tools/             node tests for tools/deploy.sh
+  tools/             node tests for tools/deploy.sh and tools/pack-carrier.js
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version
+  pack-carrier.js    writes the carrier of each pack in web/packs/
   icons.sh           regenerates the favicon and the app icons from the drawings in icons/
   shots.sh           regression screenshots of the page
   check-private.sh   the check that no private detail is tracked
@@ -34,6 +36,9 @@ compose.yaml  Dockerfile  config.example.toml  secrets.example.json  pyproject.t
   [state.md](./state.md) in the same commit.
 - **The page has no build step and no dependencies.** It must open from disk in a browser.
 - **The collector uses the standard library alone.** A dependency needs a reason written here.
+- **A pack file and its carrier change together.** After editing a file in `web/packs/`, run
+  `node tools/pack-carrier.js` and commit both; a test fails while they differ. See
+  [packs.md](./packs.md#carriers).
 - **Invented data everywhere.** See [security.md](./security.md). Run `tools/check-private.sh`
   before every push.
 - **Docs describe what is built.** The last step of every change is the docs: check each doc
@@ -60,7 +65,7 @@ The last two need a `.env`, a `config.toml` and a `secrets.json` in place; see
 The page:
 
 ```bash
-for f in $(find web/js -name '*.js'); do node --check "$f" || exit 1; done
+for f in $(find web/js web/packs -name '*.js'); do node --check "$f" || exit 1; done
 node --test tests/web/
 node --test tests/tools/
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-ref    # before a change
@@ -73,10 +78,15 @@ it looks. With time frozen each shot depends only on its address, however many f
 machine paints. Take one set at a time all the same: two browsers shooting at once have not been
 tried. [page.md](./page.md) has the rest.
 
-`node --test tests/web/` includes a faster check for the knight: it draws the knight in about a
-hundred poses against a fake canvas and compares every call with a stored record, in about a
-second. The record is stored again only when the knight is meant to change; [page.md](./page.md#checks)
-says how.
+`node --test tests/web/` includes a faster check for the knight: it draws the knight in 98 poses
+against a fake canvas, once from code and once from the base pack, and compares every call with a
+stored record, in about a second. The record is stored again only when the knight is meant to
+change; [page.md](./page.md#checks) says how. `node --test tests/tools/` also checks that every
+pack carrier matches its pack file.
+
+The repository's own page draws the knight from the base pack and a deployed copy draws it from
+code, so the screenshots of the repository's page check the pack path, and the knight test checks
+both.
 
 ## The logo and the icons
 

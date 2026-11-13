@@ -1,6 +1,7 @@
-/* Knightwatcher: start-up. Reads the address, sizes the canvas to the screen, keeps the clock and
-   the words over the scene, runs the frames, chooses between the demo and live data, and reloads
-   the page when a new version of it has been deployed.
+/* Knightwatcher: start-up. Reads the address, chooses whether the knight is drawn from the base pack
+   or from code, sizes the canvas to the screen, keeps the clock and the words over the scene, runs
+   the frames, chooses between the demo and live data, and reloads the page when a new version of
+   it has been deployed.
    docs/page.md describes the modes and the address's test hooks. */
 (function (KW) {
   'use strict';
@@ -19,6 +20,17 @@
   const tHook = hv('t') == null ? NaN : +hv('t');
   KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'), mon: ['a', 'b', 'c'].includes(hv('mon')) ? hv('mon') : 'a' };
   const freeze = KW.hooks.frozen;
+
+  /* The page's own version, from the meta tag tools/deploy.sh stamps. The repository's own page
+     says 'dev'. */
+  const ownVersion = (document.querySelector('meta[name="kw-version"]') || {}).content || 'dev';
+
+  /* ---- The knight: from the base pack, or from code ------------------------------------------
+     Chosen once, here. The packs that ship with the page come in through their carriers. Only a
+     'dev' page accepts an unsigned pack; a deployed page refuses one at the signature step and
+     draws the knight from code, which draws the same knight. One line in the console says which. */
+  const knight = KW.knight.start(KW.packText, ownVersion === 'dev');
+  if (knight.source === 'pack') console.info(knight.note); else console.warn(knight.note);
 
   /* ---- The words over the scene ------------------------------------------------------------- */
   const $ = id => document.getElementById(id);
@@ -139,7 +151,6 @@
      in sessionStorage, or in memory where sessionStorage is refused. The repository's own page
      says 'dev' and never checks. */
   const VERSION_CHECK_MS = 5 * 60 * 1000, MARK_KEY = 'kw-reload';
-  const ownVersion = (document.querySelector('meta[name="kw-version"]') || {}).content || 'dev';
   let markInMemory = null;
   function readMark() {
     try { const s = sessionStorage.getItem(MARK_KEY); return s ? JSON.parse(s) : markInMemory; } catch (e) { return markInMemory; }
