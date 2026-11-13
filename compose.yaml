@@ -13,7 +13,9 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    user: "1000:1000"
+    # An account of its own that owns nothing on the host; docs/configuration.md says how to
+    # give it the few files it needs.
+    user: "10001:10001"
     healthcheck:
       test: ["CMD", "python", "-m", "collector", "--health"]
       interval: 30s

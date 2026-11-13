@@ -161,8 +161,9 @@ python3 -m collector                    # poll until stopped
 container. The collector takes an exclusive lock on its state folder, so a second collector
 pointed at the same folder exits at once.
 
-The container definition is `compose.yaml`: a non-root user (uid and gid 1000), a read-only
-root filesystem, no capabilities, `no-new-privileges`, the host's network, no published port
-and no Docker socket. Its health check runs `--health`. Every host path is bound with
-`create_host_path: false`, so a missing path stops the container rather than leaving Docker to
-create an empty folder there.
+The container definition is `compose.yaml`: a non-root user of its own (uid and gid 10001), a
+read-only root filesystem, no capabilities, `no-new-privileges`, the host's network, no
+published port and no Docker socket. Its health check runs `--health`. Every host path is bound
+with `create_host_path: false`, so a missing path stops the container rather than leaving Docker
+to create an empty folder there. [configuration.md](./configuration.md#the-collectors-account)
+says how that user is given the files it needs.

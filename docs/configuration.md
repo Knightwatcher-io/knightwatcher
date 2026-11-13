@@ -147,11 +147,32 @@ one is missing.
 
 | Variable | Example | Mounted at |
 |---|---|---|
-| `KNIGHTWATCH_OUT` | `/srv/www/knightwatch/data` | `/out`, where `state.json` is written. Must exist and be writable by uid 1000. |
+| `KNIGHTWATCH_OUT` | `/srv/www/knightwatch/data` | `/out`, where `state.json` is written. Must exist and be writable by the collector's account. |
 | `KNIGHTWATCH_BACKUP_LOG` | `/var/log/backup.log` | `/host/backup.log`, read-only. |
 | `KNIGHTWATCH_DATA_DISK` | `/data/lost+found` | `/host/disks/data`, read-only. Any folder on the data volume works; an empty one shares nothing but the volume's size. |
-| `KNIGHTWATCH_VAR` | `./var` (the default) | `/var/lib/knightwatch`, the memory file. Must exist and be writable by uid 1000. |
+| `KNIGHTWATCH_VAR` | `./var` (the default) | `/var/lib/knightwatch`, the memory file. Must exist and be writable by the collector's account. |
 
 `config.toml`, `secrets.json` and the host's `/proc` are mounted from fixed places: the first
 two from beside `compose.yaml`, read-only, at `/etc/knightwatch/`, and `/proc` read-only at
 `/host/proc`.
+
+## The collector's account
+
+The container runs as uid and gid 10001, an account that exists only inside the image and owns
+nothing on the host. It needs to read `secrets.json` and to write in the output folder and the
+memory folder. Access control lists grant that without root, as long as you own the files, and
+leave their owner and mode alone:
+
+```bash
+setfacl -m u:10001:r secrets.json
+setfacl -m u:10001:rwx var /srv/www/knightwatch/data
+setfacl -d -m u:10001:rwx,u:$(id -u):rwx var /srv/www/knightwatch/data
+```
+
+The third line sets the default for files made in the two folders from then on, and names your
+own uid as well so that you can still read what the collector writes. Files already there from
+an earlier run under another uid need the grant once: `setfacl -m u:10001:rw` on each. Stop that
+earlier collector first, since every file it rewrites comes back without the grant.
+`config.toml` and the backup log only need to be readable by everyone, and `/proc` needs nothing.
+
+To run it under another uid, change `user:` in `compose.yaml` and grant that uid instead.
