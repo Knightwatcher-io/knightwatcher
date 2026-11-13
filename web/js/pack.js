@@ -1463,14 +1463,15 @@
      two-handed grip leaning right and left: both arms before the blade, the one on the side it
      leans to first, and the gauntlets after it, the upper hand's first. The one-handed sword is in
      the right hand: one draws the shield's group first and then the sword's; oneCrossed, when the
-     sword hand crosses to the shield's side, draws both arms before the blade and the shield last,
-     so the blade may pass over the shield arm but never under it, and goes behind the shield. The
-     off gauntlet lies behind the shield in every pose. */
+     sword hand crosses to the shield's side, draws both arms first, then the shield, then the blade
+     and last the sword hand's gauntlet, so the sword arm stays behind the shield and the blade
+     passes in front of it. The off gauntlet lies behind the shield in every pose. In every mode
+     the crates go after the pauldrons and before the hands group, so the arms lie over them. */
   const HANDS = { none: ['armL', 'gauntL', 'armR', 'gauntR'], hammer: ['armL', 'gauntL', 'armR', 'hammer', 'gauntR'],
     twoR: ['armR', 'armL', 'main', 'gauntR', 'gauntL'], twoL: ['armL', 'armR', 'main', 'gauntL', 'gauntR'],
-    one: ['armL', 'gauntL', 'off', 'armR', 'main', 'gauntR'], oneCrossed: ['armL', 'gauntL', 'armR', 'main', 'gauntR', 'off'] };
+    one: ['armL', 'gauntL', 'off', 'armR', 'main', 'gauntR'], oneCrossed: ['armL', 'gauntL', 'armR', 'off', 'main', 'gauntR'] };
   const ORDERS = freeze(Object.keys(HANDS).reduce((o, m) => {
-    const seq = head => ['crates', 'body', head, 'face', 'drumstick', 'pauldrons'].concat(HANDS[m], ['effects']);
+    const seq = head => ['body', head, 'face', 'drumstick', 'pauldrons', 'crates'].concat(HANDS[m], ['effects']);
     o[m] = { on: seq('headOn'), off: seq('headOff') };
     return o;
   }, {}));

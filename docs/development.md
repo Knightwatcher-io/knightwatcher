@@ -86,17 +86,17 @@ tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
 The screenshots compare the page with itself before and after a change that should not alter how
 it looks. With time frozen each shot depends only on its address, however many frames a busy
 machine paints. Take one set at a time all the same: two browsers shooting at once have not been
-tried. The six `arm-` shots draw the sword and shield through the address's `arm=one`; a reference
-taken from a tree older than that hook draws the greatsword there, so against it only those six
-differ. [page.md](./page.md) has the rest.
+tried. The nine `arm-` shots draw the sword and shield through the address's `arm=one`; a
+reference taken from a tree older than that hook draws the greatsword there, so against it only
+those differ. [page.md](./page.md) has the rest.
 
-`node --test tests/web/` includes a faster check for the knight: it draws the knight in 98 poses,
-the gear at rest, and the house and the smithy, which show that gear, against a fake canvas, once
+`node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
+the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy, which show that gear, against a fake canvas, once
 from code and once from the base pack, and compares every call with a
 stored record, in about a second. The record is stored again only when the knight or those scenes are meant to change;
-[page.md](./page.md#checks) says how. The same file draws every frame of the swings and the attack
-with the greatsword and with the sword and shield, and fails if an arm is drawn over a blade or a
-shield ([page.md](./page.md#the-knights-rig)). `node --test tests/tools/` also checks that every pack
+[page.md](./page.md#checks) says how. The same file draws every frame of the swings, the attack
+and the goblin strike with the greatsword and with the sword and shield, and fails if an arm is
+drawn over a blade or a shield ([page.md](./page.md#the-knights-rig)). `node --test tests/tools/` also checks that every pack
 carrier matches its pack file, tests the signing tool with keys generated for the run, and checks
 that every pack in `web/packs/` that carries a `sig` verifies against the key table in `pack.js`.
 `tests/web/loading.test.js` checks the downloaded packs, the refusals and the knight drawn from code

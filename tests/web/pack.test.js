@@ -146,11 +146,18 @@ function rig(o, d) {
   let mode;
   if (o.hammer != null) { mode = 'hammer'; set('handL', X + 45, Y - 104 + u); set('handR', X + 80 + b, Y - 122 + u); }
   else if (o.sword !== false) {
+    // past level the upper hand slides down the grip, 2 at an angle of 1.8 and beyond
     const a = o.wang || 0, gx = ox + o.gx * U, gy = oy + o.gy * U + u, sx = Math.sin(a), sy = -Math.cos(a);
-    const up = [gx + sx * 2, gy + sy * 2], low = [gx - sx * 30, gy - sy * 30], right = sx >= 0;
+    const s0 = 2 - 2 * Math.max(0, Math.min(1, (Math.abs(a) - 1.4) / 0.4));
+    const up = [gx + sx * s0, gy + sy * s0], low = [gx - sx * 30, gy - sy * 30], right = sx >= 0;
     set('main', gx, gy); A[PK.FRAME_SX] = sx; A[PK.FRAME_SY] = sy;
     set(right ? 'handR' : 'handL', up[0], up[1]); set(right ? 'handL' : 'handR', low[0], low[1]);
     mode = right ? 'twoR' : 'twoL';
+  } else if (o.crates) {
+    // the carrying grip: both hands at the lower corners of the crate held against the chest
+    mode = 'none';
+    const nx = A[2 * PK.ANCHOR.neck], ny = A[2 * PK.ANCHOR.neck + 1], w = Math.round(Math.sin(o.t / 900) * 2);
+    set('handL', nx - 44 + w, ny + 62); set('handR', nx + 44 + w, ny + 62);
   } else { mode = 'none'; set('handL', X - (64 + b), Y - 84 + u); set('handR', X + (64 + b), Y - 84 + u); }
   const sl = o.walk && Math.floor(o.t / 320) % 2 === 0 ? 1 : 0, sr = o.walk && !sl ? 1 : 0;
   V[PK.VALUE.drop] = u; V[PK.VALUE.bloat] = b; V[PK.VALUE.stepL] = sl; V[PK.VALUE.stepR] = sr;
@@ -312,7 +319,7 @@ const POSES = {
   'unwell: sick skin, the head shifted': (k) => k.pose('container_unhealthy', 2000),
   'walking, the right foot lifted': (k) => Object.assign(k.pose('ssh_session', 400), { walk: true }),
   'helmet off': (k) => Object.assign(k.pose('updating', 0), { helmet: false }),
-  'sword put away, crouched under crates': (k) => k.pose('disk_full', 500),
+  'sword put away, crouched, carrying the crates': (k) => k.pose('disk_full', 500),
   'at the anvil': (k) => Object.assign(k.pose('updating', 0), { hammer: 0.4 }),
   'mid-swing, leaning left': (k) => { const o = k.pose('idle', 0); k.swing(o, 0.2, 1); return o; },
   'mid-swing, leaning right': (k) => { const o = k.pose('idle', 0); k.swing(o, 0.45, 1); return o; }
@@ -1042,9 +1049,11 @@ test('the one-handed sword and the shield: hold point folded in, shield drawn on
   const two = PK.resolve(library(), { items: { off: 'kw.base/off.round' } });
   assert.equal(two.shapes, baseLook().shapes, 'with the greatsword the shield is never drawn');
   assert.deepEqual(PK.sequence('one', true).slice(6, 12), ['armL', 'gauntL', 'off', 'armR', 'main', 'gauntR']);
-  // crossed: both arms before the blade, the shield last
-  assert.deepEqual(PK.sequence('oneCrossed', true).slice(6, 12), ['armL', 'gauntL', 'armR', 'main', 'gauntR', 'off']);
-  assert.deepEqual(PK.sequence('oneCrossed', false).slice(2, 3), ['headOff']);
+  // crossed: both arms behind the shield, then the blade over it, and the sword hand's gauntlet
+  assert.deepEqual(PK.sequence('oneCrossed', true).slice(6, 12), ['armL', 'gauntL', 'armR', 'off', 'main', 'gauntR']);
+  assert.deepEqual(PK.sequence('oneCrossed', false).slice(1, 2), ['headOff']);
+  // the engine's crates go after the pauldrons, before the hands group
+  assert.deepEqual(PK.sequence('none', true).slice(4, 7), ['pauldrons', 'crates', 'armL']);
   assert.equal(PK.sequence('sideways'), null);
 });
 

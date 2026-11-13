@@ -85,7 +85,7 @@ function load(dev, texts, kw1) {
   KW.things = { draw() { log.push('things'); } };
   const status = KW.knight.start(texts || KW.packText, dev === true);
   KW.draw.setCtx(ctx);
-  return { KW, K: KW.knight, log, status, lines };
+  return { KW, K: KW.knight, log, status, lines, box };
 }
 
 const X = 480, FLOOR = 530;
@@ -356,6 +356,75 @@ if (MODE === 'write') {
     assert.ok(diff.every(([x, y]) => x === 's #3f74e0' && y === 's #ab0102'), 'only that colour changes');
   });
 
+  /* The unsigned base pack's file as text, after edit(pack) has changed the parsed pack. */
+  const editedPack = edit => {
+    const env = JSON.parse(UNSIGNED);
+    edit(env.pack);
+    return JSON.stringify(env);
+  };
+
+  test('the pack path draws the face in the look\'s colours: a changed skin and hair brow show, and nothing else changes', () => {
+    // the middle band of each skin ramp, the cheeks, the puffed cheeks and the brows, each changed
+    // to a colour of its own
+    // to a colour of its own; the warm skin's puffed cheeks share their colour with its hot ramp's
+    // middle band
+    const pairs = [['#f6cda4', '#a10001', 'the face\'s middle band'], ['#b9dd92', '#a10002', 'the sick middle band'], ['#ff9f8c', '#a10003', 'the hot middle band'],
+      ['#f3a892', '#a10004', 'the cheeks'], ['#ff9f8c', '#a10006', 'the puffed cheeks'], ['#8a5a2b', '#a10005', 'the brows']];
+    const swap = new Set(pairs.map(([x, y]) => 's ' + x + '>s ' + y));
+    const text = editedPack(p => {
+      const s = p.swatches.skin.warm.entries, h = p.swatches.hair.brown.entries;
+      s.face[1][1] = '#a10001'; s.sick[1][1] = '#a10002'; s.hot[1][1] = '#a10003'; s.cheek = '#a10004'; s.puff = '#a10006'; h.brow = '#a10005';
+    });
+    const a = load(true), b = load(true, [text]);
+    assert.equal(b.status.source, 'pack');
+    // the half eyes on the normal, sick and hot skins, the cheeks, the puffed cheeks, the brows of
+    // the open and the wide eyes, helmet on and off
+    const poses = [['disk_full', 2300], ['container_unhealthy', 1400], ['cpu_hot', 2300], ['memory_tight', 2300], ['idle', 2300], ['idle', 2300, { eyes: 'wide' }],
+      ['idle', 2300, { face: 'P', puff: 1 }], ['backup_overdue', 2300, { helmet: false }], ['container_unhealthy', 1400, { helmet: false }], ['cpu_hot', 2300, { helmet: false }]];
+    for (const box of [a, b]) for (const [id, t, over] of poses) box.K.draw(at(box.K, id, t, over));
+    for (const box of [a, b]) box.K.head(-15, 262, at(box.K, 'container_unhealthy', 1400));
+    assert.equal(a.log.length, b.log.length);
+    const diff = a.log.map((l, i) => [l, b.log[i]]).filter(([x, y]) => x !== y);
+    assert.ok(diff.length > 0);
+    assert.deepEqual(diff.filter(([x, y]) => !swap.has(x + '>' + y)), [], 'only the changed colours change');
+    for (const [from, to, what] of pairs) assert.ok(diff.some(([x, y]) => x === 's ' + from && y === 's ' + to), `${what}: ${from} is drawn as ${to}`);
+  });
+
+  /* A deep skin and black and blonde hair, made for the tests and in no pack that ships. */
+  const DEEP = { name: 'Deep', entries: { face: [[0.14, '#9a6544'], [0.72, '#7b4a2e'], [1, '#5e3720']], sick: [[0.14, '#8f9a5c'], [0.72, '#6f7a42'], [1, '#525b2f']],
+    hot: [[0.14, '#b5584a'], [0.72, '#9a3f33'], [1, '#7a2c22']], cheek: '#a8564a', puff: '#c4685a' } };
+  const HAIR = { black: { name: 'Black', entries: { 0: '#3a3440', 1: '#2a2530', 2: '#1c1820', brow: '#1c1820' } },
+    blonde: { name: 'Blonde', entries: { 0: '#f2d27a', 1: '#d9b45a', 2: '#b8913c', brow: '#a07a30' } } };
+  const withSwatches = p => { p.swatches.skin.deep = DEEP; Object.assign(p.swatches.hair, HAIR); };
+
+  test('every condition\'s face drawn with a deep skin and black hair holds no colour of the warm skin or the brown brow', () => {
+    const text = editedPack(withSwatches), box = load(true, [text]);
+    box.status = box.K.start([text], true, { look: { swatches: { skin: 'kw.base/deep', hair: 'kw.base/black' } } });
+    assert.equal(box.status.source, 'pack');
+    assert.deepEqual(plain(box.status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), []);
+    const warm = JSON.parse(UNSIGNED).pack.swatches.skin.warm.entries;
+    const banned = new Set([...warm.face, ...warm.sick, ...warm.hot].map(b => b[1]).concat(warm.cheek, warm.puff, '#8a5a2b').map(c => 's ' + c));
+    const deep = new Set([...DEEP.entries.face, ...DEEP.entries.sick, ...DEEP.entries.hot].map(b => b[1]).concat(DEEP.entries.cheek, DEEP.entries.puff, '#1c1820').map(c => 's ' + c));
+    const ids = ['idle', 'container_unhealthy', 'cpu_hot', 'memory_tight', 'disk_full', 'backup_overdue', 'pi_silent', 'thing_down', 'updating', 'streaming', 'wan_down', 'attack', 'night', 'ssh_session'];
+    let drawn = 0;
+    for (const id of ids) for (const t of [1400, 2300, 2800]) for (const helmet of [true, false]) {
+      box.log.length = 0;
+      // the drumstick in the hungry knight's thought bubble is a prop with colours of its own
+      box.K.draw(at(box.K, id, t, { helmet, bubble: 0 }));
+      const bad = box.log.filter(l => banned.has(l));
+      assert.deepEqual(bad, [], `${id} t${t}, helmet ${helmet ? 'on' : 'off'}`);
+      assert.ok(box.log.some(l => deep.has(l)), `${id} t${t}: the deep skin is drawn`);
+      drawn++;
+    }
+    // and the head in bed, well and unwell
+    for (const id of ['night', 'container_unhealthy']) {
+      box.log.length = 0;
+      box.K.head(-15, 262, at(box.K, id, 1400));
+      assert.deepEqual(box.log.filter(l => banned.has(l)), [], `${id} in bed`);
+    }
+    assert.equal(drawn, 84);
+  });
+
   test('the pack path clamps drop and bloat into the library\'s ranges, and allocates no new arrays', () => {
     const { KW, K } = load(true), seen = [], draw0 = KW.pack.draw;
     KW.pack.draw = (list, A, V, P, face) => { seen.push([A, V, V[KW.pack.VALUE.drop], V[KW.pack.VALUE.bloat]]); return draw0(list, A, V, P, face); };
@@ -372,13 +441,6 @@ if (MODE === 'write') {
   });
 
   /* ---- The gear at rest ---------------------------------------------------------------------- */
-
-  /* The unsigned base pack's file as text, after edit(pack) has changed the parsed pack. */
-  const editedPack = edit => {
-    const env = JSON.parse(UNSIGNED);
-    edit(env.pack);
-    return JSON.stringify(env);
-  };
 
   test('the blade and the backdrop key name the equipped weapon on the pack path, and the greatsword on the code path', () => {
     const code = PATHS.code(), pack = PATHS.pack();
@@ -517,6 +579,46 @@ if (MODE === 'write') {
     for (const t of [0, 1414, 2300, 4241]) assert.equal(K.rig(at(K, 'idle', t)).values.sway, Math.round(Math.sin(t / 900) * 4));
   });
 
+  test('the carrying grip: the crate is held against the chest by its lower corners, under the arms, clear of the face and below the helmet', () => {
+    // The crate is an engine step, so its pixels are the fills made between the pauldrons' list and
+    // the next list, the left arm's, on the pack path; the code path draws the same calls, which
+    // the call record checks.
+    const { KW, K } = PATHS.pack(), lib = KW.pack, seq0 = lib.sequence, draw0 = lib.draw;
+    let names = [], i = 0, cur = null, seq = null;
+    const px = new Set();
+    KW.draw.setCtx(new Proxy({}, {
+      set() { return true; },
+      get(_, k) {
+        if (k === 'fillRect') return (x, y, w, h) => { if (cur !== 'crates') return; for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) px.add(yy * 4096 + xx); };
+        return () => {};
+      },
+    }));
+    const steps = ['crates', 'face', 'drumstick', 'hammer', 'effects'];
+    lib.sequence = (mode, helmet) => { seq = seq0(mode, helmet); names = seq.filter(n => !steps.includes(n)); i = 0; return seq; };
+    lib.draw = (list, A, V, P, face) => { cur = names[i++]; try { return draw0(list, A, V, P, face); } finally { cur = cur === 'pauldrons' ? 'crates' : null; } };
+    let frames = 0;
+    for (const helmet of [true, false]) for (const bob of [0, 1]) for (let t = 0; t < 5700; t += 100) {
+      px.clear();
+      const o = at(K, 'disk_full', t, { helmet, bob }), r = K.rig(o), h = r.anchors.head, L = r.anchors.handL, R = r.anchors.handR, label = `t${t} bob ${bob} helmet ${helmet ? 'on' : 'off'}`;
+      K.draw(o);
+      assert.equal(r.grip, 'none');
+      assert.deepEqual(plain(seq.slice(seq.indexOf('pauldrons'), seq.indexOf('pauldrons') + 3)), ['pauldrons', 'crates', 'armL'], 'after the pauldrons, before the arms');
+      assert.ok(px.size > 2000, `${label}: the crate is drawn`);
+      let left = Infinity, right = -Infinity, top = Infinity, foot = -Infinity;
+      for (const p of px) { const x = p % 4096, y = Math.floor(p / 4096); left = Math.min(left, x); right = Math.max(right, x + 1); top = Math.min(top, y); foot = Math.max(foot, y + 1); }
+      // nothing of the crate on the helmet's opening (34 below the head anchor at its foot) or the
+      // bare face (47), and nothing above the helmet's top (68 above it)
+      assert.ok(top > h[1] + (helmet ? 34 : 47), `${label}: the crate's top, ${top}, is under the face`);
+      assert.ok(top > h[1] - 68, `${label}: nothing of the load rises above the helmet`);
+      // the hands at its lower corners: each gauntlet, 14 across from its middle, overlaps the
+      // crate's side, and lies in its lowest 16 rows
+      assert.ok(L[0] < left && L[0] + 14 > left && R[0] >= right && R[0] - 14 < right, `${label}: the hands hold the crate's sides`);
+      assert.ok(L[1] > foot - 16 && L[1] < foot && R[1] === L[1], `${label}: the hands are at the crate's lower corners`);
+      frames++;
+    }
+    assert.equal(frames, 228);
+  });
+
   test('the hands and the weapon frame follow the grip', () => {
     // no weapon: the hands hang at the sides
     let r = K.rig(at(K, 'idle', 2300, { sword: false, bloat: 5, bob: 1 }));
@@ -566,16 +668,20 @@ if (MODE === 'write') {
     assert.deepEqual([...r.anchors.off], [...r.anchors.handL]);
     // the attack raises the sword and brings the shield in, with the same tremble
     const a = at(K, 'attack', 94);
-    assert.deepEqual([a.gx, a.gy, a.fx, a.fy, a.mark, a.shake], [40, 24.4, 19.6, 37.6, '!', Math.round(Math.sin(94 / 60))]);
+    assert.deepEqual([a.gx, a.gy, a.fx, a.fy, a.mark, a.shake], [42, 24.4, 19.6, 37.6, '!', Math.round(Math.sin(94 / 60))]);
     assert.equal(a.wang, 0.2 + Math.sin(94 / 90) * 0.12);
     // the sword put away and the hammer are as before
     assert.equal(K.rig(at(K, 'idle', 2300, { sword: false })).grip, 'none');
     assert.equal(K.rig(at(K, 'updating', 2300, { sword: false, hammer: 0.5 })).grip, 'hammer');
-    // the swing keeps the greatsword's angles at the wind-up and the cut, so the swat's hit test holds
+    // The swing keeps the greatsword's angle at the cut, so the swat's hit test holds. The wind-up
+    // to the right stands the blade upright over the right shoulder, clear of the face, and the one
+    // to the left is the greatsword's; both lie short of the nearest fly (0.35 less 0.15), so no fly
+    // is struck before the cut begins.
     for (const dir of [1, -1]) {
       const w = at(K, 'idle', 2300); K.swing(w, 0.3, dir);
       const c = at(K, 'idle', 2300); K.swing(c, 0.55, dir);
-      assert.deepEqual([w.wang, c.wang], [-1.0 * dir, 2.0 * dir]);
+      assert.deepEqual([w.wang, c.wang], [dir > 0 ? 0 : 1.0, 2.0 * dir]);
+      assert.ok(w.wang * dir < 0.2);
     }
   });
 
@@ -602,16 +708,25 @@ if (MODE === 'write') {
   /* The rule of docs/design.md: no arm is ever drawn over a blade or its guard, nor over the face of
      a shield. Every frame the engine can draw with the weapon held is drawn into a context that
      keeps the pixels each of the look's lists fills: the swing both ways at every hundredth of its
-     length, the attack's tremble every 10 ms for two seconds, the stance of every condition that
-     holds the weapon, and the largest bloat. In the order the frame was drawn in, neither an arm
-     nor a gauntlet drawn after the weapon may fill a pixel of its blade or guard, which are the
+     length and at every odd thousandth from q .451 to .619, where the blade is past level; the
+     attack's tremble every 10 ms for two seconds; the goblin's strike on both sides, from contacts
+     at q .45, .5, .53 and .55, through its rebound and recovery every 10 ms; the stance of every
+     condition that holds the weapon; and the largest bloat. In the order the frame was drawn in,
+     neither an arm nor a gauntlet drawn after the weapon may fill a pixel of its blade or guard, which are the
      weapon's pixels at least 17 along the frame from the grip's middle, where both swords' guards
      begin; and neither may one drawn after the shield fill a pixel of the shield. Returns the
      breaches, as text. */
   const ENGINE_STEPS = ['crates', 'face', 'drumstick', 'hammer', 'effects'];
   const FROM = 17;
+  /* The engine's foe player, from engine.js run in the sandbox of b beside the knight it drives. A
+     document that hands out empty canvases is all the engine needs to load. */
+  const foeOf = b => {
+    b.box.document = { createElement: () => ({ getContext: () => ({}) }) };
+    for (const f of ['js/state.js', 'js/engine.js']) vm.runInContext(fs.readFileSync(path.join(WEB, f), 'utf8'), b.box, { filename: f });
+    return b.KW.engine.foe;
+  };
   function breaches(look) {
-    const { KW, K } = withLook(look), lib = KW.pack, seq0 = lib.sequence, draw0 = lib.draw;
+    const b = withLook(look), { KW, K } = b, F = foeOf(b), lib = KW.pack, seq0 = lib.sequence, draw0 = lib.draw;
     let names = [], i = 0, cur = null, seq = null;
     const px = {};
     KW.draw.setCtx(new Proxy({}, {
@@ -636,7 +751,16 @@ if (MODE === 'write') {
     };
     assert.ok(blade && blade.from === 34, 'both swords\' blades start at 34');
     for (const dir of [1, -1]) for (let k = 0; k <= 100; k++) { const o = at(K, 'idle', 2300); K.swing(o, k / 100, dir); check(`swing ${dir} q${k / 100}`, o); }
+    // the end of each cut, where the blade is past level, at every odd thousandth
+    for (const dir of [1, -1]) for (let k = 451; k <= 620; k += 2) { const o = at(K, 'idle', 2300); K.swing(o, k / 1000, dir); check(`swing ${dir} q${k / 1000}`, o); }
     for (let t = 0; t < 2000; t += 10) check(`attack t${t}`, at(K, 'attack', t));
+    // the strike: the blade stopped where it meets the goblin, bounced back and returned, the knight
+    // still (no bob) as the engine holds it
+    const S = F.FOE.strike;
+    for (const side of [1, -1]) for (const q of [0.45, 0.5, 0.53, 0.55]) {
+      const pl = { side, q, hit: S.at + Math.round(q * S.dur) };
+      for (let r = 0; r <= S.rebound + S.recover; r += 10) { const o = at(K, 'idle', 2300, { bob: 0 }); F.strike(o, pl.hit + r, pl); check(`strike ${side} q${q} +${r} ms`, o); }
+    }
     for (const id of ['idle', 'wan_down', 'thing_down', 'memory_tight', 'ssh_session', 'cpu_hot', 'streaming', 'night']) check(id, at(K, id, 2300));
     check('bloat 6', at(K, 'memory_tight', 2300, { bloat: 6 }));
     return found;

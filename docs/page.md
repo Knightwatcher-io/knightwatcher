@@ -106,7 +106,12 @@ shoulders, and `head` raises the head, so that a bigger skull grows upwards from
 **The grip** is in the result's `grip` and places the hands and `main`:
 
 - `none`, when the sword is put away: the hands hang at `(X ∓ (64 + bloat), Y - 84 + drop)` and
-  `main` rests at the root with angle 0. The arms are drawn left, then right.
+  `main` rests at the root with angle 0. The arms are drawn left, then right. With the crate of a
+  full disk the hands take the carrying grip instead: they hold the crate against the chest by its
+  lower corners, at `neck ± 44` across, plus the crate's sway of up to 2, and 62 below `neck`. The
+  crate (`CARRY`, 80 by 64, its top 6 below `neck`, which is 50 below `head`, under the helmet's
+  opening and the bare chin) is drawn after the pauldrons and before the arms, so the arms lie
+  over its sides.
 - `hammer`, in the smithy: the left hand steadies the work at `(X + 45, Y - 104 + drop)`, and the
   right swings the hammer from `(X + 80 + bloat, Y - 122 + drop)`, which is also `main`, with the
   hammer's angle.
@@ -114,15 +119,18 @@ shoulders, and `head` raises the head, so that a bigger skull grows upwards from
   hand on the side the blade leans to holds the grip 2 pixels up the blade, the other 30 down it.
   Both arms are drawn before the blade, the one on the lean side first, and the gauntlets after
   it, the upper hand's first. The upper hand sits low enough that its gauntlet stays below the
-  guard, which starts 17 up the blade.
+  guard, which starts 17 up the blade. Once the blade turns past level it slides further down the
+  grip (`SLIDE`): not at all up to an angle of 1.4, 2 pixels from 1.8 on, in proportion between. At
+  the end of a cut and in the goblin strike's bounce the gauntlet would otherwise reach the guard
+  by a pixel at some angles.
 - `one`, a weapon in one hand, on the pack path only: `main` is placed as for `two`, and the right
   hand holds the weapon at its one station along the frame (the arming sword's is the grip's
   middle). The left hand, which is also `off`, holds the shield where the pose's `fx` and `fy`
   put it, in units of `U` from the old corner as `gx` and `gy` are; with no shield equipped it
   hangs at the side as in `none`. The shield's group (left arm, left gauntlet, shield) is drawn
   before the sword's (right arm, sword, right gauntlet); while the sword hand is left of the root,
-  across the body, the order is `oneCrossed`: both arms, the sword, the right gauntlet, and the
-  shield last.
+  across the body, the order is `oneCrossed`: both arms, the shield, the sword and the right
+  gauntlet last. The sword arm stays behind the shield and the blade passes in front of it.
 
 **The poses with the sword and shield.** `pose()` and `swing()` give the one-handed fields when
 the look's weapon is one-handed, from three sets of numbers beside the greatsword's `BASE`:
@@ -130,26 +138,30 @@ the look's weapon is one-handed, from three sets of numbers beside the greatswor
 | Pose | Sword grip `gx`, `gy`, angle | Shield hand `fx`, `fy` | On the grid, from the root |
 |---|---|---|---|
 | `BASE1`, the stance | 37.6, 40.8, 0.3 | 20, 38.4 | sword hand at (+68, -96), shield hand at (-20, -108) |
-| `ATTACK1`, the attack | 40, 24.4, 0.2 with the tremble of 0.12 | 19.6, 37.6 | sword hand at (+80, -178), shield hand at (-22, -112) |
-| `SWING1`, to the right: wind-up, cut | 33.2, 24.8, -1.0; 44.8, 38.4, 2.0 | 16, 38; 14, 40 | the shield stays in front |
-| `SWING1`, to the left: wind-up, cut | 38.8, 23.2, 1.0; 17.2, 40.8, -2.0 | 12, 37.6; 3.2, 26.4 | the shield lifts up and out of the blade's way |
+| `ATTACK1`, the attack | 42, 24.4, 0.2 with the tremble of 0.12 | 19.6, 37.6 | sword hand at (+90, -178), shield hand at (-22, -112) |
+| `SWING1`, to the right: wind-up, cut | 43.2, 23.2, 0; 44.8, 38.4, 2.0 | 16, 38; 14, 40 | the shield stays in front |
+| `SWING1`, to the left: wind-up, cut | 38.8, 23.2, 1.0; 17.2, 40.8, -2.0 | 12, 37.6; 3.2, 26.4 | the shield lifts as the sword crosses, and the blade passes in front of it |
 
-The swing's angles at the wind-up and the cut are the greatsword's, so the swat's hit test in
-`engine.js` holds for both weapons. Every other condition keeps its pose; the sword is put away
-where the scene says so (`sword: false` in the house and the cellar, the hammer in the smithy), and
-the shield with it.
+In the attack the guard sits on the helmet's outer shell, clear of the opening's rim. The wind-up
+to the right raises the sword over the right shoulder with the blade upright, a little over the
+attack's hand, so the blade never crosses the face on that side. The swing's angle at the cut is
+the greatsword's, and both wind-ups lie short of the nearest fly (0.35 less 0.15), so the swat's
+hit test in `engine.js` holds for both weapons. Every other condition keeps its pose; the sword is
+put away where the scene says so (`sword: false` in the house and the cellar, the hammer in the
+smithy), and the shield with it.
 
 **No arm over a blade or a shield.** `tests/web/knight.test.js` draws every frame the engine can
-draw with the weapon held (both swings at every hundredth of their length, the attack's tremble
-every 10 ms for two seconds, the stance of each condition that holds a weapon, and the largest
-bloat), keeps the pixels each of the look's lists fills, and checks, in the order the frame was
+draw with the weapon held (both swings at every hundredth of their length and at every odd
+thousandth from q .451 to .619, where the blade is past level; the attack's tremble every 10 ms for
+two seconds; the goblin's strike on both sides, from contacts at q .45, .5, .53 and .55 through its
+bounce and recovery every 10 ms, with the engine's own `strike()`; the stance of each condition
+that holds a weapon; and the largest bloat), keeps the pixels each of the look's lists fills, and checks, in the order the frame was
 drawn in, that no arm or gauntlet drawn after the weapon fills a pixel of its blade or guard and
 none drawn after the shield fills a pixel of the shield. For both swords the check takes the blade and the guard,
 everything from 17 along the frame, where both guards begin, and checks the gauntlets as well as
 the arms.
 
-The engine's own drawing hangs on the same anchors: the face on `head`; the crates, sweat, steam,
-the mark, the thought bubble, the progress bar and the speech bubble on `neck`; the hearts on
+The engine's own drawing hangs on the same anchors: the face on `head`; the crate, sweat, steam, the mark, the thought bubble, the progress bar and the speech bubble on `neck`; the hearts on
 `root`. The drumstick takes its height from `head` and its x from `neck`, so it follows the head up
 and down but not sideways, as it always has.
 
@@ -205,10 +217,11 @@ On the pack path `draw(o)` runs the rig, fills the library's arrays, picks the g
 the root the sword hand is on) and walks the order that
 `sequence(mode, helmet)` in `pack.js` gives. It draws each of the look's lists with the library's
 `draw()` and the primitives of `draw.js`, and draws the engine's own steps by code at their places
-in that order: the crates first, the face after the head group, the drumstick after the face, the
-hammer between the right arm and its gauntlet, and sweat, steam, the marks, the thought bubble,
+in that order: the face after the head group, the drumstick after the face, the crate after the
+pauldrons and before the hands group, the hammer between the right arm and its gauntlet, and sweat, steam, the marks, the thought bubble,
 the progress bar, the hearts and the speech bubble last. `@skin.face` takes the skin swatch's sick
-ramp when the knight is ill and its hot ramp when overheated. A frame allocates nothing for the
+ramp when the knight is ill and its hot ramp when overheated, and the face takes the look's
+colours (below). A frame allocates nothing for the
 pack path beyond what the primitives and the engine's own steps allocate. A throw inside one of
 the look's lists is caught, its packs are marked bad, and the next frame is drawn without them.
 
@@ -217,8 +230,12 @@ order. The two paths give the same calls, which the call record checks.
 
 Two things stay as they were:
 
-- the face is drawn by the same code on both paths, in its own colours, which equal the base
-  pack's swatches;
+- the face is drawn by the same code on both paths. On the pack path it takes its colours from the
+  look: the lid of the half-closed eyes from the middle band of the skin ramp in use (normal, sick
+  or hot; the band across the middle of the face's width), and the cheeks, the puffed cheeks and
+  the brows from `colours.cheek`, `colours.puff` and `colours.brow`, which `resolve()` takes from
+  the skin and hair swatches. On the code path it keeps its own colours, which equal the base
+  pack's default swatches, so the default look's calls are the same on both paths;
 - a pose that asks for the drooping plume (`droop`) is drawn by code, since the pack format has no
   drooping plume. No pose of the page sets it.
 
@@ -600,9 +617,9 @@ that the knight's drawing needs (`draw.js`, `sprites.js`, `props.js`, `knight.js
 smithy, `ed25519.js`, `pack.js` and the carriers, in the page's order) under Node with an empty
 `window` and a fake canvas context that records every call and every property set;
 `KW.things.draw` writes one line in the record. It chooses the knight's source as `main.js` does
-and draws 112 records: the knight in 98 poses, the bare head in bed, the speech bubble, the helmet
-and the weapon at rest, and the house and the smithy, each painted and drawn in the states that
-show the gear at rest. It compares each record with the one stored in
+and draws 112 records: the knight in 94 poses, the bare head in bed twice, the speech bubble twice,
+the helmet and the weapon at rest in four, and the house and the smithy in ten, each painted and
+drawn in the states that show the gear at rest. It compares each record with the one stored in
 `tests/web/fixtures/knight/`. It does this twice: once as a deployed page, which refuses the
 unsigned base pack and draws from code, and once as a `dev` page, which draws from the base pack.
 The stored record was taken from the code, and both paths must give it. For every pose it holds the
@@ -638,12 +655,14 @@ anywhere keeps the goblin away.
 
 The same knight test checks the choice itself: the console lines, the refusal at the `signature`
 step, the code path when there is no base pack, a broken one or no library, a changed colour in the
-pack showing on the knight, and the clamping of `drop` and `bloat`. For the gear at
-rest it checks the blade and the backdrop keys on each path, that a slot with nothing at rest draws
-nothing, that a pack's plume and jewel colours show on the helmet and the weapon at rest, that a
-helmet with no rest view shows nothing and one with no plume mount at rest shows no plume, that a
-weapon with no `blade` has no hot tip in the smithy, and that the gear at rest is drawn with every
-value 0 from arrays made once.
+pack showing on the knight, and the clamping of `drop` and `bloat`. For the face it checks that a
+changed skin ramp, cheek, puffed cheek and hair brow show on the pack path and change nothing else,
+and that every condition's face, helmet on and off, drawn with a deep skin and black hair from
+swatches made for the test holds no colour of the warm skin or the brown brow. For the crate it
+checks, from the base pack and helmet on and off, with and without the bob, every 100 ms over the
+sway, that it is drawn after the pauldrons and before the arms, that its hands are at its lower
+corners, that no pixel of it lies on the helmet's opening or the bare face, and that nothing of the
+load rises above the helmet. The call record holds the code path to the same calls.
 
 To see every call that differs, dump the records of both trees and compare the folders.
 `dump-pack:` dumps the pack path's records instead of the code's:
@@ -685,17 +704,25 @@ tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
 Besides the scenes and states, the set shoots watched things: the camp with two cameras and four
 devices, a camera and a machine down and one device with no place left (`things-camp`), the court
 with the same mix (`things-court`), `thing_down` in the camp (`thing-down`) and the yard's places
-outlined (`places-yard`). Every other shot has no `th=`, so a change to watched
-things that leaves a Pi-only setup alone leaves those shots byte for byte the same.
+outlined (`places-yard`). Every other shot has no `th=` apart from `goblin-camp-g3`, so a change to
+watched things that leaves a Pi-only setup alone leaves those shots byte for byte the same.
 
-The six `arm-` shots draw the arming sword and the heater shield (`arm=one`): the quiet battlement
-(`arm-battlement`), the yard's practice swing mid-cut (`arm-yard`), the attack (`arm-attack`), the
-house with the sword on the pegs and the shield on the wall (`arm-house`), the smithy with the
-sword on the anvil and the shield on the wall (`arm-update`), and the swat to the left at the
-moment the sword passes behind the shield (`arm-swat-left`). Every other shot has no `arm=`, so a
-change to the one-handed look leaves them byte for byte the same. A copy of the page from before
-the hook draws the greatsword in the `arm-` shots, so against such a reference those six differ
-and the rest compare as usual.
+The seven `goblin-` shots play the goblin's event with the greatsword: on the battlement as it
+rises over the wall (`goblin-rise`), at the hit (`goblin-bonk`, 1659 ms) and in the puff
+(`goblin-poof`); at the camp as it comes out of its hole (`goblin-camp-rise`), at the hit
+(`goblin-camp-bonk`, 1659 ms) and in the puff (`goblin-camp-poof`); and at the camp with three
+devices on the ground, which it stands clear of, as it pulls a face (`goblin-camp-g3`).
+
+The nine `arm-` shots draw the arming sword and the heater shield (`arm=one`): the quiet battlement
+(`arm-battlement`), the yard's hot training (`on=cpu`) mid-swing (`arm-yard`), the attack
+(`arm-attack`), the house with the sword on the pegs and the shield on the wall (`arm-house`), the
+smithy with the sword on the anvil and the shield on the wall (`arm-update`), the swat to the left
+at the moment the sword passes in front of the shield (`arm-swat-left`), the cellar with the
+crate carried against the chest, at the largest headline (`arm-disk`), and the goblin a
+millisecond after the hit on the battlement (`arm-goblin-bonk`, hit at 1645 ms) and two after it
+at the camp, with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1672 ms). Every other shot has no `arm=`, so a change to the one-handed look leaves them
+byte for byte the same. A copy of the page from before the hook draws the greatsword in the `arm-`
+shots, so against such a reference those differ and the rest compare as usual.
 
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
 Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade
