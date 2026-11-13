@@ -303,7 +303,8 @@ before it calls `paint`, `draw` and `over`.
 | `key(s)` | no | a string; the cached backdrop is painted again when it changes. A scene that paints the knight's gear at rest into its backdrop includes `KW.knight.rest.key(slot)` for each such item |
 | `act(t, s)` | no | called each frame after strolling and before the swat and events; may change the knight's pose `s.o` |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
-| `wallAt(x)` | no | the y of the top of whatever the goblin climbs over at grid x; the ground when absent |
+| `wallAt(x)` | no | the y of the top of whatever a foe climbs over at grid x; without it a foe digs up out of the ground |
+| `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a watched thing on the ground or the pie, and 150 to 240 pixels from the knight's middle; with no room the event shows its caption alone. A scene without it hosts no foe |
 | `outdoors` | no | `true` where flies are swatted and the crate may land |
 | `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy` |
 | `helmet` | no | `false` where the helmet comes off (unless the address says otherwise) |
@@ -361,7 +362,13 @@ hides the review bar and drives the display:
 - Events. The first valid file's events are adopted without playing. After that each event with
   a higher `seq`, oldest first: `ad_blocked` adds `count` flies (at most 100 for one event;
   eight on screen, the rest queued for the next swat), `ip_banned` plays the goblin, `import`
-  the crate and `backup_done` the feast, each with `text` as the caption. A `seq` lower than the
+  the crate and `backup_done` the feast, each with `text` as the caption. The goblin is a foe
+  as tall as the knight's shoulders: it climbs over the battlement's wall or digs up out of the
+  camp's grass beside the knight, pulls a face, is bonked on the saucepan it wears, and vanishes
+  in a puff of smoke. The knight's swing stops where the blade meets the pot, so the blade never
+  passes through it; nothing gory is shown. A foe is described in `KW.props.FOES` and played by
+  the engine's foe player from its tables (`KW.engine.foe.FOE`), so a later foe reuses the
+  entrance, the strike and the exit. A `seq` lower than the
   highest played means the collector started again, and its events are adopted unplayed. Events
   act out only while nothing at warning or above is up and in the scenes that suit them; the
   caption shows regardless.

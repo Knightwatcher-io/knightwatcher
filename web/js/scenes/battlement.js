@@ -56,7 +56,9 @@
     if (s.w.id === 'wan_down' && Math.floor(t / 150) % 3 === 0) { Rh(740, 290, 4, 4, '#fff3a0'); Rh(760, 300, 3, 3, '#fff3a0'); Rh(748, 306, 3, 3, C.W); }
   }
 
-  /* The goblin climbs over a merlon where one stands at x, and over the parapet between them. */
+  /* A foe climbs over a merlon where one stands at x, and over the parapet between them. It may
+     stand anywhere along the walkway, right of the knight by choice. */
+  const FOE_ZONE = { side: 1, spans: [[70, 890]] };
   function wallAt(x) { return ((((x + 70) % 160) + 160) % 160 < 80 ? V.HFL - 119 : V.HFL - 66); }
 
   /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
@@ -74,6 +76,6 @@
   KW.scenes.battlement = {
     spot: 96, places: PLACES, outdoors: true,
     rounds: [{ x: 96, act: 'guard', dur: 18 }, { x: 66, act: 'look', dur: 16 }, { x: 126, act: 'sniff', dur: 12 }],
-    key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt
+    key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt, foeZone: FOE_ZONE
   };
 })(window.KW);
