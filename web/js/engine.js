@@ -16,7 +16,8 @@
     input: { w: KW.state.IDLE, is: 'auto', turnMs: 60000, piOK: true, tv: false, helmet: 'auto' },
     note: ''
   };
-  const frozen = () => KW.hooks.t;
+  /* Whether the address's t= hook freezes time; KW.hooks.t is then the frozen time. */
+  const frozen = () => KW.hooks.frozen;
 
   /* The quiet scenes take turns, each for the input's turnMs. */
   const TURNS = ['battlement', 'camp', 'house', 'yard'];
@@ -50,13 +51,15 @@
     const segs = []; if (live.some(f => f.side > 0)) segs.push(1); if (live.some(f => f.side < 0)) segs.push(-1);
     swat = { t0: frozen() ? 0 : t, segs };
   }
-  /* Stroll to the next spot, stand there a while doing what the spot is for, move on. */
+  /* Stroll to the next spot, stand there a while doing what the spot is for, move on. The walk
+     moves the knight a step each frame, so with time frozen the knight stays where they are, in
+     mid-stride. */
   function stroll(list, t, o, busy) {
     const st = list[round.i % list.length], dx = st.x * U - kx;
     if (busy) return null;
-    if (Math.abs(dx) > 2) { kx += Math.sign(dx) * 1.5; o.walk = true; round.arr = 0; return null; }
+    if (Math.abs(dx) > 2) { if (!frozen()) kx += Math.sign(dx) * 1.5; o.walk = true; round.arr = 0; return null; }
     if (!round.arr) round.arr = frozen() ? 1 : t;
-    const el = t - round.arr; if (el > st.dur * 1000) { round.i++; round.arr = 0; }
+    const el = Math.max(0, t - round.arr); if (el > st.dur * 1000) { round.i++; round.arr = 0; }
     return { act: st.act, el };
   }
 
@@ -65,7 +68,7 @@
   function fireEvent(type, text) {
     const e = EVENTS[type], w = E.input.w; if (!e) return;
     if (text) KW.ui.caption(text, e.dur + 1500);
-    if (w.lv >= 3 || !e.where.includes(w.scene || idleScene(performance.now())) || swat) return;
+    if (w.lv >= 3 || !e.where.includes(w.scene || idleScene(frozen() ? KW.hooks.t : performance.now())) || swat) return;
     ev = { type, t0: frozen() ? 0 : performance.now(), dur: e.dur };
   }
 
@@ -106,7 +109,8 @@
     if (sc.act) sc.act(t, s);
     o.x = kx;
 
-    // the swat, the events
+    // the swat, the events. With time frozen a swat starts only from the address (sw=1), never by
+    // itself, since one started by a frame would show only from the next.
     if (swat) {
       const el = t - swat.t0, i = Math.floor(el / 900);
       if (!funOK || i >= swat.segs.length) { swat = null; lastSwat = t; while (pendingFlies > 0 && flies.filter(f => !f.dead).length < 8) { pendingFlies--; addFly(t); } }
@@ -115,7 +119,7 @@
         if (q >= .3) for (const f of flies) if (!f.dead && f.side === dir && t - f.born > 1300) { if (!cutting || o.wang * dir >= f.th - .15) { f.dead = t; f.at = flyPos(f, t); } }
         if (q > .7 && !flies.some(f => !f.dead && f.side === dir)) { o.eyes = 'happy'; o.mouth = 'smile'; }
       }
-    } else if (funOK && !ev && flies.some(f => !f.dead && t - f.born > 1300) && t - lastSwat > 30000) startSwat(t);
+    } else if (!freeze && funOK && !ev && flies.some(f => !f.dead && t - f.born > 1300) && t - lastSwat > 30000) startSwat(t);
     let p = 0; const type = ev && ev.type;
     if (ev) { p = (t - ev.t0) / ev.dur; if (p >= 1) ev = null; }
     const live = ev ? type : null, el = ev ? t - ev.t0 : 0, gx = kx + 170, crX = Math.max(HL + 70, kx - 320), hitAt = 900 + .47 * 900;

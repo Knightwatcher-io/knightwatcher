@@ -113,11 +113,14 @@
       flyTimer = setInterval(() => { if (Math.random() < .6) { addFly(performance.now()); refreshSub(); } }, 5200);
       apply();
     },
-    /* The address's test hooks: f=<flies>, e=<event>, sw=1 to start a swat. */
+    /* The address's test hooks: f=<flies>, e=<event>, sw=1 to start a swat. The event and the swat
+       wait 300 ms, except with time frozen by t=, when they start before the first frame. A frozen
+       picture must not depend on how many frames the browser paints before the timer fires. */
     hooks() {
-      const hv = KW.hooks.hv, freeze = KW.hooks.t;
+      const hv = KW.hooks.hv, freeze = KW.hooks.frozen;
       if (hv('f')) for (let i = 0; i < +hv('f'); i++) E.addFly(-5000 + i);
-      setTimeout(() => { if (!running) return; if (hv('e') && EVENTS[hv('e')]) fire(hv('e')); if (hv('sw')) E.startSwat(freeze || performance.now()); }, 300);
+      const go = () => { if (!running) return; if (hv('e') && EVENTS[hv('e')]) fire(hv('e')); if (hv('sw')) E.startSwat(freeze ? KW.hooks.t : performance.now()); };
+      if (freeze) go(); else setTimeout(go, 300);
     },
     stop() { running = false; clearInterval(flyTimer); S.demo = '0'; },
     tick,

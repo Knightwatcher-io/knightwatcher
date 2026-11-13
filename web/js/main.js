@@ -13,9 +13,12 @@
   H0.slice(1).split('&').forEach(kv => { const [k, v] = kv.split('='); if (k in S && v != null) S[k] = decodeURIComponent(v); });
   for (const k of Object.keys(OPTS)) if (!(S[k] in OPTS[k])) S[k] = Object.keys(OPTS[k])[0];
   const hv = k => (H0.match(new RegExp('[#&]' + k + '=([\\w.-]+)')) || [])[1];
-  /* t=<ms> freezes time for screenshots, kx=<x> places the knight (in units of U). */
-  KW.hooks = { hv, t: +(hv('t') || 0), kx: hv('kx') };
-  const freeze = KW.hooks.t;
+  /* t=<ms> freezes time for screenshots, t=0 included, and kx=<x> places the knight (in units of
+     U). frozen says whether the address holds a t= with a number, and t is the frozen time, or 0
+     without one. */
+  const tHook = hv('t') == null ? NaN : +hv('t');
+  KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx') };
+  const freeze = KW.hooks.frozen;
 
   /* ---- The words over the scene ------------------------------------------------------------- */
   const $ = id => document.getElementById(id);
@@ -163,7 +166,7 @@
   function frame(now) {
     requestAnimationFrame(frame);
     if (now - lastT < 48) return; lastT = now;
-    if (freeze) now = freeze;
+    if (freeze) now = KW.hooks.t;
     if (mode === 'demo') Demo.tick(now);
     E.draw(now);
     if (mode === 'demo') Demo.note(E.note);

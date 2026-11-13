@@ -65,8 +65,9 @@ tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
 ```
 
 The screenshots compare the page with itself before and after a change that should not alter how
-it looks. Take one set at a time: two headless browsers running at once drop frames, and an
-event's shot then differs for no reason. [page.md](./page.md) has the rest.
+it looks. With time frozen each shot depends only on its address, however many frames a busy
+machine paints. Take one set at a time all the same: two browsers shooting at once have not been
+tried. [page.md](./page.md) has the rest.
 
 ## Deploying the page
 

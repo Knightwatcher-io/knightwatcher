@@ -10,9 +10,8 @@
 # the pixels that differ outside the clock, whose digits change with the minute. It exits 1 when
 # any pair differs or is missing. Keep both directories outside the repository.
 #
-# Headless Chromium paints few frames, and now and then an event's shot (goblin, crate, feast)
-# catches the frame before the event starts, with its caption already showing. Take that shot again
-# before reading a single DIFF there as a regression.
+# With time frozen each shot depends only on its address, however many frames the browser paints,
+# so a single DIFF is a real difference.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

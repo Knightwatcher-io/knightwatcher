@@ -168,11 +168,16 @@ in live mode. `f=`, `e=` and `sw=` start something in the demo and do nothing el
 | `hs=` | the headline size: `s`, `m`, `l` |
 | `bar=0` | hides the review bar |
 | `demo=1` | runs the demo loop |
-| `t=` | freezes time at that many ms, for screenshots |
+| `t=` | freezes time at that many ms, `t=0` included, for screenshots |
 | `e=` | plays an event: `goblin`, `crate`, `feast` |
 | `f=` | starts with that many flies |
 | `sw=1` | starts a swat |
 | `kx=` | places the knight, in units of `U` |
+
+`e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time.
+With time frozen the knight never starts a swat alone, so the flies of `f=` hover until `sw=1`
+starts one, and a knight placed away from their spot by `kx=` stays exactly there, in mid-stride,
+rather than walking a step in each frame.
 
 The demo rewrites the hash as its settings change, with the contract's ids in `on=`.
 
@@ -225,6 +230,8 @@ CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-new
 tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
 ```
 
-Headless Chromium paints few animation frames. Freeze time with `t=` for screenshots, and never
-make the first frame wait on elapsed time or fade in. An event's shot can now and then catch the
-frame before the event; take it again before reading one difference there as a regression.
+Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
+Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade
+in. With time frozen the events and the swat start before the first frame and nothing advances from
+one frame to the next, so every shot depends only on its address: two takes of the same tree come
+out byte for byte the same, on a busy machine too, apart from the clock when the minute turns.
