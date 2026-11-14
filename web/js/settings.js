@@ -705,19 +705,25 @@
       fresh();
     }
     requestAnimationFrame(loop);
-    store.on(() => { if (st.open) render(); });
+    // changed says whether a choice was made while the screen was open; closing then reloads the
+    // page, so that everything it draws starts again from the new settings
+    let changed = false;
+    store.on(() => { if (st.open) { changed = true; render(); } });
 
     /* ---- Opening, closing, the idle close */
     let idleTimer = 0;
     const touch = () => { st.lastTouch = performance.now(); };
     function open(page) {
       if (page && PAGES[page]) st.page = page;
-      st.notes = {}; st.open = true; kws.hidden = false; hideCue(); touch(); render();
+      st.notes = {}; st.open = true; changed = false; kws.hidden = false; hideCue(); touch(); render();
       clearInterval(idleTimer); idleTimer = setInterval(idleTick, 250);
       // the dialog takes the focus, so that the keyboard starts inside it, without a ring
       kws.querySelector('.kws-panel').focus({ preventScroll: true });
     }
-    function close() { st.open = false; kws.hidden = true; clearInterval(idleTimer); if (kws.contains(document.activeElement)) document.activeElement.blur(); }
+    function close() {
+      st.open = false; kws.hidden = true; clearInterval(idleTimer); if (kws.contains(document.activeElement)) document.activeElement.blur();
+      if (changed) { changed = false; location.reload(); }
+    }
     function idleTick() {
       if (!st.open) return;
       const left = Math.ceil(IDLE_S - (performance.now() - st.lastTouch) / 1000);
