@@ -9,42 +9,62 @@
 
   /* ---- The choices --------------------------------------------------------------------------------
      The four sections of the contract's defaults (docs/state.md), with the values each key may
-     take. A value outside these, at any level, is ignored and the next level down is used. */
-  const KEY = 'knightwatcher.settings', VERSION = 1;
-  const SCENES = ['battlement', 'camp', 'house', 'yard'];
-  /* Every scene the page draws, in the order the settings screen lists them: the files of
-     web/js/scenes/. The collector's PAGE_SCENES (collector/config.py) follows this list. */
-  const ALL_SCENES = ['battlement', 'camp', 'house', 'yard', 'cellar', 'smithy', 'court'];
-  const SKINS = ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'];
-  const HAIRS = ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], TABARDS = ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'];
-  const ONE_OF = {
-    look: { build: ['a', 'b', 'c'], weapon: ['greatsword', 'sword_and_shield'], skin: SKINS, hair: HAIRS,
-      hair_style: ['short', 'tied', 'curls'], tabard: TABARDS, plume: ['red', 'white', 'gold', 'royal', 'green', 'violet'],
-      monarch: ['a', 'b', 'c'], monarch_skin: SKINS, monarch_hair: HAIRS, monarch_robe: TABARDS },
-    display: { headline: ['small', 'medium', 'large'], clock: [24, 12], helmet_indoors: [true, false] }
+     take. A value outside these, at any level, is ignored and the next level down is used. They
+     come from the settings schema, collector/settings-schema.json, which the collector checks
+     config.toml against; the page carries the part it reads. */
+  // settings-schema:start
+  /* Written by tools/settings-schema.js from collector/settings-schema.json: change the schema and
+     run the tool, never these lines. */
+  const SCHEMA = {
+    look: {
+      build: { values: ['a', 'b', 'c'], page: null },
+      weapon: { values: ['greatsword', 'sword_and_shield'], page: 'greatsword' },
+      skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], page: 'warm' },
+      hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], page: 'brown' },
+      hair_style: { values: ['short', 'tied', 'curls'], page: 'short' },
+      tabard: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], page: 'blue' },
+      plume: { values: ['red', 'white', 'gold', 'royal', 'green', 'violet'], page: 'red' },
+      monarch: { values: ['a', 'b', 'c'], page: 'a' },
+      monarch_skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], page: 'warm' },
+      monarch_hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], page: null },
+      monarch_robe: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], page: null }
+    },
+    display: {
+      headline: { values: ['small', 'medium', 'large'], page: 'medium' },
+      clock: { values: [24, 12], page: 24 },
+      helmet_indoors: { values: [true, false], page: false }
+    },
+    quiet: {
+      scenes: { values: ['battlement', 'camp', 'house', 'yard'], page: ['battlement', 'camp', 'house', 'yard'] },
+      minutes: { min: 1, max: 240, page: 10 }
+    },
+    scenes: ['battlement', 'camp', 'house', 'yard', 'cellar', 'smithy', 'court']
   };
+  // settings-schema:end
+  const KEY = 'knightwatcher.settings', VERSION = 1;
+  const pick = (sec, field) => { const o = {}; for (const k of Object.keys(SCHEMA[sec])) o[k] = SCHEMA[sec][k][field]; return o; };
+  /* The quiet scenes, and every scene the page draws in the order the settings screen lists them:
+     the files of web/js/scenes/. The collector's QUIET_SCENES and PAGE_SCENES follow the same
+     schema. */
+  const SCENES = SCHEMA.quiet.scenes.values;
+  const ALL_SCENES = SCHEMA.scenes;
+  const ONE_OF = { look: pick('look', 'values'), display: pick('display', 'values') };
   /* The scenes section's keys are condition ids, and which of them take part depends on what the
      scenes can act (see offered); KEYS.scenes is filled per store from the world it is given. */
-  const KEYS = { look: Object.keys(ONE_OF.look), display: Object.keys(ONE_OF.display), quiet: ['scenes', 'minutes'], scenes: [] };
+  const KEYS = { look: Object.keys(ONE_OF.look), display: Object.keys(ONE_OF.display), quiet: Object.keys(SCHEMA.quiet), scenes: [] };
   const SECTIONS = Object.keys(KEYS);
-  const MINUTES = { least: 1, most: 240 };
+  const MINUTES = { least: SCHEMA.quiet.minutes.min, most: SCHEMA.quiet.minutes.max };
   /* The levels above the page's own, highest first, and how the console names each. */
   const LEVELS = ['hook', 'saved', 'defaults'];
   const WHERE = { hook: 'the address', saved: 'this display\'s saved choices', defaults: 'the defaults in state.json' };
 
-  /* The page's own defaults, below every other level: the base pack's defaults for the knight
-     (read from the pack in use, see builtIn), the first monarch with the court's own skin and each
-     monarch's own hair and robe (null: as drawn), a medium headline, a 24-hour clock, the helmet
-     off indoors, all four quiet scenes for ten minutes each, and each condition in its own scene
-     (filled from the world, see builtIn). The demo keeps its own minute while no level above this
-     one sets the length. */
-  const BUILT_IN = {
-    look: { build: null, weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red', monarch: 'a', monarch_skin: 'warm',
-      monarch_hair: null, monarch_robe: null },
-    display: { headline: 'medium', clock: 24, helmet_indoors: false },
-    quiet: { scenes: SCENES, minutes: 10 },
-    scenes: {}
-  };
+  /* The page's own defaults, below every other level, from the schema: the base pack's defaults for
+     the knight (read from the pack in use, see builtIn; the schema's are used without one), the
+     first monarch with the court's own skin and each monarch's own hair and robe (null: as drawn),
+     a medium headline, a 24-hour clock, the helmet off indoors, all four quiet scenes for ten
+     minutes each, and each condition in its own scene (filled from the world, see builtIn). The
+     demo keeps its own minute while no level above this one sets the length. */
+  const BUILT_IN = { look: pick('look', 'page'), display: pick('display', 'page'), quiet: pick('quiet', 'page'), scenes: {} };
 
   const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -312,7 +332,7 @@
     return { can, homes };
   }
 
-  const api = { KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, buildsOf, builtIn, worldOf, offered, clean, resolve, knightLook, engineInput, clock, load, save, create, pageWorld };
+  const api = { SCHEMA, KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, buildsOf, builtIn, worldOf, offered, clean, resolve, knightLook, engineInput, clock, load, save, create, pageWorld };
   KW.settings = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;

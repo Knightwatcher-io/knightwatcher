@@ -14,6 +14,7 @@ web/                 the page: static files, no build step (index.html, css/, fo
   packs/             the packs that ship with the page, each a .pack.json and its .pack.js carrier
 collector/           the collector: Python, standard library only
   sources/           one module per source
+  settings-schema.json  every setting of config.toml and every variable of .env
 tests/
   collector/         unittest tests for the collector
   web/               node tests for the page's scripts
@@ -22,16 +23,19 @@ tests/
                      shield as approved (base-onehand.items.json), its free options as
                      approved (base-options.json), and a state file with the settings'
                      defaults (state-defaults.json)
-  tools/             node tests for tools/deploy.sh, tools/pack-carrier.js and tools/sign-pack.js
+  tools/             node tests for tools/deploy.sh, tools/pack-carrier.js, tools/sign-pack.js and
+                     tools/settings-schema.js
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version
   pack-carrier.js    writes the carrier of each pack in web/packs/
   sign-pack.js       signs pack files, or takes their signatures off, and writes their carriers
+  settings-schema.js writes the page's copy of the settings schema and the reference in
+                     docs/configuration.md
   icons.sh           regenerates the favicon and the app icons from the drawings in icons/
   shots.sh           regression screenshots of the page
   check-private.sh   the check that no private detail is tracked
 docs/                this documentation
-compose.yaml  Dockerfile  config.example.toml  secrets.example.json  pyproject.toml
+compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 ```
 
 ## Rules
@@ -43,6 +47,11 @@ compose.yaml  Dockerfile  config.example.toml  secrets.example.json  pyproject.t
 - **A pack file and its carrier change together.** After editing a file in `web/packs/`, run
   `node tools/pack-carrier.js` and commit both; a test fails while they differ. See
   [packs.md](./packs.md#carriers).
+- **A setting starts in the schema.** Every setting of `config.toml` and every variable of `.env`
+  is described in `collector/settings-schema.json`. A new or changed one is written there first,
+  then in `config.example.toml` or `.env.example`; then run `node tools/settings-schema.js`, which
+  writes the page's copy in `web/js/settings.js` and the reference in
+  [configuration.md](./configuration.md#every-setting). Tests fail while any of them disagree.
 - **A signed pack is signed again after any change.** Editing a pack that carries a `sig` breaks
   its signature, and `node --test tests/tools/` fails until it is signed again or unsigned with
   `node tools/sign-pack.js --unsign`. See [Signing the packs](#signing-the-packs).
@@ -65,14 +74,15 @@ python3 -m unittest discover -s tests/collector -v
 uvx ruff check collector tests && uvx ruff format --check collector tests
 docker build -t knightwatcher-collector:dev .
 docker compose config -q
-python3 -m collector --config config.toml --secrets secrets.json --check-config
+python3 -m collector --check-config --config config.toml --env-file .env
 ```
 
 The collector's TLS test needs `openssl` on the path, to make a self-signed certificate that is
 thrown away after the run; without it that test is skipped and says why.
 
-The last two need a `.env`, a `config.toml` and a `secrets.json` in place; see
-[configuration.md](./configuration.md).
+The last two need a `.env` and a `config.toml` in place; see
+[configuration.md](./configuration.md). `tests/collector/test_schema.py` checks the settings schema
+against the collector, `config.example.toml`, `.env.example` and `compose.yaml`.
 
 The page:
 
@@ -105,12 +115,14 @@ stored record, in about a second. The record is stored again only when the knigh
 [page.md](./page.md#checks) says how. The same file draws every frame of the swings, the attack
 and the goblin strike with the greatsword and with the sword and shield, and fails if an arm is
 drawn over a blade or a shield ([page.md](./page.md#the-knights-rig)). `node --test tests/tools/` also checks that every pack
-carrier matches its pack file, tests the signing tool with keys generated for the run, and checks
+carrier matches its pack file, that the copy of the settings schema in `web/js/settings.js` and the
+reference in `docs/configuration.md` are what `tools/settings-schema.js` writes, tests the signing tool with keys generated for the run, and checks
 that every pack in `web/packs/` that carries a `sig` verifies against the key table in `pack.js`.
 `tests/web/loading.test.js` checks the downloaded packs, the refusals and the knight drawn from code
 when no base pack can be used; its signed packs use keys generated for the run. `tests/web/places.test.js`
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
-and that no two places draw over each other. `tests/web/settings.test.js` checks the settings in
+and that no two places draw over each other. `tests/web/settings-schema.test.js` checks the page's lists of
+settings, scenes and conditions against the settings schema. `tests/web/settings.test.js` checks the settings in
 `web/js/settings.js` (the order of their levels, unknown values, the browser's storage refusing,
 the reset, the 12-hour clock, the monarch's hair and robe with "As drawn", the scene chosen per
 condition and which scenes can act which condition), the engine's quiet rotation and its choice of

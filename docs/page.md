@@ -586,7 +586,10 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
    a 24-hour clock, the helmet off indoors, all four quiet scenes, ten minutes each in live mode
    and one in the demo, and each condition in its own scene.
 
-The keys and their values are the contract's: `look` holds `build`, `weapon`, `skin`, `hair`,
+The keys, the values each may take and the page's own defaults come from the settings schema,
+`collector/settings-schema.json`, through the copy `tools/settings-schema.js` writes between the
+`settings-schema` markers of `settings.js` (`KW.settings.SCHEMA`); `ONE_OF`, `SCENES`,
+`ALL_SCENES`, `MINUTES` and `BUILT_IN` are made from it. They are the contract's: `look` holds `build`, `weapon`, `skin`, `hair`,
 `hair_style`, `tabard`, `plume`, `monarch`, `monarch_skin`, `monarch_hair` and `monarch_robe`;
 `display` holds `headline`, `clock` and `helmet_indoors`; `quiet` holds `scenes` and `minutes`;
 `scenes` holds a scene id for each condition offered, by its condition id. Which conditions are

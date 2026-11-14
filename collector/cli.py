@@ -10,12 +10,11 @@ import sys
 import threading
 import time
 
-from collector.config import ConfigError, load
+from collector.config import ConfigError, load, read_env_file
 from collector.runner import STATE_FILE, Runner
 from collector.store import Memory
 
 DEFAULT_CONFIG = "/etc/knightwatcher/config.toml"
-DEFAULT_SECRETS = "/etc/knightwatcher/secrets.json"
 
 log = logging.getLogger("collector")
 
@@ -23,11 +22,17 @@ log = logging.getLogger("collector")
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="collector", description="Knightwatcher collector")
     p.add_argument("--config", default=os.environ.get("KNIGHTWATCHER_CONFIG", DEFAULT_CONFIG))
-    p.add_argument("--secrets", default=os.environ.get("KNIGHTWATCHER_SECRETS", DEFAULT_SECRETS))
+    p.add_argument(
+        "--env-file",
+        metavar="PATH",
+        help="with --check-config: read the credentials from this .env file, not the environment",
+    )
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--once", action="store_true", help="run one poll, write the file, exit")
     mode.add_argument(
-        "--check-config", action="store_true", help="validate config and secrets, then exit"
+        "--check-config",
+        action="store_true",
+        help="validate the config and the credentials, then exit",
     )
     mode.add_argument(
         "--health", action="store_true", help="exit 1 if state.json is older than 3 intervals"
@@ -49,7 +54,10 @@ def _health(config) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+    parser = _parser()
+    args = parser.parse_args(argv)
+    if args.env_file and not args.check_config:
+        parser.error("--env-file goes with --check-config")
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
@@ -58,7 +66,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     logging.Formatter.converter = time.gmtime
     try:
-        config = load(args.config, None if args.health else args.secrets)
+        if args.health:
+            env = None  # the health check needs no credentials
+        elif args.env_file:
+            env = read_env_file(args.env_file)
+        else:
+            env = os.environ
+        config = load(args.config, env)
     except ConfigError as exc:
         for problem in exc.problems:
             print(f"config: {problem}", file=sys.stderr)

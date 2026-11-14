@@ -3,7 +3,8 @@
 The collector reads the homelab every `interval_s` seconds (10 by default) and writes `state.json`,
 the file described in [state.md](./state.md). It is a Python package in `collector/` that uses the
 standard library alone, and it runs as a container. Its settings are in
-[configuration.md](./configuration.md).
+[configuration.md](./configuration.md), and described for the code in
+`collector/settings-schema.json`.
 
 ## One poll
 
@@ -266,15 +267,20 @@ class ExampleSource(Source):
 
 Then:
 
-1. Add its defaults to `SOURCE_DEFAULTS` in `collector/config.py`, `every_s` among them, with
-   any required settings in `REQUIRED` and any credentials in `SECRET_FIELDS`, and register the
-   class in `build_sources` in `collector/sources/__init__.py`.
+1. Describe its settings in `collector/settings-schema.json`: a `sources.<name>` table with
+   `enabled`, `every_s` and its own, each with its type, default, range and help, and
+   `"required": true` on any it cannot run without. A source that logs in has a `secret` setting
+   and one entry in `env` for each credential, named `KNIGHTWATCHER_<SECRET>_<FIELD>`; add each to
+   `.env.example` and to the `environment` list in `compose.yaml`. `collector/config.py` builds
+   `SOURCE_DEFAULTS`, `REQUIRED` and `SECRET_FIELDS` from the schema. Register the class in
+   `build_sources` in `collector/sources/__init__.py`.
 2. If it brings a new `facts` section or event type, change [state.md](./state.md) and the
    lists in `collector/contract.py` in the same commit.
 3. If a condition depends on it, write the cause and the words in `collector/conditions.py`.
 4. Test it in `tests/collector/` against invented data. `kw_helpers.py` has a fake `/proc` and
    a local HTTP server.
-5. Document its settings in [configuration.md](./configuration.md).
+5. Add its table to `config.example.toml`, run `node tools/settings-schema.js` to write the
+   reference in [configuration.md](./configuration.md), and add any notes there by hand.
 
 `fetch` must not touch `memory`, and nothing it returns may hold a secret. Use the helpers in
 `collector/net.py`, which set timeouts, refuse redirects and turn failures into short messages.
@@ -286,16 +292,19 @@ resolver hangs is caught only by the poll's limit on the read. An address avoids
 ## Running it
 
 ```bash
-python3 -m collector --check-config     # validate config.toml and secrets.json, then exit
+python3 -m collector --check-config     # validate config.toml and the credentials, then exit
 python3 -m collector --once             # one poll, write state.json, exit
 python3 -m collector --health           # exit 1 if state.json is older than three intervals
 python3 -m collector                    # poll until stopped
 ```
 
-`--config` and `--secrets` name the two files. They default to the environment variables
-`KNIGHTWATCHER_CONFIG` and `KNIGHTWATCHER_SECRETS`, and where those are unset to
-`/etc/knightwatcher/config.toml` and `/etc/knightwatcher/secrets.json`, the paths inside the
-container. The collector takes an exclusive lock on its state folder, so a second collector
+`--config` names the settings file. It defaults to the environment variable
+`KNIGHTWATCHER_CONFIG`, and where that is unset to `/etc/knightwatcher/config.toml`, the path
+inside the container. Credentials come from environment variables, which `compose.yaml` passes
+from `.env` (see [configuration.md](./configuration.md#env-host-paths-and-credentials)).
+`--check-config --env-file PATH` reads them from a `.env` file instead, for the check alone, so a
+new image can be checked against a host's `.env` before it starts; nothing in the file is
+expanded, and no message carries a value. The collector takes an exclusive lock on its state folder, so a second collector
 pointed at the same folder exits at once.
 
 The container definition is `compose.yaml`: a non-root user of its own (uid and gid 10001), a

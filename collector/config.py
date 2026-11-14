@@ -1,120 +1,55 @@
-"""Configuration: config.toml for settings, secrets.json for credentials.
+"""Configuration: config.toml for settings, the environment for credentials.
 
-Every setting has a default here, and docs/configuration.md documents each one. A source runs
-when its table is present in config.toml and its `enabled` is not false. Watched things are the
-`[[thing]]` tables, checked here and turned into one list with the Pi of `[sources.pi]` first.
-The `[look]`, `[display]`, `[quiet]` and `[scenes]` tables are the settings screen's household
-defaults; they have no defaults here, and only what they set is written to state.json.
+collector/settings-schema.json describes every setting: its type, its allowed values or range and
+its default. The defaults and the plain checks here are built from it, and the checks that are not
+plain (the priority list, addresses, patterns, watched things and the Pi) are written out below.
+A source runs when its table is present in config.toml and its `enabled` is not false. Watched
+things are the `[[thing]]` tables, checked here and turned into one list with the Pi of
+`[sources.pi]` first. The `[look]`, `[display]`, `[quiet]` and `[scenes]` tables are the settings
+screen's household defaults; they have no defaults here, and only what they set is written to
+state.json. Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>,
+where SECRET is the source's `secret` setting; no message ever carries a credential's value.
 """
 
 from __future__ import annotations
 
 import copy
-import json
 import re
 import tomllib
 import urllib.parse
 import zoneinfo
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-CONDITION_IDS = [
-    "attack",
-    "wan_down",
-    "container_unhealthy",
-    "disk_full",
-    "backup_overdue",
-    "pi_silent",
-    "thing_down",
-    "cpu_hot",
-    "memory_tight",
-    "ssh_session",
-    "updating",
-    "streaming",
-    "night",
-]
+from collector import schema
 
-COLLECTOR_DEFAULTS: dict[str, Any] = {
-    "interval_s": 10,
-    "output_dir": "/out",
-    "state_dir": "/var/lib/knightwatcher",
-    "timezone": "UTC",
-    "http_timeout_s": 5.0,
-    "auth_backoff_s": 1200,
-    "proc_root": "/host/proc",
-}
+CONDITION_IDS = schema.condition_ids()
+
+COLLECTOR_DEFAULTS: dict[str, Any] = schema.defaults("collector")
 
 CONDITION_DEFAULTS: dict[str, Any] = {
-    "priority": list(CONDITION_IDS),
-    "clear_after_s": 30,
-    "attack": {"window_s": 600, "jails": ["sshd"], "bans": 5},
-    "wan_down": {"failed_checks": 2},
-    "container_unhealthy": {"for_s": 180},
-    "disk_full": {"pct": 90.0},
-    "backup_overdue": {"hours": 30.0},
-    "pi_silent": {"for_s": 180},
-    "thing_down": {},
-    "cpu_hot": {"pct": 85.0, "window_s": 30},
-    "memory_tight": {"available_pct": 10.0, "window_s": 30},
-    "ssh_session": {"min_sessions": 1, "show_for_s": 600},
-    "updating": {},
-    "streaming": {"min_streams": 1},
-    "night": {"start": "23:00", "end": "07:00"},
+    **schema.defaults("conditions"),
+    **{cid: schema.defaults(f"conditions.{cid}") for cid in CONDITION_IDS},
 }
 
 SOURCE_DEFAULTS: dict[str, dict[str, Any]] = {
-    "host": {"enabled": True, "every_s": 10, "disks": []},
-    "containers": {"enabled": True, "every_s": 10, "url": "", "ignore": []},
-    "wan": {"enabled": True, "every_s": 30, "urls": ["https://1.1.1.1/cdn-cgi/trace"]},
-    "dns": {
-        "enabled": True,
-        "every_s": 30,
-        "server": "127.0.0.1",
-        "port": 53,
-        "name": "example.com",
-    },
-    "backup": {
-        "enabled": True,
-        "every_s": 60,
-        "log": "/host/backup.log",
-        "pattern": r"System Backup Completed: (.+)$",
-        "timezone": "UTC",
-        "read_bytes": 262144,
-    },
-    "pi": {"enabled": True, "every_s": 30, "host": "", "ports": [22]},
-    "updates": {"enabled": True, "every_s": 10, "holders": []},
-    "ssh": {"enabled": True, "every_s": 10, "port": 22, "ignore_sources": []},
-    "streams": {"enabled": True, "every_s": 30, "url": "", "secret": "tautulli"},
-    "adblock": {
-        "enabled": True,
-        "every_s": 30,
-        "url": "",
-        "secret": "adguard",
-        "fly_every_s": 300.0,
-    },
-    "security": {"enabled": True, "every_s": 30, "url": ""},
-    "sonarr": {"enabled": True, "every_s": 30, "url": "", "secret": "sonarr"},
-    "radarr": {"enabled": True, "every_s": 30, "url": "", "secret": "radarr"},
+    name: schema.defaults(f"sources.{name}") for name in schema.source_names()
 }
 
 # Settings a source cannot run without.
 REQUIRED = {
-    "containers": ["url"],
-    "pi": ["host"],
-    "streams": ["url"],
-    "adblock": ["url"],
-    "security": ["url"],
-    "sonarr": ["url"],
-    "radarr": ["url"],
+    name: [s["key"] for s in schema.settings(f"sources.{name}") if s.get("required")]
+    for name in SOURCE_DEFAULTS
 }
+REQUIRED = {name: keys for name, keys in REQUIRED.items() if keys}
 
-# Fields each source needs from its section of secrets.json.
-SECRET_FIELDS = {
-    "streams": ["api_key"],
-    "adblock": ["username", "password"],
-    "sonarr": ["api_key"],
-    "radarr": ["api_key"],
-}
+# The credentials each source needs, by field; each is read from KNIGHTWATCHER_<SECRET>_<FIELD>.
+SECRET_FIELDS: dict[str, list[str]] = {}
+for _e in schema.credentials():
+    SECRET_FIELDS.setdefault(_e["source"], []).append(_e["field"])
+# A source's `secret` names variables, so it is letters, digits and underscores.
+_SECRET_NAME = re.compile(r"^[A-Za-z0-9_]+$")
 
 # Settings that were removed, with what to set instead. Naming the replacement beats the plain
 # "unknown setting" an old config.toml would otherwise get.
@@ -125,28 +60,25 @@ REPLACED = {
 }
 
 # The shortest interval and averaging window the collector accepts, in seconds.
-MIN_INTERVAL_S = 5
-MIN_WINDOW_S = 10
+MIN_INTERVAL_S = schema.setting("collector", "interval_s")["min"]
+MIN_WINDOW_S = schema.setting("conditions.cpu_hot", "window_s")["min"]
 
 _HHMM = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
 # Watched things: the [[thing]] tables.
-THING_KINDS = ("pi", "camera", "machine", "vm")
-MAX_THINGS = 32  # the Pi of [sources.pi] included
-MAX_THING_PORTS = 3
-THING_EVERY_S = (10, 3600)
-MAX_DOWN_AFTER_S = 86400
-# Every setting a [[thing]] table may have. name and kind have no default; host, port, ports and
-# url have none either, and which of them are given decides the check.
+_THING = {s["key"]: s for s in schema.settings("thing")}
+THING_KINDS = tuple(_THING["kind"]["values"])
+MAX_THINGS = schema.TABLES["thing"]["max"]  # the Pi of [sources.pi] included
+MAX_THING_PORTS = _THING["ports"]["max_items"]
+THING_EVERY_S = (_THING["every_s"]["min"], _THING["every_s"]["max"])
+MAX_DOWN_AFTER_S = _THING["down_after_s"]["max"]
+# The settings of a [[thing]] table that have a default. name and kind have none; host, port,
+# ports and url have none either, and which of them are given decides the check.
 THING_DEFAULTS: dict[str, Any] = {
-    "refused_counts": False,
-    "verify_tls": False,
-    "every_s": 30,
-    "down_after_s": 180,
-    "alert": True,
-    "enabled": True,
+    k: s["default"] for k, s in _THING.items() if s.get("default") is not None
 }
-THING_SETTINGS = ("name", "kind", "host", "port", "ports", "url", *THING_DEFAULTS)
+# Every setting a [[thing]] table may have.
+THING_SETTINGS = tuple(_THING)
 # 1 to 20 printable ASCII characters, with no space at either end.
 _THING_NAME = re.compile(r"^[!-~](?:[ -~]{0,18}[!-~])?$")
 # A web address is printable ASCII with no space in it.
@@ -155,41 +87,27 @@ _PLAIN_URL = re.compile(r"^[!-~]+$")
 PI_NAME = "Pi"
 
 # The household defaults for the display's settings screen: the [look], [display], [quiet] and
-# [scenes] tables, written to state.json as `defaults` with only the keys the config sets. Each key
-# maps to the values it may take, in the order the messages list them.
-# The swatch families (skin, hair, tabard, plume) are those of web/packs/base.pack.json, the hair
-# styles are its hair.* items, and the builds and monarchs are the letters the settings screen
-# offers. The page would ignore a value the base pack lacks, so these lists follow the pack.
-# The monarch's hair and robe take the hair and tabard swatches.
-SKIN_TONES = ("fair", "warm", "golden", "tan", "brown", "deep")
-HAIR_COLOURS = ("black", "dark", "brown", "auburn", "blonde", "silver")
-TABARD_COLOURS = ("blue", "forest", "violet", "wine", "teal", "sable")
+# [scenes] tables, written to state.json as `defaults` with only the keys the config sets. The
+# schema gives the values each key may take, in the order the messages list them. The swatch
+# families (skin, hair, tabard, plume) are those of web/packs/base.pack.json and the hair styles
+# its hair.* items; the page would ignore a value the base pack lacks, so the lists follow the pack.
+DEFAULT_TABLES = tuple(t["table"] for t in schema.SCHEMA["tables"] if t.get("defaults_for"))
 LOOK_CHOICES: dict[str, tuple[str, ...]] = {
-    "build": ("a", "b", "c"),
-    "weapon": ("greatsword", "sword_and_shield"),
-    "skin": SKIN_TONES,
-    "hair": HAIR_COLOURS,
-    "hair_style": ("short", "tied", "curls"),
-    "tabard": TABARD_COLOURS,
-    "plume": ("red", "white", "gold", "royal", "green", "violet"),
-    "monarch": ("a", "b", "c"),
-    "monarch_skin": SKIN_TONES,
-    "monarch_hair": HAIR_COLOURS,
-    "monarch_robe": TABARD_COLOURS,
+    s["key"]: tuple(s["values"]) for s in schema.settings("look")
 }
-HEADLINE_SIZES = ("small", "medium", "large")
-CLOCKS = (24, 12)
+HEADLINE_SIZES = tuple(schema.setting("display", "headline")["values"])
+CLOCKS = tuple(schema.setting("display", "clock")["values"])
 # The quiet scenes the page turns between, as TURNS in web/js/engine.js names them.
-QUIET_SCENES = ("battlement", "camp", "house", "yard")
-QUIET_MINUTES = (1, 240)
-DISPLAY_SETTINGS = ("headline", "clock", "helmet_indoors")
-QUIET_SETTINGS = ("scenes", "minutes")
+QUIET_SCENES = tuple(schema.scene_ids(quiet_only=True))
+_MINUTES = schema.setting("quiet", "minutes")
+QUIET_MINUTES = (_MINUTES["min"], _MINUTES["max"])
+DISPLAY_SETTINGS = tuple(s["key"] for s in schema.settings("display"))
+QUIET_SETTINGS = tuple(s["key"] for s in schema.settings("quiet"))
 # Every scene the page draws, as ALL_SCENES in web/js/settings.js names them (the files of
 # web/js/scenes/). [scenes] maps a condition id to one of them. Which scene can act which
 # condition is the page's to know: a known scene that cannot act a condition is accepted here
 # and ignored by the page, with a line in its console.
-PAGE_SCENES = ("battlement", "camp", "house", "yard", "cellar", "smithy", "court")
-DEFAULT_TABLES = ("look", "display", "quiet", "scenes")
+PAGE_SCENES = tuple(schema.scene_ids())
 
 
 class ConfigError(Exception):
@@ -225,9 +143,13 @@ class Config:
         name = self.sources[source].get("secret", source)
         return self.secrets.get(name, {})
 
+    # The value of every credential variable the environment held, used or not, for scrubbing.
+    scrub: list[str] = field(default_factory=list, repr=False)
+
     def secret_values(self) -> list[str]:
         """Every secret string, so that error text can be scrubbed of them."""
-        return [v for section in self.secrets.values() for v in section.values() if v]
+        used = [v for section in self.secrets.values() for v in section.values() if v]
+        return list(dict.fromkeys(used + self.scrub))
 
 
 def _type_ok(default: Any, value: Any) -> bool:
@@ -262,19 +184,21 @@ def _merge(where: str, defaults: dict, given: dict, problems: list[str]) -> dict
     return out
 
 
-def _check_positive(where: str, value: float, problems: list[str], allow_zero=False):
-    if value < 0 or (value == 0 and not allow_zero):
-        problems.append(f"{where}: must be {'zero or ' if allow_zero else ''}above zero")
+def _check_ranges(where: str, values: dict, table: str, problems: list[str]) -> None:
+    """The ranges the schema gives for a table's settings, in the schema's order."""
+    for spec in schema.settings(table):
+        key = spec["key"]
+        if not any(k in spec for k in ("min", "above", "max")):
+            continue
+        why = schema.range_problem(spec, values[key])
+        if why:
+            problems.append(f"{where}.{key}: {why}")
 
 
 def _validate_collector(c: dict, problems: list[str]) -> None:
-    if c["interval_s"] < MIN_INTERVAL_S:
-        problems.append(f"collector.interval_s: must be at least {MIN_INTERVAL_S}")
-    _check_positive("collector.http_timeout_s", c["http_timeout_s"], problems)
+    _check_ranges("collector", c, "collector", problems)
     if c["http_timeout_s"] >= c["interval_s"]:
         problems.append("collector.http_timeout_s: must be shorter than interval_s")
-    if c["auth_backoff_s"] < 1200:
-        problems.append("collector.auth_backoff_s: must be at least 1200 (20 minutes)")
     try:
         zoneinfo.ZoneInfo(c["timezone"])
     except (zoneinfo.ZoneInfoNotFoundError, ValueError):
@@ -289,49 +213,28 @@ def _validate_conditions(c: dict, problems: list[str]) -> None:
         elif cid in seen:
             problems.append(f"conditions.priority: {cid!r} listed twice")
         seen.add(cid)
-    _check_positive("conditions.clear_after_s", c["clear_after_s"], problems, True)
-    for cid in ("pi_silent", "container_unhealthy"):
-        _check_positive(f"conditions.{cid}.for_s", c[cid]["for_s"], problems, True)
-    for cid in ("cpu_hot", "memory_tight"):
-        if c[cid]["window_s"] < MIN_WINDOW_S:
-            problems.append(f"conditions.{cid}.window_s: must be at least {MIN_WINDOW_S}")
-    for where, v in (
-        ("cpu_hot.pct", c["cpu_hot"]["pct"]),
-        ("memory_tight.available_pct", c["memory_tight"]["available_pct"]),
-        ("disk_full.pct", c["disk_full"]["pct"]),
-    ):
-        if not 0 < v <= 100:
-            problems.append(f"conditions.{where}: must be above 0 and at most 100")
-    _check_positive("conditions.backup_overdue.hours", c["backup_overdue"]["hours"], problems)
-    if c["wan_down"]["failed_checks"] < 1:
-        problems.append("conditions.wan_down.failed_checks: must be at least 1")
-    _check_positive("conditions.attack.window_s", c["attack"]["window_s"], problems)
-    if c["attack"]["bans"] < 1:
-        problems.append("conditions.attack.bans: must be at least 1")
+    _check_ranges("conditions", c, "conditions", problems)
+    for cid in CONDITION_IDS:
+        _check_ranges(f"conditions.{cid}", c[cid], f"conditions.{cid}", problems)
     if not all(isinstance(j, str) for j in c["attack"]["jails"]):
         problems.append("conditions.attack.jails: must be a list of strings")
     for key in ("start", "end"):
         if not _HHMM.match(c["night"][key]):
             problems.append(f"conditions.night.{key}: expected HH:MM, 24-hour")
-    for where, v in (
-        ("ssh_session.min_sessions", c["ssh_session"]["min_sessions"]),
-        ("streaming.min_streams", c["streaming"]["min_streams"]),
-    ):
-        if v < 1:
-            problems.append(f"conditions.{where}: must be at least 1")
-    _check_positive(
-        "conditions.ssh_session.show_for_s", c["ssh_session"]["show_for_s"], problems, True
-    )
 
 
 def _validate_source(name: str, s: dict, problems: list[str]) -> None:
-    _check_positive(f"sources.{name}.every_s", s["every_s"], problems)
+    table = f"sources.{name}"
+    _check_ranges(table, s, table, problems)
     for key in REQUIRED.get(name, []):
         if not s[key]:
-            problems.append(f"sources.{name}.{key}: required when the source is enabled")
+            why = schema.setting(table, key).get("required_problem")
+            problems.append(f"{table}.{key}: {why or 'required when the source is enabled'}")
     for key in ("url",):
         if s.get(key) and not re.match(r"^https?://", s[key]):
             problems.append(f"sources.{name}.{key}: must start with http:// or https://")
+    if "secret" in s and not _SECRET_NAME.match(s["secret"]):
+        problems.append(f"sources.{name}.secret: use letters, digits and underscores")
     if name == "host":
         for i, d in enumerate(s["disks"]):
             if (
@@ -372,10 +275,6 @@ def _validate_source(name: str, s: dict, problems: list[str]) -> None:
                 re.compile(h["pattern"])
             except re.error as exc:
                 problems.append(f"sources.updates.holders[{i}].pattern: {exc}")
-        if not s["holders"]:
-            problems.append("sources.updates.holders: list at least one lock holder")
-    elif name == "adblock":
-        _check_positive("sources.adblock.fly_every_s", s["fly_every_s"], problems, True)
     elif name == "ssh":
         import ipaddress
 
@@ -637,27 +536,32 @@ def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
             if key not in given:
                 continue
             value, w, before = given[key], f"{table}.{key}", len(problems)
-            if table == "look":
-                _choice(w, value, LOOK_CHOICES[key], problems)
-            elif table == "scenes":
+            if table == "scenes":
                 _choice(w, value, PAGE_SCENES, problems)
-            elif key == "headline":
-                _choice(w, value, HEADLINE_SIZES, problems)
-            elif key == "clock":
-                if not _is_int(value) or value not in CLOCKS:
-                    problems.append(f"{w}: must be {_say_or(CLOCKS)}")
-            elif key == "helmet_indoors":
-                if not isinstance(value, bool):
-                    problems.append(f"{w}: expected true or false")
-            elif key == "scenes":  # quiet.scenes
-                _quiet_scenes(w, value, problems)
-            elif key == "minutes":
-                low, high = QUIET_MINUTES
-                if not _is_int(value) or not low <= value <= high:
-                    problems.append(f"{w}: must be a whole number from {low} to {high}")
+            else:
+                _check_default(w, schema.setting(table, key), value, problems)
             if len(problems) == before:
                 out[table][key] = list(value) if isinstance(value, list) else value
     return out
+
+
+def _check_default(w: str, spec: dict, value: Any, problems: list[str]) -> None:
+    """One setting of [look], [display] or [quiet], by its type in the schema."""
+    kind = spec["type"]
+    if kind == "string":
+        _choice(w, value, tuple(spec["values"]), problems)
+    elif kind == "boolean":
+        if not isinstance(value, bool):
+            problems.append(f"{w}: expected true or false")
+    elif kind == "integer" and "values" in spec:
+        if not _is_int(value) or value not in spec["values"]:
+            problems.append(f"{w}: must be {_say_or(tuple(spec['values']))}")
+    elif kind == "integer":
+        low, high = spec["min"], spec["max"]
+        if not _is_int(value) or not low <= value <= high:
+            problems.append(f"{w}: must be a whole number from {low} to {high}")
+    elif kind == "list":  # quiet.scenes
+        _quiet_scenes(w, value, problems)
 
 
 def check_defaults(tables: dict) -> list[str]:
@@ -681,11 +585,36 @@ def _quiet_scenes(w: str, value: Any, problems: list[str]) -> None:
         seen.add(scene)
 
 
-def build(raw: dict, secrets: dict | None = None) -> Config:
+def _credentials(
+    sources: dict[str, dict], env: Mapping[str, str], problems: list[str]
+) -> dict[str, dict[str, str]]:
+    """The credentials of the enabled sources, by their `secret`, read from env.
+
+    A credential that is unset or empty is a problem naming its variable. No message here, or
+    anywhere else, carries a credential's value.
+    """
+    out: dict[str, dict[str, str]] = {}
+    for name, s in sources.items():
+        need = SECRET_FIELDS.get(name)
+        secret = s.get("secret", name)
+        if not need or not isinstance(secret, str) or not _SECRET_NAME.match(secret):
+            continue
+        section = out.setdefault(secret, {})
+        for f in need:
+            variable = schema.env_name(secret, f)
+            value = env.get(variable)
+            if not isinstance(value, str) or not value:
+                problems.append(f".env: {variable} missing (for {name})")
+            else:
+                section[f] = value
+    return out
+
+
+def build(raw: dict, env: Mapping[str, str] | None = None) -> Config:
     """Validate a parsed config.toml and fill in the defaults.
 
-    The secrets are checked too unless they are None, which the health check uses so that it
-    never opens the secrets file.
+    The credentials are read from env, a mapping of environment variables, and checked too,
+    unless env is None, which the health check uses so that it needs none.
     """
     problems: list[str] = []
     for key in raw:
@@ -711,24 +640,18 @@ def build(raw: dict, secrets: dict | None = None) -> Config:
             _validate_source(name, s, problems)
     things = _things(raw.get("thing"), sources, conditions, problems)
     defaults = _defaults(raw, problems)
-    for name in sources if secrets is not None else []:
-        need = SECRET_FIELDS.get(name)
-        if not need:
-            continue
-        section_name = sources[name].get("secret", name)
-        section = secrets.get(section_name)
-        if not isinstance(section, dict):
-            problems.append(f"secrets.json: section {section_name!r} missing (for {name})")
-            continue
-        for f in need:
-            if not isinstance(section.get(f), str) or not section.get(f):
-                problems.append(f"secrets.json: {section_name}.{f} missing (for {name})")
+    secrets = _credentials(sources, env, problems) if env is not None else {}
+    # The credentials the schema names are scrubbed from error text whether or not a source uses
+    # them, as every section of the old secrets file was.
+    names = [e["name"] for e in schema.credentials()]
+    scrub = [env[n] for n in names if env is not None and isinstance(env.get(n), str) and env[n]]
     if problems:
         raise ConfigError(problems)
-    return Config(collector, conditions, sources, secrets or {}, things, defaults)
+    return Config(collector, conditions, sources, secrets, things, defaults, scrub)
 
 
-def load(config_path: str, secrets_path: str | None) -> Config:
+def load(config_path: str, env: Mapping[str, str] | None) -> Config:
+    """Read config.toml and build it, with the credentials from env (see build)."""
     try:
         with open(config_path, "rb") as fh:
             raw = tomllib.load(fh)
@@ -736,18 +659,71 @@ def load(config_path: str, secrets_path: str | None) -> Config:
         raise ConfigError([f"{config_path}: cannot read ({exc.strerror})"]) from None
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError([f"{config_path}: {exc}"]) from None
-    secrets: dict | None = None
-    if secrets_path:
+    return build(raw, env)
+
+
+def read_env_file(path: str) -> dict[str, str]:
+    """The variables of a .env file, for --check-config --env-file.
+
+    One NAME=value a line, as docker compose reads it: blank lines and lines starting with # are
+    skipped, an optional `export ` is dropped, a value in single quotes is taken as written, one in
+    double quotes has \\n, \\t, \\" and \\\\ undone, and an unquoted value ends at a # that
+    follows a space. Nothing is expanded. A later line wins over an earlier one with the same
+    name. A problem names the file and the line number, never anything the line holds.
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+    except OSError as exc:
+        raise ConfigError([f"{path}: cannot read ({exc.strerror})"]) from None
+    except UnicodeDecodeError:
+        raise ConfigError([f"{path}: not UTF-8 text"]) from None
+    out: dict[str, str] = {}
+    problems: list[str] = []
+    for number, line in enumerate(lines, 1):
+        text = line.strip()
+        if not text or text.startswith("#"):
+            continue
+        if text.startswith("export "):
+            text = text[len("export ") :].lstrip()
+        name, eq, value = text.partition("=")
+        name = name.strip()
+        if not eq or not _ENV_NAME.match(name):
+            problems.append(f"{path}: line {number}: expected NAME=value")
+            continue
+        value = value.strip()
         try:
-            with open(secrets_path, encoding="utf-8") as fh:
-                secrets = json.load(fh)
-        except FileNotFoundError:
-            secrets = {}
-        except OSError as exc:
-            raise ConfigError([f"{secrets_path}: cannot read ({exc.strerror})"]) from None
-        except json.JSONDecodeError as exc:
-            # The message names a line and column, never the content.
-            raise ConfigError([f"{secrets_path}: not valid JSON (line {exc.lineno})"]) from None
-        if not isinstance(secrets, dict):
-            raise ConfigError([f"{secrets_path}: expected a JSON object"])
-    return build(raw, secrets)
+            out[name] = _env_value(value)
+        except ValueError:
+            problems.append(f"{path}: line {number}: a quote is not closed")
+    if problems:
+        raise ConfigError(problems)
+    return out
+
+
+_ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_ESCAPES = {"n": "\n", "t": "\t", '"': '"', "\\": "\\"}
+
+
+def _env_value(value: str) -> str:
+    """One value of a .env line, unquoted; ValueError when a quote is not closed."""
+    if value.startswith("'"):
+        end = value.find("'", 1)
+        if end < 0:
+            raise ValueError
+        return value[1:end]
+    if value.startswith('"'):
+        out, i = [], 1
+        while i < len(value):
+            ch = value[i]
+            if ch == "\\" and i + 1 < len(value):
+                nxt = value[i + 1]
+                out.append(_ESCAPES.get(nxt, ch + nxt))
+                i += 2
+                continue
+            if ch == '"':
+                return "".join(out)
+            out.append(ch)
+            i += 1
+        raise ValueError
+    return re.split(r"\s#", value, maxsplit=1)[0].strip()

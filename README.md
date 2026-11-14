@@ -48,7 +48,7 @@ collector write its file to `web/data/`, behind whatever authentication you use.
 - [The state file](docs/state.md): the contract between collector and page
 - [The page](docs/page.md): the files, the one grid, the scene interface, the modes and the address
 - [The collector](docs/collector.md): one poll, conditions, events, sources and how to add one
-- [Configuration](docs/configuration.md): `config.toml`, `secrets.json` and `.env`
+- [Configuration](docs/configuration.md): how settings work, `config.toml`, `.env`, and a reference of every setting
 - [Security](docs/security.md): what never enters this repository, and the collector's privileges
 - [Packs](docs/packs.md): the format of a pack, its checks and signing, and the library that reads it
 - [A monitor on the host](docs/monitor.md): showing the display on a screen wired to a headless host
