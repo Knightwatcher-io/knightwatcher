@@ -146,7 +146,7 @@ secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 # before a table and its settings to use them.
 
 # [look]
-# build = "a"                 # a, b or c
+# build = "a"                 # a Classic, b Broad, c Slim
 # weapon = "greatsword"       # greatsword or sword_and_shield
 # skin = "warm"               # fair, warm, golden, tan, brown or deep
 # hair = "brown"              # black, dark, brown, auburn, blonde or silver

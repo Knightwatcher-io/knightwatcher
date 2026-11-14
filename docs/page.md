@@ -98,17 +98,28 @@ differences, `dShoulder`, `dChest`, `dWaist`, `dHip`, `dStance`, `dLeg`, `dHeigh
 | `height` | the height of the shoulders above the ground | 132 |
 | `head` | half the width of the bare skull | 51 |
 
-The present knight is the only build and the reference for the others: each difference is a
-build's measurement less the present knight's, so for the present knight all eight are 0. The
-anchors lean on them in full. `stance` moves the feet and hips sideways, `leg` raises the hips, the
-hem and the belt, `height` raises the neck, the shoulders and the head, `shoulder` widens the
-shoulders, and `head` raises the head, so that a bigger skull grows upwards from the neck. `chest`,
-`waist` and `hip` move no anchor. `rig(o, build)` takes another build, which only the tests pass.
+The present knight is the reference for the other builds: each difference is a build's
+measurement less the present knight's, so for the present knight all eight are 0. The base pack
+has three builds, Classic (`build.a`, the present knight), Broad (`build.b`) and Slim (`build.c`);
+their measurements are in [packs.md](./packs.md#the-base-pack). The anchors lean on the
+differences in full. `stance` moves the feet and hips sideways, `leg` raises the hips, the hem and
+the belt, `height` raises the neck, the shoulders and the head, `shoulder` widens the shoulders,
+and `head` raises the head, so that a bigger skull grows upwards from the neck. `chest`, `waist`
+and `hip` move no anchor. The hands and the weapon follow the build too: see the grips below.
+
+**Which build is rigged.** On the pack path the knight is drawn on the look's build, and
+`KW.knight.rig(o)` from outside takes the same build when none is passed, so whatever measures the
+knight from outside measures the knight drawn. `engine.js` does: `bladeOf` finds the blade on the
+rig, and through it `foeGaps`, `contactQ` and the goblin's plan work out where the blade meets the
+goblin on the build drawn (see [Modes](#modes)). On the code path the knight is always the present
+knight. `rig(o, build)` takes another build's measurements, which only the tests pass.
 
 **The grip** is in the result's `grip` and places the hands and `main`:
 
-- `none`, when the sword is put away: the hands hang at `(X ∓ (64 + bloat), Y - 84 + drop)` and
-  `main` rests at the root with angle 0. The arms are drawn left, then right. With the crate of a
+- `none`, when the sword is put away: the hands hang at `(X ∓ (64 + dShoulder + bloat), Y - (84 +
+  dHeight) + drop)`, 10 outside and 48 below each shoulder on every build, so the arm is as long
+  and hangs as straight on Broad and Slim as on the present knight, and `main` rests at the root
+  with angle 0. The arms are drawn left, then right. With the crate of a
   full disk the hands take the carrying grip instead: they hold the crate against the chest by its
   lower corners, at `neck ± 44` across, plus the crate's sway of up to 2, and 62 below `neck`. The
   crate (`CARRY`, 80 by 64, its top 6 below `neck`, which is 50 below `head`, under the helmet's
@@ -116,9 +127,13 @@ shoulders, and `head` raises the head, so that a bigger skull grows upwards from
   over its sides.
 - `hammer`, in the smithy: the left hand steadies the work at `(X + 45, Y - 104 + drop)`, and the
   right swings the hammer from `(X + 80 + bloat, Y - 122 + drop)`, which is also `main`, with the
-  hammer's angle.
-- `two`, the greatsword in both hands: `main` is the middle of the grip and the blade's angle. The
-  hand on the side the blade leans to holds the grip 2 pixels up the blade, the other 30 down it.
+  hammer's angle. These do not follow the build: the hands work at the anvil, which stands in the
+  scene.
+- `two`, the greatsword in both hands: `main` is the middle of the grip and the blade's angle,
+  at `(X - 120 + 5 * gx, Y - 300 + 5 * gy + drop - dHeight)`: the poses are written for the present
+  knight, and on another build the grip rises and sinks with the shoulder line, so the weapon is
+  held where the present knight holds it, relative to the body. The hand on the side the blade
+  leans to holds the grip 2 pixels up the blade, the other 30 down it.
   Both arms are drawn before the blade, the one on the lean side first, and the gauntlets after
   it, the upper hand's first. The upper hand sits low enough that its gauntlet stays below the
   guard, which starts 17 up the blade. Once the blade turns past level it slides further down the
@@ -128,8 +143,9 @@ shoulders, and `head` raises the head, so that a bigger skull grows upwards from
 - `one`, a weapon in one hand, on the pack path only: `main` is placed as for `two`, and the right
   hand holds the weapon at its one station along the frame (the arming sword's is the grip's
   middle). The left hand, which is also `off`, holds the shield where the pose's `fx` and `fy`
-  put it, in units of `U` from the old corner as `gx` and `gy` are; with no shield equipped it
-  hangs at the side as in `none`. The shield's group (left arm, left gauntlet, shield) is drawn
+  put it, in units of `U` from the old corner as `gx` and `gy` are, raised and lowered with the
+  shoulder line (`dHeight`) as `main` is; with no shield equipped it hangs at the side as in
+  `none`. The shield's group (left arm, left gauntlet, shield) is drawn
   before the sword's (right arm, sword, right gauntlet); while the sword hand is left of the root,
   across the body, the order is `oneCrossed`: both arms, the shield, the sword and the right
   gauntlet last. The sword arm stays behind the shield and the blade passes in front of it.
@@ -412,7 +428,8 @@ hides the review bar and drives the display:
   camp's grass beside the knight, pulls a face, is bonked on the saucepan it wears, and vanishes
   in a puff of smoke. The knight's swing stops where the blade meets the pot, so the blade never
   passes through it; nothing gory is shown. The goblin stands where the weapon the knight holds
-  reaches it, the greatsword or the arming sword alike, and does not come where none can; the
+  reaches it, the greatsword or the arming sword alike, on whichever build is drawn, and does not
+  come where none can; the
   burst on the pot lasts the 80 ms the blade bounces off it. A foe is described in `KW.props.FOES` and played by
   the engine's foe player from its tables (`KW.engine.foe.FOE`), so a later foe reuses the
   entrance, the strike and the exit. A `seq` lower than the
@@ -580,7 +597,7 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
 2. **This display's saved choices**, made on the settings screen and kept in its browser.
 3. **The `defaults` of the state file**, which the collector takes from `config.toml` (see
    [state.md](./state.md)). A file from an older collector has none.
-4. **The page's own**: the base pack's defaults for the knight (Build A, the greatsword, warm skin,
+4. **The page's own**: the base pack's defaults for the knight (Classic, the greatsword, warm skin,
    brown hair cut short, a blue tabard and a red plume), monarch A in the court's own skin with
    each monarch's own hair and robe ("As drawn", `null` in what `now()` gives), a medium headline,
    a 24-hour clock, the helmet off indoors, all four quiet scenes, ten minutes each in live mode
@@ -604,8 +621,8 @@ the condition: `knightwatcher: settings: scenes.attack "house" in the defaults i
 ignored: that scene cannot act it`. A value a level holds that the page does
 not know is ignored at that level, so the next one down is used, and the console says so once:
 `knightwatcher: settings: look.skin "green" in this display's saved choices is ignored: not a value
-the page knows`. A build is known only when the base pack in use declares it (`build.a` is Build
-A); today it declares Build A alone. `quiet.scenes` takes turns in the order given, a repeat
+the page knows`. A build is known only when the base pack in use declares it (`build.a` is `a`);
+today it declares all three, Classic (`a`), Broad (`b`) and Slim (`c`). `quiet.scenes` takes turns in the order given, a repeat
 dropped, and a list that names no quiet scene is ignored whole; `minutes` is a number from 1 to
 240. A section of the defaults the page does not know is left alone without a word, so a later
 collector can add one.
@@ -664,9 +681,13 @@ with labels above their choices and the house's preview left out; every touch ta
 least 48 pixels tall.
 
 **The knight.** Build, weapon, skin tone, hair colour, hair style, tabard and plume, each a row of
-choices; names and colours come from the base pack. The builds are A, B and C, and those the base
-pack declares are ready; the others are greyed with a dashed border and say Coming, and a tap on
-one says in a line under the row that it is not drawn yet and changes nothing. Beside the rows the
+choices; names and colours come from the base pack. The build row shows the contract's three
+builds, `a`, `b` and `c`, each by the name the base pack gives it, Classic, Broad and Slim, with
+Ready under each (`KW.settings.buildChoices`). A build the base pack in use does not declare, as a
+fork's base pack might, is greyed with a dashed border, named by its letter (Build B) and says
+Coming, and a tap on it says in a line under the row that it is not drawn yet and changes nothing.
+The line under the knight's page that names the default look gives the build by its name too
+("the Classic build, the greatsword, ..."). Beside the rows the
 knight's own code draws the knight with the chosen look, helmet on and helmet off, every frame,
 and the house with the gear at rest. On the code path the page says the look cannot show until the
 base pack can be used, and keeps the choices.
@@ -768,6 +789,7 @@ down is used.
 | `ck=` | the clock: `24`, or `12` for 9:42 with a small PM |
 | `set=` | opens the settings screen at load on a page: `knight`, `monarch`, `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
 | `th=` | the demo's list of watched things: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `th=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `thing_down` on, the knight looks towards the first thing that is down and alerts |
+| `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`. A page that cannot draw from the base pack draws Classic whatever the hook says |
 | `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its heater shield in the other, `two` the greatsword. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
 | `sk=`, `hc=`, `tb=`, `pm=` | the knight's skin, hair colour, tabard and plume: the id of one of the base pack's swatches, such as `sk=deep&hc=black&tb=sable&pm=gold` (the ids are in [packs.md](./packs.md#the-base-pack)) |
 | `hy=` | the knight's hair style: `short`, `tied` or `curls`, the base pack's `hair.<value>` |
@@ -778,7 +800,7 @@ With time frozen the knight never starts a swat alone, so the flies of `f=` hove
 starts one, and a knight placed away from their spot by `kx=` stays exactly there, in mid-stride,
 rather than walking a step in each frame.
 
-The look hooks (`arm=`, `sk=`, `hc=`, `hy=`, `tb=` and `pm=`) take the values the contract gives
+The look hooks (`bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=` and `pm=`) take the values the contract gives
 the look in [state.md](./state.md) and keep screenshots the same whatever a display has saved; on
 the code path they do nothing. A value outside the contract's is ignored, as at every level.
 
@@ -865,8 +887,14 @@ ground, and does not come when there is no room; and, for the greatsword from th
 from code and for the arming sword, at every spot the knight strolls to in both scenes, that the
 goblin stands within the weapon's reach, that the blade comes within 3 pixels of its crown at the
 hit and of a drawn pixel of its sprite, that the hit pose plays only from that moment, and that the
-blade never enters any drawn pixel of the goblin by more than 2. A blade too short to reach it
-anywhere keeps the goblin away.
+blade never enters any drawn pixel of the goblin by more than 2. The same check runs on Broad and
+Slim with each weapon. On every build and with each weapon the goblin comes wherever it comes on
+Classic, at the same spot, and is struck within 12 ms of Classic's hit; at the knight's first spot
+the hits are 1659, 1661 and 1657 ms with the greatsword on Classic, Broad and Slim, and with the
+sword and shield 1645, 1651 and 1642 on the battlement and 1672, 1675 and 1672 at the camp. The
+blade `bladeOf` measures is the rig's on the look's build, its grip raised by the build's height,
+and the present knight's on the code path. A blade too short to reach it anywhere keeps the goblin
+away.
 
 The same knight test checks the choice itself: the console lines, the refusal at the `signature`
 step, the code path when there is no base pack, a broken one or no library, a changed colour in the
@@ -883,6 +911,19 @@ checks, from the base pack and helmet on and off, with and without the bob, ever
 sway, that it is drawn after the pauldrons and before the arms, that its hands are at its lower
 corners, that no pixel of it lies on the helmet's opening or the bare face, and that nothing of the
 load rises above the helmet. The call record holds the code path to the same calls.
+
+For the three builds the knight test checks that Classic, chosen by name, draws the stored record
+in every pose from the base pack; that Broad and Slim, with each weapon, draw every pose of the
+record, both swings at every twentieth and the attack without a throw, a refusal, a broken number
+or a fall back, each frame's fills from the look's lists within the look's cost, and other calls
+than Classic's; that on all three builds, with each weapon, both hands stay on the grip (the
+greatsword's two hands on its frame between its stations, the sword hand on its station and the
+shield hand where the pose puts it) in every frame of both swings at every hundredth, the attack
+every 20 ms, the goblin strike on both sides and the stances, that the grip is where Classic holds
+it raised or lowered by the build's height, that the hands hang 10 outside and 48 below each
+shoulder with no weapon, and that the hammer's hands do not move; that no arm is drawn over a blade,
+its guard or the shield on Broad and Slim with each weapon, by the same frame-by-frame check as
+above; and that the camera at the house's `h2` clears the knight of every build.
 
 To see every call that differs, dump the records of both trees and compare the folders.
 `dump-pack:` dumps the pack path's records instead of the code's:
@@ -918,10 +959,14 @@ engine's quiet rotation, the engine playing a condition in the scene chosen for 
 scene can act it, the monarch's skin (the court's own calls for the warm swatch, and each other
 swatch's colours alone for every monarch), the monarch's hair and robe (the court's own calls when
 none is given or one cannot be read, each swatch's bands where one is, and the backdrop's key), and
-`look()`. It also draws the knight from the base pack in every combination the settings offer,
-weapon by skin by hair by hair style with the tabard and the plume cycled, 216 looks, each standing,
-attacking and swinging both ways, helmet on and off, the bare head and the gear at rest, and checks
-that none throws, falls back or passes the caps, and that its colours are drawn; and every monarch
+`look()`. It checks the build row's choices (`KW.settings.buildChoices`): Classic, Broad and Slim
+from the base pack's names with Ready under each, a renamed build shown by its new name, and a
+base pack that draws build A alone greying the other two by their letters. It also draws the
+knight from the base pack in every combination the settings offer, weapon by skin by hair by hair
+style with the build, the tabard and the plume cycled, 216 looks, the build turning so that each
+meets every weapon, skin, hair colour and hair style, each standing, attacking and swinging both
+ways, helmet on and off, the bare head and the gear at rest, and checks that none throws, falls
+back or passes the caps, that it is rigged on its build, and that its colours are drawn; and every monarch
 in every skin, hair and robe, "As drawn" among them, 882 courts, each drawing its own colours.
 
 The stored record changes only when the knight is meant to look different. Store it again from the
@@ -1001,6 +1046,17 @@ skin, with dark brown hair tied back (`look-sick-deep`); a hot face on the brown
 curls in the yard (`look-hot-brown`); and the wide eyes of WAN down on the brown skin with brown
 hair, whose brows draw the dark edge (`look-brows`). Every other shot but `settings-look` uses no look hook but
 `arm=`, so against a copy of the page from before the hooks only these seven differ.
+
+The 56 `bd-` shots end the set, 28 for Broad (`bd-b-`, `bd=b`) and 28 for Slim (`bd-c-`, `bd=c`):
+the four quiet scenes with the knight standing (`is-`); the attack, tight memory's bloat, the
+cellar's crate carried, the smithy's hammering, asleep in bed, the sick tint in bed, the hot tint in
+the yard and the court (`on-`); the stance with the sword and shield (`arm-battlement`); the swat
+on the battlement, which is the swing, with each weapon (`swing-two-`, `swing-one-`), both ways at
+the wind-up (q .3), mid cut (q .42) and the cut's end (q .55); the goblin a millisecond after each
+weapon's hit on that build (`goblin-bonk` at 1662 and 1658 ms, `arm-goblin-bonk` at 1652 and 1643);
+and the settings screen's knight page with the build chosen (`settings-knight`), the build chosen
+by the address's `bd=` hook. No other shot has `bd=`, so they change nothing else in a comparison,
+and against a reference from before them they are missing.
 
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
 Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade

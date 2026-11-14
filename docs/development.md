@@ -21,7 +21,8 @@ tests/
     fixtures/knight/ the stored call record of the knight's drawing
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
                      shield as approved (base-onehand.items.json), its free options as
-                     approved (base-options.json), and a state file with the settings'
+                     approved (base-options.json), its three builds and the items fitted to
+                     them as approved (base-builds.json), and a state file with the settings'
                      defaults (state-defaults.json)
   tools/             node tests for tools/deploy.sh, tools/pack-carrier.js, tools/sign-pack.js and
                      tools/settings-schema.js
@@ -105,8 +106,14 @@ hold's cue, the 12-hour clock, a monarch's skin) have nothing to compare with in
 before the settings, and the comparison reports them missing. The eleven after them (the monarch's
 hair and robe, the Scenes page, a condition in a chosen scene) are missing likewise from a reference
 from before those, against which the eight settings shots that show the side rail differ in it,
-where the Scenes entry was added, and the two of the monarch's page also in its new rows. A headless browser has no saved choices, so
-every shot shows what its address asks for. [page.md](./page.md) has the rest.
+where the Scenes entry was added, and the two of the monarch's page also in its new rows. The 56
+`bd-` shots that end the set draw the builds Broad (`bd-b-`) and Slim (`bd-c-`): every scene with
+the knight standing, the attack, tight memory, the cellar's crate, the smithy's hammering, in bed,
+the sick and hot tints, the sword and shield, the swat both ways with each weapon at three points
+of the swing, the goblin at the hit with each weapon, and the settings screen's knight page, the
+build chosen by the address's `bd=` hook ([page.md](./page.md#checks)). Against a reference from
+before them they are missing. A headless browser has no saved choices, so every shot shows what its address asks for.
+[page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
 the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy, which show that gear, against a fake canvas, once
@@ -114,7 +121,12 @@ from code and once from the base pack, and compares every call with a
 stored record, in about a second. The record is stored again only when the knight or those scenes are meant to change;
 [page.md](./page.md#checks) says how. The same file draws every frame of the swings, the attack
 and the goblin strike with the greatsword and with the sword and shield, and fails if an arm is
-drawn over a blade or a shield ([page.md](./page.md#the-knights-rig)). `node --test tests/tools/` also checks that every pack
+drawn over a blade or a shield ([page.md](./page.md#the-knights-rig)). For the three builds it draws
+Classic, chosen by name, against the stored record; Broad and Slim with each weapon in every pose
+and swing frame without a throw and within the look's cost; the hands on the grip on every build
+through both swings, the attack and the goblin strike; and the arm check on Broad and Slim.
+`tests/web/foe.test.js` checks the goblin's plan and hit on every build with each weapon, and that
+the blade the engine measures is the one drawn. `node --test tests/tools/` also checks that every pack
 carrier matches its pack file, that the copy of the settings schema in `web/js/settings.js` and the
 reference in `docs/configuration.md` are what `tools/settings-schema.js` writes, tests the signing tool with keys generated for the run, and checks
 that every pack in `web/packs/` that carries a `sig` verifies against the key table in `pack.js`.
@@ -125,9 +137,10 @@ and that no two places draw over each other. `tests/web/settings-schema.test.js`
 settings, scenes and conditions against the settings schema. `tests/web/settings.test.js` checks the settings in
 `web/js/settings.js` (the order of their levels, unknown values, the browser's storage refusing,
 the reset, the 12-hour clock, the monarch's hair and robe with "As drawn", the scene chosen per
-condition and which scenes can act which condition), the engine's quiet rotation and its choice of
-scene, the monarch's skin, hair and robe, and the knight drawn from the base pack in all 216 looks
-the settings offer and every monarch in every skin, hair and robe.
+condition and which scenes can act which condition, the build row's names from the base pack), the
+engine's quiet rotation and its choice of scene, the monarch's skin, hair and robe, and the knight
+drawn from the base pack in 216 looks of the settings', each build meeting every weapon, skin, hair
+colour and hair style, and every monarch in every skin, hair and robe.
 
 The repository's own page draws the knight from the base pack, so the screenshots of the
 repository's page check the pack path, and the knight test checks both paths. A deployed copy

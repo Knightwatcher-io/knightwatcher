@@ -280,7 +280,7 @@ test('look() draws a new look from the packs already loaded, a downloaded one in
 
 test('each refused pack is listed in the status and written to the console once', () => {
   const s = deployed();
-  assert.deepEqual(s.lines, [['info', 'knightwatcher: the knight is drawn from the base pack kw.base 1.2.0, signed']]);
+  assert.deepEqual(s.lines, [['info', 'knightwatcher: the knight is drawn from the base pack kw.base 1.3.0, signed']]);
   s.lines.length = 0;
   s.K.add({ files: [{ file: 'extra.pack.json', text: EXTRA }], refused: [{ id: null, file: 'index.json', step: 'index', reason: 'the index is not valid JSON' }] });
   assert.equal(s.lines.length, 2);

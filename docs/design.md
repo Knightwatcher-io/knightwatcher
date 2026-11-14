@@ -51,7 +51,17 @@ a swing to the left the shield lifts as the sword crosses the body, and the blad
 of it, so a blow struck on that side is always seen. A shield is carried only with a
 one-handed weapon, and a one-handed weapon without a shield leaves the other hand hanging free.
 
-Every user chooses on the settings screen, free, the weapon and the knight's skin tone, hair colour,
+The knight comes in three builds, all free and all in the base pack, which the owner approved from
+a mock-up and named: **Classic**, the present knight and the default; **Broad**, wider at the
+shoulders and chest, narrower at the hips and a little taller; and **Slim**, narrower at the
+shoulders, with a defined waist, hips a little wider than Classic's, and a little shorter. The
+names describe the shape and nothing else. The tabard narrows to the belt and widens to the hem on
+each build, with no line across the chest on any of them; the greaves and the pauldrons grow with
+the leg and the shoulders; every build keeps the same head and face. Each build holds the weapon
+where Classic does relative to its own body, and the goblin is met where the blade drawn on that
+build meets it.
+
+Every user chooses on the settings screen, free, the build, the weapon and the knight's skin tone, hair colour,
 hair style, tabard colour and plume colour, from six skins, six hair colours, three styles (short
 crop, tied back, curls), six tabards and six plumes, all in the base pack and chosen by the owner
 from a mock-up. Each skin turns green when the knight is sick and red when the knight is running
@@ -215,7 +225,7 @@ The choices are kept in that display's browser, so other displays keep their own
 comes from the highest of four levels: the address (for screenshots), the display's own choices,
 the defaults in `config.toml` that the collector passes on in `state.json`, and the page's own. A
 second display therefore starts as the owner set `config.toml`. The demo has the same screen.
-Builds B and C are shown greyed as coming until they are drawn. [page.md](./page.md#settings)
+The builds are shown by their names, Classic, Broad and Slim, all three ready. [page.md](./page.md#settings)
 describes the screen and the levels in full.
 
 ## Art

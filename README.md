@@ -27,8 +27,8 @@ the ground, with a lamp that fades green while it is up and blinks red when it g
 Open `web/index.html` in a browser. With no `state.json` beside it, the page runs on invented data
 and shows a bar of controls for every scene and state.
 
-Press and hold anywhere on the display for two seconds to open the settings: the knight's weapon,
-skin, hair, tabard and plume, the monarch and the monarch's skin, hair and robe, the headline size,
+Press and hold anywhere on the display for two seconds to open the settings: the knight's build
+(Classic, Broad or Slim), weapon, skin, hair, tabard and plume, the monarch and the monarch's skin, hair and robe, the headline size,
 a 12-hour clock, the helmet indoors, which quiet scenes take turns, and the scene some conditions
 play in (running hot at the camp rather than the training yard, say). Each display keeps its own
 choices in its browser. The defaults
