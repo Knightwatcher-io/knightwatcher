@@ -206,7 +206,8 @@ scenes take turns and for how long, the scene each offered condition plays in, a
 status page: the page's version, the state file's age, the sources and the packs. A side rail keeps every page one tap away. A choice applies at once, to the scene
 behind as well, which keeps running dimmed, and there is no Save button; each page ends with a
 button that puts this display back to the config default. The screen closes with DONE, Escape, or
-after a minute without a touch, counting down the last ten seconds; tapping the dimmed edge does
+after a minute without a touch, counting down the last ten seconds, and reloads the page as it
+closes when anything was changed; tapping the dimmed edge does
 not close it, so a hand brushing the frame does nothing. Every touch target is at least 48 CSS
 pixels, for a large tablet in landscape and a small desktop window alike.
 

@@ -708,7 +708,9 @@ the scenes page every condition's scene. A row a
 hook sets says "The page's address sets this for now."
 
 **Closing.** DONE, Escape on a keyboard, or 60 seconds without a touch. The footer says so, and for
-the last 10 seconds counts down in amber. Any touch, scroll or key inside the screen starts the
+the last 10 seconds counts down in amber. When a choice was made while the screen was open, closing
+it reloads the page, so that everything drawn (the knight, the gear at rest, the cached backdrops)
+starts again from the new settings; a screen closed with nothing changed does not reload. Any touch, scroll or key inside the screen starts the
 minute again. A tap on the dimmed edge does nothing else, so a hand brushing the frame does not
 close it.
 
