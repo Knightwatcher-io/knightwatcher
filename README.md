@@ -27,6 +27,12 @@ the ground, with a lamp that fades green while it is up and blinks red when it g
 Open `web/index.html` in a browser. With no `state.json` beside it, the page runs on invented data
 and shows a bar of controls for every scene and state.
 
+Press and hold anywhere on the display for two seconds to open the settings: the knight's weapon,
+skin, hair, tabard and plume, the monarch, the headline size, a 12-hour clock, the helmet indoors
+and which quiet scenes take turns. Each display keeps its own choices in its browser. The defaults
+every display starts from are set in `config.toml`; see
+[Configuration](docs/configuration.md#the-settings-screens-defaults).
+
 ## How the two parts fit
 
 A small collector, run as a container, reads the homelab and writes `state.json`. A static page

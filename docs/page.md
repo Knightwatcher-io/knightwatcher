@@ -12,19 +12,21 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `favicon.svg`, `favicon.ico`, `apple-touch-icon.png` | the page's icons, linked from `index.html`. The SVG changes its outline with the browser's light or dark theme, and the ICO serves browsers that take no SVG |
 | `logo.svg`, `logo-dark.svg`, `logo-mono.svg`, `icon-192.png`, `icon-512.png` | the logo and the app icons. The page itself does not use them; see [development.md](./development.md#the-logo-and-the-icons) |
 | `css/display.css` | the display, the text colours by status, the review bar |
+| `css/settings.css` | the settings screen and the cue of the hold that opens it |
 | `fonts/` | the VT323 typeface and its licence |
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie and the other watched things (`KINDS`), fire, sky and stars, flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
-| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs and `fetchPacks()` fetches the downloaded ones, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
-| `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court |
+| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
+| `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. The court draws the monarch in the skin it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the watched things in their places (`KW.things`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
-| `js/main.js` | start-up (starting the knight with its look, the greatsword or with `arm=one` the sword and shield, and the free options the look hooks choose, and fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
+| `js/settings.js` | `KW.settings`: the levels the display's settings come from, this display's saved choices, the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
+| `js/main.js` | start-up (starting the knight, reading the address's hooks, applying the settings and mounting their screen, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
@@ -189,11 +191,14 @@ base pack's greatsword the same 2 and -30, and for its arming sword the one stat
 
 ## The knight from the base pack
 
-At start-up, before the first frame, `main.js` calls `KW.knight.start(KW.packText, dev, { look })`
+At start-up, before the first frame, `main.js` calls `KW.knight.start(KW.packText, dev, { look: {} })`
 with `dev` true only when the page's version is `dev`. `start` reads the packs the carriers pushed,
-gathers them and resolves the look. The look is the base pack's defaults, the greatsword, until the
-settings screen chooses another; meanwhile the address's `arm=one` asks for the arming sword and the
-heater shield, and `sk=`, `hc=`, `hy=`, `tb=` and `pm=` for the free options (see [The address](#the-address)). If a look resolves, the knight is drawn from the
+gathers them and resolves the look, the base pack's defaults. `main.js` then hands the look the
+settings make (see [Settings](#settings)) to `KW.knight.look(look)`, which resolves it again from
+the packs already loaded and reads nothing again, and it calls `look()` once more whenever the
+settings change it. With nothing set the look stays `{}`, so the knight is the base pack's defaults
+exactly. Calling `start()` again would rebuild from the carriers alone and lose the downloaded packs,
+so the settings never do. If a look resolves, the knight is drawn from the
 base pack; otherwise from the code in `knight.js`, the full knight as it shipped before packs, which
 draws the default look: the greatsword, and no shield anywhere. A `dev` page accepts packs signed or unsigned. A
 deployed page accepts a pack only when it carries a signature that verifies against a key in
@@ -203,11 +208,12 @@ says which state ships today.
 Served over HTTP, `main.js` then fetches the packs the collector downloaded into `data/packs/`, once
 at load and in every mode, with `KW.knight.fetchPacks(fetch)`, and hands them to `KW.knight.add()`,
 which reads them with the same rule and resolves the look again; the page then paints its
-backdrops again. From disk it fetches nothing. A missing `data/packs/index.json` means no packs and
+backdrops again. `look()` keeps the same rule: a pack refused or marked bad stays so. From disk it fetches nothing. A missing `data/packs/index.json` means no packs and
 is silent. [packs.md](./packs.md#downloaded-packs) has the index's shape and its limits.
 
 `knight.js` writes one line to the console for each refused pack, and one each time the source
-changes; nothing about either is drawn on screen. `KW.knight.source` holds `'pack'` or `'code'`,
+changes; the settings screen's status page shows both, and nothing about either is drawn on the
+display itself. `KW.knight.source` holds `'pack'` or `'code'`,
 and `KW.knight.status` the base pack in use, the refused packs, the look's fallbacks and the last
 line, for the settings screen's status panel. What happens when packs fail, in order, is in
 [packs.md](./packs.md#when-packs-fail).
@@ -350,11 +356,13 @@ before it calls `paint`, `draw` and `over`.
 | `here` | where the knight stands in the scene's `rounds`, `{ act, el }` with `el` the ms spent there, or `null` |
 | `inBed`, `helmOff` | whether the knight is in bed, and whether the helmet is off |
 | `strike` | free for a scene's `act` to pass to its `draw` (the smithy's hammer blow) |
-| `mon` | the monarch at court, from the address's `mon=` hook: `a`, `b` or `c` |
+| `mon` | the monarch at court, from the engine's input (the settings): `a`, `b` or `c` |
+| `monSkin` | the monarch's skin, `{ id, face, cheek }` from one of the base pack's skin swatches, or `null` for the court's own, which is the warm swatch's colours |
 
 Some scenes reach further. The house draws the sleeper's head with `KW.knight.head`, the helmet on
 the stool and the weapon on the pegs with `KW.knight.rest`, and its Zs at night in `over`. The
-court paints the monarch that `s.mon` names into its backdrop, keyed on the choice, sets the knight
+court paints the monarch that `s.mon` names, in the skin `s.monSkin` gives, into its backdrop,
+keyed on both (`b|deep`, or `a|` for the court's own skin), sets the knight
 talking in `draw` and draws the monarch's speech bubble with `KW.knight.speech`. The smithy's `act`
 sets the hammer and `strike`, its `paint` lays the weapon across the anvil with `KW.knight.rest`,
 and its `draw` puts the hot tip on the blade. The yard keeps
@@ -363,7 +371,8 @@ the time the dummy was last struck and swings the knight's sword in `act`.
 ## Modes
 
 **Demo.** Invented conditions, the review bar, and a loop through every scene and state. The
-quiet scenes take turns a minute each (`DEMO_TURN_MS` in `demo.js`). The demo runs
+quiet scenes take turns a minute each (`DEMO_TURN_MS` in `demo.js`), unless the settings set a
+length, which the demo then uses too. The demo runs
 when the page has never had a valid state file: opened from disk, served with no
 `data/state.json`, or with a stale or unreadable one. `?demo` in the address forces it even when
 a state file exists. Browsers refuse to fetch from disk, so from disk the page does not try.
@@ -381,8 +390,11 @@ hides the review bar and drives the display:
   id the page does not know is skipped and plays no part in the badge.
 - The "+N MORE" badge counts the other known conditions at warning or critical, and turns red
   when any of them is critical.
-- With no known condition the quiet scenes take turns ten minutes each (`LIVE_TURN_MS` in
-  `main.js`), and `quiet_line` is the small line.
+- With no known condition the quiet scenes the settings choose take turns, ten minutes each
+  unless the settings set another length (`LIVE_TURN_MS` in `main.js` is the ten), and
+  `quiet_line` is the small line.
+- The file's `defaults` go to the settings (see [Settings](#settings)), which apply any change at
+  once.
 - The watched things come from `facts.things`, and without it the pie stands alone as before
   there were things; see [Watched things](#watched-things). `facts.streams.count > 0`, or a
   `streaming` condition, turns the television on.
@@ -413,7 +425,8 @@ the knight's state stay, under a red `NO SIGNAL` with `collector silent for N mi
 the newest `generated_at` the page has seen. The next valid file restores live mode.
 
 **On the tablet.** In live mode there is no visible control. A tap or click on the display
-toggles full screen. The page asks for a screen wake lock on entering live mode, on every tap,
+toggles full screen, and a press and hold of two seconds opens the settings screen (see
+[Settings](#settings)); only a press lifted within half a second counts as a tap. The page asks for a screen wake lock on entering live mode, on every tap,
 and whenever it becomes visible again, since browsers release the lock when a page is hidden.
 Where the browser refuses either (a wake lock needs a secure context, and full screen a user
 gesture), nothing happens and nothing is logged. The demo's review bar keeps its own Full screen
@@ -550,18 +563,152 @@ none does. The knight looks towards that place (`look` is the sign of the place'
 knight's), or straight ahead when there is none. A thing that does not alert has no effect on the
 knight.
 
+## Settings
+
+A display's look, its display preferences and its quiet scenes are its settings. Each comes from
+four levels, highest first, key by key:
+
+1. **The address's hooks**: `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, `mon=`, `ms=`, `hs=`, `h=`
+   and `ck=` (see [The address](#the-address)). They keep screenshots the same whatever a display
+   has saved.
+2. **This display's saved choices**, made on the settings screen and kept in its browser.
+3. **The `defaults` of the state file**, which the collector takes from `config.toml` (see
+   [state.md](./state.md)). A file from an older collector has none.
+4. **The page's own**: the base pack's defaults for the knight (Build A, the greatsword, warm skin,
+   brown hair cut short, a blue tabard and a red plume), monarch A in the court's own skin, a
+   medium headline, a 24-hour clock, the helmet off indoors, and all four quiet scenes, ten minutes
+   each in live mode and one in the demo.
+
+The keys and their values are the contract's: `look` holds `build`, `weapon`, `skin`, `hair`,
+`hair_style`, `tabard`, `plume`, `monarch` and `monarch_skin`; `display` holds `headline`, `clock`
+and `helmet_indoors`; `quiet` holds `scenes` and `minutes`. A value a level holds that the page does
+not know is ignored at that level, so the next one down is used, and the console says so once:
+`knightwatcher: settings: look.skin "green" in this display's saved choices is ignored: not a value
+the page knows`. A build is known only when the base pack in use declares it (`build.a` is Build
+A); today it declares Build A alone. `quiet.scenes` takes turns in the order given, a repeat
+dropped, and a list that names no quiet scene is ignored whole; `minutes` is a number from 1 to
+240. A section of the defaults the page does not know is left alone without a word, so a later
+collector can add one.
+
+**What the levels drive.** `KW.settings.knightLook(r)` turns what the levels give into the look for
+`KW.knight.look()`, holding only what a level above the page's own sets: with nothing set it is
+`{}`, and the knight is exactly as before there were settings. `engineInput(r, pack, ownMs)` gives
+the engine's `turns`, `turnMs`, `mon` and `monSkin` (see [The engine's input](#the-engines-input));
+`turnMs` is `ownMs`, the demo's minute or live mode's ten, while no level sets `minutes`. The
+headline size becomes the display option `hs`, the helmet indoors `h` (`on` for true, `auto` for
+false), and the clock reads `21:42` or `9:42` with a small `PM` after it. `clock(h, m, hours)` gives
+the words: on the 12-hour clock the hour after midnight is `12:05 AM` and the half hour after noon
+`12:30 PM`.
+
+**Saved choices.** One key in the browser's `localStorage`, `knightwatcher.settings`, holds
+`{ "v": 1, "look": {...}, "display": {...}, "quiet": {...} }`, with the contract's names and values.
+A choice is saved the moment it is made. Every read and write is wrapped: where a browser refuses
+storage, as a private window may, the page works all the same, the choices last until it is
+reloaded, and the console says so once. A stored text that is not JSON, or not version 1, is
+ignored whole, and a stored value the page does not know is ignored alone. The choices belong to
+the browser of one display, so other displays keep their own.
+
+**The store.** `KW.settings.create({ hooks, storage, pack, say })` holds the levels: `now()` gives
+`{ values, from }`, every key's value and the level it came from (`hook`, `saved`, `defaults` or
+`built-in`); `fallback()` the same without the hooks and the saved choices, for the reset's line;
+`choose(section, key, value)` saves one choice and refuses a value it does not know; `reset(section)`
+clears a section's saved choices; `own(section)` says whether the display has any there;
+`defaults(raw)` takes the state file's section; and `on(fn)` adds a listener, told whenever what the
+display shows changes. `main.js` makes one store at start-up, applies it before the first frame,
+and on every change gives the knight its look, the engine its input and the words their size and
+clock. The pure part of `settings.js` loads under Node for the tests.
+
+### The settings screen
+
+**Opening.** Press and hold anywhere on the display for two seconds, with a finger or the mouse.
+After a quarter of a second a plate reading HOLD FOR SETTINGS shows above the press, with ten
+blocks that fill over the rest of the hold. Lifting early, leaving the display or moving more than
+24 pixels cancels it. A press lifted within half a second is a tap, and its click goes through as
+before: in live mode it toggles full screen, and in the demo with the bar hidden it brings the bar
+back. The click of any other press is swallowed, the one whose hold opened the screen among them,
+so the screen that has just opened under the finger is not tapped by the release. The display asks
+for no menu, no selection and no scrolling on a long press (`touch-action: none` on `#surface`).
+
+**Layout.** A side rail of five pages, the knight, the monarch, display, quiet scenes and status,
+with DONE at the top right. The screen covers the whole window, review bar included; the scene
+keeps running behind, dimmed, and shows each choice as it is made. Every choice applies at once,
+with no Save button. On a window up to 1200 wide or 760 tall the screen is drawn a little tighter,
+with labels above their choices and the house's preview left out; every touch target stays at
+least 48 pixels tall.
+
+**The knight.** Build, weapon, skin tone, hair colour, hair style, tabard and plume, each a row of
+choices; names and colours come from the base pack. The builds are A, B and C, and those the base
+pack declares are ready; the others are greyed with a dashed border and say Coming, and a tap on
+one says in a line under the row that it is not drawn yet and changes nothing. Beside the rows the
+knight's own code draws the knight with the chosen look, helmet on and helmet off, every frame,
+and the house with the gear at rest. On the code path the page says the look cannot show until the
+base pack can be used, and keeps the choices.
+
+**The monarch.** The three monarchs, each a crop of the court's own drawing in the chosen skin, and
+the six skin tones of the base pack; beside them the chosen monarch at court.
+
+**Display.** The headline size (small, medium, large), the clock (24 hour, 12 hour) and the helmet
+indoors (off in the house and the smithy, or kept on everywhere).
+
+**Quiet scenes.** The four quiet scenes, each with a picture drawn by its own code and a switch.
+The last one in the rotation cannot be switched off, and a line says "One scene at least stays in
+the rotation."; a scene switched back on joins the end of the rotation. One length for every scene:
+5, 10, 15, 30 or 60 minutes, and a length set elsewhere outside those shows as a choice of its own.
+In the demo, while nothing sets the length, a line says the demo shows each scene for a minute.
+
+**Status**, read only: the page's version (the deploy's hash, or `dev`), how long ago the state file
+was written and how often the collector writes it, the sources in it (all working, or each failing
+one with its error and the time of its last read), where the knight is drawn from with the base
+pack's id, version and whether it is signed, and the packs refused, each with its step and reason.
+
+**Reset.** Each editable page ends with USE THE CONFIG DEFAULT and a line saying whether the
+display has its own choices and what the default is, and whether that comes from `config.toml`.
+The button clears this display's saved choices for the section, so it falls back to the defaults;
+on the two look pages it clears the whole look, knight and monarch, which is one section. A row a
+hook sets says "The page's address sets this for now."
+
+**Closing.** DONE, Escape on a keyboard, or 60 seconds without a touch. The footer says so, and for
+the last 10 seconds counts down in amber. Any touch, scroll or key inside the screen starts the
+minute again. A tap on the dimmed edge does nothing else, so a hand brushing the frame does not
+close it.
+
+**The demo and its review bar** keep working beside the screen. The bar's buttons still act at once;
+its helmet and headline buttons act as the address's `h=` and `hs=` do (`KW.hooks.fixed`),
+outranking the saved choices until the page is opened without them, and the screen, which covers
+the bar while open, shows those rows as set by the address. Its quiet scene buttons keep one scene
+as `is=` does, over the rotation. Everything chosen on the screen in the demo is saved as in live mode.
+
+**The calls.** `KW.settings.mount({ store, surface, info, time })`, from `main.js`, builds the
+screen into `#kws` and `#kws-cue` in `index.html`: `surface` is where the hold is watched, `info()`
+gives the status page `{ version, mode, view }`, and `time()` the time the knight's preview is
+drawn at, the frozen time when `t=` freezes it. It returns `open(page)`, `close()`, `isOpen()` and
+`cue(x, y, q)`. Nothing of the screen is drawn while it is shut, so with it shut and nothing saved
+the page looks exactly as before there were settings.
+
+### The engine's input
+
+`KW.engine.input` (see the head of `engine.js`) takes from the settings `turns`, the quiet scenes
+that take turns, in order (all four, `TURNS`, when it is left out or empty), `turnMs`, how long
+each lasts, `mon`, the monarch, and `monSkin`, the monarch's skin, which the engine passes to the
+scenes in `s`. The demo's `apply()` and `main.js` add them with `KW.ui.extras(ownMs)` whenever they
+build the input.
+
 ## The address
 
-The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `mon=`,
-`pl=` and the look hooks (`arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`) also work in live mode. `f=`, `e=`, `sw=` and `th=` act in the demo and do nothing
-elsewhere.
+The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `pl=`,
+`set=` and the settings hooks (`arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, `mon=`, `ms=`, `ck=`)
+also work in live mode. `f=`, `e=`, `sw=` and `th=` act in the demo and do nothing elsewhere. The
+settings hooks, `h=` and `hs=` are the highest of the settings' levels (see [Settings](#settings)):
+each outranks this display's saved choices and the state file's defaults while the address holds
+it, and a value it does not know is ignored, with a line in the console, so that the next level
+down is used.
 
 | Key | Meaning |
 |---|---|
 | `on=` | active conditions, comma separated, by the contract's id or the short alias (`attack`, `wan`, `sick`, `disk`, `backup`, `pi`, `thing`, `cpu`, `swap`, `ssh`, `update`, `plex`, `night`) |
-| `is=` | the quiet scene: `auto`, `battlement`, `camp`, `house`, `yard`. The cellar, smithy and court come from conditions |
-| `h=` | the helmet: `auto` (off in the house and the smithy), `on`, `off` |
-| `hs=` | the headline size: `s`, `m`, `l` |
+| `is=` | the quiet scene: `auto` for the rotation the settings choose, or `battlement`, `camp`, `house`, `yard` to keep one. The cellar, smithy and court come from conditions |
+| `h=` | the helmet: `auto` (off in the house and the smithy), `on`, `off`. Without it the settings' helmet indoors chooses between `auto` and `on` |
+| `hs=` | the headline size: `s`, `m`, `l`. Without it the settings' headline size |
 | `bar=0` | hides the review bar |
 | `demo=1` | runs the demo loop |
 | `t=` | freezes time at that many ms, `t=0` included, for screenshots |
@@ -569,9 +716,12 @@ elsewhere.
 | `f=` | starts with that many flies |
 | `sw=1` | starts a swat |
 | `kx=` | places the knight, in units of `U` |
-| `mon=` | the monarch at court: `a` the king, `b` the queen, `c` the monarch who is neither. Anything else, or no hook, gives `a` |
+| `mon=` | the monarch at court: `a` the king, `b` the queen, `c` the monarch who is neither |
+| `ms=` | the monarch's skin: the id of one of the base pack's skin swatches, such as `ms=deep` |
+| `ck=` | the clock: `24`, or `12` for 9:42 with a small PM |
+| `set=` | opens the settings screen at load on a page: `knight`, `monarch`, `display`, `quiet` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
 | `th=` | the demo's list of watched things: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `th=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `thing_down` on, the knight looks towards the first thing that is down and alerts |
-| `arm=one` | the knight's look: the base pack's arming sword in one hand and its heater shield in the other, in place of the greatsword. Anything else, or no hook, gives the default look, the greatsword. It stands in for the settings screen until that chooses the look. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
+| `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its heater shield in the other, `two` the greatsword. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
 | `sk=`, `hc=`, `tb=`, `pm=` | the knight's skin, hair colour, tabard and plume: the id of one of the base pack's swatches, such as `sk=deep&hc=black&tb=sable&pm=gold` (the ids are in [packs.md](./packs.md#the-base-pack)) |
 | `hy=` | the knight's hair style: `short`, `tied` or `curls`, the base pack's `hair.<value>` |
 | `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box, the 80 by 64 a thing may fill inside it, and the base. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
@@ -581,13 +731,16 @@ With time frozen the knight never starts a swat alone, so the flies of `f=` hove
 starts one, and a knight placed away from their spot by `kx=` stays exactly there, in mid-stride,
 rather than walking a step in each frame.
 
-The look hooks (`arm=`, `sk=`, `hc=`, `hy=`, `tb=` and `pm=`) stand in for the settings screen. A
-value the base pack lacks takes the default for that choice, as `resolve()` does, and is listed in
-`KW.knight.status.fallbacks`; on the code path they do nothing.
+The look hooks (`arm=`, `sk=`, `hc=`, `hy=`, `tb=` and `pm=`) take the values the contract gives
+the look in [state.md](./state.md) and keep screenshots the same whatever a display has saved; on
+the code path they do nothing. A value outside the contract's is ignored, as at every level.
 
-The demo rewrites the hash as its settings change, with the contract's ids in `on=`. The test hooks
-(`t=`, `kx=`, `mon=`, `th=`, `pl=`, the look hooks, `f=`, `e=` and `sw=`) are read once when the page loads, and
-the rewritten hash leaves them out, so they last until the page is opened again.
+The demo rewrites the hash as its settings change, with the contract's ids in `on=`. It writes
+`h=` and `hs=` only when the address named them or the review bar's buttons set them
+(`KW.hooks.fixed`), so that a reload keeps the bar's choice and otherwise leaves the settings' in
+force. The test hooks (`t=`, `kx=`, `th=`, `pl=`, `set=`, the settings hooks, `f=`, `e=` and `sw=`)
+are read once when the page loads, and the rewritten hash leaves them out, so they last until the
+page is opened again.
 
 ## Deploying
 
@@ -696,8 +849,23 @@ diff -r /tmp/kw-calls-old /tmp/kw-calls-new
 
 `tests/web/loading.test.js` checks the downloaded packs, the refusals and their console lines, the
 fallback to the base pack's defaults, the code path in every case of failure and a throw inside a
-draw list; see
+draw list, and that `look()` draws a new look from the packs already loaded, a downloaded one
+included, where `start()` again would lose it; see
 [packs.md](./packs.md#tests).
+
+`tests/web/settings.test.js` checks the settings: the order of the levels key by key, a value each
+level does not know ignored with one console line, a section that is not an object, the builds
+ready from the base pack, a choice saved under `knightwatcher.settings` and read back, a stored text
+or value the page does not know, a browser that refuses storage on reading, on writing or both, the
+reset of each section, when listeners are told, the state file's `defaults` from a fixture
+(`fixtures/state-defaults.json`) through `KW.state.map` to the store, the engine's input, and the
+12-hour clock, `12:05 AM` and `12:30 PM` among it. In a sandbox it checks the engine's quiet
+rotation, the monarch's skin (the court's own calls for the warm swatch, and each other swatch's
+colours alone for every monarch), and `look()`. It also draws the knight from the base pack in every
+combination the settings offer, weapon by skin by hair by hair style with the tabard and the plume
+cycled, 216 looks, each standing, attacking and swinging both ways, helmet on and off, the bare head
+and the gear at rest, and checks that none throws, falls back or passes the caps, and that its
+colours are drawn; and every monarch in every skin.
 
 The stored record changes only when the knight is meant to look different. Store it again from the
 code as it is with `KNIGHT_LOG=write node --test tests/web/knight.test.js`, and look at the
@@ -740,9 +908,19 @@ smithy with the sword on the anvil and the shield on the wall (`arm-update`), th
 at the moment the sword passes in front of the shield (`arm-swat-left`), the cellar with the
 crate carried against the chest, at the largest headline (`arm-disk`), and the goblin a
 millisecond after the hit on the battlement (`arm-goblin-bonk`, hit at 1645 ms) and two after it
-at the camp, with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1672 ms). Every other shot has no `arm=`, so a change to the one-handed look leaves them
+at the camp, with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1672 ms). Every other shot but `settings-look` has no `arm=`, so a change to the one-handed look leaves them
 byte for byte the same. A copy of the page from before the hook draws the greatsword in the `arm-`
 shots, so against such a reference those differ and the rest compare as usual.
+
+The eleven shots that end the set show the settings. `settings-knight`, `settings-monarch`,
+`settings-display`, `settings-quiet` and `settings-status` open the screen (`set=`) on each page over
+the battlement; `settings-hold` shows the hold's cue; `settings-look` the knight's page with a look
+of the hooks', the sword and shield, tan skin, blonde curls, a forest tabard and a gold plume;
+`settings-tablet` the knight's page at the tablet's 1480 by 924 (an entry may name a size after a
+second `|`, and the comparison scales the clock's mask with the shot); `settings-monarch-skin` the monarch's page with monarch B in the deep skin; `clock-12`
+the 12-hour clock (`ck=12`), whose digits the comparison leaves out with the rest of the clock; and
+`mon-skin` the court with monarch C in the brown skin (`ms=brown`). Against a reference from before
+the settings these eleven are missing and the rest compare as usual.
 
 The seven `look-` shots choose free options with the look hooks: deep skin with black curls, a
 sable tabard and a gold plume on the battlement, helm off (`look-deep-curls`); fair skin with
@@ -752,7 +930,7 @@ auburn hair tied back, a wine tabard and the sword and shield in the yard, helm 
 and a royal blue plume on the helmet on the stool (`look-house`); a sick face in bed on the deep
 skin, with dark brown hair tied back (`look-sick-deep`); a hot face on the brown skin with silver
 curls in the yard (`look-hot-brown`); and the wide eyes of WAN down on the brown skin with brown
-hair, whose brows draw the dark edge (`look-brows`). Every other shot uses no look hook but
+hair, whose brows draw the dark edge (`look-brows`). Every other shot but `settings-look` uses no look hook but
 `arm=`, so against a copy of the page from before the hooks only these seven differ.
 
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.

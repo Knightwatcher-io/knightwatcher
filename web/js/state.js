@@ -120,7 +120,12 @@
        tv         whether the television is on
        events     the events of a known type, oldest first: { seq, act, count, text }
        maxSeq     the highest seq in the file, or null when it has no events
-       intervalS  how often the collector says it writes the file, in seconds */
+       intervalS  how often the collector says it writes the file, in seconds
+       defaults   the file's defaults section as it stands, for KW.settings to check, or null when
+                  it has none (a collector from before the settings)
+       sources    each source the file lists, { name, ok, at, error }, for the settings screen's
+                  status page: ok true only for ok === true, at the time in ms or null, error a
+                  string */
   function map(file, nowMs) {
     if (!isObj(file)) return { ok: false, problem: 'malformed', generatedAt: null };
     const gen = typeof file.generated_at === 'string' ? Date.parse(file.generated_at) : NaN;
@@ -156,7 +161,12 @@
       quietLine: str(file.quiet_line),
       things: drawn.things,
       tv: (typeof streams === 'number' && streams > 0) || known.some(c => c.id === 'streaming'),
-      events, maxSeq, intervalS: interval
+      events, maxSeq, intervalS: interval,
+      defaults: isObj(file.defaults) ? file.defaults : null,
+      sources: isObj(file.sources) ? Object.keys(file.sources).filter(k => isObj(file.sources[k])).map(k => {
+        const e = file.sources[k], at = typeof e.at === 'string' ? Date.parse(e.at) : NaN;
+        return { name: k, ok: e.ok === true, at: Number.isFinite(at) ? at : null, error: str(e.error) };
+      }) : []
     };
   }
 

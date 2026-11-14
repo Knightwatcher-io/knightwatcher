@@ -15,8 +15,9 @@ knight as data, and, when served, the packs the collector downloaded into `data/
 page can use the base pack it draws the knight from it, and otherwise from the code in
 `knight.js`, which draws the same knight; see [On the page](#on-the-page). The scenes' gear at rest (the helmet on the house's stool, the weapon
 on the pegs and across the anvil) follows the knight in the same way; see [Gear at
-rest](#gear-at-rest). Not built yet: anything that draws a decoration, and the settings screen
-that chooses a look and shows which packs were refused. A decoration's fields and shapes are
+rest](#gear-at-rest). The settings screen chooses the look from the base pack and shows which
+packs were refused ([page.md](./page.md#settings)). Not built yet: anything that draws a
+decoration. A decoration's fields and shapes are
 checked and its cost counted, but only its keyframes are compiled; its shapes are not.
 
 This page describes format 1.0 as the library implements it.
@@ -895,9 +896,19 @@ pushes its file's text byte for byte.
 `main.js` calls `KW.knight.start(KW.packText, allowUnsigned, { look })` once at start-up, before
 the first frame, with `allowUnsigned` true only when the page's `kw-version` meta tag says `dev`,
 the way it reads the version for the reload check. `start` reads every carried text with `read()`,
-gathers the results and resolves the look (`resolve(packs, look)`). The look is `{}`, the base
-pack's defaults, while no settings screen chooses one; the address's `arm=one` makes it `{ items:
-{ main: "kw.base/main.arming", off: "kw.base/off.heater" } }` (see [page.md](./page.md#the-address)). When the downloaded packs arrive, `KW.knight.add()` reads them with
+gathers the results and resolves the look (`resolve(packs, look)`), at first `{}`, the base pack's
+defaults. The look then comes from the settings ([page.md](./page.md#settings)): the address's
+hooks, this display's choices on the settings screen, the `defaults` of the state file from
+`config.toml`, and last the base pack's defaults, key by key. `main.js` hands it to
+`KW.knight.look(look)`, which resolves it again from the packs already read, the downloaded ones
+included, and reads nothing again; it does so at start-up and at every change, and with nothing
+set the look stays `{}`. The settings name only the base pack's items and swatches, in the
+contract's terms: the weapon `sword_and_shield` is `{ items: { main: "kw.base/main.arming", off:
+"kw.base/off.heater" } }` and `greatsword` `kw.base/main.greatsword`; a skin, hair, tabard or plume
+is `kw.base/<id>`, the hair style `kw.base/hair.<style>`, and a build `kw.base/build.<letter>`, of
+which the base pack declares `build.a`, shown as Build A. The address's look hooks give the same
+values: `arm=one` and `arm=two` the weapon, `sk=`, `hc=`, `tb=` and `pm=` the swatches and `hy=`
+the hair style (see [page.md](./page.md#the-address)). When the downloaded packs arrive, `KW.knight.add()` reads them with
 the same options and resolves the look again (see [Downloaded packs](#downloaded-packs)):
 
 - **A `dev` page** (the repository's own, opened from disk or served straight from `web/`) accepts
@@ -1108,7 +1119,17 @@ a deployed page, no pack library, and after a throw inside the base pack's lists
 from code, and 28 records of the knight, the sleeper's head, the gear at rest, the house and the
 smithy must equal, call for call, the records `knight.test.js` stores from the code. A throw
 inside a downloaded pack's list, a list of the gear at rest or the sleeper's head is caught and
-the right pack marked bad, and a throw in the engine's own drawing is not.
+the right pack marked bad, and a throw in the engine's own drawing is not. `look()` draws a new look
+from the packs already read, a signed downloaded pack's tabard included, keeps every refusal, says
+nothing new in the console, and does nothing before `start()`, where `start()` again loses the
+downloaded pack.
+
+`tests/web/settings.test.js` draws the knight from the base pack, through the settings and
+`KW.knight.look()`, in each of the 216 looks of weapon by skin by hair colour by hair style, the
+tabard and the plume cycled through their six, standing, attacking and swinging, helmet on and off,
+with the bare head and the gear at rest; each draws its colours with no throw, no fallback and no
+refused pack, within the shape and cost caps. It also draws every monarch in every skin of the base
+pack. [page.md](./page.md#checks) lists the rest of what it checks.
 
 ```bash
 node --test tests/tools/

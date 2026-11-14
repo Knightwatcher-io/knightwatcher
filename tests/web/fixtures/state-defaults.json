@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "generated_at": "2026-01-15T21:42:10Z",
+  "interval_s": 10,
+  "conditions": [],
+  "quiet_line": "ALL QUIET · 29 up · backup 03:12 · 4,812 ads blocked",
+  "events": [],
+  "facts": { "pi": { "up": true } },
+  "sources": {
+    "containers": { "ok": true, "at": "2026-01-15T21:42:10Z", "error": "" },
+    "adblock": { "ok": false, "at": "2026-01-15T21:40:40Z", "error": "401 from the DNS filter" }
+  },
+  "defaults": {
+    "look": { "build": "a", "weapon": "sword_and_shield", "skin": "deep", "hair": "black", "hair_style": "curls",
+              "tabard": "sable", "plume": "gold", "monarch": "b", "monarch_skin": "brown" },
+    "display": { "headline": "large", "clock": 12, "helmet_indoors": true },
+    "quiet": { "scenes": ["battlement", "yard"], "minutes": 15 }
+  }
+}

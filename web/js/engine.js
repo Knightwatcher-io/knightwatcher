@@ -3,11 +3,16 @@
    KW.engine.input, which the demo (demo.js) or the state file (main.js) sets:
      w       the condition that wins, as KW.state makes it: { id, lv, st, scene, hl, sub }
      is      'auto' for the quiet scenes to take turns, or the name of the one to keep
+     turns   the quiet scenes that take turns, in that order; all four (TURNS) when it is left out
+             or empty
      turnMs  how long each quiet scene lasts while they take turns
      things  the watched things standing in the scene's places, as KW.state.map() gives them:
              { place, kind, ok, alert }, place naming one of the scene's places
      tv      whether the television in the house is on
-     helmet  'auto' (off indoors), 'on' or 'off' */
+     helmet  'auto' (off indoors), 'on' or 'off'
+     mon     the monarch at court, 'a', 'b' or 'c'; 'a' when it is left out
+     monSkin the monarch's skin: { id, face, cheek } from one of the base pack's skin swatches, or
+             null for the skin the court draws by default */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, K = KW.knight, P = KW.props, SP = KW.sprites, C = D.C, U = V.U;
@@ -20,7 +25,8 @@
   /* Whether the address's t= hook freezes time; KW.hooks.t is then the frozen time. */
   const frozen = () => KW.hooks.frozen;
 
-  /* The quiet scenes take turns, each for the input's turnMs. */
+  /* The quiet scenes take turns, each for the input's turnMs: those the input's turns lists, or all
+     four. */
   const TURNS = ['battlement', 'camp', 'house', 'yard'];
   /* Each event lasts dur ms and plays only in the scenes listed. An event with a foe names it (in
      KW.props.FOES) and the exit it leaves by (in FOE.exits, below). */
@@ -34,7 +40,10 @@
   const flies = []; let swat = null, lastSwat = -1e9, pendingFlies = 0;
   const bgCache = { key: '', cv: document.createElement('canvas') };
 
-  function idleScene(t) { const { is, turnMs } = E.input; return is === 'auto' ? TURNS[Math.floor((t - sceneT0) / turnMs) % TURNS.length] : is; }
+  function idleScene(t) {
+    const { is, turnMs, turns } = E.input, list = Array.isArray(turns) && turns.length ? turns : TURNS;
+    return is === 'auto' ? list[Math.floor((t - sceneT0) / turnMs) % list.length] : is;
+  }
 
   /* A blocked advert becomes a fly. Eight at most are on screen; the rest wait for the next swat. */
   function addFly(t) {
@@ -389,7 +398,8 @@
         if (here.act === 'yawn') { const c = el % 6500; if (c > 3800 && c < 5600) { o.eyes = 'closed'; o.mouth = 'o'; } }
       }
     }
-    const s = { w, things, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false, mon: KW.hooks.mon };
+    const s = { w, things, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false,
+      mon: inp.mon || 'a', monSkin: inp.monSkin || null };
     // a watched thing down: the knight stays put and looks towards its place, or straight ahead
     // when it is not drawn
     if (w.id === 'thing_down') { const px = KW.things.placeX(s, w.place); o.look = px === null ? 0 : Math.sign(px - kx); }

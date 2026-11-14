@@ -1,0 +1,147 @@
+/* Knightwatcher: the settings screen and the cue of the hold that opens it (js/settings.js). Both
+   lie over the display, which keeps running behind, dimmed. Colours are the page's palette
+   (KW.draw.C) and its status colours; the type is the page's VT323. Every touch target is at least
+   48 CSS pixels tall. */
+
+/* ---- The hold cue ----------------------------------------------------------------------------
+   Ten blocks above the press that fill over the hold, in a dark plate with the page's gold. It
+   sits above the finger so the finger does not hide it. */
+.kws-cue { position: fixed; z-index: 30; transform: translate(-50%, -100%); pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 10px 14px 12px; background: rgba(26,21,36,.92); box-shadow: 0 0 0 3px #c98600, 0 0 0 6px #1a1524;
+  font-family: "VT323", "DejaVu Sans Mono", monospace; color: #ffe28a; }
+.kws-cue[hidden] { display: none; }
+.kws-cue-label { font-size: 30px; line-height: .9; letter-spacing: 1px; white-space: nowrap; }
+.kws-cue-bar { display: flex; gap: 4px; }
+.kws-cue-bar i { width: 18px; height: 18px; background: #2b2333; box-shadow: inset 0 0 0 2px #1a1524; }
+.kws-cue-bar i.lit { background: #ffb000; box-shadow: inset 0 0 0 2px #1a1524, inset 3px 3px 0 2px #ffe28a; }
+/* A press and hold on the display asks for no menu, no selection and no scrolling. */
+#surface { touch-action: none; -webkit-touch-callout: none; }
+
+/* ---- The screen ------------------------------------------------------------------------------ */
+.kws { position: fixed; inset: 0; z-index: 20; font-family: "VT323", "DejaVu Sans Mono", monospace; color: #f6f9fc; cursor: auto; user-select: none; -webkit-user-select: none; --gap: 16px;
+  --t-title: 48px; --t-rail: 32px; --t-label: 30px; --t-body: 26px; --t-name: 22px; --chip: 64px; --rail: 250px; --prev: 380px; --inset: 20px; }
+.kws[hidden] { display: none; }
+.kws-dim { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+.kws-panel { position: absolute; inset: var(--inset); display: flex; flex-direction: column; background: rgba(16,12,24,.95);
+  box-shadow: 0 0 0 3px #c98600, 0 0 0 6px #1a1524; }
+.kws-panel:focus { outline: none; }
+.kws button { font-family: inherit; color: inherit; cursor: pointer; }
+.kws button:focus-visible { outline: 3px solid #3fd0ff; outline-offset: 3px; }
+.kws-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 24px 10px; border-bottom: 3px solid #2b2333; }
+.kws-titles { min-width: 0; }
+.kws-head h1 { margin: 0; font-weight: normal; font-size: var(--t-title); line-height: .8; color: #ffe28a; letter-spacing: 2px; }
+.kws-head p { margin: 6px 0 0; font-size: var(--t-body); line-height: 1; color: #aab6c6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kws-btn { min-height: 56px; padding: 6px 22px 4px; border: 0; background: #2b2333; color: #f6f9fc; font-size: var(--t-label); line-height: 1; letter-spacing: 1px;
+  box-shadow: inset 0 0 0 3px #525c6e, 0 0 0 3px #1a1524; }
+.kws-btn:active { background: #3b3247; }
+.kws-done { flex: none; min-width: 150px; min-height: 64px; background: #ffb000; color: #1a1524; font-size: calc(var(--t-label) + 4px); box-shadow: inset 0 0 0 3px #c98600, inset 4px 4px 0 3px #ffe28a, 0 0 0 3px #1a1524; }
+.kws-done:active { background: #c98600; }
+.kws-body { flex: 1; min-height: 0; display: flex; }
+.kws-rail { flex: none; width: var(--rail); padding: var(--gap); display: flex; flex-direction: column; gap: 10px; border-right: 3px solid #2b2333; overflow-y: auto; }
+.kws-rail button { flex: none; min-height: 60px; padding: 6px 14px 4px; text-align: left; border: 0; background: transparent; font-size: var(--t-rail); line-height: 1; color: #d8e0ea;
+  box-shadow: inset 0 0 0 3px #2b2333; }
+.kws-rail button[aria-current="page"] { background: #ffb000; color: #1a1524; box-shadow: inset 0 0 0 3px #c98600, inset 4px 4px 0 3px #ffe28a; }
+.kws-main { flex: 1; min-width: 0; display: flex; gap: 24px; padding: 0 0 0 24px; }
+.kws-list { flex: 1; min-width: 0; overflow-y: auto; padding: 14px 24px 18px 0; scrollbar-color: #525c6e #1a1524; scrollbar-width: auto; }
+.kws-prev { flex: none; width: var(--prev); padding: 14px 24px 14px 0; display: flex; flex-direction: column; gap: 10px; }
+.kws-prev h2 { margin: 0; font-weight: normal; font-size: var(--t-label); line-height: 1; color: #aab6c6; }
+.kws-prev canvas { width: 100%; aspect-ratio: 500 / 380; display: block; image-rendering: pixelated; box-shadow: 0 0 0 3px #2b2333; background: #0e0b13; }
+.kws-prev canvas.scene { aspect-ratio: 960 / 600; }
+/* The court's preview keeps its shape where the room allows, and shrinks to the room left below
+   its heading where it does not, the monarch drawn in the middle of it. */
+.kws-prev canvas.court { aspect-ratio: 240 / 372; flex: 0 1 auto; min-height: 0; }
+.kws-prev h2 + canvas, .kws-prev .caps + h2 { margin-top: 2px; }
+.kws-prev .caps { display: flex; justify-content: space-around; margin-bottom: 8px; font-size: var(--t-name); color: #aab6c6; line-height: 1; }
+.kws-line { margin: 10px 0 12px; max-width: 34em; font-size: var(--t-body); line-height: 1.1; color: #ffb000; }
+
+/* A row: the label, then the choices. */
+.kws-row { display: grid; grid-template-columns: 150px 1fr; align-items: start; gap: 6px 16px; padding: 10px 0 12px; border-bottom: 2px solid #221c2c; }
+.kws-label { font-size: var(--t-label); line-height: 1; color: #d8e0ea; padding-top: 14px; }
+.kws-opts { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 10px; }
+.kws-note { grid-column: 2; font-size: var(--t-name); line-height: 1.1; color: #ffb000; }
+.kws-note:empty { display: none; }
+.kws-note.kws-wide { padding: 10px 0 0; }
+.kws-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; min-width: var(--chip); }
+.kws-opt .chip { box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: var(--chip); height: var(--chip); background: #2b2333;
+  box-shadow: inset 0 0 0 3px rgba(26,21,36,.9), 0 0 0 3px #525c6e; font-size: var(--t-body); line-height: 1; color: #f6f9fc; }
+.kws-opt .name { font-size: var(--t-name); line-height: .95; color: #aab6c6; text-align: center; max-width: calc(var(--chip) + 14px); }
+.kws-opt.text .name, .kws-opt.wide .name, .kws-opt.pic .name { max-width: none; white-space: nowrap; }
+.kws-opt.on .chip { box-shadow: inset 0 0 0 3px rgba(26,21,36,.9), 0 0 0 3px #1a1524, 0 0 0 7px #ffb000; }
+.kws-opt.on .name { color: #ffe28a; }
+.kws-opt.text .chip { width: auto; min-width: 120px; padding: 4px 18px 0; }
+.kws-opt.text.on .chip { background: #3b3247; }
+.kws-opt.wide .chip { width: auto; min-width: 150px; padding: 4px 18px 0; letter-spacing: 1px; }
+.kws-opt.off .chip { background: transparent; color: #525c6e; box-shadow: 0 0 0 3px #3b3247; outline: 3px dashed #3b3247; outline-offset: -9px; }
+.kws-opt.off .name { color: #525c6e; }
+.kws-opt.pic .chip { width: 124px; height: 184px; padding: 0; background: #0e0b13; overflow: hidden; }
+.kws-opt.pic canvas { width: 124px; height: 184px; display: block; }
+.kws-opt .chip .hl { line-height: .8; color: #39ff6a; }
+.kws-opt .chip small { font-size: .55em; margin-left: 3px; }
+
+/* The reset at the end of a page. */
+.kws-reset { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px 0 4px; }
+.kws-reset p { margin: 0; max-width: 40em; font-size: var(--t-name); line-height: 1.1; color: #aab6c6; }
+.kws-reset p b { font-weight: normal; color: #f6f9fc; }
+
+/* A switch: a square knob in a track, the word beside it. */
+.kws-switch { display: inline-flex; align-items: center; gap: 12px; min-height: 56px; padding: 0; border: 0; background: transparent; font-size: var(--t-label); line-height: 1; }
+.kws-switch .track { position: relative; width: 104px; height: 52px; background: #2b2333; box-shadow: inset 0 0 0 3px #1a1524, 0 0 0 3px #525c6e; }
+.kws-switch .knob { position: absolute; top: 6px; left: 6px; width: 40px; height: 40px; background: #7d899b; box-shadow: inset 0 0 0 3px #1a1524, inset 4px 4px 0 3px #d8e0ea; }
+.kws-switch[aria-checked="true"] .track { background: #8f5c00; box-shadow: inset 0 0 0 3px #1a1524, 0 0 0 3px #ffb000; }
+.kws-switch[aria-checked="true"] .knob { left: 58px; background: #ffb000; box-shadow: inset 0 0 0 3px #1a1524, inset 4px 4px 0 3px #ffe28a; }
+.kws-switch .word { min-width: 48px; color: #aab6c6; }
+.kws-switch[aria-checked="true"] .word { color: #ffe28a; }
+
+/* Quiet scenes: one row per scene. */
+.kws-scene { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; padding: 10px 0; border-bottom: 2px solid #221c2c; }
+.kws-scene canvas { width: 176px; height: 110px; display: block; box-shadow: 0 0 0 3px #2b2333; }
+.kws-scene.out canvas { opacity: .35; }
+.kws-scene .sname { font-size: var(--t-label); line-height: 1; }
+.kws-scene .sname small { display: block; margin-top: 4px; font-size: var(--t-name); color: #aab6c6; }
+.kws-scene.out .sname { color: #7d899b; }
+
+/* Status: what the display knows, as text. */
+.kws-stat { display: grid; grid-template-columns: 210px 1fr; gap: 6px 18px; margin: 0; padding: 12px 0; border-bottom: 2px solid #221c2c; font-size: var(--t-body); line-height: 1.05; }
+.kws-stat dt { color: #aab6c6; font-size: var(--t-label); line-height: 1; }
+.kws-stat dd { margin: 0; overflow-wrap: anywhere; }
+.kws-stat .ok { color: #39ff6a; }
+.kws-stat .warn { color: #ffb000; }
+.kws-stat ul { margin: 6px 0 0; padding: 0; list-style: none; }
+.kws-stat li { margin: 0 0 8px; padding-left: 18px; position: relative; }
+.kws-stat li::before { content: ""; position: absolute; left: 0; top: .32em; width: 8px; height: 8px; background: #ffb000; }
+.kws-stat code { font-family: inherit; color: #ffe28a; }
+.kws-stat .quiet { color: #aab6c6; }
+
+.kws-foot { flex: none; padding: 8px 24px 8px; border-top: 3px solid #2b2333; font-size: var(--t-name); line-height: 1; color: #7d899b; }
+.kws-foot.soon { color: #ffb000; }
+
+/* A small window: the same screen, a little tighter, targets still 48 pixels or more. */
+@media (max-width: 1200px), (max-height: 760px) {
+  .kws { --t-title: 38px; --t-rail: 28px; --t-label: 26px; --t-body: 23px; --t-name: 20px; --chip: 52px; --rail: 190px; --prev: 290px; --inset: 10px; --gap: 12px; }
+  .kws-head { padding: 8px 16px 8px; }
+  .kws-rail button { min-height: 52px; }
+  .kws-done { min-height: 56px; min-width: 120px; }
+  .kws-main { padding-left: 16px; gap: 16px; }
+  .kws-list { padding-right: 12px; }
+  .kws-prev { padding-right: 16px; }
+  .kws-row { grid-template-columns: 1fr; gap: 6px; padding: 8px 0 10px; }
+  .kws-label { padding-top: 0; }
+  .kws-note { grid-column: 1; }
+  .kws-opts { gap: 8px 10px; }
+  .kws-opt.pic .chip, .kws-opt.pic canvas { width: 96px; height: 143px; }
+  .kws-opt.text .chip { min-width: 96px; padding: 4px 12px 0; }
+  .kws-opt.wide .chip { min-width: 120px; padding: 4px 12px 0; }
+  .kws-scene canvas { width: 128px; height: 80px; }
+  .kws-prev .home, .kws-prev canvas.scene { display: none; }
+  .kws-stat { padding: 8px 0; grid-template-columns: 150px 1fr; }
+  .kws-btn { min-height: 52px; padding: 6px 16px 4px; }
+  .kws-switch .track { width: 96px; height: 48px; }
+  .kws-switch .knob { width: 36px; height: 36px; }
+  .kws-switch[aria-checked="true"] .knob { left: 54px; }
+  .kws-foot { padding: 6px 16px; }
+}
+/* A window narrower still, such as the 960 by 600 of the screenshots: the rail and the preview
+   narrower. */
+@media (max-width: 1000px) {
+  .kws { --rail: 170px; --prev: 230px; --t-rail: 26px; }
+}

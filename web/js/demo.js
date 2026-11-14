@@ -35,7 +35,8 @@
     { on: 'updating', dur: 8000 }, { on: 'wan_down', dur: 6500 },
     { on: 'attack,memory_tight,ssh_session', dur: 8000 }, { on: 'night', dur: 8000 } ];
 
-  /* How long each quiet scene lasts while they take turns in the demo. */
+  /* How long each quiet scene lasts while they take turns in the demo, unless the settings set a
+     length (docs/page.md). */
   const DEMO_TURN_MS = 60 * 1000;
 
   let S = null, E = null, running = false, built = false, flyTimer = 0, demoAt = 0, demoI = -1, swatNote = null, stepThings = null;
@@ -60,9 +61,12 @@
     let w = act[0] || IDLE;
     // thing_down names the things that are down and alert, as the collector would
     if (w.id === 'thing_down') w = Object.assign({}, w, { place: ST.lookPlace(list.map((e, i) => (e && e.state === 'down' && e.alert ? i : -1)).filter(i => i >= 0), placed.at) });
-    E.input = { w, is: S.is, turnMs: DEMO_TURN_MS, things: placed.things, tv: isOn('streaming'), helmet: S.h };
+    E.input = Object.assign({ w, is: S.is, turnMs: DEMO_TURN_MS, things: placed.things, tv: isOn('streaming'), helmet: S.h }, KW.ui.extras(DEMO_TURN_MS));
     KW.ui.show({ st: w.st, hl: w.hl, sub: w.sub, quiet: idleLine(), more: { n: others.length, crit: others.some(c => c.lv >= 4) } });
-    history.replaceState(null, '', '#' + Object.entries(S).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&'));
+    // the helmet and the headline size go into the address only when the address or this bar set
+    // them; otherwise they are the settings' (KW.hooks.fixed)
+    const inHash = ([k]) => (k !== 'h' && k !== 'hs') || KW.hooks.fixed.has(k);
+    history.replaceState(null, '', '#' + Object.entries(S).filter(inHash).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&'));
   }
 
   /* The list of watched things: that of the demo loop's step, else that of the address's th=
@@ -81,7 +85,7 @@
       const k = g.dataset.key;
       for (const [v, label] of Object.entries(OPTS[k])) {
         const b = document.createElement('button'); b.textContent = label; b.dataset.v = v;
-        b.addEventListener('click', () => { if (k === 'is') { S.demo = '0'; E.restartTurns(performance.now()); } set(k, v); }); g.appendChild(b);
+        b.addEventListener('click', () => { if (k === 'is') { S.demo = '0'; E.restartTurns(performance.now()); } else KW.hooks.fixed.add(k); set(k, v); }); g.appendChild(b);
       }
     });
     const condsEl = document.getElementById('conds');
@@ -136,6 +140,8 @@
       if (freeze) go(); else setTimeout(go, 300);
     },
     stop() { running = false; clearInterval(flyTimer); S.demo = '0'; stepThings = null; },
+    /* Applies the demo's settings again, after the settings screen changed something. */
+    refresh() { if (running) apply(); },
     tick,
     note(text) { if (swatNote) swatNote.textContent = text; }
   };
