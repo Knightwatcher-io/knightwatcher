@@ -22,6 +22,37 @@ watched things. Each stands in the scene as the device it is, cameras mounted hi
 the ground, with a lamp that fades green while it is up and blinks red when it goes down;
 [Watched things](docs/configuration.md#watched-things) says how to list them.
 
+## Quick start
+
+On a machine with Docker and its compose plugin, from a checkout of this repository:
+
+```bash
+cp config.example.toml config.toml
+cp .env.example .env && chmod 600 .env
+mkdir -p var/out var/server
+setfacl -m u:10001:rwx var var/out var/server
+setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server
+```
+
+The containers run as uid 10001, and the last two lines let it write in those three folders
+([configuration.md](docs/configuration.md#the-accounts)). Then, in `.env`, point
+`KNIGHTWATCHER_BACKUP_LOG` at your backup log and `KNIGHTWATCHER_DATA_DISK` at any folder on the
+disk to watch. Both must exist. With no backup log yet, `touch var/backup.log` and point at that,
+and set `enabled = false` under `[sources.backup]` in `config.toml`. Then:
+
+```bash
+docker compose up -d
+```
+
+and open `http://<this machine>:8080/` in a browser. The knight appears at once and the collector's
+first readings within a minute. The example config names services at invented addresses, so
+those sources say they cannot be reached until you point them at your own, or turn them off,
+in `config.toml` ([Configuration](docs/configuration.md)); the credentials go in `.env`.
+
+The page is open to anyone on your network, with no login. Read [The server](docs/server.md#security)
+before you let it be reached from anywhere else, and never publish it to the internet without a
+login in front.
+
 ## Try the page
 
 Open `web/index.html` in a browser. With no `state.json` beside it, the page runs on invented data
@@ -30,17 +61,18 @@ and shows a bar of controls for every scene and state.
 Press and hold anywhere on the display for two seconds to open the settings: the knight's build
 (Classic, Broad or Slim), weapon, skin, hair, tabard and plume, the monarch and the monarch's skin, hair and robe, the headline size,
 a 12-hour clock, the helmet indoors, which quiet scenes take turns, and the scene some conditions
-play in (running hot at the camp rather than the training yard, say). Each display keeps its own
-choices in its browser. The defaults
-every display starts from are set in `config.toml`; see
+play in (running hot at the camp rather than the training yard, say). Served by Knightwatcher's own
+server, what is chosen there is saved for every display; opened from disk, it is kept in that
+browser. The defaults under it are set in `config.toml`; see
 [Configuration](docs/configuration.md#the-settings-screens-defaults).
 
-## How the two parts fit
+## How the parts fit
 
 A small collector, run as a container, reads the homelab and writes `state.json`. A static page
 under `web/` fetches that file and draws the knight. The collector knows nothing of knights and the
-page knows nothing of Docker or DNS. To run both, serve `web/` with any web server and have the
-collector write its file to `web/data/`, behind whatever authentication you use.
+page knows nothing of Docker or DNS. A small server, a second container from the same image,
+serves the page and the file and keeps the settings the displays choose. Any other web server can
+serve the page instead, with each browser then keeping its own settings.
 
 ## Documentation
 
@@ -49,7 +81,8 @@ collector write its file to `web/data/`, behind whatever authentication you use.
 - [The page](docs/page.md): the files, the one grid, the scene interface, the modes and the address
 - [The collector](docs/collector.md): one poll, conditions, events, sources and how to add one
 - [Configuration](docs/configuration.md): how settings work, `config.toml`, `.env`, and a reference of every setting
-- [Security](docs/security.md): what never enters this repository, and the collector's privileges
+- [The server](docs/server.md): what it serves, the settings API and store, its security, and a reverse proxy in front
+- [Security](docs/security.md): what never enters this repository, and the collector's and the server's privileges
 - [Packs](docs/packs.md): the format of a pack, its checks and signing, and the library that reads it
 - [A monitor on the host](docs/monitor.md): showing the display on a screen wired to a headless host
 - [Development](docs/development.md): layout, checks, and the rules for changes

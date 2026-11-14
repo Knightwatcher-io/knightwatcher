@@ -312,5 +312,5 @@ read-only root filesystem, no capabilities, `no-new-privileges`, the host's netw
 published port and no Docker socket. Its health check runs `--health`, which at the default
 interval fails once the file is more than 30 seconds old. Every host path is bound with
 `create_host_path: false`, so a missing path stops the container rather than leaving Docker to
-create an empty folder there. [configuration.md](./configuration.md#the-collectors-account)
+create an empty folder there. [configuration.md](./configuration.md#the-accounts)
 says how that user is given the files it needs.

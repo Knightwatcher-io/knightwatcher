@@ -3,8 +3,8 @@
 Read this page before changing anything, and [security.md](./security.md) before committing.
 The design is in [design.md](./design.md), and the contract between the collector and the page
 is in [state.md](./state.md). Read [page.md](./page.md) before touching `web/`,
-[collector.md](./collector.md) before touching `collector/`, and [packs.md](./packs.md) before
-touching `web/js/pack.js` or a pack file.
+[collector.md](./collector.md) before touching `collector/`, [server.md](./server.md) before
+touching `server/`, and [packs.md](./packs.md) before touching `web/js/pack.js` or a pack file.
 
 ## Layout
 
@@ -15,8 +15,12 @@ web/                 the page: static files, no build step (index.html, css/, fo
 collector/           the collector: Python, standard library only
   sources/           one module per source
   settings-schema.json  every setting of config.toml and every variable of .env
+server/              the bundled server: Python, standard library only, reusing the collector's
+                     checks (app.py the HTTP side, store.py the shared settings, stamp.py the
+                     page's version stamp at build time)
 tests/
   collector/         unittest tests for the collector
+  server/            unittest tests for the server and the stamp
   web/               node tests for the page's scripts
     fixtures/knight/ the stored call record of the knight's drawing
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
@@ -44,7 +48,8 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 - **The contract comes first.** A change to what the collector writes or the page reads changes
   [state.md](./state.md) in the same commit.
 - **The page has no build step and no dependencies.** It must open from disk in a browser.
-- **The collector uses the standard library alone.** A dependency needs a reason written here.
+- **The collector and the server use the standard library alone.** A dependency needs a reason
+  written here.
 - **A pack file and its carrier change together.** After editing a file in `web/packs/`, run
   `node tools/pack-carrier.js` and commit both; a test fails while they differ. See
   [packs.md](./packs.md#carriers).
@@ -68,12 +73,13 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 
 ## Checks
 
-The collector:
+The collector and the server:
 
 ```bash
 python3 -m unittest discover -s tests/collector -v
-uvx ruff check collector tests && uvx ruff format --check collector tests
-docker build -t knightwatcher-collector:dev .
+python3 -m unittest discover -s tests/server -v
+uvx ruff check collector server tests && uvx ruff format --check collector server tests
+docker build -t knightwatcher:dev .
 docker compose config -q
 python3 -m collector --check-config --config config.toml --env-file .env
 ```
@@ -83,7 +89,11 @@ thrown away after the run; without it that test is skipped and says why.
 
 The last two need a `.env` and a `config.toml` in place; see
 [configuration.md](./configuration.md). `tests/collector/test_schema.py` checks the settings schema
-against the collector, `config.example.toml`, `.env.example` and `compose.yaml`.
+against the collector, `config.example.toml`, `.env.example` and `compose.yaml`, each service's
+mounts included, and that the server is given no variable but its address and port.
+`tests/server/` runs the server on the loopback; its stamp test needs bash and rsync, for
+`tools/deploy.sh`, and is skipped without them. [server.md](./server.md#checks) lists what they
+check.
 
 The page:
 
@@ -134,7 +144,9 @@ that every pack in `web/packs/` that carries a `sig` verifies against the key ta
 when no base pack can be used; its signed packs use keys generated for the run. `tests/web/places.test.js`
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
 and that no two places draw over each other. `tests/web/settings-schema.test.js` checks the page's lists of
-settings, scenes and conditions against the settings schema. `tests/web/settings.test.js` checks the settings in
+settings, scenes and conditions against the settings schema. `tests/web/shared-settings.test.js` checks the shared settings against a fake server: the first
+answer, the carry-over of a browser's own choices, no server, a choice sent and a write refused,
+and two displays sharing one server. `tests/web/settings.test.js` checks the settings in
 `web/js/settings.js` (the order of their levels, unknown values, the browser's storage refusing,
 the reset, the 12-hour clock, the monarch's hair and robe with "As drawn", the scene chosen per
 condition and which scenes can act which condition, the build row's names from the base pack), the
@@ -186,7 +198,15 @@ Whether the base pack ships signed today, and what a deployed page draws in each
 [packs.md](./packs.md#where-the-knight-is-drawn-from). The page's tests hold in either state, so carrying a signature
 across changes no test.
 
-## Deploying the page
+## Deploying
+
+`docker compose up -d --build` builds the image, which holds the collector, the server and a copy
+of `web/` stamped with its version (`server/stamp.py`, which gives the bytes `tools/deploy.sh`
+gives), and starts both. Open displays reload onto a new image within about five minutes, as
+after a deploy. A tree run straight from git builds from the working tree, so build from a clean
+export (`git archive`) when other changes are in progress.
+
+### The page alone, to a web server of your own
 
 ```bash
 tools/deploy.sh /path/to/served/folder

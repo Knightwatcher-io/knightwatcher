@@ -1,13 +1,13 @@
-# The Knightwatcher collector. Host paths and credentials come from .env beside this file
-# (ignored by git; .env.example is the template); see docs/configuration.md. Every host path is
-# bound with create_host_path: false, so a missing path stops the container instead of Docker
-# creating an empty folder in its place.
+# Knightwatcher: the collector and the bundled server, both from the image the Dockerfile builds.
+# Host paths, the server's address and port, and the credentials come from .env beside this file
+# (ignored by git; .env.example is the template); see docs/configuration.md and docs/server.md.
+# Every host path is bound with create_host_path: false, so a missing path stops the container
+# instead of Docker creating an empty folder in its place.
 name: knightwatcher
 
 services:
   collector:
     build: .
-    image: knightwatcher-collector:latest
     container_name: knightwatcher-collector
     restart: unless-stopped
     network_mode: host
@@ -57,7 +57,7 @@ services:
         target: /host/disks/data
         read_only: true
         bind: { create_host_path: false }
-      # Where state.json is written: a folder the web server serves.
+      # Where state.json is written, for the server to serve.
       - type: bind
         source: ${KNIGHTWATCHER_OUT:?set KNIGHTWATCHER_OUT in .env}
         target: /out
@@ -66,4 +66,39 @@ services:
       - type: bind
         source: ${KNIGHTWATCHER_VAR:-./var}
         target: /var/lib/knightwatcher
+        bind: { create_host_path: false }
+
+  # The page, state.json and the shared settings, over plain HTTP. It gets no credential and no
+  # variable from .env: compose reads only its address and port, to publish it. Open to the LAN by
+  # default; docs/server.md says how to put a login in front.
+  server:
+    build: .
+    container_name: knightwatcher-server
+    entrypoint: ["python", "-m", "server"]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "10001:10001"
+    healthcheck:
+      test: ["CMD", "python", "-m", "server", "--health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 2
+    # Inside the container it listens on 8080; on the host, at the address and port in .env. With
+    # no address it is published on all of the host's addresses.
+    ports:
+      - "${KNIGHTWATCHER_SERVER_ADDRESS:+${KNIGHTWATCHER_SERVER_ADDRESS:-}:}${KNIGHTWATCHER_SERVER_PORT:-8080}:8080"
+    volumes:
+      # The collector's output: state.json and the packs it downloaded. Read only.
+      - type: bind
+        source: ${KNIGHTWATCHER_OUT:?set KNIGHTWATCHER_OUT in .env}
+        target: /out
+        read_only: true
+        bind: { create_host_path: false }
+      # The server's own folder, where the shared settings are kept: the one place it writes.
+      - type: bind
+        source: ${KNIGHTWATCHER_SERVER_VAR:-./var/server}
+        target: /var/lib/knightwatcher-server
         bind: { create_host_path: false }

@@ -1,3 +1,9 @@
-# Only the package goes into the image. Nothing else, and never config.toml or .env.
+# Only the two packages and the page go into the image. Nothing else, and never config.toml,
+# .env, the collector's output in web/data/ or the server's settings.
 *
 !collector
+!server
+!web
+web/data
+**/__pycache__
+**/*.pyc

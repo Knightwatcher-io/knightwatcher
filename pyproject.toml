@@ -19,4 +19,4 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["collector", "kw_helpers"]
+known-first-party = ["collector", "kw_helpers", "server"]

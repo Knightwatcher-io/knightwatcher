@@ -23,9 +23,10 @@ SETTING_FIELDS = {
     "unit", "scope", "gui", "editable", "help",
 }  # fmt: skip
 ENV_FIELDS = {
-    "name", "scope", "required", "default", "mount", "example", "source", "field", "secret",
-    "form", "gui", "editable", "help",
+    "name", "scope", "required", "default", "mount", "services", "example", "source", "field",
+    "secret", "form", "gui", "editable", "help",
 }  # fmt: skip
+SERVICES = ("collector", "server")
 UNITS = {"seconds", "minutes", "hours", "percent", "bytes"}
 DASHES = re.compile("[\u2013\u2014]")
 
@@ -98,7 +99,12 @@ class SchemaShapeTest(unittest.TestCase):
                         self.assertIn(s["page_default"], allowed, where)
         for e in S["env"]:
             self.assertLessEqual(set(e), ENV_FIELDS, e["name"])
-            self.assertIn(e["scope"], ("credential", "path"), e["name"])
+            self.assertIn(e["scope"], ("credential", "path", "server"), e["name"])
+            self.assertLessEqual(set(e.get("services", ["collector"])), set(SERVICES), e["name"])
+            if e["scope"] == "credential":
+                self.assertEqual(e.get("services", ["collector"]), ["collector"], e["name"])
+            if e["scope"] == "server":
+                self.assertTrue(e["form"] and isinstance(e["default"], str), e["name"])
             self.assertIs(e["editable"], False, f"{e['name']}: the GUI never changes it")
             self.assertTrue(e["help"].strip() and e["example"], e["name"])
             self.assertRegex(e["name"], r"^KNIGHTWATCHER_[A-Z0-9_]+$")
@@ -206,26 +212,78 @@ class TemplatesAgreeTest(unittest.TestCase):
             self.assertTrue(any("Possible values:" in line for line in block), e["name"])
 
     def test_compose_passes_each_credential_by_name_and_mounts_each_path(self):
-        with open(os.path.join(ROOT, "compose.yaml"), encoding="utf-8") as fh:
-            text = fh.read()
+        text = compose_text()
         self.assertNotIn("env_file", text)
         self.assertNotIn("secrets.json", text)
-        environment = text.split("    environment:\n", 1)[1].split("    volumes:\n", 1)[0]
+        blocks = services(text)
+        self.assertEqual(sorted(blocks), sorted(SERVICES))
+        collector = blocks["collector"]
+        environment = collector.split("    environment:\n", 1)[1].split("    volumes:\n", 1)[0]
         passed = re.findall(r"^      (KNIGHTWATCHER_[A-Z0-9_]+): \$\{\1:-\}$", environment, re.M)
         self.assertEqual(passed, [e["name"] for e in schema.credentials()])
         entries = [
             ln for ln in environment.splitlines() if ln.strip() and not ln.strip().startswith("#")
         ]
         self.assertEqual(len(entries), len(passed), "the environment names credentials alone")
-        volumes = text.split("    volumes:\n", 1)[1]
-        mounted = re.findall(r"\$\{(KNIGHTWATCHER_[A-Z0-9_]+)[:}]", volumes)
-        paths = [e for e in S["env"] if e["scope"] == "path"]
-        self.assertEqual(sorted(mounted), sorted(e["name"] for e in paths))
-        for e in paths:
-            target = re.search(r"\$\{" + e["name"] + r"[^\n]*\n\s+target: (\S+)", volumes)
-            self.assertEqual(target.group(1), e["mount"], e["name"])
-            required = re.search(r"\$\{" + e["name"] + r":\?", volumes) is not None
-            self.assertEqual(required, e["required"], e["name"])
+        for name, block in blocks.items():
+            volumes = block.split("    volumes:\n", 1)[1]
+            mounted = re.findall(r"\$\{(KNIGHTWATCHER_[A-Z0-9_]+)[:}]", volumes)
+            paths = [
+                e
+                for e in S["env"]
+                if e["scope"] == "path" and name in e.get("services", ["collector"])
+            ]
+            self.assertEqual(sorted(mounted), sorted(e["name"] for e in paths), name)
+            for e in paths:
+                target = re.search(r"\$\{" + e["name"] + r"[^\n]*\n\s+target: (\S+)", volumes)
+                self.assertEqual(target.group(1), e["mount"], f"{name}: {e['name']}")
+                required = re.search(r"\$\{" + e["name"] + r":\?", volumes) is not None
+                self.assertEqual(required, e["required"], f"{name}: {e['name']}")
+                default = re.search(r"\$\{" + e["name"] + r":-([^}]*)\}", volumes)
+                if not e["required"]:
+                    self.assertEqual(default.group(1), e["default"], f"{name}: {e['name']}")
+
+    def test_the_server_gets_no_variable_from_env_but_its_address_and_port(self):
+        server = services(compose_text())["server"]
+        self.assertNotIn("environment:", server)
+        named = set(re.findall(r"\$\{(KNIGHTWATCHER_[A-Z0-9_]+)", server))
+        mine = {e["name"] for e in S["env"] if "server" in e.get("services", ["collector"])}
+        self.assertEqual(named, mine)
+        self.assertNotIn("credential", {e["scope"] for e in S["env"] if e["name"] in named})
+        ports = server.split("    ports:\n", 1)[1].split("    volumes:\n", 1)[0]
+        self.assertIn("${KNIGHTWATCHER_SERVER_ADDRESS:+${KNIGHTWATCHER_SERVER_ADDRESS:-}:}", ports)
+        port = schema.SCHEMA["env"][
+            [e["name"] for e in S["env"]].index("KNIGHTWATCHER_SERVER_PORT")
+        ]
+        self.assertIn("${KNIGHTWATCHER_SERVER_PORT:-" + port["default"] + "}:8080", ports)
+        for line in (
+            "read_only: true",
+            "cap_drop: [ALL]",
+            "no-new-privileges:true",
+            '"10001:10001"',
+        ):
+            self.assertIn(line, server)
+        self.assertNotIn("network_mode", server)
+        self.assertNotIn("/proc", server)
+        out = re.search(r"\$\{KNIGHTWATCHER_OUT[^\n]*\n\s+target: /out\n\s+read_only: true", server)
+        self.assertIsNotNone(out, "the collector's output is mounted read-only")
+
+
+def compose_text() -> str:
+    with open(os.path.join(ROOT, "compose.yaml"), encoding="utf-8") as fh:
+        return fh.read()
+
+
+def services(text: str) -> dict[str, str]:
+    """The text of each service in compose.yaml, by its name."""
+    part = text.split("\nservices:\n", 1)[1]
+    names = re.findall(r"^  ([a-z]+):$", part, re.M)
+    out = {}
+    for i, name in enumerate(names):
+        start = part.index(f"\n  {name}:\n") if i else part.index(f"  {name}:\n")
+        end = part.index(f"\n  {names[i + 1]}:\n") if i + 1 < len(names) else len(part)
+        out[name] = part[start:end]
+    return out
 
 
 if __name__ == "__main__":

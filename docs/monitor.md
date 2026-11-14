@@ -12,7 +12,10 @@ distributions package the same pieces under the same names.
 ## Before you start
 
 - **The page must already be served somewhere the host can reach**, for example
-  `http://127.0.0.1:8080/`. The examples below use that address; put your own in its place.
+  `http://127.0.0.1:8080/`, where the bundled server answers by default
+  ([server.md](./server.md)). The examples below use that address; put your own in its place.
+  Served by the bundled server, the monitor shows the settings chosen on any other display, so
+  it needs no keyboard or mouse of its own.
 - **The kernel must see the monitor.** No display server is needed for this check:
 
   ```bash

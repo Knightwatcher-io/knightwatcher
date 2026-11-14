@@ -25,8 +25,8 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the watched things in their places (`KW.things`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
-| `js/settings.js` | `KW.settings`: the levels the display's settings come from, this display's saved choices, the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
-| `js/main.js` | start-up (starting the knight, reading the address's hooks, applying the settings and mounting their screen, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
+| `js/settings.js` | `KW.settings`: the levels the display's settings come from, the saved settings (the server's, shared by every display, or this browser's own), keeping them in step with the server (`connect`), the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
+| `js/main.js` | start-up (starting the knight, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
@@ -416,7 +416,8 @@ hides the review bar and drives the display:
   unless the settings set another length (`LIVE_TURN_MS` in `main.js` is the ten), and
   `quiet_line` is the small line.
 - The file's `defaults` go to the settings (see [Settings](#settings)), which apply any change at
-  once.
+  once. With each fetch of the state file the page also asks `api/settings` for the shared
+  settings (see [The shared settings](#the-shared-settings)).
 - The watched things come from `facts.things`, and without it the pie stands alone as before
   there were things; see [Watched things](#watched-things). `facts.streams.count > 0`, or a
   `streaming` condition, turns the television on.
@@ -593,8 +594,11 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
 
 1. **The address's hooks**: `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, `mon=`, `ms=`, `mh=`,
    `mr=`, `hs=`, `h=`, `ck=` and `sc=` (see [The address](#the-address)). They keep screenshots the
-   same whatever a display has saved.
-2. **This display's saved choices**, made on the settings screen and kept in its browser.
+   same whatever is saved.
+2. **The saved settings**, made on the settings screen. Served by the bundled server they are the
+   deployment's, kept by the server and the same on every display (see
+   [The shared settings](#the-shared-settings)); with no server they are this browser's own, kept
+   in its storage (see [This browser's own choices](#this-browsers-own-choices)).
 3. **The `defaults` of the state file**, which the collector takes from `config.toml` (see
    [state.md](./state.md)). A file from an older collector has none.
 4. **The page's own**: the base pack's defaults for the knight (Classic, the greatsword, warm skin,
@@ -621,7 +625,7 @@ the condition: `knightwatcher: settings: scenes.attack "house" in the defaults i
 ignored: that scene cannot act it`. A value a level holds that the page does
 not know is ignored at that level, so the next one down is used, and the console says so once:
 `knightwatcher: settings: look.skin "green" in this display's saved choices is ignored: not a value
-the page knows`. A build is known only when the base pack in use declares it (`build.a` is `a`);
+the page knows`, or `in the settings saved on the server` for the shared settings. A build is known only when the base pack in use declares it (`build.a` is `a`);
 today it declares all three, Classic (`a`), Broad (`b`) and Slim (`c`). `quiet.scenes` takes turns in the order given, a repeat
 dropped, and a list that names no quiet scene is ignored whole; `minutes` is a number from 1 to
 240. A section of the defaults the page does not know is left alone without a word, so a later
@@ -640,25 +644,83 @@ false), and the clock reads `21:42` or `9:42` with a small `PM` after it. `clock
 the words: on the 12-hour clock the hour after midnight is `12:05 AM` and the half hour after noon
 `12:30 PM`.
 
-**Saved choices.** One key in the browser's `localStorage`, `knightwatcher.settings`, holds
+### The shared settings
+
+Served over HTTP, the page asks `api/settings` beside it for the deployment's settings: once at
+start, and again with every fetch of the state file, so every five seconds (on a timer of its own
+while `?demo` forces the demo). The bundled server answers
+`{ "v": 1, "look": {...}, "display": {...}, "quiet": {...}, "scenes": {...} }` with only the keys
+saved ([server.md](./server.md#the-settings-api)). The fetch asks the browser to check its copy
+(`cache: "no-cache"`), so while nothing has changed the server answers `304` with no body. It is
+cut off after four seconds. `KW.settings.connect` does the rest:
+
+- **The first answer** in that form makes the saved level the server's, and the settings screen's
+  choices are sent there from then on.
+- **The carry-over.** When that first answer holds nothing at all and this browser has choices
+  under the old key, `knightwatcher.settings`, they are sent once with `PUT` (each section cleaned
+  as the saved level is, and only the sections with something in them), and once the server has
+  taken them the key is removed, with a line in the console. If the server refuses them the key is
+  kept and they are tried again when the page next loads. When the first answer holds something,
+  the key is removed unsent: the deployment's settings win. Either way this browser's own choices
+  are not used again while the server answers.
+- **A change from another display.** Every answer is copied into the browser's storage under
+  `knightwatcher.shared`, and a page served over HTTP starts from that copy until the server
+  answers, so a reload shows the shared settings from the first frame. An answer that changes
+  what the display shows, a choice made on another display, reloads the page at once, so that
+  everything drawn (the knight, the gear at rest, the cached backdrops) starts again from it: a
+  choice on one display reaches every other within one poll. While the screen is open the page
+  is not reloaded under it; the screen shows the change and reloads the page as it closes. Where
+  the browser keeps no copy (a private window may refuse storage) the page is not reloaded, since
+  it would start from something else each time, and the settings apply in place.
+- **A choice** on the screen applies at once and is sent with `PUT`, naming the sections it
+  changed, each in full: `{ "v": 1, "look": {...} }`. A reset sends the section empty and "As
+  drawn" sends it without that key. One write is in flight at a time, and choices made meanwhile
+  go in the next. An answer to a poll sent before the latest choice is dropped, so an older answer
+  never undoes a choice.
+- **A write that fails**, refused by the server or not answered, puts the settings back to the
+  server's last answer, and the line under the screen's title says `Not saved: ` with the server's
+  reason (`error` in its answer), `the server answered 500`, or `the server did not answer`, in
+  amber, until a save succeeds.
+- **No server.** A `404`, or any answer that is not the shared form (another web server's page,
+  say), means nothing keeps the settings there: the page goes back to this browser's own choices,
+  removes the copy and asks no more until it is loaded again. A server that cannot be reached at
+  all, or answers with a server error, is asked again at the next poll, and the page stays as it
+  is meanwhile.
+
+From disk the page asks nothing: there is no server, and the choices are this browser's.
+
+### This browser's own choices
+
+With no server, the choices are kept in the browser. One key in its `localStorage`,
+`knightwatcher.settings`, holds
 `{ "v": 1, "look": {...}, "display": {...}, "quiet": {...}, "scenes": {...} }`, with the contract's
 names and values. A text saved before there was a `scenes` section is still version 1 and reads as
 it did, each condition in its own scene. A choice is saved the moment it is made. Every read and write is wrapped: where a browser refuses
 storage, as a private window may, the page works all the same, the choices last until it is
 reloaded, and the console says so once. A stored text that is not JSON, or not version 1, is
 ignored whole, and a stored value the page does not know is ignored alone. The choices belong to
-the browser of one display, so other displays keep their own.
+that one browser, so other displays keep their own. This is how the page behaves from disk, as
+the website's demo, and served by a web server other than the bundled one.
 
-**The store.** `KW.settings.create({ hooks, storage, pack, world, say })` holds the levels (`world`,
-a function giving `{ can, homes }`, defaults to `pageWorld`, and a test passes its own): `now()`
+**The store.** `KW.settings.create({ hooks, storage, pack, world, say, cache })` holds the levels (`world`,
+a function giving `{ can, homes }`, defaults to `pageWorld`, and a test passes its own; `cache`
+true starts the saved level from the copy of the shared settings, as `main.js` does when served): `now()`
 gives `{ values, from }`, every key's value and the level it came from (`hook`, `saved`, `defaults`
-or `built-in`); `fallback()` the same without the hooks and the saved choices, for the reset's
+or `built-in`); `fallback()` the same without the hooks and the saved settings, for the reset's
 line; `choose(section, key, value)` saves one choice and refuses a value it does not know;
-`clear(section, key)` clears this display's choice for one key, which the monarch's "As drawn"
-uses; `reset(section)` clears a section's saved choices; `own(section)` says whether the display
-has any there; `offered()` gives the conditions offered, each with the scenes that can act it;
+`clear(section, key)` clears the saved choice for one key, which the monarch's "As drawn"
+uses; `reset(section)` clears a section's saved choices; `own(section)` says whether anything is
+saved there; `offered()` gives the conditions offered, each with the scenes that can act it;
 `defaults(raw)` takes the state file's section; and `on(fn)` adds a listener, told whenever what the
-display shows changes. `main.js` makes one store at start-up, applies it before the first frame,
+display shows changes. For the shared settings, `mode()` says where choices are kept (`server` or
+`local`), `shared(j)` takes the server's settings as the saved level and says whether what the
+display shows changed, `local()` goes back to this browser's choices, `sections()` gives the saved
+level as a write sends it, `carry()` this browser's own choices for the carry-over, and
+`sending(fn)` names the function told of each choice while the settings are the server's.
+`KW.settings.connect({ store, request, storage, reload, holding, note, say })` ties a store to the
+server: `request(method, body)` makes the request, `reload()` starts the page again, `holding()`
+says whether the screen is open and `note(text)` sets its line; it returns `poll()`, which
+`main.js` calls. `sharedOf(j)` reads an answer of the server's, or gives `null`. `main.js` makes one store at start-up, applies it before the first frame,
 and on every change gives the knight its look, the engine its input and the words their size and
 clock. The pure part of `settings.js` loads under Node for the tests.
 
@@ -721,9 +783,16 @@ was written and how often the collector writes it, the sources in it (all workin
 one with its error and the time of its last read), where the knight is drawn from with the base
 pack's id, version and whether it is signed, and the packs refused, each with its step and reason.
 
-**Reset.** Each editable page ends with USE THE CONFIG DEFAULT and a line saying whether the
-display has its own choices and what the default is, and whether that comes from `config.toml`.
-The button clears this display's saved choices for the section, so it falls back to the defaults;
+**Where choices are kept.** Under the title, each editable page says where its choices go: "Saved
+on the Knightwatcher server, for every display." with the bundled server, or "Kept in this browser
+only: no Knightwatcher server." without one. A save the server refused replaces that line with
+"Not saved: " and the reason, in amber, until a save succeeds (see
+[The shared settings](#the-shared-settings)).
+
+**Reset.** Each editable page ends with USE THE CONFIG DEFAULT and a line saying whether anything
+is saved there ("Saved for every display." with the server, "This display has its own look." or
+"choices" without) and what the default is, and whether that comes from `config.toml`.
+The button clears the saved choices for the section, on every display with the server, so it falls back to the defaults;
 on the two look pages it clears the whole look, knight and monarch, which is one section, and on
 the scenes page every condition's scene. A row a
 hook sets says "The page's address sets this for now."
@@ -812,6 +881,11 @@ are read once when the page loads, and the rewritten hash leaves them out, so th
 page is opened again.
 
 ## Deploying
+
+The bundled server serves the copy of `web/` its image holds, stamped at build time by
+`server/stamp.py` with the same version, `version.json`, meta tag and `?v=` addresses that
+`tools/deploy.sh` gives the same files ([server.md](./server.md#what-it-serves)). A new image
+reloads open displays as a deploy does. To serve the page from a web server of your own instead:
 
 ```bash
 tools/deploy.sh /path/to/served/folder
