@@ -4,8 +4,9 @@
 //   - the page's copy, between the settings-schema markers in web/js/settings.js: the settings of
 //     the four sections the display chooses (look, display, quiet, scenes) with the values each may
 //     take and the page's own default, and every scene;
-//   - the reference of every setting and every .env variable, between the settings-reference
-//     markers in docs/configuration.md.
+//   - the reference of every setting and every .env variable (the host paths, the bundled
+//     server's address and port, and the credentials), between the settings-reference markers in
+//     docs/configuration.md.
 //
 //   node tools/settings-schema.js           write both
 //   node tools/settings-schema.js --check   write nothing; exit 1 and name each that is stale
@@ -113,11 +114,11 @@ function reference(schema) {
     for (const s of t.settings) out.push('| ' + [code(s.key), valuesText(s), defaultText(s), s.scope, s.help].map(cell).join(' | ') + ' |');
     out.push('');
   }
-  out.push('### .env', '', 'Every variable the project reads from `.env`. The host paths are for `compose.yaml`, and the credentials reach the collector alone.', '');
+  out.push('### .env', '', 'Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server\'s address and port are where it publishes the bundled server, and the credentials reach the collector alone.', '');
   out.push('| Variable | Scope | Values | Default | What it is |', '|---|---|---|---|---|');
   for (const e of schema.env) {
     const values = e.scope === 'path' ? 'a host path, such as ' + code(e.example) : e.form + ', such as ' + code(e.example);
-    const dflt = e.required ? 'required' : e.default === null ? 'none' : code(e.default);
+    const dflt = e.required ? 'required' : e.default === null ? 'none' : e.default === '' ? 'empty' : code(e.default);
     const what = e.help + (e.scope === 'credential' ? ' Read when the source is enabled; its `secret` setting names the variable.' : '');
     out.push('| ' + [code(e.name), e.scope, values, dflt, what].map(cell).join(' | ') + ' |');
   }

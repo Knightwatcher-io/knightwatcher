@@ -960,7 +960,7 @@ the first frame, with `allowUnsigned` true only when the page's `kw-version` met
 the way it reads the version for the reload check. `start` reads every carried text with `read()`,
 gathers the results and resolves the look (`resolve(packs, look)`), at first `{}`, the base pack's
 defaults. The look then comes from the settings ([page.md](./page.md#settings)): the address's
-hooks, this display's choices on the settings screen, the `defaults` of the state file from
+hooks, the saved settings chosen on the settings screen, the `defaults` of the state file from
 `config.toml`, and last the base pack's defaults, key by key. `main.js` hands it to
 `KW.knight.look(look)`, which resolves it again from the packs already read, the downloaded ones
 included, and reads nothing again; it does so at start-up and at every change, and with nothing

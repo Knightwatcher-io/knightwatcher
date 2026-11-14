@@ -215,16 +215,21 @@ style, tabard, plume), the monarch and the monarch's skin, hair and robe, the di
 scenes take turns and for how long, the scene each offered condition plays in, and a read-only
 status page: the page's version, the state file's age, the sources and the packs. A side rail keeps every page one tap away. A choice applies at once, to the scene
 behind as well, which keeps running dimmed, and there is no Save button; each page ends with a
-button that puts this display back to the config default. The screen closes with DONE, Escape, or
+button that puts the settings back to the config default. The screen closes with DONE, Escape, or
 after a minute without a touch, counting down the last ten seconds, and reloads the page as it
 closes when anything was changed; tapping the dimmed edge does
 not close it, so a hand brushing the frame does nothing. Every touch target is at least 48 CSS
 pixels, for a large tablet in landscape and a small desktop window alike.
 
-The choices are kept in that display's browser, so other displays keep their own. Each setting
-comes from the highest of four levels: the address (for screenshots), the display's own choices,
-the defaults in `config.toml` that the collector passes on in `state.json`, and the page's own. A
-second display therefore starts as the owner set `config.toml`. The demo has the same screen.
+The settings belong to the deployment, not to one display: the bundled server keeps what any
+screen chooses, and every display shows the same, a change on one reaching the others within
+seconds. A display with no keyboard or mouse, such as a monitor on a headless host, therefore
+shows what was chosen on the tablet. The wall's screen saves without a code, since it holds only
+how the display looks; the sources, thresholds and watched things stay in `config.toml`. Each
+setting comes from the highest of four levels: the address (for screenshots), the saved settings,
+the defaults in `config.toml` that the collector passes on in `state.json`, and the page's own.
+Without the server (opened from disk, the website's demo, or served by another web server) each
+browser keeps its own choices. The demo has the same screen.
 The builds are shown by their names, Classic, Broad and Slim, all three ready. [page.md](./page.md#settings)
 describes the screen and the levels in full.
 
@@ -247,7 +252,8 @@ A small Python program with no third-party dependencies, run as a container:
 - host figures from read-only mounts, everything else by asking the services it watches over
   HTTP, DNS or a TCP connection, and the machines listed as watched things by a TCP connection
   or one web request each;
-- one output, written atomically: `state.json` in a folder the web server already serves.
+- one output, written atomically: `state.json` in a folder the bundled server, or a web server
+  of your own, serves.
 
 It keeps the short history that its judgements need (a CPU averaging 85 percent or more over the
 last 30 seconds is a condition; a spike of a few seconds is not), so the page stays stateless.
@@ -258,9 +264,13 @@ a module and leaves the rest alone.
 
 ## Serving
 
-The page is static files. Any web server will do, and it is the operator's job to put
-authentication in front of it: `state.json` holds container names, addresses and what is being
-watched. Knightwatcher opens no port of its own.
+The page is static files, and `docker compose up` serves it with the bundled server, a second
+container from the same image: the page, `state.json`, and the settings saved for every display
+([server.md](./server.md)). It holds no credential, mounts no secret and writes only its own
+folder. It is open to the LAN with no login by default; it is the operator's job to put
+authentication in front of it before it is reached from anywhere else, since `state.json` holds
+container names, addresses and what is being watched. Any other web server will do instead, with
+each browser then keeping its own settings. The collector opens no port.
 
 ## Decisions not yet made
 

@@ -1,7 +1,8 @@
 /* Knightwatcher: start-up. Reads the address, starts the knight from the packs the page ships with
    and adds the ones the collector downloaded, applies the settings and mounts their screen, sizes
    the canvas to the screen, keeps the clock and the words over the scene, runs the frames, chooses
-   between the demo and live data, and reloads the page when a new version of it has been deployed.
+   between the demo and live data, keeps the shared settings in step with the server, and reloads
+   the page when a new version of it has been deployed.
    docs/page.md describes the modes, the settings and the address's test hooks. */
 (function (KW) {
   'use strict';
@@ -46,8 +47,10 @@
   KW.knight.start(KW.packText, ownVersion === 'dev', { look: {} });
 
   /* ---- The settings ------------------------------------------------------------------------------
-     What the display shows comes from four levels, highest first: the address's hooks, this
-     display's saved choices, the defaults in the state file and the page's own (KW.settings). The
+     What the display shows comes from four levels, highest first: the address's hooks, the saved
+     settings (the deployment's, shared by every display, when the Knightwatcher server serves the
+     page; this browser's own otherwise), the defaults in the state file and the page's own
+     (KW.settings). The
      hooks, in the contract's names: bd= the build (a, b or c); arm=one the sword and shield and
      arm=two the greatsword; sk=, hc=, tb= and pm= the skin, hair, tabard and plume swatches; hy= the
      hair style; mon= the monarch, ms= the monarch's skin, mh= the monarch's hair (a hair swatch)
@@ -69,7 +72,10 @@
     ['mh', 'monarch_hair'], ['mr', 'monarch_robe']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
   const scHook = (H0.match(/[#&]sc=([^&]*)/) || [])[1];
   if (scHook !== undefined) for (const item of scHook.split(',').filter(Boolean)) { const [c, v] = item.split(':'); HOOK.scenes[c] = v === undefined ? '' : v; }
-  const store = KW.settings.create({ hooks: HOOK, storage: () => window.localStorage, pack: () => KW.knight.basePack() });
+  /* Served, the page starts from its copy of the shared settings, if it has one, until the server
+     answers; from disk there is no server to ask. */
+  const fromDisk = location.protocol === 'file:';
+  const store = KW.settings.create({ hooks: HOOK, storage: () => window.localStorage, pack: () => KW.knight.basePack(), cache: !fromDisk });
   let lookKey = '{}', twelve = false;
   /* Puts what the settings say into the knight, the options and the clock. Returns whether the
      knight's look changed. */
@@ -154,7 +160,7 @@
   /* How long each quiet scene lasts while they take turns in live mode. */
   const LIVE_TURN_MS = 10 * 60 * 1000;
   let mode = 'wait', lastGood = null, lastSeq = null, shown = '', wakeLock = null, asking = false;
-  const fromDisk = location.protocol === 'file:', forceDemo = new URLSearchParams(location.search).has('demo');
+  const forceDemo = new URLSearchParams(location.search).has('demo');
 
   function showOnce(t) { const key = JSON.stringify(t); if (key !== shown) { shown = key; KW.ui.show(t); } }
   function startDemo() { mode = 'demo'; Demo.start(); fit(); Demo.hooks(); }
@@ -164,6 +170,7 @@
     showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more } : { st: 'ok', hl: '', sub: '', quiet: v.quietLine, more: { n: 0, crit: false } });
   }
   function onView(v) {
+    if (sync) sync.poll();
     const j = ST.judge(v, lastGood, Date.now());
     if (j.kind === 'live') {
       if (mode === 'demo') Demo.stop();
@@ -261,6 +268,27 @@
     shownTime = ''; tick(); fit();
   });
   const screen = KW.settings.mount({ store, surface, info: () => ({ version: ownVersion, mode, view: lastGood }), time: () => (freeze ? KW.hooks.t : performance.now()) });
+
+  /* ---- The shared settings ------------------------------------------------------------------------
+     Served, the page asks api/settings beside it at start and with every fetch of the state file
+     (every five seconds while the demo is forced), and sends each choice made on the screen there
+     (KW.settings.connect). The Knightwatcher server keeps them for every display; with any other
+     server the page finds none there and keeps the choices in this browser, as from disk. A GET
+     revalidates the browser's copy, which the server answers with 304 while nothing has changed. */
+  async function settingsRequest(method, body) {
+    const ctl = new AbortController(), cut = setTimeout(() => ctl.abort(), 4000);
+    try {
+      const r = await fetch('api/settings', method === 'PUT'
+        ? { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store', signal: ctl.signal }
+        : { cache: 'no-cache', signal: ctl.signal });
+      let json = null;
+      if (/^application\/json\b/i.test(r.headers.get('Content-Type') || '')) { try { json = await r.json(); } catch (e) { /* not JSON after all */ } }
+      return { status: r.status, json };
+    } finally { clearTimeout(cut); }
+  }
+  const sync = fromDisk ? null : KW.settings.connect({ store, request: settingsRequest, storage: () => window.localStorage, reload: () => location.reload(),
+    holding: () => !!(screen && screen.isOpen()), note: text => { if (screen) screen.note(text); } });
+  if (sync) { sync.poll(); if (forceDemo) setInterval(sync.poll, 5000); }
   // the cue as it looks seven tenths of the way through a hold, over the knight's head
   if (screen && hv('set') === 'hold') { const b = surface.getBoundingClientRect(); screen.cue(b.left + b.width * .52, b.top + b.height * .42, .7); }
   else if (screen && hv('set')) screen.open(hv('set'));

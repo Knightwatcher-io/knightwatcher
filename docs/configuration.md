@@ -4,8 +4,13 @@ Knightwatcher is configured in two files beside `compose.yaml`, both ignored by 
 
 - `config.toml`: every setting of the collector and the household defaults of the displays. The
   committed template is `config.example.toml`.
-- `.env`: the host paths `compose.yaml` mounts, and the credentials of the services the collector
-  reads. The committed template is `.env.example`. Keep it to yourself: `chmod 600 .env`.
+- `.env`: the host paths `compose.yaml` mounts, the address and port of the bundled server, and
+  the credentials of the services the collector reads. The committed template is `.env.example`.
+  Keep it to yourself: `chmod 600 .env`.
+
+What the displays' settings screens choose is kept by the bundled server, for the whole
+deployment, in a file of its own ([server.md](./server.md#the-settings-store)); `config.toml`
+supplies the defaults under it.
 
 Every setting and every variable is described in one file, `collector/settings-schema.json`: its
 type, the values it may take, its default, and what it does. The collector checks `config.toml`
@@ -21,9 +26,12 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
 
 1. **The page's address.** Its hooks (`sk=`, `hc=`, `mon=`, `ck=` and the rest, in
    [page.md](./page.md#the-address)) win while the address holds them, so that screenshots look
-   the same whatever a display has saved.
-2. **The display's own choices**, made on its settings screen (a press and hold of two seconds)
-   and kept in that display's browser. Other displays keep their own.
+   the same whatever is saved.
+2. **The saved settings**, chosen on any display's settings screen (a press and hold of two
+   seconds). Served by the bundled server, they are the deployment's: the server keeps them, and
+   every display shows the same. Nothing differs from one display to the next, and the screen
+   needs no code to save. With no server (the page opened from disk, the website's demo, or the
+   page served by a web server of your own), each browser keeps its own.
 3. **The household defaults** in the `[look]`, `[display]`, `[quiet]` and `[scenes]` tables of
    `config.toml`, which the collector copies into `state.json`. The settings screen's "Use the
    config default" goes back to these.
@@ -37,13 +45,15 @@ is used. [page.md](./page.md#settings) has the details.
 Every other setting (the collector, the conditions, the sources and the watched things) has two
 levels: `config.toml`, and the default in the reference when the file leaves it out.
 
-### .env: host paths and credentials
+### .env: host paths, the server's address and credentials
 
-`compose.yaml` reads `.env` beside it. The host paths become the collector's mounts, and
-`compose.yaml` refuses to start while a required one is missing. Each credential is passed to the
-collector's container by name, so the container gets those variables and nothing else from the
-file. A credential that no enabled source needs may be left empty or out; the collector's check
-names any it needs and lacks.
+`compose.yaml` reads `.env` beside it. The host paths become the containers' mounts, and
+`compose.yaml` refuses to start while a required one is missing. `KNIGHTWATCHER_SERVER_ADDRESS`
+and `KNIGHTWATCHER_SERVER_PORT` say where the bundled server is published on the host: all
+addresses and port 8080 unless set ([server.md](./server.md#security) says when to narrow it).
+Each credential is passed to the collector's container by name, so the container gets those
+variables and nothing else from the file, and the server gets none. A credential that no enabled
+source needs may be left empty or out; the collector's check names any it needs and lacks.
 
 A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals,
 where `SECRET` is the source's `secret` setting (`tautulli`, `adguard`, `sonarr` or `radarr`
@@ -62,10 +72,12 @@ treat `.env` as you would their own configuration; see [security.md](./security.
   `docker compose restart collector`. The household defaults reach the displays in the next state
   file, within seconds of the restart, and a display that has its own choice for a setting keeps
   it.
-- **`.env`** is read by docker compose when it creates the container, so a changed path or
-  credential needs the container made again: `docker compose up -d`. A plain restart keeps the
-  old values.
-- **A display's own choices** apply the moment they are made, on that display alone.
+- **`.env`** is read by docker compose when it creates the containers, so a changed path,
+  address, port or credential needs them made again: `docker compose up -d`. A plain restart
+  keeps the old values.
+- **A choice on a settings screen** applies at once on that display. With the bundled server it
+  reaches every other display at its next poll of the server, within about five seconds, and that
+  display reloads to show it. Without it, it stays on that display.
 
 ### Checking
 
@@ -91,8 +103,8 @@ cannot read is named by its number, never by what it holds.
 
 This part is written from `collector/settings-schema.json` by `node tools/settings-schema.js`;
 change the schema and run the tool rather than editing it here. Durations are in seconds. The
-scope says who a setting belongs to: `household` settings are the same for every display, and
-`display` settings are the household default each display may override.
+scope says who a setting belongs to: `household` settings are only ever set in `config.toml`, and
+`display` settings are the default under what the settings screens choose.
 
 <!-- settings-reference:start -->
 
@@ -434,14 +446,17 @@ The household default for the scene a condition plays in. Each key is a conditio
 
 ### .env
 
-Every variable the project reads from `.env`. The host paths are for `compose.yaml`, and the credentials reach the collector alone.
+Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, and the credentials reach the collector alone.
 
 | Variable | Scope | Values | Default | What it is |
 |---|---|---|---|---|
-| `KNIGHTWATCHER_OUT` | path | a host path, such as `/srv/www/knightwatcher/data` | required | The host folder state.json is written to, a folder the web server serves. Mounted at /out. Must exist and be writable by the collector's account. |
+| `KNIGHTWATCHER_OUT` | path | a host path, such as `./var/out` | required | The host folder the collector writes state.json to, and the packs it downloads. Mounted at /out in both containers, read-only in the server's, which serves it as data/. Must exist and be writable by the collector's account. |
 | `KNIGHTWATCHER_BACKUP_LOG` | path | a host path, such as `/var/log/backup.log` | required | The host's backup log, a single file. Mounted read-only at /host/backup.log. |
 | `KNIGHTWATCHER_DATA_DISK` | path | a host path, such as `/data/lost+found` | required | Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size. |
 | `KNIGHTWATCHER_VAR` | path | a host path, such as `./var` | `./var` | The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account. |
+| `KNIGHTWATCHER_SERVER_VAR` | path | a host path, such as `./var/server` | `./var/server` | The host folder for the bundled server's own files: the settings saved for every display, in settings.json. Mounted at /var/lib/knightwatcher-server, the one place the server writes. Must exist and be writable by the server's account. |
+| `KNIGHTWATCHER_SERVER_ADDRESS` | server | an address of this host, or empty for all of them, such as `127.0.0.1` | empty | The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network. |
+| `KNIGHTWATCHER_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
 | `KNIGHTWATCHER_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for [sources.streams]. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for [sources.adblock]. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
@@ -572,7 +587,9 @@ headline and the detail say.
 
 The `[look]`, `[display]`, `[quiet]` and `[scenes]` tables set the household defaults for the
 display's settings screen: what every display starts from, and what it goes back to when told to
-use the config default. All four tables and every setting in them are optional, and none has a
+use the config default. What the screens choose is saved over them, by the bundled server for every
+display, and checked by the same rules, so a value refused here is refused there in the same
+words ([server.md](./server.md#put-apisettings)). All four tables and every setting in them are optional, and none has a
 default in `config.toml`. The collector writes exactly what they set into `state.json` as
 `defaults` (see [state.md](./state.md)), and for a setting left out the page uses its own default.
 
@@ -620,24 +637,27 @@ config: scenes.cpu: unknown condition
 config: scenes.cpu_hot: unknown value "forest"; use battlement, camp, house, yard, cellar, smithy or court
 ```
 
-## The collector's account
+## The accounts
 
-The container runs as uid and gid 10001, an account that exists only inside the image and owns
-nothing on the host. It needs to write in the output folder and the memory folder. Access control
-lists grant that without root, as long as you own the folders, and leave their owner and mode
-alone:
+Both containers run as uid and gid 10001, an account that exists only inside the image and owns
+nothing on the host. The collector needs to write in its output folder and its memory folder, and
+the server in its own folder; the server reads the output folder. Access control lists grant that
+without root, as long as you own the folders, and leave their owner and mode alone. With the
+folders of `.env.example`, all under `./var`:
 
 ```bash
-setfacl -m u:10001:rwx var /srv/www/knightwatcher/data
-setfacl -d -m u:10001:rwx,u:$(id -u):rwx var /srv/www/knightwatcher/data
+mkdir -p var/out var/server
+setfacl -m u:10001:rwx var var/out var/server
+setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server
 ```
 
-The second line sets the default for files made in the two folders from then on, and names your
-own uid as well so that you can still read what the collector writes. Files already there from
-an earlier run under another uid need the grant once: `setfacl -m u:10001:rw` on each. Stop that
-earlier collector first, since every file it rewrites comes back without the grant.
-`config.toml` and the backup log only need to be readable by everyone, and `/proc` needs nothing.
-`.env` needs no grant: docker compose reads it as you, and the collector gets its credentials as
-environment variables.
+With folders elsewhere, name those instead, such as `/srv/www/knightwatcher/data` for an output
+folder a web server of your own serves. The second line sets the default for files made in the
+folders from then on, and names your own uid as well so that you can still read what the
+containers write. Files already there from an earlier run under another uid need the grant once:
+`setfacl -m u:10001:rw` on each. Stop that earlier collector first, since every file it rewrites
+comes back without the grant. `config.toml` and the backup log only need to be readable by
+everyone, and `/proc` needs nothing. `.env` needs no grant: docker compose reads it as you, and the
+collector gets its credentials as environment variables.
 
-To run it under another uid, change `user:` in `compose.yaml` and grant that uid instead.
+To run them under another uid, change `user:` in `compose.yaml` and grant that uid instead.

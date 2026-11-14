@@ -50,7 +50,7 @@ the environment of other processes that run as its own user through `/proc`, so 
 should run as a user that owns nothing else on the host. The compose file runs it as uid 10001,
 an account with no processes and no files of its own, and the operator grants that uid the two
 folders it writes to;
-[configuration.md](./configuration.md#the-collectors-account) has the commands. Do not change it
+[configuration.md](./configuration.md#the-accounts) has the commands. Do not change it
 to your own uid for convenience: the collector could then read the environment of everything
 you run.
 
@@ -64,13 +64,34 @@ configuration check names a missing credential by its variable and never shows a
 source's error text is scrubbed of every credential value before it reaches the state file.
 Treat `.env` as you would the services' own configuration.
 
+## The server's privileges
+
+The bundled server ([server.md](./server.md)) serves the page and `state.json` and keeps the
+settings saved on the displays. It is the one part with a listening port, so it gets less than
+the collector:
+
+- No credential and no secret. `compose.yaml` passes it no variable from `.env`, and reads only
+  its address and port to publish it. It does not mount `config.toml`, `/proc`, the collector's
+  memory or anything of the host's beyond two folders.
+- The collector's output folder read-only, and one folder of its own, the only place it writes.
+- The same uid as the collector, a read-only root filesystem, no capabilities and
+  `no-new-privileges`, on Docker's network for the project rather than the host's.
+- It serves the page's files from memory, looked up by name, and two kinds of file from the
+  output folder, so no address reaches anything else; the tests try the usual ways.
+- A write is JSON of at most 16 KiB, checked by the collector's own rules, and refused when a
+  browser says it comes from a page at another address. It can change only how the displays look.
+
 ## The page
 
-The page is static. It fetches `state.json` from its own origin and nothing else, loads no
-third-party script, and sends nothing anywhere.
+The page fetches `state.json` and, served, `api/settings` from its own origin and nothing else,
+loads no third-party script, and sends nothing anywhere but the settings chosen on its screen, to
+its own server.
 
-`state.json` is not public information. Whoever serves the page must put authentication in front
-of it. Knightwatcher provides none.
+`state.json` is not public information. The bundled server is open to anyone who can reach its
+port, with no login, by default; put authentication in front of it, or bind it to the loopback
+address, before it is reached from beyond a network you trust, and never publish it to the
+internet without a login. [server.md](./server.md#security) says how. Knightwatcher provides no
+login of its own yet.
 
 ## Commits
 

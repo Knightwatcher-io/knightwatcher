@@ -1,9 +1,11 @@
 /* Knightwatcher: the settings. Works out what the display shows from four levels, highest first:
-   the address's hooks, this display's saved choices, the defaults in the state file (from
-   config.toml), and the page's own. Keeps this display's choices in its browser, and draws the
-   settings screen, which a press and hold of two seconds anywhere on the display opens.
-   Everything above the screen is pure and loads under Node for the tests in tests/web/; the screen
-   is built only by mount(), which main.js calls. docs/page.md describes the levels and the screen. */
+   the address's hooks, the saved settings, the defaults in the state file (from config.toml), and
+   the page's own. Served by the Knightwatcher server, the saved settings are the deployment's,
+   shared by every display (connect() keeps them in step with the server); with no server they are
+   this browser's own, kept in its storage. Also draws the settings screen, which a press and hold
+   of two seconds anywhere on the display opens. Everything above the screen is pure and loads
+   under Node for the tests in tests/web/; the screen is built only by mount(), which main.js
+   calls. docs/page.md describes the levels, the shared settings and the screen. */
 (function (KW) {
   'use strict';
 
@@ -41,7 +43,10 @@
     scenes: ['battlement', 'camp', 'house', 'yard', 'cellar', 'smithy', 'court']
   };
   // settings-schema:end
-  const KEY = 'knightwatcher.settings', VERSION = 1;
+  /* KEY holds this browser's own choices when no server keeps them; SHARED_KEY a copy of the last
+     shared settings the server gave, which a page served by it starts from until the server
+     answers. */
+  const KEY = 'knightwatcher.settings', SHARED_KEY = 'knightwatcher.shared', VERSION = 1;
   const pick = (sec, field) => { const o = {}; for (const k of Object.keys(SCHEMA[sec])) o[k] = SCHEMA[sec][k][field]; return o; };
   /* The quiet scenes, and every scene the page draws in the order the settings screen lists them:
      the files of web/js/scenes/. The collector's QUIET_SCENES and PAGE_SCENES follow the same
@@ -56,7 +61,7 @@
   const MINUTES = { least: SCHEMA.quiet.minutes.min, most: SCHEMA.quiet.minutes.max };
   /* The levels above the page's own, highest first, and how the console names each. */
   const LEVELS = ['hook', 'saved', 'defaults'];
-  const WHERE = { hook: 'the address', saved: 'this display\'s saved choices', defaults: 'the defaults in state.json' };
+  const WHERE = { hook: 'the address', saved: 'this display\'s saved choices', shared: 'the settings saved on the server', defaults: 'the defaults in state.json' };
 
   /* The page's own defaults, below every other level, from the schema: the base pack's defaults for
      the knight (read from the pack in use, see builtIn; the schema's are used without one), the
@@ -253,6 +258,24 @@
     }
   }
 
+  /* ---- The shared settings ------------------------------------------------------------------------
+     The server's answer at api/settings, { "v": 1, "look": {...}, "display": {...}, "quiet": {...},
+     "scenes": {...} } with only the keys saved (docs/server.md), as { v, look, display, quiet,
+     scenes } with every section an object, or null when it is not in that form. */
+  function sharedOf(j) {
+    if (!isObj(j) || j.v !== VERSION) return null;
+    for (const sec of SECTIONS) if (has(j, sec) && !isObj(j[sec])) return null;
+    const out = { v: VERSION };
+    for (const sec of SECTIONS) out[sec] = isObj(j[sec]) ? JSON.parse(JSON.stringify(j[sec])) : {};
+    return out;
+  }
+  const emptyShared = j => SECTIONS.every(sec => !Object.keys(j[sec]).length);
+  /* The copy of the last shared settings, or null. Says nothing when storage is refused: load()
+     says it. */
+  function loadCache(storage) {
+    try { const t = storage().getItem(SHARED_KEY); return t === null || t === undefined ? null : sharedOf(JSON.parse(t)); } catch (e) { return null; }
+  }
+
   /* ---- The store -----------------------------------------------------------------------------------
      create(o) holds the levels and answers what the display shows. o: hooks, the address's hooks in
      the contract's shape ({ look, display, quiet }); storage, a function returning the browser's
@@ -268,8 +291,16 @@
     const pack = typeof o.pack === 'function' ? o.pack : () => null;
     const hooks = isObj(o.hooks) ? o.hooks : {};
     const world = typeof o.world === 'function' ? o.world : pageWorld;
-    let saved = load(storage, say), defaults = null, last = '';
+    /* Where the saved level comes from: 'local', this browser's choices under KEY; 'cache', the
+       copy of the shared settings, until the server answers (only with o.cache, which main.js sets
+       when the page is served); 'server', the shared settings the server gave. */
+    const cached = o.cache ? loadCache(storage) : null;
+    let src = cached ? 'cache' : 'local', saved = cached ? cached : load(storage, say), defaults = null, last = '', sender = null;
     const listeners = [];
+    const sections = () => { const out = {}; for (const sec of SECTIONS) out[sec] = isObj(saved[sec]) ? JSON.parse(JSON.stringify(saved[sec])) : {}; return out; };
+    /* A choice made on this display: kept in the browser with no server, sent to the server
+       (through the function sending() was given) with one, naming the sections it changed. */
+    const commit = secs => { if (src === 'local') save(storage, saved, say); else if (sender) sender(secs); };
     const levelOf = (raw, where, ready) => {
       const out = {}, w = world();
       for (const sec of SECTIONS) out[sec] = clean(sec, isObj(raw) ? raw[sec] : undefined, where, ready, say, w);
@@ -278,7 +309,7 @@
     const cleanSaved = (sec, raw, quiet) => clean(sec, raw, 'saved', buildsOf(pack()), quiet ? () => {} : say, world());
     function now() {
       const p = pack(), ready = buildsOf(p);
-      return resolve({ hook: levelOf(hooks, 'hook', ready), saved: levelOf(saved, 'saved', ready), defaults: levelOf(defaults, 'defaults', ready) }, builtIn(p, world()));
+      return resolve({ hook: levelOf(hooks, 'hook', ready), saved: levelOf(saved, src === 'local' ? 'saved' : 'shared', ready), defaults: levelOf(defaults, 'defaults', ready) }, builtIn(p, world()));
     }
     /* What the display would show with no hooks and no saved choices: the defaults over the page's
        own. */
@@ -302,7 +333,7 @@
         const one = cleanSaved(section, { [k]: value });
         if (!has(one, k)) return false;
         saved = Object.assign({}, saved, { [section]: Object.assign(cleanSaved(section, saved[section], true), one) });
-        save(storage, saved, say); changed();
+        commit([section]); changed();
         return true;
       },
       /* Clears this display's choice for one key, which then falls back to the defaults: the
@@ -311,13 +342,13 @@
         if (!has(KEYS, section) || !isObj(saved[section]) || !has(saved[section], k)) return;
         const rest = Object.assign({}, saved[section]); delete rest[k];
         saved = Object.assign({}, saved, { [section]: rest });
-        save(storage, saved, say); changed();
+        commit([section]); changed();
       },
       /* Clears this display's choices for a section, which then falls back to the defaults. */
       reset(section) {
         if (!has(KEYS, section) || !has(saved, section)) return;
         saved = Object.assign({}, saved); delete saved[section];
-        save(storage, saved, say); changed();
+        commit([section]); changed();
       },
       /* Whether this display has choices of its own in a section. */
       own: section => isObj(saved[section]) && Object.keys(cleanSaved(section, saved[section], true)).length > 0,
@@ -331,8 +362,129 @@
       },
       /* Tells the store that what it reads may have changed (the packs in use). */
       check: changed,
-      on(fn) { if (typeof fn === 'function') listeners.push(fn); }
+      on(fn) { if (typeof fn === 'function') listeners.push(fn); },
+      /* Where choices are kept: 'server', the shared settings (the server has answered, or the
+         page starts from their copy), or 'local', this browser. */
+      mode: () => (src === 'local' ? 'local' : 'server'),
+      /* The saved level, every section an object, as a write to the server sends it. */
+      sections,
+      /* Takes the shared settings (as sharedOf gives them) as the saved level, from now on
+         choices are sent to the server, and returns whether what the display shows changed. */
+      shared(j) {
+        const before = JSON.stringify(now());
+        src = 'server'; saved = {};
+        for (const sec of SECTIONS) saved[sec] = JSON.parse(JSON.stringify(j[sec]));
+        changed();
+        return JSON.stringify(now()) !== before;
+      },
+      /* Back to this browser's own choices, when no server keeps them after all. */
+      local() {
+        if (src === 'local') return;
+        src = 'local'; saved = load(storage, say); changed();
+      },
+      /* This browser's own choices under KEY, each section cleaned quietly and only those with
+         something in them, for the carry-over to the server; or null when there are none. */
+      carry() {
+        const old = load(storage, () => {}), out = {};
+        for (const sec of SECTIONS) { if (!isObj(old[sec])) continue; const c = cleanSaved(sec, old[sec], true); if (Object.keys(c).length) out[sec] = c; }
+        return Object.keys(out).length ? out : null;
+      },
+      /* fn(sections) is called with the names of the sections a choice changed, while the
+         choices are the server's. */
+      sending(fn) { sender = typeof fn === 'function' ? fn : null; }
     };
+  }
+
+  /* ---- Keeping the shared settings in step with the server -----------------------------------------
+     connect(o) ties a store to the server's api/settings. o: store; request(method, body), which
+     resolves to { status, json } (json null unless the answer was JSON) or rejects when the server
+     cannot be reached; storage, as for create; reload(), to start the page again; holding(),
+     whether the settings screen is open; note(text), the screen's line ('' clears it); say, the
+     console. It returns { poll, state }. poll() asks for the settings: main.js calls it at start and
+     with every fetch of the state file.
+
+     - The first answer in the shared form makes the settings the server's. When it holds nothing
+       and this browser has choices of its own under KEY, they are sent once and the key removed;
+       when it holds something, the key is removed unsent. Either way the browser's choices are
+       not used again while the server answers.
+     - Each answer is copied under SHARED_KEY, where the next load starts from. An answer that
+       changes the settings, a choice made on another display, reloads the page, so that
+       everything drawn starts again from them; while the screen is open the screen reloads it as
+       it closes. Where the copy cannot be kept the page is not reloaded, since it would start
+       from something else every time, and the settings apply in place.
+     - A 404, or an answer that is not the shared form, means no server keeps the settings: the
+       store goes back to this browser's choices and the copy is removed, and nothing more is
+       asked. A server that cannot be reached is asked again at the next poll.
+     - A choice is sent with PUT, naming the sections it changed, one write at a time. A refused or
+       failed write puts the settings back to the server's and shows "Not saved: " and the
+       server's reason on the screen. An answer to a poll sent before the latest choice is
+       dropped, so a choice is never undone by an older answer. */
+  function connect(o) {
+    const store = o.store, storage = typeof o.storage === 'function' ? o.storage : () => null;
+    const say = typeof o.say === 'function' ? o.say : line => { if (typeof console !== 'undefined') console.warn(line); };
+    const st = { answered: false, stopped: false, getting: false, putting: false, gen: 0, last: null, dirty: new Set() };
+    const remove = k => { try { storage().removeItem(k); } catch (e) { /* refused: nothing kept to remove */ } };
+    const keep = j => { try { const t = JSON.stringify(j); storage().setItem(SHARED_KEY, t); return storage().getItem(SHARED_KEY) === t; } catch (e) { return false; } };
+    const ask = async (method, body) => { try { return await o.request(method, body); } catch (e) { return null; } };
+    /* Takes the server's settings; reload says whether a change may reload the page. */
+    function adopt(j, reload) {
+      st.last = j;
+      const kept = keep(j), differs = store.shared(j);
+      if (differs && reload && kept && !o.holding()) o.reload();
+    }
+    async function poll() {
+      if (st.stopped || st.getting || st.putting) return;
+      st.getting = true;
+      const gen = st.gen, r = await ask('GET');
+      st.getting = false;
+      if (gen !== st.gen || st.putting) return;
+      const j = r && r.status === 200 ? sharedOf(r.json) : null;
+      if (!j) {
+        if (r && (r.status < 500 || r.status === 501)) {
+          // no server keeps the settings here: a static server, or the website
+          st.stopped = true;
+          if (!st.answered) { remove(SHARED_KEY); store.local(); }
+        }
+        return;
+      }
+      const first = !st.answered;
+      st.answered = true;
+      if (first) {
+        const mine = store.carry();
+        if (mine && emptyShared(j)) {
+          st.putting = true;
+          const w = await ask('PUT', Object.assign({ v: VERSION }, mine));
+          st.putting = false;
+          const back = w && w.status === 200 ? sharedOf(w.json) : null;
+          if (back) { remove(KEY); say('knightwatcher: settings: this browser\'s choices were sent to the server, which now keeps them for every display'); adopt(back, true); return; }
+          say('knightwatcher: settings: this browser\'s choices could not be sent to the server (' + reason(w) + '), so they are tried again when the page next loads');
+        } else if (mine) remove(KEY);
+      }
+      adopt(j, true);
+    }
+    const reason = w => (w && isObj(w.json) && typeof w.json.error === 'string' ? w.json.error : w ? 'the server answered ' + w.status : 'the server did not answer');
+    async function flush() {
+      if (st.putting || !st.dirty.size) return;
+      const now = store.sections(), body = { v: VERSION };
+      for (const sec of st.dirty) body[sec] = now[sec];
+      st.dirty.clear();
+      st.putting = true;
+      const w = await ask('PUT', body);
+      st.putting = false;
+      const back = w && w.status === 200 ? sharedOf(w.json) : null;
+      if (!back) {
+        st.dirty.clear(); st.gen++;
+        o.note('Not saved: ' + reason(w));
+        if (st.last) adopt(st.last, false);
+        return;
+      }
+      st.last = back; keep(back);
+      if (st.dirty.size) { flush(); return; }
+      o.note('');
+      store.shared(back);
+    }
+    store.sending(secs => { st.gen++; for (const sec of secs) st.dirty.add(sec); flush(); });
+    return { poll, state: () => ({ answered: st.answered, stopped: st.stopped, mode: store.mode() }) };
   }
 
   /* The page's own world: each loaded scene's can and each condition's own scene, from
@@ -344,7 +496,7 @@
     return { can, homes };
   }
 
-  const api = { SCHEMA, KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, buildsOf, buildName, buildChoices, builtIn, worldOf, offered, clean, resolve, knightLook, engineInput, clock, load, save, create, pageWorld };
+  const api = { SCHEMA, KEY, SHARED_KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, buildsOf, buildName, buildChoices, builtIn, worldOf, offered, clean, resolve, knightLook, engineInput, clock, load, save, sharedOf, create, connect, pageWorld };
   KW.settings = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
@@ -368,7 +520,8 @@
   const WEAPONS = [['greatsword', 'Greatsword', 'Two hands'], ['sword_and_shield', 'Sword and shield', 'One hand each']];
   const SETS = { skin: 'skin', hair: 'hair', tabard: 'tabard', plume: 'plume', monarch_skin: 'skin', monarch_hair: 'hair', monarch_robe: 'tabard' };
   const HEADLINES = [['small', 'Small', 20], ['medium', 'Medium', 27], ['large', 'Large', 36]];
-  const OWN_SCOPE = 'Kept on this display only. Other displays keep their own.';
+  /* The line under the title on the pages that save: where choices are kept. */
+  const SCOPE = { server: 'Saved on the Knightwatcher server, for every display.', local: 'Kept in this browser only: no Knightwatcher server.' };
 
   function mount(o) {
     const store = o.store, K = KW.knight, D = KW.draw, V = KW.view, P = KW.props, U = V.U;
@@ -378,7 +531,7 @@
     const cueBar = cue.querySelector('.kws-cue-bar');
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined && text !== null) e.textContent = text; return e; };
     for (let i = 0; i < BLOCKS; i++) cueBar.appendChild(el('i'));
-    const st = { open: false, page: 'knight', lastTouch: 0, notes: {} };
+    const st = { open: false, page: 'knight', lastTouch: 0, notes: {}, unsaved: '' };
 
     /* ---- Drawing into canvases of the screen's own
        The primitives draw into whatever KW.draw.setCtx() last set, and the engine sets its own at
@@ -490,9 +643,11 @@
     function reset(section, what, words, fromConfig, hooked) {
       const r = el('div', 'kws-reset'), b = el('button', 'kws-btn', 'USE THE CONFIG DEFAULT'), p = el('p');
       b.type = 'button'; b.dataset.focus = 'reset|' + section;
-      const own = store.own(section), lead = el('b', '', own ? 'This display has its own ' + what + '.' : 'Showing the default.');
+      const own = store.own(section), shared = store.mode() === 'server';
+      const lead = el('b', '', !own ? 'Showing the default.' : shared ? 'Saved for every display.' : 'This display has its own ' + what + '.');
       p.appendChild(lead);
-      p.appendChild(document.createTextNode(' The default' + (fromConfig ? ', from config.toml,' : '') + ' is ' + words + '.' + (own ? ' The button clears this display\'s choices here.' : '')));
+      p.appendChild(document.createTextNode(' The default' + (fromConfig ? ', from config.toml,' : '') + ' is ' + words + '.' +
+        (!own ? '' : shared ? ' The button clears what is saved here, on every display.' : ' The button clears this display\'s choices here.')));
       if (hooked) p.appendChild(document.createTextNode(' The page\'s address sets some of these, and the address wins until the page is opened without it.'));
       b.addEventListener('click', () => { st.notes = {}; store.reset(section); });
       r.appendChild(b); r.appendChild(p);
@@ -530,7 +685,7 @@
     /* ---- The pages ---------------------------------------------------------------------------------- */
     const choose = (sec, k) => v => store.choose(sec, k, v);
     const PAGES = {
-      knight: { label: 'The knight', scope: OWN_SCOPE, build(list, prev, r) {
+      knight: { label: 'The knight', build(list, prev, r) {
         const pack = K.basePack(), v = r.values.look;
         if (!pack) list.appendChild(el('p', 'kws-line', 'The knight is drawn from code, which has only the default look: the base pack could not be used (see Status). Choices made here are kept and show once it can.'));
         else {
@@ -551,7 +706,7 @@
         prev.appendChild(el('h2', 'home', 'At home, gear at rest'));
         const home = el('canvas', 'scene'); home.dataset.scene = 'house'; prev.appendChild(home);
       } },
-      monarch: { label: 'The monarch', scope: OWN_SCOPE, build(list, prev, r) {
+      monarch: { label: 'The monarch', build(list, prev, r) {
         const pack = K.basePack(), v = r.values.look, e = monOf(r);
         list.appendChild(row('monarch', 'Monarch', ONE_OF.look.monarch.map(m => {
           const cv = el('canvas'); cv.dataset.mon = m;
@@ -570,7 +725,7 @@
         prev.appendChild(el('h2', '', 'At court'));
         const cv = el('canvas', 'court'); cv.id = 'kws-court'; cv.dataset.skin = e.monSkin ? e.monSkin.id : ''; prev.appendChild(cv);
       } },
-      display: { label: 'Display', scope: OWN_SCOPE, build(list, prev, r) {
+      display: { label: 'Display', build(list, prev, r) {
         const v = r.values.display;
         list.appendChild(row('headline', 'Headline size', HEADLINES.map(([id, name, px]) => {
           const s = el('span', 'hl', 'AT COURT'); s.style.fontSize = px + 'px';
@@ -584,7 +739,7 @@
         const d = defaultsOf('display').values, dw = (d.headline === 'medium' ? 'a medium' : 'a ' + d.headline) + ' headline, a ' + d.clock + '-hour clock and the helmet ' + (d.helmet_indoors ? 'on' : 'off') + ' indoors';
         list.appendChild(reset('display', 'choices', dw, defaultsOf('display').fromConfig, hooked(r, 'display')));
       } },
-      quiet: { label: 'Quiet scenes', scope: OWN_SCOPE, build(list, prev, r) {
+      quiet: { label: 'Quiet scenes', build(list, prev, r) {
         const on = r.values.quiet.scenes, mins = r.values.quiet.minutes;
         for (const k of SCENES) {
           const inIt = on.includes(k), row2 = el('div', 'kws-scene' + (inIt ? '' : ' out')), cv = el('canvas'); cv.dataset.scene = k;
@@ -606,7 +761,7 @@
         const dw = (n === SCENES.length ? 'all four scenes' : n === 1 ? 'the ' + lower(SCENE_NAMES[d.scenes[0]]) + ' alone' : d.scenes.map(x => lower(SCENE_NAMES[x])).join(', ').replace(/, ([^,]*)$/, ' and $1')) + ', ' + d.minutes + (d.minutes === 1 ? ' minute' : ' minutes') + ' each';
         list.appendChild(reset('quiet', 'choices', dw + '. These scenes show only while all is quiet; anything the knight has to act out comes first', defaultsOf('quiet').fromConfig, hooked(r, 'quiet')));
       } },
-      scenes: { label: 'Scenes', scope: OWN_SCOPE, build(list, prev, r) {
+      scenes: { label: 'Scenes', build(list, prev, r) {
         const offer = store.offered(), conds = Object.keys(offer), dflt = store.fallback().values.scenes;
         list.appendChild(el('p', 'kws-intro', 'Where the knight acts out each of these. ' +
           'A condition only one scene can act, and the night, which needs the bed, keep their own scene.'));
@@ -694,7 +849,9 @@
       if (st.page === 'knight' || st.page === 'monarch') { prev = el('div', 'kws-prev'); main.appendChild(prev); }
       page.build(list, prev, r);
       if (same) list.scrollTop = top;
-      scope.textContent = page.scope;
+      // a failed save says so until the next one succeeds; otherwise where choices are kept
+      scope.textContent = page.scope || (st.unsaved || SCOPE[store.mode()]);
+      scope.style.color = !page.scope && st.unsaved ? '#ffb000' : '';
       rail.querySelectorAll('button').forEach(b => { if (b.dataset.page === st.page) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
       if (focus) { const f = main.querySelector('[data-focus="' + focus + '"]'); if (f) f.focus({ preventScroll: true }); }
       paintStill(r); idleTick();
@@ -795,6 +952,9 @@
 
     return {
       open, close, isOpen: () => st.open,
+      /* The line that says a choice was not saved, "Not saved: ..." with the server's reason, or ''
+         once a save succeeds. */
+      note(text) { st.unsaved = text || ''; if (st.open) render(); },
       /* The cue as it looks part way through a hold (q from 0 to 1) at (x, y), held there, for
          the screenshots. */
       cue(x, y, q) { showCue(x, y, q); }
