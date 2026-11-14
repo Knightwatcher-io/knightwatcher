@@ -4,8 +4,8 @@
    the knight is drawn on, and draw() draws it there: from the base pack when start() found one it
    can use (packHD), and otherwise from the code below (codeHD), which draws the same knight as it
    shipped before packs. rest.draw() draws the knight's gear where a scene sets it down, from the
-   same source. start() and add() load the packs, and fetchPacks() fetches the ones the collector
-   downloaded. */
+   same source. start() and add() load the packs, fetchPacks() fetches the ones the collector
+   downloaded, and look() draws another look from the packs already loaded. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C, U = V.U;
@@ -583,6 +583,19 @@
     rebuild(); report();
     return PK.st;
   }
+  /* Draws a new look from the packs already in use, those that ship with the page and those add()
+     added alike, with the rules start() was given: nothing is read again, and a pack refused or
+     marked bad stays so. look is as start()'s opts.look ({} for the base pack's defaults). The
+     settings screen calls it on every choice. Returns the status, or null before start(). */
+  function setLook(look) {
+    if (!PK.st) return null;
+    PK.wanted = isObj(look) ? look : {};
+    rebuild(); report();
+    return PK.st;
+  }
+  /* The base pack in use, as the pack library read it (its builds, items, swatches and defaults,
+     frozen), or null on the code path. The settings screen takes its choices from it. */
+  const basePack = () => (PK.look ? PK.packs.get(PK.lib.BASE_ID).data : null);
   /* ---- Downloaded packs -------------------------------------------------------------------------
      The packs the collector downloads lie in data/packs/ beside state.json, with index.json naming
      them: { "packs": ["<file>.pack.json", ...] }, names only. fetchPacks(get) fetches the index and
@@ -716,10 +729,10 @@
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
      knight is. speech draws a speech bubble. rest holds what a scene calls for the gear at rest
-     (described above): draw(slot, x, y, a), blade() and key(slot). rig, start, add, fetchPacks and
-     packIndex are described above, build is the present knight's measurements, source is 'pack' or
-     'code' and status what start() found. */
+     (described above): draw(slot, x, y, a), blade() and key(slot). rig, start, add, look,
+     basePack, fetchPacks and packIndex are described above, build is the present knight's
+     measurements, source is 'pack' or 'code' and status what start() found. */
   const headAtCorner = (ax, ay, o) => (PK.look ? packHead(ax + 120, ay + 94, o) : bareHD(ax + 120, ay + 94, o));
   KW.knight = { draw: knightHD, rig, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD,
-    rest: { draw: restHD, blade: restBlade, key: restKey }, start, add, fetchPacks, packIndex, source: 'code', status: null };
+    rest: { draw: restHD, blade: restBlade, key: restKey }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);

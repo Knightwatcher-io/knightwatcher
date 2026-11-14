@@ -19,8 +19,9 @@ tests/
   web/               node tests for the page's scripts
     fixtures/knight/ the stored call record of the knight's drawing
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
-                     shield as approved (base-onehand.items.json) and its free options as
-                     approved (base-options.json)
+                     shield as approved (base-onehand.items.json), its free options as
+                     approved (base-options.json), and a state file with the settings'
+                     defaults (state-defaults.json)
   tools/             node tests for tools/deploy.sh, tools/pack-carrier.js and tools/sign-pack.js
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version
@@ -89,7 +90,10 @@ it looks. With time frozen each shot depends only on its address, however many f
 machine paints. Take one set at a time all the same: two browsers shooting at once have not been
 tried. The nine `arm-` shots draw the sword and shield through the address's `arm=one`; a
 reference taken from a tree older than that hook draws the greatsword there, so against it only
-those differ. [page.md](./page.md) has the rest.
+those differ. The eleven settings shots at the end of the set (the screen on each page, the hold's
+cue, the 12-hour clock, a monarch's skin) have nothing to compare with in a reference from before
+the settings, and the comparison reports them missing. A headless browser has no saved choices, so
+every shot shows what its address asks for. [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
 the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy, which show that gear, against a fake canvas, once
@@ -103,7 +107,10 @@ that every pack in `web/packs/` that carries a `sig` verifies against the key ta
 `tests/web/loading.test.js` checks the downloaded packs, the refusals and the knight drawn from code
 when no base pack can be used; its signed packs use keys generated for the run. `tests/web/places.test.js`
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
-and that no two places draw over each other.
+and that no two places draw over each other. `tests/web/settings.test.js` checks the settings in
+`web/js/settings.js` (the order of their levels, unknown values, the browser's storage refusing,
+the reset, the 12-hour clock), the engine's quiet rotation, the monarch's skin, and the knight drawn
+from the base pack in all 216 looks the settings offer and every monarch in every skin.
 
 The repository's own page draws the knight from the base pack, so the screenshots of the
 repository's page check the pack path, and the knight test checks both paths. A deployed copy

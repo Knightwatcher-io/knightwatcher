@@ -51,13 +51,14 @@ a swing to the left the shield lifts as the sword crosses the body, and the blad
 of it, so a blow struck on that side is always seen. A shield is carried only with a
 one-handed weapon, and a one-handed weapon without a shield leaves the other hand hanging free.
 
-Every user chooses, free, the knight's skin tone, hair colour, hair style, tabard colour and plume
-colour, from six skins, six hair colours, three styles (short crop, tied back, curls), six tabards
-and six plumes, all in the base pack and chosen by the owner from a mock-up. Each skin turns green
-when the knight is sick and red when the knight is running hot, each tint at about the skin's own
-lightness, so the conditions read on every tone. No tabard is bright red, orange or amber, so the coat is never read as a status. The
-brows carry a one-pixel dark edge wherever their colour is too close to the skin's to show, so a
-face never loses its brows; today's knight needs none.
+Every user chooses on the settings screen, free, the weapon and the knight's skin tone, hair colour,
+hair style, tabard colour and plume colour, from six skins, six hair colours, three styles (short
+crop, tied back, curls), six tabards and six plumes, all in the base pack and chosen by the owner
+from a mock-up. Each skin turns green when the knight is sick and red when the knight is running
+hot, each tint at about the skin's own lightness, so the conditions read on every tone. No tabard is
+bright red, orange or amber, so the coat is never read as a status. The brows carry a one-pixel dark
+edge wherever their colour is too close to the skin's to show, so a face never loses its brows;
+today's knight needs none.
 
 No arm or gauntlet is ever drawn over a blade or its guard, nor over the face of a shield. With
 the greatsword both arms go behind the blade, the one on the side it leans to first, and the hands
@@ -133,13 +134,38 @@ and a state of the knight. Highest first:
 | `streaming` | quiet | house | watching the television |
 | `night` | asleep | house | in bed, screen dimmed |
 
-With no condition active the quiet scenes take turns: battlement, camp, house, training yard.
+With no condition active the quiet scenes take turns: battlement, camp, house, training yard,
+ten minutes each by default, and a minute each in the demo. The settings choose which of the four
+take turns, at least one, and one length for all of them.
 
 The monarch on the throne at court is one of three young adults, each with a look of their own:
 monarch A, a king; monarch B, a queen; and monarch C, a monarch who reads as neither. All three
 sit the same way and talk with the knight the same way, and differ in hair, crown, robe and what
-they hold. A is the default. For now the address chooses between them (`mon=`, see
-[page.md](./page.md#the-address)); a setting will choose in normal use.
+they hold. A is the default. The monarch has a skin tone of their own, chosen apart from the
+knight's from the same six skins of the base pack; by default it is the warm skin, the colours the
+court has always drawn. The settings choose both (see below), and the address's `mon=` and `ms=`
+choose them for screenshots (see [page.md](./page.md#the-address)).
+
+## Settings
+
+Each display has a settings screen, opened by pressing and holding anywhere on it for two seconds;
+a tap still toggles full screen. It holds the knight's look (build, weapon, skin, hair colour and
+style, tabard, plume), the monarch and the monarch's skin, the display preferences (headline size,
+a 24-hour or 12-hour clock, whether the helmet stays on indoors), which quiet scenes take turns and
+for how long, and a read-only status page: the page's version, the state file's age, the sources
+and the packs. A side rail keeps every page one tap away. A choice applies at once, to the scene
+behind as well, which keeps running dimmed, and there is no Save button; each page ends with a
+button that puts this display back to the config default. The screen closes with DONE, Escape, or
+after a minute without a touch, counting down the last ten seconds; tapping the dimmed edge does
+not close it, so a hand brushing the frame does nothing. Every touch target is at least 48 CSS
+pixels, for a large tablet in landscape and a small desktop window alike.
+
+The choices are kept in that display's browser, so other displays keep their own. Each setting
+comes from the highest of four levels: the address (for screenshots), the display's own choices,
+the defaults in `config.toml` that the collector passes on in `state.json`, and the page's own. A
+second display therefore starts as the owner set `config.toml`. The demo has the same screen.
+Builds B and C are shown greyed as coming until they are drawn. [page.md](./page.md#settings)
+describes the screen and the levels in full.
 
 ## Art
 

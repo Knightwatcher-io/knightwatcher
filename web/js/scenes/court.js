@@ -9,16 +9,19 @@
   const PIER = [[.15, '#4a3f57'], [.45, '#3b3247'], [.85, '#2b2333'], [1, '#1f1927']];
   const ROBE = [[.12, C.R0], [.5, C.R1], [.85, C.R2], [1, C.R3]];
   const FUR = [[.3, C.W], [.8, C.S1], [1, C.S2]];
-  const SKIN = [[.14, C.F0], [.72, C.F1], [1, C.F2]];
+  /* The monarch's skin as drawn by default, the face bands and the cheek: the same colours as the
+     base pack's warm skin. s.monSkin replaces them with another of its skin swatches. */
+  const SKIN = { face: [[.14, C.F0], [.72, C.F1], [1, C.F2]], cheek: '#f3a892' };
   const KX = 820, KB = 505;
   /* The monarch's eye line and mouth, in grid pixels above the seat. */
   const EY = 208, MY = 193;
 
-  /* The three monarchs, chosen by the address's mon= hook (s.mon): A a young king, B a young queen
+  /* The three monarchs, chosen by the settings (s.mon): A a young king, B a young queen
      and C a young monarch who is neither. All three sit the same way on the same throne, with the
      same hands, face and mouth. Each has its own robe, hair, crown and what it holds:
      robe and shade colour the robe and the far sleeve, hair the hair across its width, dark and
-     brow its darkest strands and the eyebrows, iris the eyes. */
+     brow its darkest strands and the eyebrows, iris the eyes. Each is drawn in the skin it is
+     given, sk ({ face, cheek }). */
   const MONARCHS = {
     a: { robe: ROBE, shade: [[.3, C.R1], [1, C.R3]],
       hair: [[.25, '#a8703c'], [.7, '#7f4f27'], [1, '#5a3417']], dark: '#3f2410', brow: '#4a2a12', iris: '#5a3a22',
@@ -72,7 +75,7 @@
   }
 
   /* ---- Hair: what lies behind the head, and what lies over it ---- */
-  function earsA(x, by) { for (const d of [-1, 1]) { ell(x + d * 36, by - EY + 3, 7, 10, C.K); ell(x + d * 36, by - EY + 3, 4, 7, SKIN); } }
+  function earsA(x, by, m, sk) { for (const d of [-1, 1]) { ell(x + d * 36, by - EY + 3, 7, 10, C.K); ell(x + d * 36, by - EY + 3, 4, 7, sk.face); } }
   /* Monarch A: short hair with a fringe swept to one side, sideburns and a short trimmed beard. */
   function hairA(x, by, m) {
     rrect(x - 40, by - 258, 80, 36, 18, C.K);
@@ -80,9 +83,9 @@
     for (const [dx, dy, rx, c] of [[-22, -229, 12, m.hair[1][1]], [-4, -228, 13, m.hair[0][1]], [16, -230, 12, m.hair[1][1]]]) ell(x + dx, by + dy, rx, 5, c);
     for (const d of [-1, 1]) Rh(x + d * 31 - 3, by - 232, 6, 34, m.hair[1][1]);
   }
-  function beardA(x, by, m) {
+  function beardA(x, by, m, sk) {
     rrect(x - 34, by - 247, 68, 78, 31, m.hair, by - 198);
-    ell(x, by - 197, 28, 18, SKIN);
+    ell(x, by - 197, 28, 18, sk.face);
     rrect(x - 34, by - 247, 68, 78, 31, m.dark, by - 172);
     Rh(x - 7, by - 200, 14, 2, m.hair[1][1]);
   }
@@ -140,9 +143,9 @@
     ell(x, b + 11, 5, 5, C.K); ell(x, b + 11, 3, 3, C.G0); for (const d of [-22, 22]) { ell(x + d, b + 11, 4, 4, C.K); ell(x + d, b + 11, 2, 2, C.R1); }
   }
 
-  /* The monarch on the throne, seated, x the middle and by the seat of the dais underfoot. The
-     mouth is drawn apart, in mouth(), since it moves while the monarch talks. */
-  function monarch(x, by, m) {
+  /* The monarch on the throne, seated, x the middle and by the seat of the dais underfoot, in the
+     skin sk. The mouth is drawn apart, in mouth(), since it moves while the monarch talks. */
+  function monarch(x, by, m, sk) {
     // shoes and robe
     for (const d of [-26, 26]) { ell(x + d, by - 6, 20, 10, C.K); ell(x + d, by - 7, 17, 7, [[.3, C.N1], [1, C.N3]]); }
     poly([[x - 58, by - 160], [x + 58, by - 160], [x + 80, by - 8], [x - 80, by - 8]], C.K);
@@ -156,19 +159,19 @@
       rrect(x + d * 64 - 15, by - 92, 30, 12, 4, C.K); rrect(x + d * 64 - 13, by - 90, 26, 8, 3, FUR);
     }
     if (m.held) m.held(x, by, m);
-    for (const d of [-1, 1]) { ell(x + d * 64, by - 72, 13, 11, C.K); ell(x + d * 64, by - 72, 10, 8, SKIN); }
+    for (const d of [-1, 1]) { ell(x + d * 64, by - 72, 13, 11, C.K); ell(x + d * 64, by - 72, 10, 8, sk.face); }
     if (m.after) m.after(x, by, m);
     // the ermine collar
     rrect(x - 62, by - 168, 124, 30, 14, C.K); rrect(x - 59, by - 165, 118, 24, 12, FUR); ermine(x - 56, by - 164, 112, 20);
     if (m.chest) m.chest(x, by, m);
     // the head: hair behind, the face, hair over it, the crown
-    m.back(x, by, m);
-    rrect(x - 37, by - 250, 74, 84, 34, C.K); rrect(x - 34, by - 247, 68, 78, 31, SKIN);
-    if (m.beard) m.beard(x, by, m);
+    m.back(x, by, m, sk);
+    rrect(x - 37, by - 250, 74, 84, 34, C.K); rrect(x - 34, by - 247, 68, 78, 31, sk.face);
+    if (m.beard) m.beard(x, by, m, sk);
     const ey = by - EY;
     for (const d of [-1, 1]) {
       const ex = x + d * 15;
-      ell(x + d * 24, ey + 12, 6, 3, '#f3a892');
+      ell(x + d * 24, ey + 12, 6, 3, sk.cheek);
       ell(ex, ey, 6, 8, C.K); ell(ex, ey + 3, 3, 3, m.iris); Rh(ex - 3, ey - 5, 3, 3, C.W); Rh(ex + 2, ey + 2, 2, 2, C.W);
     }
     m.hairDo(x, by, m);
@@ -220,7 +223,7 @@
     rrect(640, 512, HR - 640 + 8, 20, 2, C.K); Rv(643, 514, HR - 643, 16, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
     rrect(664, 497, HR - 664 + 8, 18, 2, C.K); Rv(667, 499, HR - 667, 13, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
     Rv(700, 499, 240, 13, [[.3, C.R1], [1, C.R2]]); Rv(690, 514, 260, 16, [[.3, C.R1], [1, C.R2]]);
-    throne(KX, KB); monarch(KX, KB, MONARCHS[s.mon] || MONARCHS.a);
+    throne(KX, KB); monarch(KX, KB, MONARCHS[s.mon] || MONARCHS.a, skinOf(s));
     // the small table with the pie
     P.tableHD(110, 470, 90, 60);
   }
@@ -236,7 +239,16 @@
     s.o.mouth = monarchTalks ? 'flat' : 'talk'; s.o.speak = !monarchTalks;
   }
 
-  /* The monarch is painted into the backdrop, so the choice of monarch is part of its key. */
+  /* The skin the monarch is drawn in: s.monSkin when it holds a face of three bands and a cheek,
+     as each of the base pack's skin swatches does, and the court's own otherwise. */
+  const isColour = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+  function skinOf(s) {
+    const k = s.monSkin;
+    if (!k || !Array.isArray(k.face) || k.face.length !== 3 || !isColour(k.cheek)) return SKIN;
+    if (!k.face.every(b => Array.isArray(b) && typeof b[0] === 'number' && isColour(b[1]))) return SKIN;
+    return k;
+  }
+  /* The monarch and the skin are painted into the backdrop, so both choices are part of its key. */
   /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
@@ -249,5 +261,5 @@
     g3: { cls: 'ground', kind: 'floor', x: 555, y: 511, w: 88, h: 112 }
   };
 
-  KW.scenes.court = { spot: 72, places: PLACES, key: s => (MONARCHS[s.mon] ? s.mon : 'a'), paint, draw };
+  KW.scenes.court = { spot: 72, places: PLACES, key: s => (MONARCHS[s.mon] ? s.mon : 'a') + '|' + (skinOf(s) === SKIN ? '' : s.monSkin.id), paint, draw };
 })(window.KW);

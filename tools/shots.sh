@@ -5,7 +5,7 @@
 #   tools/shots.sh compare REFERENCE_DIR RESULT_DIR
 #
 # take opens web/index.html from disk once per entry in SHOTS, with time frozen by the address's
-# t= hook, and writes DIR/<name>.png at 960 by 600. PAGE names another copy of the page to shoot,
+# t= hook, and writes DIR/<name>.png at 960 by 600, or at the size an entry names after a second |. PAGE names another copy of the page to shoot,
 # such as an older version kept outside the repository. compare decodes each pair of PNGs and counts
 # the pixels that differ outside the clock, whose digits change with the minute. It exits 1 when
 # any pair differs or is missing. Keep both directories outside the repository.
@@ -16,7 +16,8 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# name|address hash. Every entry hides the review bar and freezes time.
+# name|address hash, or name|address hash|width,height. Every entry hides the review bar and freezes
+# time.
 SHOTS=(
   "is-battlement|bar=0&t=2300&is=battlement"
   "is-camp|bar=0&t=2300&is=camp"
@@ -78,6 +79,21 @@ SHOTS=(
   "look-sick-deep|bar=0&t=2300&on=sick&sk=deep&hc=dark&hy=tied&tb=forest"
   "look-hot-brown|bar=0&t=2300&on=cpu&h=off&sk=brown&hc=silver&hy=curls&tb=violet&pm=green"
   "look-brows|bar=0&t=2300&on=wan&h=off&sk=brown&hc=brown"
+  # the settings screen (set=), open on each page over the battlement, and the cue of the hold that
+  # opens it; the knight's page with a look of the hooks' and at the tablet's size; the monarch's
+  # page with a skin of the hooks'; the 12-hour clock (ck=12); and the court's monarch in a skin of
+  # the hooks' (ms=)
+  "settings-knight|bar=0&t=2300&is=battlement&set=knight"
+  "settings-monarch|bar=0&t=2300&is=battlement&set=monarch"
+  "settings-display|bar=0&t=2300&is=battlement&set=display"
+  "settings-quiet|bar=0&t=2300&is=battlement&set=quiet"
+  "settings-status|bar=0&t=2300&is=battlement&set=status"
+  "settings-hold|bar=0&t=2300&is=battlement&set=hold"
+  "settings-look|bar=0&t=2300&is=camp&set=knight&arm=one&sk=tan&hc=blonde&hy=curls&tb=forest&pm=gold"
+  "settings-tablet|bar=0&t=2300&is=house&set=knight|1480,924"
+  "settings-monarch-skin|bar=0&t=2300&is=battlement&set=monarch&mon=b&ms=deep"
+  "clock-12|bar=0&t=2300&is=camp&ck=12"
+  "mon-skin|bar=0&t=3450&on=ssh&mon=c&ms=brown"
 )
 
 take() {
@@ -88,11 +104,13 @@ take() {
   fi
   local page="${PAGE:-$root/web/index.html}"
   mkdir -p "$dir"
-  local entry name hash
+  local entry name hash size
   for entry in "${SHOTS[@]}"; do
     name="${entry%%|*}"
     hash="${entry#*|}"
-    "$CHROME" --no-sandbox --hide-scrollbars --window-size=960,600 --virtual-time-budget=1500 \
+    size=960,600
+    if [[ "$hash" == *"|"* ]]; then size="${hash#*|}"; hash="${hash%%|*}"; fi
+    "$CHROME" --no-sandbox --hide-scrollbars --window-size="$size" --virtual-time-budget=1500 \
       --screenshot="$dir/$name.png" "file://$page#$hash" </dev/null >/dev/null 2>&1
     echo "took $name"
   done
@@ -106,7 +124,9 @@ import struct, sys, zlib
 
 # The clock sits in the top right corner. Its region is left out of the comparison. At 960 by 600
 # its ink reaches x 752 and y 20 to 85 at the widest hour, one starting with 2, so the mask starts
-# 12 pixels further left to leave room for a scene that lays the text out a pixel differently.
+# 12 pixels further left to leave room for a scene that lays the text out a pixel differently. The
+# words are sized to the window, so a shot of another size of the same shape, such as the tablet's
+# 1480 by 924, has its mask scaled with it.
 MASK_X0, MASK_Y1 = 740, 110
 
 def decode(path):
@@ -161,7 +181,7 @@ for name in names:
     for y in range(ha):
         if ra[y] == rb[y]: continue
         for x in range(wa):
-            if y < MASK_Y1 and x >= MASK_X0: continue
+            if y < MASK_Y1 * ha / 600 and x >= MASK_X0 * wa / 960: continue
             if ra[y][x * pa:x * pa + 3] != rb[y][x * pb:x * pb + 3]: diff += 1
     if diff:
         print(f"DIFF   {name}: {diff} pixels differ outside the clock"); bad += 1

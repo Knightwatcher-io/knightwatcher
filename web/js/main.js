@@ -1,29 +1,35 @@
 /* Knightwatcher: start-up. Reads the address, starts the knight from the packs the page ships with
-   and adds the ones the collector downloaded, sizes the canvas to the screen, keeps the clock and
-   the words over the scene, runs the frames, chooses between the demo and live data, and reloads
-   the page when a new version of it has been deployed.
-   docs/page.md describes the modes and the address's test hooks. */
+   and adds the ones the collector downloaded, applies the settings and mounts their screen, sizes
+   the canvas to the screen, keeps the clock and the words over the scene, runs the frames, chooses
+   between the demo and live data, and reloads the page when a new version of it has been deployed.
+   docs/page.md describes the modes, the settings and the address's test hooks. */
 (function (KW) {
   'use strict';
   const V = KW.view, ST = KW.state, E = KW.engine, Demo = KW.demo;
   const H0 = location.hash;
 
   /* ---- The address: display options and the test hooks ------------------------------------- */
+  /* S holds the demo's settings and the display options the engine and the words read. The helmet
+     (h) and the headline size (hs) come from the settings below unless the address names them;
+     fixed holds those it names with a value in OPTS, and the review bar adds to it when one of its
+     buttons sets them, so that the demo writes them back into the address. */
   const S = KW.opts = { on: '', is: 'auto', h: 'auto', hs: 'm', bar: '1', demo: '0' };
-  const OPTS = KW.OPTS = { is: { auto: 'Take turns', battlement: 'Battlement', camp: 'Camp', house: 'House', yard: 'Yard' }, h: { auto: 'Off indoors', on: 'On', off: 'Off' }, hs: { s: 'S', m: 'M', l: 'L' } };
-  H0.slice(1).split('&').forEach(kv => { const [k, v] = kv.split('='); if (k in S && v != null) S[k] = decodeURIComponent(v); });
+  const OPTS = KW.OPTS = { is: { auto: 'Take turns', battlement: 'Battlement', camp: 'Camp', house: 'House', yard: 'Training yard' }, h: { auto: 'Off indoors', on: 'On', off: 'Off' }, hs: { s: 'S', m: 'M', l: 'L' } };
+  const given = {};
+  H0.slice(1).split('&').forEach(kv => { const [k, v] = kv.split('='); if (k in S && v != null) S[k] = given[k] = decodeURIComponent(v); });
   for (const k of Object.keys(OPTS)) if (!(S[k] in OPTS[k])) S[k] = Object.keys(OPTS[k])[0];
+  const fixed = new Set(['h', 'hs'].filter(k => given[k] !== undefined && given[k] in OPTS[k]));
   const hv = k => (H0.match(new RegExp('[#&]' + k + '=([\\w.-]+)')) || [])[1];
-  /* t=<ms> freezes time for screenshots, t=0 included, kx=<x> places the knight (in units of U),
-     and mon= chooses the monarch at court: a, b or c, and a for anything else. frozen says whether
-     the address holds a t= with a number, and t is the frozen time, or 0 without one. pl=1
-     outlines the scene's places for watched things. th= sets the demo's watched things: kinds
-     separated by commas, each followed by - for down or ! for down and alerting; th is the list
-     in the contract's shape, or null without the hook. */
+  /* t=<ms> freezes time for screenshots, t=0 included, and kx=<x> places the knight (in units of
+     U). frozen says whether the address holds a t= with a number, and t is the frozen time, or 0
+     without one. pl=1 outlines the scene's places for watched things. th= sets the demo's watched
+     things: kinds separated by commas, each followed by - for down or ! for down and alerting; th
+     is the list in the contract's shape, or null without the hook. set= opens the settings screen
+     at load on a page (knight, monarch, display, quiet, status), or shows the hold's cue (hold). */
   const tHook = hv('t') == null ? NaN : +hv('t');
   const thHook = (H0.match(/[#&]th=([^&]*)/) || [])[1];
-  KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'), mon: ['a', 'b', 'c'].includes(hv('mon')) ? hv('mon') : 'a',
-    pl: hv('pl') === '1', th: thHook == null ? null : ST.listFromHook(thHook) };
+  KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'),
+    pl: hv('pl') === '1', th: thHook == null ? null : ST.listFromHook(thHook), fixed };
   const freeze = KW.hooks.frozen;
 
   /* The page's own version, from the meta tag tools/deploy.sh stamps. The repository's own page
@@ -35,38 +41,77 @@
      a 'dev' page accepts an unsigned pack; a deployed page refuses one at the signature step. With
      no usable base pack the knight is drawn from code, the full knight. KW.knight writes one line
      to the console for each refused pack and one for where the knight is drawn from. The packs
-     the collector downloaded are added below, once the page knows it is served. */
-  // The look: the base pack's defaults, the greatsword. Until the settings screen chooses a look,
-  // the address's arm=one asks for the arming sword and the heater shield instead, and sk=, hc=,
-  // tb= and pm= name the base pack's skin, hair, tabard and plume swatches and hy= its hair style
-  // (short, tied, curls). A name the base pack lacks falls back to the default, as resolve() does.
-  const LOOK = hv('arm') === 'one' ? { items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater' } } : {};
-  for (const [k, set] of [['sk', 'skin'], ['hc', 'hair'], ['tb', 'tabard'], ['pm', 'plume']]) if (hv(k)) (LOOK.swatches = LOOK.swatches || {})[set] = 'kw.base/' + hv(k);
-  if (hv('hy')) (LOOK.items = LOOK.items || {}).hair = 'kw.base/hair.' + hv('hy');
-  KW.knight.start(KW.packText, ownVersion === 'dev', { look: LOOK });
+     the collector downloaded are added below, once the page knows it is served. The knight starts
+     in the base pack's defaults, and the settings then choose its look. */
+  KW.knight.start(KW.packText, ownVersion === 'dev', { look: {} });
+
+  /* ---- The settings ------------------------------------------------------------------------------
+     What the display shows comes from four levels, highest first: the address's hooks, this
+     display's saved choices, the defaults in the state file and the page's own (KW.settings). The
+     hooks, in the contract's names: arm=one the sword and shield and arm=two the greatsword; sk=,
+     hc=, tb= and pm= the skin, hair, tabard and plume swatches; hy= the hair style; mon= the
+     monarch and ms= the monarch's skin; hs= the headline size (s, m, l), h= the helmet (on, or auto
+     and off for the helmet off indoors; off also takes it off outdoors) and ck= the clock (12 or
+     24). A value a level does not know is ignored, with a line in the console. */
+  // The helmet and the headline size are read from S each time, since the review bar may set
+  // them as the address does.
+  const HOOK = { look: {}, quiet: {}, get display() {
+    const d = {};
+    if (hv('ck') !== undefined) d.clock = { 12: 12, 24: 24 }[hv('ck')] || hv('ck');
+    if (fixed.has('hs')) d.headline = { s: 'small', m: 'medium', l: 'large' }[S.hs];
+    if (fixed.has('h')) d.helmet_indoors = S.h === 'on';
+    return d;
+  } };
+  if (hv('arm') !== undefined) HOOK.look.weapon = { one: 'sword_and_shield', two: 'greatsword' }[hv('arm')] || hv('arm');
+  for (const [h, k] of [['sk', 'skin'], ['hc', 'hair'], ['hy', 'hair_style'], ['tb', 'tabard'], ['pm', 'plume'], ['mon', 'monarch'], ['ms', 'monarch_skin']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
+  const store = KW.settings.create({ hooks: HOOK, storage: () => window.localStorage, pack: () => KW.knight.basePack() });
+  let lookKey = '{}', twelve = false;
+  /* Puts what the settings say into the knight, the options and the clock. Returns whether the
+     knight's look changed. */
+  function settle() {
+    const r = store.now(), d = r.values.display, look = KW.settings.knightLook(r), key = JSON.stringify(look);
+    if (!fixed.has('h')) S.h = d.helmet_indoors ? 'on' : 'auto';
+    if (!fixed.has('hs')) S.hs = { small: 's', medium: 'm', large: 'l' }[d.headline];
+    twelve = d.clock === 12;
+    if (key === lookKey) return false;
+    lookKey = key; KW.knight.look(look);
+    return true;
+  }
+  settle();
 
   /* ---- The words over the scene ------------------------------------------------------------- */
   const $ = id => document.getElementById(id);
   const cv = $('cv'), surface = $('surface'), hl = $('hl'), sub = $('sub'), more = $('more'), quiet = $('quiet'), cap = $('cap'), ov = $('ov'), clock = $('clock');
   E.init(cv.getContext('2d'));
-  let capTimer = 0; if (freeze) cap.style.transition = 'none';
+  let capTimer = 0, lastShow = null; if (freeze) cap.style.transition = 'none';
   KW.ui = {
     /* t: { st, hl, sub, quiet, more: { n, crit } }. With no headline the screen is quiet and shows
        the quiet line instead of the detail. */
     show(t) {
+      lastShow = t;
       surface.className = 'st-' + t.st + ' hs-' + S.hs + (t.hl ? '' : ' quiet');
       hl.textContent = t.hl; if (!t.hl) quiet.textContent = t.quiet; else sub.textContent = t.sub;
       more.style.display = t.more.n ? 'inline-block' : 'none'; more.textContent = '+' + t.more.n + ' MORE'; more.className = t.more.crit ? 'crit' : '';
       requestAnimationFrame(fit);
     },
+    /* Shows the last state again, after the headline size changed. */
+    again() { if (lastShow) KW.ui.show(lastShow); },
+    /* What the engine's input takes from the settings, with ownMs the length of each quiet scene
+       while nothing sets one (KW.settings.engineInput). */
+    extras: ownMs => KW.settings.engineInput(store.now(), KW.knight.basePack(), ownMs),
     quietText(text) { quiet.textContent = text; },
     caption(text, ms) { cap.textContent = text; cap.classList.add('on'); clearTimeout(capTimer); if (!freeze) capTimer = setTimeout(() => cap.classList.remove('on'), ms); }
   };
 
-  /* ---- The clock, and a slow drift of the words against burn-in ------------------------------ */
-  const two = n => String(n).padStart(2, '0');
+  /* ---- The clock, and a slow drift of the words against burn-in ------------------------------
+     The 24-hour clock reads 21:42 and the 12-hour clock 9:42 with a small PM. */
+  let shownTime = '';
   function tick() {
-    const d = new Date(); clock.textContent = two(d.getHours()) + ':' + two(d.getMinutes());
+    const d = new Date(), c = KW.settings.clock(d.getHours(), d.getMinutes(), twelve ? 12 : 24);
+    if (c.time + c.half !== shownTime) {
+      shownTime = c.time + c.half; clock.textContent = c.time;
+      if (c.half) { const sm = document.createElement('small'); sm.textContent = c.half; clock.appendChild(sm); }
+    }
     if (!freeze) { const t = performance.now(); ov.style.transform = 'translate(' + (Math.sin(t / 97000) * surface.clientWidth * .012).toFixed(1) + 'px,' + (Math.cos(t / 131000) * surface.clientHeight * .012).toFixed(1) + 'px)'; }
   }
   setInterval(tick, 1000); tick();
@@ -110,7 +155,7 @@
   function startDemo() { mode = 'demo'; Demo.start(); fit(); Demo.hooks(); }
   /* Shows a valid view's state; its events are played separately. */
   function showLive(v) {
-    E.input = { w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, things: v.things, tv: v.tv, helmet: S.h };
+    E.input = Object.assign({ w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, things: v.things, tv: v.tv, helmet: S.h }, KW.ui.extras(LIVE_TURN_MS));
     showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more } : { st: 'ok', hl: '', sub: '', quiet: v.quietLine, more: { n: 0, crit: false } });
   }
   function onView(v) {
@@ -118,7 +163,7 @@
     if (j.kind === 'live') {
       if (mode === 'demo') Demo.stop();
       if (mode !== 'live') { mode = 'live'; E.reset(); document.body.classList.add('nobar'); keepAwake(); }
-      lastGood = v; showLive(v);
+      lastGood = v; store.defaults(v.defaults); showLive(v);
       const r = ST.takeEvents(v, lastSeq); lastSeq = r.lastSeq;
       for (const e of r.play) {
         if (e.act === 'flies') { const t = performance.now(); for (let i = 0; i < e.count; i++) E.addFly(t + i * 40); }
@@ -195,11 +240,25 @@
     E.draw(now);
     if (mode === 'demo') Demo.note(E.note);
   }
-  E.input = { w: ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: S.h };
+  E.input = Object.assign({ w: ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: S.h }, KW.ui.extras(LIVE_TURN_MS));
   if (fromDisk || forceDemo) { mode = 'demo'; Demo.start(); }
   else { document.body.classList.add('nobar'); showOnce({ st: 'ok', hl: '', sub: '', quiet: '', more: { n: 0, crit: false } }); }
   fit();
   if (mode === 'demo') Demo.hooks();
+
+  /* ---- The settings screen ---------------------------------------------------------------------
+     Opened by a press and hold on the display. Every choice it makes is saved by the store, which
+     tells settle() and the screen; the scene behind shows it at once. */
+  store.on(() => {
+    if (settle()) E.invalidate();
+    if (mode === 'demo') Demo.refresh();
+    else { Object.assign(E.input, KW.ui.extras(LIVE_TURN_MS), { helmet: S.h }); KW.ui.again(); }
+    shownTime = ''; tick(); fit();
+  });
+  const screen = KW.settings.mount({ store, surface, info: () => ({ version: ownVersion, mode, view: lastGood }), time: () => (freeze ? KW.hooks.t : performance.now()) });
+  // the cue as it looks seven tenths of the way through a hold, over the knight's head
+  if (screen && hv('set') === 'hold') { const b = surface.getBoundingClientRect(); screen.cue(b.left + b.width * .52, b.top + b.height * .42, .7); }
+  else if (screen && hv('set')) screen.open(hv('set'));
   requestAnimationFrame(frame);
   // Browsers refuse to fetch from disk, so a page opened from disk does not try.
   if (!fromDisk && !forceDemo) ST.start(onView);
@@ -209,7 +268,7 @@
   if (!fromDisk) {
     KW.knight.fetchPacks((url, init) => fetch(url, init)).then(got => {
       if (!got.files.length && !got.refused.length) return;
-      KW.knight.add(got); E.invalidate();
+      KW.knight.add(got); E.invalidate(); store.check();
     }, () => {});
   }
 })(window.KW);

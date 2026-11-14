@@ -250,6 +250,32 @@ test('a deployed page reads a downloaded pack signed with a key it knows, and re
   assert.ok(s.log.includes('s #d0302a'), 'the knight wears the downloaded red');
 });
 
+test('look() draws a new look from the packs already loaded, a downloaded one included, where start() again would lose it', () => {
+  const s = deployed();
+  s.K.add({ files: [{ file: 'extra.pack.json', text: signed(EXTRA, 'test1') }, { file: 'loose.pack.json', text: EXTRA }] });
+  const refusedBefore = plain(s.K.status.refused);
+  assert.equal(refusedBefore.length, 1, 'the unsigned copy is refused on a deployed page');
+  s.lines.length = 0;
+  let st = s.K.look({ swatches: { tabard: 'test.extra/red', skin: 'kw.base/deep' } });
+  assert.equal(st.source, 'pack');
+  assert.equal(st.fallbacks.find(f => f.key === 'tabard'), undefined, 'the downloaded tabard is still loaded');
+  assert.deepEqual(plain(st.refused), refusedBefore, 'what was refused stays refused, and the signed-only rule is unchanged');
+  assert.deepEqual(s.lines, [], 'nothing is read again, so nothing new is said');
+  s.log.length = 0;
+  s.K.draw(at(s.K, 'idle', 2300));
+  assert.ok(s.log.includes('s #d0302a'), 'the knight wears the downloaded red');
+  // back to the defaults and to the downloaded tabard again, with no new read
+  st = s.K.look({});
+  assert.equal(st.fallbacks.find(f => f.key === 'tabard').reason, 'not set');
+  st = s.K.look({ swatches: { tabard: 'test.extra/red' } });
+  assert.equal(st.fallbacks.find(f => f.key === 'tabard'), undefined);
+  // start() rebuilds from the carriers alone, and the downloaded pack is gone
+  st = s.K.start([signed(UNSIGNED, 'test1')], false, { keys: keysIn(s), look: { swatches: { tabard: 'test.extra/red' } } });
+  assert.equal(st.fallbacks.find(f => f.key === 'tabard').reason, 'pack not loaded');
+  // before start(), look() does nothing
+  assert.equal(sandbox().K.look({}), null);
+});
+
 /* ---- The refused list and the console ------------------------------------------------------------- */
 
 test('each refused pack is listed in the status and written to the console once', () => {
