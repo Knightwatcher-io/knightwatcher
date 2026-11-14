@@ -2,9 +2,11 @@ import contextlib
 import io
 import json
 import os
+import secrets
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 from collector import contract
 from collector.cli import main
@@ -22,10 +24,17 @@ class CliTest(unittest.TestCase):
         os.mkdir(self.out)
         os.mkdir(self.var)
         self.config = os.path.join(self.tmp.name, "config.toml")
-        self.secrets = os.path.join(self.tmp.name, "secrets.json")
-        with open(self.secrets, "w", encoding="utf-8") as fh:
-            json.dump({}, fh)
+        self.env_file = os.path.join(self.tmp.name, ".env")
         self.write_config("")
+        # No credential from the environment the tests run in reaches them.
+        clean = {k: v for k, v in os.environ.items() if not k.startswith("KNIGHTWATCHER_")}
+        patcher = mock.patch.dict(os.environ, clean, clear=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def write_env(self, text: str) -> None:
+        with open(self.env_file, "w", encoding="utf-8") as fh:
+            fh.write(text)
 
     def write_config(self, extra: str) -> None:
         with open(self.config, "w", encoding="utf-8") as fh:
@@ -40,7 +49,7 @@ class CliTest(unittest.TestCase):
     def run_cli(self, *args):
         err, out = io.StringIO(), io.StringIO()
         with contextlib.redirect_stderr(err), contextlib.redirect_stdout(out):
-            code = main(["--config", self.config, "--secrets", self.secrets, *args])
+            code = main(["--config", self.config, *args])
         return code, out.getvalue(), err.getvalue()
 
     def test_check_config_ok(self):
@@ -60,7 +69,71 @@ class CliTest(unittest.TestCase):
         self.write_config('[sources.adblock]\nurl = "http://192.0.2.53"\n')
         code, _, err = self.run_cli("--check-config")
         self.assertEqual(code, 2)
-        self.assertIn("secrets.json: section 'adguard' missing (for adblock)", err)
+        self.assertIn("config: .env: KNIGHTWATCHER_ADGUARD_USERNAME missing (for adblock)", err)
+        self.assertIn("config: .env: KNIGHTWATCHER_ADGUARD_PASSWORD missing (for adblock)", err)
+
+    def test_check_config_reads_the_process_environment(self):
+        self.write_config('[sources.streams]\nurl = "http://192.0.2.20:8181"\n')
+        key = secrets.token_hex(16)
+        with mock.patch.dict(os.environ, {"KNIGHTWATCHER_TAUTULLI_API_KEY": key}):
+            code, out, err = self.run_cli("--check-config")
+        self.assertEqual(code, 0, err)
+        self.assertNotIn(key, out + err)
+
+    def test_check_config_reads_an_env_file_instead(self):
+        self.write_config(
+            '[sources.streams]\nurl = "http://192.0.2.20:8181"\n'
+            '[sources.adblock]\nurl = "http://192.0.2.53"\n'
+        )
+        key, password = secrets.token_hex(16), secrets.token_urlsafe(18) + "$#'"
+        quoted = password.replace("'", "")
+        self.write_env(
+            "# credentials for the check\n"
+            f"KNIGHTWATCHER_TAUTULLI_API_KEY={key}\n"
+            "KNIGHTWATCHER_ADGUARD_USERNAME=knightwatcher\n"
+            f"KNIGHTWATCHER_ADGUARD_PASSWORD='{quoted}'\n"
+            "KNIGHTWATCHER_OUT=/srv/www/knightwatcher/data\n"
+        )
+        # The process environment holds other values, which the file replaces.
+        with mock.patch.dict(os.environ, {"KNIGHTWATCHER_TAUTULLI_API_KEY": ""}):
+            code, out, err = self.run_cli("--check-config", "--env-file", self.env_file)
+        self.assertEqual(code, 0, err)
+        self.assertIn("config ok: 5 sources enabled", out)
+        for value in (key, quoted):
+            self.assertNotIn(value, out + err)
+
+    def test_a_missing_credential_names_the_variable_never_a_value(self):
+        self.write_config('[sources.adblock]\nurl = "http://192.0.2.53"\n')
+        password = secrets.token_urlsafe(18)
+        self.write_env(
+            f"KNIGHTWATCHER_ADGUARD_PASSWORD={password}\nKNIGHTWATCHER_ADGUARD_USERNAME=\n"
+        )
+        code, out, err = self.run_cli("--check-config", "--env-file", self.env_file)
+        self.assertEqual(code, 2)
+        self.assertEqual(
+            err, "config: .env: KNIGHTWATCHER_ADGUARD_USERNAME missing (for adblock)\n"
+        )
+        self.assertNotIn(password, out + err)
+
+    def test_a_bad_env_file_names_the_line_never_its_content(self):
+        password = secrets.token_urlsafe(18)
+        self.write_env(f"# a comment\nKNIGHTWATCHER_ADGUARD_PASSWORD {password}\n")
+        code, out, err = self.run_cli("--check-config", "--env-file", self.env_file)
+        self.assertEqual(code, 2)
+        self.assertEqual(err, f"config: {self.env_file}: line 2: expected NAME=value\n")
+        self.assertNotIn(password, out + err)
+
+    def test_env_file_goes_only_with_check_config(self):
+        self.write_env("")
+        with contextlib.redirect_stderr(io.StringIO()) as err, self.assertRaises(SystemExit) as cm:
+            main(["--config", self.config, "--once", "--env-file", self.env_file])
+        self.assertEqual(cm.exception.code, 2)
+        self.assertIn("--env-file goes with --check-config", err.getvalue())
+
+    def test_the_secrets_flag_is_gone(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            main(["--config", self.config, "--secrets", "secrets.json", "--check-config"])
+        self.assertEqual(cm.exception.code, 2)
 
     def test_once_writes_a_valid_state_file_then_health_passes(self):
         code, _, _ = self.run_cli("--once")
@@ -102,9 +175,8 @@ class CliTest(unittest.TestCase):
         self.age_state(95)
         self.assertEqual(self.run_cli("--health")[0], 1)
 
-    def test_health_does_not_need_the_secrets(self):
+    def test_health_does_not_need_the_credentials(self):
         self.run_cli("--once")
-        os.unlink(self.secrets)
         self.write_config('[sources.adblock]\nurl = "http://192.0.2.53"\n')
         self.assertEqual(self.run_cli("--health")[0], 0)
 

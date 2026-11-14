@@ -28,9 +28,10 @@ def at(seconds: float) -> dt.datetime:
     return T0 + dt.timedelta(seconds=seconds)
 
 
-def make_config(raw: dict | None = None, secrets: dict | None = None):
+def make_config(raw: dict | None = None, env: dict | None = None):
+    """A config built from raw, with the credentials in env (environment variables)."""
     raw = raw or {}
-    return build(raw, secrets if secrets is not None else {})
+    return build(raw, env if env is not None else {})
 
 
 class Clock:

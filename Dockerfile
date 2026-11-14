@@ -9,6 +9,7 @@ RUN groupadd --gid 10001 knightwatcher \
  && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin knightwatcher
 
 WORKDIR /app
+# The package, with the settings schema it checks config.toml against.
 COPY collector /app/collector
 # Compiled at build time, since the root filesystem is read-only at run time.
 RUN python -m compileall -q /app/collector

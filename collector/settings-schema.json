@@ -1,0 +1,605 @@
+{
+  "kwschema": 1,
+  "about": "Every setting of config.toml and every variable of .env. The collector checks config.toml against it, the page takes its lists and its own defaults from it (through the copy tools/settings-schema.js writes into web/js/settings.js), and docs/configuration.md carries a reference made from it by the same tool. docs/configuration.md describes the fields.",
+  "conditions": [
+    { "id": "attack", "name": "Under attack", "scene": "battlement", "help": "Bans by fail2ban: one in a watched jail, or many of any kind, within a window." },
+    { "id": "wan_down", "name": "WAN down", "scene": "battlement", "help": "The internet checks fail several times in a row." },
+    { "id": "container_unhealthy", "name": "Unwell", "scene": "house", "help": "A container is unhealthy, restarting or exited with an error for a while." },
+    { "id": "disk_full", "name": "Disk full", "scene": "cellar", "help": "A configured disk is fuller than its threshold." },
+    { "id": "backup_overdue", "name": "Backup overdue", "scene": "house", "help": "The last completed backup is too long ago." },
+    { "id": "pi_silent", "name": "Pi silent", "scene": "house", "help": "The Pi of [sources.pi] has not answered for a while." },
+    { "id": "thing_down", "name": "Thing down", "scene": null, "help": "A watched thing that alerts is down. It plays in whichever quiet scene is showing." },
+    { "id": "cpu_hot", "name": "Running hot", "scene": "yard", "help": "CPU use, averaged over a window, is at or above a threshold." },
+    { "id": "memory_tight", "name": "Memory tight", "scene": null, "help": "Available memory, averaged over a window, is at or below a threshold. It plays in whichever quiet scene is showing." },
+    { "id": "ssh_session", "name": "At court", "scene": "court", "help": "Someone has an SSH session open." },
+    { "id": "updating", "name": "Updating", "scene": "smithy", "help": "A configured lock holder, such as nightly maintenance, is running." },
+    { "id": "streaming", "name": "Now showing", "scene": "house", "help": "A stream is playing." },
+    { "id": "night", "name": "Night watch", "scene": "house", "help": "The quiet hours." }
+  ],
+  "scenes": [
+    { "id": "battlement", "name": "Battlement", "quiet": true },
+    { "id": "camp", "name": "Camp", "quiet": true },
+    { "id": "house", "name": "House", "quiet": true },
+    { "id": "yard", "name": "Training yard", "quiet": true },
+    { "id": "cellar", "name": "Cellar", "quiet": false },
+    { "id": "smithy", "name": "Smithy", "quiet": false },
+    { "id": "court", "name": "Court", "quiet": false }
+  ],
+  "tables": [
+    {
+      "table": "collector",
+      "help": "How the collector runs. The whole table may be left out to take the defaults.",
+      "settings": [
+        { "key": "interval_s", "type": "integer", "default": 10, "min": 5, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Collector", "label": "Poll every" } }, "editable": true,
+          "help": "Seconds between polls. Also written to state.json as interval_s, and the page treats a file older than three intervals as stale." },
+        { "key": "output_dir", "type": "string", "default": "/out", "form": "a folder inside the container", "scope": "household",
+          "gui": { "admin": { "section": "Collector", "label": "Output folder" } }, "editable": false,
+          "help": "Folder state.json is written to. compose.yaml mounts KNIGHTWATCHER_OUT here." },
+        { "key": "state_dir", "type": "string", "default": "/var/lib/knightwatcher", "form": "a folder inside the container", "scope": "household",
+          "gui": { "admin": { "section": "Collector", "label": "Memory folder" } }, "editable": false,
+          "help": "Folder for memory.json and the collector's lock. compose.yaml mounts KNIGHTWATCHER_VAR here." },
+        { "key": "timezone", "type": "string", "default": "UTC", "form": "an IANA time zone, such as \"Europe/London\"", "scope": "household",
+          "gui": { "admin": { "section": "Collector", "label": "Time zone" } }, "editable": true,
+          "help": "Zone for the night hours and the times shown in words." },
+        { "key": "http_timeout_s", "type": "number", "default": 5.0, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Collector", "label": "Network timeout" } }, "editable": true,
+          "help": "Timeout for each network call. Must be shorter than interval_s, so an interval of 5 needs it lowered. A watched thing's check uses at most 3 seconds of it for each step." },
+        { "key": "auth_backoff_s", "type": "integer", "default": 1200, "min": 1200, "problem": "must be at least 1200 (20 minutes)", "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Collector", "label": "Pause after a refused login" } }, "editable": true,
+          "help": "Pause after a 401, 403 or 429 before the service is called again. Cannot be set below 1200." },
+        { "key": "proc_root", "type": "string", "default": "/host/proc", "form": "a folder inside the container", "scope": "household",
+          "gui": { "admin": { "section": "Collector", "label": "Host /proc" } }, "editable": false,
+          "help": "Where the host's /proc is mounted." }
+      ]
+    },
+    {
+      "table": "conditions",
+      "help": "When each condition is raised. The whole table, and each condition's own table, may be left out to take the defaults.",
+      "settings": [
+        { "key": "priority", "type": "list", "items": "condition",
+          "default": ["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "thing_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night"],
+          "form": "condition ids, each once", "scope": "household",
+          "gui": { "admin": { "section": "Conditions", "label": "Priority" } }, "editable": true,
+          "help": "Conditions, highest first. One left out is never raised, and a list that leaves out thing_down is refused while any watched thing alerts." },
+        { "key": "clear_after_s", "type": "integer", "default": 30, "min": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Conditions", "label": "Clear after" } }, "editable": true,
+          "help": "How long a cause must be absent before its condition clears." }
+      ]
+    },
+    {
+      "table": "conditions.attack",
+      "help": "Under attack: a ban in a watched jail, or enough bans of any kind, within the window.",
+      "settings": [
+        { "key": "window_s", "type": "integer", "default": 600, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: under attack", "label": "Window" } }, "editable": true,
+          "help": "The window for recent bans." },
+        { "key": "jails", "type": "list", "items": "string", "default": ["sshd"], "form": "fail2ban jail names", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: under attack", "label": "Jails" } }, "editable": true,
+          "help": "A ban in one of these jails within the window is an attack." },
+        { "key": "bans", "type": "integer", "default": 5, "min": 1, "scope": "household",
+          "gui": { "admin": { "section": "Conditions: under attack", "label": "Bans" } }, "editable": true,
+          "help": "So is this many bans of any kind within the window." }
+      ]
+    },
+    {
+      "table": "conditions.wan_down",
+      "help": "WAN down: the internet checks fail several times in a row.",
+      "settings": [
+        { "key": "failed_checks", "type": "integer", "default": 2, "min": 1, "scope": "household",
+          "gui": { "admin": { "section": "Conditions: WAN down", "label": "Failed checks" } }, "editable": true,
+          "help": "Failed internet checks in a row before wan_down. Each check is a fresh read of the wan source, so they are its every_s apart." }
+      ]
+    },
+    {
+      "table": "conditions.container_unhealthy",
+      "help": "Unwell: a container is unhealthy, restarting or exited with an error for a while.",
+      "settings": [
+        { "key": "for_s", "type": "integer", "default": 180, "min": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: unwell container", "label": "For" } }, "editable": true,
+          "help": "How long a container must be unhealthy, restarting or exited non-zero." }
+      ]
+    },
+    {
+      "table": "conditions.disk_full",
+      "help": "Disk full: a configured disk is fuller than the threshold.",
+      "settings": [
+        { "key": "pct", "type": "number", "default": 90.0, "above": 0, "max": 100, "unit": "percent", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: disk full", "label": "Used" } }, "editable": true,
+          "help": "Percent used, on any configured disk, judged on the latest reading." }
+      ]
+    },
+    {
+      "table": "conditions.backup_overdue",
+      "help": "Backup overdue: the last completed backup is too long ago.",
+      "settings": [
+        { "key": "hours", "type": "number", "default": 30.0, "above": 0, "unit": "hours", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: backup overdue", "label": "After" } }, "editable": true,
+          "help": "Hours since the last completed backup." }
+      ]
+    },
+    {
+      "table": "conditions.pi_silent",
+      "help": "Pi silent: the Pi of [sources.pi] has not answered for a while.",
+      "settings": [
+        { "key": "for_s", "type": "integer", "default": 180, "min": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: Pi silent", "label": "For" } }, "editable": true,
+          "help": "How long the second machine must be unreachable." }
+      ]
+    },
+    {
+      "table": "conditions.thing_down",
+      "help": "A watched thing down. It has no settings here: each watched thing carries its own pace, its own silence and whether it alerts. An empty table is accepted.",
+      "settings": []
+    },
+    {
+      "table": "conditions.cpu_hot",
+      "help": "Running hot: CPU use, averaged over the window, is at or above the threshold.",
+      "settings": [
+        { "key": "pct", "type": "number", "default": 85.0, "above": 0, "max": 100, "unit": "percent", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: running hot", "label": "CPU use" } }, "editable": true,
+          "help": "CPU use, percent of all cores, averaged over the window: at or above." },
+        { "key": "window_s", "type": "integer", "default": 30, "min": 10, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: running hot", "label": "Window" } }, "editable": true,
+          "help": "The window the CPU is averaged over." }
+      ]
+    },
+    {
+      "table": "conditions.memory_tight",
+      "help": "Memory tight: available memory, averaged over the window, is at or below the threshold.",
+      "settings": [
+        { "key": "available_pct", "type": "number", "default": 10.0, "above": 0, "max": 100, "unit": "percent", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: memory tight", "label": "Available" } }, "editable": true,
+          "help": "MemAvailable as a percent of MemTotal, averaged over the window: at or below." },
+        { "key": "window_s", "type": "integer", "default": 30, "min": 10, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: memory tight", "label": "Window" } }, "editable": true,
+          "help": "The window available memory is averaged over." }
+      ]
+    },
+    {
+      "table": "conditions.ssh_session",
+      "help": "At court: someone has an SSH session open.",
+      "settings": [
+        { "key": "min_sessions", "type": "integer", "default": 1, "min": 1, "scope": "household",
+          "gui": { "admin": { "section": "Conditions: at court", "label": "Sessions" } }, "editable": true,
+          "help": "Open SSH sessions needed." },
+        { "key": "show_for_s", "type": "integer", "default": 600, "min": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: at court", "label": "Show for" } }, "editable": true,
+          "help": "How long a new SSH session keeps ssh_session up. 0 keeps it up for as long as min_sessions sessions are open." }
+      ]
+    },
+    {
+      "table": "conditions.updating",
+      "help": "Updating. It has no settings: it is active while any configured lock holder is running. An empty table is accepted.",
+      "settings": []
+    },
+    {
+      "table": "conditions.streaming",
+      "help": "Now showing: a stream is playing.",
+      "settings": [
+        { "key": "min_streams", "type": "integer", "default": 1, "min": 1, "scope": "household",
+          "gui": { "admin": { "section": "Conditions: now showing", "label": "Streams" } }, "editable": true,
+          "help": "Streams playing needed." }
+      ]
+    },
+    {
+      "table": "conditions.night",
+      "help": "Night watch: the quiet hours, in the collector's timezone.",
+      "settings": [
+        { "key": "start", "type": "string", "default": "23:00", "form": "HH:MM, 24-hour", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: night", "label": "From" } }, "editable": true,
+          "help": "Start of the quiet hours, in the collector's timezone. The hours may cross midnight." },
+        { "key": "end", "type": "string", "default": "07:00", "form": "HH:MM, 24-hour", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: night", "label": "Until" } }, "editable": true,
+          "help": "End of the quiet hours." }
+      ]
+    },
+    {
+      "table": "sources.host",
+      "help": "CPU, memory and load from the host's /proc, and the size of each configured disk.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: host", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 10, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: host", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read. Should be at least as often as the shorter averaging window; when it is read less often, an average reaches back to the previous read instead." },
+        { "key": "disks", "type": "list", "items": "table", "item_keys": ["mount", "path"], "default": [],
+          "form": "tables of mount and path, such as { mount = \"/data\", path = \"/host/disks/data\" }", "scope": "household",
+          "gui": { "admin": { "section": "Sources: host", "label": "Disks" } }, "editable": true,
+          "help": "Disks to report. mount is the label written to the file; path is any path inside the container on that filesystem." }
+      ]
+    },
+    {
+      "table": "sources.containers",
+      "help": "Container health, from a read-only Docker API proxy.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: containers", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 10, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: containers", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
+          "gui": { "admin": { "section": "Sources: containers", "label": "Address" } }, "editable": true,
+          "help": "Base URL of a read-only Docker API proxy, such as http://192.0.2.10:2375." },
+        { "key": "ignore", "type": "list", "items": "string", "default": [], "form": "shell patterns, such as \"*-run-*\"", "scope": "household",
+          "gui": { "admin": { "section": "Sources: containers", "label": "Leave out" } }, "editable": true,
+          "help": "Container names to leave out. Use it for one-off and intentionally stopped containers." }
+      ]
+    },
+    {
+      "table": "sources.wan",
+      "help": "Whether the internet answers.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: internet", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: internet", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "urls", "type": "list", "items": "string", "default": ["https://1.1.1.1/cdn-cgi/trace"], "form": "one or more http:// or https:// addresses", "scope": "household",
+          "gui": { "admin": { "section": "Sources: internet", "label": "Addresses" } }, "editable": true,
+          "help": "Tried in turn; the internet is up if any answers with a 2xx. An address avoids depending on DNS." }
+      ]
+    },
+    {
+      "table": "sources.dns",
+      "help": "Whether the DNS server answers.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: DNS", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: DNS", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "server", "type": "string", "default": "127.0.0.1", "form": "an address", "scope": "household",
+          "gui": { "admin": { "section": "Sources: DNS", "label": "Server" } }, "editable": true,
+          "help": "DNS server to ask." },
+        { "key": "port", "type": "integer", "default": 53, "scope": "household",
+          "gui": { "admin": { "section": "Sources: DNS", "label": "Port" } }, "editable": true,
+          "help": "Its port." },
+        { "key": "name", "type": "string", "default": "example.com", "form": "a domain name", "scope": "household",
+          "gui": { "admin": { "section": "Sources: DNS", "label": "Name to look up" } }, "editable": true,
+          "help": "Name to look up. An answer of no error or of \"no such name\" counts as up." }
+      ]
+    },
+    {
+      "table": "sources.backup",
+      "help": "The last completed backup, from the backup log.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: backup", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 60, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: backup", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "log", "type": "string", "default": "/host/backup.log", "form": "a file inside the container", "scope": "household",
+          "gui": { "admin": { "section": "Sources: backup", "label": "Log" } }, "editable": false,
+          "help": "The backup log, inside the container. compose.yaml mounts KNIGHTWATCHER_BACKUP_LOG here." },
+        { "key": "pattern", "type": "string", "default": "System Backup Completed: (.+)$", "form": "a regular expression with one group", "scope": "household",
+          "gui": { "admin": { "section": "Sources: backup", "label": "Completion line" } }, "editable": true,
+          "help": "Regular expression for a completion line; its first group is the date, in ISO 8601 or the form date prints, such as Thu 15 Jan 03:12:00 UTC 2026." },
+        { "key": "timezone", "type": "string", "default": "UTC", "form": "an IANA time zone", "scope": "household",
+          "gui": { "admin": { "section": "Sources: backup", "label": "Time zone" } }, "editable": true,
+          "help": "Zone for a date printed without one." },
+        { "key": "read_bytes", "type": "integer", "default": 262144, "unit": "bytes", "scope": "household",
+          "gui": { "admin": { "section": "Sources: backup", "label": "Read the last" } }, "editable": true,
+          "help": "How much of the end of the log to read." }
+      ]
+    },
+    {
+      "table": "sources.pi",
+      "help": "The older way to watch a second machine, kept with no end date: it becomes the first watched thing, named Pi, with the rules it has always had.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: Pi", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Pi", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "host", "type": "string", "default": null, "required": true, "form": "an address or a name", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Pi", "label": "Address" } }, "editable": true,
+          "help": "Address of the second machine, such as 192.0.2.4." },
+        { "key": "ports", "type": "list", "items": "integer", "default": [22], "form": "one or more TCP port numbers", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Pi", "label": "Ports" } }, "editable": true,
+          "help": "TCP ports to try, all at once. A refused connection counts as an answer." }
+      ]
+    },
+    {
+      "table": "sources.updates",
+      "help": "Whether a lock holder, such as nightly maintenance, is running.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: updates", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 10, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: updates", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "holders", "type": "list", "items": "table", "item_keys": ["name", "pattern"], "default": null, "required": true, "required_problem": "list at least one lock holder",
+          "form": "tables of name and pattern, such as { name = \"nightly maintenance\", pattern = 'nightly-maintenance\\.sh' }", "scope": "household",
+          "gui": { "admin": { "section": "Sources: updates", "label": "Lock holders" } }, "editable": true,
+          "help": "While a process whose command line matches pattern holds any lock, name is reported as running." }
+      ]
+    },
+    {
+      "table": "sources.ssh",
+      "help": "Open SSH sessions.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: SSH", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 10, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: SSH", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "port", "type": "integer", "default": 22, "scope": "household",
+          "gui": { "admin": { "section": "Sources: SSH", "label": "Port" } }, "editable": true,
+          "help": "The SSH server's port." },
+        { "key": "ignore_sources", "type": "list", "items": "string", "default": [], "form": "address ranges, such as \"198.51.100.0/24\"", "scope": "household",
+          "gui": { "admin": { "section": "Sources: SSH", "label": "Leave out" } }, "editable": true,
+          "help": "Address ranges whose sessions are not counted." }
+      ]
+    },
+    {
+      "table": "sources.streams",
+      "help": "Streams playing, from Tautulli.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: streams", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: streams", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
+          "gui": { "admin": { "section": "Sources: streams", "label": "Address" } }, "editable": true,
+          "help": "Base URL of Tautulli." },
+        { "key": "secret", "type": "string", "default": "tautulli", "form": "letters, digits and underscores", "scope": "household",
+          "gui": { "admin": { "section": "Sources: streams", "label": "Credentials" } }, "editable": false,
+          "help": "Names the .env variables holding its credentials: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals." }
+      ]
+    },
+    {
+      "table": "sources.adblock",
+      "help": "Blocked adverts, from AdGuard Home.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: adverts blocked", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
+          "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Address" } }, "editable": true,
+          "help": "Base URL of AdGuard Home." },
+        { "key": "secret", "type": "string", "default": "adguard", "form": "letters, digits and underscores", "scope": "household",
+          "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Credentials" } }, "editable": false,
+          "help": "Names the .env variables holding its credentials: KNIGHTWATCHER_<SECRET>_USERNAME and KNIGHTWATCHER_<SECRET>_PASSWORD, in capitals." },
+        { "key": "fly_every_s", "type": "number", "default": 300.0, "min": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: adverts blocked", "label": "A fly every" } }, "editable": true,
+          "help": "Average seconds between flies while blocking runs at the household's normal rate, which AdGuard Home's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query." }
+      ]
+    },
+    {
+      "table": "sources.security",
+      "help": "Bans and the threat score, from a fail2ban summary.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: security", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: security", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
+          "gui": { "admin": { "section": "Sources: security", "label": "Address" } }, "editable": true,
+          "help": "Base URL of the fail2ban summary; the collector calls /soc on it." }
+      ]
+    },
+    {
+      "table": "sources.sonarr",
+      "help": "Episodes imported, from Sonarr.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: Sonarr", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Sonarr", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Sonarr", "label": "Address" } }, "editable": true,
+          "help": "Base URL of Sonarr." },
+        { "key": "secret", "type": "string", "default": "sonarr", "form": "letters, digits and underscores", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Sonarr", "label": "Credentials" } }, "editable": false,
+          "help": "Names the .env variable holding its API key: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals." }
+      ]
+    },
+    {
+      "table": "sources.radarr",
+      "help": "Films imported, from Radarr.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: Radarr", "label": "On" } }, "editable": true,
+          "help": "Set to false to turn the source off while keeping its table." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Radarr", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Radarr", "label": "Address" } }, "editable": true,
+          "help": "Base URL of Radarr." },
+        { "key": "secret", "type": "string", "default": "radarr", "form": "letters, digits and underscores", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Radarr", "label": "Credentials" } }, "editable": false,
+          "help": "Names the .env variable holding its API key: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals." }
+      ]
+    },
+    {
+      "table": "thing",
+      "many": true,
+      "max": 32,
+      "help": "Each [[thing]] table, at the top level, is one machine on the network to watch. There can be 32, the Pi of [sources.pi] included. A thing has exactly one check: host with port or ports, or url. Watched things, below, says how they are checked and drawn.",
+      "settings": [
+        { "key": "name", "type": "string", "default": null, "required": true, "form": "1 to 20 printable ASCII characters, with no space at either end", "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Name" } }, "editable": true,
+          "help": "What the display calls it. Unique among the things, ignoring case." },
+        { "key": "kind", "type": "string", "default": null, "required": true, "values": ["pi", "camera", "machine", "vm"], "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Kind" } }, "editable": true,
+          "help": "Chooses the headline's word, and the prop the page draws." },
+        { "key": "host", "type": "string", "default": null, "form": "an address or a name", "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Address" } }, "editable": true,
+          "help": "Address or name to connect to. Required with port or ports." },
+        { "key": "port", "type": "integer", "default": null, "min": 1, "max": 65535, "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Port" } }, "editable": true,
+          "help": "One TCP port." },
+        { "key": "ports", "type": "list", "items": "integer", "default": null, "min_items": 1, "max_items": 3, "form": "1 to 3 port numbers from 1 to 65535", "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Ports" } }, "editable": true,
+          "help": "TCP ports tried at the same time; any one answering is enough." },
+        { "key": "url", "type": "string", "default": null, "form": "an http:// or https:// address", "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Web address" } }, "editable": true,
+          "help": "Any HTTP status counts as an answer. No user name or password in it." },
+        { "key": "refused_counts", "type": "boolean", "default": false, "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "A refusal is an answer" } }, "editable": true,
+          "help": "Whether a refused connection counts as an answer. Only with host." },
+        { "key": "verify_tls", "type": "boolean", "default": false, "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Check the certificate" } }, "editable": true,
+          "help": "Whether the certificate is checked. Only with an https url." },
+        { "key": "every_s", "type": "integer", "default": 30, "min": 10, "max": 3600, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Check every" } }, "editable": true,
+          "help": "Seconds between checks." },
+        { "key": "down_after_s", "type": "integer", "default": 180, "max": 86400, "form": "from every_s to 86400", "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Down after" } }, "editable": true,
+          "help": "Seconds of silence before the thing counts as down." },
+        { "key": "alert", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "Alerts" } }, "editable": true,
+          "help": "Whether the thing also raises thing_down while it is down." },
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Watched things", "label": "On" } }, "editable": true,
+          "help": "Set to false to keep the table but stop the checks and leave the thing out of the state file." }
+      ]
+    },
+    {
+      "table": "look",
+      "defaults_for": "display",
+      "help": "The household default for the knight and the monarch at court. Each display may choose its own on its settings screen. The colours, tones and hair styles are those of the base pack.",
+      "settings": [
+        { "key": "build", "type": "string", "default": null, "values": ["a", "b", "c"], "page_default": null, "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Build" }, "wall": { "section": "The knight", "label": "Build" } }, "editable": true,
+          "help": "The knight's build. The page's own is the base pack's default build, and only a build the packs in use declare is shown." },
+        { "key": "weapon", "type": "string", "default": null, "values": ["greatsword", "sword_and_shield"], "page_default": "greatsword", "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Weapon" }, "wall": { "section": "The knight", "label": "Weapon" } }, "editable": true,
+          "help": "What the knight carries." },
+        { "key": "skin", "type": "string", "default": null, "values": ["fair", "warm", "golden", "tan", "brown", "deep"], "page_default": "warm", "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Skin tone" }, "wall": { "section": "The knight", "label": "Skin tone" } }, "editable": true,
+          "help": "The knight's skin tone." },
+        { "key": "hair", "type": "string", "default": null, "values": ["black", "dark", "brown", "auburn", "blonde", "silver"], "page_default": "brown", "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Hair colour" }, "wall": { "section": "The knight", "label": "Hair colour" } }, "editable": true,
+          "help": "The knight's hair colour." },
+        { "key": "hair_style", "type": "string", "default": null, "values": ["short", "tied", "curls"], "page_default": "short", "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Hair style" }, "wall": { "section": "The knight", "label": "Hair style" } }, "editable": true,
+          "help": "The knight's hair." },
+        { "key": "tabard", "type": "string", "default": null, "values": ["blue", "forest", "violet", "wine", "teal", "sable"], "page_default": "blue", "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Tabard" }, "wall": { "section": "The knight", "label": "Tabard" } }, "editable": true,
+          "help": "The tabard's colour." },
+        { "key": "plume", "type": "string", "default": null, "values": ["red", "white", "gold", "royal", "green", "violet"], "page_default": "red", "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Plume" }, "wall": { "section": "The knight", "label": "Plume" } }, "editable": true,
+          "help": "The plume's colour." },
+        { "key": "monarch", "type": "string", "default": null, "values": ["a", "b", "c"], "page_default": "a", "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Monarch" }, "wall": { "section": "The monarch", "label": "Monarch" } }, "editable": true,
+          "help": "Which of the three monarchs sits in the court." },
+        { "key": "monarch_skin", "type": "string", "default": null, "values": ["fair", "warm", "golden", "tan", "brown", "deep"], "page_default": "warm", "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Monarch's skin tone" }, "wall": { "section": "The monarch", "label": "Skin tone" } }, "editable": true,
+          "help": "The monarch's skin tone. The page's own is the court's own skin." },
+        { "key": "monarch_hair", "type": "string", "default": null, "values": ["black", "dark", "brown", "auburn", "blonde", "silver"], "page_default": null, "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Monarch's hair colour" }, "wall": { "section": "The monarch", "label": "Hair colour" } }, "editable": true,
+          "help": "The monarch's hair colour. Left out, each monarch keeps the hair the court draws them with (\"As drawn\")." },
+        { "key": "monarch_robe", "type": "string", "default": null, "values": ["blue", "forest", "violet", "wine", "teal", "sable"], "page_default": null, "scope": "display",
+          "gui": { "admin": { "section": "Household look", "label": "Monarch's robe" }, "wall": { "section": "The monarch", "label": "Robe" } }, "editable": true,
+          "help": "The colour of the monarch's robe. Left out, each monarch keeps their own robe (A red, B violet, C green)." }
+      ]
+    },
+    {
+      "table": "display",
+      "defaults_for": "display",
+      "help": "The household default for how the display shows the words. Each display may choose its own.",
+      "settings": [
+        { "key": "headline", "type": "string", "default": null, "values": ["small", "medium", "large"], "page_default": "medium", "scope": "display",
+          "gui": { "admin": { "section": "Household display", "label": "Headline size" }, "wall": { "section": "Display", "label": "Headline size" } }, "editable": true,
+          "help": "The size of the headline." },
+        { "key": "clock", "type": "integer", "default": null, "values": [24, 12], "page_default": 24, "scope": "display",
+          "gui": { "admin": { "section": "Household display", "label": "Clock" }, "wall": { "section": "Display", "label": "Clock" } }, "editable": true,
+          "help": "The clock's hours, as a number." },
+        { "key": "helmet_indoors", "type": "boolean", "default": null, "page_default": false, "scope": "display",
+          "gui": { "admin": { "section": "Household display", "label": "Helmet indoors" }, "wall": { "section": "Display", "label": "Helmet indoors" } }, "editable": true,
+          "help": "Whether the helmet stays on in the house and the smithy." }
+      ]
+    },
+    {
+      "table": "quiet",
+      "defaults_for": "display",
+      "help": "The household default for the scenes that take turns while all is quiet. Each display may choose its own.",
+      "settings": [
+        { "key": "scenes", "type": "list", "items": "scene", "default": null, "values": ["battlement", "camp", "house", "yard"], "page_default": ["battlement", "camp", "house", "yard"],
+          "form": "one or more quiet scenes, each once", "scope": "display",
+          "gui": { "admin": { "section": "Quiet scenes", "label": "In the rotation" }, "wall": { "section": "Quiet scenes", "label": "In the rotation" } }, "editable": true,
+          "help": "The quiet scenes, in the order they take turns." },
+        { "key": "minutes", "type": "integer", "default": null, "min": 1, "max": 240, "page_default": 10, "unit": "minutes", "scope": "display",
+          "gui": { "admin": { "section": "Quiet scenes", "label": "Each shows for" }, "wall": { "section": "Quiet scenes", "label": "Each shows for" } }, "editable": true,
+          "help": "How long each quiet scene shows. The demo shows each for a minute while nothing sets it." }
+      ]
+    },
+    {
+      "table": "scenes",
+      "defaults_for": "display",
+      "keys": "condition",
+      "help": "The household default for the scene a condition plays in. Each key is a condition id and each value one of the page's scenes. The page offers a choice for the conditions below, which more than one scene can act. The collector accepts any condition id and any scene, but the page plays a condition in its own scene when the scene given cannot act it, with a line in the browser's console.",
+      "settings": [
+        { "key": "attack", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "acts": ["battlement", "camp", "yard"], "page_default": "battlement", "scope": "display",
+          "gui": { "admin": { "section": "Scenes", "label": "Under attack" }, "wall": { "section": "Scenes", "label": "Under attack" } }, "editable": true,
+          "help": "Where the knight acts out an attack." },
+        { "key": "disk_full", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "acts": ["yard", "cellar"], "page_default": "cellar", "scope": "display",
+          "gui": { "admin": { "section": "Scenes", "label": "Disk full" }, "wall": { "section": "Scenes", "label": "Disk full" } }, "editable": true,
+          "help": "Where the knight acts out a full disk." },
+        { "key": "backup_overdue", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "acts": ["battlement", "camp", "house", "yard", "cellar"], "page_default": "house", "scope": "display",
+          "gui": { "admin": { "section": "Scenes", "label": "Backup overdue" }, "wall": { "section": "Scenes", "label": "Backup overdue" } }, "editable": true,
+          "help": "Where the knight acts out an overdue backup." },
+        { "key": "pi_silent", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "acts": ["battlement", "camp", "house"], "page_default": "house", "scope": "display",
+          "gui": { "admin": { "section": "Scenes", "label": "Pi silent" }, "wall": { "section": "Scenes", "label": "Pi silent" } }, "editable": true,
+          "help": "Where the knight acts out a silent Pi." },
+        { "key": "cpu_hot", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "acts": ["battlement", "camp", "house", "yard", "cellar"], "page_default": "yard", "scope": "display",
+          "gui": { "admin": { "section": "Scenes", "label": "Running hot" }, "wall": { "section": "Scenes", "label": "Running hot" } }, "editable": true,
+          "help": "Where the knight acts out a hot CPU." }
+      ]
+    }
+  ],
+  "env": [
+    { "name": "KNIGHTWATCHER_OUT", "scope": "path", "required": true, "default": null, "mount": "/out", "example": "/srv/www/knightwatcher/data",
+      "gui": { "admin": { "section": "Host", "label": "Output folder" } }, "editable": false,
+      "help": "The host folder state.json is written to, a folder the web server serves. Mounted at /out. Must exist and be writable by the collector's account." },
+    { "name": "KNIGHTWATCHER_BACKUP_LOG", "scope": "path", "required": true, "default": null, "mount": "/host/backup.log", "example": "/var/log/backup.log",
+      "gui": { "admin": { "section": "Host", "label": "Backup log" } }, "editable": false,
+      "help": "The host's backup log, a single file. Mounted read-only at /host/backup.log." },
+    { "name": "KNIGHTWATCHER_DATA_DISK", "scope": "path", "required": true, "default": null, "mount": "/host/disks/data", "example": "/data/lost+found",
+      "gui": { "admin": { "section": "Host", "label": "Data disk" } }, "editable": false,
+      "help": "Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size." },
+    { "name": "KNIGHTWATCHER_VAR", "scope": "path", "required": false, "default": "./var", "mount": "/var/lib/knightwatcher", "example": "./var",
+      "gui": { "admin": { "section": "Host", "label": "Memory folder" } }, "editable": false,
+      "help": "The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account." },
+    { "name": "KNIGHTWATCHER_TAUTULLI_API_KEY", "scope": "credential", "source": "streams", "field": "api_key", "secret": "tautulli", "default": null,
+      "example": "0123456789abcdef0123456789abcdef", "form": "32 hexadecimal characters",
+      "gui": { "admin": { "section": "Credentials", "label": "Tautulli API key" } }, "editable": false,
+      "help": "Tautulli's API key, for [sources.streams]. In Tautulli: Settings, Web Interface, API, with Enable API ticked." },
+    { "name": "KNIGHTWATCHER_ADGUARD_USERNAME", "scope": "credential", "source": "adblock", "field": "username", "secret": "adguard", "default": null,
+      "example": "knightwatcher", "form": "a user name",
+      "gui": { "admin": { "section": "Credentials", "label": "AdGuard Home user name" } }, "editable": false,
+      "help": "The user name of an AdGuard Home login, for [sources.adblock]. AdGuard Home has no API keys: the collector signs in as a user of its web interface." },
+    { "name": "KNIGHTWATCHER_ADGUARD_PASSWORD", "scope": "credential", "source": "adblock", "field": "password", "secret": "adguard", "default": null,
+      "example": "an-invented-password", "form": "a password",
+      "gui": { "admin": { "section": "Credentials", "label": "AdGuard Home password" } }, "editable": false,
+      "help": "That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins." },
+    { "name": "KNIGHTWATCHER_SONARR_API_KEY", "scope": "credential", "source": "sonarr", "field": "api_key", "secret": "sonarr", "default": null,
+      "example": "fedcba9876543210fedcba9876543210", "form": "32 hexadecimal characters",
+      "gui": { "admin": { "section": "Credentials", "label": "Sonarr API key" } }, "editable": false,
+      "help": "Sonarr's API key, for [sources.sonarr]. In Sonarr: Settings, General, Security, API Key." },
+    { "name": "KNIGHTWATCHER_RADARR_API_KEY", "scope": "credential", "source": "radarr", "field": "api_key", "secret": "radarr", "default": null,
+      "example": "00112233445566778899aabbccddeeff", "form": "32 hexadecimal characters",
+      "gui": { "admin": { "section": "Credentials", "label": "Radarr API key" } }, "editable": false,
+      "help": "Radarr's API key, for [sources.radarr]. In Radarr: Settings, General, Security, API Key." }
+  ]
+}

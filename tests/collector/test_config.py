@@ -1,7 +1,7 @@
 import copy
-import json
 import os
 import re
+import secrets
 import tempfile
 import unittest
 
@@ -13,6 +13,7 @@ from collector.config import (
     ConfigError,
     build,
     load,
+    read_env_file,
 )
 
 
@@ -186,16 +187,48 @@ class BuildTest(unittest.TestCase):
         with self.assertRaises(ConfigError):
             build({"collector": {"auth_backoff_s": 60}})
 
-    def test_secrets_are_required_for_sources_that_log_in(self):
+    def test_credentials_are_required_for_sources_that_log_in(self):
         raw = {"sources": {"adblock": {"url": "http://192.0.2.1"}}}
+        password = secrets.token_urlsafe(16)
         with self.assertRaises(ConfigError) as cm:
-            build(raw, {"adguard": {"username": "kw"}})
+            build(raw, {"KNIGHTWATCHER_ADGUARD_USERNAME": "kw"})
         self.assertEqual(
-            cm.exception.problems, ["secrets.json: adguard.password missing (for adblock)"]
+            cm.exception.problems, [".env: KNIGHTWATCHER_ADGUARD_PASSWORD missing (for adblock)"]
         )
-        c = build(raw, {"adguard": {"username": "kw", "password": "pw-example"}})
-        self.assertEqual(c.secret("adblock")["username"], "kw")
-        self.assertEqual(c.secret_values(), ["kw", "pw-example"])
+        with self.assertRaises(ConfigError) as cm:
+            build(
+                raw, {"KNIGHTWATCHER_ADGUARD_USERNAME": "kw", "KNIGHTWATCHER_ADGUARD_PASSWORD": ""}
+            )
+        self.assertEqual(
+            cm.exception.problems, [".env: KNIGHTWATCHER_ADGUARD_PASSWORD missing (for adblock)"]
+        )
+        env = {"KNIGHTWATCHER_ADGUARD_USERNAME": "kw", "KNIGHTWATCHER_ADGUARD_PASSWORD": password}
+        c = build(raw, env)
+        self.assertEqual(c.secret("adblock"), {"username": "kw", "password": password})
+        self.assertEqual(c.secret_values(), ["kw", password])
+
+    def test_each_source_names_its_variables_by_its_secret(self):
+        raw = {"sources": {"sonarr": {"url": "http://192.0.2.30:8989", "secret": "sonarr_4k"}}}
+        key = secrets.token_hex(16)
+        with self.assertRaises(ConfigError) as cm:
+            build(raw, {"KNIGHTWATCHER_SONARR_API_KEY": key})
+        self.assertEqual(
+            cm.exception.problems, [".env: KNIGHTWATCHER_SONARR_4K_API_KEY missing (for sonarr)"]
+        )
+        self.assertNotIn(key, str(cm.exception))
+        c = build(raw, {"KNIGHTWATCHER_SONARR_4K_API_KEY": key})
+        self.assertEqual(c.secret("sonarr"), {"api_key": key})
+        with self.assertRaises(ConfigError) as cm:
+            build({"sources": {"sonarr": {"url": "http://192.0.2.30:8989", "secret": "sonarr-4k"}}})
+        self.assertEqual(
+            cm.exception.problems, ["sources.sonarr.secret: use letters, digits and underscores"]
+        )
+
+    def test_unused_credentials_may_be_unset_and_are_still_scrubbed(self):
+        key = secrets.token_hex(16)
+        c = build({"sources": {"wan": {}}}, {"KNIGHTWATCHER_RADARR_API_KEY": key, "OTHER": "x"})
+        self.assertEqual(c.secrets, {})
+        self.assertEqual(c.secret_values(), [key])
 
     def test_adblock_fly_every_s(self):
         def adblock(**settings):
@@ -213,7 +246,7 @@ class BuildTest(unittest.TestCase):
             adblock(fly_every_s="often")
         self.assertEqual(cm.exception.problems, ["sources.adblock.fly_every_s: expected float"])
 
-    def test_secrets_are_not_checked_when_not_given(self):
+    def test_credentials_are_not_checked_when_no_environment_is_given(self):
         build({"sources": {"adblock": {"url": "http://192.0.2.1"}}}, None)
 
     def test_updates_needs_holders_with_valid_patterns(self):
@@ -719,18 +752,64 @@ class LoadTest(unittest.TestCase):
             fh.write(content)
         return path
 
-    def test_load_reads_both_files(self):
+    def test_load_reads_the_config_and_the_credentials(self):
         cfg = self._write("config.toml", '[sources.streams]\nurl = "http://192.0.2.5:8181"\n')
-        sec = self._write("secrets.json", json.dumps({"tautulli": {"api_key": "k-example"}}))
-        c = load(cfg, sec)
+        key = secrets.token_hex(16)
+        c = load(cfg, {"KNIGHTWATCHER_TAUTULLI_API_KEY": key})
         self.assertIn("streams", c.sources)
+        self.assertEqual(c.secret("streams"), {"api_key": key})
 
-    def test_bad_secrets_json_does_not_echo_content(self):
-        cfg = self._write("config.toml", "")
-        sec = self._write("secrets.json", '{"adguard": {"password": "hunter2-example"')
+    def test_an_env_file_is_read_as_compose_reads_it(self):
+        a, b, c, d = (secrets.token_urlsafe(12) for _ in range(4))
+        path = self._write(
+            ".env",
+            "# a comment\n"
+            "\n"
+            f"PLAIN={a}\n"
+            f"SPACED = {b}   # a note after a space\n"
+            f"export EXPORTED={c}\n"
+            f"SINGLE='{d} $HOME #not a note'\n"
+            'DOUBLE="a \\"quoted\\" word\\n"\n'
+            "HASH=x#y\n"
+            "EMPTY=\n"
+            "TWICE=first\n"
+            "TWICE=second\n",
+        )
+        self.assertEqual(
+            read_env_file(path),
+            {
+                "PLAIN": a,
+                "SPACED": b,
+                "EXPORTED": c,
+                "SINGLE": f"{d} $HOME #not a note",
+                "DOUBLE": 'a "quoted" word\n',
+                "HASH": "x#y",
+                "EMPTY": "",
+                "TWICE": "second",
+            },
+        )
+
+    def test_a_bad_env_file_names_the_line_and_never_its_content(self):
+        value = secrets.token_urlsafe(16)
+        path = self._write(
+            ".env",
+            f"GOOD={value}\n{value}\n1BAD={value}\nOPEN='{value}\nOPEN2=\"{value}\n",
+        )
         with self.assertRaises(ConfigError) as cm:
-            load(cfg, sec)
-        self.assertNotIn("hunter2", str(cm.exception))
+            read_env_file(path)
+        self.assertEqual(
+            cm.exception.problems,
+            [
+                f"{path}: line 2: expected NAME=value",
+                f"{path}: line 3: expected NAME=value",
+                f"{path}: line 4: a quote is not closed",
+                f"{path}: line 5: a quote is not closed",
+            ],
+        )
+        self.assertNotIn(value, str(cm.exception))
+        with self.assertRaises(ConfigError) as cm:
+            read_env_file(os.path.join(self.tmp.name, "absent.env"))
+        self.assertIn("cannot read", str(cm.exception))
 
     def test_missing_config_file(self):
         with self.assertRaises(ConfigError):
@@ -738,9 +817,8 @@ class LoadTest(unittest.TestCase):
 
     def test_the_committed_example_is_valid(self):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        c = load(
-            os.path.join(root, "config.example.toml"), os.path.join(root, "secrets.example.json")
-        )
+        env = read_env_file(os.path.join(root, ".env.example"))
+        c = load(os.path.join(root, "config.example.toml"), env)
         self.assertEqual(len(c.sources), 13)
         # The examples of watched things are commented out, so the Pi is the only thing.
         self.assertEqual([t["name"] for t in c.things], ["Pi"])
@@ -759,8 +837,7 @@ class LoadTest(unittest.TestCase):
             m.group(1) if (m := setting.match(line)) else line for line in example.splitlines()
         ]
         cfg = self._write("config.toml", "\n".join(lines) + "\n")
-        sec = os.path.join(root, "secrets.example.json")
-        c = load(cfg, sec)
+        c = load(cfg, read_env_file(os.path.join(root, ".env.example")))
         self.assertEqual([t["name"] for t in c.things], ["Pi", "Vault", "Gate cam", "Study laptop"])
         self.assertEqual(
             [(t["kind"], t["every_s"], t["down_after_s"], t["alert"]) for t in c.things[1:]],

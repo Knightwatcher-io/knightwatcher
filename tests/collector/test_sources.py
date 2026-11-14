@@ -22,11 +22,13 @@ from collector.sources.updates import UpdatesSource
 from collector.sources.wan import WanSource
 from kw_helpers import T0, FakeHttp, FakeProc, at, closed_port, make_config
 
+# The credentials the sources log in with, as the environment holds them.
 SECRETS = {
-    "adguard": {"username": "kw", "password": "pw-example"},
-    "tautulli": {"api_key": "tk-example"},
-    "sonarr": {"api_key": "sk-example"},
-    "radarr": {"api_key": "rk-example"},
+    "KNIGHTWATCHER_ADGUARD_USERNAME": "kw",
+    "KNIGHTWATCHER_ADGUARD_PASSWORD": "pw-example",
+    "KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-example",
+    "KNIGHTWATCHER_SONARR_API_KEY": "sk-example",
+    "KNIGHTWATCHER_RADARR_API_KEY": "rk-example",
 }
 
 

@@ -62,7 +62,10 @@ class RunnerTest(unittest.TestCase):
                     "http_timeout_s": 1.0,
                 }
             },
-            {"adguard": {"username": "kw", "password": "s3cret-example"}},
+            {
+                "KNIGHTWATCHER_ADGUARD_USERNAME": "kw",
+                "KNIGHTWATCHER_ADGUARD_PASSWORD": "s3cret-example",
+            },
         )
         self.clock = Clock()
 

@@ -13,9 +13,9 @@ history, is written as though it already were.
 Examples, tests and screenshots use invented data. Addresses come from the documentation ranges
 (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`) and names from `example.com`.
 
-Site configuration lives in `config.toml` and credentials in `secrets.json`, both beside the
-repository's files and both ignored by git. `config.example.toml` and `secrets.example.json` are
-the committed templates.
+Site configuration lives in `config.toml` and the host paths and credentials in `.env`, both
+beside the repository's files and both ignored by git. `config.example.toml` and `.env.example`
+are the committed templates, with invented values only.
 
 Before any push, this must print nothing:
 
@@ -48,16 +48,21 @@ The collector reads and never writes, except for its output file and its memory 
 It mounts the host's `/proc` read-only, for load, memory and the lock table. A process can read
 the environment of other processes that run as its own user through `/proc`, so the collector
 should run as a user that owns nothing else on the host. The compose file runs it as uid 10001,
-an account with no processes and no files of its own, and the operator grants that uid the
-secrets file and the two folders it writes to;
+an account with no processes and no files of its own, and the operator grants that uid the two
+folders it writes to;
 [configuration.md](./configuration.md#the-collectors-account) has the commands. Do not change it
 to your own uid for convenience: the collector could then read the environment of everything
 you run.
 
-Several services it reads offer no read-only credential, so `secrets.json` holds logins that
-could change those services. It is mode 600 with one ACL entry that lets the collector's uid
-read it, mounted read-only into the container, and read once at start. Treat the file as you
-would the services' own configuration.
+Several services it reads offer no read-only credential, so `.env` holds logins that could change
+those services. It is mode 600 and read by docker compose as the operator, never mounted. Each
+credential is passed by name to the collector's container alone, as an environment variable read
+once at start, so another service in the compose file gets none it does not name. The collector's
+environment can be read by root, by its own uid through `/proc` (an account that runs nothing
+else), and by anyone who may run `docker inspect`, who could equally read `.env` itself. The
+configuration check names a missing credential by its variable and never shows a value, and a
+source's error text is scrubbed of every credential value before it reaches the state file.
+Treat `.env` as you would the services' own configuration.
 
 ## The page
 

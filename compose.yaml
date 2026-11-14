@@ -1,6 +1,7 @@
-# The Knightwatcher collector. Host paths come from .env beside this file (ignored by git); see
-# docs/configuration.md. Every host path is bound with create_host_path: false, so a missing
-# path stops the container instead of Docker creating an empty folder in its place.
+# The Knightwatcher collector. Host paths and credentials come from .env beside this file
+# (ignored by git; .env.example is the template); see docs/configuration.md. Every host path is
+# bound with create_host_path: false, so a missing path stops the container instead of Docker
+# creating an empty folder in its place.
 name: knightwatcher
 
 services:
@@ -22,16 +23,20 @@ services:
       timeout: 10s
       start_period: 60s
       retries: 2
+    # Credentials, read once at start. Each is named here, so that the container gets these from
+    # .env and nothing else in it. One a config does not use may be unset: it arrives empty, and
+    # the collector's own check names any credential it needs and lacks.
+    environment:
+      KNIGHTWATCHER_TAUTULLI_API_KEY: ${KNIGHTWATCHER_TAUTULLI_API_KEY:-}
+      KNIGHTWATCHER_ADGUARD_USERNAME: ${KNIGHTWATCHER_ADGUARD_USERNAME:-}
+      KNIGHTWATCHER_ADGUARD_PASSWORD: ${KNIGHTWATCHER_ADGUARD_PASSWORD:-}
+      KNIGHTWATCHER_SONARR_API_KEY: ${KNIGHTWATCHER_SONARR_API_KEY:-}
+      KNIGHTWATCHER_RADARR_API_KEY: ${KNIGHTWATCHER_RADARR_API_KEY:-}
     volumes:
-      # Settings and credentials, read once at start.
+      # Settings, read once at start.
       - type: bind
         source: ./config.toml
         target: /etc/knightwatcher/config.toml
-        read_only: true
-        bind: { create_host_path: false }
-      - type: bind
-        source: ./secrets.json
-        target: /etc/knightwatcher/secrets.json
         read_only: true
         bind: { create_host_path: false }
       # The host's /proc: CPU, memory, load, the lock table and process command lines.
