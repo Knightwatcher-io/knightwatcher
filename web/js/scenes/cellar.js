@@ -77,6 +77,11 @@
 
   KW.scenes.cellar = {
     spot: 124, places: PLACES, sword: false,
+    // The conditions this scene can act out (docs/page.md): the crate carried among the stacks,
+    // hunger, and running hot. Not the attack, with the weapon put away, nor the stare at the empty
+    // dish, which stands to the knight's left. Kept as plain data for the world format being drafted
+    // to take over.
+    can: ['disk_full', 'backup_overdue', 'cpu_hot'],
     rounds: [{ x: 124, act: 'guard', dur: 7 }, { x: 146, act: 'guard', dur: 7 }],
     paint, draw
   };

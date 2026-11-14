@@ -841,7 +841,10 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
 
   Each skin has its own face ramp, its own sick (green) and hot (red) ramps at about its own
   lightness, so the conditions read on every tone, and its own cheek and puffed cheek. No tabard
-  is bright red, orange or amber, so a coat is never read as the critical or warning colour;
+  is bright red, orange or amber, so a coat is never read as the critical or warning colour. The
+  court draws the monarch from the same swatches when the settings choose them: a skin's face and
+  cheek, a hair swatch's three bands and a tabard swatch's four as the robe, laid over the court's
+  own drawing ([page.md](./page.md#the-scene-interface)), so no pack change is needed for it;
 - `defaults` naming the greatsword and the eleven others and today's swatches (skin `warm`, hair
   `brown`, tabard `blue`, plume `red`), so the default look is the present knight; nothing names
   the sword and shield or the new options until a look asks for them. It has no palettes of its
@@ -1128,8 +1131,9 @@ downloaded pack.
 `KW.knight.look()`, in each of the 216 looks of weapon by skin by hair colour by hair style, the
 tabard and the plume cycled through their six, standing, attacking and swinging, helmet on and off,
 with the bare head and the gear at rest; each draws its colours with no throw, no fallback and no
-refused pack, within the shape and cost caps. It also draws every monarch in every skin of the base
-pack. [page.md](./page.md#checks) lists the rest of what it checks.
+refused pack, within the shape and cost caps. It also draws every monarch in every skin, hair and
+robe of the base pack, each monarch's own hair and robe among them.
+[page.md](./page.md#checks) lists the rest of what it checks.
 
 ```bash
 node --test tests/tools/

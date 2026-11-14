@@ -67,7 +67,7 @@ def state(things=THINGS, conditions=(THING_DOWN,)) -> dict:
         "events": [],
         "facts": {"pi": {"up": True}, "things": copy.deepcopy(things)},
         "sources": {"thing:Vault": {"ok": True, "at": "2026-01-15T21:42:01Z", "error": ""}},
-        "defaults": {"look": {}, "display": {}, "quiet": {}},
+        "defaults": {"look": {}, "display": {}, "quiet": {}, "scenes": {}},
     }
 
 
@@ -188,15 +188,18 @@ class ThingsContractTest(unittest.TestCase):
 
 class DefaultsContractTest(unittest.TestCase):
     def test_the_section(self):
-        whole = "defaults is not an object with look, display and quiet"
+        whole = "defaults is not an object with look, display, quiet and scenes"
         self.assertEqual(broken(lambda s: s.pop("defaults")), [whole])
         self.assertEqual(broken(lambda s: s.update(defaults=None)), [whole])
         self.assertEqual(broken(lambda s: s["defaults"].pop("quiet")), [whole])
+        # scenes is written always, holding only what the config set
+        self.assertEqual(broken(lambda s: s["defaults"].pop("scenes")), [whole])
         self.assertEqual(broken(lambda s: s["defaults"].update(extra={})), [whole])
-        self.assertEqual(
-            broken(lambda s: s["defaults"].update(look=[])),
-            ["defaults.look, defaults.display and defaults.quiet are not all objects"],
-        )
+        for table in ("look", "scenes"):
+            self.assertEqual(
+                broken(lambda s, t=table: s["defaults"].update({t: []})),
+                ["defaults.look, .display, .quiet and .scenes are not all objects"],
+            )
 
     def test_the_values_follow_the_config_rules(self):
         def given(**tables):
@@ -208,9 +211,26 @@ class DefaultsContractTest(unittest.TestCase):
                     look={"build": "a", "skin": "warm", "monarch_skin": "deep"},
                     display={"headline": "large", "clock": 12, "helmet_indoors": True},
                     quiet={"scenes": ["yard", "camp"], "minutes": 240},
+                    scenes={"cpu_hot": "camp", "pi_silent": "battlement"},
                 )
             ),
             [],
+        )
+        # a known scene the page cannot act the condition in keeps the contract; the page
+        # ignores it
+        self.assertEqual(broken(given(scenes={"night": "court"})), [])
+        self.assertEqual(
+            broken(given(look={"monarch_hair": "silver", "monarch_robe": "sable"})), []
+        )
+        self.assertEqual(
+            broken(given(scenes={"cpu": "camp", "attack": "moon"}, look={"monarch_robe": "red"})),
+            [
+                'defaults.look.monarch_robe: unknown value "red"; use blue, forest, violet, wine, '
+                "teal or sable",
+                "defaults.scenes.cpu: unknown condition",
+                'defaults.scenes.attack: unknown value "moon"; use battlement, camp, house, yard, '
+                "cellar, smithy or court",
+            ],
         )
         self.assertEqual(
             broken(given(look={"skin": "pale"}, quiet={"minutes": 0, "pace": 3})),

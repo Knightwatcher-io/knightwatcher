@@ -25,7 +25,7 @@
      without one. pl=1 outlines the scene's places for watched things. th= sets the demo's watched
      things: kinds separated by commas, each followed by - for down or ! for down and alerting; th
      is the list in the contract's shape, or null without the hook. set= opens the settings screen
-     at load on a page (knight, monarch, display, quiet, status), or shows the hold's cue (hold). */
+     at load on a page (knight, monarch, display, quiet, scenes, status), or shows the hold's cue (hold). */
   const tHook = hv('t') == null ? NaN : +hv('t');
   const thHook = (H0.match(/[#&]th=([^&]*)/) || [])[1];
   KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'),
@@ -50,12 +50,14 @@
      display's saved choices, the defaults in the state file and the page's own (KW.settings). The
      hooks, in the contract's names: arm=one the sword and shield and arm=two the greatsword; sk=,
      hc=, tb= and pm= the skin, hair, tabard and plume swatches; hy= the hair style; mon= the
-     monarch and ms= the monarch's skin; hs= the headline size (s, m, l), h= the helmet (on, or auto
-     and off for the helmet off indoors; off also takes it off outdoors) and ck= the clock (12 or
-     24). A value a level does not know is ignored, with a line in the console. */
+     monarch, ms= the monarch's skin, mh= the monarch's hair (a hair swatch) and mr= the monarch's
+     robe (a tabard swatch); hs= the headline size (s, m, l), h= the helmet (on, or auto and off for
+     the helmet off indoors; off also takes it off outdoors) and ck= the clock (12 or 24); and
+     sc=<condition>:<scene>, separated by commas, the scene each condition plays in. A value a level
+     does not know is ignored, with a line in the console. */
   // The helmet and the headline size are read from S each time, since the review bar may set
   // them as the address does.
-  const HOOK = { look: {}, quiet: {}, get display() {
+  const HOOK = { look: {}, quiet: {}, scenes: {}, get display() {
     const d = {};
     if (hv('ck') !== undefined) d.clock = { 12: 12, 24: 24 }[hv('ck')] || hv('ck');
     if (fixed.has('hs')) d.headline = { s: 'small', m: 'medium', l: 'large' }[S.hs];
@@ -63,7 +65,10 @@
     return d;
   } };
   if (hv('arm') !== undefined) HOOK.look.weapon = { one: 'sword_and_shield', two: 'greatsword' }[hv('arm')] || hv('arm');
-  for (const [h, k] of [['sk', 'skin'], ['hc', 'hair'], ['hy', 'hair_style'], ['tb', 'tabard'], ['pm', 'plume'], ['mon', 'monarch'], ['ms', 'monarch_skin']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
+  for (const [h, k] of [['sk', 'skin'], ['hc', 'hair'], ['hy', 'hair_style'], ['tb', 'tabard'], ['pm', 'plume'], ['mon', 'monarch'], ['ms', 'monarch_skin'],
+    ['mh', 'monarch_hair'], ['mr', 'monarch_robe']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
+  const scHook = (H0.match(/[#&]sc=([^&]*)/) || [])[1];
+  if (scHook !== undefined) for (const item of scHook.split(',').filter(Boolean)) { const [c, v] = item.split(':'); HOOK.scenes[c] = v === undefined ? '' : v; }
   const store = KW.settings.create({ hooks: HOOK, storage: () => window.localStorage, pack: () => KW.knight.basePack() });
   let lookKey = '{}', twelve = false;
   /* Puts what the settings say into the knight, the options and the clock. Returns whether the

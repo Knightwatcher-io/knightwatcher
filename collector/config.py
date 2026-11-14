@@ -3,8 +3,8 @@
 Every setting has a default here, and docs/configuration.md documents each one. A source runs
 when its table is present in config.toml and its `enabled` is not false. Watched things are the
 `[[thing]]` tables, checked here and turned into one list with the Pi of `[sources.pi]` first.
-The `[look]`, `[display]` and `[quiet]` tables are the settings screen's household defaults; they
-have no defaults here, and only what they set is written to state.json.
+The `[look]`, `[display]`, `[quiet]` and `[scenes]` tables are the settings screen's household
+defaults; they have no defaults here, and only what they set is written to state.json.
 """
 
 from __future__ import annotations
@@ -154,23 +154,28 @@ _PLAIN_URL = re.compile(r"^[!-~]+$")
 # The name the Pi of [sources.pi] has as a thing.
 PI_NAME = "Pi"
 
-# The household defaults for the display's settings screen: the [look], [display] and [quiet]
-# tables, written to state.json as `defaults` with only the keys the config sets. Each key maps to
-# the values it may take, in the order the messages list them.
+# The household defaults for the display's settings screen: the [look], [display], [quiet] and
+# [scenes] tables, written to state.json as `defaults` with only the keys the config sets. Each key
+# maps to the values it may take, in the order the messages list them.
 # The swatch families (skin, hair, tabard, plume) are those of web/packs/base.pack.json, the hair
 # styles are its hair.* items, and the builds and monarchs are the letters the settings screen
 # offers. The page would ignore a value the base pack lacks, so these lists follow the pack.
+# The monarch's hair and robe take the hair and tabard swatches.
 SKIN_TONES = ("fair", "warm", "golden", "tan", "brown", "deep")
+HAIR_COLOURS = ("black", "dark", "brown", "auburn", "blonde", "silver")
+TABARD_COLOURS = ("blue", "forest", "violet", "wine", "teal", "sable")
 LOOK_CHOICES: dict[str, tuple[str, ...]] = {
     "build": ("a", "b", "c"),
     "weapon": ("greatsword", "sword_and_shield"),
     "skin": SKIN_TONES,
-    "hair": ("black", "dark", "brown", "auburn", "blonde", "silver"),
+    "hair": HAIR_COLOURS,
     "hair_style": ("short", "tied", "curls"),
-    "tabard": ("blue", "forest", "violet", "wine", "teal", "sable"),
+    "tabard": TABARD_COLOURS,
     "plume": ("red", "white", "gold", "royal", "green", "violet"),
     "monarch": ("a", "b", "c"),
     "monarch_skin": SKIN_TONES,
+    "monarch_hair": HAIR_COLOURS,
+    "monarch_robe": TABARD_COLOURS,
 }
 HEADLINE_SIZES = ("small", "medium", "large")
 CLOCKS = (24, 12)
@@ -179,7 +184,12 @@ QUIET_SCENES = ("battlement", "camp", "house", "yard")
 QUIET_MINUTES = (1, 240)
 DISPLAY_SETTINGS = ("headline", "clock", "helmet_indoors")
 QUIET_SETTINGS = ("scenes", "minutes")
-DEFAULT_TABLES = ("look", "display", "quiet")
+# Every scene the page draws, as ALL_SCENES in web/js/settings.js names them (the files of
+# web/js/scenes/). [scenes] maps a condition id to one of them. Which scene can act which
+# condition is the page's to know: a known scene that cannot act a condition is accepted here
+# and ignored by the page, with a line in its console.
+PAGE_SCENES = ("battlement", "camp", "house", "yard", "cellar", "smithy", "court")
+DEFAULT_TABLES = ("look", "display", "quiet", "scenes")
 
 
 class ConfigError(Exception):
@@ -602,7 +612,7 @@ def _choice(w: str, value: Any, allowed: tuple[str, ...], problems: list[str]) -
 
 
 def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
-    """Check the [look], [display] and [quiet] tables and return what they set.
+    """Check the [look], [display], [quiet] and [scenes] tables and return what they set.
 
     Nothing is filled in: a key the config leaves out is left out, and the page uses its own
     default for it.
@@ -611,6 +621,7 @@ def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
         "look": tuple(LOOK_CHOICES),
         "display": DISPLAY_SETTINGS,
         "quiet": QUIET_SETTINGS,
+        "scenes": tuple(CONDITION_IDS),
     }
     out: dict[str, dict[str, Any]] = {t: {} for t in DEFAULT_TABLES}
     for table in DEFAULT_TABLES:
@@ -620,13 +631,16 @@ def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
             continue
         for key in given:
             if key not in known[table]:
-                problems.append(f"{table}.{key}: unknown setting")
+                what = "condition" if table == "scenes" else "setting"
+                problems.append(f"{table}.{key}: unknown {what}")
         for key in known[table]:
             if key not in given:
                 continue
             value, w, before = given[key], f"{table}.{key}", len(problems)
             if table == "look":
                 _choice(w, value, LOOK_CHOICES[key], problems)
+            elif table == "scenes":
+                _choice(w, value, PAGE_SCENES, problems)
             elif key == "headline":
                 _choice(w, value, HEADLINE_SIZES, problems)
             elif key == "clock":
@@ -635,7 +649,7 @@ def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
             elif key == "helmet_indoors":
                 if not isinstance(value, bool):
                     problems.append(f"{w}: expected true or false")
-            elif key == "scenes":
+            elif key == "scenes":  # quiet.scenes
                 _quiet_scenes(w, value, problems)
             elif key == "minutes":
                 low, high = QUIET_MINUTES
@@ -647,7 +661,7 @@ def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
 
 
 def check_defaults(tables: dict) -> list[str]:
-    """Every problem with the [look], [display] and [quiet] tables of a parsed config."""
+    """Every problem with the [look], [display], [quiet] and [scenes] tables of a parsed config."""
     problems: list[str] = []
     _defaults(tables, problems)
     return problems

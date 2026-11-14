@@ -30,8 +30,8 @@ standard library alone, and it runs as a container. Its settings are in
    output folder before renaming it into place. The file is mode 644 so that the web server can
    read it. The memory file is then saved if anything in it changed. Every file also carries
    `defaults`, the settings screen's household defaults, copied unchanged from the `[look]`,
-   `[display]` and `[quiet]` tables of `config.toml`. The configuration is read once, at start,
-   so a change to those tables reaches the file at the next start.
+   `[display]`, `[quiet]` and `[scenes]` tables of `config.toml`. The configuration is read once,
+   at start, so a change to those tables reaches the file at the next start.
 
 Between reads a source's last reading stands. It is written to the file and judged at every
 poll, but it is not observed again, so it raises no events, and its entry in `sources` keeps the

@@ -70,6 +70,11 @@
 
   KW.scenes.camp = {
     spot: 88, places: PLACES, outdoors: true,
+    // The conditions this scene can act out (docs/page.md): the attack with the weapon raised,
+    // hunger, the stare at the empty dish to the knight's right, and running hot; and, as a quiet
+    // scene, a thing down and memory running tight. Kept as plain data for the world format being
+    // drafted to take over.
+    can: ['attack', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight'],
     rounds: [{ x: 88, act: 'sniff', dur: 22 }, { x: 68, act: 'yawn', dur: 14 }, { x: 96, act: 'look', dur: 16 }],
     paint, draw, foeZone: FOE_ZONE
   };

@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import re
@@ -7,6 +8,7 @@ import unittest
 from collector.config import (
     CONDITION_IDS,
     LOOK_CHOICES,
+    PAGE_SCENES,
     SOURCE_DEFAULTS,
     ConfigError,
     build,
@@ -531,27 +533,32 @@ FULL_LOOK = {
     "plume": "gold",
     "monarch": "c",
     "monarch_skin": "deep",
+    "monarch_hair": "silver",
+    "monarch_robe": "wine",
 }
+EMPTY = {"look": {}, "display": {}, "quiet": {}, "scenes": {}}
+SCENES_ALLOWED = "use battlement, camp, house, yard, cellar, smithy or court"
 
 
 class DefaultsConfigTest(unittest.TestCase):
-    """The [look], [display] and [quiet] tables: the settings screen's household defaults."""
+    """The [look], [display], [quiet] and [scenes] tables: the settings screen's household
+    defaults."""
 
     def assertProblems(self, raw, *expected):
         self.assertEqual(problems(raw), list(expected))
 
     def test_absent_tables_set_nothing(self):
-        self.assertEqual(build({}).defaults, {"look": {}, "display": {}, "quiet": {}})
-        self.assertEqual(
-            build({"look": {}, "display": {}, "quiet": {}}).defaults,
-            {"look": {}, "display": {}, "quiet": {}},
-        )
+        self.assertEqual(build({}).defaults, EMPTY)
+        self.assertEqual(build(copy.deepcopy(EMPTY)).defaults, EMPTY)
 
     def test_only_the_keys_set_are_kept(self):
         c = build({"look": {"skin": "deep"}, "quiet": {"minutes": 3}})
         self.assertEqual(
-            c.defaults, {"look": {"skin": "deep"}, "display": {}, "quiet": {"minutes": 3}}
+            c.defaults,
+            {"look": {"skin": "deep"}, "display": {}, "quiet": {"minutes": 3}, "scenes": {}},
         )
+        c = build({"scenes": {"cpu_hot": "camp"}})
+        self.assertEqual(c.defaults, {**EMPTY, "scenes": {"cpu_hot": "camp"}})
 
     def test_a_full_look(self):
         self.assertEqual(build({"look": FULL_LOOK}).defaults["look"], FULL_LOOK)
@@ -597,6 +604,17 @@ class DefaultsConfigTest(unittest.TestCase):
             'look.monarch_skin: unknown value "Warm"; use fair, warm, golden, tan, brown or deep',
         )
         self.assertProblems(
+            {"look": {"monarch_hair": "drawn", "monarch_robe": "red"}},
+            'look.monarch_hair: unknown value "drawn"; use black, dark, brown, auburn, blonde or '
+            "silver",
+            'look.monarch_robe: unknown value "red"; use blue, forest, violet, wine, teal or sable',
+        )
+        # "As drawn" is the key left out, never a value.
+        self.assertProblems(
+            {"look": {"monarch_hair": ""}},
+            'look.monarch_hair: unknown value ""; use black, dark, brown, auburn, blonde or silver',
+        )
+        self.assertProblems(
             {"look": {"build": 1, "skin": ["warm"]}},
             "look.build: expected text; use a, b or c",
             "look.skin: expected text; use fair, warm, golden, tan, brown or deep",
@@ -636,6 +654,34 @@ class DefaultsConfigTest(unittest.TestCase):
             problems({"quiet": {"scenes": ["court"], "minutes": 5}}),
             ['quiet.scenes: unknown scene "court"; use battlement, camp, house or yard'],
         )
+
+    def test_scenes(self):
+        # Every condition the collector knows, in every scene the page draws, is accepted: the
+        # page decides which scene can act which condition, and ignores the rest.
+        for cid in CONDITION_IDS:
+            for scene in PAGE_SCENES:
+                self.assertEqual(
+                    build({"scenes": {cid: scene}}).defaults["scenes"], {cid: scene}, cid
+                )
+        full = {"attack": "camp", "disk_full": "yard", "pi_silent": "battlement", "night": "camp"}
+        self.assertEqual(build({"scenes": full}).defaults["scenes"], full)
+
+    def test_each_bad_scenes_entry(self):
+        self.assertProblems(
+            {"scenes": {"cpu": "camp", "cpu_hot": "moon", "attack": "Camp"}},
+            "scenes.cpu: unknown condition",
+            f'scenes.attack: unknown value "Camp"; {SCENES_ALLOWED}',
+            f'scenes.cpu_hot: unknown value "moon"; {SCENES_ALLOWED}',
+        )
+        self.assertProblems(
+            {"scenes": {"cpu_hot": ["camp"], "night": 1}},
+            f"scenes.cpu_hot: expected text; {SCENES_ALLOWED}",
+            f"scenes.night: expected text; {SCENES_ALLOWED}",
+        )
+        self.assertProblems({"scenes": "camp"}, "scenes: expected a table")
+        # A bad entry is not kept beside a good one: the load fails whole.
+        with self.assertRaises(ConfigError):
+            build({"scenes": {"cpu_hot": "camp", "attack": "moon"}})
 
     def test_quiet_minutes(self):
         bad = "quiet.minutes: must be a whole number from 1 to 240"
@@ -700,7 +746,7 @@ class LoadTest(unittest.TestCase):
         self.assertEqual([t["name"] for t in c.things], ["Pi"])
         self.assertIn("thing_down", c.conditions["priority"])
         # So are the settings screen's defaults, so the file sets none of them.
-        self.assertEqual(c.defaults, {"look": {}, "display": {}, "quiet": {}})
+        self.assertEqual(c.defaults, EMPTY)
 
     def test_the_example_tables_load_once_uncommented(self):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -708,7 +754,7 @@ class LoadTest(unittest.TestCase):
             example = fh.read()
         # A commented setting is "# key = value", "# [[thing]]" or the header of a defaults
         # table; a commented note is not.
-        setting = re.compile(r"^# (\[\[thing\]\]|\[(?:look|display|quiet)\]|[a-z_]+ = .+)$")
+        setting = re.compile(r"^# (\[\[thing\]\]|\[(?:look|display|quiet|scenes)\]|[a-z_]+ = .+)$")
         lines = [
             m.group(1) if (m := setting.match(line)) else line for line in example.splitlines()
         ]
@@ -734,9 +780,18 @@ class LoadTest(unittest.TestCase):
                     "plume": "red",
                     "monarch": "a",
                     "monarch_skin": "warm",
+                    "monarch_hair": "brown",
+                    "monarch_robe": "wine",
                 },
                 "display": {"headline": "medium", "clock": 24, "helmet_indoors": False},
                 "quiet": {"scenes": ["battlement", "camp", "house", "yard"], "minutes": 10},
+                "scenes": {
+                    "attack": "battlement",
+                    "disk_full": "cellar",
+                    "backup_overdue": "house",
+                    "pi_silent": "house",
+                    "cpu_hot": "yard",
+                },
             },
         )
 

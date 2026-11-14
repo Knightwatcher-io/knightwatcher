@@ -172,9 +172,9 @@ def validate(state: Any) -> list[str]:
 
     defaults = state.get("defaults")
     if not isinstance(defaults, dict) or set(defaults) != set(DEFAULT_TABLES):
-        p.append("defaults is not an object with look, display and quiet")
+        p.append("defaults is not an object with look, display, quiet and scenes")
     elif not all(isinstance(defaults[t], dict) for t in DEFAULT_TABLES):
-        p.append("defaults.look, defaults.display and defaults.quiet are not all objects")
+        p.append("defaults.look, .display, .quiet and .scenes are not all objects")
     else:
         # The same rules as the config tables they come from.
         p += [f"defaults.{problem}" for problem in check_defaults(defaults)]

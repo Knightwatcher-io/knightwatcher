@@ -134,6 +134,9 @@ and a state of the knight. Highest first:
 | `streaming` | quiet | house | watching the television |
 | `night` | asleep | house | in bed, screen dimmed |
 
+That is each condition's own scene. The settings may move five of them to another scene that can
+act them; see [Scenes chosen per condition](#scenes-chosen-per-condition).
+
 With no condition active the quiet scenes take turns: battlement, camp, house, training yard,
 ten minutes each by default, and a minute each in the demo. The settings choose which of the four
 take turns, at least one, and one length for all of them.
@@ -143,17 +146,64 @@ monarch A, a king; monarch B, a queen; and monarch C, a monarch who reads as nei
 sit the same way and talk with the knight the same way, and differ in hair, crown, robe and what
 they hold. A is the default. The monarch has a skin tone of their own, chosen apart from the
 knight's from the same six skins of the base pack; by default it is the warm skin, the colours the
-court has always drawn. The settings choose both (see below), and the address's `mon=` and `ms=`
-choose them for screenshots (see [page.md](./page.md#the-address)).
+court has always drawn. The monarch's hair and robe may take another colour too: the hair any of
+the six hair colours of the base pack, the robe any of its six tabard colours. By default, and
+whenever "As drawn" is chosen, each monarch keeps their own colours (A brown hair and a red robe,
+B dark hair and a violet robe, C fair hair and a green robe). A hair colour shades the monarch's
+hair, beard and darkest strands from its own three bands, and the brows from its darkest band,
+or from its lightest where that stands out more from the skin (light hair on a dark skin); a
+tabard colour's four bands become the robe's, the far sleeve taking its darker two. The crowns,
+the ermine and what each holds keep their colours. The settings choose all of this (see below),
+and the address's `mon=`, `ms=`, `mh=` and `mr=` choose it for screenshots (see
+[page.md](./page.md#the-address)).
+
+## Scenes chosen per condition
+
+Each scene declares the conditions it can act out, from what each condition needs: the props it
+shows, where the knight stands and what the knight does. A scene that takes the knight's pose
+over for its own story (the court, where the knight talks with the monarch, and the smithy, where
+the knight hammers) acts only its own condition. The pie stands to the right of the knight's spot
+in the battlement, the camp and the house, and to the left everywhere else, so only those three
+can show the knight staring at the empty dish. The weapon is put away in the house and the cellar,
+so neither can show it raised against an attack. A condition the knight strolls through (the
+crate of `disk_full`) needs a scene whose spots leave the knight's face alone: the cellar's guard
+spots and the yard's, not the spots where the knight sniffs or yawns. Running hot and hunger show
+on the knight alone, so every scene that leaves the pose alone can act them.
+
+| Condition | battlement | camp | house | yard | cellar | smithy | court |
+|---|---|---|---|---|---|---|---|
+| `attack` | own | yes | | yes | | | |
+| `wan_down` | own | | | | | | |
+| `container_unhealthy` | | | own | | | | |
+| `disk_full` | | | | yes | own | | |
+| `backup_overdue` | yes | yes | own | yes | yes | | |
+| `pi_silent` | yes | yes | own | | | | |
+| `thing_down` | yes | yes | yes | yes | | | |
+| `cpu_hot` | yes | yes | yes | own | yes | | |
+| `memory_tight` | yes | yes | yes | yes | | | |
+| `ssh_session` | | | | | | | own |
+| `updating` | | | | | | own | |
+| `streaming` | | | own | | | | |
+| `night` | | | own | | | | |
+
+The settings offer a choice of scene for a condition that has a scene of its own and that more than
+one scene can act: `attack`, `disk_full`, `backup_overdue`, `pi_silent` and `cpu_hot`. Not
+offered: `wan_down` (only the battlement has the bell's rope to cut), `container_unhealthy` and
+`night` (the bed is in the house; the night is left out by design, since the knight sleeps where
+the bed is), `streaming` (the television), `ssh_session` (the court) and `updating` (the smithy),
+each of which one scene alone can act; and `thing_down` and `memory_tight`, which play in whichever
+quiet scene is showing. Nothing changes until a scene is chosen, and a choice the chosen scene
+cannot act is ignored, so the condition plays in its own scene. A chosen scene changes only where
+the condition plays: the condition's level, its headline and the knight's state stay as they are.
 
 ## Settings
 
 Each display has a settings screen, opened by pressing and holding anywhere on it for two seconds;
 a tap still toggles full screen. It holds the knight's look (build, weapon, skin, hair colour and
-style, tabard, plume), the monarch and the monarch's skin, the display preferences (headline size,
-a 24-hour or 12-hour clock, whether the helmet stays on indoors), which quiet scenes take turns and
-for how long, and a read-only status page: the page's version, the state file's age, the sources
-and the packs. A side rail keeps every page one tap away. A choice applies at once, to the scene
+style, tabard, plume), the monarch and the monarch's skin, hair and robe, the display preferences
+(headline size, a 24-hour or 12-hour clock, whether the helmet stays on indoors), which quiet
+scenes take turns and for how long, the scene each offered condition plays in, and a read-only
+status page: the page's version, the state file's age, the sources and the packs. A side rail keeps every page one tap away. A choice applies at once, to the scene
 behind as well, which keeps running dimmed, and there is no Save button; each page ends with a
 button that puts this display back to the config default. The screen closes with DONE, Escape, or
 after a minute without a touch, counting down the last ten seconds; tapping the dimmed edge does

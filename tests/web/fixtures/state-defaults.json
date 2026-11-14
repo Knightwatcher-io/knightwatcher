@@ -12,8 +12,10 @@
   },
   "defaults": {
     "look": { "build": "a", "weapon": "sword_and_shield", "skin": "deep", "hair": "black", "hair_style": "curls",
-              "tabard": "sable", "plume": "gold", "monarch": "b", "monarch_skin": "brown" },
+              "tabard": "sable", "plume": "gold", "monarch": "b", "monarch_skin": "brown",
+              "monarch_hair": "silver", "monarch_robe": "teal" },
     "display": { "headline": "large", "clock": 12, "helmet_indoors": true },
-    "quiet": { "scenes": ["battlement", "yard"], "minutes": 15 }
+    "quiet": { "scenes": ["battlement", "yard"], "minutes": 15 },
+    "scenes": { "cpu_hot": "camp", "pi_silent": "battlement" }
   }
 }

@@ -75,6 +75,11 @@
 
   KW.scenes.battlement = {
     spot: 96, places: PLACES, outdoors: true,
+    // The conditions this scene can act out (docs/page.md): the attack with the weapon raised, the
+    // WAN's cut rope, which only it has, hunger, the stare at the empty dish to the knight's right,
+    // and running hot; and, as a quiet scene, a thing down and memory running tight. Kept as plain
+    // data for the world format being drafted to take over.
+    can: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight'],
     rounds: [{ x: 96, act: 'guard', dur: 18 }, { x: 66, act: 'look', dur: 16 }, { x: 126, act: 'sniff', dur: 12 }],
     key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt, foeZone: FOE_ZONE
   };

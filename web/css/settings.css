@@ -75,6 +75,12 @@
 .kws-opt.off .name { color: #525c6e; }
 .kws-opt.pic .chip { width: 124px; height: 184px; padding: 0; background: #0e0b13; overflow: hidden; }
 .kws-opt.pic canvas { width: 124px; height: 184px; display: block; }
+.kws-opt .sub { font-size: var(--t-name); line-height: .95; color: #ffb000; white-space: nowrap; }
+/* A scene to act a condition in, as a small picture of it. */
+.kws-opt.scene .chip { width: 160px; height: 100px; padding: 0; background: #0e0b13; overflow: hidden; }
+.kws-opt.scene canvas { width: 160px; height: 100px; display: block; }
+.kws-opt.scene .name { max-width: none; white-space: nowrap; }
+.kws-intro { margin: 12px 0 4px; max-width: 40em; font-size: var(--t-name); line-height: 1.1; color: #aab6c6; }
 .kws-opt .chip .hl { line-height: .8; color: #39ff6a; }
 .kws-opt .chip small { font-size: .55em; margin-left: 3px; }
 
@@ -115,6 +121,12 @@
 .kws-foot { flex: none; padding: 8px 24px 8px; border-top: 3px solid #2b2333; font-size: var(--t-name); line-height: 1; color: #7d899b; }
 .kws-foot.soon { color: #ffb000; }
 
+/* The monarch's page at full size keeps its court a little narrower, so that a row of seven
+   colours, "As drawn" first, stays on one line beside it. */
+@media (min-width: 1201px) and (min-height: 761px) {
+  .kws-main[data-page="monarch"] { --prev: 300px; }
+}
+
 /* A small window: the same screen, a little tighter, targets still 48 pixels or more. */
 @media (max-width: 1200px), (max-height: 760px) {
   .kws { --t-title: 38px; --t-rail: 28px; --t-label: 26px; --t-body: 23px; --t-name: 20px; --chip: 52px; --rail: 190px; --prev: 290px; --inset: 10px; --gap: 12px; }
@@ -129,6 +141,7 @@
   .kws-note { grid-column: 1; }
   .kws-opts { gap: 8px 10px; }
   .kws-opt.pic .chip, .kws-opt.pic canvas { width: 96px; height: 143px; }
+  .kws-opt.scene .chip, .kws-opt.scene canvas { width: 128px; height: 80px; }
   .kws-opt.text .chip { min-width: 96px; padding: 4px 12px 0; }
   .kws-opt.wide .chip { min-width: 120px; padding: 4px 12px 0; }
   .kws-scene canvas { width: 128px; height: 80px; }

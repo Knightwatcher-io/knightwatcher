@@ -28,8 +28,10 @@ Open `web/index.html` in a browser. With no `state.json` beside it, the page run
 and shows a bar of controls for every scene and state.
 
 Press and hold anywhere on the display for two seconds to open the settings: the knight's weapon,
-skin, hair, tabard and plume, the monarch, the headline size, a 12-hour clock, the helmet indoors
-and which quiet scenes take turns. Each display keeps its own choices in its browser. The defaults
+skin, hair, tabard and plume, the monarch and the monarch's skin, hair and robe, the headline size,
+a 12-hour clock, the helmet indoors, which quiet scenes take turns, and the scene some conditions
+play in (running hot at the camp rather than the training yard, say). Each display keeps its own
+choices in its browser. The defaults
 every display starts from are set in `config.toml`; see
 [Configuration](docs/configuration.md#the-settings-screens-defaults).
 
