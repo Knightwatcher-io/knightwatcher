@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from collector import SCHEMA, text
-from collector.config import CONDITION_IDS
+from collector.config import CONDITION_IDS, DEFAULT_TABLES, check_defaults
 
 LEVELS = {"critical", "warning", "work", "quiet", "sleep"}
 EVENT_TYPES = {"ad_blocked", "ip_banned", "import", "backup_done"}
@@ -169,6 +169,15 @@ def validate(state: Any) -> list[str]:
                 or not all(0 <= n < listed for n in places)
             ):
                 p.append(f"conditions[{i}].things is not positions in facts.things.list")
+
+    defaults = state.get("defaults")
+    if not isinstance(defaults, dict) or set(defaults) != set(DEFAULT_TABLES):
+        p.append("defaults is not an object with look, display and quiet")
+    elif not all(isinstance(defaults[t], dict) for t in DEFAULT_TABLES):
+        p.append("defaults.look, defaults.display and defaults.quiet are not all objects")
+    else:
+        # The same rules as the config tables they come from.
+        p += [f"defaults.{problem}" for problem in check_defaults(defaults)]
 
     sources = state.get("sources")
     if not isinstance(sources, dict):

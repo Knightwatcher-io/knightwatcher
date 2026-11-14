@@ -4,7 +4,14 @@ import re
 import tempfile
 import unittest
 
-from collector.config import CONDITION_IDS, SOURCE_DEFAULTS, ConfigError, build, load
+from collector.config import (
+    CONDITION_IDS,
+    LOOK_CHOICES,
+    SOURCE_DEFAULTS,
+    ConfigError,
+    build,
+    load,
+)
 
 
 class BuildTest(unittest.TestCase):
@@ -514,6 +521,147 @@ class ThingConfigTest(unittest.TestCase):
         self.assertProblems({"conditions": {"priority": listed}, "sources": PI})
 
 
+FULL_LOOK = {
+    "build": "b",
+    "weapon": "sword_and_shield",
+    "skin": "tan",
+    "hair": "auburn",
+    "hair_style": "curls",
+    "tabard": "teal",
+    "plume": "gold",
+    "monarch": "c",
+    "monarch_skin": "deep",
+}
+
+
+class DefaultsConfigTest(unittest.TestCase):
+    """The [look], [display] and [quiet] tables: the settings screen's household defaults."""
+
+    def assertProblems(self, raw, *expected):
+        self.assertEqual(problems(raw), list(expected))
+
+    def test_absent_tables_set_nothing(self):
+        self.assertEqual(build({}).defaults, {"look": {}, "display": {}, "quiet": {}})
+        self.assertEqual(
+            build({"look": {}, "display": {}, "quiet": {}}).defaults,
+            {"look": {}, "display": {}, "quiet": {}},
+        )
+
+    def test_only_the_keys_set_are_kept(self):
+        c = build({"look": {"skin": "deep"}, "quiet": {"minutes": 3}})
+        self.assertEqual(
+            c.defaults, {"look": {"skin": "deep"}, "display": {}, "quiet": {"minutes": 3}}
+        )
+
+    def test_a_full_look(self):
+        self.assertEqual(build({"look": FULL_LOOK}).defaults["look"], FULL_LOOK)
+        for key, allowed in LOOK_CHOICES.items():
+            for value in allowed:
+                self.assertEqual(build({"look": {key: value}}).defaults["look"], {key: value})
+
+    def test_a_full_display(self):
+        for display in (
+            {"headline": "small", "clock": 12, "helmet_indoors": True},
+            {"headline": "medium", "clock": 24, "helmet_indoors": False},
+            {"headline": "large"},
+        ):
+            self.assertEqual(build({"display": display}).defaults["display"], display)
+
+    def test_a_full_quiet(self):
+        quiet = {"scenes": ["battlement", "camp", "house", "yard"], "minutes": 10}
+        self.assertEqual(build({"quiet": quiet}).defaults["quiet"], quiet)
+        # One scene is enough, the order is kept, and the bounds are allowed.
+        for quiet in (
+            {"scenes": ["yard"], "minutes": 1},
+            {"scenes": ["house", "battlement"], "minutes": 240},
+        ):
+            self.assertEqual(build({"quiet": quiet}).defaults["quiet"], quiet)
+
+    def test_each_bad_look_value(self):
+        self.assertProblems(
+            {"look": {"build": "d", "weapon": "axe", "skin": "pale", "hair": "green"}},
+            'look.build: unknown value "d"; use a, b or c',
+            'look.weapon: unknown value "axe"; use greatsword or sword_and_shield',
+            'look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep',
+            'look.hair: unknown value "green"; use black, dark, brown, auburn, blonde or silver',
+        )
+        self.assertProblems(
+            {"look": {"hair_style": "bald", "tabard": "red", "plume": "blue"}},
+            'look.hair_style: unknown value "bald"; use short, tied or curls',
+            'look.tabard: unknown value "red"; use blue, forest, violet, wine, teal or sable',
+            'look.plume: unknown value "blue"; use red, white, gold, royal, green or violet',
+        )
+        self.assertProblems(
+            {"look": {"monarch": "A", "monarch_skin": "Warm"}},
+            'look.monarch: unknown value "A"; use a, b or c',
+            'look.monarch_skin: unknown value "Warm"; use fair, warm, golden, tan, brown or deep',
+        )
+        self.assertProblems(
+            {"look": {"build": 1, "skin": ["warm"]}},
+            "look.build: expected text; use a, b or c",
+            "look.skin: expected text; use fair, warm, golden, tan, brown or deep",
+        )
+
+    def test_each_bad_display_value(self):
+        self.assertProblems(
+            {"display": {"headline": "huge", "clock": 13, "helmet_indoors": 1}},
+            'display.headline: unknown value "huge"; use small, medium or large',
+            "display.clock: must be 24 or 12",
+            "display.helmet_indoors: expected true or false",
+        )
+        self.assertProblems({"display": {"clock": "12"}}, "display.clock: must be 24 or 12")
+        self.assertProblems({"display": {"clock": True}}, "display.clock: must be 24 or 12")
+        self.assertProblems({"display": {"clock": 12.0}}, "display.clock: must be 24 or 12")
+
+    def test_a_boolean_given_as_text(self):
+        for text in ("false", "true", "no"):
+            self.assertProblems(
+                {"display": {"helmet_indoors": text}},
+                "display.helmet_indoors: expected true or false",
+            )
+
+    def test_quiet_scenes(self):
+        listed = "list one or more of battlement, camp, house or yard"
+        self.assertProblems({"quiet": {"scenes": []}}, f"quiet.scenes: {listed}")
+        self.assertProblems({"quiet": {"scenes": "camp"}}, f"quiet.scenes: {listed}")
+        self.assertProblems(
+            {"quiet": {"scenes": ["camp", "yard", "camp"]}}, 'quiet.scenes: "camp" listed twice'
+        )
+        self.assertProblems(
+            {"quiet": {"scenes": ["court", "camp", 3]}},
+            'quiet.scenes: unknown scene "court"; use battlement, camp, house or yard',
+            "quiet.scenes: unknown scene 3; use battlement, camp, house or yard",
+        )
+        self.assertEqual(
+            problems({"quiet": {"scenes": ["court"], "minutes": 5}}),
+            ['quiet.scenes: unknown scene "court"; use battlement, camp, house or yard'],
+        )
+
+    def test_quiet_minutes(self):
+        bad = "quiet.minutes: must be a whole number from 1 to 240"
+        for minutes in (0, -5, 241, 10.0, 2.5, "10", True):
+            self.assertProblems({"quiet": {"minutes": minutes}}, bad)
+
+    def test_a_bad_value_is_not_kept_beside_good_ones(self):
+        # The load fails, so nothing is written; the check still names every problem at once.
+        self.assertProblems(
+            {"look": {"skin": "warm", "plume": "pink"}, "quiet": {"scenes": [], "minutes": 5}},
+            'look.plume: unknown value "pink"; use red, white, gold, royal, green or violet',
+            "quiet.scenes: list one or more of battlement, camp, house or yard",
+        )
+
+    def test_an_unknown_key_and_tables_that_are_not_tables(self):
+        self.assertProblems({"look": {"colour": "blue"}}, "look.colour: unknown setting")
+        self.assertProblems({"display": {"clock_24": True}}, "display.clock_24: unknown setting")
+        self.assertProblems(
+            {"quiet": {"scene": ["camp"], "minutes": 5}}, "quiet.scene: unknown setting"
+        )
+        self.assertProblems({"look": "warm"}, "look: expected a table")
+        self.assertProblems({"display": []}, "display: expected a table")
+        self.assertProblems({"quiet": 10}, "quiet: expected a table")
+        self.assertProblems({"settings": {}}, "settings: unknown table")
+
+
 class LoadTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -551,13 +699,16 @@ class LoadTest(unittest.TestCase):
         # The examples of watched things are commented out, so the Pi is the only thing.
         self.assertEqual([t["name"] for t in c.things], ["Pi"])
         self.assertIn("thing_down", c.conditions["priority"])
+        # So are the settings screen's defaults, so the file sets none of them.
+        self.assertEqual(c.defaults, {"look": {}, "display": {}, "quiet": {}})
 
-    def test_the_example_things_load_once_uncommented(self):
+    def test_the_example_tables_load_once_uncommented(self):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         with open(os.path.join(root, "config.example.toml"), encoding="utf-8") as fh:
             example = fh.read()
-        # A commented setting is "# key = value" or "# [[thing]]"; a commented note is not.
-        setting = re.compile(r"^# (\[\[thing\]\]|[a-z_]+ = .+)$")
+        # A commented setting is "# key = value", "# [[thing]]" or the header of a defaults
+        # table; a commented note is not.
+        setting = re.compile(r"^# (\[\[thing\]\]|\[(?:look|display|quiet)\]|[a-z_]+ = .+)$")
         lines = [
             m.group(1) if (m := setting.match(line)) else line for line in example.splitlines()
         ]
@@ -570,6 +721,24 @@ class LoadTest(unittest.TestCase):
             [("machine", 30, 180, True), ("camera", 60, 600, True), ("machine", 30, 180, False)],
         )
         self.assertTrue(c.things[3]["refused_counts"])
+        self.assertEqual(
+            c.defaults,
+            {
+                "look": {
+                    "build": "a",
+                    "weapon": "greatsword",
+                    "skin": "warm",
+                    "hair": "brown",
+                    "hair_style": "short",
+                    "tabard": "blue",
+                    "plume": "red",
+                    "monarch": "a",
+                    "monarch_skin": "warm",
+                },
+                "display": {"headline": "medium", "clock": 24, "helmet_indoors": False},
+                "quiet": {"scenes": ["battlement", "camp", "house", "yard"], "minutes": 10},
+            },
+        )
 
 
 if __name__ == "__main__":

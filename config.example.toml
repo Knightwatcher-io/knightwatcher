@@ -1,8 +1,8 @@
 # Knightwatcher collector settings. Copy to config.toml (ignored by git) and fill in your own.
 # Every value here is invented. docs/configuration.md describes each setting.
 # A source runs when its [sources.*] table is present and `enabled` is not false. Each source is
-# read every `every_s` seconds; between reads its last reading stands. Watched things, at the end,
-# are commented out.
+# read every `every_s` seconds; between reads its last reading stands. The settings screen's
+# defaults and the watched things, at the end, are commented out.
 
 [collector]
 interval_s = 10
@@ -126,6 +126,30 @@ secret = "sonarr"
 every_s = 30
 url = "http://192.0.2.31:7878"
 secret = "radarr"
+
+# The household defaults for the display's settings screen. Each display starts from these and
+# may change them for itself. A setting left out takes the page's own default. Remove the "# "
+# before a table and its settings to use them.
+
+# [look]
+# build = "a"                 # a, b or c
+# weapon = "greatsword"       # greatsword or sword_and_shield
+# skin = "warm"               # fair, warm, golden, tan, brown or deep
+# hair = "brown"              # black, dark, brown, auburn, blonde or silver
+# hair_style = "short"        # short, tied or curls
+# tabard = "blue"             # blue, forest, violet, wine, teal or sable
+# plume = "red"               # red, white, gold, royal, green or violet
+# monarch = "a"               # a, b or c
+# monarch_skin = "warm"       # the same six as skin
+
+# [display]
+# headline = "medium"         # small, medium or large
+# clock = 24                  # 24 or 12
+# helmet_indoors = false      # true keeps the helmet on in the house and the smithy
+
+# [quiet]
+# scenes = ["battlement", "camp", "house", "yard"]   # one or more of these four, no repeats
+# minutes = 10                # whole minutes each quiet scene shows, 1 to 240
 
 # Watched things: machines on the network, each drawn as a prop in the scene that changes when
 # its machine has been silent for its down_after_s. Remove the "# " before a setting to use it.

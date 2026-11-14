@@ -60,6 +60,11 @@ Every value below is invented.
     "thing:Gate cam": { "ok": false, "at": "2026-01-15T21:42:01Z",
                         "error": "first read still running" },
     "thing:Study laptop": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" }
+  },
+  "defaults": {
+    "look": { "skin": "tan", "hair": "auburn", "hair_style": "curls", "monarch": "b" },
+    "display": { "clock": 12 },
+    "quiet": {}
   }
 }
 ```
@@ -102,6 +107,11 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
   },
   "sources": {
     "thing:Vault": { "ok": true, "at": "2026-01-15T21:54:10Z", "error": "" }
+  },
+  "defaults": {
+    "look": { "skin": "tan", "hair": "auburn", "hair_style": "curls", "monarch": "b" },
+    "display": { "clock": 12 },
+    "quiet": {}
   }
 }
 ```
@@ -179,6 +189,28 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
   thing's check that ran but got no answer is `ok: true`, since the check worked; its `ok` is
   false only while its first check is still running (`first read still running`) and when a
   check ran out of time (`timed out`, then `previous read still running` while it hangs on).
+- **`defaults`** is the household default for the display's settings screen: what a display
+  shows until someone changes a setting on it, and what it goes back to when told to use the
+  config default. It comes from the `[look]`, `[display]` and `[quiet]` tables of `config.toml`
+  (see [configuration.md](./configuration.md#the-settings-screens-defaults)), read when the
+  collector starts, and is written unchanged into every file. It always has three objects,
+  `look`, `display` and `quiet`, and each holds only the settings the config sets, so a table
+  the config leaves out is `{}`. The collector fills in nothing: for a setting that is absent the
+  page uses its own default.
+  - `look`: `build` and `monarch` are `a`, `b` or `c`; `weapon` is `greatsword` or
+    `sword_and_shield`; `skin` and `monarch_skin` are `fair`, `warm`, `golden`, `tan`, `brown`
+    or `deep`; `hair` is `black`, `dark`, `brown`, `auburn`, `blonde` or `silver`; `hair_style`
+    is `short`, `tied` or `curls`; `tabard` is `blue`, `forest`, `violet`, `wine`, `teal` or
+    `sable`; `plume` is `red`, `white`, `gold`, `royal`, `green` or `violet`.
+  - `display`: `headline` is `small`, `medium` or `large`; `clock` is the number `24` or `12`;
+    `helmet_indoors` is `true` or `false`.
+  - `quiet`: `scenes` is a list of one or more of `battlement`, `camp`, `house` and `yard`, with
+    no repeats, in the order they take turns; `minutes` is a whole number from 1 to 240, how long
+    each quiet scene shows.
+
+  This collector writes only the values above. The page ignores a value it does not know and
+  uses its own default in its place, so a later collector can offer more. A file from a collector older than this section has no `defaults`, and the page then uses
+  its own defaults throughout.
 
 ## Who decides what
 

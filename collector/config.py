@@ -3,6 +3,8 @@
 Every setting has a default here, and docs/configuration.md documents each one. A source runs
 when its table is present in config.toml and its `enabled` is not false. Watched things are the
 `[[thing]]` tables, checked here and turned into one list with the Pi of `[sources.pi]` first.
+The `[look]`, `[display]` and `[quiet]` tables are the settings screen's household defaults; they
+have no defaults here, and only what they set is written to state.json.
 """
 
 from __future__ import annotations
@@ -152,6 +154,33 @@ _PLAIN_URL = re.compile(r"^[!-~]+$")
 # The name the Pi of [sources.pi] has as a thing.
 PI_NAME = "Pi"
 
+# The household defaults for the display's settings screen: the [look], [display] and [quiet]
+# tables, written to state.json as `defaults` with only the keys the config sets. Each key maps to
+# the values it may take, in the order the messages list them.
+# The swatch families (skin, hair, tabard, plume) are those of web/packs/base.pack.json, the hair
+# styles are its hair.* items, and the builds and monarchs are the letters the settings screen
+# offers. The page would ignore a value the base pack lacks, so these lists follow the pack.
+SKIN_TONES = ("fair", "warm", "golden", "tan", "brown", "deep")
+LOOK_CHOICES: dict[str, tuple[str, ...]] = {
+    "build": ("a", "b", "c"),
+    "weapon": ("greatsword", "sword_and_shield"),
+    "skin": SKIN_TONES,
+    "hair": ("black", "dark", "brown", "auburn", "blonde", "silver"),
+    "hair_style": ("short", "tied", "curls"),
+    "tabard": ("blue", "forest", "violet", "wine", "teal", "sable"),
+    "plume": ("red", "white", "gold", "royal", "green", "violet"),
+    "monarch": ("a", "b", "c"),
+    "monarch_skin": SKIN_TONES,
+}
+HEADLINE_SIZES = ("small", "medium", "large")
+CLOCKS = (24, 12)
+# The quiet scenes the page turns between, as TURNS in web/js/engine.js names them.
+QUIET_SCENES = ("battlement", "camp", "house", "yard")
+QUIET_MINUTES = (1, 240)
+DISPLAY_SETTINGS = ("headline", "clock", "helmet_indoors")
+QUIET_SETTINGS = ("scenes", "minutes")
+DEFAULT_TABLES = ("look", "display", "quiet")
+
 
 class ConfigError(Exception):
     """Raised with every problem found, one per line."""
@@ -169,6 +198,10 @@ class Config:
     secrets: dict[str, dict[str, str]] = field(default_factory=dict, repr=False)
     # Every enabled watched thing, the Pi of [sources.pi] first; see _things.
     things: list[dict[str, Any]] = field(default_factory=list)
+    # The settings screen's household defaults, holding only what the config sets; see _defaults.
+    defaults: dict[str, dict[str, Any]] = field(
+        default_factory=lambda: {t: {} for t in DEFAULT_TABLES}
+    )
 
     @property
     def interval_s(self) -> int:
@@ -555,6 +588,85 @@ def _things(raw: Any, sources: dict, conditions: dict, problems: list[str]) -> l
     return things
 
 
+def _say_or(values: tuple) -> str:
+    """a, b or c."""
+    words = [str(v) for v in values]
+    return f"{', '.join(words[:-1])} or {words[-1]}"
+
+
+def _choice(w: str, value: Any, allowed: tuple[str, ...], problems: list[str]) -> None:
+    if isinstance(value, str) and value in allowed:
+        return
+    given = f'unknown value "{value}"' if isinstance(value, str) else "expected text"
+    problems.append(f"{w}: {given}; use {_say_or(allowed)}")
+
+
+def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
+    """Check the [look], [display] and [quiet] tables and return what they set.
+
+    Nothing is filled in: a key the config leaves out is left out, and the page uses its own
+    default for it.
+    """
+    known = {
+        "look": tuple(LOOK_CHOICES),
+        "display": DISPLAY_SETTINGS,
+        "quiet": QUIET_SETTINGS,
+    }
+    out: dict[str, dict[str, Any]] = {t: {} for t in DEFAULT_TABLES}
+    for table in DEFAULT_TABLES:
+        given = raw.get(table, {})
+        if not isinstance(given, dict):
+            problems.append(f"{table}: expected a table")
+            continue
+        for key in given:
+            if key not in known[table]:
+                problems.append(f"{table}.{key}: unknown setting")
+        for key in known[table]:
+            if key not in given:
+                continue
+            value, w, before = given[key], f"{table}.{key}", len(problems)
+            if table == "look":
+                _choice(w, value, LOOK_CHOICES[key], problems)
+            elif key == "headline":
+                _choice(w, value, HEADLINE_SIZES, problems)
+            elif key == "clock":
+                if not _is_int(value) or value not in CLOCKS:
+                    problems.append(f"{w}: must be {_say_or(CLOCKS)}")
+            elif key == "helmet_indoors":
+                if not isinstance(value, bool):
+                    problems.append(f"{w}: expected true or false")
+            elif key == "scenes":
+                _quiet_scenes(w, value, problems)
+            elif key == "minutes":
+                low, high = QUIET_MINUTES
+                if not _is_int(value) or not low <= value <= high:
+                    problems.append(f"{w}: must be a whole number from {low} to {high}")
+            if len(problems) == before:
+                out[table][key] = list(value) if isinstance(value, list) else value
+    return out
+
+
+def check_defaults(tables: dict) -> list[str]:
+    """Every problem with the [look], [display] and [quiet] tables of a parsed config."""
+    problems: list[str] = []
+    _defaults(tables, problems)
+    return problems
+
+
+def _quiet_scenes(w: str, value: Any, problems: list[str]) -> None:
+    if not isinstance(value, list) or not value:
+        problems.append(f"{w}: list one or more of {_say_or(QUIET_SCENES)}")
+        return
+    seen = set()
+    for scene in value:
+        if not isinstance(scene, str) or scene not in QUIET_SCENES:
+            shown = f'"{scene}"' if isinstance(scene, str) else repr(scene)
+            problems.append(f"{w}: unknown scene {shown}; use {_say_or(QUIET_SCENES)}")
+        elif scene in seen:
+            problems.append(f'{w}: "{scene}" listed twice')
+        seen.add(scene)
+
+
 def build(raw: dict, secrets: dict | None = None) -> Config:
     """Validate a parsed config.toml and fill in the defaults.
 
@@ -563,7 +675,7 @@ def build(raw: dict, secrets: dict | None = None) -> Config:
     """
     problems: list[str] = []
     for key in raw:
-        if key not in ("collector", "conditions", "sources", "thing"):
+        if key not in ("collector", "conditions", "sources", "thing", *DEFAULT_TABLES):
             problems.append(f"{key}: unknown table")
     collector = _merge("collector", COLLECTOR_DEFAULTS, raw.get("collector", {}), problems)
     conditions = _merge("conditions", CONDITION_DEFAULTS, raw.get("conditions", {}), problems)
@@ -584,6 +696,7 @@ def build(raw: dict, secrets: dict | None = None) -> Config:
         for name, s in sources.items():
             _validate_source(name, s, problems)
     things = _things(raw.get("thing"), sources, conditions, problems)
+    defaults = _defaults(raw, problems)
     for name in sources if secrets is not None else []:
         need = SECRET_FIELDS.get(name)
         if not need:
@@ -598,7 +711,7 @@ def build(raw: dict, secrets: dict | None = None) -> Config:
                 problems.append(f"secrets.json: {section_name}.{f} missing (for {name})")
     if problems:
         raise ConfigError(problems)
-    return Config(collector, conditions, sources, secrets or {}, things)
+    return Config(collector, conditions, sources, secrets or {}, things, defaults)
 
 
 def load(config_path: str, secrets_path: str | None) -> Config:

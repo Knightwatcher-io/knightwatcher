@@ -7,6 +7,7 @@ shown and judged again, but it is not observed again, so it raises no events, an
 
 from __future__ import annotations
 
+import copy
 import datetime as dt
 import json
 import logging
@@ -286,6 +287,8 @@ class Runner:
             "events": list(self.memory.data["events"]),
             "facts": facts,
             "sources": {s.name: status[s.name] for s in self.sources},
+            # The settings screen's household defaults, as the config set them at start.
+            "defaults": copy.deepcopy(self.config.defaults),
         }
         problems = contract.validate(state)
         for problem in problems:
