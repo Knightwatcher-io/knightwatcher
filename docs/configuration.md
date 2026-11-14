@@ -15,7 +15,9 @@ a default. Every value on this page is invented.
 A source runs when its `[sources.<name>]` table is present and its `enabled` is not `false`.
 The `[collector]` and `[conditions]` tables can be left out entirely to take the defaults.
 Durations are in seconds. Machines to watch are `[[thing]]` tables, described under
-[Watched things](#watched-things).
+[Watched things](#watched-things). The `[look]`, `[display]` and `[quiet]` tables set the
+household defaults for the display's settings screen, described under
+[The settings screen's defaults](#the-settings-screens-defaults).
 
 ### [collector]
 
@@ -260,6 +262,72 @@ config: conditions.priority: leaves out "thing_down", so Vault and Gate cam woul
 
 [collector.md](./collector.md#watched-things) says how a thing is judged down and what the
 headline and the detail say.
+
+### The settings screen's defaults
+
+The display has a settings screen for the knight's look, the display and the quiet scenes. The
+`[look]`, `[display]` and `[quiet]` tables set the household defaults for it: what every display
+starts from, and what it goes back to when told to use the config default. All three tables and
+every setting in them are optional, and none has a default here. The collector writes exactly
+what they set into `state.json` as `defaults` (see [state.md](./state.md)), and for a setting
+left out the page uses its own default. The tables are read when the collector starts, like the
+rest of the file, so a change takes effect at the next start.
+
+```toml
+[look]
+skin = "tan"
+hair = "auburn"
+hair_style = "curls"
+monarch = "b"
+
+[display]
+clock = 12
+```
+
+`config.example.toml` has all three tables commented out, every setting shown with the allowed
+values beside it.
+
+`[look]`, the knight and the monarch at court:
+
+| Setting | Allowed values | Meaning |
+|---|---|---|
+| `build` | `"a"`, `"b"`, `"c"` | The knight's build. |
+| `weapon` | `"greatsword"`, `"sword_and_shield"` | What the knight carries. |
+| `skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"`, `"deep"` | The knight's skin tone. |
+| `hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"`, `"silver"` | The knight's hair colour. |
+| `hair_style` | `"short"`, `"tied"`, `"curls"` | The knight's hair. |
+| `tabard` | `"blue"`, `"forest"`, `"violet"`, `"wine"`, `"teal"`, `"sable"` | The tabard's colour. |
+| `plume` | `"red"`, `"white"`, `"gold"`, `"royal"`, `"green"`, `"violet"` | The plume's colour. |
+| `monarch` | `"a"`, `"b"`, `"c"` | Which of the three monarchs sits in the court. |
+| `monarch_skin` | the six of `skin` | The monarch's skin tone. |
+
+The colours, tones and hair styles are those of the base pack (`web/packs/base.pack.json`).
+
+`[display]`:
+
+| Setting | Allowed values | Meaning |
+|---|---|---|
+| `headline` | `"small"`, `"medium"`, `"large"` | The size of the headline. |
+| `clock` | `24`, `12` | The clock's hours, as a number. |
+| `helmet_indoors` | `true`, `false` | `true` keeps the helmet on in the house and the smithy. |
+
+`[quiet]`, the scenes that take turns while all is quiet:
+
+| Setting | Allowed values | Meaning |
+|---|---|---|
+| `scenes` | one or more of `"battlement"`, `"camp"`, `"house"`, `"yard"` | The quiet scenes, in the order they take turns. Each may be listed once. |
+| `minutes` | a whole number from 1 to 240 | How long each quiet scene shows. |
+
+The check is strict, as it is everywhere else in the file. A value outside these lists, a value
+of the wrong type (`"false"` in quotes for `helmet_indoors`, `"12"` for `clock`, `2.5` for
+`minutes`) and an unknown setting in any of the three tables each stop the collector from
+starting, and `check-config` names the table, the setting and what it allows:
+
+```
+config: look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep
+config: quiet.scenes: "camp" listed twice
+config: quiet.minutes: must be a whole number from 1 to 240
+```
 
 ## secrets.json
 

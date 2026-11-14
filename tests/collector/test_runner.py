@@ -92,6 +92,49 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(mode, 0o644)
         self.assertEqual(sorted(os.listdir(self.out)), ["state.json"])  # no temporary left
 
+    def test_defaults_hold_only_the_keys_the_config_set(self):
+        wan = Fake("wan", "wan", self.config, {"up": True})
+        r = self.runner([wan])
+        self.assertEqual(r.cycle()["defaults"], {"look": {}, "display": {}, "quiet": {}})
+        self.assertEqual(self.read_state()["defaults"], {"look": {}, "display": {}, "quiet": {}})
+
+        config = make_config(
+            {
+                "collector": {"output_dir": self.out, "state_dir": self.var},
+                "look": {"skin": "deep", "monarch": "b"},
+                "display": {"clock": 12, "helmet_indoors": False},
+            }
+        )
+        r = self.runner([Fake("wan", "wan", config, {"up": True})], config=config)
+        expected = {
+            "look": {"skin": "deep", "monarch": "b"},
+            "display": {"clock": 12, "helmet_indoors": False},
+            "quiet": {},
+        }
+        for _ in range(2):  # written on every write of the file
+            r.cycle()
+            state = self.read_state()
+            self.assertEqual(state["defaults"], expected)
+            self.assertEqual(contract.validate(state), [])
+            self.clock.advance(5)
+        # A poll never changes the config's own copy.
+        r.cycle()["defaults"]["look"]["skin"] = "fair"
+        self.assertEqual(config.defaults["look"]["skin"], "deep")
+
+        config = make_config(
+            {
+                "collector": {"output_dir": self.out, "state_dir": self.var},
+                "quiet": {"scenes": ["yard", "house"], "minutes": 4},
+            }
+        )
+        r = self.runner([Fake("wan", "wan", config, {"up": True})], config=config)
+        r.cycle()["defaults"]["quiet"]["scenes"].append("camp")
+        self.assertEqual(
+            self.read_state()["defaults"],
+            {"look": {}, "display": {}, "quiet": {"scenes": ["yard", "house"], "minutes": 4}},
+        )
+        self.assertEqual(config.defaults["quiet"]["scenes"], ["yard", "house"])
+
     def test_a_failing_source_is_isolated(self):
         good = Fake("wan", "wan", self.config, {"up": True})
         bad = Fake("pi", "pi", self.config, {"up": True})

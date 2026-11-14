@@ -1,4 +1,4 @@
-"""The contract check against docs/state.md: facts.things and thing_down."""
+"""The contract check against docs/state.md: facts.things, thing_down and defaults."""
 
 import copy
 import json
@@ -67,6 +67,7 @@ def state(things=THINGS, conditions=(THING_DOWN,)) -> dict:
         "events": [],
         "facts": {"pi": {"up": True}, "things": copy.deepcopy(things)},
         "sources": {"thing:Vault": {"ok": True, "at": "2026-01-15T21:42:01Z", "error": ""}},
+        "defaults": {"look": {}, "display": {}, "quiet": {}},
     }
 
 
@@ -182,6 +183,44 @@ class ThingsContractTest(unittest.TestCase):
             self.assertEqual(contract.validate(d), [])
         self.assertTrue(any(d["facts"].get("things") for d in documents))
         self.assertTrue(any(c["id"] == "thing_down" for d in documents for c in d["conditions"]))
+        self.assertTrue(any(any(d["defaults"].values()) for d in documents))
+
+
+class DefaultsContractTest(unittest.TestCase):
+    def test_the_section(self):
+        whole = "defaults is not an object with look, display and quiet"
+        self.assertEqual(broken(lambda s: s.pop("defaults")), [whole])
+        self.assertEqual(broken(lambda s: s.update(defaults=None)), [whole])
+        self.assertEqual(broken(lambda s: s["defaults"].pop("quiet")), [whole])
+        self.assertEqual(broken(lambda s: s["defaults"].update(extra={})), [whole])
+        self.assertEqual(
+            broken(lambda s: s["defaults"].update(look=[])),
+            ["defaults.look, defaults.display and defaults.quiet are not all objects"],
+        )
+
+    def test_the_values_follow_the_config_rules(self):
+        def given(**tables):
+            return lambda s: s["defaults"].update(tables)
+
+        self.assertEqual(
+            broken(
+                given(
+                    look={"build": "a", "skin": "warm", "monarch_skin": "deep"},
+                    display={"headline": "large", "clock": 12, "helmet_indoors": True},
+                    quiet={"scenes": ["yard", "camp"], "minutes": 240},
+                )
+            ),
+            [],
+        )
+        self.assertEqual(
+            broken(given(look={"skin": "pale"}, quiet={"minutes": 0, "pace": 3})),
+            [
+                'defaults.look.skin: unknown value "pale"; use fair, warm, golden, tan, brown '
+                "or deep",
+                "defaults.quiet.pace: unknown setting",
+                "defaults.quiet.minutes: must be a whole number from 1 to 240",
+            ],
+        )
 
 
 if __name__ == "__main__":
