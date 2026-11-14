@@ -981,14 +981,14 @@ the same options and resolves the look again (see [Downloaded packs](#downloaded
   accepts only signed packs`), and one whose signature does not verify or names a key it does not
   know.
 
-**Today the base pack, version 1.3.0, ships unsigned** until the release signs it (see
-[development.md](./development.md#signing-the-packs)); 1.2.0 was signed with `kw1`, and its
-signature was taken off when the three builds were added, since it no longer matched. A `dev`
-page draws the knight from it. Meanwhile a deployed page refuses it at the `signature` step and
-draws the knight from the code in `knight.js`, the full knight as it shipped before packs, which
-looks the same as the default look (see [When packs fail](#when-packs-fail)). The sword and
-shield and the builds Broad and Slim need the base pack: from code the knight always holds the
-greatsword and is always Classic, and the settings screen says the knight is drawn from code.
+**Today the base pack, version 1.3.0, ships signed with `kw1`,** so a deployed page draws the
+knight from it, in every build and with either weapon (see
+[development.md](./development.md#signing-the-packs)). A base pack edited after signing has its
+signature taken off until the next signing run, and meanwhile a deployed page refuses it at the
+`signature` step and draws the knight from the code in `knight.js`, the full knight as it shipped
+before packs, which looks the same as the default look (see [When packs fail](#when-packs-fail)).
+From code the knight always holds the greatsword and is always Classic, and the settings screen
+says the knight is drawn from code.
 
 Nothing is drawn on screen about the choice. `knight.js` writes to the console one line for each
 refused pack, and one line, `console.info` for the base pack and `console.warn` for code, each
