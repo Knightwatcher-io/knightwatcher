@@ -1,0 +1,864 @@
+{
+ "builds": {
+  "build.a": {
+   "name": "Classic",
+   "m": {
+    "shoulder": 54,
+    "chest": 46,
+    "waist": 46,
+    "hip": 46,
+    "stance": 24,
+    "leg": 74,
+    "height": 132,
+    "head": 51
+   },
+   "head": "head.plain"
+  },
+  "build.b": {
+   "name": "Broad",
+   "m": {
+    "shoulder": 62,
+    "chest": 54,
+    "waist": 48,
+    "hip": 42,
+    "stance": 24,
+    "leg": 80,
+    "height": 142,
+    "head": 51
+   },
+   "head": "head.plain"
+  },
+  "build.c": {
+   "name": "Slim",
+   "m": {
+    "shoulder": 47,
+    "chest": 40,
+    "waist": 34,
+    "hip": 47,
+    "stance": 24,
+    "leg": 72,
+    "height": 126,
+    "head": 51
+   },
+   "head": "head.plain"
+  }
+ },
+ "items": {
+  "legs.plate": {
+   "slot": "legs",
+   "name": "Plate greaves",
+   "parts": [
+    {
+     "at": "hipL",
+     "shapes": [
+      {
+       "k": "rrect",
+       "p": [
+        -17,
+        0
+       ],
+       "w": 34,
+       "h": {
+        "c": 56,
+        "drop": -1,
+        "dLeg": 0.625
+       },
+       "r": 8,
+       "fill": "@base.k"
+      },
+      {
+       "k": "rrect",
+       "p": [
+        -14,
+        3
+       ],
+       "w": 28,
+       "h": {
+        "c": 50,
+        "drop": -1,
+        "dLeg": 0.625
+       },
+       "r": 6,
+       "fill": "@base.steel2"
+      }
+     ]
+    },
+    {
+     "at": "hipR",
+     "shapes": [
+      {
+       "k": "rrect",
+       "p": [
+        -17,
+        0
+       ],
+       "w": 34,
+       "h": {
+        "c": 56,
+        "drop": -1,
+        "dLeg": 0.625
+       },
+       "r": 8,
+       "fill": "@base.k"
+      },
+      {
+       "k": "rrect",
+       "p": [
+        -14,
+        3
+       ],
+       "w": 28,
+       "h": {
+        "c": 50,
+        "drop": -1,
+        "dLeg": 0.625
+       },
+       "r": 6,
+       "fill": "@base.steel3"
+      }
+     ]
+    },
+    {
+     "at": "hipL",
+     "shapes": [
+      {
+       "k": "ell",
+       "p": [
+        0,
+        14
+       ],
+       "rx": 15,
+       "ry": 10,
+       "fill": "@base.k"
+      },
+      {
+       "k": "ell",
+       "p": [
+        0,
+        14
+       ],
+       "rx": 12,
+       "ry": 7,
+       "fill": "@base.steel"
+      }
+     ]
+    },
+    {
+     "at": "hipR",
+     "shapes": [
+      {
+       "k": "ell",
+       "p": [
+        0,
+        14
+       ],
+       "rx": 15,
+       "ry": 10,
+       "fill": "@base.k"
+      },
+      {
+       "k": "ell",
+       "p": [
+        0,
+        14
+       ],
+       "rx": 12,
+       "ry": 7,
+       "fill": "@base.steel2"
+      }
+     ]
+    }
+   ]
+  },
+  "torso.tabard": {
+   "slot": "torso",
+   "name": "Tabard of the watch",
+   "parts": [
+    {
+     "at": "neck",
+     "shapes": [
+      {
+       "k": "rrect",
+       "p": [
+        {
+         "c": -49,
+         "bloat": -1,
+         "dChest": -1
+        },
+        -3
+       ],
+       "w": {
+        "c": 98,
+        "bloat": 2,
+        "dChest": 2
+       },
+       "h": {
+        "c": 104,
+        "dHeight": 1,
+        "dLeg": -1
+       },
+       "r": 14,
+       "fill": "@base.k",
+       "clip": [
+        null,
+        10
+       ]
+      },
+      {
+       "k": "poly",
+       "dir": "rows",
+       "fill": "@base.k",
+       "pts": [
+        [
+         {
+          "c": -49,
+          "bloat": -1,
+          "dChest": -1
+         },
+         11
+        ],
+        [
+         {
+          "c": 48,
+          "bloat": 1,
+          "dChest": 1
+         },
+         11
+        ],
+        [
+         {
+          "c": 48,
+          "bloat": 1,
+          "dWaist": 1
+         },
+         {
+          "c": 59,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ],
+        [
+         {
+          "c": -49,
+          "bloat": -1,
+          "dWaist": -1
+         },
+         {
+          "c": 59,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ]
+       ]
+      },
+      {
+       "k": "poly",
+       "dir": "rows",
+       "fill": "@base.k",
+       "pts": [
+        [
+         {
+          "c": -49,
+          "bloat": -1,
+          "dWaist": -1
+         },
+         {
+          "c": 60,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ],
+        [
+         {
+          "c": 48,
+          "bloat": 1,
+          "dWaist": 1
+         },
+         {
+          "c": 60,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ],
+        [
+         {
+          "c": 48,
+          "bloat": 1,
+          "dHip": 1
+         },
+         {
+          "c": 86,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ],
+        [
+         {
+          "c": -49,
+          "bloat": -1,
+          "dHip": -1
+         },
+         {
+          "c": 86,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ]
+       ]
+      },
+      {
+       "k": "rrect",
+       "p": [
+        {
+         "c": -49,
+         "bloat": -1,
+         "dHip": -1
+        },
+        -3
+       ],
+       "w": {
+        "c": 98,
+        "bloat": 2,
+        "dHip": 2
+       },
+       "h": {
+        "c": 104,
+        "dHeight": 1,
+        "dLeg": -1
+       },
+       "r": 14,
+       "fill": "@base.k",
+       "clip": [
+        {
+         "c": 87,
+         "dHeight": 1,
+         "dLeg": -1
+        },
+        null
+       ]
+      },
+      {
+       "k": "rrect",
+       "p": [
+        {
+         "c": -46,
+         "bloat": -1,
+         "dChest": -1
+        },
+        0
+       ],
+       "w": {
+        "c": 92,
+        "bloat": 2,
+        "dChest": 2
+       },
+       "h": {
+        "c": 98,
+        "dHeight": 1,
+        "dLeg": -1
+       },
+       "r": 11,
+       "fill": [
+        [
+         0.1,
+         "@tabard.0"
+        ],
+        [
+         0.55,
+         "@tabard.1"
+        ],
+        [
+         0.85,
+         "@tabard.2"
+        ],
+        [
+         1,
+         "@tabard.3"
+        ]
+       ],
+       "clip": [
+        null,
+        10
+       ]
+      },
+      {
+       "k": "poly",
+       "dir": "rows",
+       "fill": [
+        [
+         0.1,
+         "@tabard.0"
+        ],
+        [
+         0.55,
+         "@tabard.1"
+        ],
+        [
+         0.85,
+         "@tabard.2"
+        ],
+        [
+         1,
+         "@tabard.3"
+        ]
+       ],
+       "pts": [
+        [
+         {
+          "c": -46,
+          "bloat": -1,
+          "dChest": -1
+         },
+         11
+        ],
+        [
+         {
+          "c": 45,
+          "bloat": 1,
+          "dChest": 1
+         },
+         11
+        ],
+        [
+         {
+          "c": 45,
+          "bloat": 1,
+          "dWaist": 1
+         },
+         {
+          "c": 59,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ],
+        [
+         {
+          "c": -46,
+          "bloat": -1,
+          "dWaist": -1
+         },
+         {
+          "c": 59,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ]
+       ]
+      },
+      {
+       "k": "poly",
+       "dir": "rows",
+       "fill": [
+        [
+         0.1,
+         "@tabard.0"
+        ],
+        [
+         0.55,
+         "@tabard.1"
+        ],
+        [
+         0.85,
+         "@tabard.2"
+        ],
+        [
+         1,
+         "@tabard.3"
+        ]
+       ],
+       "pts": [
+        [
+         {
+          "c": -46,
+          "bloat": -1,
+          "dWaist": -1
+         },
+         {
+          "c": 60,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ],
+        [
+         {
+          "c": 45,
+          "bloat": 1,
+          "dWaist": 1
+         },
+         {
+          "c": 60,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ],
+        [
+         {
+          "c": 45,
+          "bloat": 1,
+          "dHip": 1
+         },
+         {
+          "c": 86,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ],
+        [
+         {
+          "c": -46,
+          "bloat": -1,
+          "dHip": -1
+         },
+         {
+          "c": 86,
+          "dHeight": 1,
+          "dLeg": -1
+         }
+        ]
+       ]
+      },
+      {
+       "k": "rrect",
+       "p": [
+        {
+         "c": -46,
+         "bloat": -1,
+         "dHip": -1
+        },
+        0
+       ],
+       "w": {
+        "c": 92,
+        "bloat": 2,
+        "dHip": 2
+       },
+       "h": {
+        "c": 98,
+        "dHeight": 1,
+        "dLeg": -1
+       },
+       "r": 11,
+       "fill": [
+        [
+         0.1,
+         "@tabard.0"
+        ],
+        [
+         0.55,
+         "@tabard.1"
+        ],
+        [
+         0.85,
+         "@tabard.2"
+        ],
+        [
+         1,
+         "@tabard.3"
+        ]
+       ],
+       "clip": [
+        {
+         "c": 87,
+         "dHeight": 1,
+         "dLeg": -1
+        },
+        null
+       ]
+      },
+      {
+       "k": "rect",
+       "at": "hem",
+       "p": [
+        -2,
+        -22
+       ],
+       "w": 4,
+       "h": 22,
+       "fill": "@base.k"
+      },
+      {
+       "k": "rect",
+       "at": "hem",
+       "p": [
+        {
+         "c": -43,
+         "bloat": -1,
+         "dHip": -1
+        },
+        -9
+       ],
+       "w": {
+        "c": 86,
+        "bloat": 2,
+        "dHip": 2
+       },
+       "h": 4,
+       "fill": "@base.g1"
+      },
+      {
+       "k": "rect",
+       "at": "hem",
+       "p": [
+        {
+         "c": -43,
+         "bloat": -1,
+         "dHip": -1
+        },
+        -5
+       ],
+       "w": {
+        "c": 86,
+        "bloat": 2,
+        "dHip": 2
+       },
+       "h": 2,
+       "fill": "@base.g2"
+      },
+      {
+       "k": "rect",
+       "at": "belt",
+       "p": [
+        {
+         "c": -46,
+         "bloat": -1,
+         "dWaist": -1
+        },
+        0
+       ],
+       "w": {
+        "c": 92,
+        "bloat": 2,
+        "dWaist": 2
+       },
+       "h": 14,
+       "fill": "@base.n3"
+      },
+      {
+       "k": "rect",
+       "at": "belt",
+       "p": [
+        {
+         "c": -46,
+         "bloat": -1,
+         "dWaist": -1
+        },
+        2
+       ],
+       "w": {
+        "c": 92,
+        "bloat": 2,
+        "dWaist": 2
+       },
+       "h": 9,
+       "fill": "@base.n2"
+      },
+      {
+       "k": "rect",
+       "at": "belt",
+       "p": [
+        {
+         "c": -46,
+         "bloat": -1,
+         "dWaist": -1
+        },
+        2
+       ],
+       "w": {
+        "c": 92,
+        "bloat": 2,
+        "dWaist": 2
+       },
+       "h": 2,
+       "fill": "@base.n1"
+      },
+      {
+       "k": "rrect",
+       "at": "belt",
+       "p": [
+        -12,
+        -4
+       ],
+       "w": 24,
+       "h": 22,
+       "r": 5,
+       "fill": "@base.k"
+      },
+      {
+       "k": "rrect",
+       "at": "belt",
+       "p": [
+        -9,
+        -1
+       ],
+       "w": 18,
+       "h": 16,
+       "r": 3,
+       "fill": "@base.gold"
+      },
+      {
+       "k": "rect",
+       "at": "belt",
+       "p": [
+        -4,
+        4
+       ],
+       "w": 8,
+       "h": 6,
+       "fill": "@base.k"
+      },
+      {
+       "k": "ell",
+       "p": [
+        0,
+        28
+       ],
+       "rx": 24,
+       "ry": 14,
+       "fill": "@base.g2"
+      },
+      {
+       "k": "ell",
+       "p": [
+        0,
+        28
+       ],
+       "rx": 22,
+       "ry": 12,
+       "fill": "@base.gold"
+      },
+      {
+       "k": "ell",
+       "p": [
+        0,
+        28
+       ],
+       "rx": 16,
+       "ry": 7,
+       "fill": "@tabard.3"
+      },
+      {
+       "k": "ell",
+       "p": [
+        0,
+        28
+       ],
+       "rx": 7,
+       "ry": 6,
+       "fill": "@base.w"
+      },
+      {
+       "k": "ell",
+       "p": [
+        0,
+        28
+       ],
+       "rx": 3,
+       "ry": 3,
+       "fill": "@base.k"
+      }
+     ]
+    }
+   ]
+  },
+  "pauldrons.plate": {
+   "slot": "pauldrons",
+   "name": "Plate pauldrons",
+   "parts": [
+    {
+     "at": "shoulderL",
+     "shapes": [
+      {
+       "k": "ell",
+       "p": [
+        4,
+        -7
+       ],
+       "rx": {
+        "c": 25,
+        "dShoulder": 0.5
+       },
+       "ry": {
+        "c": 20,
+        "dShoulder": 0.25
+       },
+       "fill": "@base.k"
+      },
+      {
+       "k": "ell",
+       "p": [
+        4,
+        -8
+       ],
+       "rx": {
+        "c": 22,
+        "dShoulder": 0.5
+       },
+       "ry": {
+        "c": 17,
+        "dShoulder": 0.25
+       },
+       "fill": "@base.steel"
+      },
+      {
+       "k": "rect",
+       "p": [
+        -3,
+        -13
+       ],
+       "w": 4,
+       "h": 4,
+       "fill": "@base.s3"
+      }
+     ]
+    },
+    {
+     "at": "shoulderR",
+     "shapes": [
+      {
+       "k": "ell",
+       "p": [
+        -4,
+        -7
+       ],
+       "rx": {
+        "c": 25,
+        "dShoulder": 0.5
+       },
+       "ry": {
+        "c": 20,
+        "dShoulder": 0.25
+       },
+       "fill": "@base.k"
+      },
+      {
+       "k": "ell",
+       "p": [
+        -4,
+        -8
+       ],
+       "rx": {
+        "c": 22,
+        "dShoulder": 0.5
+       },
+       "ry": {
+        "c": 17,
+        "dShoulder": 0.25
+       },
+       "fill": "@base.steel2"
+      },
+      {
+       "k": "rect",
+       "p": [
+        -1,
+        -13
+       ],
+       "w": 4,
+       "h": 4,
+       "fill": "@base.s4"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

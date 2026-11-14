@@ -389,7 +389,7 @@ The household default for the knight and the monarch at court. Each display may 
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `build` | `"a"`, `"b"` or `"c"` | none | display | The knight's build. The page's own is the base pack's default build, and only a build the packs in use declare is shown. |
+| `build` | `"a"`, `"b"` or `"c"` | none | display | The knight's build, by the base pack's names: "a" Classic, the present knight, "b" Broad and "c" Slim. The page's own is the base pack's default build, and only a build the packs in use declare is shown. |
 | `weapon` | `"greatsword"` or `"sword_and_shield"` | none; the page's own is `"greatsword"` | display | What the knight carries. |
 | `skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"` | none; the page's own is `"warm"` | display | The knight's skin tone. |
 | `hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"` or `"silver"` | none; the page's own is `"brown"` | display | The knight's hair colour. |

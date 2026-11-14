@@ -136,10 +136,21 @@ every difference is 0.
 | Field of a build | Rule |
 |---|---|
 | `name` | 1 to 32 characters |
-| `m` | all eight measurements, whole numbers within their ranges |
+| `m` | all eight measurements, whole numbers within their ranges, and the torso, `height` less `leg`, from 46 to 74 |
 | `head` | the id of an item of this pack whose slot is `head`: the bare skull the build wears |
 
-Up to 4 builds.
+Up to 4 builds. The torso rule holds a build to a plausible shape: `height` and `leg` each have a
+range of their own, which alone would allow a shoulder line from 10 to 100 above the hip line, and
+the tabard of a build with a long leg and a short height would leave one row between the neck and
+the belt. The present knight's torso is 58. `TORSO` in `pack.js` holds the two ends, and the
+`rules` step checks it.
+
+**The head's size.** The range allows `head` from 42 to 60, but the base pack's one head item,
+`head.plain`, has no term on `dHead`, while the open helm and the tied and curled hair do: a build
+with a head other than 51 would draw the same skull under hair and a helmet grown or shrunk around
+it, and the face, which the engine draws at one size, would crowd the ears on a smaller skull. So
+every build of the base pack keeps 51. A build with another head needs `head.plain` to lean on
+`dHead` first, or the range narrowed until a second head item exists.
 
 `defaults` names what a new display shows and what a look falls back to:
 
@@ -467,7 +478,7 @@ refused whole.
 | `format` | `format` is `[1, 0]` |
 | `fields` | every field against its table, with no unknown keys outside `ext` and `companions`: types, ranges, multiples of 1/8, id patterns, text lengths, rising band fractions, and the counts the tables give |
 | `references` | every `@set.entry` exists and is the right kind, every anchor is one the slot allows, every named value is on the list and allowed where it is, `dir: "frame"` appears only in a part of a `main` item, every `g` is a declared group, every palette track names a hex entry of the pack's own palettes, each build's head item exists with slot `head`, and every default exists |
-| `rules` | `provides` matches the sections, `arms` and `gauntlets` have one part for each side, each helmet passes the face check, each grip has as many stations as its kind, each blade's `from` is below its `to`, every scalar stays in its range at both ends (folded where something is folded in), each polygon is convex with no point repeated, each decoration's box is at most 240 by 240, no two tracks drive one thing |
+| `rules` | `provides` matches the sections, each build's torso (`height` less `leg`) is 46 to 74, `arms` and `gauntlets` have one part for each side, each helmet passes the face check, each grip has as many stations as its kind, each blade's `from` is below its `to`, every scalar stays in its range at both ends (folded where something is folded in), each polygon is convex with no point repeated, each decoration's box is at most 240 by 240, no two tracks drive one thing |
 | `counts` | the per-pack counts and costs below; that the base pack's default look, with each of its builds, draws at most 1200 shapes and costs at most 40 000; and that its default plume fits its default helmet |
 | `compile` | every item and decoration compiles |
 
@@ -532,12 +543,15 @@ pose, every point of a swing, the smallest and largest builds and a bloat of 60,
 most 273 apart (the left shoulder and the hammer hand at the anvil). A decoration's shape counts as many times over as the largest scale its
 group's keyframes reach.
 
-The cost is a bound, not a count. The present knight costs 11 932 in its heaviest mode (the
-greatsword, helmet on): 5560 for the legs, boots, tabard, pauldrons, arms and gauntlets, 1720 for
-the plume and helmet, and 4652 for the greatsword. Drawn through `draw.js` it makes between
-about 5800 and 6500 calls in the poses measured, the face included. With the helmet off the head
-group costs 1632; with the sword put away, or at the anvil, the greatsword's 4652 drops out. The
-look with the sword and shield costs 12 035 and draws up to about 7000 calls, the attack the
+The cost is a bound, not a count, worked out at the ends of every value's range, so it is the same
+on every build. The default look costs 13 878 in its heaviest mode (the greatsword, helmet on):
+7506 for the legs, boots, tabard, pauldrons, arms and gauntlets, 1720 for the plume and helmet,
+and 4652 for the greatsword. The body items cost 1946 more than before the three builds (5560 in
+1.2.0), since the tabard's outline and cloth are four pieces each and the greaves and pauldrons
+grow with the build. Drawn through `draw.js` the present knight makes between about 5800 and 6500
+calls in the poses measured, the face included, as before. With the helmet off the head group
+costs 1632; with the sword put away, or at the anvil, the greatsword's 4652 drops out. The look
+with the sword and shield costs 13 981 and draws up to about 7000 calls, the attack the
 heaviest.
 
 ## Signing
@@ -812,10 +826,24 @@ Constants: `FORMAT`, `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STE
 
 ### The base pack
 
-`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.2.0.
-Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), and nothing the display does not draw:
+`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.3.0.
+Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, two more builds, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), and nothing the display does not draw:
 
-- one build, `build.a`, with the present knight's eight measurements and the plain head;
+- three builds, new in 1.3.0 but for the first, each with the plain head, named as the settings
+  screen shows them (differences from Classic in brackets):
+
+  | Build | Name | shoulder | chest | waist | hip | stance | leg | height | head | torso |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | `build.a` | Classic, the present knight | 54 | 46 | 46 | 46 | 24 | 74 | 132 | 51 | 58 |
+  | `build.b` | Broad | 62 (+8) | 54 (+8) | 48 (+2) | 42 (-4) | 24 | 80 (+6) | 142 (+10) | 51 | 62 |
+  | `build.c` | Slim | 47 (-7) | 40 (-6) | 34 (-12) | 47 (+1) | 24 | 72 (-2) | 126 (-6) | 51 | 54 |
+
+  Broad is wider at the shoulders and chest, narrower at the hem and 10 taller; Slim is narrower
+  at the shoulders, has a waist, a hem a little wider than the present knight's, and stands 6
+  shorter. Every measurement lies at least 6 from either end of its range, and every head is 51
+  (see [the head's size](#builds-and-defaults)). The top of the helmet stands 274 above the ground
+  on Classic, 284 on Broad and 268 on Slim, and the tabard runs 98, 102 and 94 from the neck to the
+  hem. Version 1.3.0 named the first build "Classic", where it was "Knight of the watch";
 - eleven items, one for each slot the present drawing has: `legs.plate`, `boots.leather`,
   `torso.tabard`, `head.plain`, `hair.short`, `helm.open`, `plume.crest`, `pauldrons.plate`,
   `arms.plate`, `gauntlets.plate` and `main.greatsword`;
@@ -845,8 +873,9 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   court draws the monarch from the same swatches when the settings choose them: a skin's face and
   cheek, a hair swatch's three bands and a tabard swatch's four as the robe, laid over the court's
   own drawing ([page.md](./page.md#the-scene-interface)), so no pack change is needed for it;
-- `defaults` naming the greatsword and the eleven others and today's swatches (skin `warm`, hair
-  `brown`, tabard `blue`, plume `red`), so the default look is the present knight; nothing names
+- `defaults` naming the build `build.a`, the greatsword and the eleven others and today's swatches
+  (skin `warm`, hair `brown`, tabard `blue`, plume `red`), so the default look is the present
+  knight; nothing names
   the sword and shield or the new options until a look asks for them. It has no palettes of its
   own and no decorations.
 
@@ -856,17 +885,47 @@ colour. On the blue tabard that band is `#213f86`, the colour of `@base.b3` that
 before 1.2.0, so the default knight is drawn exactly as before. The banners in the scenes are drawn
 by code and keep their blue iris.
 
+**Fitted to the builds.** Every item fits every build through the terms on the build's
+differences, and three items gained terms in 1.3.0. Each term leans on a difference, which is 0 on
+Classic, so Classic draws exactly as before, call for call:
+
+- **The tabard** narrows from the chest to the belt and widens again to the hem. Up to 1.2.0 its
+  outline and its cloth were each one rounded rectangle as wide as the chest from the neck to the
+  hem. Each is now four pieces, in the same order: the rounded rectangle at the chest's width,
+  clipped to its rounded top rows (to 10 below the neck); a four-sided polygon from row 11 to the
+  row above the belt, the chest's width at the top and the waist's at the foot; a polygon from the
+  belt to the last straight row (`86 + dHeight - dLeg` below the neck), the waist's width at the top
+  and the hip's at the foot; and the rounded rectangle at the hip's width, clipped to its rounded
+  foot rows. On Classic each piece draws exactly the rows the one shape drew, with the same ends.
+  Both polygons are convex at every value. The belt's three bands follow the waist (`dWaist`) and
+  the gold hem's two the hip (`dHip`), where all five followed the chest. There is no line across
+  the chest on any build: the taper alone shapes the body.
+- **The greaves** grow five eighths of a pixel for every pixel of leg (`"dLeg": 0.625` on the
+  height of both plates), which keeps the greave's foot inside the boot over the whole range of
+  the leg. A full pixel would let the inner plate reach a height of -4 at the shortest leg and the
+  deepest crouch, which the rules refuse.
+- **The pauldrons** grow with the shoulders: `rx` half a pixel and `ry` a quarter of a pixel for
+  every pixel of `dShoulder`, so Broad carries plates of 29 by 22 and Slim of 21.5 by 18.25 where
+  Classic's are 25 by 20.
+
+Everything else is the same drawing on all three, on each build's own anchors: the head, the face,
+the hair with its helmeted view, the helmet and plume, the arms, the gauntlets and both weapons and
+the shield. The engine holds the weapon on each build's own shoulder line and hangs the hands
+below each build's own shoulders ([page.md](./page.md#the-knights-rig)).
+
 The helmet and the plume carry the rest views of the helmet on the house's stool, and the
 greatsword its `blade`, `{"from": 34, "to": 263, "half": 15}`, for the smithy's hot tip; see [Gear
 at rest](#gear-at-rest). The eleven items and today's swatches are the test fixture's, unchanged
-apart from the iris; the fixture also carries extras the tests need (a second build, long hair, a
-smaller arming sword of its own, a round shield, a pennant and a lantern). The one-handed items are
-kept, as approved, in `tests/web/fixtures/base-onehand.items.json`, and the free options (the
-twenty new swatches and the two hair styles) in `tests/web/fixtures/base-options.json`. The default
-look costs 11 932 and draws at most 99 shapes; the look with the sword and shield draws at most
-119. Colours do not change what is drawn, so every look's cost depends on its items alone, and the
-heaviest is the tied hair with the sword and shield: 129 shapes, cost 12 524, against the caps of
-1200 and 40 000.
+apart from the iris and the three items fitted to the builds; the fixture also carries extras the
+tests need (a second build of its own, long hair, a smaller arming sword of its own, a round
+shield, a pennant and a lantern). The one-handed items are kept, as approved, in
+`tests/web/fixtures/base-onehand.items.json`, the free options (the twenty new swatches and the two
+hair styles) in `tests/web/fixtures/base-options.json`, and the three builds with their names and
+the three fitted items in `tests/web/fixtures/base-builds.json`. The default look costs 13 878 and
+draws at most 105 shapes; the look with the sword and shield draws at most 125. Neither colours
+nor the build change the cost, so every look's cost depends on its items alone, and the heaviest
+is the tied hair with the sword and shield: 135 shapes, cost 14 470, against the caps of 1200 and
+40 000.
 
 ### Carriers
 
@@ -909,8 +968,9 @@ set the look stays `{}`. The settings name only the base pack's items and swatch
 contract's terms: the weapon `sword_and_shield` is `{ items: { main: "kw.base/main.arming", off:
 "kw.base/off.heater" } }` and `greatsword` `kw.base/main.greatsword`; a skin, hair, tabard or plume
 is `kw.base/<id>`, the hair style `kw.base/hair.<style>`, and a build `kw.base/build.<letter>`, of
-which the base pack declares `build.a`, shown as Build A. The address's look hooks give the same
-values: `arm=one` and `arm=two` the weapon, `sk=`, `hc=`, `tb=` and `pm=` the swatches and `hy=`
+which the base pack declares `build.a`, `build.b` and `build.c`, shown by the names the pack gives
+them, Classic, Broad and Slim. The address's look hooks give the same
+values: `bd=` the build, `arm=one` and `arm=two` the weapon, `sk=`, `hc=`, `tb=` and `pm=` the swatches and `hy=`
 the hair style (see [page.md](./page.md#the-address)). When the downloaded packs arrive, `KW.knight.add()` reads them with
 the same options and resolves the look again (see [Downloaded packs](#downloaded-packs)):
 
@@ -921,20 +981,22 @@ the same options and resolves the look again (see [Downloaded packs](#downloaded
   accepts only signed packs`), and one whose signature does not verify or names a key it does not
   know.
 
-**Today the base pack, version 1.2.0, ships signed with `kw1`,** so a deployed page draws the
-knight from it. A base pack edited after signing has its signature taken off until the release
-signs it again; meanwhile a deployed page draws the knight from the code in `knight.js`, the full
-knight as it shipped before packs, which looks the same as the default look (see
-[When packs fail](#when-packs-fail)). The sword and shield need the base pack: from code the
-knight always holds the greatsword.
+**Today the base pack, version 1.3.0, ships unsigned** until the release signs it (see
+[development.md](./development.md#signing-the-packs)); 1.2.0 was signed with `kw1`, and its
+signature was taken off when the three builds were added, since it no longer matched. A `dev`
+page draws the knight from it. Meanwhile a deployed page refuses it at the `signature` step and
+draws the knight from the code in `knight.js`, the full knight as it shipped before packs, which
+looks the same as the default look (see [When packs fail](#when-packs-fail)). The sword and
+shield and the builds Broad and Slim need the base pack: from code the knight always holds the
+greatsword and is always Classic, and the settings screen says the knight is drawn from code.
 
 Nothing is drawn on screen about the choice. `knight.js` writes to the console one line for each
 refused pack, and one line, `console.info` for the base pack and `console.warn` for code, each
 time the source changes:
 
 ```
-knightwatcher: the knight is drawn from the base pack kw.base 1.2.0, signed
-knightwatcher: the knight is drawn from the base pack kw.base 1.2.0, unsigned
+knightwatcher: the knight is drawn from the base pack kw.base 1.3.0, signed
+knightwatcher: the knight is drawn from the base pack kw.base 1.3.0, unsigned
 knightwatcher: the pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
 knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step
 ```
@@ -1081,15 +1143,19 @@ the same answer as this verifier for every signature the tests put to both.
 `tests/web/base-pack.test.js` checks the base pack, and holds whether it ships signed or not. An
 unsigned copy (the shipped file with any `sig` taken off) is read on a `dev` page and refused at
 the `signature` step otherwise; the file as it ships is read on every page when it carries a
-signature, and on a `dev` page alone when it does not. It also checks one build with the present measurements, one item for each slot the
-present drawing has, the arming sword and the heater shield, the three hair styles and nothing
-more; six swatches in each set in the settings screen's order, today's the defaults; each item and
-swatch equal to the fixture's, to `fixtures/base-onehand.items.json` for the one-handed items or to
-`fixtures/base-options.json` for the free options, with the iris of the tabard and the shield,
-worn and at rest, on `@tabard.3` and no `@base.b3` left; a default look that resolves with nothing
-missing at a cost of 11 932; the look with the sword and shield resolving with nothing missing,
-one-handed, at 119 shapes; and every one of the 7776 combinations of skin, hair colour, hair style,
-tabard, plume and weapon resolving with nothing missing, the heaviest at 129 shapes and 12 524. `tests/web/knight.test.js` draws the
+signature, and on a `dev` page alone when it does not. It also checks the three builds as
+approved in `fixtures/base-builds.json`, with their names, Classic the present measurements, every
+head 51, every torso within the rule and every measurement at least 6 from the ends of its range;
+one item for each slot the present drawing has, the arming sword and the heater shield, the three
+hair styles and nothing more; six swatches in each set in the settings screen's order, today's the
+defaults; each item and swatch equal to the fixture's, to `fixtures/base-builds.json` for the three
+items fitted to the builds, to `fixtures/base-onehand.items.json` for the one-handed items or to
+`fixtures/base-options.json` for the free options, with the iris of the shield, worn and at rest,
+on `@tabard.3` and no `@base.b3` left; a default look that resolves with nothing missing at a cost
+of 13 878, and each build likewise; the look with the sword and shield resolving with nothing
+missing, one-handed, at 125 shapes; and every one of the 23 328 combinations of build, skin, hair
+colour, hair style, tabard, plume and weapon resolving with nothing missing, the heaviest at 135
+shapes and 14 470. `tests/web/knight.test.js` draws the
 knight's 94 poses, the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy painted and drawn, from the base
 pack as the page does, and compares every call with the record taken from the code. It draws the
 code path from the unsigned copy, which a deployed page always refuses, and edits only that copy, so

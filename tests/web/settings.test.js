@@ -22,6 +22,9 @@ const SIGN = require('../../tools/sign-pack.js');
 const WEB = path.join(__dirname, '../../web');
 const PACK_TEXT = fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8');
 const PACK = JSON.parse(PACK_TEXT).pack;
+/* The base pack with only the builds named, as a base pack from before the three builds, or a
+   fork's, may hold. */
+const withBuilds = (...ids) => { const p = JSON.parse(JSON.stringify(PACK)); for (const b of Object.keys(p.builds)) if (!ids.includes(b)) delete p.builds[b]; return p; };
 const plain = v => JSON.parse(JSON.stringify(v));
 // A state file with a defaults section, as a new collector writes it.
 const FIXTURE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/state-defaults.json'), 'utf8'));
@@ -95,7 +98,7 @@ test('each key comes from the highest level that sets it: the address, then save
 
 test('a value a level does not know is ignored at that level, the next level down used, and the console told once', () => {
   const st = storage(saved({ look: { skin: 'green', hair: 'auburn', cape: 'red' }, display: { clock: '12', headline: 'huge' }, quiet: { minutes: 0, scenes: ['moon', 'yard'] } }));
-  const { s, lines } = store({ storage: st, hooks: { look: { tabard: 'orange', hair_style: 'tied' }, display: { helmet_indoors: 'yes' } } });
+  const { s, lines } = store({ storage: st, hooks: { look: { tabard: 'orange', hair_style: 'tied' }, display: { helmet_indoors: 'yes' } }, pack: withBuilds('build.a') });
   s.defaults({ look: { skin: 'golden', tabard: 'wine', build: 'b', monarch: 'd' }, display: { clock: 12, helmet_indoors: true }, quiet: { minutes: 300 }, analytics: { on: true } });
   const r = s.now();
   assert.deepEqual([r.values.look.skin, r.from.look.skin], ['golden', 'defaults'], 'an unknown saved skin falls to the defaults');
@@ -142,11 +145,11 @@ test('the scenes take turns in the order given and lose repeats; minutes may be 
 });
 
 test('the builds ready are those the base pack declares, and a build from a level stands only if ready', () => {
-  assert.deepEqual(SET.buildsOf(PACK), ['a']);
+  assert.deepEqual(SET.buildsOf(PACK), ['a', 'b', 'c'], 'the base pack draws all three');
   assert.deepEqual(SET.buildsOf(null), []);
-  const more = JSON.parse(JSON.stringify(PACK)); more.builds['build.c'] = more.builds['build.a'];
-  assert.deepEqual(SET.buildsOf(more), ['a', 'c']);
-  const { s } = store({ pack: more });
+  const two = withBuilds('build.a', 'build.c');
+  assert.deepEqual(SET.buildsOf(two), ['a', 'c']);
+  const { s } = store({ pack: two });
   s.defaults({ look: { build: 'c' } });
   assert.deepEqual([s.now().values.look.build, s.now().from.look.build], ['c', 'defaults']);
   assert.deepEqual(SET.knightLook(s.now()), { build: 'kw.base/build.c' });
@@ -155,6 +158,24 @@ test('the builds ready are those the base pack declares, and a build from a leve
   const none = store({ pack: null });
   none.s.defaults({ look: { build: 'a' } });
   assert.deepEqual([none.s.now().values.look.build, none.s.now().from.look.build], [null, 'built-in']);
+});
+
+test('the build row names each build as the base pack does, Ready under each, and greys only a build the pack does not draw', () => {
+  assert.deepEqual(SET.buildChoices(PACK, 'a'), [
+    { id: 'a', chip: 'CLASSIC', name: 'Ready', kind: 'wide' },
+    { id: 'b', chip: 'BROAD', name: 'Ready', kind: 'wide' },
+    { id: 'c', chip: 'SLIM', name: 'Ready', kind: 'wide' }]);
+  assert.deepEqual(['a', 'b', 'c'].map(id => SET.buildName(PACK, id)), ['Classic', 'Broad', 'Slim']);
+  // the names are the pack's: a pack that names its builds otherwise is shown so
+  const renamed = withBuilds('build.a', 'build.b', 'build.c'); renamed.builds['build.b'].name = 'Wide';
+  assert.equal(SET.buildChoices(renamed, 'a')[1].chip, 'WIDE');
+  // a base pack that draws build A alone: the others greyed by their letters, the note naming the
+  // build shown by its name
+  assert.deepEqual(SET.buildChoices(withBuilds('build.a'), 'a').slice(1), [
+    { id: 'b', chip: 'BUILD B', name: 'Coming', kind: 'wide', off: true, offNote: 'Build B is not drawn yet. The knight stays as Classic.' },
+    { id: 'c', chip: 'BUILD C', name: 'Coming', kind: 'wide', off: true, offNote: 'Build C is not drawn yet. The knight stays as Classic.' }]);
+  assert.deepEqual(SET.buildChoices(null, null).map(c => [c.chip, c.off, c.offNote]), [
+    ['BUILD A', true, 'Build A is not drawn yet.'], ['BUILD B', true, 'Build B is not drawn yet.'], ['BUILD C', true, 'Build C is not drawn yet.']]);
 });
 
 /* ---- Saved choices ----------------------------------------------------------------------------- */
@@ -615,17 +636,25 @@ function drawAll(m) {
   return m.calls.join('\n');
 }
 
-test('every combination renders: weapon by skin by hair by hair style, the tabard and the plume cycled, from the base pack, within the caps', () => {
+test('every combination renders: weapon by skin by hair by hair style, the build, the tabard and the plume cycled, from the base pack, within the caps', () => {
   const m = load(), lib = [PK.read(SIGN.withoutSig(PACK_TEXT), { allowUnsigned: true })];
   const O = SET.ONE_OF.look;
   let n = 0, most = 0;
+  const seen = new Set();
   for (const weapon of O.weapon) for (const skin of O.skin) for (const hair of O.hair) for (const hair_style of O.hair_style) {
-    const tabard = O.tabard[n % 6], plume = O.plume[(n * 5 + 1) % 6];
+    // the build turns once with each hair style and starts one further on for each hair, so every
+    // build is drawn with every weapon, skin, hair colour and hair style (base-pack.test.js resolves
+    // the full product of them)
+    const build = O.build[(n + Math.floor(n / 3)) % 3], tabard = O.tabard[n % 6], plume = O.plume[(n * 5 + 1) % 6];
+    for (const [k, v] of Object.entries({ weapon, skin, hair, hair_style })) seen.add(build + ' ' + k + ' ' + v);
     const { s } = store();
-    for (const [k, v] of Object.entries({ weapon, skin, hair, hair_style, tabard, plume })) assert.equal(s.choose('look', k, v), true);
+    for (const [k, v] of Object.entries({ build, weapon, skin, hair, hair_style, tabard, plume })) assert.equal(s.choose('look', k, v), true);
     const look = SET.knightLook(s.now()), what = JSON.stringify(look);
     const st = m.K.look(look);
     assert.equal(st.source, 'pack', what);
+    // the knight is rigged on the build chosen: its right shoulder where the build's measurements put it
+    const bm = PACK.builds['build.' + build].m, o = Object.assign(m.K.pose('idle', 0), { x: 480, floor: 500, bob: 0 });
+    assert.deepEqual(plain(m.K.rig(o).anchors.shoulderR), [480 + bm.shoulder, 500 - bm.height], what + ' is rigged on its build');
     assert.deepEqual(plain(st.refused), [], what);
     assert.deepEqual(plain(st.fallbacks).filter(f => f.reason !== 'not set'), [], what);
     const drawn = drawAll(m);
@@ -640,6 +669,7 @@ test('every combination renders: weapon by skin by hair by hair style, the tabar
     n++;
   }
   assert.equal(n, 2 * 6 * 6 * 3);
+  assert.equal(seen.size, 3 * (2 + 6 + 6 + 3), 'every build with every weapon, skin, hair colour and hair style');
   assert.ok(most <= PK.LIMITS.lookCost);
 });
 

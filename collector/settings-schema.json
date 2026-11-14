@@ -481,7 +481,7 @@
       "settings": [
         { "key": "build", "type": "string", "default": null, "values": ["a", "b", "c"], "page_default": null, "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Build" }, "wall": { "section": "The knight", "label": "Build" } }, "editable": true,
-          "help": "The knight's build. The page's own is the base pack's default build, and only a build the packs in use declare is shown." },
+          "help": "The knight's build, by the base pack's names: \"a\" Classic, the present knight, \"b\" Broad and \"c\" Slim. The page's own is the base pack's default build, and only a build the packs in use declare is shown." },
         { "key": "weapon", "type": "string", "default": null, "values": ["greatsword", "sword_and_shield"], "page_default": "greatsword", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Weapon" }, "wall": { "section": "The knight", "label": "Weapon" } }, "editable": true,
           "help": "What the knight carries." },

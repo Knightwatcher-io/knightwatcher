@@ -75,6 +75,18 @@
     if (!isObj(pack) || !isObj(pack.builds)) return [];
     return Object.keys(pack.builds).map(b => /^build\.([abc])$/.exec(b)).filter(Boolean).map(m => m[1]).sort();
   }
+  /* A build's name as the base pack gives it (build.a is "Classic"), or "Build A" from the letter
+     where the pack has no such build. */
+  const buildName = (pack, id) => (isObj(pack) && isObj(pack.builds) && isObj(pack.builds['build.' + id]) ? pack.builds['build.' + id].name : 'Build ' + id.toUpperCase());
+  /* The settings screen's build row, one choice for each of the contract's builds: its name from the
+     base pack on the chip with Ready under it, or, for a build the pack does not draw, greyed and
+     saying Coming, its note naming the build the knight stays as (cur, the build shown). */
+  function buildChoices(pack, cur) {
+    const ready = buildsOf(pack), name = id => buildName(pack, id);
+    return ONE_OF.look.build.map(id => (ready.includes(id)
+      ? { id, chip: name(id).toUpperCase(), name: 'Ready', kind: 'wide' }
+      : { id, chip: name(id).toUpperCase(), name: 'Coming', kind: 'wide', off: true, offNote: name(id) + ' is not drawn yet.' + (cur ? ' The knight stays as ' + name(cur) + '.' : '') }));
+  }
 
   /* The world the scenes section is checked against: { can, homes }, can each scene's list of the
      conditions it can act (its can field, web/js/scenes/), homes each condition's own scene, or
@@ -332,7 +344,7 @@
     return { can, homes };
   }
 
-  const api = { SCHEMA, KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, buildsOf, builtIn, worldOf, offered, clean, resolve, knightLook, engineInput, clock, load, save, create, pageWorld };
+  const api = { SCHEMA, KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, buildsOf, buildName, buildChoices, builtIn, worldOf, offered, clean, resolve, knightLook, engineInput, clock, load, save, create, pageWorld };
   KW.settings = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
@@ -504,7 +516,7 @@
       const style = pack && pack.items['hair.' + v.hair_style] ? lower(pack.items['hair.' + v.hair_style].name) : v.hair_style;
       const mh = v.monarch_hair ? sw('hair', v.monarch_hair) + ' hair' : '', mr = v.monarch_robe ? 'a ' + sw('tabard', v.monarch_robe) + ' robe' : '';
       const dress = mh && mr ? mh + ', ' + mr : mh ? mh + ', the robe as drawn' : mr ? 'the hair as drawn, ' + mr : 'hair and robe as drawn';
-      return (v.build ? 'Build ' + v.build.toUpperCase() + ', ' : '') + 'the ' + (v.weapon === 'sword_and_shield' ? 'sword and shield' : 'greatsword') + ', ' + sw('skin', v.skin) + ' skin, ' +
+      return (v.build ? 'the ' + buildName(pack, v.build) + ' build, ' : '') + 'the ' + (v.weapon === 'sword_and_shield' ? 'sword and shield' : 'greatsword') + ', ' + sw('skin', v.skin) + ' skin, ' +
         sw('hair', v.hair) + ' hair (' + style + '), a ' + sw('tabard', v.tabard) + ' tabard, a ' + sw('plume', v.plume) + ' plume; monarch ' + v.monarch.toUpperCase() + ', ' + sw('skin', v.monarch_skin) + ' skin, ' + dress;
     }
     /* What a section falls back to when this display's choices are cleared, the defaults in the
@@ -522,10 +534,7 @@
         const pack = K.basePack(), v = r.values.look;
         if (!pack) list.appendChild(el('p', 'kws-line', 'The knight is drawn from code, which has only the default look: the base pack could not be used (see Status). Choices made here are kept and show once it can.'));
         else {
-          const ready = buildsOf(pack), name = id => 'Build ' + id.toUpperCase();
-          list.appendChild(row('build', 'Build', ONE_OF.look.build.map(id => ready.includes(id)
-            ? { id, chip: name(id).toUpperCase(), name: 'Ready', kind: 'wide' }
-            : { id, chip: name(id).toUpperCase(), name: 'Coming', kind: 'wide', off: true, offNote: name(id) + ' is not drawn yet.' + (v.build ? ' The knight stays as ' + name(v.build) + '.' : '') }), v.build, choose('look', 'build'), hookNote(r, 'look', 'build')));
+          list.appendChild(row('build', 'Build', buildChoices(pack, v.build), v.build, choose('look', 'build'), hookNote(r, 'look', 'build')));
           list.appendChild(row('weapon', 'Weapon', WEAPONS.map(([id, chip, nm]) => ({ id, chip, name: nm, kind: 'text' })), v.weapon, choose('look', 'weapon'), hookNote(r, 'look', 'weapon')));
           list.appendChild(row('skin', 'Skin tone', swatches(pack, 'skin'), v.skin, choose('look', 'skin'), hookNote(r, 'look', 'skin')));
           list.appendChild(row('hair', 'Hair colour', swatches(pack, 'hair'), v.hair, choose('look', 'hair'), hookNote(r, 'look', 'hair')));

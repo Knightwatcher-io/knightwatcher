@@ -159,7 +159,9 @@
 
   /* The blade in the knight's pose o: its frame and its extent along it, outline included. The
      outline is 4 pixels wide along the edges and, at the point, longer as the blade is broader: 7
-     on the greatsword, 5 on the arming sword. */
+     on the greatsword, 5 on the arming sword. The frame is the rig's on the build being drawn
+     (KW.knight.rig takes the look's build), so foeGaps, contactQ and the foe's plan measure the blade
+     as it is drawn on every build. */
   function bladeOf(o) {
     const b = K.rest.blade() || { from: 34, to: 263, half: 15 }, m = K.rig(o).anchors.main;
     return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: b.to + Math.round(b.half * 7 / 15), half: b.half + 4 };

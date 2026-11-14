@@ -248,10 +248,10 @@ if (MODE === 'write') {
   /* What a page says when it draws from a base pack, signed or not. */
   const fromPack = (status, signed) => {
     assert.equal(status.source, 'pack', status.note);
-    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.2.0', signed });
+    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.3.0', signed });
     assert.deepEqual(plain(status.refused), []);
     assert.deepEqual(plain(status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), []);
-    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.2.0, ' + (signed ? 'signed' : 'unsigned'));
+    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.3.0, ' + (signed ? 'signed' : 'unsigned'));
   };
   const MISSING = 'sig: is missing, and this page accepts only signed packs';
   /* The unsigned base pack signed with a key made for the run: { text, kw1 }, kw1 the public key in
@@ -322,7 +322,7 @@ if (MODE === 'write') {
     let s = load(true, ['not json']).status;
     assert.equal(s.source, 'code');
     assert.deepEqual(plain(s.refused), [{ id: null, file: null, step: 'json', reason: 'the file is not valid JSON' }]);
-    const v = load(true, [text.replace('"version": "1.2.0"', '"version": "1.2"')]);
+    const v = load(true, [text.replace('"version": "1.3.0"', '"version": "1.2"')]);
     assert.equal(v.status.note, CODE + 'the base pack kw.base was refused at the fields step');
     assert.deepEqual(v.lines[0], ['warn', 'knightwatcher: the pack kw.base was refused at the fields step: pack.version: must be major.minor.patch, each 0 to 999']);
     const box = load(true);
@@ -822,6 +822,112 @@ if (MODE === 'write') {
     assert.deepEqual(breaches({ items: { main: 'kw.base/main.arming' } }), []);
   });
 
+  /* ---- The three builds -------------------------------------------------------------------- */
+
+  /* The base pack's builds, by the names the settings screen shows, and each weapon's look. Classic
+     (build.a) is the present knight; Broad (build.b) and Slim (build.c) are drawn from the same
+     items on their own measurements. */
+  const BUILD_NAMES = { 'build.a': 'Classic', 'build.b': 'Broad', 'build.c': 'Slim' };
+  const OTHER_BUILDS = ['build.b', 'build.c'];
+  const GRIPS = { greatsword: {}, 'sword and shield': ONE_LOOK.items };
+  const buildLook = (b, items) => ({ build: 'kw.base/' + b, items: Object.keys(items || {}).length ? items : undefined });
+  const BUILD_M = JSON.parse(UNSIGNED).pack.builds;
+
+  test('Classic chosen by name draws the stored calls in every pose, from the base pack', () => {
+    const b = withLook(buildLook('build.a'));
+    assert.equal(b.status.source, 'pack');
+    assert.deepEqual(plain(b.status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), []);
+    const stored = JSON.parse(fs.readFileSync(CALLS, 'utf8')).poses;
+    for (const [name, fn] of POSES(b.K, b.KW.scenes)) {
+      b.log.length = 0; fn();
+      assert.equal(sha(b.log.map(codeSpelling).join('\n')), stored[name].sha256, name);
+    }
+  });
+
+  for (const bid of OTHER_BUILDS) for (const [grip, items] of Object.entries(GRIPS)) {
+    test(`${BUILD_NAMES[bid]} with the ${grip}: every pose and swing frame draws without a throw, each frame within the look's cost`, () => {
+      const look = buildLook(bid, items), b = withLook(look), lib = b.KW.pack, draw0 = lib.draw;
+      assert.equal(b.status.source, 'pack');
+      assert.deepEqual(plain(b.status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), [], 'the build and the weapon are drawn as chosen');
+      const L = PK.resolve([PK.read(UNSIGNED, { allowUnsigned: true })], look);
+      assert.ok(L.shapes <= PK.LIMITS.lookShapes && L.cost <= PK.LIMITS.lookCost, `${L.shapes} shapes, cost ${L.cost}`);
+      // the fills the look's lists make in a frame, which the cost bounds
+      let fills = 0, inList = false;
+      const log = b.log;
+      lib.draw = (...a) => { inList = true; try { return draw0(...a); } finally { inList = false; } };
+      const count = () => log.reduce((n, l) => n + (l.startsWith('r ') ? 1 : 0), 0);
+      const frames = POSES(b.K, b.KW.scenes);
+      for (const dir of [1, -1]) for (let k = 0; k <= 20; k++) frames.push([`swing ${dir} q${k / 20}`, () => { const o = at(b.K, 'idle', 2300); b.K.swing(o, k / 20, dir); b.K.draw(o); }]);
+      for (let t = 0; t < 1000; t += 100) frames.push([`attack t${t}`, () => b.K.draw(at(b.K, 'attack', t))]);
+      for (const [name, fn] of frames) {
+        log.length = 0; fills = 0;
+        const fr = log.push; log.push = (...ls) => { if (inList) for (const l of ls) if (l.startsWith('r ')) fills++; return fr.apply(log, ls); };
+        fn();
+        log.push = fr;
+        assert.equal(b.K.source, 'pack', `${name}: nothing threw`);
+        assert.deepEqual(plain(b.K.status.refused), [], name);
+        assert.ok(fills <= L.cost, `${name}: ${fills} fills, more than the cost of ${L.cost}`);
+        assert.ok(!log.some(l => /NaN|undefined/.test(l)), `${name}: no broken number or colour`);
+        assert.ok(count() > 0 || /^speech|at rest|painted/.test(name), `${name}: draws something`);
+      }
+      // and it is not Classic: the idle stance draws other calls
+      log.length = 0; b.K.draw(at(b.K, 'idle', 2300));
+      const mine = sha(log.map(codeSpelling).join('\n')), stored = JSON.parse(fs.readFileSync(CALLS, 'utf8')).poses['idle t2300'].sha256;
+      assert.notEqual(mine, stored);
+    });
+  }
+
+  test('on every build both hands stay on the grip through every frame of both swings, the attack and the strike, and hang below the shoulders without a weapon', () => {
+    for (const bid of Object.keys(BUILD_NAMES)) for (const [grip, items] of Object.entries(GRIPS)) {
+      const look = buildLook(bid, items), b = withLook(look), { K } = b, M = BUILD_M[bid].m, dHt = M.height - 132, dSh = M.shoulder - 54;
+      const cb = withLook(buildLook('build.a', items)), c = cb.K, what = `${BUILD_NAMES[bid]}, ${grip}`;
+      const F = foeOf(b), Fc = foeOf(cb), S = F.FOE.strike, foe = new Map([[K, F], [c, Fc]]);
+      const one = !!items.main;
+      const frames = [];
+      // the goblin's strike on both sides, through its rebound and recovery, as in breaches()
+      for (const side of [1, -1]) for (const q of [0.45, 0.55]) {
+        const pl = { side, q, hit: S.at + Math.round(q * S.dur) };
+        for (let r = -400; r <= S.rebound + S.recover; r += 20) frames.push([`strike ${side} q${q} ${r} ms`, K2 => { const o = at(K2, 'idle', 2300, { bob: 0 }); foe.get(K2).strike(o, pl.hit + r, pl); return o; }]);
+      }
+      for (const dir of [1, -1]) for (let k = 0; k <= 100; k++) frames.push([`swing ${dir} q${k / 100}`, K2 => { const o = at(K2, 'idle', 2300); K2.swing(o, k / 100, dir); return o; }]);
+      for (let t = 0; t < 2000; t += 20) frames.push([`attack t${t}`, K2 => at(K2, 'attack', t)]);
+      for (const id of ['idle', 'memory_tight', 'cpu_hot', 'wan_down', 'night']) frames.push([id, K2 => at(K2, id, 2300)]);
+      for (const [name, make] of frames) {
+        const o = make(K), r = K.rig(o), m = [...r.anchors.main], L = [...r.anchors.handL], R = [...r.anchors.handR];
+        const sx = Math.sin(m[2]), sy = -Math.cos(m[2]);
+        // along the frame and across it, from the grip's middle
+        const on = h => [(h[0] - m[0]) * sx + (h[1] - m[1]) * sy, Math.abs((h[0] - m[0]) * sy - (h[1] - m[1]) * sx)];
+        assert.equal(r.grip, one ? 'one' : 'two', `${what} ${name}`);
+        if (one) {
+          assert.deepEqual(R, [m[0], m[1]], `${what} ${name}: the sword hand on the grip`);
+          const d = ((o.bob || 0) + (o.crouch || 0)) * 5;
+          assert.deepEqual(L, [Math.round(o.x) + (o.shake || 0) * 4 - 120 + o.fx * 5, FLOOR - 300 + o.fy * 5 + d - dHt], `${what} ${name}: the shield hand where the pose puts it, on this build's shoulder line`);
+        } else for (const [h, side] of [[L, 'left'], [R, 'right']]) {
+          const [along, across] = on(h);
+          assert.ok(across < 1e-9 && along >= -30 - 1e-9 && along <= 2 + 1e-9, `${what} ${name}: the ${side} hand ${along.toFixed(2)} along the grip, ${across.toFixed(2)} off it`);
+        }
+        // the weapon is held where Classic holds it, raised or lowered with the shoulders
+        const ca = [...c.rig(make(c)).anchors.main];
+        assert.deepEqual([m[0], m[1] - ca[1], m[2]], [ca[0], 0 - dHt, ca[2]], `${what} ${name}: the grip on this build's shoulder line`);
+      }
+      // no weapon: each hand 10 outside its shoulder and 48 below it, on every build, bloated or not
+      for (const over of [{ sword: false }, { sword: false, bloat: 5, bob: 1 }]) {
+        const r = K.rig(at(K, 'idle', 2300, over)), A = r.anchors;
+        assert.deepEqual([A.handL[0] - A.shoulderL[0], A.handL[1] - A.shoulderL[1], A.handR[0] - A.shoulderR[0], A.handR[1] - A.shoulderR[1]], [-10, 48, 10, 48], `${what} ${JSON.stringify(over)}`);
+        assert.equal(A.shoulderR[0] - A.root[0], 54 + dSh + (over.bloat || 0) * 5);
+      }
+      // the smith's hammer works at the anvil, which stands in the scene: its hands do not move
+      const hb = K.rig(at(K, 'updating', 2300, { sword: false, hammer: 0.5 })).anchors, hc = c.rig(at(c, 'updating', 2300, { sword: false, hammer: 0.5 })).anchors;
+      assert.deepEqual([[...hb.handL], [...hb.handR], [...hb.main]], [[...hc.handL], [...hc.handR], [...hc.main]], `${what}: the hammer`);
+    }
+  });
+
+  for (const bid of OTHER_BUILDS) for (const [grip, items] of Object.entries(GRIPS)) {
+    test(`no arm is drawn over a blade, its guard or the shield, frame by frame: ${BUILD_NAMES[bid]} with the ${grip}`, () => {
+      assert.deepEqual(breaches(buildLook(bid, items)), []);
+    });
+  }
+
   test('the gear at rest with the arming sword: the pegs under its blade, the shield on the wall, the keys', () => {
     const b = withLook(ONE_LOOK), H = b.KW.scenes.house, S = b.KW.scenes.smithy;
     assert.deepEqual(plain(b.K.rest.blade()), { from: 34, to: 175, half: 10 });
@@ -859,8 +965,8 @@ if (MODE === 'write') {
   const meets = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
 
   test('the camera at the house\'s h2 and its question mark clear the gear on the wall, the window and the knight', () => {
-    for (const look of [{}, ONE_LOOK]) {
-      const b = withLook(look), H = b.KW.scenes.house, P = b.KW.props, h2 = H.places.h2, tag = look.items ? 'sword and shield' : 'greatsword';
+    for (const look of [{}, ONE_LOOK, ...OTHER_BUILDS.map(bid => buildLook(bid)), ...OTHER_BUILDS.map(bid => buildLook(bid, ONE_LOOK.items))]) {
+      const b = withLook(look), H = b.KW.scenes.house, P = b.KW.props, h2 = H.places.h2, tag = (look.items ? 'sword and shield' : 'greatsword') + (look.build ? ', ' + BUILD_NAMES[look.build.slice(8)] : '');
       const take = f => { b.log.length = 0; f(); return drawnBox(b.log); };
       const cam = [true, false].map(ok => take(() => P.KINDS.camera.draw(h2.x, h2.y, 2300, ok, 'still')));
       const mark = take(() => b.KW.sprites.mark(h2.x, h2.y - P.KINDS.camera.mark, '?'));

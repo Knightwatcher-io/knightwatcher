@@ -29,6 +29,14 @@ const ONE = { look: { items: { main: 'kw.base/main.arming', off: 'kw.base/off.he
 /* The weapons the knight may hold at the bonk: the greatsword from the base pack and from code,
    and the arming sword with the shield, which only the base pack holds. */
 const WEAPONS = [['the greatsword, from the base pack', true, null], ['the greatsword, from code', false, null], ['the arming sword', true, ONE]];
+/* The base pack's other builds, Broad (build.b) and Slim (build.c), with each weapon. The engine
+   measures the blade on the build drawn, so the goblin is met where the drawn blade meets it. */
+const BUILDS = { 'build.b': 'Broad', 'build.c': 'Slim' };
+const BUILT = [];
+for (const [b, name] of Object.entries(BUILDS)) {
+  BUILT.push([`the greatsword, ${name}`, true, { look: { build: 'kw.base/' + b } }]);
+  BUILT.push([`the arming sword, ${name}`, true, { look: { build: 'kw.base/' + b, items: ONE.look.items } }]);
+}
 
 /* The page's scripts, with the knight drawn from the base pack (pack true) or from code, in the
    look opts asks for (the base pack's defaults when left out). */
@@ -41,7 +49,8 @@ function load(pack, opts) {
   const KW = box.window.KW;
   KW.knight.start(pack ? KW.packText : [], true, opts || undefined);
   assert.equal(KW.knight.source, pack ? 'pack' : 'code');
-  if (opts) assert.equal(KW.knight.rest.blade().to, 175, 'the arming sword is held');
+  if (opts && opts.look.items) assert.equal(KW.knight.rest.blade().to, 175, 'the arming sword is held');
+  if (opts && opts.look.build) assert.deepEqual(plain(KW.knight.status.fallbacks).filter(f => f.reason !== 'not set'), [], 'the build is drawn');
   KW.draw.setCtx(fakeCanvas().getContext('2d'));
   return { KW, E: KW.engine, F: KW.engine.foe, P: KW.props, K: KW.knight, V: KW.view };
 }
@@ -170,7 +179,7 @@ function depth(bl, x, y, far) {
   return along < bl.from || along > bl.to ? (far ? -Infinity : 0) : bl.half - across;
 }
 
-for (const [name, pack, opts] of WEAPONS) {
+for (const [name, pack, opts] of WEAPONS.concat(BUILT)) {
   test(`the blade meets the goblin's pot at the bonk and never passes through it (${name})`, () => {
     const m = load(pack, opts), S = m.F.FOE.strike;
     let plans = 0;
@@ -208,6 +217,50 @@ for (const [name, pack, opts] of WEAPONS) {
     assert.ok(plans > 10);
   });
 }
+
+/* The hit at the knight's first spot in each scene, the pie alone, in ms from the start of the
+   event, for each grip on Classic, Broad and Slim. The poses are the present knight's, raised and
+   lowered with each build's shoulders, so the hit moves by a few ms at most. */
+const HITS = {
+  two: { battlement: [1659, 1661, 1657], camp: [1659, 1661, 1657] },
+  one: { battlement: [1645, 1651, 1642], camp: [1672, 1675, 1672] } };
+
+test('on every build, with either weapon, the goblin comes wherever it does on Classic, and is struck within a few ms of Classic\'s hit', () => {
+  for (const grip of ['two', 'one']) {
+    const looks = ['build.a', 'build.b', 'build.c'].map(b => ({ look: Object.assign({ build: 'kw.base/' + b }, grip === 'one' ? { items: ONE.look.items } : {}) }));
+    const [a, ...others] = looks.map(o => load(true, o));
+    for (const [scene, kx0] of [['battlement', 480], ['camp', 440]]) {
+      const got = [a, ...others].map(m => planFor(m, scene, kx0, [PIE]).hit);
+      assert.deepEqual(got, HITS[grip][scene], `${grip} ${scene}`);
+      for (const kx of spots(a, scene)) for (const things of [[PIE], [PIE, thing('g3')]]) {
+        const pa = planFor(a, scene, kx, things);
+        others.forEach((m, i) => {
+          const p = planFor(m, scene, kx, things), what = `${grip} ${looks[i + 1].look.build} ${scene} ${kx} ${things.length}`;
+          assert.equal(!!p, !!pa, what + ': the goblin comes where it does on Classic');
+          if (!p) return;
+          assert.deepEqual([p.x, p.side], [pa.x, pa.side], what + ': where it stands');
+          assert.ok(Math.abs(p.hit - pa.hit) <= 12, what + `: struck at ${p.hit} ms, ${pa.hit} on Classic`);
+        });
+      }
+    }
+  }
+});
+
+test('the blade the engine measures is the blade drawn: KW.knight.rig takes the look\'s build', () => {
+  for (const [b, name] of Object.entries(BUILDS)) for (const items of [undefined, ONE.look.items]) {
+    const m = load(true, { look: { build: 'kw.base/' + b, items } }), M = m.K.basePack().builds[b].m;
+    for (const q of [0, 0.3, 0.45, 0.55]) for (const dir of [1, -1]) {
+      const o = pose(m.K, m.V, 480, 0); m.K.swing(o, q, dir);
+      const bl = m.F.bladeOf(o), drawn = plain(m.K.rig(o, M).anchors.main), present = plain(m.K.rig(o, m.K.build).anchors.main);
+      assert.deepEqual([bl.x, bl.y, bl.a], drawn, `${name} q${q} dir ${dir}`);
+      // the grip rises and sinks with the build's shoulder line, the present knight's being 132
+      assert.deepEqual([drawn[0], drawn[1] - present[1], drawn[2]], [present[0], 132 - M.height, present[2]], `${name} q${q} dir ${dir}`);
+    }
+  }
+  // on the code path the rig is the present knight's
+  const c = load(false), o = pose(c.K, c.V, 480, 0);
+  assert.deepEqual(plain(c.K.rig(o).anchors.main), plain(c.K.rig(o, c.K.build).anchors.main));
+});
 
 test('a weapon too short to reach a goblin anywhere in the zone: the goblin does not come, and never plays a hit', () => {
   // held in both hands, where the grip stays close to the knight

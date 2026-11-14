@@ -51,6 +51,10 @@
   const MEASURES = Object.freeze([['shoulder', 54, 40, 70], ['chest', 46, 32, 64], ['waist', 46, 28, 64], ['hip', 46, 32, 64],
     ['stance', 24, 16, 34], ['leg', 74, 60, 100], ['height', 132, 110, 160], ['head', 51, 42, 60]].map(Object.freeze));
   const DIFFS = MEASURES.map(m => 'd' + m[0][0].toUpperCase() + m[0].slice(1));
+  /* The torso: a build's height less its leg, the shoulder line above the hip line, lowest and
+     highest. The two measurements have ranges of their own, which alone would allow a torso from 10
+     to 100; this keeps every build a plausible shape (the present knight's is 58). */
+  const TORSO = Object.freeze([46, 74]);
   /* The range of every named value. The engine clamps drop and bloat into theirs when it fills the
      values array; the rest cannot leave theirs. Every scalar is checked over these ranges. */
   const RANGE = { drop: [0, 40], bloat: [0, 60], stepL: [0, 1], stepR: [0, 1], step: [0, 1], sway: [-4, 4] };
@@ -879,6 +883,10 @@
       }
       if (v.blade && !(v.blade.from < v.blade.to)) fail(key(ip, 'blade'), 'from must be below to');
     }
+    for (const b of Object.keys(pack.builds || {})) {
+      const m = pack.builds[b].m, t = m.height - m.leg;
+      if (t < TORSO[0] || t > TORSO[1]) fail(key(key(key(P, 'builds'), b), 'm'), 'height less leg must be ' + TORSO[0] + ' to ' + TORSO[1] + ', not ' + t);
+    }
     ranges(pack);
     eachShape(pack, (s, p) => { if (s.k === 'poly') polyRule(s, p); });
     for (const d of Object.keys(pack.decorations || {})) {
@@ -1519,7 +1527,7 @@
   /* Whether a decoration may go in a scene's place { kind, w, h }. */
   const fitsPlace = (dec, pl) => !!(dec && pl && dec.fits.includes(pl.kind) && dec.box[0] <= pl.w && dec.box[1] <= pl.h);
 
-  const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, VALUES, VALUE, MEASURES, BASE, KEYS, ORDERS,
+  const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, VALUES, VALUE, MEASURES, TORSO, BASE, KEYS, ORDERS,
     read, canonical, message, gather, resolve, draw, sequence, animate, fitsPlace, newAnchors, newValues };
   KW.pack = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

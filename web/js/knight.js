@@ -20,9 +20,11 @@
      on (the anchors) and the named numbers its shapes may lean on (the values). Every position the
      drawing uses is an anchor plus an offset.
 
-     A build is eight measurements in grid pixels. The present knight is the only build, and it is
-     also the reference: the values dShoulder to dHead are a build's measurements less these, so for
-     the present knight they are all 0 and the terms that use them move nothing. */
+     A build is eight measurements in grid pixels. The base pack has three: Classic (build A), the
+     present knight, Broad (build B) and Slim (build C). The present knight is the reference: the
+     values dShoulder to dHead are a build's measurements less these, so for the present knight they
+     are all 0 and the terms that use them move nothing. On the pack path the knight is rigged on the
+     look's build; the code path draws the present knight alone. */
   const BUILD = Object.freeze({ shoulder: 54, chest: 46, waist: 46, hip: 46, stance: 24, leg: 74, height: 132, head: 51 });
   /* The greatsword's two hand stations along its frame, upper and lower: the upper 2 above the grip's
      middle, low enough that its gauntlet stays clear of the guard, which starts 17 up. On the pack
@@ -82,22 +84,27 @@
       m[0] = A.handR[0]; m[1] = A.handR[1]; m[2] = lerp(-.25, 1.75, o.hammer);
     } else if (o.sword !== false && ONE) {
       // One hand on the grip, at the weapon's one station along the frame, which the pose gives as
-      // for the greatsword. The left hand holds the shield where the pose puts it, fx and fy in units
-      // of U from the old corner; with no shield it hangs at the side as when the sword is away.
+      // for the greatsword. As with both hands, the grip and the shield hand rise and sink with the
+      // build's shoulder line (dHeight), so a pose holds its weapon where it does on the present
+      // knight, relative to the body. The left hand holds the shield where the pose puts it, fx and
+      // fy in units of U from the old corner; with no shield it hangs at the side as when the sword
+      // is away, below its shoulder.
       RIG.grip = 'one';
-      const a = o.wang || 0, gx = X - 120 + o.gx * U, gy = Y - 300 + o.gy * U + d, sx = Math.sin(a), sy = -Math.cos(a);
+      const a = o.wang || 0, gx = X - 120 + o.gx * U, gy = Y - 300 + o.gy * U + d - dHt, sx = Math.sin(a), sy = -Math.cos(a);
       m[0] = gx; m[1] = gy; m[2] = a;
       put(A.handR, gx + sx * HANDS[0], gy + sy * HANDS[0]);
-      if (SHIELD) put(A.handL, X - 120 + o.fx * U, Y - 300 + o.fy * U + d);
-      else put(A.handL, X - (64 + bw), Y - 84 + d);
+      if (SHIELD) put(A.handL, X - 120 + o.fx * U, Y - 300 + o.fy * U + d - dHt);
+      else put(A.handL, X - (64 + dSh + bw), Y - (84 + dHt) + d);
     } else if (o.sword !== false) {
       // Both hands on the grip, whose middle the pose gives in units of U from the old corner. The
       // hand on the side the blade leans to holds the upper station. The sums keep the order the
       // drawing has always used, since gx and gy are fractional in a swing. Once the blade is past
       // level, at the end of a cut and in the strike's bounce, the upper hand slides down the grip
-      // (SLIDE), so that its gauntlet stays clear of the guard at every angle.
+      // (SLIDE), so that its gauntlet stays clear of the guard at every angle. The poses are written
+      // for the present knight; on another build the grip rises and sinks with the shoulder line
+      // (dHeight), so the weapon is held where it is on the present knight, relative to the body.
       RIG.grip = 'two';
-      const a = o.wang || 0, gx = X - 120 + o.gx * U, gy = Y - 300 + o.gy * U + d, sx = Math.sin(a), sy = -Math.cos(a);
+      const a = o.wang || 0, gx = X - 120 + o.gx * U, gy = Y - 300 + o.gy * U + d - dHt, sx = Math.sin(a), sy = -Math.cos(a);
       m[0] = gx; m[1] = gy; m[2] = a;
       const up = sx >= 0 ? A.handR : A.handL, low = sx >= 0 ? A.handL : A.handR;
       const s0 = HANDS[0] - SLIDE.most * clamp01((Math.abs(a) - SLIDE.from) / (SLIDE.to - SLIDE.from));
@@ -105,12 +112,13 @@
     } else {
       // No weapon: the hands hang at the sides, or with the crate (the carrying grip) hold the
       // load against the chest by its lower corners, the arms round its sides; the frame rests at
-      // the root.
+      // the root. Hanging, each hand keeps its place below its own shoulder, so the arm is as long
+      // and hangs as straight on every build as on the present knight.
       RIG.grip = 'none';
       if (o.crates) {
         const n = A.neck, w = carrySway(t), hx = CARRY.w / 2 + CARRY.hand[0], hy = CARRY.top + CARRY.h * CARRY.n + CARRY.hand[1];
         put(A.handL, n[0] - hx + w, n[1] + hy); put(A.handR, n[0] + hx + w, n[1] + hy);
-      } else { put(A.handL, X - (64 + bw), Y - 84 + d); put(A.handR, X + (64 + bw), Y - 84 + d); }
+      } else { put(A.handL, X - (64 + dSh + bw), Y - (84 + dHt) + d); put(A.handR, X + (64 + dSh + bw), Y - (84 + dHt) + d); }
       m[0] = X; m[1] = Y; m[2] = 0;
     }
     put(A.off, A.handL[0], A.handL[1]);
@@ -730,9 +738,15 @@
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
      knight is. speech draws a speech bubble. rest holds what a scene calls for the gear at rest
      (described above): draw(slot, x, y, a), blade() and key(slot). rig, start, add, look,
-     basePack, fetchPacks and packIndex are described above, build is the present knight's
-     measurements, source is 'pack' or 'code' and status what start() found. */
+     basePack, fetchPacks and packIndex are described above, except that rig from outside takes the
+     look's build when b is left out (below), build is the present knight's measurements, source is
+     'pack' or 'code' and status what start() found. */
   const headAtCorner = (ax, ay, o) => (PK.look ? packHead(ax + 120, ay + 94, o) : bareHD(ax + 120, ay + 94, o));
-  KW.knight = { draw: knightHD, rig, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD,
+  /* The rig as the engine sees it: for the look's build when the knight is drawn from the packs, and
+     the present knight's on the code path, so that the blade the engine measures against flies and
+     foes (bladeOf in engine.js, and through it foeGaps, contactQ and the foe's plan) is the blade
+     drawn. */
+  const rigOf = (o, b) => rig(o, b || (PK.look ? PK.look.m : BUILD));
+  KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD,
     rest: { draw: restHD, blade: restBlade, key: restKey }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);
