@@ -20,14 +20,15 @@
      and C a young monarch who is neither. All three sit the same way on the same throne, with the
      same hands, face and mouth. Each has its own robe, hair, crown and what it holds:
      robe and shade colour the robe and the far sleeve, hair the hair across its width, dark and
-     brow its darkest strands and the eyebrows, iris the eyes. Each is drawn in the skin it is
+     brow its darkest strands and the eyebrows, sheen the light on B's hair, iris the eyes. The
+     settings may give other hair and robe colours (see dressed, below). Each is drawn in the skin it is
      given, sk ({ face, cheek }). */
   const MONARCHS = {
     a: { robe: ROBE, shade: [[.3, C.R1], [1, C.R3]],
       hair: [[.25, '#a8703c'], [.7, '#7f4f27'], [1, '#5a3417']], dark: '#3f2410', brow: '#4a2a12', iris: '#5a3a22',
       front: ermineFront, back: earsA, hairDo: hairA, crown: crownA, held: sceptre, chest: null, beard: beardA },
     b: { robe: [[.12, '#c7a2ff'], [.5, '#9b66f0'], [.85, '#7646c8'], [1, '#4f2b8c']], shade: [[.3, '#9b66f0'], [1, '#4f2b8c']],
-      hair: [[.25, '#57506f'], [.7, '#3a3352'], [1, '#29233b']], dark: '#1f1a2d', brow: '#29233b', iris: '#3a4a86',
+      hair: [[.25, '#57506f'], [.7, '#3a3352'], [1, '#29233b']], dark: '#1f1a2d', brow: '#29233b', sheen: '#7a7299', iris: '#3a4a86',
       front: goldFront, back: hairBackB, hairDo: hairB, crown: crownB, held: null, chest: null, after: orb },
     c: { robe: [[.12, '#86e6bd'], [.5, '#3fbf8a'], [.85, '#2a9468'], [1, '#17603f']], shade: [[.3, '#3fbf8a'], [1, '#17603f']],
       hair: [[.25, '#f8e09a'], [.7, '#e0b65e'], [1, '#b98a3c']], dark: '#946a28', brow: '#a87a30', iris: '#2f6b55',
@@ -100,7 +101,7 @@
     }
     rrect(x - 37, by - 255, 74, 28, 14, m.hair);
     for (const d of [-1, 1]) ell(x + d * 22, by - 229, 17, 7, m.hair[d < 0 ? 0 : 1][1]);
-    strip(x - 30, by - 230, x - 12, by - 236, 1, 1, '#7a7299');
+    strip(x - 30, by - 230, x - 12, by - 236, 1, 1, m.sheen);
     Rh(x - 1, by - 248, 2, 14, m.dark);
   }
   /* Monarch C: hair to the jaw, parted to one side, the fringe swept across. */
@@ -175,7 +176,8 @@
       ell(ex, ey, 6, 8, C.K); ell(ex, ey + 3, 3, 3, m.iris); Rh(ex - 3, ey - 5, 3, 3, C.W); Rh(ex + 2, ey + 2, 2, 2, C.W);
     }
     m.hairDo(x, by, m);
-    for (const d of [-1, 1]) Rh(x + d * 15 - 5, ey - 14, 10, 3, m.brow);
+    const brow = m.browOn ? m.browOn(sk) : m.brow;
+    for (const d of [-1, 1]) Rh(x + d * 15 - 5, ey - 14, 10, 3, brow);
     m.crown(x, by, m);
   }
   function mouth(x, by, open) {
@@ -223,7 +225,7 @@
     rrect(640, 512, HR - 640 + 8, 20, 2, C.K); Rv(643, 514, HR - 643, 16, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
     rrect(664, 497, HR - 664 + 8, 18, 2, C.K); Rv(667, 499, HR - 667, 13, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
     Rv(700, 499, 240, 13, [[.3, C.R1], [1, C.R2]]); Rv(690, 514, 260, 16, [[.3, C.R1], [1, C.R2]]);
-    throne(KX, KB); monarch(KX, KB, MONARCHS[s.mon] || MONARCHS.a, skinOf(s));
+    throne(KX, KB); monarch(KX, KB, dressed(s), skinOf(s));
     // the small table with the pie
     P.tableHD(110, 470, 90, 60);
   }
@@ -248,7 +250,41 @@
     if (!k.face.every(b => Array.isArray(b) && typeof b[0] === 'number' && isColour(b[1]))) return SKIN;
     return k;
   }
-  /* The monarch and the skin are painted into the backdrop, so both choices are part of its key. */
+  /* The monarch's hair and robe: s.monHair and s.monRobe, from the base pack's hair and tabard
+     swatches, laid over the court's own ramps. A hair swatch's three bands become the hair's three,
+     and its darkest band, darkened, the darkest strands (to 0.7) and the brows (to 0.85), which is
+     how the court's own hair is shaded; where those brows would hardly show on the skin they are
+     drawn in (light hair on a dark skin), they take the lightest band instead, whichever of the
+     two stands out more from the skin's middle band. B's sheen is the lightest band lifted towards
+     white. A tabard swatch's four bands become the robe's four, and the shade of the far sleeve
+     (and C's panel) its second and fourth. Anything else leaves the monarch as drawn. */
+  const hexOf = n => '#' + n.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  const rgb = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+  const toward = (c, to, k) => hexOf(rgb(c).map((v, i) => v + (to[i] - v) * k));
+  const bandsOk = (b, n) => Array.isArray(b) && b.length === n && b.every(isColour);
+  function hairOf(s) {
+    const k = s.monHair;
+    if (!k || !bandsOk(k.bands, 3)) return null;
+    const [c0, c1, c2] = k.bands, dim = toward(c2, [0, 0, 0], .15);
+    const browOn = sk => (contrast(c0, sk.face[1][1]) > contrast(dim, sk.face[1][1]) ? c0 : dim);
+    return { hair: [[.25, c0], [.7, c1], [1, c2]], dark: toward(c2, [0, 0, 0], .3), brow: dim, browOn, sheen: toward(c0, [255, 255, 255], .25) };
+  }
+  /* The contrast of two colours, as WCAG reckons it, from 1 to 21. */
+  const lum = c => { const [r, g, b] = rgb(c).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+  const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+  function robeOf(s) {
+    const k = s.monRobe;
+    if (!k || !bandsOk(k.bands, 4)) return null;
+    const [c0, c1, c2, c3] = k.bands;
+    return { robe: [[.12, c0], [.5, c1], [.85, c2], [1, c3]], shade: [[.3, c1], [1, c3]] };
+  }
+  /* The monarch s.mon names, in the hair and robe s gives, or exactly as drawn when it gives none. */
+  function dressed(s) {
+    const m = MONARCHS[s.mon] || MONARCHS.a, h = hairOf(s), r = robeOf(s);
+    return h || r ? Object.assign({}, m, h, r) : m;
+  }
+  /* The colours each monarch is drawn in, for the settings screen's "As drawn" choices. */
+  const drawn = mon => { const m = MONARCHS[mon] || MONARCHS.a; return { hair: m.hair.map(b => b[1]), robe: m.robe.map(b => b[1]) }; };
   /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
@@ -261,5 +297,20 @@
     g3: { cls: 'ground', kind: 'floor', x: 555, y: 511, w: 88, h: 112 }
   };
 
-  KW.scenes.court = { spot: 72, places: PLACES, key: s => (MONARCHS[s.mon] ? s.mon : 'a') + '|' + (skinOf(s) === SKIN ? '' : s.monSkin.id), paint, draw };
+  /* The monarch, the skin, the hair and the robe are painted into the backdrop, so every choice is
+     part of its key. */
+  const keyOf = s => {
+    const k = (MONARCHS[s.mon] ? s.mon : 'a') + '|' + (skinOf(s) === SKIN ? '' : s.monSkin.id);
+    const h = hairOf(s) ? s.monHair.id : '', r = robeOf(s) ? s.monRobe.id : '';
+    return h || r ? k + '|' + h + '|' + r : k;
+  };
+
+  KW.scenes.court = {
+    spot: 72, places: PLACES,
+    // The conditions this scene can act out (docs/page.md): the court draws the knight and the
+    // monarch taking turns to talk, whatever else is up, so it acts the SSH session alone. Kept
+    // as plain data for the world format being drafted to take over.
+    can: ['ssh_session'],
+    key: keyOf, paint, draw, drawn
+  };
 })(window.KW);

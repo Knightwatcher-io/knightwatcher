@@ -12,7 +12,13 @@
      helmet  'auto' (off indoors), 'on' or 'off'
      mon     the monarch at court, 'a', 'b' or 'c'; 'a' when it is left out
      monSkin the monarch's skin: { id, face, cheek } from one of the base pack's skin swatches, or
-             null for the skin the court draws by default */
+             null for the skin the court draws by default
+     monHair the monarch's hair: { id, bands, brow } from one of the base pack's hair swatches, or
+             null for the hair each monarch is drawn with
+     monRobe the monarch's robe: { id, bands } from one of the base pack's tabard swatches, or null
+             for the robe each monarch is drawn with
+     scenes  the scene chosen for a condition, by its id: { cpu_hot: 'camp' }. A condition left out,
+             or given a scene that does not list it in its can, plays in its own scene */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, K = KW.knight, P = KW.props, SP = KW.sprites, C = D.C, U = V.U;
@@ -40,6 +46,13 @@
   const flies = []; let swat = null, lastSwat = -1e9, pendingFlies = 0;
   const bgCache = { key: '', cv: document.createElement('canvas') };
 
+  /* The scene the winning condition w plays in at t: the one the input's scenes chose for it,
+     when that scene can act it, else the condition's own, else the quiet scene of the moment. */
+  function sceneOf(w, t) {
+    const pick = E.input.scenes && Object.prototype.hasOwnProperty.call(E.input.scenes, w.id) ? E.input.scenes[w.id] : null;
+    if (pick && w.scene && KW.scenes[pick] && (KW.scenes[pick].can || []).includes(w.id)) return pick;
+    return w.scene || idleScene(t);
+  }
   function idleScene(t) {
     const { is, turnMs, turns } = E.input, list = Array.isArray(turns) && turns.length ? turns : TURNS;
     return is === 'auto' ? list[Math.floor((t - sceneT0) / turnMs) % list.length] : is;
@@ -79,7 +92,7 @@
   function fireEvent(type, text) {
     const e = EVENTS[type], w = E.input.w; if (!e) return;
     if (text) KW.ui.caption(text, e.dur + 1500);
-    if (w.lv >= 3 || !e.where.includes(w.scene || idleScene(frozen() ? KW.hooks.t : performance.now())) || swat) return;
+    if (w.lv >= 3 || !e.where.includes(sceneOf(w, frozen() ? KW.hooks.t : performance.now())) || swat) return;
     ev = { type, t0: frozen() ? 0 : performance.now(), dur: e.dur };
   }
 
@@ -377,7 +390,7 @@
 
   function draw(t) {
     const { HL, HR, HT, HH, HFL } = V, freeze = frozen();
-    const inp = E.input, w = inp.w, scene = w.scene || idleScene(t), sc = KW.scenes[scene], things = inp.things || [];
+    const inp = E.input, w = inp.w, scene = sceneOf(w, t), sc = KW.scenes[scene], things = inp.things || [];
     if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
     const serious = w.lv >= 3, inBed = !!sc.bed && (w.id === 'night' || w.id === 'container_unhealthy');
     const funOK = !serious && !!sc.outdoors;
@@ -399,7 +412,7 @@
       }
     }
     const s = { w, things, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false,
-      mon: inp.mon || 'a', monSkin: inp.monSkin || null };
+      mon: inp.mon || 'a', monSkin: inp.monSkin || null, monHair: inp.monHair || null, monRobe: inp.monRobe || null };
     // a watched thing down: the knight stays put and looks towards its place, or straight ahead
     // when it is not drawn
     if (w.id === 'thing_down') { const px = KW.things.placeX(s, w.place); o.look = px === null ? 0 : Math.sign(px - kx); }
@@ -463,7 +476,7 @@
   }
 
   Object.assign(E, {
-    EVENTS, TURNS,
+    EVENTS, TURNS, sceneOf,
     /* The foe player's parts, for the tests: the tables, where a foe stands, when the blade meets
        it, the plan of an event, the strike on a pose and the foe at a moment. */
     foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bladeGap, crownNear, plan: foePlan, strike, at: foeAt },

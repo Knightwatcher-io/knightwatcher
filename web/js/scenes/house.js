@@ -183,6 +183,12 @@
 
   KW.scenes.house = {
     spot: 114, places: PLACES, rests: RESTS, bed: true, helmet: false, sword: false,
+    // The conditions this scene can act out (docs/page.md): sick in bed and asleep at night, which
+    // need the bed, the television, which only it has, hunger, the stare at the empty dish to the
+    // knight's right, and running hot; and, as a quiet scene, a thing down and memory running
+    // tight. Not the attack: the weapon is put away here. Kept as plain data for the world format
+    // being drafted to take over.
+    can: ['container_unhealthy', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight', 'streaming', 'night'],
     rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 100, act: 'yawn', dur: 14 }, { x: 110, act: 'look', dur: 14 }],
     key: s => (s.tv ? 'tv' : '') + '|' + K.rest.key('main') + offKey(), paint, draw, over
   };

@@ -109,5 +109,12 @@
     g3: { cls: 'ground', kind: 'floor', x: 40, y: 568, w: 88, h: 112, front: true }
   };
 
-  KW.scenes.smithy = { spot: 88, places: PLACES, rests: RESTS, helmet: false, key: s => Math.round(s.kx) + '|' + K.rest.key('main') + offKey(), act, paint, draw };
+  KW.scenes.smithy = {
+    spot: 88, places: PLACES, rests: RESTS, helmet: false,
+    // The conditions this scene can act out (docs/page.md): its act sets the knight hammering
+    // whatever else is up, so it acts the update alone. Kept as plain data for the world format
+    // being drafted to take over.
+    can: ['updating'],
+    key: s => Math.round(s.kx) + '|' + K.rest.key('main') + offKey(), act, paint, draw
+  };
 })(window.KW);

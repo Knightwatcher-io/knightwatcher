@@ -62,9 +62,11 @@ Every value below is invented.
     "thing:Study laptop": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" }
   },
   "defaults": {
-    "look": { "skin": "tan", "hair": "auburn", "hair_style": "curls", "monarch": "b" },
+    "look": { "skin": "tan", "hair": "auburn", "hair_style": "curls", "monarch": "b",
+              "monarch_robe": "teal" },
     "display": { "clock": 12 },
-    "quiet": {}
+    "quiet": {},
+    "scenes": { "cpu_hot": "camp" }
   }
 }
 ```
@@ -109,9 +111,11 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
     "thing:Vault": { "ok": true, "at": "2026-01-15T21:54:10Z", "error": "" }
   },
   "defaults": {
-    "look": { "skin": "tan", "hair": "auburn", "hair_style": "curls", "monarch": "b" },
+    "look": { "skin": "tan", "hair": "auburn", "hair_style": "curls", "monarch": "b",
+              "monarch_robe": "teal" },
     "display": { "clock": 12 },
-    "quiet": {}
+    "quiet": {},
+    "scenes": { "cpu_hot": "camp" }
   }
 }
 ```
@@ -191,29 +195,41 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
   check ran out of time (`timed out`, then `previous read still running` while it hangs on).
 - **`defaults`** is the household default for the display's settings screen: what a display
   shows until someone changes a setting on it, and what it goes back to when told to use the
-  config default. It comes from the `[look]`, `[display]` and `[quiet]` tables of `config.toml`
-  (see [configuration.md](./configuration.md#the-settings-screens-defaults)), read when the
-  collector starts, and is written unchanged into every file. It always has three objects,
-  `look`, `display` and `quiet`, and each holds only the settings the config sets, so a table
-  the config leaves out is `{}`. The collector fills in nothing: for a setting that is absent the
-  page uses its own default.
+  config default. It comes from the `[look]`, `[display]`, `[quiet]` and `[scenes]` tables of
+  `config.toml` (see [configuration.md](./configuration.md#the-settings-screens-defaults)), read
+  when the collector starts, and is written unchanged into every file. It always has four
+  objects, `look`, `display`, `quiet` and `scenes`, and each holds only the settings the config
+  sets, so a table the config leaves out is `{}`. The collector fills in nothing: for a setting
+  that is absent the page uses its own default.
   - `look`: `build` and `monarch` are `a`, `b` or `c`; `weapon` is `greatsword` or
     `sword_and_shield`; `skin` and `monarch_skin` are `fair`, `warm`, `golden`, `tan`, `brown`
-    or `deep`; `hair` is `black`, `dark`, `brown`, `auburn`, `blonde` or `silver`; `hair_style`
-    is `short`, `tied` or `curls`; `tabard` is `blue`, `forest`, `violet`, `wine`, `teal` or
-    `sable`; `plume` is `red`, `white`, `gold`, `royal`, `green` or `violet`.
+    or `deep`; `hair` and `monarch_hair` are `black`, `dark`, `brown`, `auburn`, `blonde` or
+    `silver`; `hair_style` is `short`, `tied` or `curls`; `tabard` and `monarch_robe` are
+    `blue`, `forest`, `violet`, `wine`, `teal` or `sable`; `plume` is `red`, `white`, `gold`,
+    `royal`, `green` or `violet`. `monarch_hair` and `monarch_robe` left out mean each monarch
+    keeps the colours the court draws them in; there is no value for that.
   - `display`: `headline` is `small`, `medium` or `large`; `clock` is the number `24` or `12`;
     `helmet_indoors` is `true` or `false`.
   - `quiet`: `scenes` is a list of one or more of `battlement`, `camp`, `house` and `yard`, with
     no repeats, in the order they take turns; `minutes` is a whole number from 1 to 240, how long
     each quiet scene shows.
+  - `scenes`: the scene a condition plays in, by condition id, such as `{ "cpu_hot": "camp" }`.
+    Each key is one of the condition ids above, and each value one of the page's scenes:
+    `battlement`, `camp`, `house`, `yard`, `cellar`, `smithy` or `court`. Which scene can act
+    which condition is the page's to decide (see [design.md](./design.md#scenes-chosen-per-condition)):
+    the collector writes any condition with any of these scenes, and the page ignores a pair it
+    cannot act, a condition it offers no choice for (such as `night`) among them.
 
   This collector writes only the values above. The page ignores a value it does not know and
-  uses its own default in its place, so a later collector can offer more. A file from a collector older than this section has no `defaults`, and the page then uses
-  its own defaults throughout.
+  uses its own default in its place, so a later collector can offer more. A page from before
+  `scenes` leaves that object alone. A file from a collector older than this section has no
+  `defaults`, and the page then uses its own defaults throughout; one from a collector older than
+  `scenes` has the other three, and the page plays each condition in its own scene.
 
 ## Who decides what
 
 The collector decides whether a condition is true, including how long something must last before
 it counts, and writes the words. The page decides which scene and which state of the knight a
-condition maps to, and nothing else. Thresholds and durations are the collector's configuration.
+condition maps to, and nothing else; `defaults.scenes` only asks it for another scene, and the page
+grants that where the scene can act the condition. Thresholds and durations are the collector's
+configuration.

@@ -94,6 +94,22 @@ SHOTS=(
   "settings-monarch-skin|bar=0&t=2300&is=battlement&set=monarch&mon=b&ms=deep"
   "clock-12|bar=0&t=2300&is=camp&ck=12"
   "mon-skin|bar=0&t=3450&on=ssh&mon=c&ms=brown"
+  # the monarch's hair and robe (mh= and mr=): the monarch's page at the tablet's size, where both
+  # rows show, and each monarch at court in two combinations, one of them on another skin
+  "settings-monarch-colours|bar=0&t=2300&is=battlement&set=monarch&mon=c&mh=auburn&mr=teal|1480,924"
+  "mon-a-colours|bar=0&t=3450&on=ssh&mon=a&mh=silver&mr=teal"
+  "mon-a-colours-tan|bar=0&t=3450&on=ssh&mon=a&mh=black&mr=violet&ms=tan"
+  "mon-b-colours|bar=0&t=3450&on=ssh&mon=b&mh=auburn&mr=forest"
+  "mon-b-colours-deep|bar=0&t=3450&on=ssh&mon=b&mh=blonde&mr=sable&ms=deep"
+  "mon-c-colours|bar=0&t=3450&on=ssh&mon=c&mh=black&mr=wine"
+  "mon-c-colours-fair|bar=0&t=3450&on=ssh&mon=c&mh=silver&mr=blue&ms=fair"
+  # a scene chosen for a condition (sc=): the Scenes page, at the screenshots' size and at the
+  # tablet's with the attack set to the camp by the address, and running hot at the camp and the
+  # empty dish stared at from the battlement
+  "settings-scenes|bar=0&t=2300&is=battlement&set=scenes"
+  "settings-scenes-tablet|bar=0&t=2300&is=battlement&set=scenes&sc=attack:camp|1480,924"
+  "scene-cpu-camp|bar=0&t=2300&on=cpu&sc=cpu_hot:camp"
+  "scene-pi-battlement|bar=0&t=2300&on=pi&sc=pi_silent:battlement"
 )
 
 take() {

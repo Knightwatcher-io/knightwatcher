@@ -15,8 +15,8 @@ a default. Every value on this page is invented.
 A source runs when its `[sources.<name>]` table is present and its `enabled` is not `false`.
 The `[collector]` and `[conditions]` tables can be left out entirely to take the defaults.
 Durations are in seconds. Machines to watch are `[[thing]]` tables, described under
-[Watched things](#watched-things). The `[look]`, `[display]` and `[quiet]` tables set the
-household defaults for the display's settings screen, described under
+[Watched things](#watched-things). The `[look]`, `[display]`, `[quiet]` and `[scenes]` tables set
+the household defaults for the display's settings screen, described under
 [The settings screen's defaults](#the-settings-screens-defaults).
 
 ### [collector]
@@ -265,10 +265,11 @@ headline and the detail say.
 
 ### The settings screen's defaults
 
-The display has a settings screen for the knight's look, the display and the quiet scenes. The
-`[look]`, `[display]` and `[quiet]` tables set the household defaults for it: what every display
-starts from, and what it goes back to when told to use the config default. All three tables and
-every setting in them are optional, and none has a default here. The collector writes exactly
+The display has a settings screen for the knight's look, the display, the quiet scenes and the
+scene each condition plays in. The `[look]`, `[display]`, `[quiet]` and `[scenes]` tables set the
+household defaults for it: what every display starts from, and what it goes back to when told to
+use the config default. All four tables and every setting in them are optional, and none has a
+default here. The collector writes exactly
 what they set into `state.json` as `defaults` (see [state.md](./state.md)), and for a setting
 left out the page uses its own default. The tables are read when the collector starts, like the
 rest of the file, so a change takes effect at the next start.
@@ -282,9 +283,12 @@ monarch = "b"
 
 [display]
 clock = 12
+
+[scenes]
+cpu_hot = "camp"
 ```
 
-`config.example.toml` has all three tables commented out, every setting shown with the allowed
+`config.example.toml` has all four tables commented out, every setting shown with the allowed
 values beside it.
 
 `[look]`, the knight and the monarch at court:
@@ -300,8 +304,12 @@ values beside it.
 | `plume` | `"red"`, `"white"`, `"gold"`, `"royal"`, `"green"`, `"violet"` | The plume's colour. |
 | `monarch` | `"a"`, `"b"`, `"c"` | Which of the three monarchs sits in the court. |
 | `monarch_skin` | the six of `skin` | The monarch's skin tone. |
+| `monarch_hair` | the six of `hair` | The monarch's hair colour. Left out, each monarch keeps the hair the court draws them with. |
+| `monarch_robe` | the six of `tabard` | The colour of the monarch's robe. Left out, each monarch keeps their own robe (A red, B violet, C green). |
 
-The colours, tones and hair styles are those of the base pack (`web/packs/base.pack.json`).
+The colours, tones and hair styles are those of the base pack (`web/packs/base.pack.json`). The
+monarch's hair and robe have no value for "as drawn": leaving the setting out is how a display
+keeps the monarch's own colours.
 
 `[display]`:
 
@@ -318,15 +326,40 @@ The colours, tones and hair styles are those of the base pack (`web/packs/base.p
 | `scenes` | one or more of `"battlement"`, `"camp"`, `"house"`, `"yard"` | The quiet scenes, in the order they take turns. Each may be listed once. |
 | `minutes` | a whole number from 1 to 240 | How long each quiet scene shows. |
 
+`[scenes]`, the scene a condition plays in. Each setting is a condition id, and its value one of
+the page's scenes: `"battlement"`, `"camp"`, `"house"`, `"yard"`, `"cellar"`, `"smithy"` or
+`"court"`. Each scene can act only some conditions (see
+[design.md](./design.md#scenes-chosen-per-condition)), and the page offers a choice for these five,
+each shown with its own scene first:
+
+| Setting | Its own scene | The scenes that can act it |
+|---|---|---|
+| `attack` | `"battlement"` | `"battlement"`, `"camp"`, `"yard"` |
+| `disk_full` | `"cellar"` | `"cellar"`, `"yard"` |
+| `backup_overdue` | `"house"` | `"house"`, `"battlement"`, `"camp"`, `"yard"`, `"cellar"` |
+| `pi_silent` | `"house"` | `"house"`, `"battlement"`, `"camp"` |
+| `cpu_hot` | `"yard"` | `"yard"`, `"battlement"`, `"camp"`, `"house"`, `"cellar"` |
+
+The other conditions are not offered: `wan_down` (only the battlement has the bell rope),
+`container_unhealthy` and `night` (the bed is in the house), `streaming` (so is the television),
+`ssh_session` (the court), `updating` (the smithy), and `thing_down` and `memory_tight`, which play
+in whichever quiet scene is showing. The collector checks each setting against its own condition
+ids and each value against the page's scenes, but it cannot know which scene can act what. A
+known condition paired with a known scene that cannot act it, such as `night = "camp"`, is
+therefore accepted and written, and the page ignores it, with a line in the browser's console,
+and plays the condition in its own scene.
+
 The check is strict, as it is everywhere else in the file. A value outside these lists, a value
 of the wrong type (`"false"` in quotes for `helmet_indoors`, `"12"` for `clock`, `2.5` for
-`minutes`) and an unknown setting in any of the three tables each stop the collector from
+`minutes`) and an unknown setting in any of the four tables each stop the collector from
 starting, and `check-config` names the table, the setting and what it allows:
 
 ```
 config: look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep
 config: quiet.scenes: "camp" listed twice
 config: quiet.minutes: must be a whole number from 1 to 240
+config: scenes.cpu: unknown condition
+config: scenes.cpu_hot: unknown value "forest"; use battlement, camp, house, yard, cellar, smithy or court
 ```
 
 ## secrets.json

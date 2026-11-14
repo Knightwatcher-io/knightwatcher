@@ -32,10 +32,16 @@ function storage(text, opts) {
   return { m, get: () => ({ getItem: k => { if (o.getThrows) throw new Error('SecurityError'); return m.has(k) ? m.get(k) : null; },
     setItem: (k, v) => { if (o.setThrows) throw new Error('QuotaExceededError'); m.set(k, v); } }) };
 }
-/* A store over a storage, with the base pack in use unless pack is null; lines holds the console. */
+/* What the page's scenes can act and each condition's own scene, as the page reads them from the
+   scenes and KW.state it loads (KW.settings.pageWorld), read once from the scripts in a sandbox. */
+let pageWorld = null;
+const WORLD = () => pageWorld || (pageWorld = plain(load().KW.settings.pageWorld()));
+/* A store over a storage, with the base pack in use unless pack is null and the page's world unless
+   world is given; lines holds the console. */
 function store(opts) {
   const o = opts || {}, lines = [], st = o.storage || storage();
-  const s = SET.create({ hooks: o.hooks, storage: o.storageFn || st.get, pack: () => (o.pack === undefined ? PACK : o.pack), say: l => lines.push(l) });
+  const s = SET.create({ hooks: o.hooks, storage: o.storageFn || st.get, pack: () => (o.pack === undefined ? PACK : o.pack), say: l => lines.push(l),
+    world: o.world === undefined ? WORLD : () => o.world });
   return { s, lines, st };
 }
 const saved = obj => JSON.stringify(Object.assign({ v: 1 }, obj));
@@ -46,17 +52,20 @@ test('with nothing set, every value is the page\'s own and the knight\'s look is
   const { s, lines } = store();
   const r = s.now();
   assert.deepEqual(r.values, {
-    look: { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red', monarch: 'a', monarch_skin: 'warm' },
+    look: { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red', monarch: 'a', monarch_skin: 'warm',
+      monarch_hair: null, monarch_robe: null },
     display: { headline: 'medium', clock: 24, helmet_indoors: false },
-    quiet: { scenes: ['battlement', 'camp', 'house', 'yard'], minutes: 10 } });
+    quiet: { scenes: ['battlement', 'camp', 'house', 'yard'], minutes: 10 },
+    scenes: { attack: 'battlement', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house', cpu_hot: 'yard' } });
   for (const sec of Object.keys(r.from)) for (const k of Object.keys(r.from[sec])) assert.equal(r.from[sec][k], 'built-in', sec + '.' + k);
   assert.deepEqual(SET.knightLook(r), {});
-  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000)), { turns: ['battlement', 'camp', 'house', 'yard'], turnMs: 60000, mon: 'a', monSkin: null });
+  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000)), { turns: ['battlement', 'camp', 'house', 'yard'], turnMs: 60000, mon: 'a', monSkin: null, monHair: null, monRobe: null, scenes: {} });
   assert.deepEqual(lines, []);
 });
 
 test('the page\'s own look is the base pack\'s defaults, read from the pack', () => {
-  assert.deepEqual(SET.builtIn(PACK).look, { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red', monarch: 'a', monarch_skin: 'warm' });
+  assert.deepEqual(SET.builtIn(PACK).look, { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red', monarch: 'a', monarch_skin: 'warm',
+    monarch_hair: null, monarch_robe: null });
   const other = JSON.parse(JSON.stringify(PACK));
   Object.assign(other.defaults.swatches, { skin: 'deep', plume: 'gold' }); other.defaults.items.main = 'main.arming'; other.defaults.items.hair = 'hair.curls';
   const L = SET.builtIn(other).look;
@@ -158,7 +167,7 @@ test('a choice is saved under one key as version 1 with the contract\'s names, a
   assert.equal(a.s.choose('display', 'clock', 12), true);
   assert.equal(a.s.choose('quiet', 'scenes', ['house', 'battlement']), true);
   assert.equal(told, 3);
-  assert.deepEqual(JSON.parse(st.m.get('knightwatcher.settings')), { v: 1, look: { skin: 'deep' }, display: { clock: 12 }, quiet: { scenes: ['house', 'battlement'] } });
+  assert.deepEqual(JSON.parse(st.m.get('knightwatcher.settings')), { v: 1, look: { skin: 'deep' }, display: { clock: 12 }, quiet: { scenes: ['house', 'battlement'] }, scenes: {} });
   const b = store({ storage: st });
   assert.deepEqual([b.s.now().values.look.skin, b.s.now().from.look.skin], ['deep', 'saved']);
   assert.equal(b.s.now().values.display.clock, 12);
@@ -214,9 +223,9 @@ test('the reset of a section clears only that section\'s saved choices, which th
   assert.equal(r.values.quiet.minutes, 60);
   assert.equal(told, 1);
   assert.equal(s.own('look'), false);
-  assert.deepEqual(JSON.parse(st.m.get(SET.KEY)), { v: 1, look: {}, display: { clock: 12 }, quiet: { minutes: 60 } });
+  assert.deepEqual(JSON.parse(st.m.get(SET.KEY)), { v: 1, look: {}, display: { clock: 12 }, quiet: { minutes: 60 }, scenes: {} });
   s.reset('display'); s.reset('quiet');
-  assert.deepEqual(JSON.parse(st.m.get(SET.KEY)), { v: 1, look: {}, display: {}, quiet: {} });
+  assert.deepEqual(JSON.parse(st.m.get(SET.KEY)), { v: 1, look: {}, display: {}, quiet: {}, scenes: {} });
   assert.equal(told, 3);
 });
 
@@ -249,7 +258,9 @@ test('the state file\'s defaults reach the store through KW.state.map, with its 
   const { s } = store();
   s.defaults(v.defaults);
   const r = s.now();
-  assert.deepEqual(r.values.look, { build: 'a', weapon: 'sword_and_shield', skin: 'deep', hair: 'black', hair_style: 'curls', tabard: 'sable', plume: 'gold', monarch: 'b', monarch_skin: 'brown' });
+  assert.deepEqual(r.values.look, { build: 'a', weapon: 'sword_and_shield', skin: 'deep', hair: 'black', hair_style: 'curls', tabard: 'sable', plume: 'gold', monarch: 'b', monarch_skin: 'brown',
+    monarch_hair: 'silver', monarch_robe: 'teal' });
+  assert.deepEqual([r.values.scenes.cpu_hot, r.from.scenes.cpu_hot, r.values.scenes.pi_silent, r.from.scenes.pi_silent], ['camp', 'defaults', 'battlement', 'defaults']);
   assert.deepEqual(r.values.display, { headline: 'large', clock: 12, helmet_indoors: true });
   assert.deepEqual(r.values.quiet, { scenes: ['battlement', 'yard'], minutes: 15 });
   assert.deepEqual(SET.knightLook(r), { build: 'kw.base/build.a', items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater', hair: 'kw.base/hair.curls' },
@@ -272,7 +283,7 @@ test('the engine\'s input: the rotation\'s scenes, its length only when set, the
   s.choose('look', 'monarch', 'c'); s.choose('look', 'monarch_skin', 'deep');
   const e = SET.engineInput(s.now(), PACK, 60000);
   assert.deepEqual(plain(e), { turns: ['camp', 'house'], turnMs: 300000, mon: 'c',
-    monSkin: { id: 'deep', face: PACK.swatches.skin.deep.entries.face, cheek: PACK.swatches.skin.deep.entries.cheek } });
+    monSkin: { id: 'deep', face: PACK.swatches.skin.deep.entries.face, cheek: PACK.swatches.skin.deep.entries.cheek }, monHair: null, monRobe: null, scenes: {} });
   assert.equal(SET.engineInput(s.now(), null, 60000).monSkin, null, 'no base pack, the court\'s own skin');
 });
 
@@ -288,6 +299,164 @@ test('the 12-hour clock reads 9:42 PM, with midnight\'s hour 12 AM and noon\'s 1
   assert.equal(c(0, 0, 24), '00:00');
   assert.equal(c(21, 42, 24), '21:42');
   for (let h = 0; h < 24; h++) assert.match(c(h, 7, 12), /^(1[0-2]|[1-9]):07 (AM|PM)$/);
+});
+
+/* ---- The monarch's hair and robe ---------------------------------------------------------------- */
+
+test('the monarch\'s hair and robe come from each level in turn, as drawn (null) when none sets them, and an unknown value is ignored with one line', () => {
+  const L = k => { const r = k.now(); return [r.values.look.monarch_hair, r.from.look.monarch_hair, r.values.look.monarch_robe, r.from.look.monarch_robe]; };
+  assert.deepEqual(L(store().s), [null, 'built-in', null, 'built-in']);
+  const d = store(); d.s.defaults({ look: { monarch_hair: 'silver', monarch_robe: 'teal' } });
+  assert.deepEqual(L(d.s), ['silver', 'defaults', 'teal', 'defaults']);
+  const sv = store({ storage: storage(saved({ look: { monarch_hair: 'black' } })) }); sv.s.defaults({ look: { monarch_hair: 'silver', monarch_robe: 'teal' } });
+  assert.deepEqual(L(sv.s), ['black', 'saved', 'teal', 'defaults']);
+  const hk = store({ storage: storage(saved({ look: { monarch_hair: 'black', monarch_robe: 'wine' } })), hooks: { look: { monarch_hair: 'auburn', monarch_robe: 'sable' } } });
+  assert.deepEqual(L(hk.s), ['auburn', 'hook', 'sable', 'hook']);
+  // values the page does not know, at every level, the empty "as drawn" among them
+  const bad = store({ storage: storage(saved({ look: { monarch_hair: 'green' } })), hooks: { look: { monarch_robe: 'red' } } });
+  bad.s.defaults({ look: { monarch_hair: null, monarch_robe: '' } });
+  assert.deepEqual(L(bad.s), [null, 'built-in', null, 'built-in']);
+  for (const want of ['look.monarch_hair "green" in this display\'s saved choices is ignored', 'look.monarch_robe "red" in the address is ignored',
+    'look.monarch_hair null in the defaults in state.json is ignored', 'look.monarch_robe "" in the defaults in state.json is ignored']) assert.ok(bad.lines.some(l => l.includes(want)), want + ' in ' + bad.lines.join('\n'));
+  assert.equal(bad.s.choose('look', 'monarch_hair', 'green'), false);
+  assert.equal(bad.s.choose('look', 'monarch_robe', null), false, '"As drawn" is a clear, never a value');
+  // the knight's look is untouched by the monarch's
+  assert.deepEqual(SET.knightLook(hk.s.now()), {});
+});
+
+test('"As drawn" clears this display\'s choice for that key alone, so the default from the state file or the page\'s own applies', () => {
+  const st = storage(), { s } = store({ storage: st });
+  let told = 0; s.on(() => told++);
+  s.choose('look', 'monarch_hair', 'blonde'); s.choose('look', 'monarch_robe', 'forest'); s.choose('look', 'skin', 'tan');
+  assert.equal(told, 3);
+  s.clear('look', 'monarch_hair');
+  assert.equal(told, 4);
+  assert.deepEqual(JSON.parse(st.m.get(SET.KEY)).look, { monarch_robe: 'forest', skin: 'tan' });
+  assert.deepEqual([s.now().values.look.monarch_hair, s.now().from.look.monarch_hair], [null, 'built-in']);
+  assert.equal(s.now().values.look.monarch_robe, 'forest');
+  // with a default in the state file, clearing falls to it
+  s.defaults({ look: { monarch_robe: 'wine' } });
+  s.clear('look', 'monarch_robe');
+  assert.deepEqual([s.now().values.look.monarch_robe, s.now().from.look.monarch_robe], ['wine', 'defaults']);
+  // clearing what is not saved does nothing and tells nobody
+  const was = told;
+  s.clear('look', 'monarch_robe'); s.clear('look', 'monarch_hair'); s.clear('analytics', 'on');
+  assert.equal(told, was);
+  assert.equal(s.own('look'), true, 'the skin is still this display\'s own');
+});
+
+test('the engine\'s input carries the monarch\'s hair and robe from the base pack\'s hair and tabard swatches, and null when as drawn or with no pack', () => {
+  const { s } = store();
+  s.choose('look', 'monarch_hair', 'auburn'); s.choose('look', 'monarch_robe', 'violet');
+  const H = PACK.swatches.hair.auburn.entries, R = PACK.swatches.tabard.violet.entries, e = plain(SET.engineInput(s.now(), PACK, 60000));
+  assert.deepEqual(e.monHair, { id: 'auburn', bands: [H['0'], H['1'], H['2']], brow: H.brow });
+  assert.deepEqual(e.monRobe, { id: 'violet', bands: [R['0'], R['1'], R['2'], R['3']] });
+  const none = SET.engineInput(s.now(), null, 60000);
+  assert.deepEqual([none.monHair, none.monRobe], [null, null]);
+  s.clear('look', 'monarch_hair');
+  assert.equal(SET.engineInput(s.now(), PACK, 60000).monHair, null);
+});
+
+/* ---- The scene chosen for each condition --------------------------------------------------------- */
+
+/* The scenes that can act each condition, as each scene declares it: the table docs/design.md
+   gives. A change to a scene's can changes this on purpose or not at all. */
+const CAN = {
+  battlement: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight'],
+  camp: ['attack', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight'],
+  house: ['container_unhealthy', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight', 'streaming', 'night'],
+  yard: ['attack', 'disk_full', 'backup_overdue', 'thing_down', 'cpu_hot', 'memory_tight'],
+  cellar: ['disk_full', 'backup_overdue', 'cpu_hot'],
+  smithy: ['updating'],
+  court: ['ssh_session'] };
+const OFFERED = {
+  attack: ['battlement', 'camp', 'yard'],
+  disk_full: ['yard', 'cellar'],
+  backup_overdue: ['battlement', 'camp', 'house', 'yard', 'cellar'],
+  pi_silent: ['battlement', 'camp', 'house'],
+  cpu_hot: ['battlement', 'camp', 'house', 'yard', 'cellar'] };
+
+test('each scene declares the conditions it can act, every condition can be acted in its own scene, and five conditions are offered', () => {
+  const w = WORLD();
+  assert.deepEqual(w.can, CAN);
+  for (const [c, home] of Object.entries(w.homes)) {
+    assert.ok(c in ST.CONDITIONS, c);
+    if (home) assert.ok(w.can[home].includes(c), c + ' in its own scene, ' + home);
+    for (const k of Object.keys(w.can)) if (w.can[k].includes(c) && !home) assert.ok(SET.SCENES.includes(k), c + ' follows the quiet scene, so only quiet scenes list it');
+  }
+  for (const list of Object.values(w.can)) for (const c of list) assert.ok(c in ST.CONDITIONS, c + ' is a condition');
+  assert.deepEqual(Object.keys(w.can).sort(), SET.ALL_SCENES.slice().sort(), 'every scene declares');
+  assert.deepEqual(SET.offered(w), OFFERED);
+  // night is never offered, whatever can act it; nor is a condition with no scene of its own
+  const more = plain(w); more.can.camp.push('night');
+  assert.ok(!('night' in SET.offered(more)));
+  assert.ok(!('thing_down' in SET.offered(w)) && !('memory_tight' in SET.offered(w)));
+  assert.deepEqual(SET.offered(null), {});
+  assert.deepEqual(store().s.offered(), OFFERED);
+});
+
+test('the scene for a condition comes from each level in turn, and the engine is given only what a level above the page\'s own sets', () => {
+  const st = storage(saved({ scenes: { cpu_hot: 'house', disk_full: 'yard' } }));
+  const { s } = store({ storage: st, hooks: { scenes: { cpu_hot: 'cellar' } } });
+  s.defaults({ scenes: { cpu_hot: 'camp', disk_full: 'cellar', attack: 'yard' } });
+  const r = s.now();
+  assert.deepEqual([r.values.scenes.cpu_hot, r.from.scenes.cpu_hot], ['cellar', 'hook']);
+  assert.deepEqual([r.values.scenes.disk_full, r.from.scenes.disk_full], ['yard', 'saved']);
+  assert.deepEqual([r.values.scenes.attack, r.from.scenes.attack], ['yard', 'defaults']);
+  assert.deepEqual([r.values.scenes.pi_silent, r.from.scenes.pi_silent], ['house', 'built-in']);
+  // the defaults' cellar for the disk is the scene's own, yet set by a level, so the engine is told
+  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000).scenes), { cpu_hot: 'cellar', disk_full: 'yard', attack: 'yard' });
+  assert.deepEqual(plain(s.fallback().values.scenes), { attack: 'yard', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house', cpu_hot: 'camp' });
+});
+
+test('a scene that cannot act its condition, a condition not offered and a name the page does not know are each ignored at their level with one line', () => {
+  const { s, lines } = store({ storage: storage(saved({ scenes: { attack: 'house', moon: 'camp' } })), hooks: { scenes: { pi_silent: 'yard', cpu_hot: '' } } });
+  s.defaults({ scenes: { attack: 'camp', night: 'camp', ssh_session: 'court', thing_down: 'camp', cpu_hot: 'moon', disk_full: 7, backup_overdue: 'cellar' } });
+  const r = s.now();
+  assert.deepEqual([r.values.scenes.attack, r.from.scenes.attack], ['camp', 'defaults'], 'the house cannot act the attack, so the defaults\' camp');
+  assert.deepEqual([r.values.scenes.pi_silent, r.from.scenes.pi_silent], ['house', 'built-in'], 'the pie stands left of the knight in the yard');
+  assert.deepEqual([r.values.scenes.cpu_hot, r.from.scenes.cpu_hot], ['yard', 'built-in']);
+  assert.deepEqual([r.values.scenes.disk_full, r.values.scenes.backup_overdue], ['cellar', 'cellar']);
+  assert.ok(!('night' in r.values.scenes) && !('ssh_session' in r.values.scenes) && !('moon' in r.values.scenes));
+  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000).scenes), { attack: 'camp', backup_overdue: 'cellar' });
+  const before = lines.length; s.now(); s.now();
+  assert.equal(lines.length, before, 'each line once');
+  for (const want of [
+    'scenes.attack "house" in this display\'s saved choices is ignored: that scene cannot act it',
+    'scenes.moon "camp" in this display\'s saved choices is ignored: not a condition the page knows',
+    'scenes.pi_silent "yard" in the address is ignored: that scene cannot act it',
+    'scenes.cpu_hot "" in the address is ignored: not a scene the page knows',
+    'scenes.night "camp" in the defaults in state.json is ignored: the page offers no choice of scene for it',
+    'scenes.ssh_session "court" in the defaults in state.json is ignored: the page offers no choice of scene for it',
+    'scenes.thing_down "camp" in the defaults in state.json is ignored: the page offers no choice of scene for it',
+    'scenes.cpu_hot "moon" in the defaults in state.json is ignored: not a scene the page knows',
+    'scenes.disk_full 7 in the defaults in state.json is ignored: not a scene the page knows'])
+    assert.ok(lines.includes('knightwatcher: settings: ' + want), want + ' in ' + lines.join('\n'));
+  assert.equal(s.choose('scenes', 'attack', 'house'), false);
+  assert.equal(s.choose('scenes', 'night', 'house'), false);
+  assert.equal(s.choose('scenes', 'cpu_hot', 'camp'), true);
+});
+
+test('a choice of scene is saved under scenes, read back, and reset; a text saved before there was a scenes section still loads', () => {
+  const st = storage(), a = store({ storage: st });
+  assert.equal(a.s.choose('scenes', 'cpu_hot', 'camp'), true);
+  assert.equal(a.s.choose('scenes', 'pi_silent', 'battlement'), true);
+  assert.deepEqual(JSON.parse(st.m.get(SET.KEY)), { v: 1, look: {}, display: {}, quiet: {}, scenes: { cpu_hot: 'camp', pi_silent: 'battlement' } });
+  const b = store({ storage: st });
+  assert.deepEqual([b.s.now().values.scenes.cpu_hot, b.s.now().from.scenes.cpu_hot], ['camp', 'saved']);
+  assert.ok(b.s.own('scenes'));
+  b.s.reset('scenes');
+  assert.equal(b.s.own('scenes'), false);
+  assert.equal(b.s.now().from.scenes.cpu_hot, 'built-in');
+  assert.deepEqual(JSON.parse(st.m.get(SET.KEY)).scenes, {});
+  // a value saved by the page before this one, with look, display and quiet alone
+  const old = store({ storage: storage(JSON.stringify({ v: 1, look: { skin: 'deep', monarch: 'c' }, display: { clock: 12 }, quiet: { minutes: 30 } })) });
+  const r = old.s.now();
+  assert.deepEqual([r.values.look.skin, r.values.look.monarch, r.values.display.clock, r.values.quiet.minutes], ['deep', 'c', 12, 30]);
+  assert.ok(Object.values(r.from.scenes).every(f => f === 'built-in'));
+  assert.deepEqual(old.lines, []);
+  assert.equal(old.s.choose('scenes', 'attack', 'yard'), true);
+  assert.deepEqual(JSON.parse(old.st.m.get(SET.KEY)), { v: 1, look: { skin: 'deep', monarch: 'c' }, display: { clock: 12 }, quiet: { minutes: 30 }, scenes: { attack: 'yard' } });
 });
 
 /* ---- The engine, the court and the knight in a sandbox ------------------------------------------ */
@@ -334,13 +503,36 @@ test('the engine\'s quiet rotation takes the input\'s scenes in turn for its len
   assert.deepEqual(at({ turnMs: 1000, turns: ['camp'], is: 'yard' }, [0, 5000]), ['yard', 'yard']);
 });
 
-/* The court's backdrop painted with the monarch and skin given, as the calls it makes. */
-function court(m, mon, monSkin) {
+test('the engine plays a condition in the scene the input chooses for it when that scene can act it, and in its own otherwise', () => {
+  const { KW, E } = load();
+  E.init(new Proxy({}, { set() { return true; }, get: () => () => {} }));
+  const w = id => Object.assign({}, KW.state.CONDITIONS[id], { id, st: 'warn', hl: '', sub: '' });
+  const at = (id, scenes) => { E.input = { w: w(id), is: 'auto', things: [], tv: false, helmet: 'auto', turnMs: 1000, scenes }; E.restartTurns(0); E.draw(0); return E.scene(); };
+  assert.equal(at('cpu_hot'), 'yard', 'nothing chosen: its own');
+  assert.equal(at('cpu_hot', {}), 'yard');
+  assert.equal(at('cpu_hot', { cpu_hot: 'camp' }), 'camp');
+  assert.equal(at('pi_silent', { cpu_hot: 'camp' }), 'house', 'a choice for another condition changes nothing');
+  assert.equal(at('attack', { attack: 'house' }), 'battlement', 'the house cannot act the attack');
+  assert.equal(at('night', { night: 'camp' }), 'house');
+  assert.equal(at('disk_full', { disk_full: 'moon' }), 'cellar', 'a scene the page does not have');
+  assert.equal(at('memory_tight', { memory_tight: 'house' }), 'battlement', 'memory_tight follows the quiet scenes');
+  for (const [c, list] of Object.entries(OFFERED)) for (const k of list) assert.equal(at(c, { [c]: k }), k, c + ' in the ' + k);
+  // the input as the settings give it with nothing set changes no scene
+  for (const c of Object.keys(KW.state.CONDITIONS)) assert.equal(at(c, plain(SET.engineInput(store().s.now(), PACK, 1000).scenes)), at(c), c);
+  // sceneOf, which the events also ask, gives the same scene the frame draws
+  E.input = { w: w('backup_overdue'), is: 'auto', things: [], tv: false, helmet: 'auto', turnMs: 1000, scenes: { backup_overdue: 'yard' } };
+  assert.equal(E.sceneOf(E.input.w, 0), 'yard');
+});
+
+/* The court's backdrop painted with the monarch, skin, hair and robe given, as the calls it makes.
+   narrow paints only the right of the grid, where the throne stands, which is quicker. */
+function court(m, mon, monSkin, monHair, monRobe, narrow) {
   const sc = m.KW.scenes.court, o = m.K.pose('ssh_session', 100);
   o.x = sc.spot * m.V.U; o.floor = m.V.HFL;
-  Object.assign(m.V, { HL: 0, HR: 960, HT: 0 });
+  Object.assign(m.V, { HL: narrow ? 700 : 0, HR: 960, HT: narrow ? 180 : 0 });
   m.calls.length = 0;
-  sc.paint({ w: m.KW.state.IDLE, things: [], places: sc.places, tv: false, kx: o.x, o, here: null, inBed: false, helmOff: false, strike: false, mon, monSkin });
+  sc.paint({ w: m.KW.state.IDLE, things: [], places: sc.places, tv: false, kx: o.x, o, here: null, inBed: false, helmOff: false, strike: false, mon, monSkin,
+    monHair: monHair || null, monRobe: monRobe || null });
   return m.calls.slice();
 }
 const skinOf = id => ({ id, face: PACK.swatches.skin[id].entries.face, cheek: PACK.swatches.skin[id].entries.cheek });
@@ -362,6 +554,39 @@ test('the monarch\'s skin: the court\'s own by default, the same calls for the w
     for (const other of Object.keys(PACK.swatches.skin)) if (other !== id) for (const c of faceColours(other)) if (!faceColours(id).includes(c)) assert.ok(!got.includes(c), mon + ' ' + id + ' draws ' + other + '\'s ' + c);
   }
 });
+
+const hairOf = id => { const e = PACK.swatches.hair[id].entries; return { id, bands: [e['0'], e['1'], e['2']], brow: e.brow }; };
+const robeOf = id => { const e = PACK.swatches.tabard[id].entries; return { id, bands: [e['0'], e['1'], e['2'], e['3']] }; };
+
+test('the monarch\'s hair and robe: as drawn by default and for a shape the court cannot read, each swatch\'s bands where given, and both in the backdrop\'s key', () => {
+  const m = load();
+  const sc = m.KW.scenes.court;
+  for (const mon of ['a', 'b', 'c']) {
+    const own = court(m, mon, null), text = calls => calls.join('\n');
+    assert.deepEqual(court(m, mon, null, null, null), own, mon + ': nothing given is as drawn');
+    assert.deepEqual(court(m, mon, null, { id: 'x', bands: ['#000000'] }, { id: 'y', bands: ['red', 'green', 'blue', 'black'] }), own, mon + ': shapes it cannot read');
+    const drawn = sc.drawn(mon), ownText = text(own);
+    for (const c of drawn.hair.concat(drawn.robe)) assert.ok(ownText.includes(c), mon + ' as drawn has ' + c);
+    for (const id of Object.keys(PACK.swatches.hair)) {
+      const got = text(court(m, mon, null, hairOf(id), null));
+      for (const c of hairOf(id).bands) assert.ok(got.includes(c), mon + ' hair ' + id + ' ' + c);
+      for (const c of drawn.hair) if (!hairOf(id).bands.includes(c)) assert.ok(!got.includes(c), mon + ' hair ' + id + ' still draws its own ' + c);
+      assert.ok(drawn.robe.every(c => got.includes(c)), mon + ' keeps its robe');
+    }
+    for (const id of Object.keys(PACK.swatches.tabard)) {
+      const got = text(court(m, mon, null, null, robeOf(id)));
+      for (const c of robeOf(id).bands) assert.ok(got.includes(c), mon + ' robe ' + id + ' ' + c);
+      assert.ok(drawn.hair.every(c => got.includes(c)), mon + ' keeps its hair');
+    }
+  }
+  // the banners and A's sceptre keep the court's red, whatever the robe
+  assert.ok(text2(court(m, 'a', null, null, robeOf('teal'))).includes(m.KW.draw.C.R1));
+  assert.equal(sc.key({ mon: 'a', monSkin: null, monHair: null, monRobe: null }), 'a|');
+  assert.equal(sc.key({ mon: 'b', monSkin: skinOf('deep'), monHair: hairOf('silver'), monRobe: null }), 'b|deep|silver|');
+  assert.equal(sc.key({ mon: 'c', monSkin: null, monHair: null, monRobe: robeOf('wine') }), 'c|||wine');
+  assert.equal(sc.key({ mon: 'c', monSkin: null, monHair: { id: 'bad', bands: [] }, monRobe: null }), 'c|');
+});
+const text2 = calls => calls.join('\n');
 
 test('KW.knight.look() draws a new look from the base pack in place, without reading the packs again', () => {
   const m = load();
@@ -418,14 +643,22 @@ test('every combination renders: weapon by skin by hair by hair style, the tabar
   assert.ok(most <= PK.LIMITS.lookCost);
 });
 
-test('every monarch renders in every skin, from the base pack\'s swatches, through the engine\'s input', () => {
-  const m = load();
-  for (const monarch of SET.ONE_OF.look.monarch) for (const monarch_skin of SET.ONE_OF.look.monarch_skin) {
+test('every monarch renders in every skin, hair and robe, as drawn among them, from the base pack\'s swatches, through the engine\'s input', () => {
+  const m = load(), O = SET.ONE_OF.look;
+  let n = 0;
+  for (const monarch of O.monarch) for (const monarch_skin of O.monarch_skin) for (const monarch_hair of [null].concat(O.monarch_hair)) for (const monarch_robe of [null].concat(O.monarch_robe)) {
     const { s } = store(); s.choose('look', 'monarch', monarch); s.choose('look', 'monarch_skin', monarch_skin);
-    const e = SET.engineInput(s.now(), m.K.basePack(), 600000);
+    if (monarch_hair) assert.equal(s.choose('look', 'monarch_hair', monarch_hair), true);
+    if (monarch_robe) assert.equal(s.choose('look', 'monarch_robe', monarch_robe), true);
+    const e = SET.engineInput(s.now(), m.K.basePack(), 600000), what = [monarch, monarch_skin, monarch_hair, monarch_robe].join(' ');
     assert.equal(e.mon, monarch);
-    const got = court(m, e.mon, e.monSkin).join('\n');
+    const got = court(m, e.mon, e.monSkin, e.monHair, e.monRobe, true).join('\n'), own = m.KW.scenes.court.drawn(monarch);
     assert.ok(got.length > 0);
-    for (const c of faceColours(monarch_skin)) assert.ok(got.includes(c), monarch + ' ' + monarch_skin + ' ' + c);
+    for (const c of faceColours(monarch_skin)) assert.ok(got.includes(c), what + ' skin ' + c);
+    for (const c of monarch_hair ? hairOf(monarch_hair).bands : own.hair) assert.ok(got.includes(c), what + ' hair ' + c);
+    for (const c of monarch_robe ? robeOf(monarch_robe).bands : own.robe) assert.ok(got.includes(c), what + ' robe ' + c);
+    assert.ok(!/NaN|undefined/.test(got), what + ' draws no broken colour');
+    n++;
   }
+  assert.equal(n, 3 * 6 * 7 * 7);
 });

@@ -95,21 +95,24 @@ class RunnerTest(unittest.TestCase):
     def test_defaults_hold_only_the_keys_the_config_set(self):
         wan = Fake("wan", "wan", self.config, {"up": True})
         r = self.runner([wan])
-        self.assertEqual(r.cycle()["defaults"], {"look": {}, "display": {}, "quiet": {}})
-        self.assertEqual(self.read_state()["defaults"], {"look": {}, "display": {}, "quiet": {}})
+        empty = {"look": {}, "display": {}, "quiet": {}, "scenes": {}}
+        self.assertEqual(r.cycle()["defaults"], empty)
+        self.assertEqual(self.read_state()["defaults"], empty)
 
         config = make_config(
             {
                 "collector": {"output_dir": self.out, "state_dir": self.var},
-                "look": {"skin": "deep", "monarch": "b"},
+                "look": {"skin": "deep", "monarch": "b", "monarch_robe": "teal"},
                 "display": {"clock": 12, "helmet_indoors": False},
+                "scenes": {"cpu_hot": "camp"},
             }
         )
         r = self.runner([Fake("wan", "wan", config, {"up": True})], config=config)
         expected = {
-            "look": {"skin": "deep", "monarch": "b"},
+            "look": {"skin": "deep", "monarch": "b", "monarch_robe": "teal"},
             "display": {"clock": 12, "helmet_indoors": False},
             "quiet": {},
+            "scenes": {"cpu_hot": "camp"},
         }
         for _ in range(2):  # written on every write of the file
             r.cycle()
@@ -131,7 +134,12 @@ class RunnerTest(unittest.TestCase):
         r.cycle()["defaults"]["quiet"]["scenes"].append("camp")
         self.assertEqual(
             self.read_state()["defaults"],
-            {"look": {}, "display": {}, "quiet": {"scenes": ["yard", "house"], "minutes": 4}},
+            {
+                "look": {},
+                "display": {},
+                "quiet": {"scenes": ["yard", "house"], "minutes": 4},
+                "scenes": {},
+            },
         )
         self.assertEqual(config.defaults["quiet"]["scenes"], ["yard", "house"])
 

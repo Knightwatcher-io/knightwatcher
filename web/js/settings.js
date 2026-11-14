@@ -8,18 +8,24 @@
   'use strict';
 
   /* ---- The choices --------------------------------------------------------------------------------
-     The three sections of the contract's defaults (docs/state.md), with the values each key may
+     The four sections of the contract's defaults (docs/state.md), with the values each key may
      take. A value outside these, at any level, is ignored and the next level down is used. */
   const KEY = 'knightwatcher.settings', VERSION = 1;
   const SCENES = ['battlement', 'camp', 'house', 'yard'];
+  /* Every scene the page draws, in the order the settings screen lists them: the files of
+     web/js/scenes/. The collector's PAGE_SCENES (collector/config.py) follows this list. */
+  const ALL_SCENES = ['battlement', 'camp', 'house', 'yard', 'cellar', 'smithy', 'court'];
   const SKINS = ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'];
+  const HAIRS = ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], TABARDS = ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'];
   const ONE_OF = {
-    look: { build: ['a', 'b', 'c'], weapon: ['greatsword', 'sword_and_shield'], skin: SKINS, hair: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'],
-      hair_style: ['short', 'tied', 'curls'], tabard: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], plume: ['red', 'white', 'gold', 'royal', 'green', 'violet'],
-      monarch: ['a', 'b', 'c'], monarch_skin: SKINS },
+    look: { build: ['a', 'b', 'c'], weapon: ['greatsword', 'sword_and_shield'], skin: SKINS, hair: HAIRS,
+      hair_style: ['short', 'tied', 'curls'], tabard: TABARDS, plume: ['red', 'white', 'gold', 'royal', 'green', 'violet'],
+      monarch: ['a', 'b', 'c'], monarch_skin: SKINS, monarch_hair: HAIRS, monarch_robe: TABARDS },
     display: { headline: ['small', 'medium', 'large'], clock: [24, 12], helmet_indoors: [true, false] }
   };
-  const KEYS = { look: Object.keys(ONE_OF.look), display: Object.keys(ONE_OF.display), quiet: ['scenes', 'minutes'] };
+  /* The scenes section's keys are condition ids, and which of them take part depends on what the
+     scenes can act (see offered); KEYS.scenes is filled per store from the world it is given. */
+  const KEYS = { look: Object.keys(ONE_OF.look), display: Object.keys(ONE_OF.display), quiet: ['scenes', 'minutes'], scenes: [] };
   const SECTIONS = Object.keys(KEYS);
   const MINUTES = { least: 1, most: 240 };
   /* The levels above the page's own, highest first, and how the console names each. */
@@ -27,13 +33,17 @@
   const WHERE = { hook: 'the address', saved: 'this display\'s saved choices', defaults: 'the defaults in state.json' };
 
   /* The page's own defaults, below every other level: the base pack's defaults for the knight
-     (read from the pack in use, see builtIn), the first monarch with the court's own skin, a medium
-     headline, a 24-hour clock, the helmet off indoors, and all four quiet scenes for ten minutes
-     each. The demo keeps its own minute while no level above this one sets the length. */
+     (read from the pack in use, see builtIn), the first monarch with the court's own skin and each
+     monarch's own hair and robe (null: as drawn), a medium headline, a 24-hour clock, the helmet
+     off indoors, all four quiet scenes for ten minutes each, and each condition in its own scene
+     (filled from the world, see builtIn). The demo keeps its own minute while no level above this
+     one sets the length. */
   const BUILT_IN = {
-    look: { build: null, weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red', monarch: 'a', monarch_skin: 'warm' },
+    look: { build: null, weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red', monarch: 'a', monarch_skin: 'warm',
+      monarch_hair: null, monarch_robe: null },
     display: { headline: 'medium', clock: 24, helmet_indoors: false },
-    quiet: { scenes: SCENES, minutes: 10 }
+    quiet: { scenes: SCENES, minutes: 10 },
+    scenes: {}
   };
 
   const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -46,10 +56,38 @@
     return Object.keys(pack.builds).map(b => /^build\.([abc])$/.exec(b)).filter(Boolean).map(m => m[1]).sort();
   }
 
+  /* The world the scenes section is checked against: { can, homes }, can each scene's list of the
+     conditions it can act (its can field, web/js/scenes/), homes each condition's own scene, or
+     null for one that plays in the quiet scene of the moment (KW.state.CONDITIONS). In the page
+     both come from what the scripts loaded; under Node a test gives its own. */
+  function worldOf(w) {
+    const out = { can: {}, homes: {} };
+    if (!isObj(w)) return out;
+    if (isObj(w.can)) for (const k of ALL_SCENES) if (Array.isArray(w.can[k])) out.can[k] = w.can[k].filter(c => typeof c === 'string');
+    if (isObj(w.homes)) for (const c of Object.keys(w.homes)) out.homes[c] = typeof w.homes[c] === 'string' ? w.homes[c] : null;
+    return out;
+  }
+  /* The conditions whose scene may be chosen, in the order of homes (the conditions' priority),
+     each with the scenes that can act it, in the order of ALL_SCENES. A condition takes part when
+     it has a scene of its own and more than one scene can act it; night never does, since only the
+     house has the bed and the knight sleeps where the bed is. */
+  function offered(w) {
+    const W = worldOf(w), out = {};
+    for (const c of Object.keys(W.homes)) {
+      if (c === 'night' || !W.homes[c]) continue;
+      const list = ALL_SCENES.filter(k => W.can[k] && W.can[k].includes(c));
+      if (list.length > 1 && list.includes(W.homes[c])) out[c] = list;
+    }
+    return out;
+  }
+
   /* The page's own look, from the base pack's defaults where there is one: its default build,
-     weapon, hair style and swatches, each as the contract names it. */
-  function builtIn(pack) {
+     weapon, hair style and swatches, each as the contract names it; and each condition that takes
+     part in its own scene. */
+  function builtIn(pack, world) {
     const out = JSON.parse(JSON.stringify(BUILT_IN)), d = isObj(pack) && isObj(pack.defaults) ? pack.defaults : null;
+    const W = worldOf(world);
+    for (const c of Object.keys(offered(W))) out.scenes[c] = W.homes[c];
     if (!d) return out;
     const L = out.look, items = isObj(d.items) ? d.items : {}, sw = isObj(d.swatches) ? d.swatches : {};
     const b = /^build\.([abc])$/.exec(d.build || '');
@@ -63,12 +101,25 @@
 
   /* One section of one level, with only the keys and values the page knows. say(line) is told of
      each thing left out. ready is the list of builds the packs make ready: a build outside it is
-     left out as well. */
-  function clean(section, raw, where, ready, say) {
+     left out as well. world is what the scenes section is checked against (see worldOf): a scene
+     that cannot act the condition it is given is left out too. */
+  function clean(section, raw, where, ready, say, world) {
     const out = {};
     if (raw === undefined || raw === null) return out;
     if (!isObj(raw)) { say('knightwatcher: settings: ' + section + ' in ' + WHERE[where] + ' is not an object, so it is ignored'); return out; }
     const no = (k, v, why) => say('knightwatcher: settings: ' + section + '.' + k + ' ' + show(v) + ' in ' + WHERE[where] + ' is ignored: ' + why);
+    if (section === 'scenes') {
+      const W = worldOf(world), offer = offered(W);
+      for (const k of Object.keys(raw)) {
+        const v = raw[k];
+        if (!has(W.homes, k)) no(k, v, 'not a condition the page knows');
+        else if (!has(offer, k)) no(k, v, 'the page offers no choice of scene for it');
+        else if (!ALL_SCENES.includes(v)) no(k, v, 'not a scene the page knows');
+        else if (!offer[k].includes(v)) no(k, v, 'that scene cannot act it');
+        else out[k] = v;
+      }
+      return out;
+    }
     for (const k of Object.keys(raw)) {
       const v = raw[k];
       if (!KEYS[section].includes(k)) { no(k, v, 'not a setting the page knows'); continue; }
@@ -89,14 +140,15 @@
     return out;
   }
 
-  /* What the display shows: { values, from }, each with the three sections. values holds every key;
+  /* What the display shows: { values, from }, each with the four sections. values holds every key;
      from says which level each came from, 'hook', 'saved', 'defaults' or 'built-in'. levels holds
      the cleaned sections of each level, { hook, saved, defaults }, and base the page's own. */
   function resolve(levels, base) {
     const values = {}, from = {};
     for (const sec of SECTIONS) {
       values[sec] = {}; from[sec] = {};
-      for (const k of KEYS[sec]) {
+      // the scenes section has a key for each condition that takes part, which the page's own holds
+      for (const k of sec === 'scenes' ? Object.keys(base.scenes || {}) : KEYS[sec]) {
         const lv = LEVELS.find(l => levels[l] && isObj(levels[l][sec]) && has(levels[l][sec], k));
         values[sec][k] = lv ? levels[lv][sec][k] : base[sec][k];
         from[sec][k] = lv || 'built-in';
@@ -119,13 +171,21 @@
 
   /* What the engine takes from the settings (docs/page.md): the quiet scenes in turn and how long
      each lasts, ownMs while no level above the page's own sets the length (the demo's minute, or
-     live mode's ten), the monarch, and the monarch's skin from the base pack's swatch, or null for
-     the court's own while nothing sets it or there is no base pack. */
+     live mode's ten), the monarch; the monarch's skin, hair and robe from the base pack's skin,
+     hair and tabard swatches, each null for the court's own while nothing sets it or there is no
+     base pack; and the scene chosen for each condition, holding only what a level above the
+     page's own sets. */
   function engineInput(r, pack, ownMs) {
     const q = r.values.quiet, L = r.values.look;
-    const sw = isObj(pack) && isObj(pack.swatches) && isObj(pack.swatches.skin) ? pack.swatches.skin[L.monarch_skin] : null;
-    const monSkin = r.from.look.monarch_skin !== 'built-in' && isObj(sw) && isObj(sw.entries) ? { id: L.monarch_skin, face: sw.entries.face, cheek: sw.entries.cheek } : null;
-    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, mon: L.monarch, monSkin };
+    const swatch = (set, id) => { const sw = isObj(pack) && isObj(pack.swatches) && isObj(pack.swatches[set]) ? pack.swatches[set][id] : null; return isObj(sw) && isObj(sw.entries) ? sw.entries : null; };
+    const set = k => r.from.look[k] !== 'built-in' && L[k] !== null;
+    const sk = set('monarch_skin') ? swatch('skin', L.monarch_skin) : null, hr = set('monarch_hair') ? swatch('hair', L.monarch_hair) : null, rb = set('monarch_robe') ? swatch('tabard', L.monarch_robe) : null;
+    const monSkin = sk ? { id: L.monarch_skin, face: sk.face, cheek: sk.cheek } : null;
+    const monHair = hr ? { id: L.monarch_hair, bands: [hr['0'], hr['1'], hr['2']], brow: hr.brow } : null;
+    const monRobe = rb ? { id: L.monarch_robe, bands: [rb['0'], rb['1'], rb['2'], rb['3']] } : null;
+    const scenes = {};
+    for (const c of Object.keys(r.values.scenes || {})) if (r.from.scenes[c] !== 'built-in') scenes[c] = r.values.scenes[c];
+    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, mon: L.monarch, monSkin, monHair, monRobe, scenes };
   }
 
   /* The clock's words for a time: { time, half }. On the 24-hour clock '09:42' and no half; on the
@@ -138,7 +198,8 @@
 
   /* ---- This display's saved choices ------------------------------------------------------------
      One key in the browser's storage, KEY, holding { "v": 1, "look": {...}, "display": {...},
-     "quiet": {...} } with the contract's names and values. Every read and write is wrapped, since
+     "quiet": {...}, "scenes": {...} } with the contract's names and values; a text saved before
+     there was a scenes section reads as it did. Every read and write is wrapped, since
      a browser may refuse storage outright; the choices then last until the page is reloaded. */
   function load(storage, say) {
     let text = null;
@@ -163,9 +224,10 @@
   /* ---- The store -----------------------------------------------------------------------------------
      create(o) holds the levels and answers what the display shows. o: hooks, the address's hooks in
      the contract's shape ({ look, display, quiet }); storage, a function returning the browser's
-     storage (it may throw); pack, a function returning the base pack in use or null; say, where the
-     console lines go (each said once). The store tells each listener on() added whenever what the
-     display shows changes. */
+     storage (it may throw); pack, a function returning the base pack in use or null; world, a
+     function returning what the scenes can act ({ can, homes }, see worldOf), which in the page
+     defaults to what the loaded scenes and KW.state declare; say, where the console lines go (each
+     said once). The store tells each listener on() added whenever what the display shows changes. */
   function create(o) {
     o = isObj(o) ? o : {};
     const said = new Set(), sayTo = typeof o.say === 'function' ? o.say : line => { if (typeof console !== 'undefined') console.warn(line); };
@@ -173,22 +235,24 @@
     const storage = typeof o.storage === 'function' ? o.storage : () => null;
     const pack = typeof o.pack === 'function' ? o.pack : () => null;
     const hooks = isObj(o.hooks) ? o.hooks : {};
+    const world = typeof o.world === 'function' ? o.world : pageWorld;
     let saved = load(storage, say), defaults = null, last = '';
     const listeners = [];
     const levelOf = (raw, where, ready) => {
-      const out = {};
-      for (const sec of SECTIONS) out[sec] = clean(sec, isObj(raw) ? raw[sec] : undefined, where, ready, say);
+      const out = {}, w = world();
+      for (const sec of SECTIONS) out[sec] = clean(sec, isObj(raw) ? raw[sec] : undefined, where, ready, say, w);
       return out;
     };
+    const cleanSaved = (sec, raw, quiet) => clean(sec, raw, 'saved', buildsOf(pack()), quiet ? () => {} : say, world());
     function now() {
       const p = pack(), ready = buildsOf(p);
-      return resolve({ hook: levelOf(hooks, 'hook', ready), saved: levelOf(saved, 'saved', ready), defaults: levelOf(defaults, 'defaults', ready) }, builtIn(p));
+      return resolve({ hook: levelOf(hooks, 'hook', ready), saved: levelOf(saved, 'saved', ready), defaults: levelOf(defaults, 'defaults', ready) }, builtIn(p, world()));
     }
     /* What the display would show with no hooks and no saved choices: the defaults over the page's
        own. */
     function fallback() {
       const p = pack();
-      return resolve({ defaults: levelOf(defaults, 'defaults', buildsOf(p)) }, builtIn(p));
+      return resolve({ defaults: levelOf(defaults, 'defaults', buildsOf(p)) }, builtIn(p, world()));
     }
     function changed() {
       const key = JSON.stringify(now());
@@ -203,11 +267,19 @@
          and false returned. */
       choose(section, k, value) {
         if (!has(KEYS, section)) return false;
-        const one = clean(section, { [k]: value }, 'saved', buildsOf(pack()), say);
+        const one = cleanSaved(section, { [k]: value });
         if (!has(one, k)) return false;
-        saved = Object.assign({}, saved, { [section]: Object.assign(clean(section, saved[section], 'saved', buildsOf(pack()), () => {}), one) });
+        saved = Object.assign({}, saved, { [section]: Object.assign(cleanSaved(section, saved[section], true), one) });
         save(storage, saved, say); changed();
         return true;
+      },
+      /* Clears this display's choice for one key, which then falls back to the defaults: the
+         monarch's hair and robe "As drawn". */
+      clear(section, k) {
+        if (!has(KEYS, section) || !isObj(saved[section]) || !has(saved[section], k)) return;
+        const rest = Object.assign({}, saved[section]); delete rest[k];
+        saved = Object.assign({}, saved, { [section]: rest });
+        save(storage, saved, say); changed();
       },
       /* Clears this display's choices for a section, which then falls back to the defaults. */
       reset(section) {
@@ -216,7 +288,9 @@
         save(storage, saved, say); changed();
       },
       /* Whether this display has choices of its own in a section. */
-      own: section => isObj(saved[section]) && Object.keys(clean(section, saved[section], 'saved', buildsOf(pack()), () => {})).length > 0,
+      own: section => isObj(saved[section]) && Object.keys(cleanSaved(section, saved[section], true)).length > 0,
+      /* The conditions whose scene may be chosen, each with the scenes that can act it. */
+      offered: () => offered(world()),
       /* The defaults section of the latest valid state file, raw, or null. */
       defaults(raw) {
         const next = isObj(raw) ? raw : null;
@@ -229,7 +303,16 @@
     };
   }
 
-  const api = { KEY, VERSION, SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, buildsOf, builtIn, clean, resolve, knightLook, engineInput, clock, load, save, create };
+  /* The page's own world: each loaded scene's can and each condition's own scene, from
+     KW.state.CONDITIONS. Empty under Node, where KW holds neither. */
+  function pageWorld() {
+    const can = {}, homes = {}, sc = isObj(KW.scenes) ? KW.scenes : {}, cond = isObj(KW.state) && isObj(KW.state.CONDITIONS) ? KW.state.CONDITIONS : {};
+    for (const k of Object.keys(sc)) if (isObj(sc[k]) && Array.isArray(sc[k].can)) can[k] = sc[k].can;
+    for (const c of Object.keys(cond)) homes[c] = cond[c].scene;
+    return { can, homes };
+  }
+
+  const api = { KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, buildsOf, builtIn, worldOf, offered, clean, resolve, knightLook, engineInput, clock, load, save, create, pageWorld };
   KW.settings = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
@@ -246,9 +329,12 @@
      cancels. The screen closes after IDLE_S seconds without a touch, counting down the last WARN_S. */
   const HOLD_MS = 2000, CUE_AFTER_MS = 250, TAP_MS = 500, MOVE_PX = 24, IDLE_S = 60, WARN_S = 10, BLOCKS = 10;
   const MINUTE_CHOICES = [5, 10, 15, 30, 60];
-  const SCENE_NAMES = { battlement: 'Battlement', camp: 'Camp', house: 'House', yard: 'Training yard' };
+  const SCENE_NAMES = { battlement: 'Battlement', camp: 'Camp', house: 'House', yard: 'Training yard', cellar: 'Cellar', smithy: 'Smithy', court: 'Court' };
+  /* Each condition by a plain name, after the headline the page shows for it. */
+  const CONDITION_NAMES = { attack: 'Under attack', wan_down: 'WAN down', container_unhealthy: 'Unwell', disk_full: 'Disk full', backup_overdue: 'Backup overdue',
+    pi_silent: 'Pi silent', cpu_hot: 'Running hot', ssh_session: 'At court', updating: 'Updating', streaming: 'Now showing', night: 'Night watch' };
   const WEAPONS = [['greatsword', 'Greatsword', 'Two hands'], ['sword_and_shield', 'Sword and shield', 'One hand each']];
-  const SETS = { skin: 'skin', hair: 'hair', tabard: 'tabard', plume: 'plume', monarch_skin: 'skin' };
+  const SETS = { skin: 'skin', hair: 'hair', tabard: 'tabard', plume: 'plume', monarch_skin: 'skin', monarch_hair: 'hair', monarch_robe: 'tabard' };
   const HEADLINES = [['small', 'Small', 20], ['medium', 'Medium', 27], ['large', 'Large', 36]];
   const OWN_SCOPE = 'Kept on this display only. Other displays keep their own.';
 
@@ -271,8 +357,8 @@
       V.HL = 0; V.HR = V.HW; V.HT = 0; D.setCtx(ctx);
       try { fn(); } finally { D.setCtx(was); Object.assign(V, edges); }
     }
-    const sceneState = (sc, o2, mon, monSkin) => ({ w: KW.state.IDLE, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], places: sc.places || null, tv: false,
-      kx: sc.spot * U, o: o2, here: null, inBed: false, helmOff: o2.helmet === false, strike: false, mon, monSkin });
+    const sceneState = (sc, o2, mon, monSkin, monHair, monRobe) => ({ w: KW.state.IDLE, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], places: sc.places || null, tv: false,
+      kx: sc.spot * U, o: o2, here: null, inBed: false, helmOff: o2.helmet === false, strike: false, mon, monSkin, monHair: monHair || null, monRobe: monRobe || null });
     /* Pictures that do not move, kept until the look or the helmet changes: the quiet scenes with the
        knight at its arrival spot, and the monarchs cropped from the court's own drawing. */
     const pics = new Map();
@@ -290,13 +376,13 @@
       });
     }
     const CROP = { x: 700, y: 160, w: 240, h: 372 };
-    function monarchPicture(mon, skin) {
-      const key = 'court|' + mon + '|' + (skin ? skin.id : '');
+    function monarchPicture(mon, e) {
+      const key = 'court|' + mon + '|' + [e.monSkin, e.monHair, e.monRobe].map(x => (x ? x.id : '')).join('|');
       if (pics.has(key)) return pics.get(key);
       const big = document.createElement('canvas'); big.width = V.HW; big.height = V.HH;
       const sc = KW.scenes.court, o2 = K.pose('ssh_session', 100);
       o2.x = sc.spot * U; o2.floor = V.HFL;
-      onGrid(big.getContext('2d'), () => { const s = sceneState(sc, o2, mon, skin); sc.paint(s); sc.draw(100, s); });
+      onGrid(big.getContext('2d'), () => { const s = sceneState(sc, o2, mon, e.monSkin, e.monHair, e.monRobe); sc.paint(s); sc.draw(100, s); });
       const out = document.createElement('canvas'); out.width = CROP.w; out.height = CROP.h;
       out.getContext('2d').drawImage(big, CROP.x, CROP.y, CROP.w, CROP.h, 0, 0, CROP.w, CROP.h);
       pics.set(key, out);
@@ -350,7 +436,8 @@
         if (c.node) chip.appendChild(c.node);
         b.appendChild(chip);
         if (c.name) b.appendChild(el('span', 'name', c.name));
-        b.setAttribute('aria-label', label + ': ' + (c.label || c.chip || c.name) + (c.chip && c.name ? ', ' + c.name : '') + (c.off ? ', not drawn yet' : ''));
+        if (c.sub) b.appendChild(el('span', 'sub', c.sub));
+        b.setAttribute('aria-label', label + ': ' + (c.label || c.chip || c.name) + (c.chip && c.name ? ', ' + c.name : '') + (c.sub ? ', ' + c.sub : '') + (c.off ? ', not drawn yet' : ''));
         b.addEventListener('click', () => {
           if (c.off) { st.notes[key] = c.offNote; note.textContent = c.offNote; return; }
           st.notes[key] = ''; pick(c.id);
@@ -395,8 +482,10 @@
     function lookWords(v, pack) {
       const sw = (set, id) => (pack && pack.swatches[set] && pack.swatches[set][id] ? lower(pack.swatches[set][id].name) : id);
       const style = pack && pack.items['hair.' + v.hair_style] ? lower(pack.items['hair.' + v.hair_style].name) : v.hair_style;
+      const mh = v.monarch_hair ? sw('hair', v.monarch_hair) + ' hair' : '', mr = v.monarch_robe ? 'a ' + sw('tabard', v.monarch_robe) + ' robe' : '';
+      const dress = mh && mr ? mh + ', ' + mr : mh ? mh + ', the robe as drawn' : mr ? 'the hair as drawn, ' + mr : 'hair and robe as drawn';
       return (v.build ? 'Build ' + v.build.toUpperCase() + ', ' : '') + 'the ' + (v.weapon === 'sword_and_shield' ? 'sword and shield' : 'greatsword') + ', ' + sw('skin', v.skin) + ' skin, ' +
-        sw('hair', v.hair) + ' hair (' + style + '), a ' + sw('tabard', v.tabard) + ' tabard, a ' + sw('plume', v.plume) + ' plume; monarch ' + v.monarch.toUpperCase() + ', ' + sw('skin', v.monarch_skin) + ' skin';
+        sw('hair', v.hair) + ' hair (' + style + '), a ' + sw('tabard', v.tabard) + ' tabard, a ' + sw('plume', v.plume) + ' plume; monarch ' + v.monarch.toUpperCase() + ', ' + sw('skin', v.monarch_skin) + ' skin, ' + dress;
     }
     /* What a section falls back to when this display's choices are cleared, the defaults in the
        state file over the page's own, and whether any of it comes from config.toml. */
@@ -404,7 +493,7 @@
       const f = store.fallback();
       return { values: f.values[section], fromConfig: KEYS[section].some(k => f.from[section][k] === 'defaults') };
     }
-    const hooked = (r, sec) => KEYS[sec].some(k => r.from[sec][k] === 'hook');
+    const hooked = (r, sec) => Object.keys(r.from[sec]).some(k => r.from[sec][k] === 'hook');
 
     /* ---- The pages ---------------------------------------------------------------------------------- */
     const choose = (sec, k) => v => store.choose(sec, k, v);
@@ -434,17 +523,23 @@
         const home = el('canvas', 'scene'); home.dataset.scene = 'house'; prev.appendChild(home);
       } },
       monarch: { label: 'The monarch', scope: OWN_SCOPE, build(list, prev, r) {
-        const pack = K.basePack(), v = r.values.look, skin = monSkinOf(r);
+        const pack = K.basePack(), v = r.values.look, e = monOf(r);
         list.appendChild(row('monarch', 'Monarch', ONE_OF.look.monarch.map(m => {
           const cv = el('canvas'); cv.dataset.mon = m;
           return { id: m, node: cv, name: 'Monarch ' + m.toUpperCase(), kind: 'pic' };
         }), v.monarch, choose('look', 'monarch'), hookNote(r, 'look', 'monarch')));
-        if (pack) list.appendChild(row('monarch_skin', 'Skin tone', swatches(pack, 'monarch_skin'), v.monarch_skin, choose('look', 'monarch_skin'), hookNote(r, 'look', 'monarch_skin')));
-        else list.appendChild(el('p', 'kws-line', 'The monarch\'s skin tones come from the base pack, which could not be used (see Status), so the monarch keeps the court\'s own.'));
+        if (pack) {
+          list.appendChild(row('monarch_skin', 'Skin tone', swatches(pack, 'monarch_skin'), v.monarch_skin, choose('look', 'monarch_skin'), hookNote(r, 'look', 'monarch_skin')));
+          // the first choice of each is the monarch's own colours, which saves nothing for the key
+          const own = KW.scenes.court.drawn(v.monarch), asDrawn = cols => ({ id: null, name: 'As drawn', fill: bandsCss(Object.assign({}, cols)) });
+          const pickOr = k => id => (id === null ? store.clear('look', k) : store.choose('look', k, id));
+          list.appendChild(row('monarch_hair', 'Hair colour', [asDrawn(own.hair)].concat(swatches(pack, 'monarch_hair')), v.monarch_hair, pickOr('monarch_hair'), hookNote(r, 'look', 'monarch_hair')));
+          list.appendChild(row('monarch_robe', 'Robe', [asDrawn(own.robe)].concat(swatches(pack, 'monarch_robe')), v.monarch_robe, pickOr('monarch_robe'), hookNote(r, 'look', 'monarch_robe')));
+        } else list.appendChild(el('p', 'kws-line', 'The monarch\'s skin tones and colours come from the base pack, which could not be used (see Status), so the monarch keeps the court\'s own.'));
         const d = defaultsOf('look');
         list.appendChild(reset('look', 'look', lookWords(d.values, pack), d.fromConfig, hooked(r, 'look')));
         prev.appendChild(el('h2', '', 'At court'));
-        const cv = el('canvas', 'court'); cv.id = 'kws-court'; cv.dataset.skin = skin ? skin.id : ''; prev.appendChild(cv);
+        const cv = el('canvas', 'court'); cv.id = 'kws-court'; cv.dataset.skin = e.monSkin ? e.monSkin.id : ''; prev.appendChild(cv);
       } },
       display: { label: 'Display', scope: OWN_SCOPE, build(list, prev, r) {
         const v = r.values.display;
@@ -481,6 +576,22 @@
         const d = defaultsOf('quiet').values, n = d.scenes.length;
         const dw = (n === SCENES.length ? 'all four scenes' : n === 1 ? 'the ' + lower(SCENE_NAMES[d.scenes[0]]) + ' alone' : d.scenes.map(x => lower(SCENE_NAMES[x])).join(', ').replace(/, ([^,]*)$/, ' and $1')) + ', ' + d.minutes + (d.minutes === 1 ? ' minute' : ' minutes') + ' each';
         list.appendChild(reset('quiet', 'choices', dw + '. These scenes show only while all is quiet; anything the knight has to act out comes first', defaultsOf('quiet').fromConfig, hooked(r, 'quiet')));
+      } },
+      scenes: { label: 'Scenes', scope: OWN_SCOPE, build(list, prev, r) {
+        const offer = store.offered(), conds = Object.keys(offer), dflt = store.fallback().values.scenes;
+        list.appendChild(el('p', 'kws-intro', 'Where the knight acts out each of these. ' +
+          'A condition only one scene can act, and the night, which needs the bed, keep their own scene.'));
+        if (!conds.length) list.appendChild(el('p', 'kws-line', 'No condition has more than one scene that can act it.'));
+        for (const c of conds) {
+          list.appendChild(row('scene:' + c, CONDITION_NAMES[c] || c, offer[c].map(k => {
+            const cv = el('canvas'); cv.dataset.scene = k;
+            return { id: k, node: cv, name: SCENE_NAMES[k] || k, sub: k === dflt[c] ? 'Default' : '', kind: 'scene' };
+          }), r.values.scenes[c], choose('scenes', c), hookNote(r, 'scenes', c)));
+        }
+        const f = store.fallback(), set = conds.filter(c => f.from.scenes[c] === 'defaults');
+        const dw = set.length ? set.map(c => lower(CONDITION_NAMES[c] || c) + ' in the ' + lower(SCENE_NAMES[f.values.scenes[c]] || f.values.scenes[c])).join(', ').replace(/, ([^,]*)$/, ' and $1') + ', and the rest in their own scenes'
+          : 'each condition in its own scene';
+        list.appendChild(reset('scenes', 'choices', dw, set.length > 0, hooked(r, 'scenes')));
       } },
       status: { label: 'Status', scope: 'What this display knows. Read only.', build(list) {
         const s = K.status || { base: null, refused: [], source: 'code', note: '' }, info = o.info(), view = info.view;
@@ -533,7 +644,7 @@
       const text = 'Written ' + (n < 120 ? n + (n === 1 ? ' second' : ' seconds') : Math.round(n / 60) + ' minutes') + ' ago.';
       if (p.textContent !== text) p.textContent = text;
     }
-    const monSkinOf = r => engineInput(r, K.basePack(), 0).monSkin;
+    const monOf = r => engineInput(r, K.basePack(), 0);
 
     /* The rail, built once. */
     const rail = kws.querySelector('.kws-rail');
@@ -561,10 +672,10 @@
     }
     /* What does not move: the monarchs and the scenes. */
     function paintStill(r) {
-      const skin = monSkinOf(r);
-      main.querySelectorAll('canvas[data-mon]').forEach(cv => blit(cv, monarchPicture(cv.dataset.mon, skin), true));
+      const e = monOf(r);
+      main.querySelectorAll('canvas[data-mon]').forEach(cv => blit(cv, monarchPicture(cv.dataset.mon, e), true));
       main.querySelectorAll('canvas[data-scene]').forEach(cv => blit(cv, scenePicture(cv.dataset.scene, r.values.display.helmet_indoors), true));
-      const ct = $('kws-court'); if (ct) blit(ct, monarchPicture(r.values.look.monarch, skin), false);
+      const ct = $('kws-court'); if (ct) blit(ct, monarchPicture(r.values.look.monarch, e), false);
     }
     /* What moves: the knights, every frame while the screen is open. */
     function loop() {

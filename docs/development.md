@@ -90,9 +90,12 @@ it looks. With time frozen each shot depends only on its address, however many f
 machine paints. Take one set at a time all the same: two browsers shooting at once have not been
 tried. The nine `arm-` shots draw the sword and shield through the address's `arm=one`; a
 reference taken from a tree older than that hook draws the greatsword there, so against it only
-those differ. The eleven settings shots at the end of the set (the screen on each page, the hold's
-cue, the 12-hour clock, a monarch's skin) have nothing to compare with in a reference from before
-the settings, and the comparison reports them missing. A headless browser has no saved choices, so
+those differ. The eleven settings shots near the end of the set (the screen on each page, the
+hold's cue, the 12-hour clock, a monarch's skin) have nothing to compare with in a reference from
+before the settings, and the comparison reports them missing. The eleven after them (the monarch's
+hair and robe, the Scenes page, a condition in a chosen scene) are missing likewise from a reference
+from before those, against which the eight settings shots that show the side rail differ in it,
+where the Scenes entry was added, and the two of the monarch's page also in its new rows. A headless browser has no saved choices, so
 every shot shows what its address asks for. [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
@@ -109,8 +112,10 @@ when no base pack can be used; its signed packs use keys generated for the run. 
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
 and that no two places draw over each other. `tests/web/settings.test.js` checks the settings in
 `web/js/settings.js` (the order of their levels, unknown values, the browser's storage refusing,
-the reset, the 12-hour clock), the engine's quiet rotation, the monarch's skin, and the knight drawn
-from the base pack in all 216 looks the settings offer and every monarch in every skin.
+the reset, the 12-hour clock, the monarch's hair and robe with "As drawn", the scene chosen per
+condition and which scenes can act which condition), the engine's quiet rotation and its choice of
+scene, the monarch's skin, hair and robe, and the knight drawn from the base pack in all 216 looks
+the settings offer and every monarch in every skin, hair and robe.
 
 The repository's own page draws the knight from the base pack, so the screenshots of the
 repository's page check the pack path, and the knight test checks both paths. A deployed copy

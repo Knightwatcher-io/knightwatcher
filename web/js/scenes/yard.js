@@ -117,6 +117,12 @@
 
   KW.scenes.yard = {
     spot: 104, places: PLACES, outdoors: true,
+    // The conditions this scene can act out (docs/page.md): the attack with the weapon raised, the
+    // crate carried between its spots, whose acts leave the knight's face alone, hunger, and running
+    // hot at the dummy; and, as a quiet scene, a thing down and memory running tight. Not the stare
+    // at the empty dish: the pie stands to the knight's left. Kept as plain data for the world
+    // format being drafted to take over.
+    can: ['attack', 'disk_full', 'backup_overdue', 'thing_down', 'cpu_hot', 'memory_tight'],
     rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 80, act: 'look', dur: 14 }],
     act, paint, draw
   };
