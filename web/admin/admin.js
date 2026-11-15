@@ -637,14 +637,23 @@
     if (!set) return SPEC['look.' + k].values.map(id => ({ id, chip: cap(id), kind: 'txt' }));
     return SPEC['look.' + k].values.filter(id => set[id]).map(id => ({ id, name: set[id].name, fill: bandsCss(set[id].entries) }));
   }
+  /* The choices of a gear row, weapon included: the base pack's items by their names, in the
+     schema's order (KW.settings.itemChoices); with no base pack in use, the values by name. */
+  function gearOf(k) {
+    const W = KW.settings.WEAPON_CHIPS;
+    if (!PACK) return SPEC['look.' + k].values.map(id => (k === 'weapon' && W[id] ? { id, chip: W[id][0], name: W[id][1], kind: 'txt' } : { id, chip: cap(id), kind: 'txt' }));
+    return KW.settings.itemChoices(PACK, k).map(c => ({ id: c.id, chip: c.name, name: c.sub, kind: 'txt' }));
+  }
   function pageLook(m) {
     const grid = el('div', 'lookgrid'), left = el('div'), c = card('Household look', '[look]', TABLES.look.help);
     const L = 'look.';
     c.appendChild(row(L + 'build', optRow(L + 'build', SPEC[L + 'build'].values.map(id => ({ id, chip: KW.settings.buildName(PACK, id).toUpperCase(), kind: 'txt' })))));
-    c.appendChild(row(L + 'weapon', optRow(L + 'weapon', [{ id: 'greatsword', chip: 'Greatsword', name: 'Two hands', kind: 'txt' }, { id: 'sword_and_shield', chip: 'Sword and shield', name: 'One hand each', kind: 'txt' }])));
+    c.appendChild(row(L + 'weapon', optRow(L + 'weapon', gearOf('weapon'))));
     for (const k of ['skin', 'hair']) c.appendChild(row(L + k, optRow(L + k, swatchesOf(k))));
-    c.appendChild(row(L + 'hair_style', optRow(L + 'hair_style', SPEC[L + 'hair_style'].values.map(id => ({ id, chip: PACK && PACK.items && PACK.items['hair.' + id] ? PACK.items['hair.' + id].name : cap(id), kind: 'txt' })))));
+    c.appendChild(row(L + 'hair_style', optRow(L + 'hair_style', gearOf('hair_style'))));
     for (const k of ['tabard', 'plume']) c.appendChild(row(L + k, optRow(L + k, swatchesOf(k))));
+    // the gear, as the walls' settings screen lists it under Armour
+    for (const k of ['shield', 'helmet', 'plume_style', 'body', 'shoulders', 'arms', 'hands', 'legs', 'feet', 'back']) c.appendChild(row(L + k, optRow(L + k, gearOf(k))));
     c.appendChild(row(L + 'monarch', optRow(L + 'monarch', SPEC[L + 'monarch'].values.map(id => { const cv = el('canvas'); cv.dataset.mon = id; return { id, node: cv, name: 'Monarch ' + id.toUpperCase(), kind: 'pic' }; }))));
     c.appendChild(row(L + 'monarch_skin', optRow(L + 'monarch_skin', swatchesOf('monarch_skin'))));
     const own = KW.scenes.court.drawn(val(L + 'monarch'));

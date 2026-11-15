@@ -1165,8 +1165,8 @@ classes and boxes, labels, placeholders and the status colours' bands) and `SCEN
 
 ### The base pack
 
-`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.3.0.
-Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, two more builds, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), and nothing the display does not draw:
+`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.4.0.
+Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, two more builds, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), the free items of 1.4.0 (two or three more in every slot a user chooses), and nothing the display does not draw:
 
 - three builds, new in 1.3.0 but for the first, each with the plain head, named as the settings
   screen shows them (differences from Classic in brackets):
@@ -1212,11 +1212,56 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   court draws the monarch from the same swatches when the settings choose them: a skin's face and
   cheek, a hair swatch's three bands and a tabard swatch's four as the robe, laid over the court's
   own drawing ([page.md](./page.md#the-scene-interface)), so no pack change is needed for it;
+- 25 free items, new in 1.4.0, so that every slot a user chooses has three to five free choices.
+  The owner approved them from a mock-up; their ids, names, shapes and costs (each item's own,
+  worn, viewed and at rest together, against 400 shapes and 8000):
+
+  | Slot | Item | Name | Shapes | Cost |
+  |---|---|---|---|---|
+  | `main` | `main.longsword` | Longsword, two hands (`hands` [2, -30], `blade` `{"from": 34, "to": 222, "half": 11}`) | 24 | 4 687 |
+  | | `main.mace` | Flanged mace, one hand (`hands` [0], `blade` `{"from": 34, "to": 136, "half": 16}`) | 19 | 3 853 |
+  | `off` | `off.round` | Round shield (hold `[0, 0]`, face `[-44, -44, 88, 88]`) | 56 | 2 348 |
+  | | `off.kite` | Kite shield (hold `[0, -14]`, face `[-36, -44, 72, 132]`) | 42 | 3 074 |
+  | `helmet` | `helm.kettle` | Kettle hat (plume mount `[2, -88]`) | 41 | 2 034 |
+  | | `helm.coif` | Mail coif (no plume mount) | 46 | 1 754 |
+  | | `helm.bascinet` | Bascinet (plume mount `[2, -98]`) | 37 | 2 078 |
+  | `plume` | `plume.feather` | Tall feather | 29 | 1 157 |
+  | | `plume.horsehair` | Horsehair | 21 | 841 |
+  | `torso` | `torso.cuirass` | Breastplate | 29 | 4 641 |
+  | | `torso.gambeson` | Quilted gambeson | 32 | 2 596 |
+  | `pauldrons` | `pauldrons.lames` | Layered spaulders | 18 | 969 |
+  | | `pauldrons.leather` | Leather pauldrons | 12 | 589 |
+  | `arms` | `arms.mail` | Mail sleeves | 6 | 4 156 |
+  | | `arms.padded` | Padded sleeves | 6 | 4 154 |
+  | `gauntlets` | `gauntlets.leather` | Leather gloves | 8 | 168 |
+  | | `gauntlets.mail` | Mail mittens | 12 | 188 |
+  | `legs` | `legs.mail` | Mail chausses | 22 | 701 |
+  | | `legs.hose` | Padded hose | 10 | 598 |
+  | `boots` | `boots.sabatons` | Sabatons | 10 | 250 |
+  | | `boots.shoes` | Turnshoes | 12 | 260 |
+  | `back` | `back.cloak` | Long cloak | 6 | 1 110 |
+  | | `back.cape` | Short cape | 6 | 748 |
+  | `hair` | `hair.long` | Long, with a `helmeted` view | 18 | 1 166 |
+  | | `hair.close` | Close crop | 9 | 181 |
+
+  Each is one drawing for all three builds, fitted as the base pack's own items are: every width
+  that meets the body leans on `dShoulder`, `dChest`, `dWaist`, `dHip`, `dLeg` or `dHeight` and on
+  `bloat`, and the breastplate and the gambeson are laid on the tabard's four-piece outline, so they
+  taper on Broad and Slim as the tabard does. Cloth takes the user's colours, with no colour set of
+  its own: the fields of the round and kite shields, the coat under the breastplate, the gambeson,
+  the padded sleeves and the short cape take `@tabard`, and the long cloak and the two plumes
+  `@plume`. The mail coif has no `mounts`, so no plume is drawn with it (`plumeShown` is false) and
+  the settings screen greys the plume while it is worn ([page.md](./page.md#the-settings-screen)).
+  The mace's `blade` names its haft and head, so the smithy heats the head as it heats a blade and
+  the house's pegs sit under it. The longsword's two stations are the greatsword's and the mace's
+  one is the arming sword's, so each is held exactly where those are;
+- one palette set of its own, new in 1.4.0, `cloth`, with the grey-violet wool of the padded hose
+  and the turnshoes: `wool0` `#8a7f95`, `wool1` `#625a70`, `wool2` `#423c50`. `provides` lists
+  `palettes` with it;
 - `defaults` naming the build `build.a`, the greatsword and the eleven others and today's swatches
   (skin `warm`, hair `brown`, tabard `blue`, plume `red`), so the default look is the present
-  knight; nothing names
-  the sword and shield or the new options until a look asks for them. It has no palettes of its
-  own and no decorations.
+  knight; nothing names the sword and shield, the new options or the free items until a look asks
+  for them, and nothing is on the back. It has no decorations.
 
 **The eye of the watch** on the tabard and on the shield, worn and at rest, is gold with a white
 eye and a pupil; its iris is `@tabard.3`, the tabard's darkest band, so the emblem takes the coat's
@@ -1260,11 +1305,17 @@ tests need (a second build of its own, long hair, a smaller arming sword of its 
 shield, a pennant and a lantern). The one-handed items are kept, as approved, in
 `tests/web/fixtures/base-onehand.items.json`, the free options (the twenty new swatches and the two
 hair styles) in `tests/web/fixtures/base-options.json`, and the three builds with their names and
-the three fitted items in `tests/web/fixtures/base-builds.json`. The default look costs 13 878 and
-draws at most 105 shapes; the look with the sword and shield draws at most 125. Neither colours
-nor the build change the cost, so every look's cost depends on its items alone, and the heaviest
-is the tied hair with the sword and shield: 135 shapes, cost 14 470, against the caps of 1200 and
-40 000.
+the three fitted items in `tests/web/fixtures/base-builds.json`, and the free items of 1.4.0 with
+the wool in `tests/web/fixtures/base-free-items.json`, copied from the approved trial pack. The
+default look costs 13 878 and draws at most 105 shapes; the look with the sword and shield draws
+at most 125. Neither colours nor the build change the cost, so every look's cost depends on its
+items alone. Of the looks before 1.4.0 the heaviest is the tied hair with the sword and shield:
+135 shapes, cost 14 470. With the free items the costliest look takes the costliest item of every
+slot: the mace and the kite shield with the bascinet and its tall feather, the tied hair, the
+breastplate, the layered spaulders, the mail sleeves and chausses, the plate gauntlets, the
+turnshoes and the long cloak, 201 shapes at a cost of 20 493, and with the longsword in place of
+the mace and shield 188 shapes at 19 721, against the caps of 1200 and 40 000. No look of the
+base pack's items falls back on any build.
 
 ### The medieval world's pack
 
@@ -1313,13 +1364,18 @@ hooks, the saved settings chosen on the settings screen, the `defaults` of the s
 `KW.knight.look(look)`, which resolves it again from the packs already read, the downloaded ones
 included, and reads nothing again; it does so at start-up and at every change, and with nothing
 set the look stays `{}`. The settings name only the base pack's items and swatches, in the
-contract's terms: the weapon `sword_and_shield` is `{ items: { main: "kw.base/main.arming", off:
-"kw.base/off.heater" } }` and `greatsword` `kw.base/main.greatsword`; a skin, hair, tabard or plume
-is `kw.base/<id>`, the hair style `kw.base/hair.<style>`, and a build `kw.base/build.<letter>`, of
+contract's terms: the weapon `greatsword` is `kw.base/main.greatsword`, `longsword`
+`kw.base/main.longsword`, `sword_and_shield` `kw.base/main.arming` and `mace_and_shield`
+`kw.base/main.mace`, the two one-handed ones with the shield the `shield` setting names
+(`kw.base/off.<shield>`, `off.heater` unless one is chosen); a skin, hair, tabard or plume is
+`kw.base/<id>`, the hair style `kw.base/hair.<style>`, the helmet `kw.base/helm.<value>`, and the
+rest of the gear the item of its slot by the same rule (`plume_style` `plume.`, `body` `torso.`,
+`shoulders` `pauldrons.`, `arms` `arms.`, `hands` `gauntlets.`, `legs` `legs.`, `feet` `boots.`,
+`back` `back.`, its `none` filling nothing); and a build `kw.base/build.<letter>`, of
 which the base pack declares `build.a`, `build.b` and `build.c`, shown by the names the pack gives
 them, Classic, Broad and Slim. The address's look hooks give the same
-values: `bd=` the build, `arm=one` and `arm=two` the weapon, `sk=`, `hc=`, `tb=` and `pm=` the swatches and `hy=`
-the hair style (see [page.md](./page.md#the-address)). When the downloaded packs arrive, `KW.knight.add()` reads them with
+values: `bd=` the build, `arm=one` and `arm=two` the weapon (or any weapon by its contract name), `sk=`, `hc=`, `tb=` and `pm=` the swatches, `hy=`
+the hair style, and `sh=`, `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=` the gear (see [page.md](./page.md#the-address)). When the downloaded packs arrive, `KW.knight.add()` reads them with
 the same options and resolves the look again (see [Downloaded packs](#downloaded-packs)):
 
 - **A `dev` page** (the repository's own, opened from disk or served straight from `web/`) accepts
@@ -1335,12 +1391,13 @@ knight reads every carried text, so while `kw.medieval` ships unsigned (between 
 signature step: sig: is missing, and this page accepts only signed packs`). Where the scenes are
 drawn from is the scene compiler's to say, in a line of its own ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)).
 
-**Today the base pack, version 1.3.0, ships signed with `kw1`,** so a deployed page draws the
-knight from it, in every build and with either weapon (see
-[development.md](./development.md#signing-the-packs)). A base pack edited after signing has its
-signature taken off until the next signing run, and meanwhile a deployed page refuses it at the
-`signature` step and draws the knight from the code in `knight.js`, the full knight as it shipped
-before packs, which looks the same as the default look (see [When packs fail](#when-packs-fail)).
+**Today the base pack, version 1.4.0, ships unsigned** until the owner's next signing run with
+`kw1` (see [development.md](./development.md#signing-the-packs)); version 1.3.0 was signed. While it
+is unsigned a `dev` page draws the knight from it, in every build and with every item, and a
+deployed page refuses it at the `signature` step and draws the knight from the code in
+`knight.js`, the full knight as it shipped before packs, which looks the same as the default look
+(see [When packs fail](#when-packs-fail)). Once signed, a deployed page draws from it as a `dev`
+page does.
 From code the knight always holds the greatsword and is always Classic, and the settings screen
 says the knight is drawn from code.
 
@@ -1349,8 +1406,8 @@ refused pack, and one line, `console.info` for the base pack and `console.warn` 
 time the source changes:
 
 ```
-knightwatcher: the knight is drawn from the base pack kw.base 1.3.0, signed
-knightwatcher: the knight is drawn from the base pack kw.base 1.3.0, unsigned
+knightwatcher: the knight is drawn from the base pack kw.base 1.4.0, signed
+knightwatcher: the knight is drawn from the base pack kw.base 1.4.0, unsigned
 knightwatcher: the pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
 knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step
 ```
@@ -1520,11 +1577,14 @@ field of every effect refused out of its kind or range, and costs it with its ow
 that each cost function bounds what the effect draws. [page.md](./page.md#checks) has the details.
 
 `tests/web/base-read.test.js` reads the shipped base pack with the library as it is and compares the
-whole result with `tests/web/fixtures/base-read.json`, stored from the library before format 1.1:
-the read as it ships, unsigned on a `dev` page and unsigned on a deployed page, the SHA-256 and
-length of the bytes its signature covers, and `resolve()` with every record, for the default look and
-the sword and shield on each build. Store it again only when the base pack is meant to change, from
-a library known to read it right:
+whole result with `tests/web/fixtures/base-read.json`, first stored from the library before format
+1.1 and stored again for base pack 1.4.0: the read of the file signed (with a key made for the run,
+which reads as the file signed with `kw1` does), unsigned on a `dev` page and unsigned on a
+deployed page, the SHA-256 and length of the bytes its signature covers, and `resolve()` with every
+record on each build, for the default look, the sword and shield, and three looks that wear the 25
+free items between them. The file as it ships must read as the signed read when it carries a `sig`
+and as the deployed refusal when it does not, so the test holds in either state. Store it again
+only when the base pack is meant to change, from a library known to read it right:
 
 ```bash
 BASE_READ=write node --test tests/web/base-read.test.js
@@ -1548,16 +1608,23 @@ the `signature` step otherwise; the file as it ships is read on every page when 
 signature, and on a `dev` page alone when it does not. It also checks the three builds as
 approved in `fixtures/base-builds.json`, with their names, Classic the present measurements, every
 head 51, every torso within the rule and every measurement at least 6 from the ends of its range;
-one item for each slot the present drawing has, the arming sword and the heater shield, the three
-hair styles and nothing more; six swatches in each set in the settings screen's order, today's the
-defaults; each item and swatch equal to the fixture's, to `fixtures/base-builds.json` for the three
-items fitted to the builds, to `fixtures/base-onehand.items.json` for the one-handed items or to
-`fixtures/base-options.json` for the free options, with the iris of the shield, worn and at rest,
-on `@tabard.3` and no `@base.b3` left; a default look that resolves with nothing missing at a cost
-of 13 878, and each build likewise; the look with the sword and shield resolving with nothing
-missing, one-handed, at 125 shapes; and every one of the 23 328 combinations of build, skin, hair
-colour, hair style, tabard, plume and weapon resolving with nothing missing, the heaviest at 135
-shapes and 14 470. `tests/web/knight.test.js` draws the
+one item for each slot the present drawing has, the arming sword and the heater shield, the five
+hair styles, the free items of 1.4.0 after the 15 of 1.3.0, the wool palette, and nothing more;
+six swatches in each set in the settings screen's order, today's the defaults; each item and
+swatch equal to the fixture's, to `fixtures/base-builds.json` for the three items fitted to the
+builds, to `fixtures/base-onehand.items.json` for the one-handed items, to
+`fixtures/base-options.json` for the free options or to `fixtures/base-free-items.json` for the
+free items, with the iris of the shield, worn and at rest, on `@tabard.3` and no `@base.b3` left; a
+default look that resolves with nothing missing at a cost of 13 878, and each build likewise; the
+look with the sword and shield resolving with nothing missing, one-handed, at 125 shapes; every one
+of the 23 328 combinations of build, skin, hair colour, the first three hair styles, tabard, plume
+and the first two weapons resolving with nothing missing, the heaviest at 135 shapes and 14 470;
+every item of every slot on every build, with each weapon where the grip matters and a shield with
+each one-handed weapon, resolving with nothing missing, and every shield refused beside a
+two-handed weapon; the mail coif drawing no plume and every other helmet each plume; the long
+cloak changing with the plume and not the tabard and the short cape the other way round; each
+weapon's grip and blade; and the costliest whole look of the free items, with each grip, at 201
+shapes and 20 493 and at 188 and 19 721, the same on every build. `tests/web/knight.test.js` draws the
 knight's 94 poses, the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy painted and drawn, from the base
 pack as the page does, and compares every call with the record taken from the code. It draws the
 code path from the unsigned copy, which a deployed page always refuses, and edits only that copy, so
@@ -1572,6 +1639,13 @@ condition's face. With the sword and shield it checks the one-handed grip, the s
 and the attack, the free hand hanging when there is no shield, the change to `oneCrossed` in the
 swing to the left, the pegs, the shield's places and the backdrop keys, and, frame by frame, that
 no arm is drawn over a blade or a shield, in the swings, the attack and the goblin strike ([page.md](./page.md#the-knights-rig)). [page.md](./page.md#checks) describes it.
+The same checks for the free items of 1.4.0 run in `tests/web/knight-free-classic.test.js`,
+`knight-free-broad.test.js` and `knight-free-slim.test.js`, one build each in a process of its own:
+the frame-by-frame arm check with every new weapon and every shield it may carry, and with the mail
+and the padded sleeves and gloves beside a two-handed and a one-handed weapon; every free item in
+every pose of the call record, both swings and the attack, without a throw and within its look's
+cost; the longsword and the mace held exactly where the greatsword and the arming sword are, frame
+by frame; and the mace's head glowing on the smithy's anvil.
 
 `tests/web/loading.test.js` checks loading and failure. For the index: its shape, more than 32
 names, and names that carry a path or are not a pack file's. For the fetch, against a fake `fetch`:
@@ -1596,11 +1670,12 @@ nothing new in the console, and does nothing before `start()`, where `start()` a
 downloaded pack.
 
 `tests/web/settings.test.js` draws the knight from the base pack, through the settings and
-`KW.knight.look()`, in each of the 216 looks of weapon by skin by hair colour by hair style, the
+`KW.knight.look()`, in each of the 720 looks of weapon by skin by hair colour by hair style, the
 tabard and the plume cycled through their six, standing, attacking and swinging, helmet on and off,
 with the bare head and the gear at rest; each draws its colours with no throw, no fallback and no
-refused pack, within the shape and cost caps. It also draws every monarch in every skin, hair and
-robe of the base pack, each monarch's own hair and robe among them.
+refused pack, within the shape and cost caps. It draws every choice of the gear the same way on
+every build, beside a two-handed and a one-handed weapon in turn. It also draws every monarch in
+every skin, hair and robe of the base pack, each monarch's own hair and robe among them.
 [page.md](./page.md#checks) lists the rest of what it checks.
 
 ```bash

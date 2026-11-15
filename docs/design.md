@@ -70,14 +70,34 @@ bright red, orange or amber, so the coat is never read as a status. The brows ca
 edge wherever their colour is too close to the skin's to show, so a face never loses its brows;
 today's knight needs none.
 
+The free base pack is generous: every slot a user chooses has three to five free choices. The
+owner approved the set from a mock-up, and base pack 1.4.0 carries 25 more items, each plain
+medieval kit a viewer knows at a glance and none copying a design from a game or film: a longsword
+in both hands and a flanged mace in one; a round and a kite shield beside the heater; a kettle
+hat, a mail coif and a bascinet beside the open helm; a tall feather and a horsehair plume beside
+the crest; a breastplate and a quilted gambeson beside the tabard; layered spaulders and leather
+pauldrons; mail and padded sleeves; leather gloves and mail mittens; mail chausses and padded hose;
+sabatons and turnshoes; a long cloak and a short cape for the back, which had nothing; and long
+hair and a close crop. Cloth takes the user's colours, so the set needs no colour choice of its
+own: the shields' fields, the coat under the breastplate, the gambeson, the padded sleeves and the short
+cape take the tabard's, and the long cloak and the plumes the plume's, so a red plume with a red
+cloak reads as one look. The hose and the turnshoes are a grey-violet wool of the pack's own. Each
+item is one drawing that fits all three builds. The mail coif has no mount for a plume, so no plume
+is drawn with it, and the settings screen greys the plume while it is worn; a plume on a mail hood
+looks wrong. The mace is held, swung and raised as the arming sword is, with a shield, and the
+longsword as the greatsword is; the smithy heats the mace's head as it heats a blade. The default
+look is unchanged, and the colour sets stay at six each. Eight more items were drawn and held back
+as close to something already offered or weak at wall distance, and a crossbow waits for fired
+weapons.
+
 No arm or gauntlet is ever drawn over a blade or its guard, nor over the face of a shield. With
 the greatsword both arms go behind the blade, the one on the side it leans to first, and the hands
 close on the grip below the guard, the upper one far enough down that it never covers the guard.
 With the sword and shield the shield's arm goes behind the shield and the sword's arm behind the
 sword, and while the sword crosses the body both arms go behind the shield and the blade goes in
 front of it.
-A test draws every frame of the swings and the attack and checks this pixel by pixel
-([page.md](./page.md#the-knights-rig)). The helmet comes off in the house and the
+A test draws every frame of the swings and the attack and checks this pixel by pixel, for every
+weapon, shield, sleeve and glove on every build ([page.md](./page.md#the-knights-rig)). The helmet comes off in the house and the
 smithy. Gear is drawn in slots over one body so that new items can be added later; the slots are
 listed in [packs.md](./packs.md#slots-and-the-drawing-order).
 
@@ -210,7 +230,8 @@ the condition plays: the condition's level, its headline and the knight's state 
 
 Each display has a settings screen, opened by pressing and holding anywhere on it for two seconds;
 a tap still toggles full screen. It holds the knight's look (build, weapon, skin, hair colour and
-style, tabard, plume), the monarch and the monarch's skin, hair and robe, the display preferences
+style, tabard, plume, and under Armour the shield, helmet, plume style, body, shoulders, arms,
+hands, legs, feet and back), the monarch and the monarch's skin, hair and robe, the display preferences
 (headline size, a 24-hour or 12-hour clock, whether the helmet stays on indoors), which quiet
 scenes take turns and for how long, the scene each offered condition plays in, and a read-only
 status page: the page's version, the state file's age, the sources and the packs. A side rail keeps every page one tap away. A choice applies at once, to the scene

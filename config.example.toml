@@ -149,12 +149,22 @@ secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 
 # [look]
 # build = "a"                 # a Classic, b Broad, c Slim
-# weapon = "greatsword"       # greatsword or sword_and_shield
+# weapon = "greatsword"       # greatsword, sword_and_shield, longsword or mace_and_shield
 # skin = "warm"               # fair, warm, golden, tan, brown or deep
 # hair = "brown"              # black, dark, brown, auburn, blonde or silver
-# hair_style = "short"        # short, tied or curls
+# hair_style = "short"        # short, tied, curls, long or close
 # tabard = "blue"             # blue, forest, violet, wine, teal or sable
 # plume = "red"               # red, white, gold, royal, green or violet
+# shield = "heater"           # heater, round or kite; carried with sword_and_shield or mace_and_shield
+# helmet = "open"             # open, kettle, coif or bascinet; the coif carries no plume
+# plume_style = "crest"       # crest, feather or horsehair
+# body = "tabard"             # tabard, cuirass (a breastplate) or gambeson
+# shoulders = "plate"         # plate, lames (layered spaulders) or leather
+# arms = "plate"              # plate, mail or padded
+# hands = "plate"             # plate, leather or mail
+# legs = "plate"              # plate, mail or hose
+# feet = "leather"            # leather (riding boots), sabatons or shoes
+# back = "none"               # none, cloak (in the plume's colour) or cape (in the tabard's)
 # monarch = "a"               # a, b or c
 # monarch_skin = "warm"       # the same six as skin
 # monarch_hair = "brown"      # the six of hair; left out, each monarch keeps their own colours

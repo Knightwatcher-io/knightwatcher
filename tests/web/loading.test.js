@@ -19,6 +19,8 @@ const SIGN = require('../../tools/sign-pack.js');
 
 const WEB = path.join(__dirname, '../../web');
 const UNSIGNED = SIGN.withoutSig(fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8'));
+// The base pack's version, which the console line names.
+const VERSION = JSON.parse(UNSIGNED).pack.version;
 const SCRIPTS = [...fs.readFileSync(path.join(WEB, 'index.html'), 'utf8').matchAll(/<script src="([^"?]+)"><\/script>/g)].map(m => m[1])
   .filter(s => (!s.startsWith('js/scenes/') || ['js/scenes/house.js', 'js/scenes/smithy.js'].includes(s)) && !['js/state.js', 'js/engine.js', 'js/demo.js', 'js/main.js'].includes(s));
 const plain = v => JSON.parse(JSON.stringify(v));
@@ -59,13 +61,14 @@ function page(dev, texts, opts) {
 
 /* A pack file's text from an envelope. */
 const fileOf = env => JSON.stringify(env, null, 2) + '\n';
-/* A second pack built from the base pack: id test.extra, the base pack's items and a red tabard
-   swatch, with no builds or defaults, which only the base pack may carry. */
+/* A second pack built from the base pack: id test.extra, the base pack's items, its own palettes
+   when it has any (which some of its items are drawn in) and a red tabard swatch, with no builds or
+   defaults, which only the base pack may carry. */
 function extraEnv(edit) {
   const env = JSON.parse(UNSIGNED), p = env.pack;
   p.id = 'test.extra'; p.name = 'Test extra';
   delete p.builds; delete p.defaults; delete p.items['head.plain'];
-  p.provides = ['items', 'swatches'];
+  p.provides = ['items', 'palettes', 'swatches'].filter(k => p[k]);
   p.swatches = { tabard: { red: { name: 'Red', entries: { 0: '#ff9a8a', 1: '#d0302a', 2: '#a02020', 3: '#701414' } } } };
   if (edit) edit(p, env);
   return env;
@@ -280,7 +283,7 @@ test('look() draws a new look from the packs already loaded, a downloaded one in
 
 test('each refused pack is listed in the status and written to the console once', () => {
   const s = deployed();
-  assert.deepEqual(s.lines, [['info', 'knightwatcher: the knight is drawn from the base pack kw.base 1.3.0, signed']]);
+  assert.deepEqual(s.lines, [['info', 'knightwatcher: the knight is drawn from the base pack kw.base ' + VERSION + ', signed']]);
   s.lines.length = 0;
   s.K.add({ files: [{ file: 'extra.pack.json', text: EXTRA }], refused: [{ id: null, file: 'index.json', step: 'index', reason: 'the index is not valid JSON' }] });
   assert.equal(s.lines.length, 2);
