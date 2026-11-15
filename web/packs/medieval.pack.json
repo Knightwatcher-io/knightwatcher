@@ -3,7 +3,7 @@
   "pack": {
     "id": "kw.medieval",
     "name": "Knightwatcher medieval world",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "format": [1, 1],
     "licence": "Part of Knightwatcher, on the same terms as the rest of the project.",
     "provides": ["scenes", "stamps"],
@@ -39,6 +39,108 @@
       ]
     },
     "scenes": {
+      "camp": {
+        "name": "Camp",
+        "spot": 88,
+        "rounds": [{ "x": 88, "act": "sniff", "dur": 22 }, { "x": 68, "act": "yawn", "dur": 14 }, { "x": 96, "act": "look", "dur": 16 }],
+        "quiet": true,
+        "can": ["attack", "backup_overdue", "pi_silent", "device_down", "cpu_hot", "memory_tight"],
+        "hosts": ["flies", "crate", "feast", "foe"],
+        "helmet": "on",
+        "weapon": "held",
+        "still": [
+          { "shapes": [
+            { "k": "fx", "fx": "sky", "p": [{ "L": 1 }, { "T": 1 }], "w": { "W": 1 }, "h": { "c": 450, "T": -1 }, "of": ["#010404", "#020807", "#04100c", "#06170f"] },
+            { "k": "fx", "fx": "stars", "p": [{ "L": 1 }, { "T": 1 }], "w": { "W": 1 }, "h": { "c": 280, "T": -1 } },
+            { "k": "fx", "fx": "pines", "p": [{ "L": 1 }, 530], "w": { "W": 1 } },
+            { "k": "fx", "fx": "pines", "p": [{ "L": 1 }, 530], "w": { "W": 1 }, "step": 150, "phase": -40, "off": [60, 60], "tall": [160, 90], "seed": 7, "colour": "#0c2718" },
+            { "k": "fx", "fx": "tree", "p": [-190, 530] },
+            { "k": "fx", "fx": "tree", "p": [30, 530] },
+            { "k": "fx", "fx": "tree", "p": [850, 530] },
+            { "k": "fx", "fx": "tree", "p": [1070, 530] },
+            { "k": "rect", "p": [{ "L": 1 }, 530], "w": { "W": 1 }, "h": 90, "fill": "#14200e" },
+            { "k": "rect", "p": [{ "L": 1 }, 530], "w": { "W": 1 }, "h": 4, "fill": "#3f7d36" },
+            { "k": "rect", "p": [{ "L": 1 }, 534], "w": { "W": 1 }, "h": 3, "fill": "#27521f" },
+            { "k": "ell", "p": [690, 564], "rx": 190, "ry": 24, "fill": "#231d12" },
+            { "k": "ell", "p": [690, 562], "rx": 150, "ry": 15, "fill": "#2c2416" },
+            { "k": "fx", "fx": "tufts", "y": 530, "bare": [520, 860] },
+            { "k": "poly", "pts": [[200, 384], [64, 532], [336, 532]], "fill": "@base.k", "dir": "rows" },
+            { "k": "poly", "pts": [[200, 390], [70, 530], [330, 530]], "fill": [[0.5, "#c7b088"], [1, "#a38d67"]], "dir": "rows" },
+            { "k": "strip", "p0": [200, 390], "p1": [136, 530], "hw0": 1.5, "hw1": 1.5, "fill": "#8f7a57" },
+            { "k": "strip", "p0": [200, 390], "p1": [264, 530], "hw0": 1.5, "hw1": 1.5, "fill": "#7d6a4b" },
+            { "k": "poly", "pts": [[200, 434], [164, 530], [236, 530]], "fill": "@base.k", "dir": "rows" },
+            { "k": "poly", "pts": [[200, 434], [164, 530], [180, 530]], "fill": "#8f7a57", "dir": "rows" },
+            { "k": "rect", "p": [197, 366], "w": 6, "h": 26, "fill": "@base.n2" },
+            { "k": "rect", "p": [197, 366], "w": 2, "h": 26, "fill": "@base.n1" },
+            { "k": "strip", "p0": [70, 528], "p1": [30, 528], "hw0": 1, "hw1": 1, "fill": "@base.s3" },
+            { "k": "strip", "p0": [104, 454], "p1": [30, 528], "hw0": 1, "hw1": 1, "fill": "@base.s3" },
+            { "k": "strip", "p0": [296, 454], "p1": [370, 528], "hw0": 1, "hw1": 1, "fill": "@base.s3" },
+            { "k": "rect", "p": [26, 522], "w": 5, "h": 10, "fill": "@base.n1" },
+            { "k": "rect", "p": [368, 522], "w": 5, "h": 10, "fill": "@base.n1" },
+            { "k": "ell", "p": [580, 524], "rx": 46, "ry": 13, "fill": "@base.k" },
+            { "k": "ell", "p": [580, 521], "rx": 43, "ry": 10, "fill": [[0.3, "@base.s2"], [0.75, "@base.s3"], [1, "@base.s4"]] },
+            { "k": "ell", "p": [640, 527], "rx": 10, "ry": 8, "fill": "@base.k" },
+            { "k": "ell", "p": [640, 526], "rx": 8, "ry": 6, "fill": [[0.3, "@base.s2"], [1, "@base.s4"]] },
+            { "k": "ell", "p": [654, 530], "rx": 10, "ry": 8, "fill": "@base.k" },
+            { "k": "ell", "p": [654, 529], "rx": 8, "ry": 6, "fill": "@base.steel3" },
+            { "k": "ell", "p": [668, 527], "rx": 10, "ry": 8, "fill": "@base.k" },
+            { "k": "ell", "p": [668, 526], "rx": 8, "ry": 6, "fill": [[0.3, "@base.s2"], [1, "@base.s4"]] },
+            { "k": "ell", "p": [682, 530], "rx": 10, "ry": 8, "fill": "@base.k" },
+            { "k": "ell", "p": [682, 529], "rx": 8, "ry": 6, "fill": "@base.steel3" },
+            { "k": "ell", "p": [696, 527], "rx": 10, "ry": 8, "fill": "@base.k" },
+            { "k": "ell", "p": [696, 526], "rx": 8, "ry": 6, "fill": [[0.3, "@base.s2"], [1, "@base.s4"]] },
+            { "k": "ell", "p": [710, 530], "rx": 10, "ry": 8, "fill": "@base.k" },
+            { "k": "ell", "p": [710, 529], "rx": 8, "ry": 6, "fill": "@base.steel3" },
+            { "k": "ell", "p": [724, 527], "rx": 10, "ry": 8, "fill": "@base.k" },
+            { "k": "ell", "p": [724, 526], "rx": 8, "ry": 6, "fill": [[0.3, "@base.s2"], [1, "@base.s4"]] },
+            { "k": "ell", "p": [738, 530], "rx": 10, "ry": 8, "fill": "@base.k" },
+            { "k": "ell", "p": [738, 529], "rx": 8, "ry": 6, "fill": "@base.steel3" },
+            { "k": "strip", "p0": [648, 520], "p1": [734, 506], "hw0": 7, "hw1": 7, "fill": "@base.k" },
+            { "k": "strip", "p0": [650, 520], "p1": [732, 506], "hw0": 5, "hw1": 5, "fill": [[0.3, "@base.n1"], [1, "@base.n3"]] },
+            { "k": "strip", "p0": [734, 520], "p1": [648, 506], "hw0": 7, "hw1": 7, "fill": "@base.k" },
+            { "k": "strip", "p0": [732, 520], "p1": [650, 506], "hw0": 5, "hw1": 5, "fill": [[0.3, "@base.n0"], [1, "@base.n2"]] },
+            { "k": "rrect", "p": [760, 492], "w": 156, "h": 40, "r": 16, "fill": "@base.k" },
+            { "k": "rrect", "p": [763, 495], "w": 150, "h": 34, "r": 13, "fill": "@base.n1" },
+            { "k": "rect", "p": [772, 495], "w": 132, "h": 6, "fill": "@base.n0" },
+            { "k": "rect", "p": [772, 521], "w": 132, "h": 6, "fill": "@base.n3" },
+            { "k": "rect", "p": [793, 511], "w": 10, "h": 2, "fill": "@base.n3" },
+            { "k": "rect", "p": [807, 513], "w": 10, "h": 2, "fill": "@base.n3" },
+            { "k": "rect", "p": [816, 513], "w": 10, "h": 2, "fill": "@base.n3" },
+            { "k": "rect", "p": [834, 506], "w": 10, "h": 2, "fill": "@base.n3" },
+            { "k": "rect", "p": [847, 507], "w": 10, "h": 2, "fill": "@base.n3" },
+            { "k": "rect", "p": [859, 512], "w": 10, "h": 2, "fill": "@base.n3" },
+            { "k": "rect", "p": [869, 507], "w": 10, "h": 2, "fill": "@base.n3" },
+            { "k": "rect", "p": [881, 505], "w": 10, "h": 2, "fill": "@base.n3" },
+            { "k": "rect", "p": [897, 515], "w": 10, "h": 2, "fill": "@base.n3" },
+            { "k": "ell", "p": [771, 512], "rx": 11, "ry": 16, "fill": "@base.k" },
+            { "k": "ell", "p": [771, 512], "rx": 9, "ry": 14, "fill": "@base.n0" },
+            { "k": "ell", "p": [771, 512], "rx": 5, "ry": 9, "fill": "@base.n1" },
+            { "k": "ell", "p": [771, 512], "rx": 2, "ry": 4, "fill": "@base.n2" }
+          ] }
+        ],
+        "moving": [
+          { "shapes": [
+            { "k": "glow", "p": [690, 490], "r": 190, "colour": "#ffb000", "a": { "c": 0.09, "wave": [0.025, 150, 0] } },
+            { "k": "fx", "fx": "flame", "p": [676, 514], "size": 1.25 },
+            { "k": "fx", "fx": "flame", "p": [704, 516], "size": 1.05, "dt": 400 },
+            { "k": "fx", "fx": "flame", "p": [690, 508], "size": 1.5, "dt": 900 },
+            { "k": "fx", "fx": "drift", "p": [684, 450] },
+            { "k": "things" },
+            { "k": "fx", "fx": "wander", "p": [{ "L": 1 }, 270], "w": { "W": 1 }, "h": 200 }
+          ] }
+        ],
+        "over": [],
+        "things": {
+          "pie": { "cls": "pie", "kind": "surface", "x": 580, "y": 517, "w": 88, "h": 112 },
+          "h1": { "cls": "high", "kind": "surface", "x": 852, "y": 312, "w": 88, "h": 112 },
+          "h2": { "cls": "high", "kind": "surface", "x": 80, "y": 312, "w": 88, "h": 112, "flip": true },
+          "h3": { "cls": "high", "kind": "surface", "x": 227, "y": 312, "w": 88, "h": 112, "flip": true, "pole": 366 },
+          "g1": { "cls": "ground", "kind": "floor", "x": 830, "y": 566, "w": 88, "h": 112, "front": true },
+          "g2": { "cls": "ground", "kind": "floor", "x": 120, "y": 566, "w": 88, "h": 112, "front": true },
+          "g3": { "cls": "ground", "kind": "floor", "x": 200, "y": 530, "w": 88, "h": 112 }
+        },
+        "foe": { "side": -1, "spans": [[70, 494]] }
+      },
       "cellar": {
         "name": "Cellar",
         "spot": 124,
@@ -138,6 +240,5 @@
         }
       }
     }
-  },
-  "sig": { "alg": "ed25519", "kid": "kw1", "value": "NJTRcq1oSCpkODR1hP4NYwUWxkH1wN/+YZZgXSfQv/7nhNnZpone+KnzWTr8XGKwynkoPauYtiR9vmAazC8iDQ==" }
+  }
 }

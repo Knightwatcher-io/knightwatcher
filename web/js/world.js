@@ -21,7 +21,9 @@
    - layers: still (painted into the cached backdrop), moving (in draw) and over (in over), each with
      its when; no groups or keyframes yet;
    - the things mark, where the devices behind the watcher are drawn;
-   - the backdrop's key, worked out from what the still layers read: the predicates of their when.
+   - the backdrop's key, worked out from what the still layers read: the predicates of their when;
+   - hosts, as outdoors when a scene hosts both the flies and the crate, and the foe's zone,
+     foeZone, from foe without a wall.
    Each later step adds rows to these tables. */
 (function (KW) {
   'use strict';
@@ -215,11 +217,28 @@
 
   /* ---- Scenes ---------------------------------------------------------------------------------- */
 
-  /* The fields of a scene this engine does not build yet: the parts of the acts, gear at rest, the
-     foe's zone and the pole drawn under a high place. decor, quiet, name, sound and companion are
-     not read: nothing draws decorations yet, the engine's own lists say which scenes take turns
-     while all is quiet, and the other three are names and reserved slots. */
-  const LATER = ['rests', 'bed', 'screen', 'seat', 'anvil', 'target', 'foe', 'pole'];
+  /* The fields of a scene this engine does not build yet: the parts of the acts, gear at rest and
+     the pole drawn under a high place. decor, quiet, name, sound and companion are not read:
+     nothing draws decorations yet, the engine's own lists say which scenes take turns while all is
+     quiet, and the other three are names and reserved slots. */
+  const LATER = ['rests', 'bed', 'screen', 'seat', 'anvil', 'target', 'pole'];
+
+  /* What a scene hosts, as the engine reads it until worlds can be chosen: the flies and the crate
+     both follow the one flag outdoors, so a scene gives outdoors when it hosts both, and one that
+     hosts either alone cannot be drawn as it says. The feast and the foe are played where the
+     engine's own lists say (EVENTS in engine.js); a foe needs the scene's foe zone, foeZone, which
+     the field foe gives. */
+  function outdoors(hosts, path) {
+    const flies = hosts.includes('flies'), crate = hosts.includes('crate');
+    if (flies !== crate) throw notBuilt(path, flies ? 'hosting the flies without the crate' : 'hosting the crate without the flies');
+    return flies;
+  }
+  /* The foe's zone, { side, spans }, as a code scene gives it. A wall the foe climbs over (wallAt)
+     is not built yet: without one the foe digs out of the ground. */
+  function foeZone(z, path) {
+    if (has(z, 'wall')) throw notBuilt(at(path, 'wall'), 'a foe\'s wall');
+    return { side: z.side, spans: z.spans.map(s => [s[0], s[1]]) };
+  }
 
   /* The scene id of the loaded pack (a read() result of format 1.1) compiled to an object with the
      scene interface. Throws when the scene names something this engine does not build. */
@@ -227,7 +246,7 @@
     const v = pack.data.scenes[id], path = 'scenes.' + id;
     if (!isObj(v)) throw new Error(path + ': the pack has no such scene');
     for (const k of LATER) if (has(v, k)) throw notBuilt(at(path, k), 'the scene\'s ' + k);
-    if (v.hosts.length) throw notBuilt(at(path, 'hosts'), 'hosting events');
+    const out = outdoors(v.hosts, at(path, 'hosts')), zone = has(v, 'foe') ? foeZone(v.foe, at(path, 'foe')) : null;
     const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS };
     const lists = {};
     for (const k of ['still', 'moving', 'over']) lists[k] = freeze(v[k].map((l, i) => layer(l, idx(at(path, k), i), env)));
@@ -246,6 +265,8 @@
     if (lists.over.length) sc.over = (t, s) => drawLayers(lists.over, named(t, s));
     if (v.weapon === 'away') sc.sword = false;
     if (v.helmet === 'off') sc.helmet = false;
+    if (out) sc.outdoors = true;
+    if (zone) sc.foeZone = freeze(zone);
     return sc;
   }
 

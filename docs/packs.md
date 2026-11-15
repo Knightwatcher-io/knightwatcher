@@ -480,7 +480,7 @@ steps as the rest, in the same order, and keeps it as data in the loaded pack's 
 
 **`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
 compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
-page draws the cellar from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
+page draws the camp and the cellar from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
 engine parts that will read the sections (the acts, the cast and the props from data) come in later
 steps. The closed lists those parts own are fixed in `pack.js` under the names below and exported
 as `WORLD_LISTS`. The effects library is built: `effects.js` gives each effect's table of fields and
@@ -1257,10 +1257,11 @@ is the tied hair with the sword and shield: 135 shapes, cost 14 470, against the
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.1.0, signed with `kw1`. It holds the cellar as data and the two
-stamps it uses, and the page draws the cellar from it on a `dev` page, and on a deployed page once
-it is signed. [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its
-cellar is held equal to the code's.
+`[1, 1]`, version 0.2.0, unsigned until the rest of the scenes are in it (0.1.0, the cellar alone,
+was signed with `kw1`). It holds the camp and the cellar as data and the two stamps the cellar uses,
+and the page draws those scenes from it on a `dev` page, and on a deployed page once it is signed.
+[worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
+equal to the code's.
 
 ### Carriers
 
@@ -1487,12 +1488,14 @@ the world's pack changes no look: `resolve()` gives the same with it loaded as w
 
 `tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
 clean, with its signature taken off, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
-draws the cellar from it and a deployed page from code while it is unsigned, and from it once signed
-with a key made for the run, and the shipped file on a deployed page draws from it when it carries
-a signature; a refused, missing or unreadable pack, a missing library and a compile
-that throws all leave the cellar the code scene, each with its console line and its status. That
-the cellar from the pack draws what the code draws, call for call, is `tests/web/scenes.test.js`'s
-([page.md](./page.md#checks)).
+draws the camp and the cellar from it and a deployed page from code while it is unsigned, and from it
+once signed with a key made for the run, and the shipped file on a deployed page draws from it when
+it carries a signature; a refused, missing or unreadable pack, a missing library and a compile
+that throws all leave the scenes concerned the code scenes, each with its console line and its
+status. That each scene from the pack draws what the code draws, call for call, is
+`tests/web/scenes.test.js`'s ([page.md](./page.md#checks)); that its `quiet` and `hosts` agree with
+the engine's own lists, and that the foe's and the places' checks hold on it, is
+`tests/web/world-scenes.test.js`'s.
 
 `tests/web/effects.test.js` checks that `pack.js` holds an effect to its table in `effects.js`, every
 field of every effect refused out of its kind or range, and costs it with its own cost function; and

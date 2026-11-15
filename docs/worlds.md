@@ -4,16 +4,24 @@ A world is what the knight's surroundings are made of: the scenes, the supportin
 drawings of the devices, the words and the overlay. Format 1.1 of the packs carries a world as
 data ([packs.md](./packs.md#format-11) gives the format and its checks). This page describes what
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
-pack, `kw.medieval`, which holds one scene, the cellar. Every other scene, the cast, the devices,
-the words and the overlay are still drawn from code.
+pack, `kw.medieval`, which holds two scenes, the camp and the cellar. Every other scene, the cast,
+the devices, the words and the overlay are still drawn from code.
 
 ## The medieval world's pack
 
 `web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 1]`,
-version 0.1.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+version 0.2.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([packs.md](./packs.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
+- the scene `camp`, the camp of `web/js/scenes/camp.js` written as data. Its one still layer holds,
+  in the code's order, the sky, the stars, the two rows of pines, the four broad trees, the ground
+  and the worn patch round the fire, the tufts of grass, the tent with its pole and guy ropes, the
+  stone the pie warms on, the eight stones of the fire ring, the two crossed logs and the log to sit
+  on. Its one moving layer holds the fire's light, the three flames, the embers, the mark where the
+  devices are drawn and the fireflies. Its places, spot, rounds and `can` are the code scene's. It
+  is quiet, hosts the flies, the crate, the feast and the foe, and gives the foe the code scene's
+  zone with no wall, so the goblin digs out of the ground;
 - the scene `cellar`, the cellar of `web/js/scenes/cellar.js` written as data. Its one still layer
   holds, in the code's order, the wall's bricks, the row of arches, the two shelves with what stands
   on them, their boards and their brackets, the piers, the cobwebs, the sconce, the flagstones and
@@ -23,13 +31,21 @@ loads it after the base pack's. It holds:
 - two stamps, `sconce` and `barrel`: the props `sconceHD` and `barrelHD` of `props.js`, the barrel at
   the 84 by 72 the cellar draws it.
 
-The checks find 440 shapes costing 76 803 fills in the still layer at the widest screen they
-assume, and 3 shapes costing 120 with one glow in a frame, against limits of 200 000 and 16 000.
+At the widest screen they assume, the checks find:
 
-The pack ships signed with `kw1`, by a signing run as the base pack is
-([development.md](./development.md#signing-the-packs)), so a deployed page draws the cellar from it
-as a `dev` page does. A change to the pack takes the signature's validity with it: until the next
-signing run a deployed page refuses it and draws the cellar from code.
+| Scene | Still layers | One frame of the moving and over layers |
+|---|---|---|
+| camp | 66 shapes, 56 668 fills | 7 shapes, 718 fills, 8 glows |
+| cellar | 440 shapes, 76 803 fills | 3 shapes, 120 fills, 1 glow |
+
+against limits of 200 000 fills for the still layers, and 16 000 fills and 24 glows for a frame.
+The camp's glows are the fire's light and the seven fireflies.
+
+Version 0.1.0, which held the cellar alone, shipped signed with `kw1` by a signing run as the base
+pack is ([development.md](./development.md#signing-the-packs)). Version 0.2.0 ships unsigned while
+the other scenes are written as data, and is signed when they are all in: until then a deployed page
+refuses it and draws every scene from code, and a `dev` page draws the camp and the cellar from it.
+A change to a signed pack takes the signature's validity with it in the same way.
 
 ## Where the scenes are drawn from
 
@@ -38,8 +54,8 @@ signing run a deployed page refuses it and draws the cellar from code.
 whose `kw-version` meta tag says `dev`. A `dev` page reads `kw.medieval` signed or not; a deployed
 page reads it only when it carries a signature that verifies against a key in `KEYS`.
 
-Each scene of `kw.medieval` whose id names a code scene (today the cellar alone) is compiled and
-takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
+Each scene of `kw.medieval` whose id names a code scene (today the camp and the cellar) is compiled
+and takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
 which is not enumerable, so the engine and the settings, which list the scenes by their short names
 until worlds can be chosen, see the same seven scenes as before. The code scenes stay where they
 are, in `js/scenes/`, and are the fallback: the owner decided that the medieval world keeps a copy
@@ -55,10 +71,11 @@ A scene is drawn from code when:
 | reading threw, which `read()` never should | `...: the pack kw.medieval was refused at the size step`, the reason `the pack could not be read: <message>` |
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
 
-Otherwise the line is `knightwatcher: the scene cellar is drawn from the pack kw.medieval 0.1.0,
-unsigned` (or `signed`), written with `console.info`; the others are `console.warn`. With more than
-one scene drawn from the pack the line lists them: `the scenes camp and cellar are drawn ...`. Of
-two copies of `kw.medieval` the higher version is used, as `gather` chooses.
+Otherwise the line is `knightwatcher: the scenes camp and cellar are drawn from the pack kw.medieval
+0.2.0, unsigned` (or `signed`), written with `console.info`; the others are `console.warn`. The line
+lists the scenes drawn from the pack in the pack's order, so with the cellar failing to compile it is
+`the scene camp is drawn ...`, after the cellar's own line. Of two copies of `kw.medieval` the higher
+version is used, as `gather` chooses.
 
 The knight reads the same texts, so it reads `kw.medieval` too. The pack carries no items and
 changes no look, but a refusal is the knight's to report: it goes into `KW.knight.status.refused`,
@@ -109,13 +126,20 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 | `places` | `things`, each place copied as it is |
 | `sword: false` | `"weapon": "away"` |
 | `helmet: false` | `"helmet": "off"` |
+| `outdoors: true` | `hosts` naming both `flies` and `crate` |
+| `foeZone` | `foe`: its `side` and `spans`, as `{ side, spans }` |
 | `paint(s)` | the still layers, into the cached backdrop; only when there are any |
 | `draw(t, s)` | the moving layers |
 | `over(t, s)` | the over layers; only when there are any, as a code scene without `over` has none |
 | `key(s)` | worked out by the compiler, below |
 
 `name` and `quiet` are not read yet: the engine's own lists say which scenes take turns while all is
-quiet, until worlds can be chosen. `decor` is not read, since nothing draws decorations yet.
+quiet, until worlds can be chosen. Of `hosts`, only the flies and the crate are read, as `outdoors`,
+the one flag the engine lets both in by; it is computed into the engine's list of the crate's scenes
+when `engine.js` loads, before `start` swaps the scenes, so a compiled scene must give the code
+scene's. The feast and the foe play where `EVENTS` in `engine.js` says. `tests/web/world-scenes.test.js`
+holds every scene's `quiet` and `hosts` to those lists and the settings' quiet scenes, so the data is
+right when the engine comes to read it. `decor` is not read, since nothing draws decorations yet.
 
 **Terms.** A scalar is a number, or a term object whose keys are added up in the order they are
 written: `c`, the named values `L`, `R`, `T` and `W` (the canvas's edges and width on the grid,
@@ -153,20 +177,28 @@ backdrop is painted once for each shape of the screen, as the code cellar's is.
 the shape kinds `dith` and `pix`, the marks other than `things` (`rest`, `patron`, `sleeper`,
 `target`, `bubble`), a `clip`, `g` and `only` on a shape, a tile's `pick`, a layer's `groups` and
 `anim`, a mixed colour, an effect inside a stamp, a triggered effect (`burst`), a scene that hosts
-events, and the fields `rests`, `bed`, `screen`, `seat`, `anvil`, `target`, `foe` and `pole`. Each
+the flies without the crate or the crate without the flies, a foe's `wall` (the line it climbs over,
+`wallAt` in the code scenes), and the fields `rests`, `bed`, `screen`, `seat`, `anvil`, `target`
+and `pole`. Each
 later scene adds the rows it needs to the compiler's tables: a shape kind to `SHAPES`, a mark to
 `MARKS`, a part of the key beside the predicates.
 
 ## Writing a scene as data
 
-The cellar shows how code becomes data:
+The cellar and the camp show how code becomes data:
 
 - a loop of fixed shapes across the screen becomes a tile. `for (let x = Math.floor(HL / 160) * 160 +
   60; x < HR; x += 160)` is `{ "k": "tile", "step": 160, "phase": 60, "from": { "L": 1 }, "to": { "R":
   1 } }`, and a loop that starts from `Math.floor((HL - 140) / 320) * 320 + 140` has `from` `{ "L": 1,
   "c": -140 }` and `phase` 140;
 - a loop over a fixed list (the shelves at 260 and 380, the cobwebs' corners, the floor's four rows
-  of seams) is written out, one copy of its shapes for each pass, the arithmetic done;
+  of seams, the camp's four trees) is written out, one copy of its shapes for each pass, the
+  arithmetic done. So is a short loop whose passes differ in more than x, as the fire ring's eight
+  stones step up and down and change their fill, and a hash of a pass's number rather than of an x
+  (the bark on the camp's log, `790 + i * 13 + hsh(i, 12) % 6`) is worked out once and written as
+  the number it gives;
+- a `poly` names the way it is filled: `"dir": "rows"` for the code's `poly(pts, c)`, which fills by
+  rows, and `"cols"` where the code passes `true`;
 - a prop drawn by a function of `props.js` becomes a stamp, its coordinates counted from the point
   the scene puts it at;
 - what an effect draws stays the effect's, named with the fields the code passes.
@@ -193,7 +225,13 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   pack when, and only when, they share it from code. The keys themselves may differ. The check walks
   every scene the pack gives, so each later scene comes under it as it is added.
 - The same test checks that the compiled scene gives the code scene's interface: the same spot,
-  places, rounds, `can`, weapon and helmet, and the same parts drawn.
+  places, rounds, `can`, weapon and helmet, `outdoors` and `foeZone`, and the same parts drawn.
+- `tests/web/world-scenes.test.js` runs the checks of `foe.test.js` and `places.test.js` that depend
+  on a scene on each scene the pack gives, compiled from it: the goblin's way in, where it stands, its
+  hit and the blade against it in every scene that hosts a foe, and the places of the devices on the
+  grid and clear of each other. It also holds the foe's whole plan in a scene from the pack, for
+  every weapon and build, to the plan in the code scene, and each scene's `quiet` and `hosts` to the
+  engine's and the settings' lists. The two older files draw the code scenes and stay as they are.
 - The screenshots of the repository's own page, a `dev` page, draw the converted scenes from the
   pack. To shoot the code path, take a pair of sets from a copy of `web/` whose `kw-version` is not
   `dev`, as for the knight ([page.md](./page.md#checks)).
@@ -205,6 +243,7 @@ again from the code if the scene is meant to look different (`SCENES_LOG=write`,
 it is signed needs a signing run again ([development.md](./development.md#signing-the-packs)).
 
 `tests/web/world.test.js` checks the rest: that the pack reads clean with the costs above, where a
-`dev` and a deployed page draw the cellar from, the console lines and the status, the long name, a
-compile that throws, the predicates and the key, the terms and the colours' spelling, and that
-what the compiler does not build is refused by name.
+`dev` and a deployed page draw the camp and the cellar from, the console lines and the status, the
+long names, a compile that throws for one scene or for both, the predicates and the key, the terms
+and the colours' spelling, `outdoors` and `foeZone` from `hosts` and `foe`, and that what the
+compiler does not build is refused by name.
