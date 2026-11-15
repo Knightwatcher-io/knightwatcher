@@ -27,6 +27,8 @@ tests/
   server/            unittest tests for the server and the stamp
   web/               node tests for the page's scripts
     fixtures/knight/ the stored call record of the knight's drawing
+    fixtures/scenes/ the stored call records of the scenes, and of the props the engine draws over
+                     them
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
                      shield as approved (base-onehand.items.json), its free options as
                      approved (base-options.json), its three builds and the items fitted to
@@ -123,12 +125,17 @@ before the settings, and the comparison reports them missing. The eleven after t
 hair and robe, the Scenes page, a condition in a chosen scene) are missing likewise from a reference
 from before those, against which the eight settings shots that show the side rail differ in it,
 where the Scenes entry was added, and the two of the monarch's page also in its new rows. The 56
-`bd-` shots that end the set draw the builds Broad (`bd-b-`) and Slim (`bd-c-`): every scene with
+`bd-` shots after them draw the builds Broad (`bd-b-`) and Slim (`bd-c-`): every scene with
 the knight standing, the attack, tight memory, the cellar's crate, the smithy's hammering, in bed,
 the sick and hot tints, the sword and shield, the swat both ways with each weapon at three points
 of the swing, the goblin at the hit with each weapon, and the settings screen's knight page, the
 build chosen by the address's `bd=` hook ([page.md](./page.md#checks)). Against a reference from
-before them they are missing. A headless browser has no saved choices, so every shot shows what its address asks for.
+before them they are missing. The 62 `ref-` shots that end the set are the reference for moving the
+scenes into pack data, beside the scenes' call records below: each condition in each scene that can
+act it where no other shot shows it, the helmet on in the house, the smithy's hammer raised, the
+yard's dummy struck, each monarch in each skin no other shot shows, the devices in all seven places
+up and gone in every scene, and every scene at 1400 by 600 and at 960 by 720 (4:3). Against a
+reference from before them they are missing too. A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
@@ -159,6 +166,32 @@ condition and which scenes can act which condition, the build row's names from t
 engine's quiet rotation and its choice of scene, the monarch's skin, hair and robe, and the knight
 drawn from the base pack in 216 looks of the settings', each build meeting every weapon, skin, hair
 colour and hair style, and every monarch in every skin, hair and robe.
+
+`tests/web/scenes.test.js` does for the scenes what the knight test does for the knight. Against the
+same kind of fake canvas it records every scene's `paint()` and `draw()`, with `act()` and `over()`
+where a scene has them, call by call, in every state that changes them: idle and each condition the
+scene can act, the helmet the other way from the scene's own, the house's television, the smithy at
+another spot, the yard's dummy struck, the devices in all seven places up and gone, and at court
+each monarch in its own colours, in each of the six skins and in a sample of hair and robe; each at
+960 by 600, 1400 by 600 and 960 by 720, at five moments chosen to catch what moves. The devices are
+drawn by the engine's own `KW.devices`, and a canvas drawn with `drawImage` (a device's still part,
+the raspberry, a pose of the goblin) is written into the record with its calls. Where a scene calls
+on the knight (the sleeper's head, the gear at rest, the speech bubble, a swing) the record holds
+one line with the call and its arguments, since the knight test checks the knight. The goblin, the
+flies and the other props of the events are recorded apart. It compares 1 803 records with those in
+`tests/web/fixtures/scenes/`, one file per scene and one for those props (`cast.json`), in about 17
+seconds. A failure names the scene, the state, the size, the record and the first call that
+differs, with what `HEAD` draws there and what was drawn; without git, the block of 1 024 calls
+where the difference lies. Store the records again only when a scene is meant to change, from code
+whose drawing is known to be right:
+
+```bash
+SCENES_LOG=write node --test tests/web/scenes.test.js      # stores the records of the code as it is
+SCENES_LOG=dump:DIR node --test tests/web/scenes.test.js   # writes every record in full to DIR
+SCENES_WEB=DIR node --test tests/web/scenes.test.js        # draws a copy of web/ in DIR instead
+```
+
+[page.md](./page.md#checks) has the details.
 
 The repository's own page draws the knight from the base pack, so the screenshots of the
 repository's page check the pack path, and the knight test checks both paths. A deployed copy
