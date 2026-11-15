@@ -1085,6 +1085,54 @@ code as it is with `KNIGHT_LOG=write node --test tests/web/knight.test.js`, and 
 screenshots before trusting it. A change to the knight's look then changes the base pack too, so
 that both paths still give the stored record.
 
+`tests/web/scenes.test.js` checks the scenes call by call in the same way, so that a scene moved into
+pack data can be shown to draw exactly what it drew. It loads the scripts `index.html` loads that
+the scenes need (`draw.js`, `sprites.js`, `props.js`, `knight.js`, the seven scenes, `state.js` and
+`engine.js`, in the page's order) into a fresh sandbox for each state, with the knight from code and
+the view's edges set as `fit()` sets them, and records each scene's `paint`, then for each moment
+its `act`, `draw` and `over` and the devices in front of the knight, which the engine draws after
+it. What `act` and `draw` change in the frame (the knight's pose, `strike`) is written as a line per
+field. The devices are drawn by `KW.devices`, and a canvas of the fake document keeps its own calls,
+written into the record where it is drawn, each after `| `; so the record holds every call that
+reaches the screen. Where a scene calls on the knight (`KW.knight.head`, `speech`, `swing` and
+`rest.draw`) the record has a line with the call and its arguments instead of the knight's own
+calls, which `knight.test.js` checks.
+
+The states, for every scene: idle; each condition in its `can`, the dish gone for `pi_silent` and a
+machine down with a box among the devices for `device_down`; the helmet the other way from the
+scene's own; and the devices in all seven places, up, gone and alerting, up in other kinds, and
+gone without alerting. The house adds the television on, the smithy the knight at x 300, the yard
+its dummy struck by the training swing and then wobbling, and the court each monarch in its own
+colours and in each of the base pack's six skins, and a sample of hair and robe: each monarch in
+each hair with a robe and a skin turned so that every monarch meets every hair, robe and skin, and
+light hair meets dark skin, where the brows change colour, and each with a hair alone and a robe
+alone. Each state is drawn at 960 by 600, at 1400 by 600, where `HL` and `HR` lie 236 pixels
+outside the grid, and at 960 by 720 (4:3), where `HT` lies 122 above it; and at 0, 1250, 2300, 3450
+and 4700 ms, which catch the hammer striking and raised, the monarch talking with the mouth open and
+shut, the question marks shown and hidden, the WAN's sparks and the sleeper's breathing, or at the
+moments of the dummy's wobble. The goblin's six poses, the flies, the hole, the clods, the smoke, the
+sparkles, the crate and its parachute are recorded once, apart (`cast`).
+
+The 1 803 records are stored in `tests/web/fixtures/scenes/`, one file per scene and `cast.json`:
+for each record the first 16 characters of the hash of its calls, and for each distinct record its
+number of calls and a hash of each block of 1 024 calls, about 230 KB in all, where the records in
+full would weigh 287 MB (123 MB counting each distinct record once). A run takes about 17 seconds. When a record differs, the test draws it again
+from the repository's `HEAD` (`git show`), and when `HEAD` draws the stored record it names the
+scene, the state, the size, the record and the first call that differs, with what `HEAD` drew there
+and what was drawn. Without git, or when `HEAD` draws something else too, it names the block the
+first difference lies in and prints what was drawn there; dump both trees and compare the folders to
+see every call. `SCENES_WEB` points the test at a copy of `web/`, to try a change outside the
+repository:
+
+```bash
+SCENES_LOG=write node --test tests/web/scenes.test.js         # stores the records of the code as it is
+SCENES_LOG=dump:/tmp/kw-scenes node --test tests/web/scenes.test.js
+SCENES_WEB=/tmp/kw-copy/web node --test tests/web/scenes.test.js
+```
+
+Store the records again only when a scene is meant to look different, and look at the screenshots
+before trusting them.
+
 The deploy tool, which it runs against temporary folders and copies of `web/`, never the
 repository's own, and the pack carriers against their pack files:
 
@@ -1105,8 +1153,9 @@ tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
 Besides the scenes and states, the set shoots devices: the camp with two cameras and four
 devices, a camera and a machine down and one device with no place left (`devices-camp`), the court
 with the same mix (`devices-court`), `device_down` in the camp (`device-down`) and the yard's places
-outlined (`places-yard`). Every other shot has no `dv=` apart from `goblin-camp-g3`, so a change to
-devices that leaves a Pi-only setup alone leaves those shots byte for byte the same.
+outlined (`places-yard`). Every other shot has no `dv=` apart from `goblin-camp-g3` and the `ref-`
+shots of devices (below), so a change to devices that leaves a Pi-only setup alone leaves the rest
+byte for byte the same.
 
 The seven `goblin-` shots play the goblin's event with the greatsword: on the battlement as it
 rises over the wall (`goblin-rise`), at the hit (`goblin-bonk`, 1659 ms) and in the puff
@@ -1158,7 +1207,7 @@ curls in the yard (`look-hot-brown`); and the wide eyes of WAN down on the brown
 hair, whose brows draw the dark edge (`look-brows`). Every other shot but `settings-look` uses no look hook but
 `arm=`, so against a copy of the page from before the hooks only these seven differ.
 
-The 56 `bd-` shots end the set, 28 for Broad (`bd-b-`, `bd=b`) and 28 for Slim (`bd-c-`, `bd=c`):
+The 56 `bd-` shots follow, 28 for Broad (`bd-b-`, `bd=b`) and 28 for Slim (`bd-c-`, `bd=c`):
 the four quiet scenes with the knight standing (`is-`); the attack, tight memory's bloat, the
 cellar's crate carried, the smithy's hammering, asleep in bed, the sick tint in bed, the hot tint in
 the yard and the court (`on-`); the stance with the sword and shield (`arm-battlement`); the swat
@@ -1168,6 +1217,20 @@ weapon's hit on that build (`goblin-bonk` at 1662 and 1658 ms, `arm-goblin-bonk`
 and the settings screen's knight page with the build chosen (`settings-knight`), the build chosen
 by the address's `bd=` hook. No other shot has `bd=`, so they change nothing else in a comparison,
 and against a reference from before them they are missing.
+
+The 62 `ref-` shots end the set. They are the reference for moving the scenes into pack data, taken
+with the call records of `tests/web/scenes.test.js`, and show each state of a scene that no shot
+above shows: each condition in each scene that can act it, chosen with `sc=` or played in a quiet
+scene with `is=` (`ref-battlement-backup` to `ref-cellar-cpu`, seventeen); the helmet on in the
+house (`ref-house-helm-on`); the smithy with the hammer raised (`ref-smithy-lift`); the yard's dummy
+struck, its straw flying (`ref-yard-struck`); each monarch in each skin no shot above shows
+(`ref-mon-`, fourteen); the devices in all seven places, all up and all gone and alerting, in every
+scene (`ref-devices-up-` and `ref-devices-gone-`); and every scene at 1400 by 600 (`ref-wide-`) and
+at 960 by 720, a 4:3 screen (`ref-43-`), the only shots of a scene out to edges beyond the grid's.
+Against a reference from before them they are missing. At 4:3 the clock is larger for the width,
+and the left edge of its first digit, from x 728, lies outside the comparison's mask, which starts
+at 740; so a reference and a result taken either side of 10:00, 20:00 or midnight differ in the
+`ref-43-` shots there.
 
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
 Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade
@@ -1196,6 +1259,5 @@ CHROME=/path/to/chrome-headless-shell PAGE=/tmp/kw-code/index.html tools/shots.s
 ```
 
 The comparison prints `identical bytes` only when both sets show the same minute on the clock;
-otherwise `pixels equal outside the clock` is the same result. To get identical bytes, take the
-reference and the result back to back within one minute (a set takes about ten seconds), from a
-copy of the old tree and the new one.
+otherwise `pixels equal outside the clock` is the same result. A set of 192 takes about a minute, so the two
+sets seldom show the same minute, and `pixels equal outside the clock` is the usual result.
