@@ -12,6 +12,12 @@
 // the call and its arguments. The goblin, the flies and the other props the engine draws over a
 // scene are recorded on their own, in fixtures/scenes/cast.json.
 //
+// Each scene the world pack kw.medieval gives (web/packs/medieval.pack.json) is drawn a second time,
+// compiled from the pack by web/js/world.js, in the same states and against the same stored
+// records: the two copies of a scene, its code and its data, must draw the same calls. The backdrop's
+// key is not in the records, so a check of its own requires the compiled scene's key to tell the
+// recorded states apart exactly as the code scene's does.
+//
 //   SCENES_LOG=write node --test tests/web/scenes.test.js      stores the records of the code as it is
 //   SCENES_LOG=dump:DIR node --test tests/web/scenes.test.js   writes each record in full to DIR
 //   SCENES_WEB=DIR node --test tests/web/scenes.test.js        draws a copy of web/ in DIR instead
@@ -43,17 +49,27 @@ const MODE = process.env.SCENES_LOG || '';
    scenes read from it only where its gear rests (KW.knight.rest.blade), which is the same on both
    paths (knight.test.js). */
 const NEEDED = ['js/draw.js', 'js/sprites.js', 'js/effects.js', 'js/props.js', 'js/knight.js', 'js/state.js', 'js/engine.js'];
+/* And for the scenes drawn from kw.medieval: the verifier, the pack library and the scene compiler. */
+const FOR_PACK = ['js/ed25519.js', 'js/pack.js', 'js/world.js'];
 
 /* The sources of the page's files, read from a folder or, for the reference, from git's HEAD. */
 const fromDir = dir => f => fs.readFileSync(path.join(dir, f), 'utf8');
 const fromHead = f => execFileSync('git', ['-C', REPO, 'show', 'HEAD:web/' + f], { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] });
 
-/* The page's scripts, compiled once per source of files. */
+/* The page's scripts, compiled once per source of files: those the code scenes need, and those the
+   scenes from kw.medieval need, each in index.html's order; the base pack, and the text of
+   kw.medieval (null when the source has none, as HEAD before it had). */
 function sources(read) {
-  const files = [...read('index.html').matchAll(/<script src="([^"?]+)"><\/script>/g)].map(m => m[1])
-    .filter(s => NEEDED.includes(s) || s.startsWith('js/scenes/'));
-  return { scripts: files.map(f => new vm.Script(read(f), { filename: f })), pack: JSON.parse(read('packs/base.pack.json')).pack };
+  const all = [...read('index.html').matchAll(/<script src="([^"?]+)"><\/script>/g)].map(m => m[1]);
+  const compile = files => files.map(f => new vm.Script(read(f), { filename: f }));
+  const code = all.filter(s => NEEDED.includes(s) || s.startsWith('js/scenes/'));
+  const pack = all.filter(s => NEEDED.includes(s) || FOR_PACK.includes(s) || s.startsWith('js/scenes/'));
+  let medieval = null;
+  try { medieval = read('packs/medieval.pack.json'); } catch (e) { medieval = null; }
+  return { scripts: compile(code), packScripts: medieval ? compile(pack) : null, pack: JSON.parse(read('packs/base.pack.json')).pack, medieval };
 }
+/* The scenes kw.medieval gives that are code scenes too, by name. */
+const fromPack = src => (src.medieval ? Object.keys(JSON.parse(src.medieval).pack.scenes || {}) : []);
 
 /* ---- The recording context -------------------------------------------------------------------
    Writes one line per call into log: "s" for a fillStyle, "a" for a globalAlpha, "r" for a
@@ -101,13 +117,18 @@ function fit(V, [lw, lh]) {
 }
 
 /* A sandbox with the page's scripts, the knight started from code, the view at size, and the
-   knight's calls from the scenes written as single lines into log. */
-function load(src, size) {
+   knight's calls from the scenes written as single lines into log. With from 'pack', the scenes
+   kw.medieval gives are compiled from it, as a 'dev' page compiles them, in place of their code. */
+function load(src, size, from) {
   const box = vm.createContext({ window: {}, document: { createElement: () => canvas() }, console: { info() {}, warn() {}, log() {} } });
-  for (const s of src.scripts) { if (box.window.KW) box.KW = box.window.KW; s.runInContext(box); }
+  for (const s of from === 'pack' ? src.packScripts : src.scripts) { if (box.window.KW) box.KW = box.window.KW; s.runInContext(box); }
   const KW = box.window.KW, K = KW.knight, log = [];
   K.start([], false);
   assert.equal(K.source, 'code');
+  if (from === 'pack') {
+    const st = KW.world.start([src.medieval], true);
+    for (const n of fromPack(src)) assert.equal(st.scenes[n], 'pack', `${n} is compiled from kw.medieval: ${st.note}`);
+  }
   fit(KW.view, SIZES[size] || SIZES['960x600']);
   const line = (name, a) => log.push(['knight.' + name, ...a].join(' '));
   K.head = (x, y) => line('head', [x, y]);
@@ -236,8 +257,8 @@ const frontOnly = places => Object.fromEntries(Object.entries(places || {}).filt
    draw's calls, what draw changed, "over" and over's calls when the scene has one, and "front" and
    the devices in front of the knight. Each state is drawn in a sandbox of its own, so that nothing
    one state leaves behind (the yard keeps the time of the last blow) reaches another. */
-function records(src, name, label, st, size) {
-  const { KW, log } = load(src, size), sc = KW.scenes[name], out = [];
+function records(src, name, label, st, size, from) {
+  const { KW, log } = load(src, size, from), sc = KW.scenes[name], out = [];
   const take = () => { const l = log.slice(); log.length = 0; return l; };
   if (sc.paint) { sc.paint(frame(KW, name, st, 0)); out.push([`${label} @${size}: paint`, take()]); }
   for (const t of st.times || TIMES) {
@@ -252,10 +273,12 @@ function records(src, name, label, st, size) {
   return out;
 }
 
-/* Every record of the scene name, in order: by size, then by state. */
-function sceneRecords(src, name) {
+/* Every record of the scene name, in order: by size, then by state, drawn from code or, with from
+   'pack', from kw.medieval. The states are always the code scene's, so both copies are drawn in the
+   same ones. */
+function sceneRecords(src, name, from) {
   const { KW } = load(src), out = [];
-  for (const size of Object.keys(SIZES)) for (const [label, st] of statesOf(KW, src.pack, name)) out.push(...records(src, name, label, st, size));
+  for (const size of Object.keys(SIZES)) for (const [label, st] of statesOf(KW, src.pack, name)) out.push(...records(src, name, label, st, size, from));
   return out;
 }
 
@@ -277,16 +300,21 @@ function castRecords(src) {
 }
 
 /* ---- Storing and comparing -------------------------------------------------------------------- */
+/* A value from a sandbox as plain data, undefined kept as null, to compare with deepEqual. */
+const plain = v => (v === undefined ? null : JSON.parse(JSON.stringify(v)));
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
 function blocks(lines) {
   const out = [];
   for (let i = 0; i < lines.length; i += BLOCK) out.push(sha(lines.slice(i, i + BLOCK).join('\n')).slice(0, 8));
   return out.join(' ');
 }
-/* The groups of records, each stored in a file of its own: one per scene, and the cast. */
+/* The groups of records, each stored in a file of its own: one per scene, and the cast, each as
+   [file, make, from]. The scenes kw.medieval gives come again after them, drawn from the pack and
+   held to the same files. */
 function groups(src) {
   const { KW } = load(src);
-  return [...Object.keys(KW.scenes).map(n => [n, () => sceneRecords(src, n)]), ['cast', () => castRecords(src)]];
+  return [...Object.keys(KW.scenes).map(n => [n, () => sceneRecords(src, n), 'code']), ['cast', () => castRecords(src), 'code'],
+    ...fromPack(src).map(n => [n, () => sceneRecords(src, n, 'pack'), 'pack'])];
 }
 /* A group's file: each distinct record once, by the first 16 characters of its hash, with its
    number of calls and the hashes of its blocks; and each record's name with the hash of its calls. */
@@ -330,20 +358,22 @@ const SRC = sources(fromDir(WEB));
 if (MODE === 'write') {
   test('stores the records of the scenes as drawn now', () => {
     fs.mkdirSync(FIX, { recursive: true });
-    for (const [group, make] of groups(SRC)) fs.writeFileSync(path.join(FIX, group + '.json'), fileText(stored(make())));
+    // from code alone: the copies in kw.medieval are held to what the code draws, never stored
+    for (const [group, make, from] of groups(SRC)) if (from === 'code') fs.writeFileSync(path.join(FIX, group + '.json'), fileText(stored(make())));
   });
 } else if (MODE.startsWith('dump:')) {
   test('dumps every record in full', () => {
     const dir = MODE.slice(5);
-    for (const [group, make] of groups(SRC)) {
-      fs.mkdirSync(path.join(dir, group), { recursive: true });
-      for (const [name, lines] of make()) fs.writeFileSync(path.join(dir, group, name.replace(/[^\w.@-]+/g, '_') + '.log'), lines.join('\n') + '\n');
+    for (const [group, make, from] of groups(SRC)) {
+      const sub = from === 'pack' ? group + '@kw.medieval' : group;
+      fs.mkdirSync(path.join(dir, sub), { recursive: true });
+      for (const [name, lines] of make()) fs.writeFileSync(path.join(dir, sub, name.replace(/[^\w.@-]+/g, '_') + '.log'), lines.join('\n') + '\n');
     }
   });
 } else {
-  for (const [group, make] of groups(SRC)) {
+  for (const [group, make, from] of groups(SRC)) {
     const file = JSON.parse(fs.readFileSync(path.join(FIX, group + '.json'), 'utf8'));
-    test(`${group}: every record draws the stored calls, call for call`, () => {
+    test(`${group}${from === 'pack' ? ' from kw.medieval' : ''}: every record draws the stored calls, call for call`, () => {
       assert.equal(file.block, BLOCK);
       const drawn = make();
       assert.deepEqual(drawn.map(([n]) => n), Object.keys(file.records), `${group}: the records drawn are the ones stored`);
@@ -354,6 +384,55 @@ if (MODE === 'write') {
       }
     });
   }
+
+  /* Whether two lists of keys, one for each state in the same order, tell the states apart alike:
+     two states share a key in one list exactly when they share it in the other. The keys
+     themselves may differ. Returns null, or the first pair of states, by index, that one list
+     joins and the other parts. */
+  function partedAlike(a, b) {
+    for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) if ((a[i] === a[j]) !== (b[i] === b[j])) return [i, j];
+    return null;
+  }
+  /* The backdrop's key of the scene name in every recorded state at every size, as the engine asks
+     for it (engine.js, draw): the key of the frame at time 0, or '' for a scene without a key. */
+  function keysOf(src, name, from) {
+    const states = statesOf(load(src).KW, src.pack, name), out = [];
+    for (const size of Object.keys(SIZES)) {
+      const { KW } = load(src, size, from), sc = KW.scenes[name];
+      for (const [label, st] of states) out.push([`${label} @${size}`, sc.key ? sc.key(frame(KW, name, st, 0)) : '']);
+    }
+    return out;
+  }
+
+  for (const name of fromPack(SRC)) {
+    test(`${name} from kw.medieval has the code scene's interface: the same data, and the same parts drawn`, () => {
+      const code = load(SRC).KW.scenes[name], pack = load(SRC, undefined, 'pack').KW.scenes[name];
+      assert.notEqual(code, pack);
+      const DATA = ['spot', 'places', 'rests', 'rounds', 'can', 'outdoors', 'bed', 'helmet', 'sword', 'foeZone'];
+      for (const k of DATA) assert.deepEqual(plain(pack[k]), plain(code[k]), `${name}.${k}`);
+      // key may be given by either, since a scene without one keeps one backdrop
+      for (const k of ['paint', 'draw', 'act', 'over', 'wallAt']) assert.equal(typeof pack[k], typeof code[k], `${name}.${k}`);
+      const known = DATA.concat(['paint', 'draw', 'act', 'over', 'wallAt', 'key']);
+      assert.deepEqual(Object.keys(pack).filter(k => !known.includes(k)), [], 'the compiled scene has no field the interface lacks');
+    });
+
+    test(`${name} from kw.medieval: the backdrop's key tells the recorded states apart as the code scene's does`, () => {
+      const code = keysOf(SRC, name, 'code'), pack = keysOf(SRC, name, 'pack');
+      assert.deepEqual(pack.map(([l]) => l), code.map(([l]) => l));
+      const bad = partedAlike(code.map(([, k]) => k), pack.map(([, k]) => k));
+      if (bad) {
+        const [i, j] = bad, one = (c, x) => `${JSON.stringify(c[x][1])}`;
+        assert.fail(`"${code[i][0]}" and "${code[j][0]}" have the keys ${one(code, i)} and ${one(code, j)} from code, but ${one(pack, i)} and ${one(pack, j)} from kw.medieval`);
+      }
+    });
+  }
+
+  test('the check of the keys finds two states the keys tell apart differently', () => {
+    assert.equal(partedAlike(['a', 'a', 'b'], ['x', 'x', 'y']), null);
+    assert.equal(partedAlike(['', '', ''], ['', '', '']), null);
+    assert.deepEqual(partedAlike(['a', 'a', 'b'], ['x', 'y', 'y']), [0, 1]);
+    assert.deepEqual(partedAlike(['a', 'b', 'c'], ['x', 'y', 'x']), [0, 2]);
+  });
 
   test('the states cover what the brief of the conversion asks', () => {
     const { KW } = load(SRC), names = n => statesOf(KW, SRC.pack, n).map(([l]) => l);

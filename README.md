@@ -91,5 +91,6 @@ page instead, with each browser then keeping its own settings and no admin page.
 - [The server](docs/server.md): what it serves, the settings API and store, the admin page, its security, and a reverse proxy in front
 - [Security](docs/security.md): what never enters this repository, and the collector's and the server's privileges
 - [Packs](docs/packs.md): the format of a pack, its checks and signing, and the library that reads it
+- [Worlds](docs/worlds.md): the scenes drawn from world packs, the scene compiler and the medieval world's pack
 - [A monitor on the host](docs/monitor.md): showing the display on a screen wired to a headless host
 - [Development](docs/development.md): layout, checks, and the rules for changes

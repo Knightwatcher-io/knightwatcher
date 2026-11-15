@@ -478,12 +478,14 @@ The library reads `[1, 1]` beside `[1, 0]` and refuses `[1, 2]` and anything new
 step (`pack.format: is 1.2, newer than this engine's 1.1`). It checks every new section by the same
 steps as the rest, in the same order, and keeps it as data in the loaded pack's `data`.
 
-**Nothing is compiled from these sections yet, and nothing draws from them.** The engine parts that
-will read them (the scene compiler, the acts, the cast and the props from data) come in later
-steps. Until then the closed lists those parts will own are fixed in `pack.js` under the names
-below and exported as `WORLD_LISTS`, and the engine takes them over when it is built. The effects
-library is built: `effects.js` gives each effect's table of fields and cost, which `pack.js` checks
-and costs a pack's effects by, and draws them for the scenes today ([page.md](./page.md#the-effects)).
+**`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
+compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
+page draws the cellar from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
+engine parts that will read the sections (the acts, the cast and the props from data) come in later
+steps. The closed lists those parts own are fixed in `pack.js` under the names below and exported
+as `WORLD_LISTS`. The effects library is built: `effects.js` gives each effect's table of fields and
+cost, which `pack.js` checks and costs a pack's effects by, and draws them for the scenes
+([page.md](./page.md#the-effects)).
 
 A pack of format `[1, 0]` reads exactly as before: none of the new sections is a field of it, only
 the base pack may carry builds, and `pick` and `lamp` are free as palette set names.
@@ -1252,6 +1254,14 @@ nor the build change the cost, so every look's cost depends on its items alone, 
 is the tied hair with the sword and shield: 135 shapes, cost 14 470, against the caps of 1200 and
 40 000.
 
+### The medieval world's pack
+
+`web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
+`[1, 1]`, version 0.1.0, unsigned until its signing run. It holds the cellar as data and the two
+stamps it uses, and the page draws the cellar from it on a `dev` page, and on a deployed page once
+it is signed. [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its
+cellar is held equal to the code's.
+
 ### Carriers
 
 A page opened from disk can run a script beside it but cannot fetch a JSON file, so each pack that
@@ -1263,8 +1273,8 @@ KW.packText.push("{\n  \"kwpack\": 1,\n  \"pack\": {\n ...");
 
 The string is the pack file's text unchanged, so the page reads it exactly as it would read the
 file fetched. The only code in a carrier is the push. `knight.js` creates `KW.packText`, and
-`index.html` loads the carriers after `pack.js`. The page uses the carriers whether it is served or
-opened from disk.
+`index.html` loads the carriers after `pack.js` and `world.js`, the base pack's first and then the
+medieval world's. The page uses the carriers whether it is served or opened from disk.
 
 The carriers are written by a tool, never by hand. Run it after every change to a pack file:
 
@@ -1305,6 +1315,12 @@ the same options and resolves the look again (see [Downloaded packs](#downloaded
   in `KEYS`. It refuses an unsigned pack at the `signature` step (`sig: is missing, and this page
   accepts only signed packs`), and one whose signature does not verify or names a key it does not
   know.
+
+**The medieval world's pack is among the texts.** It carries no items and changes no look, but the
+knight reads every carried text, so while `kw.medieval` ships unsigned a deployed page lists it in
+`status.refused` and writes its refusal line (`knightwatcher: the pack kw.medieval was refused at the
+signature step: sig: is missing, and this page accepts only signed packs`). Where the scenes are
+drawn from is the scene compiler's to say, in a line of its own ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)).
 
 **Today the base pack, version 1.3.0, ships signed with `kw1`,** so a deployed page draws the
 knight from it, in every build and with either weapon (see
@@ -1450,7 +1466,8 @@ in the test's name and the exact reason it expects, refuses values of the wrong 
 limit at its edge, and feeds the reader hostile and mangled text. Scalars are refused at each end of their ranges, costs at the
 limits and one past them, and the cost is checked against the calls `draw.js` makes with every
 value at the ends of its range.
-The source of `pack.js` is checked to hold neither `eval` nor `Function(`. The shipped `KEYS` is
+The sources of `pack.js` and of the scene compiler, `world.js`, are checked to hold neither `eval` nor
+`Function(`. The shipped `KEYS` is
 checked to hold `kw1` alone, as the 32 bytes above, in a frozen table whose bytes cannot be changed
 from outside, and a pack signed by any other key under `kw1` is refused against it.
 
@@ -1467,6 +1484,14 @@ any new section; checks that a `[1, 0]` pack still refuses every new section and
 refused at the format; checks the closed lists by name, the conditions against `state.js`; and feeds
 the reader mangled copies and values of the wrong type, none of which may throw. It checks too that
 the world's pack changes no look: `resolve()` gives the same with it loaded as without.
+
+`tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
+clean, unsigned, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
+draws the cellar from it and a deployed page from code until it is signed, and from it once signed
+with a key made for the run; a refused, missing or unreadable pack, a missing library and a compile
+that throws all leave the cellar the code scene, each with its console line and its status. That
+the cellar from the pack draws what the code draws, call for call, is `tests/web/scenes.test.js`'s
+([page.md](./page.md#checks)).
 
 `tests/web/effects.test.js` checks that `pack.js` holds an effect to its table in `effects.js`, every
 field of every effect refused out of its kind or range, and costs it with its own cost function; and

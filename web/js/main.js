@@ -46,6 +46,14 @@
      in the base pack's defaults, and the settings then choose its look. */
   KW.knight.start(KW.packText, ownVersion === 'dev', { look: {} });
 
+  /* ---- The scenes: from the medieval world's pack, or from code -------------------------------
+     The scenes kw.medieval gives (today the cellar) are compiled from it and take the place of the
+     code scenes of the same names, under the knight's rule: a 'dev' page accepts the pack unsigned,
+     a deployed page only signed. Refused, missing or failing to compile, a scene stays the code
+     scene in js/scenes/. KW.world writes one line to the console about where they are drawn from
+     (docs/worlds.md). */
+  if (KW.world) KW.world.start(KW.packText, ownVersion === 'dev');
+
   /* ---- The settings ------------------------------------------------------------------------------
      What the display shows comes from four levels, highest first: the address's hooks, the saved
      settings (the deployment's, shared by every display, when the Knightwatcher server serves the

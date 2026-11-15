@@ -46,11 +46,12 @@ const PATHS = { code: () => load(false, [UNSIGNED]), pack: () => load(true) };
 
 /* The scripts index.html loads, in its order, that the knight's drawing needs: everything but the
    files that drive the page (state, engine, demo, main) and the scenes other than the two that show
-   the knight's gear at rest, the house and the smithy. The pack library and the carriers are among
-   them. */
+   the knight's gear at rest, the house and the smithy. The pack library and the base pack's carrier
+   are among them; the scene compiler and the medieval world's carrier are not, since that pack
+   dresses no knight (tests/web/world.test.js loads it). */
 const SCENES = ['js/scenes/house.js', 'js/scenes/smithy.js'];
 const SCRIPTS = [...fs.readFileSync(path.join(WEB, 'index.html'), 'utf8').matchAll(/<script src="([^"?]+)"><\/script>/g)].map(m => m[1])
-  .filter(s => (!s.startsWith('js/scenes/') || SCENES.includes(s)) && !['js/state.js', 'js/engine.js', 'js/demo.js', 'js/main.js'].includes(s));
+  .filter(s => (!s.startsWith('js/scenes/') || SCENES.includes(s)) && !['js/state.js', 'js/engine.js', 'js/demo.js', 'js/main.js', 'js/world.js', 'packs/medieval.pack.js'].includes(s));
 
 /* Loads the page's drawing code the way index.html does, into a sandbox whose window is an empty
    object, chooses the knight's source as main.js does, for a 'dev' page when dev is true, and
