@@ -23,7 +23,10 @@ const PK = require('../../web/js/pack.js');
 const SET = require('../../web/js/settings.js');
 
 const WEB = path.join(__dirname, '../../web');
-const MEDIEVAL = fs.readFileSync(path.join(WEB, 'packs/medieval.pack.json'), 'utf8');
+const SIGN = require('../../tools/sign-pack.js');
+/* The pack as it ships with any signature taken off: these tests check its scenes, and a 'dev' page
+   reads it unsigned, so they hold whether or not it has had its signing run. */
+const MEDIEVAL = SIGN.withoutSig(fs.readFileSync(path.join(WEB, 'packs/medieval.pack.json'), 'utf8'));
 const READ = PK.read(MEDIEVAL, { allowUnsigned: true });
 /* The scenes the pack gives, and of them those that host a foe. */
 const GIVEN = READ.ok ? Object.keys(READ.data.scenes) : [];

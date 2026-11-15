@@ -110,9 +110,11 @@ two never show at once: a frame is costed with every layer drawn. The gear at re
 sleeper and the Zs are the engine's drawing, as the devices are, and count toward no scene's cost;
 the stamp a weapon's rest names counts twice, once for each peg.
 
-Version 0.1.0, which held the cellar alone, shipped signed with `kw1` by a signing run as the base
-pack is ([development.md](./development.md#signing-the-packs)). Version 0.2.0 ships unsigned until
-its signing run: until then a deployed page refuses it and draws every scene from code, and a `dev` page draws every scene but the court from it. A change to a signed pack takes the signature's validity with it in the same way.
+The pack ships signed with `kw1`, by a signing run as the base pack is
+([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
+and then version 0.2.0. A deployed page and a `dev` page alike draw every scene but the court from
+it. A change to the pack takes the signature's validity with it: until the next signing run a
+deployed page refuses it and draws every scene from code, while a `dev` page still reads it.
 
 ## Where the scenes are drawn from
 

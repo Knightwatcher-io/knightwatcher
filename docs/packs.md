@@ -1269,8 +1269,7 @@ is the tied hair with the sword and shield: 135 shapes, cost 14 470, against the
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.2.0, unsigned until its signing run (0.1.0, the cellar alone, was signed with
-`kw1`). It holds every scene but the court as data, the three stamps they use (the sconce, the
+`[1, 1]`, version 0.2.0, signed with `kw1` (as 0.1.0, the cellar alone, was before it). It holds every scene but the court as data, the three stamps they use (the sconce, the
 barrel and the house's peg) and one palette entry, `house.screen`, the television's colour, and the
 page draws those scenes from it on a `dev` page, and on a deployed page once it is signed.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held

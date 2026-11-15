@@ -271,10 +271,11 @@ describes the tool, and how a fork signs with a key of its own.
 
 Whether the base pack ships signed today, and what a deployed page draws in each case, is in
 [packs.md](./packs.md#where-the-knight-is-drawn-from). The medieval world's pack, `kw.medieval`, was
-signed on 15 November 2026 at version 0.1.0, which held the cellar alone. Version 0.2.0, which adds
-the camp, the battlement, the yard, the smithy and the house, ships unsigned until its signing run;
-meanwhile a deployed page draws every scene from code, and a `dev` page draws
-every scene but the court from the pack ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
+first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, and again the same
+day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house. It
+ships signed, so a deployed page and a `dev` page alike draw every scene but the court from it; a
+version changed after signing ships unsigned until its next run, and meanwhile a deployed page draws
+every scene from code ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
 across changes no test.
 
 ## Deploying

@@ -1022,5 +1022,6 @@
         "screen": { "group": "tv" }
       }
     }
-  }
+  },
+  "sig": { "alg": "ed25519", "kid": "kw1", "value": "98Vm2UC53bwpOdpz2kd0CL5SaGkKWS5cSZvFFHQuVjnlNLTF19wEyCMK+v6l0mFHB0djFwIooQTTyYw3YZX8Cw==" }
 }
