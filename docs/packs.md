@@ -1257,7 +1257,7 @@ is the tied hair with the sword and shield: 135 shapes, cost 14 470, against the
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.1.0, unsigned until its signing run. It holds the cellar as data and the two
+`[1, 1]`, version 0.1.0, signed with `kw1`. It holds the cellar as data and the two
 stamps it uses, and the page draws the cellar from it on a `dev` page, and on a deployed page once
 it is signed. [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its
 cellar is held equal to the code's.
@@ -1317,7 +1317,7 @@ the same options and resolves the look again (see [Downloaded packs](#downloaded
   know.
 
 **The medieval world's pack is among the texts.** It carries no items and changes no look, but the
-knight reads every carried text, so while `kw.medieval` ships unsigned a deployed page lists it in
+knight reads every carried text, so while `kw.medieval` ships unsigned (between a change to it and its next signing run) a deployed page lists it in
 `status.refused` and writes its refusal line (`knightwatcher: the pack kw.medieval was refused at the
 signature step: sig: is missing, and this page accepts only signed packs`). Where the scenes are
 drawn from is the scene compiler's to say, in a line of its own ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)).
@@ -1486,9 +1486,10 @@ the reader mangled copies and values of the wrong type, none of which may throw.
 the world's pack changes no look: `resolve()` gives the same with it loaded as without.
 
 `tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
-clean, unsigned, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
-draws the cellar from it and a deployed page from code until it is signed, and from it once signed
-with a key made for the run; a refused, missing or unreadable pack, a missing library and a compile
+clean, with its signature taken off, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
+draws the cellar from it and a deployed page from code while it is unsigned, and from it once signed
+with a key made for the run, and the shipped file on a deployed page draws from it when it carries
+a signature; a refused, missing or unreadable pack, a missing library and a compile
 that throws all leave the cellar the code scene, each with its console line and its status. That
 the cellar from the pack draws what the code draws, call for call, is `tests/web/scenes.test.js`'s
 ([page.md](./page.md#checks)).

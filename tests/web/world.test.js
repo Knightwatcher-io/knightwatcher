@@ -18,7 +18,10 @@ const PK = require('../../web/js/pack.js');
 const SIGN = require('../../tools/sign-pack.js');
 
 const WEB = path.join(__dirname, '../../web');
-const TEXT = fs.readFileSync(path.join(WEB, 'packs/medieval.pack.json'), 'utf8');
+/* The pack as it ships, signed after its signing run, and an unsigned copy of it (any sig taken off),
+   which the tests sign with a key of their own or leave unsigned. */
+const SHIPPED = fs.readFileSync(path.join(WEB, 'packs/medieval.pack.json'), 'utf8');
+const TEXT = SIGN.withoutSig(SHIPPED);
 const INDEX = fs.readFileSync(path.join(WEB, 'index.html'), 'utf8');
 /* The scripts index.html loads, in its order, but the files that drive the page (state, engine,
    demo, main): the drawing, the scenes, the pack library, the compiler and the carriers. */
@@ -69,8 +72,7 @@ const CODE = 'knightwatcher: the scenes of kw.medieval are drawn from code: ';
 
 // ---- The pack ---------------------------------------------------------------------------------------
 
-test('the medieval world\'s pack reads clean: kw.medieval 0.1.0, format 1.1, unsigned, the cellar and its stamps', () => {
-  assert.equal(Object.prototype.hasOwnProperty.call(JSON.parse(TEXT), 'sig'), false, 'unsigned until its signing run');
+test('the medieval world\'s pack reads clean: kw.medieval 0.1.0, format 1.1, the cellar and its stamps', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual([r.id, r.version, plain(r.format), r.signed], ['kw.medieval', '0.1.0', [1, 1], false]);
@@ -83,6 +85,16 @@ test('the medieval world\'s pack reads clean: kw.medieval 0.1.0, format 1.1, uns
   assert.deepEqual([PK.read(TEXT).ok, PK.read(TEXT).step, PK.read(TEXT).reason], [false, 'signature', MISSING]);
 });
 
+test('the pack as it ships: signed, a deployed page draws the cellar from it; unsigned, from code', () => {
+  const s = sandbox(), st = s.W.start([SHIPPED], false);
+  if (Object.prototype.hasOwnProperty.call(JSON.parse(SHIPPED), 'sig')) {
+    assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.1.0', signed: true }, st.note);
+    assert.equal(st.scenes.cellar, 'pack');
+  } else {
+    assert.deepEqual([st.source, st.refused.step], ['code', 'signature']);
+  }
+});
+
 test('the page loads the compiler after the pack library and the medieval carrier after the base pack\'s, and starts the scenes after the knight', () => {
   const list = [...INDEX.matchAll(/<script src="([^"?]+)"><\/script>/g)].map(m => m[1]);
   const at = f => list.indexOf(f);
@@ -92,14 +104,14 @@ test('the page loads the compiler after the pack library and the medieval carrie
   const main = fs.readFileSync(path.join(WEB, 'js/main.js'), 'utf8');
   assert.ok(main.indexOf('KW.world.start(KW.packText, ownVersion === \'dev\')') > main.indexOf('KW.knight.start(KW.packText'));
   const s = sandbox();
-  assert.ok(s.KW.packText.includes(TEXT), 'the carrier pushes the pack file\'s text');
+  assert.ok(s.KW.packText.includes(SHIPPED), 'the carrier pushes the pack file\'s text');
 });
 
 // ---- Where the cellar is drawn from -------------------------------------------------------------------
 
 test('a dev page draws the cellar from kw.medieval unsigned, under its short name and its long one, and says so', () => {
   const s = sandbox(), before = Object.keys(s.KW.scenes);
-  const st = s.W.start(s.KW.packText, true);
+  const st = s.W.start([TEXT], true);
   assert.equal(s.W.status, st);
   assert.deepEqual(plain(st), { source: 'pack', pack: { id: 'kw.medieval', version: '0.1.0', signed: false }, refused: null, scenes: { cellar: 'pack' }, faults: [],
     note: 'knightwatcher: the scene cellar is drawn from the pack kw.medieval 0.1.0, unsigned' });
@@ -113,7 +125,7 @@ test('a dev page draws the cellar from kw.medieval unsigned, under its short nam
 });
 
 test('a deployed page refuses kw.medieval unsigned and draws the cellar from code, with one line', () => {
-  const s = sandbox(), st = s.W.start(s.KW.packText, false);
+  const s = sandbox(), st = s.W.start([TEXT], false);
   assert.deepEqual(plain(st), { source: 'code', pack: null, refused: { id: 'kw.medieval', step: 'signature', reason: MISSING }, scenes: {}, faults: [],
     note: CODE + 'the pack kw.medieval was refused at the signature step' });
   assert.deepEqual(s.lines, [['warn', st.note]]);

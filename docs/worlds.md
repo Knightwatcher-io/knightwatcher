@@ -26,9 +26,10 @@ loads it after the base pack's. It holds:
 The checks find 440 shapes costing 76 803 fills in the still layer at the widest screen they
 assume, and 3 shapes costing 120 with one glow in a frame, against limits of 200 000 and 16 000.
 
-The pack ships unsigned. It is signed with `kw1` in a signing run of its own, as the base pack is
-([development.md](./development.md#signing-the-packs)), after which a deployed page draws the
-cellar from it too.
+The pack ships signed with `kw1`, by a signing run as the base pack is
+([development.md](./development.md#signing-the-packs)), so a deployed page draws the cellar from it
+as a `dev` page does. A change to the pack takes the signature's validity with it: until the next
+signing run a deployed page refuses it and draws the cellar from code.
 
 ## Where the scenes are drawn from
 
