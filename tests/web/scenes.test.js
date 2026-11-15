@@ -38,11 +38,11 @@ const BLOCK = 1024;
 const MODE = process.env.SCENES_LOG || '';
 
 /* The scripts index.html loads that the scenes need, in its order: the drawing primitives, the
-   sprites, the props, the knight, the scenes, the state library (for the places of the devices)
+   sprites, the effects, the props, the knight, the scenes, the state library (for the places of the devices)
    and the engine (for KW.devices). Not the pack library: the knight is drawn from code, and the
    scenes read from it only where its gear rests (KW.knight.rest.blade), which is the same on both
    paths (knight.test.js). */
-const NEEDED = ['js/draw.js', 'js/sprites.js', 'js/props.js', 'js/knight.js', 'js/state.js', 'js/engine.js'];
+const NEEDED = ['js/draw.js', 'js/sprites.js', 'js/effects.js', 'js/props.js', 'js/knight.js', 'js/state.js', 'js/engine.js'];
 
 /* The sources of the page's files, read from a folder or, for the reference, from git's HEAD. */
 const fromDir = dir => f => fs.readFileSync(path.join(dir, f), 'utf8');

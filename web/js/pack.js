@@ -1055,9 +1055,10 @@
 
      Scenes, the cast, props, stamps, words, overlays, presets (worlds) and the reserved sounds,
      checked by the same steps as the rest and kept as data. Nothing compiles them yet and nothing
-     draws from them: the engine's effects library, its acts and the scene compiler come in later
-     steps. Until then the closed lists those parts of the engine will own are fixed here, under the
-     names the format gives them; the engine takes them over when it is built. */
+     draws from them: the engine's acts and the scene compiler come in later steps. Until then the
+     closed lists those parts of the engine will own are fixed here, under the names the format
+     gives them; the engine takes them over when it is built. An effect is checked against its table
+     and costed by its cost function from the effects library, which is built. */
 
   /* The contract's condition ids. device_down and memory_tight have no scene of their own: they
      are acted in the quiet scene of the moment. */
@@ -1071,9 +1072,10 @@
   const PREDICATES = ['tv', 'inBed', 'helmOff', 'strike', 'day', 'night'];
   const MARKS = ['things', 'rest', 'patron', 'sleeper', 'target', 'bubble'];
   const TRIGGERS = ['hit', 'strike'];
-  /* The effects library (the engine's, from a later step, with each effect's table of fields and
-     its cost). Until it exists an effect's fields are checked only to be numbers, colours and terms,
-     and it costs nothing in the counts. */
+  /* The effects: drawings the engine owns, each named here and given its table of fields, its cost
+     and its drawing by the effects library, effects.js (KW.effects). The page loads that file before
+     this one; under Node this file asks for it beside itself, the first time a pack names an
+     effect. */
   const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'flame', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst'];
   /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
      for, the patron's anchors and the critter's frames. */
@@ -1102,7 +1104,6 @@
   /* The set names a 1.1 pack's own palettes may not take: a tile's picks and the down lamp's red. */
   const WORLD_SETS = ['pick', 'lamp'];
   const LAMP_REF = /^@lamp\.(down|downHi)$/;
-  const FX_FIELD = /^[a-z][A-Za-z0-9]{0,15}$/;
   const PLACEHOLDER = /\{([a-z]{1,16})\}/g;
   const TEMPLATE = /^[\x20-\x7e·]+$/;
   /* The named values of a scene, the range the checks assume for each (the screen at most three
@@ -1266,27 +1267,57 @@
     } else obj(s, path, ['k'], ['k']);
     if (['things', 'sleeper', 'target', 'bubble'].includes(s.k) && ctx.where === 'still') fail(key(path, 'k'), 'the ' + s.k + ' mark is drawn each frame, so it goes in a moving or over layer');
   }
-  /* An effect, named from the engine's list. Its other fields wait for the effects library's
-     tables; until then each is a number, a colour, a term object or a list of up to 16 of them. */
+  /* The effects library, or null where it cannot be had. */
+  function effectsLib() {
+    if (!KW.effects && typeof module === 'object' && module.exports && typeof require === 'function') {
+      try { KW.effects = require('./effects.js'); } catch (e) { return null; }
+    }
+    return KW.effects || null;
+  }
+  /* The table of an effect of the engine's list: { fields, cost, glows }. */
+  function effectOf(name, path) {
+    const lib = effectsLib();
+    if (!lib || !lib[name]) fail(path, 'cannot be checked: the engine\'s effects library (effects.js) is not loaded');
+    return lib[name];
+  }
+  /* The kinds of an effect's fields that are scalars of the scene, and so may be term objects. */
+  const FX_SCALARS = ['offset', 'length', 'term'];
+  /* An effect, named from the engine's list, with the fields of its table (effects.js): each one the
+     table names, of its kind and in its range; a field without a default is required. g and only
+     are taken where any shape takes them. */
   function effect(s, path, ctx) {
     if (!has(s, 'fx')) fail(key(path, 'fx'), 'is missing');
     oneOf(s.fx, key(path, 'fx'), EFFECTS);
-    const ks = Object.keys(s).filter(k => k !== 'k' && k !== 'fx');
-    if (ks.length > 16) fail(path, 'an effect takes at most 16 fields, not ' + ks.length);
-    const O = ctx.wide ? WORLD_LIMITS.length : 512;
-    const value = (v, p) => {
-      if (typeof v === 'number') return;
-      if (typeof v === 'string') { plainColour(v, p); return; }
-      if (isObj(v)) { wscalar(v, p, -O, O); return; }
-      fail(p, 'must be a number, a colour, a term object or a list of them');
-    };
-    for (const k of ks) {
-      const p = key(path, k), v = s[k];
-      if (k === 'g') { if (!ctx.groups) fail(p, 'is not a field here'); id(v, p, LOCAL_ID); continue; }
-      if (k === 'only') { if (!ctx.tile) fail(p, 'is not a field here'); seedMod(v, p); continue; }
-      if (!FX_FIELD.test(k)) fail(p, 'is not a field name');
-      if (Array.isArray(v)) arr(v, p, 1, 16).forEach((x, i) => value(x, idx(p, i)));
-      else value(v, p);
+    const F = effectOf(s.fx, key(path, 'fx')).fields;
+    for (const k of Object.keys(s)) {
+      const p = key(path, k);
+      if (k === 'k' || k === 'fx') continue;
+      if (k === 'g') { if (!ctx.groups) fail(p, 'is not a field here'); id(s.g, p, LOCAL_ID); continue; }
+      if (k === 'only') { if (!ctx.tile) fail(p, 'is not a field here'); seedMod(s.only, p); continue; }
+      if (!has(F, k)) fail(p, 'is not a field of the effect ' + quote(s.fx));
+    }
+    for (const k of Object.keys(F)) if (!has(F[k], 'def') && !has(s, k)) fail(key(path, k), 'is missing');
+    for (const k of Object.keys(F)) if (has(s, k)) fxField(s[k], key(path, k), F[k], ctx);
+  }
+  /* One field of an effect against its entry in the table. A scalar's c is held to its range here;
+     the whole scalar is, at both ends, at rules. */
+  function fxField(v, path, f, ctx) {
+    const O = ctx.wide ? WORLD_LIMITS.offset : 512, Lg = ctx.wide ? WORLD_LIMITS.length : 512;
+    switch (f.kind) {
+      case 'point': wpoint(v, path, O); return;
+      case 'offset': wscalar(v, path, -O, O); return;
+      case 'length': wscalar(v, path, 0, Lg); return;
+      case 'term': wscalar(v, path, f.lo, f.hi); return;
+      case 'num': num(v, path, f.lo, f.hi); return;
+      case 'int': int(v, path, f.lo, f.hi); return;
+      case 'pair':
+        if (!Array.isArray(v) || v.length !== 2) fail(path, 'must be a pair of numbers');
+        v.forEach((x, i) => (f.int ? int : num)(x, idx(path, i), f.of[i][0], f.of[i][1]));
+        return;
+      case 'colour': plainColour(v, path); return;
+      case 'colours': arr(v, path, f.min, f.max).forEach((c, i) => plainColour(c, idx(path, i))); return;
+      case 'ints': arr(v, path, f.min, f.max).forEach((x, i) => int(x, idx(path, i), f.lo, f.hi)); return;
+      default: oneOf(v, path, f.of);
     }
   }
   function shapeList(v, path, min, max, ctx) {
@@ -1648,10 +1679,11 @@
   /* Calls fn(scalar, path, alpha) for every scalar of a world shape. */
   function eachWScalar(s, fn, path) {
     if (s.k === 'fx') {
-      // an effect's term objects, wherever its fields hold them
-      for (const k of Object.keys(s)) {
-        if (['k', 'fx', 'g', 'only'].includes(k)) continue;
-        if (Array.isArray(s[k])) s[k].forEach((v, i) => { if (isObj(v)) fn(v, idx(key(path, k), i)); }); else if (isObj(s[k])) fn(s[k], key(path, k));
+      // an effect's scalars, as its table gives them
+      const F = effectOf(s.fx, key(path, 'fx')).fields;
+      for (const k of Object.keys(F)) {
+        if (!has(s, k)) continue;
+        if (F[k].kind === 'point') { fn(s[k][0], idx(key(path, k), 0)); fn(s[k][1], idx(key(path, k), 1)); } else if (FX_SCALARS.includes(F[k].kind)) fn(s[k], key(path, k));
       }
       return;
     }
@@ -1666,10 +1698,14 @@
     if (has(s, 'fill')) eachColour(s.fill, fn, key(path, 'fill'));
     if (has(s, 'colour')) fn(s.colour, key(path, 'colour'), true);
     if (s.k === 'pix') for (const k of Object.keys(s.key)) fn(s.key[k], key(key(path, 'key'), k), true);
-    if (s.k === 'fx') for (const k of Object.keys(s)) {
-      if (['k', 'fx', 'g'].includes(k)) continue;
-      if (typeof s[k] === 'string') fn(s[k], key(path, k), true);
-      else if (Array.isArray(s[k])) s[k].forEach((v, i) => { if (typeof v === 'string') fn(v, idx(key(path, k), i), true); });
+    if (s.k === 'fx') {
+      // an effect's colours, as its table gives them
+      const F = effectOf(s.fx, key(path, 'fx')).fields;
+      for (const k of Object.keys(F)) {
+        if (!has(s, k)) continue;
+        if (F[k].kind === 'colour') fn(s[k], key(path, k), true);
+        else if (F[k].kind === 'colours') s[k].forEach((v, i) => fn(v, idx(key(path, k), i), true));
+      }
     }
   }
   /* The groups declared in a scene's layers, by name. */
@@ -1854,9 +1890,20 @@
   const rangesOf = ctx => (ctx.tile ? Object.assign({ x: tileX(ctx.tile) }, SCENE_RANGE) : SCENE_RANGE);
   const W_SIZE = { w: [0, 'length'], h: [0, 'length'], r: [0, 'radius'], rx: [1, 'radius'], ry: [1, 'radius'], hw0: [0, 'half-width'], hw1: [0, 'half-width'] };
   function worldShapeRanges(s, path, ctx) {
-    // an effect's fields are bounded by its table, in the effects library
-    if (s.k === 'fx') return;
     const R = rangesOf(ctx), wide = LAYERED.includes(ctx.where), O = wide ? WORLD_LIMITS.offset : 512, Lg = wide ? WORLD_LIMITS.length : 512;
+    if (s.k === 'fx') {
+      // an effect's scalars, in the ranges its table gives them
+      const F = effectOf(s.fx, key(path, 'fx')).fields;
+      for (const k of Object.keys(F)) {
+        if (!has(s, k)) continue;
+        const f = F[k], p = key(path, k);
+        if (f.kind === 'point') s[k].forEach((v, i) => within(form(v), -O, O, idx(p, i), 'the offset', null, R));
+        else if (f.kind === 'offset') within(form(s[k]), -O, O, p, 'the offset', null, R);
+        else if (f.kind === 'length') within(form(s[k]), f.lo || 0, Lg, p, 'the length', null, R);
+        else if (f.kind === 'term') within(form(s[k]), f.lo, f.hi, p, 'the value', null, R);
+      }
+      return;
+    }
     const top = { w: Lg, h: Lg, r: s.k === 'glow' ? 512 : 256, rx: 256, ry: 256, hw0: 64, hw1: 64 };
     const lo = { w: 0, h: 0, r: s.k === 'glow' ? 1 : 0, rx: 1, ry: 1, hw0: 0, hw1: 0 };
     for (const f of ['p', 'p0', 'p1']) if (has(s, f)) s[f].forEach((v, i) => within(form(v), -O, O, idx(key(path, f), i), 'the offset', null, R));
@@ -2053,14 +2100,17 @@
     return bandCount(pack, f);
   }
   /* What a world shape costs and adds to the counts: { cost, n, glows, effects, tiles }, a tile
-     with its repeats and a stamp with its shapes counted out. An effect costs nothing until the
-     effects library gives its cost. */
+     with its repeats and a stamp with its shapes counted out. An effect costs what its own cost
+     function gives for its fields at the ends of the ranges they lean on, its glows among them. */
   function wcost(pack, s, ctx) {
     const R = rangesOf(ctx), one = { cost: 0, n: 1, glows: 0, effects: 0, tiles: 0 };
     switch (s.k) {
       case 'glow': return Object.assign(one, { cost: 3, glows: 1 });
       case 'dith': return Object.assign(one, { cost: Math.ceil(Math.max(0, span2(s.h, R)[1]) / 2) * Math.ceil(Math.max(0, span2(s.w, R)[1]) / 4) });
-      case 'fx': return Object.assign(one, { effects: 1 });
+      case 'fx': {
+        const fx = effectOf(s.fx, 'fx'), b = fxBounds(s, fx.fields, R), c = fx.cost(b), g = fx.glows(b);
+        return Object.assign(one, { cost: Number.isFinite(c) ? Math.ceil(c) : Infinity, glows: Number.isFinite(g) ? g : Infinity, effects: 1 });
+      }
       case 'use': {
         const t = { cost: 0, n: 0, glows: 0, effects: 0, tiles: 0 };
         for (const x of pack.stamps[s.stamp]) addCost(t, wcost(pack, x, { where: 'stamp' }), 1);
@@ -2077,6 +2127,17 @@
         if (MARKS.includes(s.k)) return one;
         return Object.assign(one, { cost: shapeCost(pack, s, 'scene', R, s.k === 'pix' ? 1 : wbands(pack, s.fill, ctx)) });
     }
+  }
+  /* An effect's fields as its cost function takes them (effects.js): each scalar its least and
+     greatest over the ranges R, a point two of those, any other field its value, a field left out
+     its default, and the screen's edges in view. */
+  function fxBounds(s, F, R) {
+    const b = { view: { L: R.L, R: R.R, T: R.T, W: R.W } };
+    for (const k of Object.keys(F)) {
+      const v = has(s, k) ? s[k] : F[k].def, kind = F[k].kind;
+      b[k] = kind === 'point' ? [span2(v[0], R), span2(v[1], R)] : FX_SCALARS.includes(kind) ? span2(v, R) : v;
+    }
+    return b;
   }
   function addCost(t, c, times) { for (const k of ['cost', 'n', 'glows', 'effects']) t[k] += c[k] * times; t.tiles += c.tiles; }
   const zero = () => ({ cost: 0, n: 0, glows: 0, effects: 0, tiles: 0 });

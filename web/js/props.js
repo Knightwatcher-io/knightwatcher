@@ -1,12 +1,12 @@
 /* Knightwatcher: the props that more than one scene uses, or that the engine draws over a scene:
-   the raspberry pie (the Raspberry Pi) and the other devices, fire, sky and stars, the
-   greatsword, brick, the barrel, the table and the wall torch, the flies, the crate and its
-   parachute, and the foes (the goblin) with the smoke, the sparkles and the hole they come and
-   go by. */
+   the raspberry pie (the Raspberry Pi) and the other devices, the greatsword, the barrel, the
+   table and the wall torch, the flies, the crate and its parachute, and the foes (the goblin) with
+   the smoke, the sparkles and the hole they come and go by. Fire, sky, stars, brick and the pie's
+   steam are effects, in effects.js. */
 (function (KW) {
   'use strict';
-  const D = KW.draw, V = KW.view, SP = KW.sprites, C = D.C;
-  const { alpha, glow, Rh, Rv, ell, rrect, poly, strip, hsh, dith, GOLD, STEEL2, STEEL3 } = D;
+  const D = KW.draw, SP = KW.sprites, C = D.C;
+  const { alpha, glow, Rh, Rv, ell, rrect, poly, strip, hsh, GOLD, STEEL2, STEEL3 } = D;
 
   /* The greatsword, drawn from the middle of its grip at (gx, gy) along the angle a (0 is straight
      up): the pommel at -58, the guard at 27, the blade from 31 to its point at 270. */
@@ -22,15 +22,9 @@
     for (const g of [g0, g1]) { ell(g[0], g[1], 12, 12, C.K); ell(g[0], g[1], 9, 9, GOLD); }
     ell(gc[0], gc[1], 12, 12, C.K); ell(gc[0], gc[1], 9, 9, [[.3, C.G1], [1, C.G2]]); ell(gc[0], gc[1], 5, 5, C.R1); Rh(gc[0] - 3, gc[1] - 3, 2, 2, C.W);
   }
-  /* Stone or brick laid in courses, filling a rectangle, each block lit on top and shaded below. */
-  function bricksHD(x, y, w, h, bw, bh, cols, mortar, seed) {
-    Rh(x, y, w, h, mortar);
-    for (let j = 0; j * bh < h; j++) for (let i = -1; i * bw < w; i++) {
-      const bx = x + i * bw + (j % 2) * bw / 2, by = y + j * bh, x0 = Math.max(x, bx + 1), x1 = Math.min(x + w, bx + bw - 1), y1 = Math.min(y + h, by + bh - 1);
-      if (x1 <= x0 || y1 <= by + 1) continue;
-      Rh(x0, by + 1, x1 - x0, y1 - by - 1, cols[hsh(bx + seed, j) % cols.length]); Rh(x0, by + 1, x1 - x0, 1, 'rgba(255,255,255,.06)'); Rh(x0, y1 - 1, x1 - x0, 1, 'rgba(0,0,0,.28)');
-    }
-  }
+  /* Stone or brick laid in courses: the bricks effect (effects.js), under the name and in the order
+     of arguments the settings screen's and the admin page's previews call it by. */
+  function bricksHD(x, y, w, h, bw, bh, cols, mortar, seed) { KW.effects.bricks.draw({ p: [x, y], w, h, size: [bw, bh], of: cols, mortar, seed }); }
   /* A barrel of staves and iron hoops, its top left at (x, y). top colours the head: wood, or water. */
   function barrelHD(x, y, w, h, top) {
     rrect(x, y, w, h, 12, C.K); rrect(x + 3, y + 3, w - 6, h - 6, 10, [[.1, C.N0], [.45, C.N1], [.8, C.N2], [1, C.N3]]);
@@ -46,30 +40,11 @@
     rrect(x - 4, y - 3, w + 8, 18, 4, C.K); Rv(x - 1, y, w + 2, 12, [[.25, C.N0], [.55, C.N1], [1, C.N2]]);
     for (let i = 0; i < 4; i++) Rh(x + 6 + hsh(x + i, 71) % Math.max(1, w - 30), y + 5 + (i % 2) * 3, 12 + hsh(x + i, 72) % 14, 1, C.N2);
   }
-  /* A torch in an iron bracket on a wall. (x, y) is where its flame stands; flameHD draws that. */
+  /* A torch in an iron bracket on a wall. (x, y) is where its flame stands; the flame effect draws that. */
   function sconceHD(x, y) {
     rrect(x - 9, y + 26, 18, 30, 4, C.K); rrect(x - 7, y + 28, 14, 26, 3, STEEL3); Rh(x - 2, y + 32, 3, 3, C.S1); Rh(x - 2, y + 46, 3, 3, C.S1);
     Rh(x - 5, y + 4, 10, 40, C.K); Rh(x - 3, y + 4, 6, 40, C.N2); Rh(x - 3, y + 4, 2, 40, C.N1);
     rrect(x - 13, y - 3, 26, 12, 3, C.K); rrect(x - 11, y - 1, 22, 8, 2, STEEL2);
-  }
-  /* A night sky in bands of colour, dithered where they meet, from the top edge down to yEnd. */
-  function sky(cols, yEnd) {
-    const { HL, HR, HT, HH } = V, n = cols.length, h = (yEnd - HT) / n;
-    for (let i = 0; i < n; i++) { Rh(HL, HT + i * h, HR - HL, h + 1, cols[i]); if (i) dith(HL, HT + i * h - 14, HR - HL, 14, cols[i]); }
-    Rh(HL, yEnd, HR - HL, HH - yEnd + 20, cols[n - 1]);
-  }
-  function starsHD(yMax) {
-    const { HL, HR, HT } = V;
-    for (let i = 0; i < 190; i++) {
-      const x = HL + hsh(i, 1) % (HR - HL), y = HT + hsh(i, 2) % Math.max(1, yMax - HT), k = hsh(i, 3) % 12, c = k < 7 ? '#7f879d' : k < 11 ? '#d7deee' : '#ffffff';
-      Rh(x, y, 2, 2, c); if (k === 11) { Rh(x - 3, y, 8, 2, c); Rh(x, y - 3, 2, 8, c); }
-    }
-  }
-  function flameHD(x, y, k, t) {
-    for (const [f, c, ph] of [[1, '#ff5a1e', 0], [.7, '#ffb000', 1.7], [.42, '#fff3a0', 3.1]]) {
-      const h = (46 + 7 * Math.sin(t / 110 + ph)) * k * f, w = 14 * k * f, sw = Math.sin(t / 170 + ph) * 5 * k, by = y - w * .6;
-      ell(x, by, w, w, c); poly([[x - w, by], [x + sw, by - h], [x + w, by]], c);
-    }
   }
   /* The lamps' colours and loops, the devices' and the raspberry's: while up from green to black
      and back over 3.6 seconds, while down from red to black and back over 2 seconds. lampLevel
@@ -131,7 +106,7 @@
     }
     if (part !== 'moving') pieTop(cx, ry);
     if (part === 'still') return;
-    for (let i = 0; i < 3; i++) { const ph = ((t / 1800) + i / 3) % 1; alpha(.8 - ph * .8); ell(cx - 14 + i * 14 + Math.sin(ph * 7 + i * 2) * 5, ry - DOME[1] - 16 - ph * 46, 4 - ph * 2, 7, C.W); alpha(1); }
+    KW.effects.steam.draw({ p: [cx - 14, ry - DOME[1] - 16] }, t);
     // the raspberry stands in front of the steam, which rises from behind it
     raspberryHD(cx + BERRY_ON_PIE[0], ry + BERRY_ON_PIE[1], t, true);
   }
@@ -584,6 +559,6 @@
     }
   }
 
-  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, sky, starsHD, flameHD, pieHD, raspberryHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf, crateHD, flyHD, poofHD, chuteHD,
+  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, pieHD, raspberryHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf, crateHD, flyHD, poofHD, chuteHD,
     FOES, starHD, cloudHD, CLOUD_MS, sparklesHD, SPARKLE_MS, holeHD, clodsHD };
 })(window.KW);

@@ -13,7 +13,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const WEB = path.join(__dirname, '../../web');
-const SCRIPTS = ['js/draw.js', 'js/sprites.js', 'js/props.js', 'js/knight.js',
+const SCRIPTS = ['js/draw.js', 'js/sprites.js', 'js/effects.js', 'js/props.js', 'js/knight.js',
   'js/scenes/battlement.js', 'js/scenes/camp.js', 'js/scenes/house.js', 'js/scenes/yard.js', 'js/scenes/cellar.js', 'js/scenes/smithy.js', 'js/scenes/court.js'];
 
 /* The scripts that hold the kinds and the scenes, in a sandbox drawing into a context that grows

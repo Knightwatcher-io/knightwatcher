@@ -281,7 +281,7 @@ test('drawing reuses its point buffers: nothing is allocated per frame by the wa
 // equal records mean equal pixels.
 function sandbox() {
   const ctx = vm.createContext({ window: {} });
-  for (const f of ['draw.js', 'sprites.js', 'props.js', 'knight.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, 'web/js', f), 'utf8'), ctx);
+  for (const f of ['draw.js', 'sprites.js', 'effects.js', 'props.js', 'knight.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, 'web/js', f), 'utf8'), ctx);
   const KW = ctx.window.KW, fills = [];
   let style = '';
   const norm = s => String(s).replace(/rgba\((\d+),(\d+),(\d+),([\d.]+)\)/, (m, r, g, b, a) => 'rgba(' + r + ',' + g + ',' + b + ',' + Number(a) + ')');

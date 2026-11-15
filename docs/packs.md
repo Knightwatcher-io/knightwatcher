@@ -479,9 +479,11 @@ step (`pack.format: is 1.2, newer than this engine's 1.1`). It checks every new 
 steps as the rest, in the same order, and keeps it as data in the loaded pack's `data`.
 
 **Nothing is compiled from these sections yet, and nothing draws from them.** The engine parts that
-will read them (the effects library, the scene compiler, the acts, the cast and the props from data)
-come in later steps. Until then the closed lists those parts will own are fixed in `pack.js` under
-the names below and exported as `WORLD_LISTS`, and the engine takes them over when it is built.
+will read them (the scene compiler, the acts, the cast and the props from data) come in later
+steps. Until then the closed lists those parts will own are fixed in `pack.js` under the names
+below and exported as `WORLD_LISTS`, and the engine takes them over when it is built. The effects
+library is built: `effects.js` gives each effect's table of fields and cost, which `pack.js` checks
+and costs a pack's effects by, and draws them for the scenes today ([page.md](./page.md#the-effects)).
 
 A pack of format `[1, 0]` reads exactly as before: none of the new sections is a field of it, only
 the base pack may carry builds, and `pick` and `lamp` are free as palette set names.
@@ -557,12 +559,23 @@ Nothing else may lean on a named value: stamps, the cast and props are drawn at 
 knight's names (`drop`, `dShoulder` and the rest) are refused in every 1.1 section.
 
 **Effects.** `fx` is one of `sky`, `stars`, `ridge`, `bricks`, `pines`, `tree`, `arch`, `shelf`,
-`stacks`, `tufts`, `flame`, `twinkle`, `drift`, `wander`, `coals`, `steam` and `burst`. Each will have
-a table of fields with ranges and a cost of its own in the effects library. Until it exists an
-effect takes at most 16 other fields, each named in lower camel case and holding a number, a colour,
-a term object or a list of up to 16 of them; their terms and colours are checked like any other, and
-an effect costs nothing in the counts. No field can hold other text, so no path, address or file
-can reach an effect.
+`stacks`, `tufts`, `flame`, `twinkle`, `drift`, `wander`, `coals`, `steam` and `burst`, and the other
+fields of an `fx` shape are the fields of that effect's table in `effects.js`
+([page.md](./page.md#the-effects) lists them): a field the table lacks is refused, one without a
+default is required, and each holds a value of its kind in its range. A point, an offset or a length
+takes the ranges of any shape where it stands, and with them the screen's edges, the tile's x, its
+hash and a wave where those are allowed; a term (a seed, a flame's `dt`) its own range. Each is
+checked at both ends at `rules`, and its colours and named values at `references`, like any other.
+The rest are plain: numbers and whole numbers in their ranges, pairs of them, lists of colours or
+of whole numbers, and `one` of a few words or numbers, which are never read as colours. No field can
+hold other text, so no path, address or file can reach an effect. `g` and `only` are taken as on
+any shape.
+
+`pack.js` reads the tables from `KW.effects`, which the page loads before it. Under Node it asks
+for `effects.js` beside itself the first time a pack names an effect, so a pack of format 1.0, or of
+1.1 without effects, reads without it; a pack naming an effect where the library cannot be had is
+refused at `fields` (`...fx: cannot be checked: the engine's effects library (effects.js) is not
+loaded`).
 
 ### Scenes
 
@@ -748,8 +761,10 @@ scene lists the condition.
 A world shape costs what the 1.0 measure gives, at the ends of every value's range, the screen's
 edges included. A glow costs 3 and counts toward the glows; a `dith` its dots; a `use` its stamp's
 shapes; a tile its shapes times the most repeats its range allows; a mark nothing, since the engine
-counts its own drawing; an effect nothing until the effects library gives its cost. A band list of
-the user's skin counts as 8 bands, here as in 1.0, a pick, a mix and the down lamp as one colour.
+counts its own drawing; an effect what its own cost function in `effects.js` gives for its fields
+at the ends of their ranges, 3 for each glow among it, which also count toward the glows. A band
+list of the user's skin counts as 8 bands, here as in 1.0, a pick, a mix and the down lamp as one
+colour.
 
 | What | Limit |
 |---|---|
@@ -1452,6 +1467,10 @@ any new section; checks that a `[1, 0]` pack still refuses every new section and
 refused at the format; checks the closed lists by name, the conditions against `state.js`; and feeds
 the reader mangled copies and values of the wrong type, none of which may throw. It checks too that
 the world's pack changes no look: `resolve()` gives the same with it loaded as without.
+
+`tests/web/effects.test.js` checks that `pack.js` holds an effect to its table in `effects.js`, every
+field of every effect refused out of its kind or range, and costs it with its own cost function; and
+that each cost function bounds what the effect draws. [page.md](./page.md#checks) has the details.
 
 `tests/web/base-read.test.js` reads the shipped base pack with the library as it is and compares the
 whole result with `tests/web/fixtures/base-read.json`, stored from the library before format 1.1:
