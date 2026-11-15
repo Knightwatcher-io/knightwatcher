@@ -127,16 +127,24 @@ test('the counts step\'s costs for the fixture, worked by hand', () => {
   // the cellar's backdrop: the tile of brackets repeats 19 times from L - 160 + 60 at the least to R at
   // the most, two shapes each; with the four rects, the two floor lines and the stamps' four shapes
   // that is 48 shapes. The rects cost 1 each but the board's two bands; the sconce costs 1 + 3, the
-  // barrel's rounded rects 72 and 66 rows times three bands of leather
-  assert.deepEqual(w.scenes['scene.cellar'], { still: { n: 48, cost: 1 + 2 + 38 + 4 + 1 + 1 + 72 + 66 * 3 }, frame: { n: 3, cost: 3, glows: 1 } });
+  // barrel's rounded rects 72 and 66 rows times three bands of leather. The bricks cover the screen at
+  // its widest, 2912, down to 530 from its top at the highest, -602: 44 courses of 26 by 47 blocks of
+  // 64 (one more than fit, for the courses laid half a block over), three fills a block and one for the
+  // mortar. The shelf has 78 slots of 38 across 2912, each at most a cheese's 31 + 25 * 2 + 8 + 3
+  const bricks = 1 + 3 * 44 * 47, shelf = 78 * (31 + 25 * 2 + 8 + 3);
+  // the frame: the glow's 3, and the flame at 0.62, three tongues each an ell of 2 * ceil(14 * 0.62 * f)
+  // + 1 rows and a triangle of ceil(53 * 0.62 * f) + 1, for f of 1, 0.7 and 0.42
+  const flame = (19 + 34) + (15 + 25) + (9 + 15);
+  assert.deepEqual(w.scenes['scene.cellar'], { still: { n: 48, cost: 1 + 2 + 38 + 4 + 1 + 1 + 72 + 66 * 3 + bricks + shelf }, frame: { n: 3, cost: 3 + flame, glows: 1 } });
   // the patron: two polygons of 153 and 147 rows, the second in four bands, and the face, 78 rows in
   // the user's skin, counted as 8 bands
   assert.deepEqual(w.cast['patron.a'], { still: 153 + 147 * 4 + 78 * 8, states: { shut: 1, open: 11 + 5 } });
   // the goblin's six poses each draw its legs (40 rows) and its head (61 rows)
   assert.deepEqual(w.cast['foe.goblin'].poses.hit, 101);
   assert.deepEqual(w.cast['critter.fly'].frames, { flap0: 7 + 7 + 9 + 1, flap1: 24, dead: 1 });
-  // a lamp of the pie's own moves: its lit and dark drawings, runs of pix
-  assert.deepEqual(w.props['props.medieval'].pi, { up: { still: 21, moving: 5 + 3 }, gone: { still: 21, moving: 5 + 3 } });
+  // a lamp of the pie's own moves: its lit and dark drawings, runs of pix; while up, the steam's three
+  // puffs, each an ell of 15 rows
+  assert.deepEqual(w.props['props.medieval'].pi, { up: { still: 21, moving: 5 + 3 + 3 * 15 }, gone: { still: 21, moving: 5 + 3 } });
 });
 
 // ---- Signing and the canonical form cover the new sections ------------------------------------------------
@@ -293,10 +301,10 @@ const RULES = [
   ['tiles: only is [seed, mod]', 'fields', p => { planks(p).shapes[2].only = [31]; }, "pack.scenes[\"scene.house\"].still[0].shapes[1].shapes[2].only: must be [seed, mod]"],
   ['effects: fx is required', 'fields', p => { delete still(p)[0].fx; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].fx: is missing"],
   ['effects: fx names an effect of the engine', 'fields', p => { still(p)[0].fx = 'lightning'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].fx: must be one of \"sky\", \"stars\", \"ridge\", \"bricks\", \"pines\", \"tree\", \"arch\", \"shelf\", \"stacks\", \"tufts\", \"flame\", \"twinkle\", \"drift\", \"wander\", \"coals\", \"steam\", \"burst\""],
-  ['effects: at most 16 fields', 'fields', p => { for (const i of range(10)) still(p)[0]['f' + i] = 1; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0]: an effect takes at most 16 fields, not 17"],
-  ['effects: a field name is lower camel case', 'fields', p => { still(p)[0].Size = 1; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].Size: is not a field name"],
-  ['effects: a field holds no text but colours', 'fields', p => { still(p)[0].src = 'bricks.png'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].src: must be a hex colour or a reference such as \"@base.k\""],
-  ['effects: a field holds no list of lists', 'fields', p => { still(p)[0].size = [[64, 26]]; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].size[0]: must be a number, a colour, a term object or a list of them"],
+  ['effects: only the fields of its table', 'fields', p => { for (const i of range(10)) still(p)[0]['f' + i] = 1; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].f0: is not a field of the effect \"bricks\""],
+  ['effects: a field without a default is required', 'fields', p => { delete still(p)[0].mortar; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].mortar: is missing"],
+  ['effects: a colour field holds no text but a colour', 'fields', p => { still(p)[0].mortar = 'bricks.png'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].mortar: must be a hex colour or a reference such as \"@base.k\""],
+  ['effects: a pair holds two plain numbers', 'fields', p => { still(p)[0].size = [[64, 26]]; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].size: must be a pair of numbers"],
   ['effects: a list of at most 16', 'fields', p => { still(p)[0].of = range(17).map(() => '#000000'); }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].of: must hold 1 to 16 entries, not 17"],
   ['effects: a field\'s term is checked', 'fields', p => { still(p)[0].h = { c: 530, T: 9 }; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].h.T: must be a multiple of 1/8 from -8 to 8"],
   ['effects: g only where groups are', 'fields', p => { still(p)[0].g = 'flame'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].g: is not a field here"],
@@ -598,7 +606,7 @@ const RULES = [
   ['props: a gone lamp\'s lit drawing uses only the down red', 'rules', p => { kinds(p).pi.gone.lamp.lit = 'berry.lit'; }, "pack.props[\"props.medieval\"].kinds.pi.gone.lamp.lit: a gone lamp's lit drawing uses only the down lamp's red, @lamp.down and @lamp.downHi, so a device that is down blinks red in every world"],
   ['props: 9 prop sets', 'counts', p => { for (const i of range(8)) p.props['props.' + i] = clone(p.props['props.medieval']); }, "pack.props: holds 9 prop sets, more than 8"],
   ['props: a still part over 4000', 'counts', p => { kinds(p).camera.up.still.push(...range(66).map(() => big(60))); }, "pack.props[\"props.medieval\"].kinds.camera.up.still: costs up to 4060 fills, more than 4000"],
-  ['props: a moving part and its lamp over 600', 'counts', p => { kinds(p).pi.up.moving.push(...range(10).map(() => big(60))); }, "pack.props[\"props.medieval\"].kinds.pi.up: costs up to 608 fills in its moving part and its own lamp, more than 600"],
+  ['props: a moving part and its lamp over 600', 'counts', p => { kinds(p).pi.up.moving.push(...range(10).map(() => big(60))); }, "pack.props[\"props.medieval\"].kinds.pi.up: costs up to 653 fills in its moving part and its own lamp, more than 600"],
   // words
   ['words: a name', 'fields', p => { delete words(p).name; }, "pack.words[\"words.medieval\"].name: is missing"],
   ['words: the watcher', 'fields', p => { delete words(p).watcher; }, "pack.words[\"words.medieval\"].watcher: is missing"],
@@ -688,13 +696,13 @@ const RULES = [
   ['counts: 17 scenes', 'counts', p => { for (const i of range(10)) p.scenes['scene.c' + i] = clone(cellar(p)); }, "pack.scenes: holds 17 scenes, more than 16"],
   ['counts: 33 layers in a scene', 'counts', p => { cellar(p).over = range(31).map(() => ({ shapes: [rect()] })); }, "pack.scenes[\"scene.cellar\"]: holds 33 layers, more than 32"],
   ['counts: 65 tiles in a scene', 'counts', p => { still(p).push(...range(64).map(() => ({ k: 'tile', step: 960, phase: 0, from: 0, to: 1, shapes: [rect()] }))); }, "pack.scenes[\"scene.cellar\"]: holds 65 tiles, more than 64"],
-  ['counts: more than 48 effects, tiles counted out', 'counts', p => { tile(p).shapes.push({ k: 'fx', fx: 'tufts', p: [{ x: 1 }, 530] }, { k: 'fx', fx: 'tufts', p: [{ x: 1 }, 531] }); tile(p).step = 116; }, "pack.scenes[\"scene.cellar\"]: draws 55 effects, tiles counted out, more than 48"],
+  ['counts: more than 48 effects, tiles counted out', 'counts', p => { tile(p).shapes.push({ k: 'fx', fx: 'tufts', y: 530 }, { k: 'fx', fx: 'tufts', y: 531 }); tile(p).step = 116; }, "pack.scenes[\"scene.cellar\"]: draws 55 effects, tiles counted out, more than 48"],
   ['counts: more than 2000 shapes in the still layers, tiles counted out', 'counts', p => { tile(p).step = 4; tile(p).shapes = range(3).map(() => rect()); }, "pack.scenes[\"scene.cellar\"].still: draws 2155 shapes, tiles and stamps counted out, more than 2000"],
   ['counts: more than 400 shapes in one frame, tiles counted out', 'counts', p => { cellar(p).moving.push({ shapes: [{ k: 'tile', step: 16, phase: 0, from: { L: 1 }, to: { R: 1 }, shapes: range(3).map(() => rect()) }] }); }, "pack.scenes[\"scene.cellar\"]: draws 555 shapes in one frame of its moving and over layers, tiles and stamps counted out, more than 400"],
-  ['counts: the still layers over 200000', 'counts', p => { cellar(p).still[0].shapes.push(...range(1500).map(() => big(200, '@skin.face'))); }, "pack.scenes[\"scene.cellar\"].still: costs up to 2400317 fills, more than 200000"],
-  ['counts: one frame over 16000', 'counts', p => { cellar(p).moving[0].shapes.push(...range(10).map(() => big(256, '@skin.face'))); }, "pack.scenes[\"scene.cellar\"]: costs up to 20483 fills in one frame of its moving and over layers, more than 16000"],
+  ['counts: the still layers over 200000', 'counts', p => { cellar(p).still[0].shapes.push(...range(1500).map(() => big(200, '@skin.face'))); }, "pack.scenes[\"scene.cellar\"].still: costs up to 2413698 fills, more than 200000"],
+  ['counts: one frame over 16000', 'counts', p => { cellar(p).moving[0].shapes.push(...range(10).map(() => big(256, '@skin.face'))); }, "pack.scenes[\"scene.cellar\"]: costs up to 20600 fills in one frame of its moving and over layers, more than 16000"],
   // 5520 fills, under 16000 once and over it three times
-  ['counts: the pole counted under each high place', 'counts', p => { cellar(p).pole = range(5).map(() => big(256, '@base.steel')).concat([big(100, '@base.steel')]); }, "pack.scenes[\"scene.cellar\"]: costs up to 16563 fills in one frame of its moving and over layers, more than 16000"],
+  ['counts: the pole counted under each high place', 'counts', p => { cellar(p).pole = range(5).map(() => big(256, '@base.steel')).concat([big(100, '@base.steel')]); }, "pack.scenes[\"scene.cellar\"]: costs up to 16680 fills in one frame of its moving and over layers, more than 16000"],
   ['counts: 25 glows in one frame', 'counts', p => { cellar(p).moving[0].shapes.push(...range(24).map(() => clone(glow(p)))); }, "pack.scenes[\"scene.cellar\"]: draws 25 glows in one frame, more than 24"],
   ['counts: more than 16 384 pixels in a pack, the world\'s pix counted', 'counts', p => { const px = () => ({ k: 'pix', p: [0, 0], rows: range(64).map(() => 'a'.repeat(64)), key: { a: '#000000' } }); p.stamps.big = [px(), px(), px(), px()]; }, "pack: holds 16411 pixels in pix shapes, more than 16384"],
   // each field check by itself, as the mutation run of the library asked for

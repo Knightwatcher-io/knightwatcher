@@ -2,7 +2,7 @@
    the knight and the monarch take turns to talk. The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';
-  const D = KW.draw, V = KW.view, P = KW.props, K = KW.knight, C = D.C;
+  const D = KW.draw, V = KW.view, P = KW.props, E = KW.effects, K = KW.knight, C = D.C;
   const { glow, Rh, Rv, ell, rrect, poly, strip, GOLD } = D;
 
   const WALL = ['#1a1622', '#1d1826', '#17131e', '#201a29'];
@@ -207,7 +207,7 @@
 
   function paint(s) {
     const { HL, HR, HT, HH, HFL } = V;
-    P.bricksHD(HL, HT, HR - HL, HFL - HT, 70, 26, WALL, '#0e0b13', 11);
+    E.bricks.draw({ p: [HL, HT], w: HR - HL, h: HFL - HT, size: [70, 26], of: WALL, mortar: '#0e0b13', seed: 11 });
     // pillars with their torches
     for (let x = Math.floor((HL - 50) / 480) * 480 + 50; x < HR; x += 480) {
       Rh(x - 3, HT, 56, HFL - HT, C.K); rrect(x, HT, 50, HFL - HT, 0, PIER);
@@ -233,7 +233,7 @@
   /* Draws the court's fires and pie, and makes the knight and the monarch take turns to talk. */
   function draw(t, s) {
     const { HL, HR } = V;
-    for (let x = Math.floor((HL - 50) / 480) * 480 + 50; x < HR; x += 480) { glow(x + 25, 260, 100, '#ffb000', .09 + .025 * Math.sin(t / 140 + x)); P.flameHD(x + 25, 280, .58, t + x); }
+    for (let x = Math.floor((HL - 50) / 480) * 480 + 50; x < HR; x += 480) { glow(x + 25, 260, 100, '#ffb000', .09 + .025 * Math.sin(t / 140 + x)); E.flame.draw({ p: [x + 25, 280], size: .58, dt: x }, t); }
     KW.devices.draw(t, s);
     const monarchTalks = Math.floor(t / 3200) % 2 === 1;
     mouth(KX, KB, monarchTalks && Math.floor(t / 230) % 2 === 1);

@@ -3,7 +3,7 @@
    rest. The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';
-  const D = KW.draw, V = KW.view, P = KW.props, K = KW.knight, C = D.C;
+  const D = KW.draw, V = KW.view, P = KW.props, E = KW.effects, K = KW.knight, C = D.C;
   const { glow, Rh, Rv, ell, rrect, poly, strip, hsh, STEEL, STEEL2, STEEL3 } = D;
 
   const STONE = ['#221d2b', '#262030', '#1f1a27', '#2a2334'];
@@ -41,14 +41,14 @@
   }
 
   function paint() {
-    const { HL, HR, HH, HFL } = V;
-    P.sky(['#020208', '#04050f', '#070917', '#0c0d20'], 226); P.starsHD(196);
+    const { HL, HR, HT, HH, HFL } = V;
+    E.sky.draw({ p: [HL, HT], w: HR - HL, h: 226 - HT, of: ['#020208', '#04050f', '#070917', '#0c0d20'] }); E.stars.draw({ p: [HL, HT], w: HR - HL, h: 196 - HT });
     // the curtain wall with its merlons, and a slit for archers on each side
     for (let x = Math.floor(HL / 100) * 100; x < HR; x += 100) {
-      P.bricksHD(x, 186, 52, 40, 26, 13, STONE, '#120f18', x); Rh(x + 44, 186, 8, 40, 'rgba(0,0,0,.3)');
+      E.bricks.draw({ p: [x, 186], w: 52, h: 40, size: [26, 13], of: STONE, mortar: '#120f18', seed: x }); Rh(x + 44, 186, 8, 40, 'rgba(0,0,0,.3)');
       Rh(x - 2, 181, 56, 5, '#3b3247'); Rh(x - 2, 180, 56, 1, '#5d5670');
     }
-    P.bricksHD(HL, 226, HR - HL, HFL - 226, 56, 20, STONE, '#120f18', 3); Rh(HL, 222, HR - HL, 5, '#3b3247'); Rh(HL, 221, HR - HL, 1, '#5d5670');
+    E.bricks.draw({ p: [HL, 226], w: HR - HL, h: HFL - 226, size: [56, 20], of: STONE, mortar: '#120f18', seed: 3 }); Rh(HL, 222, HR - HL, 5, '#3b3247'); Rh(HL, 221, HR - HL, 1, '#5d5670');
     for (const x of [112, 842]) {
       rrect(x - 12, 290, 24, 84, 4, '#3b3247'); rrect(x - 26, 318, 52, 24, 4, '#3b3247');
       Rh(x - 5, 296, 10, 72, '#05050a'); Rh(x - 20, 325, 40, 10, '#05050a');
@@ -65,7 +65,7 @@
     // the ground: beaten earth, pebbles and a few tufts against the wall
     Rh(HL, HFL, HR - HL, HH - HFL + 20, '#221c13'); Rh(HL, HFL, HR - HL, 3, '#4a3d28'); Rh(HL, HFL + 3, HR - HL, 3, '#33291b');
     for (let x = Math.floor(HL / 23) * 23; x < HR; x += 23) { const px = x + hsh(x, 3) % 17, py = HFL + 10 + hsh(x, 4) % 56; ell(px, py, 3 + hsh(x, 5) % 3, 2, hsh(x, 6) % 2 ? '#3a3020' : '#2e2619'); Rh(px - 2, py - 1, 2, 1, '#4f4330'); }
-    for (let x = Math.floor(HL / 67) * 67; x < HR; x += 67) { const gx = x + hsh(x, 7) % 40, h = 6 + hsh(x, 8) % 8; for (const d of [-4, 0, 4]) poly([[gx + d - 2, HFL + 1], [gx + d * 1.5, HFL - h + Math.abs(d)], [gx + d + 2, HFL + 1]], d ? '#2a4a22' : '#3f6b33'); }
+    E.tufts.draw({ y: HFL, step: 67, spread: 40, seed: 7, tall: [6, 8], gap: 4, lean: 1.5, colour: '#2a4a22', light: '#3f6b33' });
     ell(690, HFL + 30, 150, 16, '#1b160f');
     rack();
     // the barrel the pie stands on, and the hay
@@ -91,14 +91,11 @@
     poly([[703 + w, 302], [713 + w, 290], [723 + w, 302]], '#d8b45a');
     rrect(626 + w, 334, 46, 56, 12, C.K); rrect(629 + w, 337, 40, 50, 10, [[.2, C.R0], [.6, C.R1], [1, C.R2]]);
     ell(649 + w, 362, 12, 12, C.W); ell(649 + w, 362, 8, 8, C.R1); ell(649 + w, 362, 4, 4, C.W);
-    if (a < 500) for (let i = 0; i < 5; i++) {
-      const x = 670 + i * 20 + a / 8 * (i - 2), y = 380 - i * 15 + a * a / 1800;
-      strip(x, y, x + 8, y - 3 + i, 1.5, 1.5, i % 2 ? '#f0d27a' : '#d8b45a');
-    }
+    E.burst.draw({ p: [670, 380], n: 5, piece: 'straw', of: ['#f0d27a', '#d8b45a'] }, a);
   }
 
   function draw(t, s) {
-    glow(346, 314, 120, '#ffb000', .09 + .025 * Math.sin(t / 140)); P.flameHD(346, 330, .62, t);
+    glow(346, 314, 120, '#ffb000', .09 + .025 * Math.sin(t / 140)); E.flame.draw({ p: [346, 330], size: .62 }, t);
     KW.devices.draw(t, s);
     dummy(t);
   }

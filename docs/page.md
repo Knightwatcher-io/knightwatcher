@@ -16,7 +16,8 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `fonts/` | the VT323 typeface and its licence |
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
-| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`), fire, sky and stars, flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
+| `js/effects.js` | `KW.effects`: the effects, drawings the engine owns that a scene names with numbers (sky, stars, bricks, flame and the rest), each with its table of fields, its cost and its drawing; see [The effects](#the-effects) |
+| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`), flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
@@ -31,7 +32,8 @@ share one global object, `KW`. ES modules would fail from `file://`.
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
-`KW.packText`, so it comes after `knight.js`; `ed25519.js` comes before `pack.js`.
+`KW.packText`, so it comes after `knight.js`; `ed25519.js` comes before `pack.js`, and `effects.js`
+comes before `props.js`, the scenes and `pack.js`, which use it.
 
 ## One grid
 
@@ -390,6 +392,77 @@ choices. How a swatch's bands become the monarch's is in the comment above `hair
 sets the hammer and `strike`, its `paint` lays the weapon across the anvil with `KW.knight.rest`,
 and its `draw` puts the hot tip on the blade. The yard keeps
 the time the dummy was last struck and swings the knight's sword in `act`.
+
+## The effects
+
+`js/effects.js` holds the procedural drawing the scenes share, which no fixed list of shapes can
+say: stars at hashed points, pines whose tiers depend on a hashed height, a flame whose points move
+by two sines, anything filled out to the screen's real edges. Each is an effect of `KW.effects`,
+named as the world format names it, and a scene calls it with its fields as a world pack's `fx`
+shape will give them:
+
+```js
+E.bricks.draw({ p: [HL, HT], w: HR - HL, h: HFL - HT, size: [64, 26], of: WALL, mortar: '#0d0a11', seed: 5 });
+E.flame.draw({ p: [704, HFL - 14], size: 1.05, dt: 400 }, t);
+```
+
+Each effect has:
+
+- `fields`, its table: each field's kind, range and default. A field with a default may be left
+  out. The kinds are `point` (an `[x, y]` pair of scalars), `offset`, `length` and `term` (a scalar:
+  a number, or in a pack a term over the screen's edges, the tile's x, its hash or a wave), `num`
+  and `int` (a plain number, or whole number, from `lo` to `hi`), `pair` (two plain numbers, each
+  in its own range), `colour`, `colours` and `ints` (lists of `min` to `max`) and `one` (one of a
+  few values). `pack.js` holds a world pack's effects to these tables ([packs.md](./packs.md#shapes-coordinates-and-terms)).
+- `cost(b)`, the most fills its drawing makes for fields whose bounds are `b`: `fillRect` calls,
+  and 3 for each glow. In `b` each scalar is its least and greatest, a point two of those, any
+  other field its value, and `b.view` the screen's edges `L`, `R`, `T` and `W`. `KW.effects.bounds(name,
+  fields, view)` gives `b` for fields drawn on a screen; `pack.js` works it out from a pack's terms
+  over the ranges its checks assume. `glows(b)` is the most glows it draws.
+- `draw(f, clock)`. `clock` is the scene's time in ms for an effect that moves (`clock` is `time`),
+  and for `burst` (`trigger`) the ms since its trigger for straw and the burst's progress from 0 to 1
+  for sparks, which is how each was timed. A still effect takes none.
+
+The tables reach nothing on `KW`, so the file loads under Node alone, where `pack.js` asks for it
+beside itself the first time a pack names an effect.
+
+| Effect | Fields (default) | Cost, at most | Drawn by |
+|---|---|---|---|
+| `sky` | `p`, `w`, `h`, `of` (1 to 8) | one fill a band, the dither between bands, one fill below | battlement, camp, yard |
+| `stars` | `p`, `w`, `h`, `n` (190), `seed` (1), `of` (three colours) | 3 a star | battlement, camp, yard |
+| `ridge` | `p`, `w`, `amp`, `step`, `seed` (0), `colour` | one fill a pixel of `w` | battlement |
+| `bricks` | `p`, `w`, `h`, `size`, `of` (1 to 16), `mortar`, `seed` (0), `lit` (0.06) | 3 a block, one more than fit in a course, and the mortar | battlement (`lit` 0.07), house, yard, cellar, smithy, court, and `bricksHD` |
+| `pines` | `p`, `w`, `step` (120), `phase` (0), `off` ([40, 50]), `tall` ([240, 130]), `seed` (5), `colour` | each pine's tiers at its tallest, times the pines across `w` | camp, two rows |
+| `tree` | `p`, `bark`, `leaves`, `light` (the camp's) | its trunk, streaks, roots and twelve leaves at their largest | camp |
+| `arch` | `p`, `rx`, `ry`, `n` (11), `of`, `outline` (K) | two strips a stone | cellar |
+| `shelf` | `y`, `seed` (1) | a cheese's 92 in every slot of 38 across the screen | cellar |
+| `stacks` | `p`, `dir`, `step` (70), `heights` ([]), `seed` (0), `more` ([3, 5]), `past` (0) | the crate's 150 for each crate of the tallest column, times the columns to the edge | cellar, both sides |
+| `tufts` | `y`, `step` (41), `spread` (30), `seed` (9), `tall` ([8, 10]), `gap` (5), `lean` (1.6), `colour`, `light`, `bare` ([0, 0]) | three blades at their tallest, for each tuft across the screen | camp, yard |
+| `flame` | `p`, `size` (1), `dt` (0) | three tongues, each an ell and a triangle at their largest | every scene |
+| `twinkle` | `p`, `w`, `h`, `n` (14), `seed` (41), `ms` (1100), `gap` (0.7), `cycle` (6), `lit` (0.9), `size` (3), `colour` | 1 a point | battlement |
+| `drift` | `p`, `n` (4), `gap` (6), `period` (2300), `sway` ([5, 14]), `rise` (130), `size` (3), `colour` | 1 a particle | camp, the embers |
+| `wander` | `p`, `w`, `h`, `n` (7), `seed` (31), `ms` (900), `gap` (1.3), `cycle` (4), `lit` (1.4), `sway`, `bob`, `glow` ([9, 0.18]), `size` (3), `colour` | a glow and a fill a light, one glow each | camp, the fireflies |
+| `coals` | `p`, `n` (9), `gap` (14), `seed` (61), `ms` (170), `part` (`bed` or `sparks`), `of` | an ell of 15 rows a coal, or 1 a spark | smithy, the bed and the sparks over its flames |
+| `steam` | `p`, `n` (3), `gap` (14), `period` (1800), `sway` ([7, 5]), `rise` (46), `r` ([4, 7]), `a` (0.8), `colour` | an ell a puff | the pie, while up |
+| `burst` | `p`, `n` (7), `piece` (`spark` or `straw`), `of` | sparks: a glow and 4 a spark; straw: a strip a piece | smithy (sparks), yard (straw) |
+
+`tests/web/effects.test.js` checks that each cost bounds the fills drawn, and the call records of
+`tests/web/scenes.test.js` that the scenes draw through the effects exactly what they drew before.
+
+**What stays in the scenes.** Drawing that is not shared and does not reach the screen's edges stays
+in its scene, as plain shapes, loops of fixed shapes (the world format's tiles) or the engine's own:
+
+- loops with a hash of a fixed index, which a pack writes out as the fixed shapes they are: the
+  stars in the house's window, the grain of the camp's log, the ash by the smithy's forge, the straw
+  of the yard's bales, and the grain of the table (`tableHD`, in `props.js`);
+- tiles: floors, planks, posts, rafters, merlons, the yard's pebbles, the court's pillars and floor
+  squares, the cellar's brackets and piers (each pier's bricks an effect inside the tile);
+- the dummy, the television, the candle, the blanket and the sleeper's Zs, the hammer's act, the
+  monarch and the ermine: the acts and the patron, which later steps move out with their parts;
+- the weapon's pegs in the house and the hot tip on the anvil, which read the weapon's blade: what
+  reads the knight's gear stays the engine's;
+- the props shared as stamps (`barrelHD`, `tableHD`, `sconceHD`, `crateHD`), and the glows, which
+  are a shape of their own.
 
 ## Modes
 
@@ -961,9 +1034,9 @@ node --test tests/web/
 ```
 
 `tests/web/knight.test.js` checks the knight call by call. It loads the scripts `index.html` loads
-that the knight's drawing needs (`draw.js`, `sprites.js`, `props.js`, `knight.js`, the house and the
-smithy, `ed25519.js`, `pack.js` and the carriers, in the page's order) under Node with an empty
-`window` and a fake canvas context that records every call and every property set;
+that the knight's drawing needs (`draw.js`, `sprites.js`, `effects.js`, `props.js`, `knight.js`, the
+house and the smithy, `ed25519.js`, `pack.js` and the carriers, in the page's order) under Node
+with an empty `window` and a fake canvas context that records every call and every property set;
 `KW.devices.draw` writes one line in the record. It chooses the knight's source as `main.js` does
 and draws 112 records: the knight in 94 poses, the bare head in bed twice, the speech bubble twice,
 the helmet and the weapon at rest in four, and the house and the smithy in ten, each painted and
@@ -982,7 +1055,7 @@ as `rgba(60,30,20,0.18)`, as JavaScript writes the number, where the code writes
 compared, the alpha of such a fillStyle loses its leading zero. Every other character is compared
 as drawn, and the screenshots confirm the pixels.
 
-`tests/web/props.test.js` loads `draw.js`, `sprites.js` and `props.js` the same way and checks each
+`tests/web/props.test.js` loads `draw.js`, `sprites.js`, `effects.js` and `props.js` the same way and checks each
 kind of device: that it stays inside 80 by 64 above its base, up and gone; that its moving
 part is only its lamp, inside the place, in both states; that the lamp fades green to black over
 3.6 seconds while up and red to black over 2 while down; that its still part does not change with
@@ -1087,9 +1160,10 @@ that both paths still give the stored record.
 
 `tests/web/scenes.test.js` checks the scenes call by call in the same way, so that a scene moved into
 pack data can be shown to draw exactly what it drew. It loads the scripts `index.html` loads that
-the scenes need (`draw.js`, `sprites.js`, `props.js`, `knight.js`, the seven scenes, `state.js` and
-`engine.js`, in the page's order) into a fresh sandbox for each state, with the knight from code and
-the view's edges set as `fit()` sets them, and records each scene's `paint`, then for each moment
+the scenes need (`draw.js`, `sprites.js`, `effects.js`, `props.js`, `knight.js`, the seven scenes,
+`state.js` and `engine.js`, in the page's order) into a fresh sandbox for each state, with the
+knight from code and the view's edges set as `fit()` sets them, and records each scene's `paint`,
+then for each moment
 its `act`, `draw` and `over` and the devices in front of the knight, which the engine draws after
 it. What `act` and `draw` change in the frame (the knight's pose, `strike`) is written as a line per
 field. The devices are drawn by `KW.devices`, and a canvas of the fake document keeps its own calls,
@@ -1131,7 +1205,25 @@ SCENES_WEB=/tmp/kw-copy/web node --test tests/web/scenes.test.js
 ```
 
 Store the records again only when a scene is meant to look different, and look at the screenshots
-before trusting them.
+before trusting them. The records were stored before the effects moved out of the scenes into
+`effects.js`, and the scenes draw them unchanged through it.
+
+`tests/web/effects.test.js` checks the effects of `effects.js` (see [The effects](#the-effects)).
+It loads `draw.js`, `sprites.js`, `effects.js` and `props.js` into a sandbox whose context counts
+the calls that fill, and draws every effect with a spread of its fields (each at its least, each at
+its greatest, its defaults, and forty made up at random within its table), at the three sizes and
+at six moments for one that moves, or for `burst` at five points of the sparks' progress and six
+times after the straw's trigger. Each drawing must make no more fills, and no more glows, than the
+effect's cost function gives for those fields, and for every effect some drawing must come within a
+quarter of it, so that no bound is loose enough to say nothing. A drawing whose cost passes 200 000,
+which no scene may hold, is not drawn. It checks that the effects are the list `pack.js` names, that
+a field left out draws as its default, and, with `pack.js`: that every effect reads clean in a 1.1
+scene, with its required fields and with every field given its default; that every field of every
+effect is refused at `fields`, naming it, when given a value of the wrong kind or out of its range;
+that a field the table lacks and a required field left out are refused; that scalars are held to
+their ranges at both ends, colours resolved and named values checked; that the counts step costs
+each effect with its own function at the ends of the scene's ranges; that effects too costly for a
+frame, or with too many glows, are refused; and that the world fixture still reads clean.
 
 The deploy tool, which it runs against temporary folders and copies of `web/`, never the
 repository's own, and the pack carriers against their pack files:

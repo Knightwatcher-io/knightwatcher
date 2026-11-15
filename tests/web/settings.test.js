@@ -482,7 +482,7 @@ test('a choice of scene is saved under scenes, read back, and reset; a text save
 
 /* ---- The engine, the court and the knight in a sandbox ------------------------------------------ */
 
-const SCRIPTS = ['js/draw.js', 'js/sprites.js', 'js/props.js', 'js/knight.js', 'js/scenes/battlement.js', 'js/scenes/camp.js', 'js/scenes/house.js',
+const SCRIPTS = ['js/draw.js', 'js/sprites.js', 'js/effects.js', 'js/props.js', 'js/knight.js', 'js/scenes/battlement.js', 'js/scenes/camp.js', 'js/scenes/house.js',
   'js/scenes/yard.js', 'js/scenes/cellar.js', 'js/scenes/smithy.js', 'js/scenes/court.js', 'js/ed25519.js', 'js/pack.js', 'packs/base.pack.js', 'js/state.js', 'js/engine.js', 'js/settings.js'];
 /* The page's scripts on a dev page, the base pack unsigned so that it is read there whether it
    ships signed or not. calls records every fill, as 'r x y w h colour', and every colour set. */

@@ -28,9 +28,9 @@ function fakeCanvas() {
   return cv;
 }
 
-/* draw.js, sprites.js and props.js, as index.html loads them, into a sandbox whose window is an
-   empty object, drawing into a context that keeps what each call covers, with the alpha it was
-   drawn at. */
+/* draw.js, sprites.js, effects.js and props.js, as index.html loads them, into a sandbox whose
+   window is an empty object, drawing into a context that keeps what each call covers, with the
+   alpha it was drawn at. */
 function load() {
   const rects = [], arcs = [], images = [];
   let calls = 0, galpha = 1, colour = null;
@@ -44,7 +44,7 @@ function load() {
     },
   });
   const box = vm.createContext({ window: {}, document: { createElement: () => fakeCanvas() } });
-  for (const f of ['js/draw.js', 'js/sprites.js', 'js/props.js']) vm.runInContext(fs.readFileSync(path.join(WEB, f), 'utf8'), box, { filename: f });
+  for (const f of ['js/draw.js', 'js/sprites.js', 'js/effects.js', 'js/props.js']) vm.runInContext(fs.readFileSync(path.join(WEB, f), 'utf8'), box, { filename: f });
   const KW = box.window.KW;
   KW.draw.setCtx(ctx);
   const take = f => {

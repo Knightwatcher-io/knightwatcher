@@ -2,7 +2,7 @@
    their own weapon on the anvil. The scene interface is in docs/page.md. */
 (function (KW) {
   'use strict';
-  const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, K = KW.knight, C = D.C;
+  const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, E = KW.effects, K = KW.knight, C = D.C;
   const { alpha, glow, Rh, Rv, ell, rrect, poly, strip, hsh, ease, STEEL2, STEEL3 } = D;
 
   const WALL = ['#1d1411', '#21170f', '#1a120e', '#241913'];
@@ -46,7 +46,7 @@
 
   function paint(s) {
     const { HL, HR, HT, HH, HFL } = V, kx = s.kx;
-    P.bricksHD(HL, HT, HR - HL, HFL - HT, 62, 28, WALL, '#0d0807', 7);
+    E.bricks.draw({ p: [HL, HT], w: HR - HL, h: HFL - HT, size: [62, 28], of: WALL, mortar: '#0d0807', seed: 7 });
     rrect(HL - 4, 128, HR - HL + 8, 26, 2, C.K); Rv(HL, 131, HR - HL, 20, [[.2, '#4a301a'], [.6, '#3a2514'], [1, '#26180c']]);
     tools();
     // the quench barrel, and the small table with the pie
@@ -54,9 +54,9 @@
     P.tableHD(240, 470, 80, 60);
     // the forge: its hood and chimney, its brick hearth, the mouth of the fire
     poly([[762, HT - 2], [930, HT - 2], [930, 246], [976, 292], [716, 292], [762, 246]], C.K);
-    P.bricksHD(766, HT, 160, 248 - HT, 40, 16, BRICK, '#1e0e0a', 3); poly([[764, 246], [928, 246], [970, 288], [722, 288]], [[.2, '#3a1d16'], [.7, '#2a140f'], [1, '#1c0d0a']]);
+    E.bricks.draw({ p: [766, HT], w: 160, h: 248 - HT, size: [40, 16], of: BRICK, mortar: '#1e0e0a', seed: 3 }); poly([[764, 246], [928, 246], [970, 288], [722, 288]], [[.2, '#3a1d16'], [.7, '#2a140f'], [1, '#1c0d0a']]);
     Rh(716, 288, 260, 6, C.K);
-    Rh(728, 324, HR - 728, HFL - 324, C.K); P.bricksHD(732, 334, HR - 732, HFL - 334, 40, 16, BRICK, '#1e0e0a', 9);
+    Rh(728, 324, HR - 728, HFL - 324, C.K); E.bricks.draw({ p: [732, 334], w: HR - 732, h: HFL - 334, size: [40, 16], of: BRICK, mortar: '#1e0e0a', seed: 9 });
     rrect(722, 318, HR - 722 + 8, 18, 3, C.K); Rv(725, 321, HR - 725, 12, [[.3, '#6a5f78'], [1, '#3b3247']]);
     rrect(766, 364, 148, 88, 18, C.K); rrect(771, 369, 138, 78, 15, [[.5, '#1a0907'], [1, '#2a0e09']]);
     // the floor of packed earth and slabs, ash by the forge
@@ -73,10 +73,9 @@
     const gx = s.kx + RESTS.anvil.x, gy = RESTS.anvil.y, b = K.rest.blade();
     // the fire in the forge
     glow(840, 410, 230, '#ff4a3d', .11 + .03 * Math.sin(t / 140));
-    const f = Math.floor(t / 170) % 2;
-    for (let i = 0; i < 9; i++) { const x = 780 + i * 14, h = hsh(i, 61) % 8; ell(x + 6, 440 - h, 9, 7, (i + f) % 3 ? '#cc352c' : '#ff8676'); }
-    P.flameHD(812, 436, .55, t); P.flameHD(842, 438, .7, t + 300); P.flameHD(872, 436, .5, t + 700);
-    for (let i = 0; i < 9; i++) Rh(782 + i * 14 + hsh(i, 62) % 6, 432 + hsh(i, 63) % 8, 4, 3, (i + f) % 2 ? '#fff3a0' : '#ffb000');
+    E.coals.draw({ p: [780, 440] }, t);
+    E.flame.draw({ p: [812, 436], size: .55 }, t); E.flame.draw({ p: [842, 438], size: .7, dt: 300 }, t); E.flame.draw({ p: [872, 436], size: .5, dt: 700 }, t);
+    E.coals.draw({ p: [782, 432], part: 'sparks', seed: 62, of: ['#fff3a0', '#ffb000'] }, t);
     // The blade's hot tip, at the weapon's point (to along the blade) and between its edges (half
     // either side), in bands that start 73, 57 and 43 short of the point. A weapon that gives no
     // blade shows none.
@@ -91,9 +90,8 @@
     // the pie, and sparks where the hammer strikes
     KW.devices.draw(t, s);
     if (s.strike) {
-      const c = (t % 1300) / 1300, q = (c > .5 ? c - .93 : c + .07) / .13, sx = s.kx + 132, sy = 418;
-      glow(sx, sy, 44, '#fff3a0', .35 * (1 - q));
-      for (let i = 0; i < 7; i++) { const a = -1.35 + i * .45, d = 26 + q * 70 + (i % 2) * 14; SP.spark(sx + Math.sin(a) * d, sy - 8 - Math.cos(a) * d * .9, i % 2 ? 6 : 9, i % 3 ? '#ffb000' : '#fff3a0'); }
+      const c = (t % 1300) / 1300, q = (c > .5 ? c - .93 : c + .07) / .13;
+      E.burst.draw({ p: [s.kx + 132, 418] }, q);
     }
   }
 

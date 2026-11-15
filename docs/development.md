@@ -158,6 +158,9 @@ that every pack in `web/packs/` that carries a `sig` verifies against the key ta
 `tests/web/format-1.1.test.js` checks the world sections of pack format 1.1, which the library reads
 and checks and nothing yet draws from: one refused copy of its world fixture for each rule, the
 limits at their edges, the costs, the signature over a 1.1 pack, and that a 1.0 pack reads as it did.
+`tests/web/effects.test.js` checks the effects of `web/js/effects.js`: that each effect's cost bounds
+the fills it draws for a spread of its fields on three screens, and that `pack.js` refuses every
+field of every effect out of its table and costs each with its own cost function.
 `tests/web/base-read.test.js` holds the shipped base pack's whole read, its signed bytes and six of
 its looks, records included, equal to a copy stored from the library before format 1.1;
 [packs.md](./packs.md#tests) says how to store it again, which only a change to the base pack calls
@@ -228,8 +231,9 @@ never written to a file beside a checkout. A release that changes a shipped pack
 process:
 
 1. The commit to sign is pushed to `main`, with its pack files unsigned or carrying an old `sig`.
-2. The release process takes `web/js/pack.js`, `web/js/ed25519.js`, `tools/sign-pack.js`,
-   `tools/pack-carrier.js` and `web/packs/` from that commit, runs
+2. The release process takes `web/js/pack.js`, `web/js/effects.js` (which `pack.js` needs to read a
+   pack that names an effect), `web/js/ed25519.js`, `tools/sign-pack.js`, `tools/pack-carrier.js`
+   and `web/packs/` from that commit, runs
    `node tools/sign-pack.js web/packs/*.pack.json` with the key in `PACK_KEY_KW1`, and hands back
    the signed pack files and the commit they were signed at.
 3. Only the `sig` of each file is copied into a checkout whose `HEAD` descends from that commit,

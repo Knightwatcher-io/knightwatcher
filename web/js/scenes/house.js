@@ -5,7 +5,7 @@
    interface is in docs/page.md. */
 (function (KW) {
   'use strict';
-  const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, K = KW.knight, C = D.C;
+  const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, E = KW.effects, K = KW.knight, C = D.C;
   const { alpha, glow, Rh, Rv, ell, rrect, poly, strip, hsh, STEEL3 } = D;
 
   const PLANK = ['#2a1d14', '#2d1f15', '#261a11', '#301f14'];
@@ -47,10 +47,10 @@
   /* The hearth of stone at the right, with its chimney, mantel and logs. Its fire is drawn each frame. */
   function hearth() {
     const { HT } = V;
-    P.bricksHD(830, 334, 132, 196, 33, 18, STONE, '#19141f', 9);
+    E.bricks.draw({ p: [830, 334], w: 132, h: 196, size: [33, 18], of: STONE, mortar: '#19141f', seed: 9 });
     Rh(830, 334, 3, 196, C.K); Rh(959, 334, 3, 196, C.K);
     rrect(852, 396, 86, 150, 34, C.K, null, 530); rrect(857, 401, 76, 150, 30, [[.5, '#0e0a08'], [1, '#070505']], null, 530);
-    P.bricksHD(866, 440, 58, 70, 29, 14, ['#1d1714', '#211a16'], '#0b0807', 2);
+    E.bricks.draw({ p: [866, 440], w: 58, h: 70, size: [29, 14], of: ['#1d1714', '#211a16'], mortar: '#0b0807', seed: 2 });
     for (const [x0, x1, y] of [[864, 926, 520], [870, 922, 508]]) { strip(x0, y, x1, y, 7, 7, C.K); strip(x0 + 2, y, x1 - 2, y, 5, 5, [[.3, C.N1], [1, C.N3]]); ell(x1 - 2, y, 4, 5, C.N0); }
     Rh(860, 526, 72, 4, '#3a1d16');
     rrect(816, 318, 158, 20, 4, C.K); Rv(819, 321, 152, 14, [[.25, C.N0], [.6, C.N1], [1, C.N2]]);
@@ -134,7 +134,7 @@
   function draw(t, s) {
     // the hearth's fire
     glow(895, 480, 190, '#ffb000', .09 + .025 * Math.sin(t / 130));
-    P.flameHD(880, 512, .62, t); P.flameHD(908, 514, .52, t + 500); P.flameHD(893, 516, .78, t + 900);
+    E.flame.draw({ p: [880, 512], size: .62 }, t); E.flame.draw({ p: [908, 514], size: .52, dt: 500 }, t); E.flame.draw({ p: [893, 516], size: .78, dt: 900 }, t);
     if (s.tv) tvScreen(t);
     else {
       glow(771, 384, 52, '#ffe28a', .11 + .02 * Math.sin(t / 170));
