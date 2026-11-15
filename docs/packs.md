@@ -20,7 +20,10 @@ packs were refused ([page.md](./page.md#settings)). Not built yet: anything that
 decoration. A decoration's fields and shapes are
 checked and its cost counted, but only its keyframes are compiled; its shapes are not.
 
-This page describes format 1.0 as the library implements it.
+This page describes format 1.0 as the library implements it, and the world sections that format 1.1
+adds, as the library reads and refuses them, under [Format 1.1](#format-11). **Nothing draws from the
+1.1 sections yet:** a 1.1 pack's scenes, cast, props, stamps, words, overlays and presets are checked
+and kept as data, and no scene, prop or cast member on the page comes from them.
 
 ## The file
 
@@ -50,27 +53,30 @@ A pack file is UTF-8 JSON holding an envelope:
 | `id` | string | `^[a-z][a-z0-9-]{1,31}(\.[a-z0-9-]{1,31}){0,3}$`, such as `kw.base` |
 | `name` | string | 1 to 48 characters, one line |
 | `version` | string | `major.minor.patch`, each 0 to 999, no leading zeros |
-| `format` | `[1, minor]` | the minor no higher than the engine's, which is 0 |
+| `format` | `[1, minor]` | the minor no higher than the engine's, which is 1: `[1, 0]` or `[1, 1]` |
 | `licence` | string | 1 to 200 characters, one line |
-| `provides` | array | each of `builds`, `items`, `palettes`, `swatches`, `decorations` at most once: exactly the sections that are present and not empty |
+| `provides` | array | each of `builds`, `items`, `palettes`, `swatches`, `decorations` (and in 1.1 `scenes`, `cast`, `props`, `words`, `overlays`, `worlds`, `sounds`, `stamps`) at most once: exactly the sections that are present and not empty |
 | `palettes` | object | the pack's own colour sets |
 | `swatches` | object | choices for the user's colour sets |
-| `builds` | object | body shapes; the base pack only |
+| `builds` | object | body shapes; the base pack only in 1.0, any pack in 1.1 |
 | `defaults` | object | the default look; the base pack only |
 | `items` | object | the gear |
 | `decorations` | object | things a scene may show in its places |
 | `companions` | object | reserved: checked to be an object, signed, never read |
 | `ext` | object | for experiments: checked to be an object, signed, never read |
+| the 1.1 sections | object | format 1.1 only; see [Format 1.1](#format-11) |
 
-Any other key is refused. A section may be absent or empty; an empty one is not listed in
+Any other key is refused, and so is a 1.1 section in a pack of format `[1, 0]`. A section may be absent or empty; an empty one is not listed in
 `provides`. Characters are counted as Unicode code points, and "one line" means no control
 characters and no line or paragraph separators.
 
 The ids of builds, items, swatches, decorations and decoration groups are local to the pack and
 match `^[a-z][a-z0-9.-]{0,47}$`. From outside the pack a thing is named `<pack id>/<local id>`.
 
-**The base pack** is the pack whose id is `kw.base`. Only it may carry `builds` and `defaults`, and
-it must carry both. Every look falls back on it.
+**The base pack** is the pack whose id is `kw.base`. It must carry `builds` and `defaults`, and only
+it may carry `defaults`. In format 1.0 only it may carry `builds` either; in 1.1 any pack may, as a
+world's own bodies, though a look still takes its build from the base pack. Every look falls back on
+it.
 
 ## Colours
 
@@ -464,10 +470,310 @@ last the last. Colours interpolate in RGB with each channel rounded. `animate(de
 returns every group's `{ dx, dy, scale, alpha, show }` and every animated palette entry at `t`
 seconds after the decoration appeared, as a pure function of `t`.
 
+## Format 1.1
+
+Format 1.1 adds the sections a world needs: the scenes, the supporting cast, the drawings of the
+devices, shared shape groups, flavour words, the overlay's look and presets that name one of each.
+The library reads `[1, 1]` beside `[1, 0]` and refuses `[1, 2]` and anything newer at the `format`
+step (`pack.format: is 1.2, newer than this engine's 1.1`). It checks every new section by the same
+steps as the rest, in the same order, and keeps it as data in the loaded pack's `data`.
+
+**Nothing is compiled from these sections yet, and nothing draws from them.** The engine parts that
+will read them (the effects library, the scene compiler, the acts, the cast and the props from data)
+come in later steps. Until then the closed lists those parts will own are fixed in `pack.js` under
+the names below and exported as `WORLD_LISTS`, and the engine takes them over when it is built.
+
+A pack of format `[1, 0]` reads exactly as before: none of the new sections is a field of it, only
+the base pack may carry builds, and `pick` and `lamp` are free as palette set names.
+`tests/web/base-read.test.js` holds the base pack's whole read, its signed bytes and six of its looks
+equal to a copy stored from the library before format 1.1.
+
+What 1.1 changes for the sections 1.0 has:
+
+- any pack may carry `builds`, each with its head item in the same pack, as in 1.0; `defaults` stays
+  the base pack's alone;
+- `pick` and `lamp` are reserved set names: a pack's own palettes may not take them;
+- items, rest views and decorations read exactly as in 1.0.
+
+### The sections
+
+| Section | Holds | Each, at most |
+|---|---|---|
+| `stamps` | named lists of shapes, drawn where a `use` shape puts them | 64 per pack, 64 shapes each |
+| `scenes` | backdrops, moving parts, places, what each scene can act | 16 per pack |
+| `cast` | patrons, foes and critters | 16 per pack |
+| `props` | prop sets: a drawing for each kind of device | 8 per pack |
+| `words` | flavour lines and the settings screen's labels | 8 per pack |
+| `overlays` | the overlay's colours and font | 8 per pack |
+| `worlds` | presets, one of each part | 8 per pack |
+| `sounds` | reserved: checked to be an object, signed, never read | |
+
+Ids in each section match the local pattern, `^[a-z][a-z0-9.-]{0,47}$`. The counts per pack are
+checked at `counts`, as for items and decorations.
+
+### Shapes, coordinates and terms
+
+The shapes of the new sections are the six kinds of 1.0 and four more, with two more kinds in the
+layers of a scene:
+
+| `k` | Fields | Where |
+|---|---|---|
+| `rect`, `ell`, `rrect`, `poly`, `strip`, `pix` | as in 1.0 | everywhere |
+| `glow` | `p`, `r` (1 to 512), `colour` (hex or a single reference), `a` (an alpha, 0 to 1) | everywhere |
+| `dith` | `p`, `w`, `h`, `colour` | everywhere |
+| `fx` | `fx`, an effect of the engine's, and its own fields | everywhere |
+| `use` | `stamp`, `p` | everywhere |
+| `tile` | `step` (4 to 960), `phase` (-960 to 960), `from`, `to`, optional `pick`, `shapes` (1 to 32) | a layer of a scene, never inside a tile |
+| marks | see [Marks](#marks) | a layer of a scene, never inside a tile |
+
+- Points are pairs only, and a `poly`'s `dir` is `rows` or `cols`: there is no weapon frame here.
+- In a scene's layers, offsets run from -2048 to 2048 and lengths from 0 to 4096, since a backdrop
+  fills out to the screen's edges. In stamps, the cast, props and a scene's `pole`, offsets and
+  lengths keep 1.0's ranges, -512 to 512 and 0 to 512. Radii and half-widths keep 1.0's everywhere.
+  Each is checked at both ends at `rules`, as in 1.0.
+- `g` may name a group in a moving or over layer and in a critter's frames; `only` (`[seed, mod]`)
+  only inside a tile; `at` only in the patron, naming one of its anchors.
+- A colour may also be a mix, `{ "mix": [colour, colour], "k": 0.3 }`: each channel of the first
+  moved towards the second's by `k`, from 0 to 1. The two are hex colours or single references.
+- `@pick.<name>` names a pick of the tile around the shape, and `@lamp.down` and `@lamp.downHi`
+  name the engine's down lamp; both are single colours, and `@lamp` may be named only in a stamp.
+- A pix shape's rows count toward the pack's 16 384 pixels with every other pix shape.
+
+**Terms.** A scalar of a scene may lean on the screen's edges, the scene values below, and inside a
+tile on its x. Two more term forms are allowed: `"h": [seed, mod]` adds the engine's hash of the
+tile's x modulo `mod` (seed 0 to 999, mod 2 to 960), and `"wave": [amp, div, phase]` adds
+`amp * sin(t / div + phase)`, with `amp` from -512 to 512, `div` from 1 to 100 000 ms and `phase`
+from -100 to 100. Coordinates stay multiples of 1/8; an alpha may have three decimals and takes only
+`c` and `wave`.
+
+| Name | Is | Range the checks assume | Allowed |
+|---|---|---|---|
+| `L`, `R`, `T`, `W` | the canvas's left, right and top edges on the grid, and its width | -976 to -16, 976 to 1936, -602 to -2, 992 to 2912 | any layer of a scene |
+| `x` | the tile's x | from its `from` at the least, less a `step`, plus its `phase`, to its `to` at the most | inside a tile |
+| `h` | a hash of the tile's x | 0 to `mod` - 1 | inside a tile |
+| `wave` | a sine of the scene's time | `-amp` to `amp` | a moving or over layer |
+
+Nothing else may lean on a named value: stamps, the cast and props are drawn at fixed sizes. The
+knight's names (`drop`, `dShoulder` and the rest) are refused in every 1.1 section.
+
+**Effects.** `fx` is one of `sky`, `stars`, `ridge`, `bricks`, `pines`, `tree`, `arch`, `shelf`,
+`stacks`, `tufts`, `flame`, `twinkle`, `drift`, `wander`, `coals`, `steam` and `burst`. Each will have
+a table of fields with ranges and a cost of its own in the effects library. Until it exists an
+effect takes at most 16 other fields, each named in lower camel case and holding a number, a colour,
+a term object or a list of up to 16 of them; their terms and colours are checked like any other, and
+an effect costs nothing in the counts. No field can hold other text, so no path, address or file
+can reach an effect.
+
+### Scenes
+
+| Field | Rule |
+|---|---|
+| `name` | 1 to 32 characters |
+| `spot` | where the watcher stands, in units of 5 pixels, a whole number from 30 to 162 |
+| `rounds` | 1 to 6 `{ x, act, dur }`: `x` as `spot`, `act` one of `guard`, `look`, `sniff`, `yawn`, `train`, `dur` 2 to 120 seconds, whole |
+| `quiet` | `true` or `false` |
+| `can` | condition ids of the contract, each once |
+| `hosts` | each of `flies`, `crate`, `feast`, `foe` at most once |
+| `helmet` | `on` or `off` |
+| `weapon` | `held` or `away` |
+| `still`, `moving`, `over` | arrays of layers |
+| `things` | the seven places for devices |
+| `rests`, `decor` | optional: places for gear at rest and for decorations |
+| `bed`, `screen`, `seat`, `anvil`, `target` | optional: the parts an act needs |
+| `foe` | optional: where a foe may stand |
+| `pole` | optional: 1 to 16 shapes |
+| `sound`, `companion` | reserved: an object or absent, never read |
+
+All but the optional ones are required. The condition ids are `attack`, `wan_down`,
+`container_unhealthy`, `disk_full`, `backup_overdue`, `pi_silent`, `device_down`, `cpu_hot`,
+`memory_tight`, `ssh_session`, `updating`, `streaming` and `night`.
+
+**Layers.** `{ when, groups, anim, shapes }`, only `shapes` required: 1 to 2000 shapes in a still
+layer, 1 to 400 in a moving or over one. A still layer takes `when` and `shapes` alone. `when` holds
+1 to 8 predicates, each named once: `cond:<condition>`, `tv`, `inBed`, `helmOff`, `strike`, and the
+reserved `day` and `night`, each after an optional `!`. `tv` needs the scene's `screen`, `inBed` its
+`bed` and `strike` its `anvil`. `groups` is as a decoration's, pivots within 2048, and a group's name
+is declared in one layer of a scene only.
+
+`anim` is 1.0's keyframes with three additions. `"ms": true` gives the period in whole
+milliseconds, 200 to 600 000, and each key's time as a whole number of milliseconds from 0 to the
+period. `"trigger"` is `hit` (needs a `target`) or `strike` (needs an `anvil`), and a triggered clock
+does not loop. A track may be a wave, `{ g, ch, wave, round }`, driving `dx` or `dy` only, with no
+keys or ease. No two tracks of a layer drive one thing.
+
+**Marks** tell the engine where in the scene's order to draw something of its own:
+
+| Mark | Fields | Needs | Layer |
+|---|---|---|---|
+| `things` | | | moving or over, exactly once in the scene |
+| `rest` | `slot` (`helmet`, `main`, `off`), `at` (a rest) | the rest; `main` a frame, the others a place | any |
+| `patron` | | `seat` | any |
+| `bubble` | | `seat` | moving or over |
+| `sleeper` | | `bed` | moving or over |
+| `target` | | `target` | moving or over |
+
+**Places.** `things` holds exactly `pie`, `h1` to `h3` and `g1` to `g3`, each `{ cls, kind, x, y,
+w, h }` with optional `front`, `flip` (booleans) and `pole` (0 to 600). `cls` is the place's class,
+`pie` for the pie, `high` for `h1` to `h3` and `ground` for `g1` to `g3`; `kind` is `hang`,
+`surface` or `floor`; `x` and `y` are whole numbers on the grid; and every place is 88 by 112. At
+`rules` each place's class box, mirrored by `flip`, must lie on the 960 by 600 grid, no two may
+overlap (touching is allowed), a high place's base must be at y 300 or lower and a ground place's
+from 500 to 598. The class boxes, from the base, measured on today's drawings:
+
+| Class | x | y |
+|---|---|---|
+| `pie` | -46 to 45 | -107 to 33 |
+| `high` | -34 to 32 | -64 to 0 |
+| `ground` | -36 to 41 | -58 to 2 |
+
+`rests` holds up to 8: a place `{ kind, x, y, w, h }` (`w` and `h` 1 to 240) for a rest view, or a
+frame `{ x, y, a }` for the weapon, `a` being `upright`, `flat` or a number of radians from -3.142 to
+3.142. Either may count its x from the watcher's spot with `"from": "spot"`; `x` is a whole number
+from -960 to 960 and `y` from 0 to 600. `decor` holds up to 16 places `{ kind, x, y, w, h }`.
+
+**The act parts.** `bed` is `{ head, blanket, zeds }`, `blanket` a group of a layer; `screen`
+`{ group, glow: [x, y, r] }`; `seat` `{ x, y, bubble, turn, mouth }`, `turn` and `mouth` in ms;
+`anvil` `{ rest, spark }`, `rest` a rest of the scene; `target` `{ group, hitAt, every }`, `hitAt`
+before `every`. `foe` is `{ side, spans, wall }`: `side` 1 or -1, 1 to 4 spans `[from, to]` on the
+grid with `from` below `to`, and an optional `wall` `{ period, offset, high: [width, y], low }` whose
+width is less than its period. A target's `aim` is format 1.2 and refused here.
+
+**What a scene can act.** At `rules` a scene that lists a condition in `can` must meet its needs:
+
+| Condition | The scene must give |
+|---|---|
+| `attack` | `weapon` `held` |
+| `wan_down` | a layer whose `when` names `cond:wan_down` |
+| `container_unhealthy`, `night` | `bed` |
+| `disk_full` | rounds at two different spots |
+| `pi_silent` | the pie's place right of the spot (`x` greater than `spot` times 5) |
+| `device_down`, `memory_tight` | `quiet` `true` |
+| `ssh_session` | `seat` |
+| `updating` | `anvil`, whose rest is a frame for the weapon |
+| `streaming` | `screen` |
+| `backup_overdue`, `cpu_hot` | nothing |
+
+A scene that hosts `foe` needs a `foe` zone.
+
+### The cast
+
+Each member has a `role` and a `name` (1 to 48 characters).
+
+- **A patron** has `box` (`[w, h]`, at most 200 by 360), `anchors` (exactly `seat`, `eyes` and
+  `mouth`, pairs, each inside the box: x within half its width, y up to its height above the seat),
+  `still` (1 to 16 parts `{ at, shapes }`, `at` one of its anchors) and `states` (exactly `shut` and
+  `open`). Optional: `sets`, which binds up to 4 names of its own to the user's sets (`skin`, `hair`,
+  `tabard`, `plume`; a name that is a user set's binds that set); `own`, for a bound set, every
+  entry of it in literal colours, as a swatch gives them; and `palettes`, up to 8 sets of its own,
+  whose names are not reserved, bound or a user set's, and whose entries refer only to `@base` and
+  the bound sets.
+- **A foe** has `sprite` (`size` at most 256 by 256, `feet` inside it), `h`, `w`, `mid` (whole, to
+  256), `crown` (1 to 32 points, each inside the sprite from its feet), `exit` (`poof`, the engine's
+  only exit), `parts` (up to 16 named lists of shapes) and `poses`, exactly `stand`, `climb`,
+  `taunt0`, `taunt1`, `brace` and `hit`, each `{ parts, shapes }` naming its parts once each. A
+  foe's `fires` and its pose `aim` are format 1.2 and refused here.
+- **A critter** has `frames` (exactly `flap0` and `flap1`) and `dead`, and optional `groups` and
+  `alpha` (a group's alpha, 0 to 1, for a declared group).
+
+Inside a member, the user's sets may be named only through its `sets`: a foe or a critter names
+none.
+
+### Props
+
+A prop set is `{ name, kinds }`, `kinds` giving one or more of `pi`, `camera`, `machine`, `vm` and
+`box`. A kind has `name`, `mark` (1 to 128) and the two states `up` and `gone`, each `{ still,
+moving, lamp }` with `still` and `lamp` required. A lamp is a pair, where the engine draws its own
+lamp, or a lamp of the kind's own `{ at, box, lit, dark, light }`: `box` 1 to 64 each way around `at`,
+`lit` and `dark` stamps of pix shapes only, `light` a hex colour, which a gone lamp may not give. A
+gone lamp's `lit` drawing uses only `@lamp.down` and `@lamp.downHi`, so a device that is down blinks
+red in every world.
+
+At `rules` every drawing of a kind, in both states and both parts, lies inside its class box (the
+pie's for `pi`, the high one for `camera`, the ground one for the rest), worked out from each shape's
+extent at the ends of its values: a stamp by its shapes, a lamp by its box (12 by 12 for the
+engine's), an effect by its point alone, and a glow not at all, as the class boxes were measured.
+
+### Words and the overlay
+
+A word set is `{ name, watcher, labels, quiet, captions }`, `name` and `watcher` (1 to 32
+characters) required. `labels` names any of `watcher`, `patron`, `build`, `tabard`, `plume`,
+`helmet`, `foe` and `critter`, each 1 to 32 characters. `quiet` gives templates for the parts of the
+quiet line, `captions` for the events, each 1 to 8 templates:
+
+| Part | Placeholders |
+|---|---|
+| quiet: `quiet` | none |
+| quiet: `up` | `{n}` |
+| quiet: `backup` | `{at}` |
+| quiet: `ads` | `{n}`, `{short}` |
+| captions: `ip_banned` | `{addr}`, `{jail}` |
+| captions: `import` | `{title}` |
+| captions: `backup_done` | `{at}` |
+
+A template is 1 to 32 characters of printable ASCII and `·`, every brace part of a placeholder. A
+placeholder its part does not give is refused at `references`. The templates of a part run longest
+first, by the text outside their placeholders, at `rules`.
+
+An overlay is `{ name, font, levels, outline, scrim, caption }`, all required. `font` is one of the
+fonts the engine ships, today `vt323`; there is no field for a font file or font data. `levels`
+gives exactly `ok`, `warn`, `crit`, `info` and `sleep`, each two hex colours, `outline` and `scrim`
+are hex and `caption` a literal colour. At `rules` each level's two colours keep the status's hue and
+contrast on black (WCAG's), and `sleep`'s are darker than `ok`'s:
+
+| Level | Hue | Contrast |
+|---|---|---|
+| `ok` | 110 to 160 | 6 or more |
+| `warn` | 28 to 55 | 6 or more |
+| `crit` | 345 to 15, through 0 | 6 or more |
+| `info` | 180 to 215 | 6 or more |
+| `sleep` | 110 to 160 | 3 to 6 |
+
+### Presets
+
+A preset, in `worlds`, is `{ name, body, outfit, scenes, cast, props, overlay, words, picture }`,
+with the reserved `sound` and `companion` (objects, never read). A name in it is a local id or
+`<pack id>/<id>`. A local name, or one that names this pack by its id, must exist here, of the right
+slot or role, at `references`; one that names another pack is checked for its form alone.
+
+A preset must be complete, at `rules`: every field above; `outfit.items` for every slot but `back`,
+`off` and `head`, which may name `back` and `off`; `outfit.swatches` for the four sets;
+`scenes.quiet`, 1 to 16 scenes, each once; `scenes.for` naming a scene for every condition except
+`device_down` and `memory_tight`, which have none and play in the quiet scene of the moment; and a
+patron, a foe and a critter. Each of this pack's scenes it names must be able to do what it is named
+for: a quiet scene is `quiet` and lists `device_down` and `memory_tight` in `can`, and a condition's
+scene lists the condition.
+
+### Costs and limits
+
+A world shape costs what the 1.0 measure gives, at the ends of every value's range, the screen's
+edges included. A glow costs 3 and counts toward the glows; a `dith` its dots; a `use` its stamp's
+shapes; a tile its shapes times the most repeats its range allows; a mark nothing, since the engine
+counts its own drawing; an effect nothing until the effects library gives its cost. A band list of
+the user's skin counts as 8 bands, here as in 1.0, a pick, a mix and the down lamp as one colour.
+
+| What | Limit |
+|---|---|
+| a scene's still layers | 2 000 shapes and 200 000 fills, tiles and stamps counted out |
+| a scene's moving and over layers, in one frame | 400 shapes, 16 000 fills and 24 glows; the pole counted once under each of the three high places |
+| layers, tiles and effects in a scene | 32, 64 and 48, effects counted out of their tiles |
+| a patron | 16 000 for its still parts, 400 for each mouth |
+| a foe | 8 000 for each pose, its parts included |
+| a critter | 200 for each frame and for what falls |
+| a kind | 4 000 for each state's still part, 600 for its moving part and its own lamp |
+
+`WORLD_LIMITS` in `pack.js` holds these. A loaded 1.1 pack carries `world`, the costs the counts
+step found: each scene's still and frame shapes, cost and glows, each cast member's, each kind's
+and each stamp's. The depth of nesting stays 12 and is checked before the format, so a world pack
+must keep within it: a hash or a wave in a point of a tile's shape would sit 13 deep and is refused
+at the `json` step, while one in a length of a tile's shape, or in a point outside a tile, is not.
+
+`tests/web/format-1.1.test.js` checks all of this; see [Tests](#tests).
+
 ## The checks
 
 `read()` checks a pack fully, in this order, and stops at the first failure. A pack that fails is
-refused whole.
+refused whole. For a pack of format 1.1 each step from `fields` to `counts` also checks the world
+sections, as [Format 1.1](#format-11) sets out, and `compile` compiles nothing of them.
 
 | Step | What it checks |
 |---|---|
@@ -475,7 +781,7 @@ refused whole.
 | `json` | nesting no deeper than 12 and no key twice in one object, checked on the raw text before parsing; then `JSON.parse`; then every number finite, below 1,000,000 in size and with at most 3 decimals, every string and key free of unpaired surrogates, and no key `__proto__`, `constructor` or `prototype` anywhere, `ext` and `companions` included |
 | `envelope` | the file holds a JSON object; `kwpack` is 1 and `pack` an object, both present; `sig`, when present, is an object; no other key |
 | `signature` | the signature, against the key named by `kid` |
-| `format` | `format` is `[1, 0]` |
+| `format` | `format` is `[1, 0]` or `[1, 1]` |
 | `fields` | every field against its table, with no unknown keys outside `ext` and `companions`: types, ranges, multiples of 1/8, id patterns, text lengths, rising band fractions, and the counts the tables give |
 | `references` | every `@set.entry` exists and is the right kind, every anchor is one the slot allows, every named value is on the list and allowed where it is, `dir: "frame"` appears only in a part of a `main` item, every `g` is a declared group, every palette track names a hex entry of the pack's own palettes, each build's head item exists with slot `head`, and every default exists |
 | `rules` | `provides` matches the sections, each build's torso (`height` less `leg`) is 46 to 74, `arms` and `gauntlets` have one part for each side, each helmet passes the face check, each grip has as many stations as its kind, each blade's `from` is below its `to`, every scalar stays in its range at both ends (folded where something is folded in), each polygon is convex with no point repeated, each decoration's box is at most 240 by 240, no two tracks drive one thing |
@@ -800,9 +1106,11 @@ speech bubble twice each, the gear at rest, and the house and the smithy); see
 `kid` to 32-byte `Uint8Array`, in place of `KEYS`) and `verify` (in place of `KW.ed25519.verify`).
 
 A loaded pack is frozen: `{ ok: true, id, version, name, licence, format, provides, signed, data,
-own, swatches, decorations, sums }`, where `data` is the pack as read, `own` its palettes resolved,
+own, swatches, decorations, sums }`, with `world` after them for a pack of format 1.1, where `data` is the pack as read, `own` its palettes resolved,
 `swatches` its swatches resolved, `decorations` each decoration's groups, compiled keyframes and
 `cost`, and `sums` each item's shapes and cost as `{ parts, view, rest }`, each `{ n, cost }`.
+`world` holds what the counts step found for the world sections: `{ scenes, cast, props, stamps }`
+(see [Costs and limits](#costs-and-limits)); the sections themselves are in `data`.
 
 `gather` keeps the higher `version` of two packs with one id (the first of two equal ones) and at
 most 32 packs, refusing the rest with step `counts`. The base pack is always among the 32: it is
@@ -818,9 +1126,11 @@ the cheeks, the puffed cheeks and the brows the three colours), and `shapes` and
 `animate(decoration, t)` takes a `t` that is not a finite number, or is negative, as 0, and returns
 finite values and well-formed colours for every `t`.
 
-Constants: `FORMAT`, `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STEPS`, `SLOTS`,
-`ANCHORS`, `ANCHOR`, `FRAME_SX`, `FRAME_SY`, `VALUES`, `VALUE`, `MEASURES`, `BASE`, `KEYS`,
-`ORDERS`.
+Constants: `FORMAT` (`[1, 1]`), `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STEPS`, `SLOTS`,
+`ANCHORS`, `ANCHOR`, `FRAME_SX`, `FRAME_SY`, `VALUES`, `VALUE`, `MEASURES`, `TORSO`, `BASE`, `KEYS`,
+`ORDERS`, and for format 1.1 `WORLD_LIMITS`, `WORLD_LISTS` (the closed lists: conditions, round acts,
+hosts, predicates, marks, triggers, effects, roles, exits, foe poses, fonts, device kinds and their
+classes and boxes, labels, placeholders and the status colours' bands) and `SCENE_RANGE`.
 
 ## On the page
 
@@ -1128,6 +1438,32 @@ value at the ends of its range.
 The source of `pack.js` is checked to hold neither `eval` nor `Function(`. The shipped `KEYS` is
 checked to hold `kw1` alone, as the 32 bytes above, in a frozen table whose bytes cannot be changed
 from outside, and a pack signed by any other key under `kw1` is refused against it.
+
+`tests/web/format-1.1.test.js` checks format 1.1. Its fixture, `tests/web/fixtures/world-1.1.json`,
+is a world pack made of the world format's own worked examples (the cellar, the house's planks and
+the blanket's breath, the act parts, the places, the patron, the goblin, the fly, the camera and the
+pie with its own lamp, the words, the overlay and the preset) and of today's seven scenes' places,
+spots, rounds and `can` lists; it reads clean, signed and unsigned, at the deepest nesting allowed.
+The test refuses one signed copy of it for each rule above, 523 of them, each with the step and the
+exact reason it expects; accepts each limit at its edge; checks the costs the counts step reports
+against figures worked by hand; signs a 1.1 pack with a key made for the run and checks that the
+signature holds over a pretty-printed, minified or reordered copy and breaks at a changed value in
+any new section; checks that a `[1, 0]` pack still refuses every new section and that `[1, 2]` is
+refused at the format; checks the closed lists by name, the conditions against `state.js`; and feeds
+the reader mangled copies and values of the wrong type, none of which may throw. It checks too that
+the world's pack changes no look: `resolve()` gives the same with it loaded as without.
+
+`tests/web/base-read.test.js` reads the shipped base pack with the library as it is and compares the
+whole result with `tests/web/fixtures/base-read.json`, stored from the library before format 1.1:
+the read as it ships, unsigned on a `dev` page and unsigned on a deployed page, the SHA-256 and
+length of the bytes its signature covers, and `resolve()` with every record, for the default look and
+the sword and shield on each build. Store it again only when the base pack is meant to change, from
+a library known to read it right:
+
+```bash
+BASE_READ=write node --test tests/web/base-read.test.js
+BASE_READ=write BASE_READ_LIB=DIR/web/js/pack.js node --test tests/web/base-read.test.js   # from another copy
+```
 
 `tests/web/ed25519.test.js` tests the verifier. It checks every Ed25519 vector of RFC 8032 section
 7.1 with one bit changed in each part, and SHA-512 against the digests of RFC 6234 and against

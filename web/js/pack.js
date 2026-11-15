@@ -9,7 +9,9 @@
 
   /* ---- The format's constants -------------------------------------------------------------- */
 
-  const FORMAT = Object.freeze([1, 0]);
+  /* The newest format this library reads. It reads [1, 0] and [1, 1]: 1.1 adds the world sections
+     (docs/packs.md, Format 1.1), which are checked and kept as data, and nothing draws from yet. */
+  const FORMAT = Object.freeze([1, 1]);
   /* Signed ahead of the pack's canonical form, so that a signature made for anything else cannot
      pass as a pack's. */
   const PREFIX = 'knightwatcher pack v1\n';
@@ -379,22 +381,24 @@
       s.pts.forEach((q, i) => point(q, idx(key(path, 'pts'), i), ctx));
       oneOf(s.dir, key(path, 'dir'), ['rows', 'cols', 'frame']);
     }
-    if (s.k === 'pix') {
-      const rp = key(path, 'rows');
-      arr(s.rows, rp, 1, LIMITS.pixSide);
-      s.rows.forEach((r, i) => {
-        if (typeof r !== 'string' || !/^[\x21-\x7e]+$/.test(r)) fail(idx(rp, i), 'must be a string of printable characters');
-        if (r.length > LIMITS.pixSide) fail(idx(rp, i), 'must be at most ' + LIMITS.pixSide + ' characters');
-        if (r.length !== s.rows[0].length) fail(idx(rp, i), 'must be as long as the first row');
-      });
-      if (s.rows.length * s.rows[0].length > LIMITS.pixShape) fail(rp, 'must hold at most ' + LIMITS.pixShape + ' pixels');
-      const kp = key(path, 'key'), ks = isObj(s.key) ? Object.keys(s.key) : null;
-      if (!ks) fail(kp, 'must be an object');
-      if (ks.length < 1 || ks.length > LIMITS.pixKeys) fail(kp, 'must map 1 to ' + LIMITS.pixKeys + ' characters, not ' + ks.length);
-      for (const k of ks) {
-        if (!/^[\x21-\x7e]$/.test(k) || k === '.') fail(key(kp, k), 'must be one printable character other than "."');
-        colour(s.key[k], key(kp, k), false);
-      }
+    if (s.k === 'pix') pixFields(s, path, (v, p) => colour(v, p, false));
+  }
+  /* A pix shape's rows and key; col checks each colour of the key. */
+  function pixFields(s, path, col) {
+    const rp = key(path, 'rows');
+    arr(s.rows, rp, 1, LIMITS.pixSide);
+    s.rows.forEach((r, i) => {
+      if (typeof r !== 'string' || !/^[\x21-\x7e]+$/.test(r)) fail(idx(rp, i), 'must be a string of printable characters');
+      if (r.length > LIMITS.pixSide) fail(idx(rp, i), 'must be at most ' + LIMITS.pixSide + ' characters');
+      if (r.length !== s.rows[0].length) fail(idx(rp, i), 'must be as long as the first row');
+    });
+    if (s.rows.length * s.rows[0].length > LIMITS.pixShape) fail(rp, 'must hold at most ' + LIMITS.pixShape + ' pixels');
+    const kp = key(path, 'key'), ks = isObj(s.key) ? Object.keys(s.key) : null;
+    if (!ks) fail(kp, 'must be an object');
+    if (ks.length < 1 || ks.length > LIMITS.pixKeys) fail(kp, 'must map 1 to ' + LIMITS.pixKeys + ' characters, not ' + ks.length);
+    for (const k of ks) {
+      if (!/^[\x21-\x7e]$/.test(k) || k === '.') fail(key(kp, k), 'must be one printable character other than "."');
+      col(s.key[k], key(kp, k));
     }
   }
   function parts(v, path) {
@@ -452,7 +456,8 @@
       eighth(v.face[2], idx(fp, 2), 0, 512); eighth(v.face[3], idx(fp, 3), 0, 512);
     }
   }
-  function track(t, path) {
+  /* A track of keyframes. time checks a key's time: from 0 to 1 of the period unless given. */
+  function track(t, path, time) {
     if (!isObj(t)) fail(path, 'must be an object');
     let vk;
     if (has(t, 'pal')) {
@@ -476,7 +481,7 @@
     arr(t.keys, kp, 1, LIMITS.keys).forEach((k, i) => {
       const p = idx(kp, i);
       if (!Array.isArray(k) || k.length !== 2) fail(p, 'must be a [time, value] pair');
-      num(k[0], idx(p, 0), 0, 1);
+      if (time) time(k[0], idx(p, 0)); else num(k[0], idx(p, 0), 0, 1);
       if (!(k[0] > prev)) fail(idx(p, 0), 'times must rise');
       prev = k[0];
       vk(k[1], idx(p, 1));
@@ -507,19 +512,24 @@
   }
 
   const PACK_KEYS = ['id', 'name', 'version', 'format', 'licence', 'provides', 'palettes', 'swatches', 'builds', 'items', 'decorations', 'defaults', 'companions', 'ext'];
+  /* Format 1.1's sections, each listed in provides when it holds anything. */
+  const WORLD_SECTIONS = ['scenes', 'cast', 'props', 'words', 'overlays', 'worlds', 'sounds', 'stamps'];
+  const PACK_KEYS_11 = PACK_KEYS.concat(WORLD_SECTIONS), PROVIDES_11 = PROVIDES.concat(WORLD_SECTIONS);
+  /* Whether a pack is of format 1.1, which the format step has already held to [1, 0] or [1, 1]. */
+  const is11 = pack => pack.format[1] >= 1;
   function fields(pack) {
-    const P = 'pack';
-    obj(pack, P, PACK_KEYS, ['id', 'name', 'version', 'format', 'licence', 'provides']);
+    const P = 'pack', m1 = is11(pack), PV = m1 ? PROVIDES_11 : PROVIDES;
+    obj(pack, P, m1 ? PACK_KEYS_11 : PACK_KEYS, ['id', 'name', 'version', 'format', 'licence', 'provides']);
     id(pack.id, key(P, 'id'), PACK_ID);
     text(pack.name, key(P, 'name'), 1, 48);
     if (typeof pack.version !== 'string' || !VERSION.test(pack.version)) fail(key(P, 'version'), 'must be major.minor.patch, each 0 to 999');
     text(pack.licence, key(P, 'licence'), 1, 200);
     const pp = key(P, 'provides');
-    arr(pack.provides, pp, 0, PROVIDES.length).forEach((s, i) => { oneOf(s, idx(pp, i), PROVIDES); if (pack.provides.indexOf(s) !== i) fail(idx(pp, i), 'appears twice'); });
+    arr(pack.provides, pp, 0, PV.length).forEach((s, i) => { oneOf(s, idx(pp, i), PV); if (pack.provides.indexOf(s) !== i) fail(idx(pp, i), 'appears twice'); });
     if (has(pack, 'palettes')) {
       const sp = key(P, 'palettes');
       for (const s of table(pack.palettes, sp, SET_NAME, 0, LIMITS.sets, 'sets')) {
-        if (s === 'base' || has(USER_SETS, s)) fail(key(sp, s), 'is a reserved set name');
+        if (s === 'base' || has(USER_SETS, s) || (m1 && WORLD_SETS.includes(s))) fail(key(sp, s), 'is a reserved set name');
         for (const e of table(pack.palettes[s], key(sp, s), ENTRY_NAME, 1, LIMITS.setEntries, 'entries')) fill(pack.palettes[s][e], key(key(sp, s), e), false);
       }
     }
@@ -543,7 +553,8 @@
     const base = pack.id === BASE_ID;
     if (has(pack, 'builds')) {
       const bp = key(P, 'builds');
-      if (!base) fail(bp, 'only the base pack, ' + BASE_ID + ', may carry builds');
+      // from format 1.1 any pack may carry builds: a world's own bodies
+      if (!base && !m1) fail(bp, 'only the base pack, ' + BASE_ID + ', may carry builds');
       for (const b of table(pack.builds, bp, LOCAL_ID, 1, LIMITS.builds, 'builds')) {
         const p = key(bp, b), v = pack.builds[b];
         obj(v, p, ['name', 'm', 'head'], ['name', 'm', 'head']);
@@ -575,6 +586,7 @@
     }
     if (has(pack, 'companions') && !isObj(pack.companions)) fail(key(P, 'companions'), 'must be an object');
     if (has(pack, 'ext') && !isObj(pack.ext)) fail(key(P, 'ext'), 'must be an object');
+    if (m1) worldFields(pack);
   }
 
   /* ---- Walking what step 5 has passed ----------------------------------------------------------- */
@@ -722,30 +734,43 @@
         }
       });
     }
+    if (is11(pack)) worldReferences(pack);
   }
 
   /* ---- Step 7: rules that span fields ---------------------------------------------------------- */
 
   /* A linear form { c, k: { name: coefficient } } of a scalar, and its bounds over RANGE. */
+  /* Format 1.1's two terms that are not named values, h (a hash of the tile's x, from 0 to mod - 1)
+     and wave (a sine, from -amp to amp), go into add, the least and greatest they can add. A 1.0
+     pack never reaches here with either, since the references step refuses them as names. */
   function form(v) {
     if (typeof v === 'number') return { c: v, k: {} };
     const f = { c: has(v, 'c') ? v.c : 0, k: {} };
-    for (const n of Object.keys(v)) if (n !== 'c') f.k[n] = v[n];
+    for (const n of Object.keys(v)) {
+      if (n === 'c') continue;
+      if (n === 'h' && Array.isArray(v.h)) f.add = addTo(f.add, [0, v.h[1] - 1], 1);
+      else if (n === 'wave' && Array.isArray(v.wave)) f.add = addTo(f.add, [-Math.abs(v.wave[0]), Math.abs(v.wave[0])], 1);
+      else f.k[n] = v[n];
+    }
     return f;
   }
+  /* The span a, plus the span b times s. */
+  const addTo = (a, b, s) => { const x = a || [0, 0], lo = s * b[0], hi = s * b[1]; return [x[0] + Math.min(lo, hi), x[1] + Math.max(lo, hi)]; };
   function plus(a, b, sb) {
     const f = { c: a.c + sb * b.c, k: Object.assign({}, a.k) };
     for (const n of Object.keys(b.k)) f.k[n] = (f.k[n] || 0) + sb * b.k[n];
+    if (a.add || b.add) f.add = addTo(a.add, b.add || [0, 0], sb);
     return f;
   }
   /* The least (hi false) or greatest (hi true) value of a form over the ranges of its names; a name
      in fixed takes that one value. */
-  function bound(f, hi, fixed) {
-    let s = f.c;
+  function bound(f, hi, fixed, R) {
+    const T = R || RANGE;
+    let s = f.c + (f.add ? f.add[hi ? 1 : 0] : 0);
     for (const n of Object.keys(f.k)) {
       const k = f.k[n];
       if (k === 0) continue;
-      const r = fixed && has(fixed, n) ? [fixed[n], fixed[n]] : has(RANGE, n) ? RANGE[n] : null;
+      const r = fixed && has(fixed, n) ? [fixed[n], fixed[n]] : has(T, n) ? T[n] : null;
       if (!r) return hi ? Infinity : -Infinity;
       s += hi ? Math.max(k * r[0], k * r[1]) : Math.min(k * r[0], k * r[1]);
     }
@@ -774,8 +799,8 @@
   /* The range each size takes, at both ends: name, least, greatest, what it is called. An ell's
      radii are at least 1, since draw.js divides by them. */
   const SIZE = { w: [0, 512, 'length'], h: [0, 512, 'length'], r: [0, 256, 'radius'], rx: [1, 256, 'radius'], ry: [1, 256, 'radius'], hw0: [0, 64, 'half-width'], hw1: [0, 64, 'half-width'] };
-  function within(f, lo, hi, path, what, fixed) {
-    const a = bound(f, false, fixed), b = bound(f, true, fixed);
+  function within(f, lo, hi, path, what, fixed, R) {
+    const a = bound(f, false, fixed, R), b = bound(f, true, fixed, R);
     if (a < lo) fail(path, what + ' reaches ' + a + ' at its least, below ' + lo);
     if (b > hi) fail(path, what + ' reaches ' + b + ' at its greatest, above ' + hi);
   }
@@ -867,7 +892,7 @@
   function nonEmpty(v) { return isObj(v) && Object.keys(v).length > 0; }
   function rules(pack) {
     const P = 'pack', items = pack.items || {};
-    const have = PROVIDES.filter(s => nonEmpty(pack[s]));
+    const have = (is11(pack) ? PROVIDES_11 : PROVIDES).filter(s => nonEmpty(pack[s]));
     for (const s of have) if (!pack.provides.includes(s)) fail(key(P, 'provides'), 'must list "' + s + '", which the pack holds');
     for (const s of pack.provides) if (!have.includes(s)) fail(key(P, 'provides'), 'lists "' + s + '", which the pack does not hold');
     for (const i of live(items)) {
@@ -901,6 +926,7 @@
         });
       }
     }
+    if (is11(pack)) worldRules(pack);
   }
 
   /* ---- Step 8: counts, and what a shape costs -------------------------------------------------- */
@@ -915,11 +941,11 @@
     if (has(USER_SETS, m[1])) return USER_SETS[m[1]][m[2]] === 'bands' ? LIMITS.bands : 1;
     return bandCount(pack, pack.palettes[m[1]][m[2]]);
   }
-  const span2 = v => { const f = form(v); return [bound(f, false), bound(f, true)]; };
+  const span2 = (v, R) => { const f = form(v); return [bound(f, false, null, R), bound(f, true, null, R)]; };
   /* Where a point can be: its anchor's name, and the x and y it reaches from that anchor. A framed
      point can turn to any angle, so it reaches the length of (s, p) every way. */
-  function reach(q, at) {
-    if (Array.isArray(q)) return { a: at, x: span2(q[0]), y: span2(q[1]) };
+  function reach(q, at, R) {
+    if (Array.isArray(q)) return { a: at, x: span2(q[0], R), y: span2(q[1], R) };
     if (has(q, 'frame')) {
       const r = Math.hypot(q.s, q.p), x = has(q, 'x') ? span2(q.x) : [0, 0], y = has(q, 'y') ? span2(q.y) : [0, 0];
       return { a: 'main', x: [x[0] - r, x[1] + r], y: [y[0] - r, y[1] + r] };
@@ -935,26 +961,27 @@
     return hi - lo + (as.size > 1 ? ANCHOR_SPAN : 0);
   }
   const rowsOver = ext => Math.ceil(Math.max(0, ext)) + 1;
-  function clipRows(s) {
+  function clipRows(s, R) {
     if (!s.clip || s.clip[0] === null || s.clip[1] === null) return Infinity;
-    return Math.max(0, Math.ceil(span2(s.clip[1])[1] - span2(s.clip[0])[0]) + 1);
+    return Math.max(0, Math.ceil(span2(s.clip[1], R)[1] - span2(s.clip[0], R)[0]) + 1);
   }
   /* The most fillRect calls draw.js can make for a shape, at the extremes of every value it leans
      on: a row (or column) of an ell, rrect, poly or strip costs one call per band; a rect one call
-     per band; a pix one call per run of a character in a row. */
-  function shapeCost(pack, s, at) {
-    const nb = s.k === 'pix' ? 1 : bandCount(pack, s.fill);
+     per band; a pix one call per run of a character in a row. R is the table of value ranges
+     (RANGE unless given) and nb the bands of the fill (counted here unless given). */
+  function shapeCost(pack, s, at, R, nbIn) {
+    const nb = nbIn !== undefined ? nbIn : s.k === 'pix' ? 1 : bandCount(pack, s.fill);
     switch (s.k) {
       case 'rect': return nb;
-      case 'ell': return Math.min(2 * Math.ceil(span2(s.ry)[1]) + 1, clipRows(s)) * nb;
-      case 'rrect': return Math.min(Math.max(0, Math.round(span2(s.h)[1])), clipRows(s)) * nb;
+      case 'ell': return Math.min(2 * Math.ceil(span2(s.ry, R)[1]) + 1, clipRows(s, R)) * nb;
+      case 'rrect': return Math.min(Math.max(0, Math.round(span2(s.h, R)[1])), clipRows(s, R)) * nb;
       case 'poly': {
-        const rs = s.pts.map(q => reach(q, at));
+        const rs = s.pts.map(q => reach(q, at, R));
         const ext = s.dir === 'rows' ? extent(rs, 'y') : s.dir === 'cols' ? extent(rs, 'x') : Math.max(extent(rs, 'x'), extent(rs, 'y'));
         return rowsOver(ext) * nb;
       }
       case 'strip': {
-        const rs = [reach(s.p0, at), reach(s.p1, at)], g = [span2(s.hw0)[1], span2(s.hw1)[1]];
+        const rs = [reach(s.p0, at, R), reach(s.p1, at, R)], g = [span2(s.hw0, R)[1], span2(s.hw1, R)[1]];
         return rowsOver(Math.max(extent(rs, 'x', g), extent(rs, 'y', g))) * nb;
       }
       default: {
@@ -988,6 +1015,7 @@
     }
     let px = 0;
     eachShape(pack, s => { if (s.k === 'pix') px += s.rows.length * s.rows[0].length; });
+    if (is11(pack)) eachWorldShape(pack, s => { if (s.k === 'pix') px += s.rows.length * s.rows[0].length; });
     if (px > LIMITS.pixPack) fail(P, 'holds ' + px + ' pixels in pix shapes, more than ' + LIMITS.pixPack);
     const decs = Object.keys(pack.decorations || {}), decor = {};
     if (decs.length > LIMITS.decorations) fail(key(P, 'decorations'), 'holds ' + decs.length + ' decorations, more than ' + LIMITS.decorations);
@@ -1005,7 +1033,7 @@
       const problem = plumeProblem(items[d.items.plume], items[d.items.helmet]);
       if (problem) fail(key(P, 'defaults'), 'the default plume on the default helmet: ' + problem);
     }
-    return { sums, decor };
+    return { sums, decor, world: is11(pack) ? worldCounts(pack) : null };
   }
   /* The most shapes, and the most fills, a look draws for the knight in one frame, over every grip
      mode and helmet state: the body, the larger head group, the pauldrons, both arms and gauntlets,
@@ -1021,6 +1049,1101 @@
       return ['back', 'legs', 'boots', 'torso', 'pauldrons', 'arms', 'gauntlets', 'main'].reduce((a, s) => a + g(s, 'parts', what), 0) + Math.max(headOn, headOff) + (one ? g('off', 'parts', what) : 0);
     };
     return { n: t('n'), cost: t('cost') };
+  }
+
+  /* ---- Format 1.1: the world sections ----------------------------------------------------------
+
+     Scenes, the cast, props, stamps, words, overlays, presets (worlds) and the reserved sounds,
+     checked by the same steps as the rest and kept as data. Nothing compiles them yet and nothing
+     draws from them: the engine's effects library, its acts and the scene compiler come in later
+     steps. Until then the closed lists those parts of the engine will own are fixed here, under the
+     names the format gives them; the engine takes them over when it is built. */
+
+  /* The contract's condition ids. device_down and memory_tight have no scene of their own: they
+     are acted in the quiet scene of the moment. */
+  const CONDITIONS = ['attack', 'wan_down', 'container_unhealthy', 'disk_full', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'ssh_session', 'updating', 'streaming', 'night'];
+  const QUIET_CONDITIONS = ['device_down', 'memory_tight'];
+  /* The acts (the engine's, from a later step): what a round does, the events a scene can host,
+     the predicates a layer can wait on, the marks where the engine draws in a scene's order, and
+     the two moments a clock can start from. */
+  const ROUND_ACTS = ['guard', 'look', 'sniff', 'yawn', 'train'];
+  const HOSTS = ['flies', 'crate', 'feast', 'foe'];
+  const PREDICATES = ['tv', 'inBed', 'helmOff', 'strike', 'day', 'night'];
+  const MARKS = ['things', 'rest', 'patron', 'sleeper', 'target', 'bubble'];
+  const TRIGGERS = ['hit', 'strike'];
+  /* The effects library (the engine's, from a later step, with each effect's table of fields and
+     its cost). Until it exists an effect's fields are checked only to be numbers, colours and terms,
+     and it costs nothing in the counts. */
+  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'flame', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst'];
+  /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
+     for, the patron's anchors and the critter's frames. */
+  const ROLES = ['patron', 'foe', 'critter'];
+  const EXITS = ['poof'];
+  const FOE_POSES = ['stand', 'climb', 'taunt0', 'taunt1', 'brace', 'hit'];
+  const PATRON_ANCHORS = ['seat', 'eyes', 'mouth'];
+  const MOUTHS = ['shut', 'open'];
+  const FLAPS = ['flap0', 'flap1'];
+  /* The fonts the engine ships. No font data travels in a pack. */
+  const FONTS = ['vt323'];
+  /* The kinds of device, the class the engine gives each, and each class's box: the most any kind
+     of it may paint, x0, y0, x1, y1 from its base, as measured on today's drawings. */
+  const PROP_KINDS = ['pi', 'camera', 'machine', 'vm', 'box'];
+  const CLASS_OF = { pi: 'pie', camera: 'high', machine: 'ground', vm: 'ground', box: 'ground' };
+  const CLASS_BOX = { pie: [-46, -107, 45, 33], high: [-34, -64, 32, 0], ground: [-36, -58, 41, 2] };
+  const PLACE_CLASS = { pie: 'pie', h1: 'high', h2: 'high', h3: 'high', g1: 'ground', g2: 'ground', g3: 'ground' };
+  /* Words: the settings screen's labels, and the placeholders each part of the quiet line and each
+     caption may use. */
+  const LABELS = ['watcher', 'patron', 'build', 'tabard', 'plume', 'helmet', 'foe', 'critter'];
+  const QUIET_PARTS = { quiet: [], up: ['n'], backup: ['at'], ads: ['n', 'short'] };
+  const CAPTIONS = { ip_banned: ['addr', 'jail'], import: ['title'], backup_done: ['at'] };
+  /* The status colours' bands: hue from and to in degrees (crit's runs through 0), and the least
+     and greatest contrast on black. sleep must also be darker than ok. */
+  const LEVELS = { ok: [110, 160, 6, 21], warn: [28, 55, 6, 21], crit: [345, 15, 6, 21], info: [180, 215, 6, 21], sleep: [110, 160, 3, 6] };
+  /* The set names a 1.1 pack's own palettes may not take: a tile's picks and the down lamp's red. */
+  const WORLD_SETS = ['pick', 'lamp'];
+  const LAMP_REF = /^@lamp\.(down|downHi)$/;
+  const FX_FIELD = /^[a-z][A-Za-z0-9]{0,15}$/;
+  const PLACEHOLDER = /\{([a-z]{1,16})\}/g;
+  const TEMPLATE = /^[\x20-\x7e·]+$/;
+  /* The named values of a scene, the range the checks assume for each (the screen at most three
+     grid widths by two grid heights), and the grid unit the spots count in. */
+  const SCENE_RANGE = freeze({ L: [-976, -16], R: [976, 1936], T: [-602, -2], W: [992, 2912] });
+  const U = 5;
+  const WORLD_LIMITS = freeze({ scenes: 16, cast: 16, props: 8, overlays: 8, words: 8, worlds: 8, stamps: 64, stampShapes: 64,
+    layers: 32, tiles: 64, effects: 48, tileShapes: 32, stillShapes: 2000, frameShapes: 400, stillCost: 200000, frameCost: 16000,
+    glows: 24, patronStill: 16000, patronState: 400, poseCost: 8000, sprite: 256, critterFrame: 200, kindStill: 4000, kindMoving: 600,
+    mark: 128, offset: 2048, length: 4096 });
+  /* Where a shape of the world sections is, for the reasons. */
+  const WWHERE = { still: 'a still layer', moving: 'a moving layer', over: 'an over layer', pole: 'a pole', stamp: 'a stamp', patron: 'the cast', foe: 'the cast', critter: 'the cast', prop: 'a prop' };
+  const LAYERED = ['still', 'moving', 'over'];
+
+  /* ---- Step 5 for 1.1: fields ---- */
+
+  function bool(v, path) { if (typeof v !== 'boolean') fail(path, 'must be true or false'); }
+  /* A list of values from a closed list, each once. */
+  function setOf(v, path, list, max) {
+    arr(v, path, 0, max || list.length).forEach((x, i) => { oneOf(x, idx(path, i), list); if (v.indexOf(x) !== i) fail(idx(path, i), 'appears twice'); });
+  }
+  /* A scalar of a world section: a number, or a term object of c, named values, h ([seed, mod]:
+     the engine's hash of the tile's x, modulo mod) and wave ([amp, div, phase]: amp times the sine
+     of the scene's time in ms over div, plus phase). lo and hi bound c. Coordinates are multiples of
+     1/8; an alpha (alpha true) may have three decimals and takes only c and wave. */
+  function wscalar(v, path, lo, hi, alpha) {
+    const n = alpha ? num : eighth;
+    if (typeof v === 'number') { n(v, path, lo, hi); return; }
+    if (!isObj(v)) fail(path, 'must be a number or a term object');
+    for (const k of Object.keys(v)) {
+      const p = key(path, k);
+      if (k === 'c') n(v.c, p, lo, hi);
+      else if (k === 'wave') wave(v.wave, p);
+      else if (alpha) fail(p, 'an alpha takes only c and wave');
+      else if (k === 'h') { if (!Array.isArray(v.h) || v.h.length !== 2) fail(p, 'must be [seed, mod]'); int(v.h[0], idx(p, 0), 0, 999); int(v.h[1], idx(p, 1), 2, 960); }
+      else if (!TERM_NAME.test(k)) fail(p, 'is not a name');
+      else eighth(v[k], p, -8, 8);
+    }
+  }
+  function wave(v, path) {
+    if (!Array.isArray(v) || v.length !== 3) fail(path, 'must be [amp, div, phase]');
+    num(v[0], idx(path, 0), -512, 512); num(v[1], idx(path, 1), 1, 100000); num(v[2], idx(path, 2), -100, 100);
+  }
+  function wpoint(v, path, o) {
+    if (!Array.isArray(v) || v.length !== 2) fail(path, 'must be a pair [x, y]');
+    wscalar(v[0], idx(path, 0), -o, o); wscalar(v[1], idx(path, 1), -o, o);
+  }
+  const isColourName = c => typeof c === 'string' && (HEX.test(c) || REF.test(c) || LAMP_REF.test(c));
+  /* One opaque colour: hex, or a reference. */
+  function plainColour(v, path) { if (!isColourName(v)) fail(path, 'must be a hex colour or a reference such as "@base.k"'); }
+  /* A colour of a world section: as in 1.0, or a mix { mix: [a, b], k }, each channel of a moved
+     towards b's by k and rounded. */
+  function wcolour(v, path) {
+    if (typeof v === 'string') {
+      if (isColourName(v)) return;
+      fail(path, 'must be a hex colour, a reference such as "@base.k", a translucent colour or a mix');
+    }
+    if (!isObj(v)) fail(path, 'must be a colour');
+    if (has(v, 'mix')) {
+      obj(v, path, ['mix', 'k'], ['mix', 'k']);
+      const mp = key(path, 'mix');
+      if (!Array.isArray(v.mix) || v.mix.length !== 2) fail(mp, 'must be [colour, colour]');
+      v.mix.forEach((c, i) => plainColour(c, idx(mp, i)));
+      num(v.k, key(path, 'k'), 0, 1);
+      return;
+    }
+    obj(v, path, ['rgb', 'a'], ['rgb', 'a']);
+    if (typeof v.rgb !== 'string' || !HEX.test(v.rgb)) fail(key(path, 'rgb'), 'must be a hex colour');
+    num(v.a, key(path, 'a'), 0.01, 1);
+  }
+  function wfill(v, path) {
+    if (!Array.isArray(v)) { wcolour(v, path); return; }
+    arr(v, path, 1, LIMITS.bands);
+    let prev = 0;
+    for (let i = 0; i < v.length; i++) {
+      const b = v[i], p = idx(path, i);
+      if (!Array.isArray(b) || b.length !== 2) fail(p, 'must be a [fraction, colour] pair');
+      if (typeof b[0] !== 'number' || !(b[0] > prev) || b[0] > 1) fail(idx(p, 0), 'fractions must rise from above 0 to 1');
+      prev = b[0];
+      wcolour(b[1], idx(p, 1));
+    }
+    if (prev !== 1) fail(path, 'the last fraction must be 1');
+  }
+  /* [seed, mod]: a shape in a tile drawn only where the hash of the tile's x, modulo mod, is 0. */
+  function seedMod(v, path) {
+    if (!Array.isArray(v) || v.length !== 2) fail(path, 'must be [seed, mod]');
+    int(v[0], idx(path, 0), 0, 999); int(v[1], idx(path, 1), 2, 960);
+  }
+  function groupTable(v, path, o) {
+    for (const g of table(v, path, LOCAL_ID, 0, LIMITS.groups, 'groups')) {
+      obj(v[g], key(path, g), ['pivot'], ['pivot']);
+      pair(v[g].pivot, key(key(path, g), 'pivot'), -o, o);
+    }
+  }
+
+  const WSHAPE_KEYS = Object.assign({}, SHAPE_KEYS, { glow: ['p', 'r', 'colour', 'a'], dith: ['p', 'w', 'h', 'colour'],
+    tile: ['step', 'phase', 'from', 'to', 'pick', 'shapes'], use: ['stamp', 'p'] });
+  const WSHAPE_REQ = Object.assign({}, SHAPE_REQ, { glow: ['p', 'r', 'colour', 'a'], dith: ['p', 'w', 'h', 'colour'],
+    tile: ['step', 'phase', 'from', 'to', 'shapes'], use: ['stamp', 'p'] });
+  const WKINDS = KINDS.concat(['glow', 'dith', 'fx', 'use']);
+  /* A shape of a world section. ctx: where (a key of WWHERE), wide (a scene's own coordinates, on
+     the grid and out to the screen's edges), layer (in a layer of a scene), tile (inside a tile),
+     groups (a group may be named). Points are pairs. */
+  function wshape(s, path, ctx) {
+    if (!isObj(s)) fail(path, 'must be an object');
+    const kp = key(path, 'k'), top = ctx.layer && !ctx.tile;
+    if (s.k === 'tile' && ctx.tile) fail(kp, 'a tile cannot hold a tile');
+    if ((s.k === 'tile' || MARKS.includes(s.k)) && !top) fail(kp, quote(s.k) + ' is allowed only in a layer of a scene, outside tiles');
+    if (!WKINDS.includes(s.k) && !(top && (s.k === 'tile' || MARKS.includes(s.k)))) fail(kp, 'must be one of ' + WKINDS.concat(top ? ['tile'].concat(MARKS) : []).map(quote).join(', '));
+    if (MARKS.includes(s.k)) { mark(s, path, ctx); return; }
+    if (s.k === 'fx') { effect(s, path, ctx); return; }
+    const extra = [].concat(ctx.groups ? ['g'] : [], ctx.tile ? ['only'] : [], ctx.where === 'patron' ? ['at'] : []);
+    obj(s, path, ['k'].concat(WSHAPE_KEYS[s.k], extra), ['k'].concat(WSHAPE_REQ[s.k]));
+    const O = ctx.wide ? WORLD_LIMITS.offset : 512, Lg = ctx.wide ? WORLD_LIMITS.length : 512;
+    if (has(s, 'g')) id(s.g, key(path, 'g'), LOCAL_ID);
+    if (has(s, 'at') && (typeof s.at !== 'string' || !ANCHOR_NAME.test(s.at))) fail(key(path, 'at'), 'must be an anchor name');
+    if (has(s, 'only')) seedMod(s.only, key(path, 'only'));
+    for (const f of ['p', 'p0', 'p1']) if (has(s, f)) wpoint(s[f], key(path, f), O);
+    for (const f of ['w', 'h']) if (has(s, f)) wscalar(s[f], key(path, f), 0, Lg);
+    if (has(s, 'r')) wscalar(s.r, key(path, 'r'), 0, s.k === 'glow' ? 512 : 256);
+    for (const f of ['rx', 'ry']) if (has(s, f)) wscalar(s[f], key(path, f), 0, 256);
+    for (const f of ['hw0', 'hw1']) if (has(s, f)) wscalar(s[f], key(path, f), 0, 64);
+    if (has(s, 'clip')) {
+      const cp = key(path, 'clip');
+      if (!Array.isArray(s.clip) || s.clip.length !== 2) fail(cp, 'must be [top, bottom]');
+      for (let i = 0; i < 2; i++) if (s.clip[i] !== null) wscalar(s.clip[i], idx(cp, i), -O, O);
+    }
+    if (has(s, 'a')) wscalar(s.a, key(path, 'a'), 0, 1, true);
+    if (has(s, 'colour')) plainColour(s.colour, key(path, 'colour'));
+    if (has(s, 'fill')) wfill(s.fill, key(path, 'fill'));
+    if (s.k === 'poly') {
+      arr(s.pts, key(path, 'pts'), 3, LIMITS.polyPoints).forEach((q, i) => wpoint(q, idx(key(path, 'pts'), i), O));
+      oneOf(s.dir, key(path, 'dir'), ['rows', 'cols']);
+    }
+    if (s.k === 'pix') pixFields(s, path, wcolour);
+    if (s.k === 'use') id(s.stamp, key(path, 'stamp'), LOCAL_ID);
+    if (s.k === 'tile') {
+      int(s.step, key(path, 'step'), 4, 960);
+      int(s.phase, key(path, 'phase'), -960, 960);
+      wscalar(s.from, key(path, 'from'), -O, O); wscalar(s.to, key(path, 'to'), -O, O);
+      if (has(s, 'pick')) {
+        const pp = key(path, 'pick');
+        for (const n of table(s.pick, pp, ENTRY_NAME, 1, 8, 'picks')) {
+          const q = key(pp, n);
+          obj(s.pick[n], q, ['seed', 'of'], ['seed', 'of']);
+          int(s.pick[n].seed, key(q, 'seed'), 0, 999);
+          arr(s.pick[n].of, key(q, 'of'), 2, 16).forEach((c, i) => { if (typeof c !== 'string' || !HEX.test(c)) fail(idx(key(q, 'of'), i), 'must be a hex colour'); });
+        }
+      }
+      arr(s.shapes, key(path, 'shapes'), 1, WORLD_LIMITS.tileShapes).forEach((t, i) => wshape(t, idx(key(path, 'shapes'), i), Object.assign({}, ctx, { tile: true })));
+    }
+  }
+  /* A mark: where in a scene's order the engine draws something of its own. The things, the
+     sleeper, the target and the speech bubble change each frame, so they go in a moving or over
+     layer; the patron and the gear at rest go in any layer. */
+  function mark(s, path, ctx) {
+    if (s.k === 'rest') {
+      obj(s, path, ['k', 'slot', 'at'], ['k', 'slot', 'at']);
+      oneOf(s.slot, key(path, 'slot'), ['helmet', 'main', 'off']);
+      id(s.at, key(path, 'at'), LOCAL_ID);
+    } else obj(s, path, ['k'], ['k']);
+    if (['things', 'sleeper', 'target', 'bubble'].includes(s.k) && ctx.where === 'still') fail(key(path, 'k'), 'the ' + s.k + ' mark is drawn each frame, so it goes in a moving or over layer');
+  }
+  /* An effect, named from the engine's list. Its other fields wait for the effects library's
+     tables; until then each is a number, a colour, a term object or a list of up to 16 of them. */
+  function effect(s, path, ctx) {
+    if (!has(s, 'fx')) fail(key(path, 'fx'), 'is missing');
+    oneOf(s.fx, key(path, 'fx'), EFFECTS);
+    const ks = Object.keys(s).filter(k => k !== 'k' && k !== 'fx');
+    if (ks.length > 16) fail(path, 'an effect takes at most 16 fields, not ' + ks.length);
+    const O = ctx.wide ? WORLD_LIMITS.length : 512;
+    const value = (v, p) => {
+      if (typeof v === 'number') return;
+      if (typeof v === 'string') { plainColour(v, p); return; }
+      if (isObj(v)) { wscalar(v, p, -O, O); return; }
+      fail(p, 'must be a number, a colour, a term object or a list of them');
+    };
+    for (const k of ks) {
+      const p = key(path, k), v = s[k];
+      if (k === 'g') { if (!ctx.groups) fail(p, 'is not a field here'); id(v, p, LOCAL_ID); continue; }
+      if (k === 'only') { if (!ctx.tile) fail(p, 'is not a field here'); seedMod(v, p); continue; }
+      if (!FX_FIELD.test(k)) fail(p, 'is not a field name');
+      if (Array.isArray(v)) arr(v, p, 1, 16).forEach((x, i) => value(x, idx(p, i)));
+      else value(v, p);
+    }
+  }
+  function shapeList(v, path, min, max, ctx) {
+    arr(v, path, min, max).forEach((s, i) => wshape(s, idx(path, i), ctx));
+  }
+  /* A predicate a layer waits on: cond:<id>, or one of PREDICATES, either after a "!". */
+  function predicate(v, path) {
+    const name = typeof v === 'string' ? v.replace(/^!/, '') : '';
+    if (!(PREDICATES.includes(name) || (name.startsWith('cond:') && CONDITIONS.includes(name.slice(5))))) fail(path, 'must be a predicate: cond:<condition>, ' + PREDICATES.map(quote).join(', ') + ', each after an optional "!"');
+    return name;
+  }
+  function wanim(a, path) {
+    obj(a, path, ['period', 'loop', 'phase', 'tracks', 'ms', 'trigger'], ['period', 'loop', 'tracks']);
+    if (has(a, 'ms')) bool(a.ms, key(path, 'ms'));
+    const ms = a.ms === true;
+    if (ms) int(a.period, key(path, 'period'), 200, 600000); else num(a.period, key(path, 'period'), 0.2, 600);
+    bool(a.loop, key(path, 'loop'));
+    if (has(a, 'phase')) num(a.phase, key(path, 'phase'), 0, 1);
+    if (has(a, 'trigger')) {
+      oneOf(a.trigger, key(path, 'trigger'), TRIGGERS);
+      if (a.loop) fail(key(path, 'loop'), 'must be false: a triggered clock plays once');
+    }
+    const tp = key(path, 'tracks');
+    arr(a.tracks, tp, 1, LIMITS.tracks).forEach((t, i) => {
+      const p = idx(tp, i);
+      if (isObj(t) && has(t, 'wave')) {
+        obj(t, p, ['g', 'ch', 'wave', 'round'], ['g', 'ch', 'wave']);
+        id(t.g, key(p, 'g'), LOCAL_ID);
+        oneOf(t.ch, key(p, 'ch'), ['dx', 'dy']);
+        wave(t.wave, key(p, 'wave'));
+        if (has(t, 'round')) bool(t.round, key(p, 'round'));
+      } else track(t, p, ms ? (v, q) => int(v, q, 0, a.period) : null);
+    });
+  }
+  function layer(v, path, kind) {
+    const still = kind === 'still';
+    obj(v, path, still ? ['when', 'shapes'] : ['when', 'groups', 'anim', 'shapes'], ['shapes']);
+    if (has(v, 'when')) {
+      const wp = key(path, 'when'), seen = [];
+      arr(v.when, wp, 1, 8).forEach((w, i) => { const n = predicate(w, idx(wp, i)); if (seen.includes(n)) fail(idx(wp, i), 'names a predicate already named'); seen.push(n); });
+    }
+    if (has(v, 'groups')) groupTable(v.groups, key(path, 'groups'), WORLD_LIMITS.offset);
+    if (has(v, 'anim')) wanim(v.anim, key(path, 'anim'));
+    shapeList(v.shapes, key(path, 'shapes'), 1, still ? WORLD_LIMITS.stillShapes : WORLD_LIMITS.frameShapes, { where: kind, wide: true, layer: true, groups: !still });
+  }
+  function gridPair(v, path) { pair(v, path, -WORLD_LIMITS.offset, WORLD_LIMITS.offset); }
+  function ms(v, path) { int(v, path, 1, 600000); }
+  function thingPlace(v, path) {
+    obj(v, path, ['cls', 'kind', 'x', 'y', 'w', 'h', 'front', 'flip', 'pole'], ['cls', 'kind', 'x', 'y', 'w', 'h']);
+    oneOf(v.cls, key(path, 'cls'), ['pie', 'high', 'ground']);
+    oneOf(v.kind, key(path, 'kind'), FITS);
+    int(v.x, key(path, 'x'), 0, 960); int(v.y, key(path, 'y'), 0, 600);
+    if (v.w !== 88) fail(key(path, 'w'), 'must be 88: every place is 88 by 112');
+    if (v.h !== 112) fail(key(path, 'h'), 'must be 112: every place is 88 by 112');
+    for (const f of ['front', 'flip']) if (has(v, f)) bool(v[f], key(path, f));
+    if (has(v, 'pole')) int(v.pole, key(path, 'pole'), 0, 600);
+  }
+  /* A rest: a place a rest view fits ({ kind, x, y, w, h }), or a frame the weapon lies on
+     ({ x, y, a }, a the angle: "upright", "flat" or a number of radians). Either may count its x
+     from the watcher's spot. */
+  function restPlace(v, path) {
+    if (isObj(v) && has(v, 'kind')) {
+      obj(v, path, ['kind', 'x', 'y', 'w', 'h', 'from'], ['kind', 'x', 'y', 'w', 'h']);
+      oneOf(v.kind, key(path, 'kind'), FITS);
+      int(v.w, key(path, 'w'), 1, LIMITS.box); int(v.h, key(path, 'h'), 1, LIMITS.box);
+    } else {
+      obj(v, path, ['x', 'y', 'a', 'from'], ['x', 'y', 'a']);
+      if (typeof v.a !== 'number' && v.a !== 'upright' && v.a !== 'flat') fail(key(path, 'a'), 'must be "upright", "flat" or a number of radians');
+      if (typeof v.a === 'number') num(v.a, key(path, 'a'), -3.142, 3.142);
+    }
+    int(v.x, key(path, 'x'), -960, 960); int(v.y, key(path, 'y'), 0, 600);
+    if (has(v, 'from') && v.from !== 'spot') fail(key(path, 'from'), 'must be "spot"');
+  }
+  const SCENE_KEYS = ['name', 'spot', 'rounds', 'quiet', 'can', 'hosts', 'helmet', 'weapon', 'still', 'moving', 'over', 'things', 'rests', 'decor',
+    'bed', 'screen', 'seat', 'anvil', 'target', 'foe', 'pole', 'sound', 'companion'];
+  const SCENE_REQ = ['name', 'spot', 'rounds', 'quiet', 'can', 'hosts', 'helmet', 'weapon', 'still', 'moving', 'over', 'things'];
+  function scene(v, path) {
+    obj(v, path, SCENE_KEYS, SCENE_REQ);
+    const f = k => key(path, k);
+    text(v.name, f('name'), 1, 32);
+    int(v.spot, f('spot'), 30, 162);
+    arr(v.rounds, f('rounds'), 1, 6).forEach((r, i) => {
+      const p = idx(f('rounds'), i);
+      obj(r, p, ['x', 'act', 'dur'], ['x', 'act', 'dur']);
+      int(r.x, key(p, 'x'), 30, 162); oneOf(r.act, key(p, 'act'), ROUND_ACTS); int(r.dur, key(p, 'dur'), 2, 120);
+    });
+    bool(v.quiet, f('quiet'));
+    setOf(v.can, f('can'), CONDITIONS);
+    setOf(v.hosts, f('hosts'), HOSTS);
+    oneOf(v.helmet, f('helmet'), ['on', 'off']);
+    oneOf(v.weapon, f('weapon'), ['held', 'away']);
+    for (const k of LAYERED) arr(v[k], f(k), 0, WORLD_LIMITS.layers).forEach((l, i) => layer(l, idx(f(k), i), k));
+    obj(v.things, f('things'), Object.keys(PLACE_CLASS), Object.keys(PLACE_CLASS));
+    for (const k of Object.keys(PLACE_CLASS)) thingPlace(v.things[k], key(f('things'), k));
+    if (has(v, 'rests')) for (const r of table(v.rests, f('rests'), LOCAL_ID, 0, 8, 'rests')) restPlace(v.rests[r], key(f('rests'), r));
+    if (has(v, 'decor')) for (const d of table(v.decor, f('decor'), LOCAL_ID, 0, 16, 'places')) {
+      const p = key(f('decor'), d), x = v.decor[d];
+      obj(x, p, ['kind', 'x', 'y', 'w', 'h'], ['kind', 'x', 'y', 'w', 'h']);
+      oneOf(x.kind, key(p, 'kind'), FITS);
+      int(x.x, key(p, 'x'), 0, 960); int(x.y, key(p, 'y'), 0, 600); int(x.w, key(p, 'w'), 1, LIMITS.box); int(x.h, key(p, 'h'), 1, LIMITS.box);
+    }
+    if (has(v, 'bed')) {
+      obj(v.bed, f('bed'), ['head', 'blanket', 'zeds'], ['head', 'blanket', 'zeds']);
+      gridPair(v.bed.head, key(f('bed'), 'head')); id(v.bed.blanket, key(f('bed'), 'blanket'), LOCAL_ID); gridPair(v.bed.zeds, key(f('bed'), 'zeds'));
+    }
+    if (has(v, 'screen')) {
+      const p = f('screen');
+      obj(v.screen, p, ['group', 'glow'], ['group', 'glow']);
+      id(v.screen.group, key(p, 'group'), LOCAL_ID);
+      if (!Array.isArray(v.screen.glow) || v.screen.glow.length !== 3) fail(key(p, 'glow'), 'must be [x, y, r]');
+      gridPair(v.screen.glow.slice(0, 2), key(p, 'glow')); eighth(v.screen.glow[2], idx(key(p, 'glow'), 2), 1, 512);
+    }
+    if (has(v, 'seat')) {
+      const p = f('seat');
+      obj(v.seat, p, ['x', 'y', 'bubble', 'turn', 'mouth'], ['x', 'y', 'bubble', 'turn', 'mouth']);
+      int(v.seat.x, key(p, 'x'), 0, 960); int(v.seat.y, key(p, 'y'), 0, 600);
+      gridPair(v.seat.bubble, key(p, 'bubble')); ms(v.seat.turn, key(p, 'turn')); ms(v.seat.mouth, key(p, 'mouth'));
+    }
+    if (has(v, 'anvil')) {
+      obj(v.anvil, f('anvil'), ['rest', 'spark'], ['rest', 'spark']);
+      id(v.anvil.rest, key(f('anvil'), 'rest'), LOCAL_ID); gridPair(v.anvil.spark, key(f('anvil'), 'spark'));
+    }
+    if (has(v, 'target')) {
+      const p = f('target');
+      obj(v.target, p, ['group', 'hitAt', 'every'], ['group', 'hitAt', 'every']);
+      id(v.target.group, key(p, 'group'), LOCAL_ID); int(v.target.hitAt, key(p, 'hitAt'), 0, 600000); ms(v.target.every, key(p, 'every'));
+    }
+    if (has(v, 'foe')) {
+      const p = f('foe'), z = v.foe;
+      obj(z, p, ['side', 'spans', 'wall'], ['side', 'spans']);
+      if (z.side !== 1 && z.side !== -1) fail(key(p, 'side'), 'must be 1 or -1');
+      arr(z.spans, key(p, 'spans'), 1, 4).forEach((s, i) => {
+        const q = idx(key(p, 'spans'), i);
+        if (!Array.isArray(s) || s.length !== 2) fail(q, 'must be [from, to]');
+        int(s[0], idx(q, 0), 0, 960); int(s[1], idx(q, 1), 0, 960);
+      });
+      if (has(z, 'wall')) {
+        const w = key(p, 'wall');
+        obj(z.wall, w, ['period', 'offset', 'high', 'low'], ['period', 'offset', 'high', 'low']);
+        int(z.wall.period, key(w, 'period'), 2, 960); int(z.wall.offset, key(w, 'offset'), -960, 960);
+        if (!Array.isArray(z.wall.high) || z.wall.high.length !== 2) fail(key(w, 'high'), 'must be [width, y]');
+        int(z.wall.high[0], idx(key(w, 'high'), 0), 1, 960); int(z.wall.high[1], idx(key(w, 'high'), 1), 0, 600);
+        int(z.wall.low, key(w, 'low'), 0, 600);
+      }
+    }
+    if (has(v, 'pole')) shapeList(v.pole, f('pole'), 1, 16, { where: 'pole' });
+    for (const k of ['sound', 'companion']) if (has(v, k) && !isObj(v[k])) fail(f(k), 'must be an object');
+  }
+  /* The entries of one of the user's sets, as a swatch gives them: literal colours, band lists
+     where the set has them. */
+  function setEntries(v, path, set) {
+    const want = USER_SETS[set];
+    obj(v, path, Object.keys(want), Object.keys(want));
+    for (const e of Object.keys(want)) {
+      if (want[e] === 'bands') { if (!Array.isArray(v[e])) fail(key(path, e), 'must be a band list'); bands(v[e], key(path, e), true); }
+      else colour(v[e], key(path, e), true);
+    }
+  }
+  const CAST_KEYS = { patron: ['role', 'name', 'box', 'anchors', 'sets', 'own', 'palettes', 'still', 'states'],
+    foe: ['role', 'name', 'sprite', 'h', 'w', 'mid', 'crown', 'exit', 'parts', 'poses'], critter: ['role', 'name', 'groups', 'alpha', 'frames', 'dead'] };
+  const CAST_REQ = { patron: ['role', 'name', 'box', 'anchors', 'still', 'states'],
+    foe: ['role', 'name', 'sprite', 'h', 'w', 'mid', 'crown', 'exit', 'parts', 'poses'], critter: ['role', 'name', 'frames', 'dead'] };
+  function castMember(v, path) {
+    if (!isObj(v)) fail(path, 'must be an object');
+    if (!has(v, 'role')) fail(key(path, 'role'), 'is missing');
+    oneOf(v.role, key(path, 'role'), ROLES);
+    obj(v, path, CAST_KEYS[v.role], CAST_REQ[v.role]);
+    const f = k => key(path, k), where = { where: v.role };
+    text(v.name, f('name'), 1, 48);
+    if (v.role === 'patron') {
+      if (!Array.isArray(v.box) || v.box.length !== 2) fail(f('box'), 'must be [w, h]');
+      int(v.box[0], idx(f('box'), 0), 1, 200); int(v.box[1], idx(f('box'), 1), 1, 360);
+      obj(v.anchors, f('anchors'), PATRON_ANCHORS, PATRON_ANCHORS);
+      for (const a of PATRON_ANCHORS) pair(v.anchors[a], key(f('anchors'), a), -512, 512);
+      if (has(v, 'sets')) for (const s of table(v.sets, f('sets'), SET_NAME, 1, 4, 'sets')) {
+        oneOf(v.sets[s], key(f('sets'), s), Object.keys(USER_SETS));
+        if (s === 'base' || WORLD_SETS.includes(s)) fail(key(f('sets'), s), 'is a reserved set name');
+        if (has(USER_SETS, s) && v.sets[s] !== s) fail(key(f('sets'), s), 'a set named for one of the user\'s sets must bind that set');
+      }
+      if (has(v, 'own')) for (const s of table(v.own, f('own'), SET_NAME, 1, 4, 'sets')) {
+        if (!(v.sets && has(v.sets, s))) fail(key(f('own'), s), 'is not a set this figure binds in sets');
+        setEntries(v.own[s], key(f('own'), s), v.sets[s]);
+      }
+      if (has(v, 'palettes')) for (const s of table(v.palettes, f('palettes'), SET_NAME, 1, 8, 'sets')) {
+        const sp = key(f('palettes'), s);
+        if (s === 'base' || has(USER_SETS, s) || WORLD_SETS.includes(s) || (v.sets && has(v.sets, s))) fail(sp, 'is a reserved set name, or one this figure binds');
+        for (const e of table(v.palettes[s], sp, ENTRY_NAME, 1, LIMITS.setEntries, 'entries')) wfill(v.palettes[s][e], key(sp, e));
+      }
+      arr(v.still, f('still'), 1, LIMITS.parts).forEach((pt, i) => {
+        const p = idx(f('still'), i);
+        obj(pt, p, ['at', 'shapes'], ['at', 'shapes']);
+        if (typeof pt.at !== 'string' || !ANCHOR_NAME.test(pt.at)) fail(key(p, 'at'), 'must be an anchor name');
+        shapeList(pt.shapes, key(p, 'shapes'), 1, LIMITS.partShapes, where);
+      });
+      obj(v.states, f('states'), MOUTHS, MOUTHS);
+      for (const m of MOUTHS) shapeList(v.states[m], key(f('states'), m), 1, LIMITS.partShapes, where);
+    } else if (v.role === 'foe') {
+      const sp = f('sprite');
+      obj(v.sprite, sp, ['size', 'feet'], ['size', 'feet']);
+      box(v.sprite.size, key(sp, 'size'), WORLD_LIMITS.sprite);
+      if (!Array.isArray(v.sprite.feet) || v.sprite.feet.length !== 2) fail(key(sp, 'feet'), 'must be a pair [x, y]');
+      int(v.sprite.feet[0], idx(key(sp, 'feet'), 0), 0, WORLD_LIMITS.sprite); int(v.sprite.feet[1], idx(key(sp, 'feet'), 1), 0, WORLD_LIMITS.sprite);
+      int(v.h, f('h'), 1, WORLD_LIMITS.sprite); int(v.w, f('w'), 1, WORLD_LIMITS.sprite); int(v.mid, f('mid'), 0, WORLD_LIMITS.sprite);
+      arr(v.crown, f('crown'), 1, 32).forEach((q, i) => pair(q, idx(f('crown'), i), -WORLD_LIMITS.sprite, WORLD_LIMITS.sprite));
+      oneOf(v.exit, f('exit'), EXITS);
+      for (const n of table(v.parts, f('parts'), LOCAL_ID, 0, 16, 'parts')) shapeList(v.parts[n], key(f('parts'), n), 1, LIMITS.partShapes, where);
+      obj(v.poses, f('poses'), FOE_POSES, FOE_POSES);
+      for (const n of FOE_POSES) {
+        const p = key(f('poses'), n), pose = v.poses[n];
+        obj(pose, p, ['parts', 'shapes'], ['parts', 'shapes']);
+        arr(pose.parts, key(p, 'parts'), 0, 16).forEach((x, i) => { id(x, idx(key(p, 'parts'), i), LOCAL_ID); if (pose.parts.indexOf(x) !== i) fail(idx(key(p, 'parts'), i), 'appears twice'); });
+        shapeList(pose.shapes, key(p, 'shapes'), 0, LIMITS.partShapes, where);
+      }
+    } else {
+      if (has(v, 'groups')) groupTable(v.groups, f('groups'), 512);
+      if (has(v, 'alpha')) for (const g of table(v.alpha, f('alpha'), LOCAL_ID, 1, LIMITS.groups, 'groups')) num(v.alpha[g], key(f('alpha'), g), 0, 1);
+      obj(v.frames, f('frames'), FLAPS, FLAPS);
+      for (const n of FLAPS) shapeList(v.frames[n], key(f('frames'), n), 1, 64, { where: 'critter', groups: true });
+      shapeList(v.dead, f('dead'), 1, 64, where);
+    }
+  }
+  function propState(v, path, gone) {
+    obj(v, path, ['still', 'moving', 'lamp'], ['still', 'lamp']);
+    shapeList(v.still, key(path, 'still'), 1, LIMITS.partShapes, { where: 'prop' });
+    if (has(v, 'moving')) shapeList(v.moving, key(path, 'moving'), 1, LIMITS.partShapes, { where: 'prop' });
+    const lp = key(path, 'lamp');
+    if (Array.isArray(v.lamp)) { pair(v.lamp, lp, -512, 512); return; }
+    // a gone lamp's light is the engine's red, so it takes no colour of its own
+    obj(v.lamp, lp, gone ? ['at', 'box', 'lit', 'dark'] : ['at', 'box', 'lit', 'dark', 'light'], ['at', 'box', 'lit', 'dark']);
+    pair(v.lamp.at, key(lp, 'at'), -512, 512);
+    box(v.lamp.box, key(lp, 'box'), 64);
+    id(v.lamp.lit, key(lp, 'lit'), LOCAL_ID); id(v.lamp.dark, key(lp, 'dark'), LOCAL_ID);
+    if (has(v.lamp, 'light') && (typeof v.lamp.light !== 'string' || !HEX.test(v.lamp.light))) fail(key(lp, 'light'), 'must be a hex colour');
+  }
+  function propSet(v, path) {
+    obj(v, path, ['name', 'kinds'], ['name', 'kinds']);
+    text(v.name, key(path, 'name'), 1, 48);
+    const kp = key(path, 'kinds');
+    obj(v.kinds, kp, PROP_KINDS, []);
+    if (!Object.keys(v.kinds).length) fail(kp, 'must give at least one kind');
+    for (const k of Object.keys(v.kinds)) {
+      const p = key(kp, k), x = v.kinds[k];
+      obj(x, p, ['name', 'mark', 'up', 'gone'], ['name', 'mark', 'up', 'gone']);
+      text(x.name, key(p, 'name'), 1, 48);
+      int(x.mark, key(p, 'mark'), 1, WORLD_LIMITS.mark);
+      propState(x.up, key(p, 'up'), false); propState(x.gone, key(p, 'gone'), true);
+    }
+  }
+  /* A template: 1 to 32 characters of printable ASCII and the middle dot, every brace part of a
+     placeholder such as {n}. */
+  function template(v, path) {
+    text(v, path, 1, 32);
+    if (!TEMPLATE.test(v)) fail(path, 'must be printable ASCII and "·" only');
+    if (/[{}]/.test(v.replace(PLACEHOLDER, ''))) fail(path, 'must close every placeholder it opens, as in {n}');
+  }
+  function templates(v, path, parts) {
+    obj(v, path, Object.keys(parts), []);
+    for (const k of Object.keys(v)) arr(v[k], key(path, k), 1, 8).forEach((t, i) => template(t, idx(key(path, k), i)));
+  }
+  function wordsSet(v, path) {
+    obj(v, path, ['name', 'watcher', 'labels', 'quiet', 'captions'], ['name', 'watcher']);
+    text(v.name, key(path, 'name'), 1, 48);
+    text(v.watcher, key(path, 'watcher'), 1, 32);
+    if (has(v, 'labels')) { obj(v.labels, key(path, 'labels'), LABELS, []); for (const k of Object.keys(v.labels)) text(v.labels[k], key(key(path, 'labels'), k), 1, 32); }
+    if (has(v, 'quiet')) templates(v.quiet, key(path, 'quiet'), QUIET_PARTS);
+    if (has(v, 'captions')) templates(v.captions, key(path, 'captions'), CAPTIONS);
+  }
+  function overlay(v, path) {
+    const all = ['name', 'font', 'levels', 'outline', 'scrim', 'caption'];
+    obj(v, path, all, all);
+    text(v.name, key(path, 'name'), 1, 48);
+    oneOf(v.font, key(path, 'font'), FONTS);
+    const lp = key(path, 'levels');
+    obj(v.levels, lp, Object.keys(LEVELS), Object.keys(LEVELS));
+    for (const l of Object.keys(LEVELS)) {
+      const c = v.levels[l];
+      if (!Array.isArray(c) || c.length !== 2 || !c.every(x => typeof x === 'string' && HEX.test(x))) fail(key(lp, l), 'must be [colour, second colour], two hex colours');
+    }
+    for (const k of ['outline', 'scrim']) if (typeof v[k] !== 'string' || !HEX.test(v[k])) fail(key(path, k), 'must be a hex colour');
+    colour(v.caption, key(path, 'caption'), true);
+  }
+  /* A name in a preset: a local id, or "<pack id>/<local id>". */
+  function wname(v, path) {
+    const s = split(v);
+    if (!(typeof v === 'string' && (LOCAL_ID.test(v) || (s && PACK_ID.test(s[0]) && LOCAL_ID.test(s[1]))))) fail(path, 'must be a local id or "<pack id>/<id>"');
+  }
+  function preset(v, path) {
+    obj(v, path, ['name', 'body', 'outfit', 'scenes', 'cast', 'props', 'overlay', 'words', 'picture', 'sound', 'companion'], []);
+    const f = k => key(path, k);
+    if (has(v, 'name')) text(v.name, f('name'), 1, 48);
+    for (const k of ['body', 'props', 'overlay', 'words', 'picture']) if (has(v, k)) wname(v[k], f(k));
+    if (has(v, 'outfit')) {
+      const op = f('outfit');
+      obj(v.outfit, op, ['items', 'swatches'], []);
+      if (has(v.outfit, 'items')) { obj(v.outfit.items, key(op, 'items'), DEFAULT_SLOTS.concat(['back', 'off']), []); for (const s of Object.keys(v.outfit.items)) wname(v.outfit.items[s], key(key(op, 'items'), s)); }
+      if (has(v.outfit, 'swatches')) { obj(v.outfit.swatches, key(op, 'swatches'), Object.keys(USER_SETS), []); for (const s of Object.keys(v.outfit.swatches)) wname(v.outfit.swatches[s], key(key(op, 'swatches'), s)); }
+    }
+    if (has(v, 'scenes')) {
+      const sp = f('scenes');
+      obj(v.scenes, sp, ['quiet', 'for'], []);
+      if (has(v.scenes, 'quiet')) arr(v.scenes.quiet, key(sp, 'quiet'), 1, WORLD_LIMITS.scenes).forEach((n, i) => { wname(n, idx(key(sp, 'quiet'), i)); if (v.scenes.quiet.indexOf(n) !== i) fail(idx(key(sp, 'quiet'), i), 'appears twice'); });
+      if (has(v.scenes, 'for')) { obj(v.scenes.for, key(sp, 'for'), CONDITIONS, []); for (const c of Object.keys(v.scenes.for)) wname(v.scenes.for[c], key(key(sp, 'for'), c)); }
+    }
+    if (has(v, 'cast')) { obj(v.cast, f('cast'), ROLES, []); for (const r of Object.keys(v.cast)) wname(v.cast[r], key(f('cast'), r)); }
+    for (const k of ['sound', 'companion']) if (has(v, k) && !isObj(v[k])) fail(f(k), 'must be an object');
+  }
+  function worldFields(pack) {
+    const P = 'pack', sec = (k, fn, what) => {
+      if (!has(pack, k)) return;
+      for (const n of table(pack[k], key(P, k), LOCAL_ID, 0, Infinity, what)) fn(pack[k][n], key(key(P, k), n));
+    };
+    // how many each section may hold is checked at counts, as for items and decorations
+    sec('stamps', (v, p) => shapeList(v, p, 1, WORLD_LIMITS.stampShapes, { where: 'stamp' }), 'stamps');
+    sec('scenes', scene, 'scenes');
+    sec('cast', castMember, 'members');
+    sec('props', propSet, 'prop sets');
+    sec('words', wordsSet, 'word sets');
+    sec('overlays', overlay, 'overlays');
+    sec('worlds', preset, 'worlds');
+    if (has(pack, 'sounds') && !isObj(pack.sounds)) fail(key(P, 'sounds'), 'must be an object');
+  }
+
+  /* ---- Walking the world sections ---- */
+
+  /* Calls fn(shape, path, ctx) for every shape of the world sections, a tile's own shapes after
+     it. ctx: { where, scene, layer, groups, tile, member, kind }. */
+  function eachWorldShape(pack, fn) {
+    const P = 'pack';
+    const list = (shapes, path, ctx) => shapes.forEach((s, i) => {
+      const p = idx(path, i);
+      fn(s, p, ctx);
+      if (s.k === 'tile') list(s.shapes, key(p, 'shapes'), Object.assign({}, ctx, { tile: s }));
+    });
+    for (const n of Object.keys(pack.stamps || {})) list(pack.stamps[n], key(key(P, 'stamps'), n), { where: 'stamp' });
+    for (const n of Object.keys(pack.scenes || {})) {
+      const v = pack.scenes[n], sp = key(key(P, 'scenes'), n);
+      for (const k of LAYERED) v[k].forEach((l, i) => list(l.shapes, key(idx(key(sp, k), i), 'shapes'), { where: k, scene: v, layer: l, groups: l.groups || {} }));
+      if (v.pole) list(v.pole, key(sp, 'pole'), { where: 'pole', scene: v });
+    }
+    for (const n of Object.keys(pack.cast || {})) {
+      const v = pack.cast[n], cp = key(key(P, 'cast'), n), c = { where: v.role, member: v };
+      if (v.role === 'patron') {
+        v.still.forEach((pt, i) => list(pt.shapes, key(idx(key(cp, 'still'), i), 'shapes'), c));
+        for (const m of MOUTHS) list(v.states[m], key(key(cp, 'states'), m), c);
+      } else if (v.role === 'foe') {
+        for (const x of Object.keys(v.parts)) list(v.parts[x], key(key(cp, 'parts'), x), c);
+        for (const x of FOE_POSES) list(v.poses[x].shapes, key(key(key(cp, 'poses'), x), 'shapes'), c);
+      } else {
+        for (const x of FLAPS) list(v.frames[x], key(key(cp, 'frames'), x), Object.assign({ groups: v.groups || {} }, c));
+        list(v.dead, key(cp, 'dead'), c);
+      }
+    }
+    for (const n of Object.keys(pack.props || {})) for (const k of Object.keys(pack.props[n].kinds)) for (const st of ['up', 'gone']) {
+      const v = pack.props[n].kinds[k][st], p = key(key(key(key(key(P, 'props'), n), 'kinds'), k), st);
+      list(v.still, key(p, 'still'), { where: 'prop', kind: k });
+      if (v.moving) list(v.moving, key(p, 'moving'), { where: 'prop', kind: k });
+    }
+  }
+  /* Calls fn(scalar, path, alpha) for every scalar of a world shape. */
+  function eachWScalar(s, fn, path) {
+    if (s.k === 'fx') {
+      // an effect's term objects, wherever its fields hold them
+      for (const k of Object.keys(s)) {
+        if (['k', 'fx', 'g', 'only'].includes(k)) continue;
+        if (Array.isArray(s[k])) s[k].forEach((v, i) => { if (isObj(v)) fn(v, idx(key(path, k), i)); }); else if (isObj(s[k])) fn(s[k], key(path, k));
+      }
+      return;
+    }
+    for (const f of ['p', 'p0', 'p1']) if (has(s, f)) { fn(s[f][0], idx(key(path, f), 0)); fn(s[f][1], idx(key(path, f), 1)); }
+    if (s.k === 'poly') s.pts.forEach((q, i) => { fn(q[0], idx(idx(key(path, 'pts'), i), 0)); fn(q[1], idx(idx(key(path, 'pts'), i), 1)); });
+    for (const f of ['w', 'h', 'r', 'rx', 'ry', 'hw0', 'hw1', 'from', 'to']) if (has(s, f)) fn(s[f], key(path, f));
+    if (has(s, 'clip')) s.clip.forEach((c, i) => { if (c !== null) fn(c, idx(key(path, 'clip'), i)); });
+    if (has(s, 'a')) fn(s.a, key(path, 'a'));
+  }
+  /* Calls fn(colour, path, single) for every colour of a world shape. */
+  function eachWColour(s, fn, path) {
+    if (has(s, 'fill')) eachColour(s.fill, fn, key(path, 'fill'));
+    if (has(s, 'colour')) fn(s.colour, key(path, 'colour'), true);
+    if (s.k === 'pix') for (const k of Object.keys(s.key)) fn(s.key[k], key(key(path, 'key'), k), true);
+    if (s.k === 'fx') for (const k of Object.keys(s)) {
+      if (['k', 'fx', 'g'].includes(k)) continue;
+      if (typeof s[k] === 'string') fn(s[k], key(path, k), true);
+      else if (Array.isArray(s[k])) s[k].forEach((v, i) => { if (typeof v === 'string') fn(v, idx(key(path, k), i), true); });
+    }
+  }
+  /* The groups declared in a scene's layers, by name. */
+  function sceneGroups(sc) {
+    const out = {};
+    for (const k of LAYERED) for (const l of sc[k]) for (const g of Object.keys(l.groups || {})) out[g] = l.groups[g];
+    return out;
+  }
+  const frameRest = r => !has(r, 'kind');
+
+  /* ---- Step 6 for 1.1: references ---- */
+
+  /* The named values a world scalar may lean on: the screen's edges in a layer of a scene, the
+     tile's x and its hash inside a tile, and a wave in a moving or over layer. Nothing elsewhere. */
+  function wnames(v, path, ctx) {
+    if (!isObj(v)) return;
+    for (const k of Object.keys(v)) {
+      if (k === 'c') continue;
+      const p = key(path, k), layer = LAYERED.includes(ctx.where);
+      let ok;
+      if (has(SCENE_RANGE, k)) ok = layer;
+      else if (k === 'x' || k === 'h') { if (layer && !ctx.tile) fail(p, (k === 'x' ? 'is the tile\'s x' : 'hashes the tile\'s x') + ', and cannot be used outside a tile'); ok = !!ctx.tile; }
+      else if (k === 'wave') ok = ctx.where === 'moving' || ctx.where === 'over';
+      else if (DIFFS.includes(k) || VALUES.includes(k) || k === 'step') ok = false;
+      else fail(p, 'is not a named value');
+      if (!ok) fail(p, 'cannot be used in ' + WWHERE[ctx.where]);
+    }
+  }
+  /* The kind of an entry a reference inside a cast member names: through its sets, its own
+     palettes, or as anywhere else. */
+  function memberKind(pack, m, set, entry) {
+    if (m.sets && has(m.sets, set)) { const u = USER_SETS[m.sets[set]]; return has(u, entry) ? u[entry] : null; }
+    if (m.palettes && has(m.palettes, set)) {
+      if (!has(m.palettes[set], entry)) return null;
+      const v = m.palettes[set][entry];
+      if (Array.isArray(v)) return 'bands';
+      if (typeof v === 'string' && v[0] === '@') { const r = REF.exec(v); return r ? memberKind(pack, m, r[1], r[2]) : 'colour'; }
+      return 'colour';
+    }
+    return refKind(pack, set, entry);
+  }
+  function wrefColour(pack, c, path, single, ctx) {
+    if (isObj(c) && has(c, 'mix')) { c.mix.forEach((x, i) => wrefColour(pack, x, idx(key(path, 'mix'), i), true, ctx)); return; }
+    if (typeof c !== 'string' || c[0] !== '@') return;
+    if (LAMP_REF.test(c)) { if (ctx.where !== 'stamp') fail(path, quote(c) + ' is the engine\'s down lamp, and may be named only in a stamp'); return; }
+    const m = REF.exec(c), set = m[1];
+    if (set === 'pick') {
+      if (!(ctx.tile && ctx.tile.pick && has(ctx.tile.pick, m[2]))) fail(path, 'names a pick, ' + quote(m[2]) + ', that no tile around it declares');
+      return;
+    }
+    const mem = ctx.member;
+    if (mem) {
+      if (has(USER_SETS, set) && !(mem.sets && has(mem.sets, set))) fail(path, 'the cast names the user\'s colour sets only through its sets');
+      if ((mem.sets && has(mem.sets, set)) || (mem.palettes && has(mem.palettes, set))) {
+        const kind = memberKind(pack, mem, set, m[2]);
+        if (kind === null) fail(path, 'names an entry, ' + quote(m[2]) + ', that set ' + quote(set) + ' does not have');
+        if (single && kind === 'bands') fail(path, 'needs a single colour here, and ' + quote(c) + ' is a band list');
+        return;
+      }
+    }
+    refColour(pack, c, path, single, false);
+  }
+  function worldShapeRefs(pack, s, path, ctx) {
+    eachWScalar(s, (v, p) => wnames(v, p, ctx), path);
+    eachWColour(s, (c, p, single) => wrefColour(pack, c, p, single, ctx), path);
+    if (has(s, 'g') && !(ctx.groups && has(ctx.groups, s.g))) fail(key(path, 'g'), 'names a group, ' + quote(s.g) + ', that the ' + (ctx.where === 'critter' ? 'critter' : 'layer') + ' does not declare');
+    if (s.k !== 'rest' && has(s, 'at') && !PATRON_ANCHORS.includes(s.at)) fail(key(path, 'at'), 'names an anchor, ' + quote(s.at) + ', that the patron does not have');
+    if (s.k === 'pix') s.rows.forEach((r, j) => { for (const ch of r) if (ch !== '.' && !has(s.key, ch)) fail(idx(key(path, 'rows'), j), 'uses ' + quote(ch) + ', which the key does not map'); });
+    if (s.k === 'use' && !(pack.stamps && has(pack.stamps, s.stamp))) fail(key(path, 'stamp'), 'names a stamp, ' + quote(s.stamp) + ', that the pack does not have');
+    const sc = ctx.scene;
+    if (s.k === 'rest') {
+      const r = sc.rests && has(sc.rests, s.at) ? sc.rests[s.at] : null;
+      if (!r) fail(key(path, 'at'), 'names a rest, ' + quote(s.at) + ', that the scene does not have');
+      if (s.slot === 'main' && !frameRest(r)) fail(key(path, 'at'), 'the weapon lies on a frame, { x, y, a }, and ' + quote(s.at) + ' is a place');
+      if (s.slot !== 'main' && frameRest(r)) fail(key(path, 'at'), 'a rest view goes in a place, { kind, x, y, w, h }, and ' + quote(s.at) + ' is a frame');
+    }
+    const part = { patron: 'seat', bubble: 'seat', sleeper: 'bed', target: 'target' }[s.k];
+    if (part && !has(sc, part)) fail(key(path, 'k'), 'the ' + s.k + ' mark needs the scene\'s ' + part);
+  }
+  function worldReferences(pack) {
+    const P = 'pack';
+    eachWorldShape(pack, (s, p, ctx) => worldShapeRefs(pack, s, p, ctx));
+    for (const n of Object.keys(pack.scenes || {})) {
+      const v = pack.scenes[n], sp = key(key(P, 'scenes'), n), groups = sceneGroups(v);
+      const group = (g, p) => { if (!has(groups, g)) fail(p, 'names a group, ' + quote(g) + ', that no layer of the scene declares'); };
+      if (v.bed) group(v.bed.blanket, key(key(sp, 'bed'), 'blanket'));
+      if (v.screen) group(v.screen.group, key(key(sp, 'screen'), 'group'));
+      if (v.target) group(v.target.group, key(key(sp, 'target'), 'group'));
+      if (v.anvil && !(v.rests && has(v.rests, v.anvil.rest))) fail(key(key(sp, 'anvil'), 'rest'), 'names a rest, ' + quote(v.anvil.rest) + ', that the scene does not have');
+      const needs = { tv: 'screen', inBed: 'bed', strike: 'anvil' };
+      for (const k of LAYERED) v[k].forEach((l, i) => {
+        const lp = idx(key(sp, k), i);
+        if (l.when) l.when.forEach((w, j) => { const nm = w.replace(/^!/, ''); if (has(needs, nm) && !has(v, needs[nm])) fail(idx(key(lp, 'when'), j), quote(nm) + ' needs the scene\'s ' + needs[nm]); });
+        if (!l.anim) return;
+        const ap = key(lp, 'anim');
+        if (l.anim.trigger) { const want = l.anim.trigger === 'hit' ? 'target' : 'anvil'; if (!has(v, want)) fail(key(ap, 'trigger'), quote(l.anim.trigger) + ' needs the scene\'s ' + want); }
+        l.anim.tracks.forEach((t, j) => {
+          const tp = idx(key(ap, 'tracks'), j);
+          if (has(t, 'g') && !(l.groups && has(l.groups, t.g))) fail(key(tp, 'g'), 'names a group, ' + quote(t.g) + ', that the layer does not declare');
+          if (has(t, 'pal')) {
+            const m = PAL.exec(t.pal), own = pack.palettes && has(pack.palettes, m[1]) ? pack.palettes[m[1]] : null;
+            if (!own) fail(key(tp, 'pal'), 'must name a palette set of this pack, and ' + quote(m[1]) + ' is not one');
+            if (!has(own, m[2])) fail(key(tp, 'pal'), 'names an entry, ' + quote(m[2]) + ', that set ' + quote(m[1]) + ' does not have');
+            if (typeof own[m[2]] !== 'string' || !HEX.test(own[m[2]])) fail(key(tp, 'pal'), 'must name an entry that is a hex colour');
+          }
+        });
+      });
+    }
+    for (const n of Object.keys(pack.cast || {})) {
+      const v = pack.cast[n], cp = key(key(P, 'cast'), n);
+      if (v.role === 'patron') {
+        v.still.forEach((pt, i) => { if (!PATRON_ANCHORS.includes(pt.at)) fail(key(idx(key(cp, 'still'), i), 'at'), 'names an anchor, ' + quote(pt.at) + ', that the patron does not have'); });
+        // a palette of the figure refers only to @base and the sets it binds
+        const one = (x, p, single) => {
+          if (typeof x !== 'string' || x[0] !== '@') return;
+          const m = REF.exec(x);
+          if (!m || !(m[1] === 'base' || (v.sets && has(v.sets, m[1])))) fail(p, 'a palette of the cast may refer only to @base and the sets the figure binds');
+          wrefColour(pack, x, p, single, { member: v });
+        };
+        if (v.palettes) for (const s of Object.keys(v.palettes)) for (const e of Object.keys(v.palettes[s]))
+          eachColour(v.palettes[s][e], (c, p, single) => {
+            if (isObj(c) && has(c, 'mix')) c.mix.forEach((x, i) => one(x, idx(key(p, 'mix'), i), true)); else one(c, p, single);
+          }, key(key(key(cp, 'palettes'), s), e));
+      }
+      if (v.role === 'foe') for (const x of FOE_POSES) v.poses[x].parts.forEach((q, i) => { if (!has(v.parts, q)) fail(idx(key(key(key(cp, 'poses'), x), 'parts'), i), 'names a part, ' + quote(q) + ', that the foe does not have'); });
+      if (v.role === 'critter' && v.alpha) for (const g of Object.keys(v.alpha)) if (!(v.groups && has(v.groups, g))) fail(key(key(cp, 'alpha'), g), 'names a group, ' + quote(g) + ', that the critter does not declare');
+    }
+    for (const n of Object.keys(pack.props || {})) for (const k of Object.keys(pack.props[n].kinds)) for (const st of ['up', 'gone']) {
+      const lamp = pack.props[n].kinds[k][st].lamp, lp = key(key(key(key(key(key(P, 'props'), n), 'kinds'), k), st), 'lamp');
+      if (!Array.isArray(lamp)) for (const f of ['lit', 'dark']) if (!(pack.stamps && has(pack.stamps, lamp[f]))) fail(key(lp, f), 'names a stamp, ' + quote(lamp[f]) + ', that the pack does not have');
+    }
+    for (const n of Object.keys(pack.words || {})) {
+      const v = pack.words[n], wp = key(key(P, 'words'), n);
+      for (const [sec, parts] of [['quiet', QUIET_PARTS], ['captions', CAPTIONS]]) if (v[sec]) for (const k of Object.keys(v[sec])) v[sec][k].forEach((t, i) => {
+        for (const m of t.matchAll(PLACEHOLDER)) if (!parts[k].includes(m[1])) fail(idx(key(key(wp, sec), k), i), 'uses {' + cut(m[1], LIMITS.quote) + '}, which ' + k + ' does not give' + (parts[k].length ? ': it gives ' + parts[k].map(x => '{' + x + '}').join(', ') : ''));
+      });
+    }
+    for (const n of Object.keys(pack.worlds || {})) presetRefs(pack, pack.worlds[n], key(key(P, 'worlds'), n));
+  }
+  /* A preset's name, resolved in this pack when it is local or names this pack: the local id, or
+     null when it names another pack. */
+  function localOf(pack, v) {
+    const s = split(v);
+    if (!s) return v;
+    return s[0] === pack.id ? s[1] : null;
+  }
+  function presetRefs(pack, v, path) {
+    const f = k => key(path, k);
+    const look = (name, p, sec, what, test) => {
+      const l = localOf(pack, name);
+      if (l === null) return;
+      if (!(pack[sec] && has(pack[sec], l))) fail(p, 'names ' + what + ', ' + quote(name) + ', that the pack does not have');
+      const why = test ? test(pack[sec][l]) : '';
+      if (why) fail(p, 'names ' + quote(name) + ', ' + why);
+    };
+    if (has(v, 'body')) look(v.body, f('body'), 'builds', 'a build');
+    if (v.outfit && v.outfit.items) for (const s of Object.keys(v.outfit.items)) look(v.outfit.items[s], key(key(f('outfit'), 'items'), s), 'items', 'an item', it => (it.slot !== s ? 'whose slot is ' + it.slot + ', not ' + s : ''));
+    if (v.outfit && v.outfit.swatches) for (const s of Object.keys(v.outfit.swatches)) {
+      const name = v.outfit.swatches[s], l = localOf(pack, name), p = key(key(f('outfit'), 'swatches'), s);
+      if (l !== null && !(pack.swatches && has(pack.swatches, s) && has(pack.swatches[s], l))) fail(p, 'names a ' + s + ' swatch, ' + quote(name) + ', that the pack does not have');
+    }
+    if (v.scenes) {
+      if (v.scenes.quiet) v.scenes.quiet.forEach((n, i) => look(n, idx(key(f('scenes'), 'quiet'), i), 'scenes', 'a scene'));
+      if (v.scenes.for) for (const c of Object.keys(v.scenes.for)) look(v.scenes.for[c], key(key(f('scenes'), 'for'), c), 'scenes', 'a scene');
+    }
+    if (v.cast) for (const r of Object.keys(v.cast)) look(v.cast[r], key(f('cast'), r), 'cast', 'a cast member', m => (m.role !== r ? 'whose role is ' + m.role + ', not ' + r : ''));
+    if (has(v, 'props')) look(v.props, f('props'), 'props', 'a prop set');
+    if (has(v, 'overlay')) look(v.overlay, f('overlay'), 'overlays', 'an overlay');
+    if (has(v, 'words')) look(v.words, f('words'), 'words', 'a word set');
+    if (has(v, 'picture')) look(v.picture, f('picture'), 'scenes', 'a scene');
+  }
+
+  /* ---- Step 7 for 1.1: rules ---- */
+
+  /* The x a tile's shapes are drawn at, least and greatest: from the first repeat, at or before
+     its from, to the last, before its to. */
+  function tileX(t) {
+    const fr = form(t.from), to = form(t.to);
+    return [bound(fr, false, null, SCENE_RANGE) - t.step + t.phase, bound(to, true, null, SCENE_RANGE)];
+  }
+  /* The ranges a world shape's scalars are taken over: the screen's edges, and a tile's x. */
+  const rangesOf = ctx => (ctx.tile ? Object.assign({ x: tileX(ctx.tile) }, SCENE_RANGE) : SCENE_RANGE);
+  const W_SIZE = { w: [0, 'length'], h: [0, 'length'], r: [0, 'radius'], rx: [1, 'radius'], ry: [1, 'radius'], hw0: [0, 'half-width'], hw1: [0, 'half-width'] };
+  function worldShapeRanges(s, path, ctx) {
+    // an effect's fields are bounded by its table, in the effects library
+    if (s.k === 'fx') return;
+    const R = rangesOf(ctx), wide = LAYERED.includes(ctx.where), O = wide ? WORLD_LIMITS.offset : 512, Lg = wide ? WORLD_LIMITS.length : 512;
+    const top = { w: Lg, h: Lg, r: s.k === 'glow' ? 512 : 256, rx: 256, ry: 256, hw0: 64, hw1: 64 };
+    const lo = { w: 0, h: 0, r: s.k === 'glow' ? 1 : 0, rx: 1, ry: 1, hw0: 0, hw1: 0 };
+    for (const f of ['p', 'p0', 'p1']) if (has(s, f)) s[f].forEach((v, i) => within(form(v), -O, O, idx(key(path, f), i), 'the offset', null, R));
+    if (s.k === 'poly') s.pts.forEach((q, i) => q.forEach((v, j) => within(form(v), -O, O, idx(idx(key(path, 'pts'), i), j), 'the offset', null, R)));
+    if (s.k === 'tile') { within(form(s.from), -O, O, key(path, 'from'), 'the offset', null, SCENE_RANGE); within(form(s.to), -O, O, key(path, 'to'), 'the offset', null, SCENE_RANGE); }
+    for (const f of Object.keys(W_SIZE)) if (has(s, f)) within(form(s[f]), lo[f], top[f], key(path, f), 'the ' + W_SIZE[f][1], null, R);
+    if (has(s, 'clip')) s.clip.forEach((c, i) => { if (c !== null) within(form(c), -O, O, idx(key(path, 'clip'), i), 'the offset', null, R); });
+    if (has(s, 'a')) within(form(s.a), 0, 1, key(path, 'a'), 'the alpha', null, R);
+  }
+  /* The box a world shape paints, [x0, y0, x1, y1], at the ends of its values; a glow (soft light
+     off the grid, as the class boxes were measured without) and an effect's own drawing (which
+     its table will give) are not counted, an effect's point is. */
+  function wextent(pack, s) {
+    const sp = v => span2(v), box4 = (x, y, w, h) => [x[0], y[0], x[1] + w[1], y[1] + h[1]];
+    switch (s.k) {
+      case 'rect': case 'rrect': case 'dith': return box4(sp(s.p[0]), sp(s.p[1]), sp(s.w), sp(s.h));
+      case 'ell': { const x = sp(s.p[0]), y = sp(s.p[1]), rx = sp(s.rx)[1], ry = sp(s.ry)[1]; return [x[0] - rx, y[0] - ry, x[1] + rx, y[1] + ry]; }
+      case 'poly': return s.pts.map(q => [sp(q[0]), sp(q[1])]).reduce((b, q) => [Math.min(b[0], q[0][0]), Math.min(b[1], q[1][0]), Math.max(b[2], q[0][1]), Math.max(b[3], q[1][1])], [Infinity, Infinity, -Infinity, -Infinity]);
+      case 'strip': { const g = Math.max(sp(s.hw0)[1], sp(s.hw1)[1]), a = [sp(s.p0[0]), sp(s.p0[1])], b = [sp(s.p1[0]), sp(s.p1[1])];
+        return [Math.min(a[0][0], b[0][0]) - g, Math.min(a[1][0], b[1][0]) - g, Math.max(a[0][1], b[0][1]) + g, Math.max(a[1][1], b[1][1]) + g]; }
+      case 'pix': { const x = sp(s.p[0]), y = sp(s.p[1]); return [x[0], y[0], x[1] + s.rows[0].length, y[1] + s.rows.length]; }
+      case 'fx': return Array.isArray(s.p) && s.p.length === 2 && s.p.every(v => typeof v === 'number' || isObj(v)) ? [sp(s.p[0])[0], sp(s.p[1])[0], sp(s.p[0])[1], sp(s.p[1])[1]] : null;
+      case 'use': {
+        const st = pack.stamps[s.stamp], x = sp(s.p[0]), y = sp(s.p[1]);
+        let b = null;
+        for (const t of st) { const e = wextent(pack, t); if (e) b = b ? [Math.min(b[0], e[0]), Math.min(b[1], e[1]), Math.max(b[2], e[2]), Math.max(b[3], e[3])] : e; }
+        return b && [b[0] + x[0], b[1] + y[0], b[2] + x[1], b[3] + y[1]];
+      }
+      default: return null;
+    }
+  }
+  const overlaps = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+  /* What a scene lacks to act a condition, or '' when it has it all. */
+  function lacks(sc, c) {
+    switch (c) {
+      case 'attack': return sc.weapon === 'held' ? '' : 'the weapon held';
+      case 'wan_down': return LAYERED.some(k => sc[k].some(l => l.when && l.when.includes('cond:wan_down'))) ? '' : 'a layer whose when names cond:wan_down';
+      case 'container_unhealthy': case 'night': return sc.bed ? '' : 'a bed';
+      case 'disk_full': return new Set(sc.rounds.map(r => r.x)).size >= 2 ? '' : 'rounds at two different spots, to carry the crate between';
+      case 'pi_silent': return sc.things.pie.x > sc.spot * U ? '' : 'the pie\'s place to the right of the spot';
+      case 'device_down': case 'memory_tight': return sc.quiet ? '' : 'quiet true';
+      case 'ssh_session': return sc.seat ? '' : 'a seat';
+      case 'updating': return sc.anvil && frameRest(sc.rests[sc.anvil.rest]) ? '' : 'an anvil, with a rest for the weapon';
+      case 'streaming': return sc.screen ? '' : 'a screen';
+      default: return '';
+    }
+  }
+  function sceneRules(sc, sp) {
+    const things = key(sp, 'things'), boxes = {};
+    for (const k of Object.keys(PLACE_CLASS)) {
+      const pl = sc.things[k], p = key(things, k);
+      if (pl.cls !== PLACE_CLASS[k]) fail(key(p, 'cls'), 'must be ' + quote(PLACE_CLASS[k]) + ' for the place ' + k);
+      const e = CLASS_BOX[pl.cls], x0 = pl.flip ? -e[2] : e[0], x1 = pl.flip ? -e[0] : e[2];
+      const b = boxes[k] = [pl.x + x0, pl.y + e[1], pl.x + x1, pl.y + e[3]];
+      if (b[0] < 0 || b[2] > 960 || b[1] < 0 || b[3] > 600) fail(p, 'its class box, ' + b.join(' ') + ', leaves the 960 by 600 grid');
+      if (pl.cls === 'high' && pl.y < 300) fail(key(p, 'y'), 'a high place\'s base must be at y 300 or lower, clear of the headline');
+      if (pl.cls === 'ground' && (pl.y < 500 || pl.y > 598)) fail(key(p, 'y'), 'a ground place\'s base must be from 500 to 598');
+    }
+    const ks = Object.keys(boxes);
+    for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) if (overlaps(boxes[ks[i]], boxes[ks[j]])) fail(things, 'the class boxes of ' + ks[i] + ' and ' + ks[j] + ' overlap');
+    sc.can.forEach((c, i) => { const why = lacks(sc, c); if (why) fail(idx(key(sp, 'can'), i), 'the scene cannot act ' + quote(c) + ': it needs ' + why); });
+    if (sc.hosts.includes('foe') && !sc.foe) fail(key(sp, 'hosts'), 'a scene hosts a foe only with a foe zone, foe');
+    let marks = 0;
+    const seen = {};
+    for (const k of LAYERED) sc[k].forEach((l, i) => {
+      const lp = idx(key(sp, k), i);
+      for (const s of l.shapes) if (s.k === 'things') marks++;
+      for (const g of Object.keys(l.groups || {})) { if (has(seen, g)) fail(key(key(lp, 'groups'), g), 'a group of this name is declared in another layer of the scene'); seen[g] = true; }
+      if (l.anim) {
+        const done = new Set();
+        l.anim.tracks.forEach((t, j) => {
+          const d = has(t, 'pal') ? 'pal ' + t.pal : t.g + ' ' + t.ch;
+          if (done.has(d)) fail(idx(key(key(lp, 'anim'), 'tracks'), j), 'drives what an earlier track already drives');
+          done.add(d);
+        });
+      }
+    });
+    if (marks !== 1) fail(sp, 'a scene draws the devices once: it needs exactly one things mark, not ' + marks);
+    if (sc.foe) sc.foe.spans.forEach((s, i) => { if (!(s[0] < s[1])) fail(idx(key(key(sp, 'foe'), 'spans'), i), 'from must be below to'); });
+    if (sc.foe && sc.foe.wall && !(sc.foe.wall.high[0] < sc.foe.wall.period)) fail(key(key(key(sp, 'foe'), 'wall'), 'high'), 'the width must be less than the period');
+    if (sc.target && !(sc.target.hitAt < sc.target.every)) fail(key(key(sp, 'target'), 'hitAt'), 'must be less than every');
+  }
+  /* Whether every colour a list of shapes uses is the down lamp's red, @lamp.down or @lamp.downHi. */
+  function downRedOnly(list) {
+    let ok = true;
+    for (const s of list) eachWColour(s, c => { if (!(typeof c === 'string' && LAMP_REF.test(c))) ok = false; }, '');
+    return ok;
+  }
+  function propRules(pack, v, path) {
+    for (const k of Object.keys(v.kinds)) for (const st of ['up', 'gone']) {
+      const x = v.kinds[k][st], p = key(key(key(path, 'kinds'), k), st), cb = CLASS_BOX[CLASS_OF[k]];
+      const check = (e, q) => { if (e && (e[0] < cb[0] || e[1] < cb[1] || e[2] > cb[2] || e[3] > cb[3])) fail(q, 'paints ' + e.join(' ') + ', outside the ' + CLASS_OF[k] + ' class box, ' + cb.join(' ') + ', from the base'); };
+      for (const part of ['still', 'moving']) if (x[part]) x[part].forEach((s, i) => check(wextent(pack, s), idx(key(p, part), i)));
+      const L = x.lamp, lp = key(p, 'lamp');
+      if (Array.isArray(L)) check([L[0] - 6, L[1] - 6, L[0] + 6, L[1] + 6], lp);
+      else {
+        check([L.at[0] - L.box[0] / 2, L.at[1] - L.box[1] / 2, L.at[0] + L.box[0] / 2, L.at[1] + L.box[1] / 2], lp);
+        for (const f of ['lit', 'dark']) if (!pack.stamps[L[f]].every(s => s.k === 'pix')) fail(key(lp, f), 'a lamp\'s ' + f + ' drawing is a stamp of pix shapes only');
+        if (st === 'gone' && !downRedOnly(pack.stamps[L.lit])) fail(key(lp, 'lit'), 'a gone lamp\'s lit drawing uses only the down lamp\'s red, @lamp.down and @lamp.downHi, so a device that is down blinks red in every world');
+      }
+    }
+  }
+  /* WCAG's relative luminance of a hex colour, its contrast on black and its hue in degrees. */
+  function luminance(h) {
+    const c = rgb(h).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  const contrast = h => (luminance(h) + 0.05) / 0.05;
+  function hue(h) {
+    const [r, g, b] = rgb(h).map(v => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (d === 0) return null;
+    const x = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (x * 60 + 360) % 360;
+  }
+  function overlayRules(v, path) {
+    const lp = key(path, 'levels');
+    for (const l of Object.keys(LEVELS)) v.levels[l].forEach((c, i) => {
+      const [h0, h1, c0, c1] = LEVELS[l], h = hue(c), k = contrast(c), p = idx(key(lp, l), i);
+      const inHue = h !== null && (h0 <= h1 ? h >= h0 && h <= h1 : h >= h0 || h <= h1);
+      if (!inHue) fail(p, 'the ' + l + ' colour must keep a hue from ' + h0 + ' to ' + h1 + ', not ' + (h === null ? 'none' : Math.round(h)));
+      if (k < c0 || k > c1) fail(p, 'the ' + l + ' colour must have a contrast on black from ' + c0 + ' to ' + c1 + ', not ' + Math.round(k * 10) / 10);
+    });
+    const dimmest = Math.min(...v.levels.ok.map(luminance));
+    v.levels.sleep.forEach((c, i) => { if (!(luminance(c) < dimmest)) fail(idx(key(lp, 'sleep'), i), 'the sleep colour must be darker than the ok colours'); });
+  }
+  function presetRules(pack, v, path) {
+    const f = k => key(path, k), missing = p => fail(p, 'is missing, and a preset must be complete');
+    for (const k of ['name', 'body', 'outfit', 'scenes', 'cast', 'props', 'overlay', 'words', 'picture']) if (!has(v, k)) missing(f(k));
+    for (const k of ['items', 'swatches']) if (!has(v.outfit, k)) missing(key(f('outfit'), k));
+    for (const s of DEFAULT_SLOTS) if (!has(v.outfit.items, s)) missing(key(key(f('outfit'), 'items'), s));
+    for (const s of Object.keys(USER_SETS)) if (!has(v.outfit.swatches, s)) missing(key(key(f('outfit'), 'swatches'), s));
+    for (const k of ['quiet', 'for']) if (!has(v.scenes, k)) missing(key(f('scenes'), k));
+    for (const r of ROLES) if (!has(v.cast, r)) missing(key(f('cast'), r));
+    const fp = key(f('scenes'), 'for');
+    for (const c of CONDITIONS) {
+      if (QUIET_CONDITIONS.includes(c)) { if (has(v.scenes.for, c)) fail(key(fp, c), 'has no scene of its own: it is acted in the quiet scene of the moment'); }
+      else if (!has(v.scenes.for, c)) missing(key(fp, c));
+    }
+    const local = n => { const l = localOf(pack, n); return l === null ? null : pack.scenes[l]; };
+    v.scenes.quiet.forEach((n, i) => {
+      const sc = local(n), p = idx(key(f('scenes'), 'quiet'), i);
+      if (!sc) return;
+      if (!sc.quiet) fail(p, 'names ' + quote(n) + ', a scene that is not quiet');
+      for (const c of QUIET_CONDITIONS) if (!sc.can.includes(c)) fail(p, 'names ' + quote(n) + ', a quiet scene that cannot act ' + quote(c) + ', which plays in the quiet scene of the moment');
+    });
+    for (const c of Object.keys(v.scenes.for)) { const sc = local(v.scenes.for[c]); if (sc && !sc.can.includes(c)) fail(key(fp, c), 'names ' + quote(v.scenes.for[c]) + ', a scene whose can does not list ' + quote(c)); }
+  }
+  function worldRules(pack) {
+    const P = 'pack';
+    eachWorldShape(pack, (s, p, ctx) => {
+      worldShapeRanges(s, p, ctx);
+      if (s.k === 'poly') polyRule(s, p);
+    });
+    for (const n of Object.keys(pack.scenes || {})) sceneRules(pack.scenes[n], key(key(P, 'scenes'), n));
+    for (const n of Object.keys(pack.cast || {})) {
+      const v = pack.cast[n], cp = key(key(P, 'cast'), n);
+      if (v.role === 'patron') for (const a of PATRON_ANCHORS) {
+        const q = v.anchors[a];
+        if (q[0] < -v.box[0] / 2 || q[0] > v.box[0] / 2 || q[1] < -v.box[1] || q[1] > 0) fail(key(key(cp, 'anchors'), a), 'must lie in the patron\'s box, x within half its width and y up to its height above the seat');
+      }
+      if (v.role === 'foe') {
+        const [w, h] = v.sprite.size, [fx, fy] = v.sprite.feet;
+        if (fx > w || fy > h) fail(key(key(cp, 'sprite'), 'feet'), 'must lie in the sprite');
+        v.crown.forEach((q, i) => { if (q[0] + fx < 0 || q[0] + fx > w || q[1] + fy < 0 || q[1] + fy > h) fail(idx(key(cp, 'crown'), i), 'must lie in the sprite, from its feet'); });
+      }
+    }
+    for (const n of Object.keys(pack.props || {})) propRules(pack, pack.props[n], key(key(P, 'props'), n));
+    for (const n of Object.keys(pack.overlays || {})) overlayRules(pack.overlays[n], key(key(P, 'overlays'), n));
+    for (const n of Object.keys(pack.words || {})) {
+      const v = pack.words[n], wp = key(key(P, 'words'), n);
+      // longest first, by the text a template writes itself: what fills a placeholder is the
+      // collector's, and {short} is shorter than {n} by its nature
+      const fixed = t => Array.from(t.replace(PLACEHOLDER, '')).length;
+      for (const sec of ['quiet', 'captions']) if (v[sec]) for (const k of Object.keys(v[sec])) v[sec][k].forEach((t, i) => {
+        if (i && fixed(t) > fixed(v[sec][k][i - 1])) fail(idx(key(key(wp, sec), k), i), 'the templates of a part run longest first, by their text outside the placeholders');
+      });
+    }
+    for (const n of Object.keys(pack.worlds || {})) presetRules(pack, pack.worlds[n], key(key(P, 'worlds'), n));
+  }
+
+  /* ---- Step 8 for 1.1: counts and costs ---- */
+
+  /* How many bands a world fill paints a row in: a pick, a mix and the down lamp are one colour,
+     a set a cast member binds is the user's, and its own palettes are read like the pack's. */
+  function wbands(pack, f, ctx) {
+    if (Array.isArray(f)) return f.length;
+    if (typeof f !== 'string' || f[0] !== '@' || LAMP_REF.test(f)) return 1;
+    const m = REF.exec(f), mem = ctx.member;
+    if (m[1] === 'pick') return 1;
+    if (mem && ((mem.sets && has(mem.sets, m[1])) || (mem.palettes && has(mem.palettes, m[1])))) {
+      if (mem.sets && has(mem.sets, m[1])) return USER_SETS[mem.sets[m[1]]][m[2]] === 'bands' ? LIMITS.bands : 1;
+      return wbands(pack, mem.palettes[m[1]][m[2]], ctx);
+    }
+    return bandCount(pack, f);
+  }
+  /* What a world shape costs and adds to the counts: { cost, n, glows, effects, tiles }, a tile
+     with its repeats and a stamp with its shapes counted out. An effect costs nothing until the
+     effects library gives its cost. */
+  function wcost(pack, s, ctx) {
+    const R = rangesOf(ctx), one = { cost: 0, n: 1, glows: 0, effects: 0, tiles: 0 };
+    switch (s.k) {
+      case 'glow': return Object.assign(one, { cost: 3, glows: 1 });
+      case 'dith': return Object.assign(one, { cost: Math.ceil(Math.max(0, span2(s.h, R)[1]) / 2) * Math.ceil(Math.max(0, span2(s.w, R)[1]) / 4) });
+      case 'fx': return Object.assign(one, { effects: 1 });
+      case 'use': {
+        const t = { cost: 0, n: 0, glows: 0, effects: 0, tiles: 0 };
+        for (const x of pack.stamps[s.stamp]) addCost(t, wcost(pack, x, { where: 'stamp' }), 1);
+        return t;
+      }
+      case 'tile': {
+        const xs = tileX(s), reps = Math.max(0, Math.floor((xs[1] - xs[0]) / s.step) + 1), t = { cost: 0, n: 0, glows: 0, effects: 0, tiles: 1 };
+        const inner = { cost: 0, n: 0, glows: 0, effects: 0, tiles: 0 }, c = Object.assign({}, ctx, { tile: s });
+        for (const x of s.shapes) addCost(inner, wcost(pack, x, c), 1);
+        addCost(t, inner, reps);
+        return t;
+      }
+      default:
+        if (MARKS.includes(s.k)) return one;
+        return Object.assign(one, { cost: shapeCost(pack, s, 'scene', R, s.k === 'pix' ? 1 : wbands(pack, s.fill, ctx)) });
+    }
+  }
+  function addCost(t, c, times) { for (const k of ['cost', 'n', 'glows', 'effects']) t[k] += c[k] * times; t.tiles += c.tiles; }
+  const zero = () => ({ cost: 0, n: 0, glows: 0, effects: 0, tiles: 0 });
+  function listCost(pack, list, ctx) { const t = zero(); for (const s of list) addCost(t, wcost(pack, s, ctx), 1); return t; }
+  function worldCounts(pack) {
+    const P = 'pack', L = WORLD_LIMITS, out = { scenes: {}, cast: {}, props: {}, stamps: {} };
+    // fail at path when got passes lim: "<before> <got> <after>, more than <lim>"
+    const cap = (p, got, lim, before, after) => { if (got > lim) fail(p, before + ' ' + got + ' ' + after + ', more than ' + lim); };
+    for (const [sec, lim, what] of [['stamps', L.stamps, 'stamps'], ['scenes', L.scenes, 'scenes'], ['cast', L.cast, 'cast members'], ['props', L.props, 'prop sets'],
+      ['words', L.words, 'word sets'], ['overlays', L.overlays, 'overlays'], ['worlds', L.worlds, 'worlds']]) cap(key(P, sec), Object.keys(pack[sec] || {}).length, lim, 'holds', what);
+    for (const n of Object.keys(pack.stamps || {})) out.stamps[n] = listCost(pack, pack.stamps[n], { where: 'stamp' }).cost;
+    for (const n of Object.keys(pack.scenes || {})) {
+      const v = pack.scenes[n], sp = key(key(P, 'scenes'), n);
+      cap(sp, v.still.length + v.moving.length + v.over.length, L.layers, 'holds', 'layers');
+      const still = zero(), frame = zero();
+      for (const l of v.still) addCost(still, listCost(pack, l.shapes, { where: 'still' }), 1);
+      for (const k of ['moving', 'over']) for (const l of v[k]) addCost(frame, listCost(pack, l.shapes, { where: k }), 1);
+      // the pole, once under each of the three high places
+      if (v.pole) addCost(frame, listCost(pack, v.pole, { where: 'pole' }), 3);
+      cap(sp, still.tiles + frame.tiles, L.tiles, 'holds', 'tiles');
+      cap(sp, still.effects + frame.effects, L.effects, 'draws', 'effects, tiles counted out');
+      cap(key(sp, 'still'), still.n, L.stillShapes, 'draws', 'shapes, tiles and stamps counted out');
+      cap(key(sp, 'still'), still.cost, L.stillCost, 'costs up to', 'fills');
+      cap(sp, frame.n, L.frameShapes, 'draws', 'shapes in one frame of its moving and over layers, tiles and stamps counted out');
+      cap(sp, frame.cost, L.frameCost, 'costs up to', 'fills in one frame of its moving and over layers');
+      cap(sp, frame.glows, L.glows, 'draws', 'glows in one frame');
+      out.scenes[n] = { still: { n: still.n, cost: still.cost }, frame: { n: frame.n, cost: frame.cost, glows: frame.glows } };
+    }
+    for (const n of Object.keys(pack.cast || {})) {
+      const v = pack.cast[n], cp = key(key(P, 'cast'), n), c = { where: v.role, member: v };
+      if (v.role === 'patron') {
+        const still = v.still.reduce((t, pt) => t + listCost(pack, pt.shapes, c).cost, 0);
+        cap(key(cp, 'still'), still, L.patronStill, 'costs up to', 'fills');
+        const states = {};
+        for (const m of MOUTHS) { states[m] = listCost(pack, v.states[m], c).cost; cap(key(key(cp, 'states'), m), states[m], L.patronState, 'costs up to', 'fills'); }
+        out.cast[n] = { still, states };
+      } else if (v.role === 'foe') {
+        const poses = {};
+        for (const x of FOE_POSES) {
+          poses[x] = v.poses[x].parts.reduce((t, q) => t + listCost(pack, v.parts[q], c).cost, 0) + listCost(pack, v.poses[x].shapes, c).cost;
+          cap(key(key(cp, 'poses'), x), poses[x], L.poseCost, 'costs up to', 'fills');
+        }
+        out.cast[n] = { poses };
+      } else {
+        const frames = {};
+        for (const x of FLAPS) { frames[x] = listCost(pack, v.frames[x], c).cost; cap(key(key(cp, 'frames'), x), frames[x], L.critterFrame, 'costs up to', 'fills'); }
+        frames.dead = listCost(pack, v.dead, c).cost;
+        cap(key(cp, 'dead'), frames.dead, L.critterFrame, 'costs up to', 'fills');
+        out.cast[n] = { frames };
+      }
+    }
+    for (const n of Object.keys(pack.props || {})) {
+      out.props[n] = {};
+      for (const k of Object.keys(pack.props[n].kinds)) {
+        out.props[n][k] = {};
+        for (const st of ['up', 'gone']) {
+          const x = pack.props[n].kinds[k][st], p = key(key(key(key(key(P, 'props'), n), 'kinds'), k), st), c = { where: 'prop', kind: k };
+          const still = listCost(pack, x.still, c).cost;
+          // a lamp of the kind's own, its lit and dark drawings, moves with the lamp's loop
+          const moving = (x.moving ? listCost(pack, x.moving, c).cost : 0) + (Array.isArray(x.lamp) ? 0 : out.stamps[x.lamp.lit] + out.stamps[x.lamp.dark]);
+          cap(key(p, 'still'), still, L.kindStill, 'costs up to', 'fills');
+          cap(p, moving, L.kindMoving, 'costs up to', 'fills in its moving part and its own lamp');
+          out.props[n][k][st] = { still, moving };
+        }
+      }
+    }
+    return freeze(out);
   }
 
   /* ---- Step 9 and looks: compiling to records --------------------------------------------------- */
@@ -1197,8 +2320,12 @@
     }
     const decorations = {};
     for (const d of Object.keys(pack.decorations || {})) decorations[d] = compileDecoration(pack.decorations[d], c.decor[d]);
-    return freeze({ ok: true, id: pack.id, version: pack.version, name: pack.name, licence: pack.licence, format: pack.format.slice(),
-      provides: pack.provides.slice(), signed, data: freeze(pack), own, swatches, decorations, sums: freeze(c.sums) });
+    const out = { ok: true, id: pack.id, version: pack.version, name: pack.name, licence: pack.licence, format: pack.format.slice(),
+      provides: pack.provides.slice(), signed, data: freeze(pack), own, swatches, decorations, sums: freeze(c.sums) };
+    // a 1.1 pack's world sections are kept as data, in data, with what the counts step found; nothing
+    // of them is compiled yet
+    if (c.world) out.world = c.world;
+    return freeze(out);
   }
 
   /* ---- read() ----------------------------------------------------------------------------------- */
@@ -1527,7 +2654,13 @@
   /* Whether a decoration may go in a scene's place { kind, w, h }. */
   const fitsPlace = (dec, pl) => !!(dec && pl && dec.fits.includes(pl.kind) && dec.box[0] <= pl.w && dec.box[1] <= pl.h);
 
+  /* The closed lists format 1.1 names, which the engine takes over as it is built. */
+  const WORLD_LISTS = freeze({ CONDITIONS: CONDITIONS.slice(), ROUND_ACTS: ROUND_ACTS.slice(), HOSTS: HOSTS.slice(), PREDICATES: PREDICATES.slice(), MARKS: MARKS.slice(),
+    TRIGGERS: TRIGGERS.slice(), EFFECTS: EFFECTS.slice(), ROLES: ROLES.slice(), EXITS: EXITS.slice(), FOE_POSES: FOE_POSES.slice(), FONTS: FONTS.slice(),
+    PROP_KINDS: PROP_KINDS.slice(), CLASS_OF: Object.assign({}, CLASS_OF), CLASS_BOX: JSON.parse(JSON.stringify(CLASS_BOX)), LABELS: LABELS.slice(),
+    QUIET_PARTS: JSON.parse(JSON.stringify(QUIET_PARTS)), CAPTIONS: JSON.parse(JSON.stringify(CAPTIONS)), LEVELS: JSON.parse(JSON.stringify(LEVELS)) });
   const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, VALUES, VALUE, MEASURES, TORSO, BASE, KEYS, ORDERS,
+    WORLD_LIMITS, WORLD_LISTS, SCENE_RANGE,
     read, canonical, message, gather, resolve, draw, sequence, animate, fitsPlace, newAnchors, newValues };
   KW.pack = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
