@@ -58,7 +58,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("config ok: 3 sources enabled (host, ssh, updates)\n", out)
         self.write_config(
             '[sources.pi]\nhost = "192.0.2.4"\n'
-            '[[thing]]\nname = "Vault"\nkind = "machine"\nhost = "192.0.2.40"\nport = 445\n'
+            '[[device]]\nname = "Vault"\nkind = "machine"\nhost = "192.0.2.40"\nport = 445\n'
         )
         code, out, _ = self.run_cli("--check-config")
         self.assertEqual(

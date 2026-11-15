@@ -18,9 +18,9 @@ colour carries the status, green when quiet, amber for a warning, red when criti
 while something is at work.
 
 Other machines on the network, such as a NAS, a camera or a virtual machine, can be listed as
-watched things. Each stands in the scene as the device it is, cameras mounted high and the rest on
+devices. Each stands in the scene as the device it is, cameras mounted high and the rest on
 the ground, with a lamp that fades green while it is up and blinks red when it goes down;
-[Watched things](docs/configuration.md#watched-things) says how to list them.
+[Devices](docs/configuration.md#devices) says how to list them.
 
 ## Quick start
 
@@ -53,7 +53,7 @@ The page is open to anyone on your network, with no login. Read [The server](doc
 before you let it be reached from anywhere else, and never publish it to the internet without a
 login in front.
 
-To change the sources, thresholds and watched things from a browser rather than in `config.toml`,
+To change the sources, thresholds and devices from a browser rather than in `config.toml`,
 give `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env` a password of your own of at least 12 characters, run
 `docker compose up -d` again and open `http://<this machine>:8080/admin`. A change there is checked
 by the collector's own rules and used from its next poll; Download config.toml keeps what is set

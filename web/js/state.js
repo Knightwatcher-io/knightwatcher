@@ -18,7 +18,7 @@
     disk_full:           { lv: 3, level: 'warning',  scene: 'cellar' },
     backup_overdue:      { lv: 3, level: 'warning',  scene: 'house' },
     pi_silent:           { lv: 3, level: 'warning',  scene: 'house' },
-    thing_down:          { lv: 3, level: 'warning',  scene: null },
+    device_down:          { lv: 3, level: 'warning',  scene: null },
     cpu_hot:             { lv: 3, level: 'warning',  scene: 'yard' },
     memory_tight:        { lv: 3, level: 'warning',  scene: null },
     ssh_session:         { lv: 2, level: 'work',     scene: 'court' },
@@ -33,7 +33,7 @@
   /* The most flies one event may add. The rest of a larger count would only lengthen the queue. */
   const MAX_FLIES = 100;
 
-  /* The places a scene has for watched things, by class: the pie's own place, three high places
+  /* The places a scene has for devices, by class: the pie's own place, three high places
      for cameras, and three on the ground for every other device. MAX_LIST is the most entries the
      page reads from the list, and MAX_KIND the longest kind. */
   const PLACES = { pie: ['pie'], high: ['h1', 'h2', 'h3'], ground: ['g1', 'g2', 'g3'] };
@@ -58,45 +58,45 @@
      ground. */
   const classOf = kind => (kind === 'pi' ? 'pie' : kind === 'camera' ? 'high' : 'ground');
 
-  /* Puts the watched things of a list (the contract's entries) in the scene's places. Each class
+  /* Puts the devices of a list (the contract's entries) in the scene's places. Each class
      fills in the order of the list: the first camera takes h1, the second h2, and so on, and the
-     same for the ground places; only the first pi has a place. A thing with no free place of its
+     same for the ground places; only the first pi has a place. A device with no free place of its
      class is not drawn, and an entry the page cannot read takes no place. The places depend on the
-     list alone, never on which things are up. Returns
-       things  the things drawn: { place, kind, ok, alert }, ok false only for the state 'down'
+     list alone, never on which devices are up. Returns
+       devices  the devices drawn: { place, kind, ok, alert }, ok false only for the state 'down'
        at      for each position in the list, the place it stands in, or null */
   function arrange(list) {
     const free = { pie: PLACES.pie.slice(), high: PLACES.high.slice(), ground: PLACES.ground.slice() };
-    const things = [], at = [];
+    const devices = [], at = [];
     for (const e of Array.isArray(list) ? list.slice(0, MAX_LIST) : []) {
       if (!isObj(e)) { at.push(null); continue; }
       const kind = typeof e.kind === 'string' && e.kind.length <= MAX_KIND ? e.kind : '';
       const place = free[classOf(kind)].shift() || null;
       at.push(place);
-      if (place) things.push({ place, kind, ok: e.state !== 'down', alert: e.alert === true });
+      if (place) devices.push({ place, kind, ok: e.state !== 'down', alert: e.alert === true });
     }
-    return { things, at };
+    return { devices, at };
   }
 
-  /* The watched things the scene draws, from the file's facts and its known conditions, as
-     arrange() gives them. Without a things section of that shape (an older collector), the pie
+  /* The devices the scene draws, from the file's facts and its known conditions, as
+     arrange() gives them. Without a devices section of that shape (an older collector), the pie
      stands alone in its place, gone while facts.pi.up is false or pi_silent is raised, as before
-     there were things. */
+     there were devices. */
   function placed(facts, known) {
-    const sec = facts.things;
+    const sec = facts.devices;
     if (isObj(sec) && Array.isArray(sec.list)) return arrange(sec.list);
     const piUp = isObj(facts.pi) ? facts.pi.up : undefined;
-    return { things: [{ place: 'pie', kind: 'pi', ok: piUp !== false && !known.some(c => c.id === 'pi_silent'), alert: true }], at: [] };
+    return { devices: [{ place: 'pie', kind: 'pi', ok: piUp !== false && !known.some(c => c.id === 'pi_silent'), alert: true }], at: [] };
   }
 
-  /* The place the knight looks towards for thing_down: that of the first position among those
+  /* The place the knight looks towards for device_down: that of the first position among those
      given that stands in a place, or null when none does. */
   function lookPlace(positions, at) {
     for (const i of Array.isArray(positions) ? positions : []) if (Number.isInteger(i) && i >= 0 && i < at.length && at[i]) return at[i];
     return null;
   }
 
-  /* The list of watched things the address's th= hook asks for, in the contract's shape: kinds
+  /* The list of devices the address's dv= hook asks for, in the contract's shape: kinds
      separated by commas, each followed by - for down or ! for down and alerting. An empty item, or
      one that is not a kind, is an entry the page cannot read. */
   function listFromHook(text) {
@@ -111,12 +111,12 @@
      Returns ok false with a problem ('malformed', 'schema' or 'stale') when the page must not act
      on the file, and generatedAt (ms) whenever the file says when it was written. Otherwise:
        w          the first condition with a known id, or null when there is none. For
-                  thing_down it also carries place, the name of the place the knight looks
+                  device_down it also carries place, the name of the place the knight looks
                   towards, or null (see lookPlace)
        more       { n, crit }: the other known conditions at warning or critical, and whether any
                   of them is critical
        quietLine  the line shown when w is null
-       things     the watched things the scene draws, in their places (see arrange())
+       devices     the devices the scene draws, in their places (see arrange())
        tv         whether the television is on
        events     the events of a known type, oldest first: { seq, act, count, text }
        maxSeq     the highest seq in the file, or null when it has no events
@@ -142,7 +142,7 @@
     const facts = isObj(file.facts) ? file.facts : {};
     const streams = isObj(facts.streams) ? facts.streams.count : 0, drawn = placed(facts, known);
     let w = known[0] || null;
-    if (w && w.id === 'thing_down') w = Object.assign(w, { place: lookPlace(raw[0].things, drawn.at) });
+    if (w && w.id === 'device_down') w = Object.assign(w, { place: lookPlace(raw[0].devices, drawn.at) });
 
     const events = [];
     let maxSeq = null;
@@ -159,7 +159,7 @@
       ok: true, problem: '', generatedAt, ageS, w,
       more: { n: rest.length, crit: rest.some(c => c.level === 'critical') },
       quietLine: str(file.quiet_line),
-      things: drawn.things,
+      devices: drawn.devices,
       tv: (typeof streams === 'number' && streams > 0) || known.some(c => c.id === 'streaming'),
       events, maxSeq, intervalS: interval,
       defaults: isObj(file.defaults) ? file.defaults : null,

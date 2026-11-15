@@ -1,4 +1,4 @@
-"""The checks behind watched things, against local sockets and the local HTTP server."""
+"""The checks behind devices, against local sockets and the local HTTP server."""
 
 import os
 import socket
@@ -12,7 +12,7 @@ from unittest import mock
 from collector import net
 from collector.net import SourceError, fetch, http_answers, resolve, tcp_any
 from collector.sources import build_sources
-from collector.sources.things import ThingSource
+from collector.sources.devices import DeviceSource
 from kw_helpers import T0, FakeHttp, closed_port, listener, make_config, unanswering
 
 # Generous, so that a loaded machine does not fail a test; the checks themselves are bounded by
@@ -155,8 +155,8 @@ class HttpTest(unittest.TestCase):
         # The source never raises, so the runner never pauses it for refused credentials.
         http = self.serve()
         http.routes["/"] = (401, b"")
-        thing = {"name": "Gate cam", "kind": "camera", "url": http.url + "/"}
-        (cam,) = build_sources(make_config({"thing": [thing]}))
+        device = {"name": "Gate cam", "kind": "camera", "url": http.url + "/"}
+        (cam,) = build_sources(make_config({"device": [device]}))
         reading = cam.fetch(T0)
         self.assertEqual((reading.facts, reading.data), (None, {"answered": True}))
 
@@ -239,12 +239,12 @@ class OpenerTest(unittest.TestCase):
         self.assertEqual(str(cm.exception), "HTTP 302")
 
 
-class ThingSourceTest(unittest.TestCase):
-    def test_build_sources_places_the_pi_and_then_the_things(self):
+class DeviceSourceTest(unittest.TestCase):
+    def test_build_sources_places_the_pi_and_then_the_devices(self):
         config = make_config(
             {
                 "sources": {"wan": {}, "pi": {"host": "192.0.2.4"}, "dns": {}},
-                "thing": [
+                "device": [
                     {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445},
                     {"name": "Gate cam", "kind": "camera", "url": "https://198.51.100.31/"},
                 ],
@@ -257,28 +257,28 @@ class ThingSourceTest(unittest.TestCase):
                 ("wan", "wan"),
                 ("pi", "pi"),
                 ("dns", "dns"),
-                ("thing:Vault", None),
-                ("thing:Gate cam", None),
+                ("device:Vault", None),
+                ("device:Gate cam", None),
             ],
         )
-        self.assertTrue(all(isinstance(s, ThingSource) for s in built[3:]))
+        self.assertTrue(all(isinstance(s, DeviceSource) for s in built[3:]))
         self.assertEqual(built[4].settings["every_s"], 30)
 
     def test_a_check_that_fails_has_not_answered(self):
         config = make_config(
-            {"thing": [{"name": "Gate cam", "kind": "camera", "url": "http://198.51.100.31/"}]}
+            {"device": [{"name": "Gate cam", "kind": "camera", "url": "http://198.51.100.31/"}]}
         )
         (cam,) = build_sources(config)
-        with mock.patch("collector.sources.things.http_answers", side_effect=RuntimeError("bug")):
+        with mock.patch("collector.sources.devices.http_answers", side_effect=RuntimeError("bug")):
             reading = cam.fetch(T0)
         self.assertEqual((reading.facts, reading.data), (None, {"answered": False}))
 
     def test_the_check_timeout_is_at_most_three_seconds(self):
-        raw = {"thing": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}]}
+        raw = {"device": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}]}
         for http_timeout, expected in ((5.0, 3.0), (1.0, 1.0)):
             raw["collector"] = {"http_timeout_s": http_timeout}
             (vault,) = build_sources(make_config(raw))
-            with mock.patch("collector.sources.things.tcp_any", return_value=True) as check:
+            with mock.patch("collector.sources.devices.tcp_any", return_value=True) as check:
                 self.assertEqual(vault.fetch(T0).data, {"answered": True})
             check.assert_called_once_with("192.0.2.40", [445], expected, False)
 

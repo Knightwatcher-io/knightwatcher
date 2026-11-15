@@ -1,4 +1,4 @@
-"""The contract check against docs/state.md: facts.things, thing_down and defaults."""
+"""The contract check against docs/state.md: facts.devices, device_down and defaults."""
 
 import copy
 import json
@@ -10,7 +10,7 @@ from collector import contract
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-THINGS = {
+DEVICES = {
     "list": [
         {
             "name": "Pi",
@@ -47,17 +47,17 @@ THINGS = {
     ]
 }
 
-THING_DOWN = {
-    "id": "thing_down",
+DEVICE_DOWN = {
+    "id": "device_down",
     "level": "warning",
     "since": "2026-01-15T21:36:10Z",
     "headline": "VAULT DOWN",
     "detail": "no answer for 6 min",
-    "things": [1],
+    "devices": [1],
 }
 
 
-def state(things=THINGS, conditions=(THING_DOWN,)) -> dict:
+def state(devices=DEVICES, conditions=(DEVICE_DOWN,)) -> dict:
     return {
         "schema": 1,
         "generated_at": "2026-01-15T21:42:10Z",
@@ -65,8 +65,8 @@ def state(things=THINGS, conditions=(THING_DOWN,)) -> dict:
         "conditions": copy.deepcopy(list(conditions)),
         "quiet_line": "ALL QUIET",
         "events": [],
-        "facts": {"pi": {"up": True}, "things": copy.deepcopy(things)},
-        "sources": {"thing:Vault": {"ok": True, "at": "2026-01-15T21:42:01Z", "error": ""}},
+        "facts": {"pi": {"up": True}, "devices": copy.deepcopy(devices)},
+        "sources": {"device:Vault": {"ok": True, "at": "2026-01-15T21:42:01Z", "error": ""}},
         "defaults": {"look": {}, "display": {}, "quiet": {}, "scenes": {}},
     }
 
@@ -79,10 +79,10 @@ def broken(change) -> list[str]:
 
 
 def entry(s, i=1):
-    return s["facts"]["things"]["list"][i]
+    return s["facts"]["devices"]["list"][i]
 
 
-class ThingsContractTest(unittest.TestCase):
+class DevicesContractTest(unittest.TestCase):
     def test_a_valid_section_passes(self):
         self.assertEqual(contract.validate(state()), [])
         self.assertEqual(contract.validate(state(None, ())), [])
@@ -90,26 +90,26 @@ class ThingsContractTest(unittest.TestCase):
         s = state()
         entry(s, 2)["kind"] = "base/owl"
         self.assertEqual(contract.validate(s), [])
-        self.assertIn("things", contract.FACT_SECTIONS)
+        self.assertIn("devices", contract.FACT_SECTIONS)
 
     def test_the_section(self):
-        def set_things(value):
-            return lambda s: s["facts"].__setitem__("things", value)
+        def set_devices(value):
+            return lambda s: s["facts"].__setitem__("devices", value)
 
-        shape = "facts.things is not null or an object with list alone"
-        self.assertIn("facts.things is neither an object nor null", broken(set_things([])))
-        self.assertIn(shape, broken(set_things({"list": THINGS["list"], "more": 1})))
-        self.assertIn(shape, broken(set_things({})))
-        size = "facts.things.list is not a list of 1 to 32"
-        self.assertIn(size, broken(set_things({"list": []})))
-        self.assertIn(size, broken(set_things({"list": THINGS["list"] * 9})))
-        self.assertIn(size, broken(set_things({"list": {"Vault": {}}})))
+        shape = "facts.devices is not null or an object with list alone"
+        self.assertIn("facts.devices is neither an object nor null", broken(set_devices([])))
+        self.assertIn(shape, broken(set_devices({"list": DEVICES["list"], "more": 1})))
+        self.assertIn(shape, broken(set_devices({})))
+        size = "facts.devices.list is not a list of 1 to 32"
+        self.assertIn(size, broken(set_devices({"list": []})))
+        self.assertIn(size, broken(set_devices({"list": DEVICES["list"] * 9})))
+        self.assertIn(size, broken(set_devices({"list": {"Vault": {}}})))
 
     def test_each_field(self):
-        w = "facts.things.list[1]"
+        w = "facts.devices.list[1]"
         cases = [
             (
-                lambda s: s["facts"]["things"]["list"].__setitem__(1, "Vault"),
+                lambda s: s["facts"]["devices"]["list"].__setitem__(1, "Vault"),
                 f"{w} is not an object",
             ),
             (
@@ -143,31 +143,31 @@ class ThingsContractTest(unittest.TestCase):
             ),
             (
                 lambda s: entry(s, 2).__setitem__("since", "2026-01-15T21:36:10Z"),
-                "facts.things.list[2].since is not null while unknown",
+                "facts.devices.list[2].since is not null while unknown",
             ),
             (
                 lambda s: entry(s, 3).__setitem__("state", "up"),
-                "facts.things.list[3] is up but not seen",
+                "facts.devices.list[3] is up but not seen",
             ),
         ]
         for change, problem in cases:
             with self.subTest(problem=problem):
                 self.assertIn(problem, broken(change))
 
-    def test_thing_down_carries_the_positions_of_the_things(self):
-        bad = "conditions[0].things is not positions in facts.things.list"
+    def test_device_down_carries_the_positions_of_the_devices(self):
+        bad = "conditions[0].devices is not positions in facts.devices.list"
         for places in (None, [], [4], [-1], [1, 1], [True], ["Vault"], 1):
             with self.subTest(places=places):
 
                 def change(s, places=places):
-                    s["conditions"][0]["things"] = places
+                    s["conditions"][0]["devices"] = places
 
                 self.assertIn(bad, broken(change))
-        self.assertIn(bad, broken(lambda s: s["conditions"][0].pop("things")))
-        # With no things listed, nothing can be down.
+        self.assertIn(bad, broken(lambda s: s["conditions"][0].pop("devices")))
+        # With no devices listed, nothing can be down.
         self.assertIn(bad, contract.validate(state(None)))
         self.assertEqual(
-            contract.validate(state(conditions=[{**THING_DOWN, "things": [3, 1]}])), []
+            contract.validate(state(conditions=[{**DEVICE_DOWN, "devices": [3, 1]}])), []
         )
 
     def test_the_examples_in_the_docs_keep_the_contract(self):
@@ -181,8 +181,8 @@ class ThingsContractTest(unittest.TestCase):
         self.assertGreaterEqual(len(documents), 2)
         for d in documents:
             self.assertEqual(contract.validate(d), [])
-        self.assertTrue(any(d["facts"].get("things") for d in documents))
-        self.assertTrue(any(c["id"] == "thing_down" for d in documents for c in d["conditions"]))
+        self.assertTrue(any(d["facts"].get("devices") for d in documents))
+        self.assertTrue(any(c["id"] == "device_down" for d in documents for c in d["conditions"]))
         self.assertTrue(any(any(d["defaults"].values()) for d in documents))
 
 

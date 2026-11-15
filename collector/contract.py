@@ -22,12 +22,12 @@ FACT_SECTIONS = (
     "ssh",
     "adblock",
     "security",
-    "things",
+    "devices",
 )
-THING_STATES = {"up", "down", "unknown"}
-MAX_THINGS = 32
+DEVICE_STATES = {"up", "down", "unknown"}
+MAX_DEVICES = 32
 KIND_MAX = 200
-_THING_NAME = re.compile(r"^[!-~](?:[ -~]{0,18}[!-~])?$")
+_DEVICE_NAME = re.compile(r"^[!-~](?:[ -~]{0,18}[!-~])?$")
 _TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 # The version of admin.json: 20 hex characters (collector/overlay.py).
 _VERSION = re.compile(r"^[0-9a-f]{20}$")
@@ -37,25 +37,25 @@ def _ts(value: Any) -> bool:
     return isinstance(value, str) and bool(_TS.match(value))
 
 
-def _things(things: Any, p: list[str]) -> int:
-    """Check facts.things and return how many things it lists."""
-    if things is None:
+def _devices(devices: Any, p: list[str]) -> int:
+    """Check facts.devices and return how many devices it lists."""
+    if devices is None:
         return 0
-    if not isinstance(things, dict) or set(things) != {"list"}:
-        p.append("facts.things is not null or an object with list alone")
+    if not isinstance(devices, dict) or set(devices) != {"list"}:
+        p.append("facts.devices is not null or an object with list alone")
         return 0
-    entries = things["list"]
-    if not isinstance(entries, list) or not 1 <= len(entries) <= MAX_THINGS:
-        p.append(f"facts.things.list is not a list of 1 to {MAX_THINGS}")
+    entries = devices["list"]
+    if not isinstance(entries, list) or not 1 <= len(entries) <= MAX_DEVICES:
+        p.append(f"facts.devices.list is not a list of 1 to {MAX_DEVICES}")
         return 0
     names = set()
     for i, t in enumerate(entries):
-        w = f"facts.things.list[{i}]"
+        w = f"facts.devices.list[{i}]"
         if not isinstance(t, dict):
             p.append(f"{w} is not an object")
             continue
         name = t.get("name")
-        if not isinstance(name, str) or not _THING_NAME.match(name):
+        if not isinstance(name, str) or not _DEVICE_NAME.match(name):
             p.append(f"{w}.name is not 1 to 20 printable ASCII characters")
         elif name.lower() in names:
             p.append(f"{w}.name is listed twice")
@@ -65,7 +65,7 @@ def _things(things: Any, p: list[str]) -> int:
         if not isinstance(kind, str) or not 0 < len(kind) <= KIND_MAX:
             p.append(f"{w}.kind is not text of 1 to {KIND_MAX}")
         state = t.get("state")
-        if state not in THING_STATES:
+        if state not in DEVICE_STATES:
             p.append(f"{w}.state is not up, down or unknown")
         for key in ("alert", "seen"):
             if not isinstance(t.get(key), bool):
@@ -176,12 +176,12 @@ def validate(state: Any) -> list[str]:
         for name, section in facts.items():
             if section is not None and not isinstance(section, dict):
                 p.append(f"facts.{name} is neither an object nor null")
-        if isinstance(facts.get("things"), dict):
-            listed = _things(facts["things"], p)
+        if isinstance(facts.get("devices"), dict):
+            listed = _devices(facts["devices"], p)
     for i, c in enumerate(conditions):
-        if isinstance(c, dict) and c.get("id") == "thing_down":
-            # The page finds the things that are down by their positions in facts.things.list.
-            places = c.get("things")
+        if isinstance(c, dict) and c.get("id") == "device_down":
+            # The page finds the devices that are down by their positions in facts.devices.list.
+            places = c.get("devices")
             if (
                 not isinstance(places, list)
                 or not places
@@ -189,7 +189,7 @@ def validate(state: Any) -> list[str]:
                 or len(set(places)) != len(places)
                 or not all(0 <= n < listed for n in places)
             ):
-                p.append(f"conditions[{i}].things is not positions in facts.things.list")
+                p.append(f"conditions[{i}].devices is not positions in facts.devices.list")
 
     defaults = state.get("defaults")
     if not isinstance(defaults, dict) or set(defaults) != set(DEFAULT_TABLES):

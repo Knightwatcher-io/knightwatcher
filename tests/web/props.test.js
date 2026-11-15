@@ -1,4 +1,4 @@
-// Tests for the watched things' props in web/js/props.js: each kind stays inside its place, its
+// Tests for the devices' props in web/js/props.js: each kind stays inside its place, its
 // gone state draws differently from its up state, and only what moves (the pie's steam and its
 // raspberry, and a device's lamp) is drawn each frame.
 // Run with: node --test tests/web/
@@ -81,7 +81,7 @@ test('the moving part of each new kind is its lamp, inside the place, up and dow
     const m = take(() => P.KINDS[k].draw(X, Y, 0, ok, 'moving'));
     assert.ok(m.rects.length >= 1 && m.rects.length <= 2, `${k} ${ok}: ${m.rects.length} fills`);
     assert.equal(m.arcs.length, 3, k);
-    // the light is centred on the lamp, inside the thing's box, and its glow reaches 20 pixels at most
+    // the light is centred on the lamp, inside the device's box, and its glow reaches 20 pixels at most
     for (const [x, y, r] of m.arcs) assert.ok(x >= X - 40 && x <= X + 40 && y >= Y - 64 && y <= Y && r <= 20, `${k}: light ${x} ${y} ${r}`);
     for (const [x, y, w, h] of m.rects) assert.ok(w <= 10 && h <= 10, `${k}: lamp ${w} by ${h}`);
   }
@@ -109,7 +109,7 @@ test('the still part does not change with time, so it can be painted once', () =
   }
 });
 
-test('a gone thing looks different from the same thing up', () => {
+test('a gone device looks different from the same device up', () => {
   const { P, take } = load();
   for (const k of Object.keys(P.KINDS)) {
     const up = take(() => P.KINDS[k].draw(X, Y, 0, true, 'still')), gone = take(() => P.KINDS[k].draw(X, Y, 0, false, 'still'));

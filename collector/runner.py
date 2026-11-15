@@ -329,8 +329,8 @@ class Runner:
         for section in contract.FACT_SECTIONS:
             reading = readings.get(section)
             facts[section] = reading.facts if reading is not None else None
-        # Judged by the conditions from each thing's source, as security.attack is.
-        facts["things"] = self.conditions.things()
+        # Judged by the conditions from each device's source, as security.attack is.
+        facts["devices"] = self.conditions.devices()
 
         state = {
             "schema": SCHEMA,

@@ -1,4 +1,4 @@
-// Tests for the places of the watched things in every scene (docs/page.md, Watched things): that
+// Tests for the places of the devices in every scene (docs/page.md, Devices): that
 // whatever may stand in a place, up or gone, with its question mark and its pole, is drawn wholly
 // on the 960 by 600 grid, which is all a 960-wide display shows, and that no two places' drawings
 // overlap. Run with: node --test tests/web/
@@ -50,17 +50,17 @@ const TIMES = [0, 250, 900, 1700, 2300, 3100];
 
 /* The boxes a place's drawing covers, on the grid: what stands there, every kind it may hold, up
    and gone, still and moving, at several moments, mirrored when the place flips; the pole a high
-   place stands on; and the question mark over a gone thing that alerts, as the engine draws it. */
+   place stands on; and the question mark over a gone device that alerts, as the engine draws it. */
 function placeBoxes(KW, take, pl) {
   const P = KW.props, out = [];
   const mirror = b => (pl.flip ? [2 * pl.x - b[2], b[1], 2 * pl.x - b[0], b[3]] : b);
   for (const k of KINDS_AT[pl.cls]) {
-    let thing = null;
+    let device = null;
     for (const ok of [true, false]) for (const t of TIMES) for (const part of ['still', 'moving']) {
       const b = take(() => P.KINDS[k].draw(pl.x, pl.y, t, ok, part));
-      if (b) thing = thing ? [Math.min(thing[0], b[0]), Math.min(thing[1], b[1]), Math.max(thing[2], b[2]), Math.max(thing[3], b[3])] : b;
+      if (b) device = device ? [Math.min(device[0], b[0]), Math.min(device[1], b[1]), Math.max(device[2], b[2]), Math.max(device[3], b[3])] : b;
     }
-    out.push({ what: k, box: mirror(thing) });
+    out.push({ what: k, box: mirror(device) });
     out.push({ what: k + "'s question mark", box: take(() => KW.sprites.mark(pl.x, pl.y - P.KINDS[k].mark, '?')) });
   }
   // the pole, as the engine draws it: from the foot of the plate, 40 above the base, down to pole

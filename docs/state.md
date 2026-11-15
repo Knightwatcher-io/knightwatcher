@@ -39,7 +39,7 @@ Every value below is invented.
     "ssh": { "count": 0, "sources": [] },
     "adblock": { "blocked_today": 4812 },
     "security": { "threat_score": 2, "bans_24h": 14, "attack": false },
-    "things": {
+    "devices": {
       "list": [
         { "name": "Pi", "kind": "pi", "state": "up", "alert": true, "seen": true,
           "since": "2026-01-15T08:02:40Z" },
@@ -56,10 +56,10 @@ Every value below is invented.
     "containers": { "ok": true, "at": "2026-01-15T21:42:10Z", "error": "" },
     "adblock": { "ok": false, "at": "2026-01-15T21:40:40Z", "error": "401 from the DNS filter" },
     "pi": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" },
-    "thing:Vault": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" },
-    "thing:Gate cam": { "ok": false, "at": "2026-01-15T21:42:01Z",
+    "device:Vault": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" },
+    "device:Gate cam": { "ok": false, "at": "2026-01-15T21:42:01Z",
                         "error": "first read still running" },
-    "thing:Study laptop": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" }
+    "device:Study laptop": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" }
   },
   "defaults": {
     "look": { "skin": "tan", "hair": "auburn", "hair_style": "curls", "monarch": "b",
@@ -73,8 +73,8 @@ Every value below is invented.
 ```
 
 The same file twelve minutes later, once the NAS and the camera have both been silent for longer
-than their `down_after_s`, with the other sections of `facts` and `sources` left out. `things`
-says where the two are in `facts.things.list`. The laptop, which does not alert, has come back:
+than their `down_after_s`, with the other sections of `facts` and `sources` left out. `devices`
+says where the two are in `facts.devices.list`. The laptop, which does not alert, has come back:
 
 ```json
 {
@@ -83,19 +83,19 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
   "interval_s": 10,
   "conditions": [
     {
-      "id": "thing_down",
+      "id": "device_down",
       "level": "warning",
       "since": "2026-01-15T21:42:30Z",
       "headline": "2 DOWN",
       "detail": "Vault, Gate cam",
-      "things": [1, 2]
+      "devices": [1, 2]
     }
   ],
   "quiet_line": "ALL QUIET · 29 up · backup 03:12 · 4,812 ads blocked",
   "events": [],
   "facts": {
     "pi": { "up": true },
-    "things": {
+    "devices": {
       "list": [
         { "name": "Pi", "kind": "pi", "state": "up", "alert": true, "seen": true,
           "since": "2026-01-15T08:02:40Z" },
@@ -109,7 +109,7 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
     }
   },
   "sources": {
-    "thing:Vault": { "ok": true, "at": "2026-01-15T21:54:10Z", "error": "" }
+    "device:Vault": { "ok": true, "at": "2026-01-15T21:54:10Z", "error": "" }
   },
   "defaults": {
     "look": { "skin": "tan", "hair": "auburn", "hair_style": "curls", "monarch": "b",
@@ -134,19 +134,19 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
 - **`conditions`** lists what is true now, highest priority first. The page acts on the first and
   counts the rest. An empty list means all is quiet.
   - `id` is one of: `attack`, `wan_down`, `container_unhealthy`, `disk_full`, `backup_overdue`,
-    `pi_silent`, `thing_down`, `cpu_hot`, `memory_tight`, `ssh_session`, `updating`, `streaming`,
+    `pi_silent`, `device_down`, `cpu_hot`, `memory_tight`, `ssh_session`, `updating`, `streaming`,
     `night`. The page ignores an id it does not know.
   - `level` is `critical`, `warning`, `work`, `quiet` or `sleep`. It sets the text colour.
   - `since` is when the cause began, as a UTC timestamp. For `cpu_hot` and `memory_tight` that is
     the start of the averaging window at the poll that raised it.
   - `headline` is at most 16 characters, in capitals. `detail` is at most 60 characters.
-  - `things` is on `thing_down` alone, and says which watched things are down: one or more
-    positions in `facts.things.list`, counted from 0, in the order their silences began. The page
-    finds each one as `facts.things.list[i]`. Where an entry stands in the scene depends on its
+  - `devices` is on `device_down` alone, and says which devices are down: one or more
+    positions in `facts.devices.list`, counted from 0, in the order their silences began. The page
+    finds each one as `facts.devices.list[i]`. Where an entry stands in the scene depends on its
     kind and on the entries before it, and an entry with no place left is not drawn; see
-    [Watched things](./page.md#watched-things). One `thing_down` covers every watched thing that
+    [Devices](./page.md#devices). One `device_down` covers every device that
     alerts and is down, however many there are. While it is held after the last of them has
-    answered again, it keeps the positions it last had, and those things are then `up`.
+    answered again, it keeps the positions it last had, and those devices are then `up`.
 - **`quiet_line`** is shown when `conditions` is empty. At most 52 characters. The collector
   shortens the blocked count to fit (`11.3k ads blocked`, then `11.3k blocked`) before it drops
   a part from the end.
@@ -164,34 +164,34 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
   latest reading. `adblock.blocked_today` counts the blocked queries since midnight in the
   collector's time zone. `pi.up` says whether the Pi of `[sources.pi]` answered its last check,
   so it turns false at the first check it misses; whether the Pi has been silent long enough to
-  count as down is its entry in `things`.
-- **`facts.things`** lists the watched things (see
-  [configuration.md](./configuration.md#watched-things)). It is `null` when there are none, the
+  count as down is its entry in `devices`.
+- **`facts.devices`** lists the devices (see
+  [configuration.md](./configuration.md#devices)). It is `null` when there are none, the
   Pi of `[sources.pi]` included, and otherwise an object with one key, `list`: every enabled
-  thing, 1 to 32 of them, in the order of the configuration, with the Pi of `[sources.pi]` first
+  device, 1 to 32 of them, in the order of the configuration, with the Pi of `[sources.pi]` first
   when there is one. Each entry has:
   - `name`, as configured: 1 to 20 printable ASCII characters, unique ignoring case.
   - `kind`: `pi`, `camera`, `machine` or `vm` from this collector. A later collector may write
     another kind, up to 200 characters; a page treats a kind it does not know as a plain device.
-  - `state`: `up`, `down` or `unknown`. `down` means silent for at least the thing's
-    `down_after_s`, and is when its prop changes. `unknown` means the thing has not answered
+  - `state`: `up`, `down` or `unknown`. `down` means silent for at least the device's
+    `down_after_s`, and is when its prop changes. `unknown` means the device has not answered
     since the collector started and has not been silent long enough to be down, which includes
-    the time before its first check finishes. A thing that has answered and has been silent for
+    the time before its first check finishes. A device that has answered and has been silent for
     less than its `down_after_s` is still `up`.
-  - `alert`: whether the thing raises `thing_down` (`pi_silent` for the Pi of `[sources.pi]`)
+  - `alert`: whether the device raises `device_down` (`pi_silent` for the Pi of `[sources.pi]`)
     while it is down.
   - `seen`: whether it has answered since the collector started.
   - `since`: when the present state began, as a UTC timestamp: the answer that made it `up`, the
     start of the silence for `down` (the first check that went unanswered, which is earlier than
     the moment it was judged down), and `null` for `unknown`.
 
-  Nothing about the things is kept across a restart: each starts `unknown` again.
+  Nothing about the devices is kept across a restart: each starts `unknown` again.
 - **`sources`** says, for each enabled source, whether its last read worked, when it began, and
   why not. Between reads the entry stays as the last read left it, so `at` can be older than
   `generated_at` by the source's own pace (a minute for the backup log), and by longer while a
-  slow read is still running or the source is paused after refused credentials. Each watched
-  thing has an entry of its own, `thing:<name>`, and the Pi of `[sources.pi]` keeps `pi`. A
-  thing's check that ran but got no answer is `ok: true`, since the check worked; its `ok` is
+  slow read is still running or the source is paused after refused credentials. Each device
+  has an entry of its own, `device:<name>`, and the Pi of `[sources.pi]` keeps `pi`. A device's
+  check that ran but got no answer is `ok: true`, since the check worked; its `ok` is
   false only while its first check is still running (`first read still running`) and when a
   check ran out of time (`timed out`, then `previous read still running` while it hangs on).
 - **`defaults`** is the household default for the display's settings screen: what a display

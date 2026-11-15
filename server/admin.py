@@ -295,7 +295,7 @@ def read_credentials(out: str) -> dict[str, bool] | None:
 
 def read_status(out: str) -> dict | None:
     """What the page shows of the collector's last state file: when it was written, how often,
-    each source's health, each watched thing's state, and the settings it says it uses."""
+    each source's health, each device's state, and the settings it says it uses."""
     data = _read_small(os.path.join(out, "state.json"))
     try:
         state = json.loads(data) if data is not None else None
@@ -304,12 +304,12 @@ def read_status(out: str) -> dict | None:
     if not isinstance(state, dict):
         return None
     facts = state.get("facts") if isinstance(state.get("facts"), dict) else {}
-    things = facts.get("things") if isinstance(facts.get("things"), dict) else {}
+    devices = facts.get("devices") if isinstance(facts.get("devices"), dict) else {}
     return {
         "generated_at": state.get("generated_at"),
         "interval_s": state.get("interval_s"),
         "sources": state.get("sources") if isinstance(state.get("sources"), dict) else {},
-        "things": things.get("list") if isinstance(things.get("list"), list) else [],
+        "devices": devices.get("list") if isinstance(devices.get("list"), list) else [],
         "config": state.get("config") if isinstance(state.get("config"), dict) else None,
     }
 
@@ -425,7 +425,7 @@ class Admin:
             if why:
                 problems.append(why)
         for path in reset:
-            if path != overlay.THINGS and path not in overlay.PATHS:
+            if path != overlay.DEVICES and path not in overlay.PATHS:
                 problems.append(f"{path}: unknown setting")
         if not given and not reset and not problems:
             problems.append("name a setting in set or reset")
@@ -553,17 +553,17 @@ def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
         table = t["table"]
         out.append("")
         out += _comment(t["help"])
-        if table == overlay.THINGS:
-            things = raw.get(overlay.THINGS) or []
-            if not things:
-                out.append("# No watched things.")
-            for i, thing in enumerate(things):
+        if table == overlay.DEVICES:
+            devices = raw.get(overlay.DEVICES) or []
+            if not devices:
+                out.append("# No devices.")
+            for i, device in enumerate(devices):
                 if i:
                     out.append("")
-                out.append("[[thing]]")
+                out.append("[[device]]")
                 for s in t["settings"]:
-                    if s["key"] in thing:
-                        out += _line(s["key"], thing[s["key"]], s["type"])
+                    if s["key"] in device:
+                        out += _line(s["key"], device[s["key"]], s["type"])
             continue
         if not t["settings"]:
             out.append(f"[{table}]")

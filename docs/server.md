@@ -4,7 +4,7 @@ Knightwatcher comes with a small web server of its own, run beside the collector
 `docker compose up`. It serves the page, the collector's `state.json` and the packs the collector
 downloaded, keeps the settings chosen on the displays' settings screens for the whole deployment,
 so that every display shows the same knight, and serves the admin page, where the household's
-sources, thresholds and watched things are set behind a password. It is written in Python with the
+sources, thresholds and devices are set behind a password. It is written in Python with the
 standard library alone, in `server/`, and runs from the same image as the collector.
 
 The server is optional. The page still works from any web server of your own (see
@@ -120,7 +120,7 @@ Behind a reverse proxy the proxy must pass the original `Host` on, which Caddy d
 ## The admin page
 
 The admin page, at `/admin/` on the server, is where the household's settings are changed from any
-browser: the collector, the conditions, the sources and the watched things, and the household look,
+browser: the collector, the conditions, the sources and the devices, and the household look,
 display, quiet scenes and scenes that the walls' settings screens also change. Its value for each
 setting comes from one of three levels, highest first: what is set on the page, `config.toml`, and
 the default ([configuration.md](./configuration.md#where-the-collectors-settings-come-from)).
@@ -155,10 +155,10 @@ answers `401 {"error": "sign in first"}` without one. While the page is off, eve
 ```json
 {
   "v": 1,
-  "set": {"collector.interval_s": 15, "thing": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}]},
+  "set": {"collector.interval_s": 15, "device": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}]},
   "version": "3f9c0d12ab45e6789a0b",
   "file": {"collector": {"timezone": "Europe/London"}, "sources": {"pi": {"host": "192.0.2.4"}}},
-  "status": {"generated_at": "2026-01-15T21:42:10Z", "interval_s": 15, "sources": {}, "things": [],
+  "status": {"generated_at": "2026-01-15T21:42:10Z", "interval_s": 15, "sources": {}, "devices": [],
              "config": {"admin": "3f9c0d12ab45e6789a0b", "at": "2026-01-15T21:42:10Z", "problems": []}},
   "credentials": {"KNIGHTWATCHER_SONARR_API_KEY": true, "KNIGHTWATCHER_RADARR_API_KEY": false},
   "problems": [],
@@ -169,7 +169,7 @@ answers `401 {"error": "sign in first"}` without one. While the page is off, eve
 `set` is what is set on the page, by path, and `version` the version of the store that holds it
 (below). `file` is `config.toml` as parsed, or `null` with `file_problem` saying why it could not
 be read. `status` is taken from the collector's latest state file: when it was written and how
-often, each source's health, each watched thing's state, and `config`, the settings the collector
+often, each source's health, each device's state, and `config`, the settings the collector
 says it uses ([state.md](./state.md#fields)), so that the page can say "In use by the collector
 since" once `status.config.admin` equals `version`. `credentials` is the collector's report of
 which credential variables it holds, by name ([collector.md](./collector.md#credentials-by-name)), or
@@ -179,8 +179,8 @@ clock, against which the page counts ages.
 
 A `PATCH` names paths to set and paths to reset (put back to `config.toml`'s value, or the default).
 A path is a setting's table and key, as `check-config` names them: `collector.interval_s`,
-`conditions.cpu_hot.pct`, `sources.sonarr.enabled`. A list is one value, and `thing` is the whole
-list of watched things: set here, each replaces `config.toml`'s whole. A path into a source that
+`conditions.cpu_hot.pct`, `sources.sonarr.enabled`. A list is one value, and `device` is the whole
+list of devices: set here, each replaces `config.toml`'s whole. A path into a source that
 `config.toml` does not set up creates its table. Only the collector's settings that the schema
 marks editable can be set; the folders, `proc_root`, the backup log and each source's `secret` are
 fixed, and the look, display, quiet scenes and scenes are set through `PUT /api/settings`, as the
@@ -249,7 +249,7 @@ in `config.toml`, which stays the owner's file and the level under it:
   "set": {
     "collector.interval_s": 15,
     "conditions.cpu_hot.pct": 90.0,
-    "thing": [
+    "device": [
       {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}
     ]
   }
@@ -375,7 +375,7 @@ environment.
 
 **What a write can do.** A `PUT` to `/api/settings`, open to anyone who reaches the server,
 changes how the knight looks, the words' size and clock, the quiet scenes and where some conditions
-play, for every display. It cannot change a source, a threshold, a watched thing or a credential.
+play, for every display. It cannot change a source, a threshold, a device or a credential.
 A signed-in write on the admin page can: it reaches every source's address, the thresholds and the
 whole watch list, so the collector can be pointed at any address on the LAN that the host reaches.
 It still cannot change a credential, a folder or what the collector mounts, and every change is
@@ -439,7 +439,7 @@ sessions renewed by use and ended after 30 days or by Sign out, sessions kept in
 across a restart, ended by a new password, never stored as a usable token, the session every
 address needs,
 cross-origin writes refused, a change kept and written, a refused one with the collector's words
-and nothing kept, a credential refused by its variable's name, the watched things replaced whole,
+and nothing kept, a credential refused by its variable's name, the devices replaced whole,
 the reset, the export read back and built by the collector, `credentials.json` never served, the
 admin page stamped and served at `/admin/`, and that the password never reaches a log, an answer
 or the environment once read.

@@ -463,8 +463,8 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(state["conditions"][0]["id"], "attack")
 
 
-class ThingsRunnerTest(unittest.TestCase):
-    """Watched things through the whole poll, against local sockets."""
+class DevicesRunnerTest(unittest.TestCase):
+    """Devices through the whole poll, against local sockets."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -497,8 +497,8 @@ class ThingsRunnerTest(unittest.TestCase):
         with open(os.path.join(self.out, "state.json"), encoding="utf-8") as fh:
             return json.load(fh)
 
-    def test_twenty_things_with_five_that_hang_fit_the_poll(self):
-        things = [
+    def test_twenty_devices_with_five_that_hang_fit_the_poll(self):
+        devices = [
             {
                 "name": f"Box {i:02d}",
                 "kind": "machine",
@@ -510,18 +510,18 @@ class ThingsRunnerTest(unittest.TestCase):
             for i in range(20)
         ]
         # Polls every 5 s, waiting at most 3.3 s; each check gives up after 1 s.
-        r = self.runner({"collector": {"interval_s": 5, "http_timeout_s": 1.0}, "thing": things})
+        r = self.runner({"collector": {"interval_s": 5, "http_timeout_s": 1.0}, "device": devices})
         for poll in range(3):  # 0, 10, 20 s
             started = time.monotonic()
             state = r.cycle()
             self.assertLess(time.monotonic() - started, 5)
             self.assertEqual(contract.validate(state), [])
             # Every reading is collected at the poll that started it.
-            for name in (f"thing:Box {i:02d}" for i in range(20)):
+            for name in (f"device:Box {i:02d}" for i in range(20)):
                 self.assertEqual(
                     state["sources"][name], {"ok": True, "at": state["generated_at"], "error": ""}
                 )
-            listed = state["facts"]["things"]["list"]
+            listed = state["facts"]["devices"]["list"]
             hanging = [t for i, t in enumerate(listed) if i % 4 == 3]
             answering = [t for i, t in enumerate(listed) if i % 4 != 3]
             self.assertTrue(all(t["state"] == "up" for t in answering))
@@ -529,7 +529,7 @@ class ThingsRunnerTest(unittest.TestCase):
             self.clock.advance(10)
         (c,) = state["conditions"]
         self.assertEqual(
-            (c["id"], c["headline"], c["things"]), ("thing_down", "5 DOWN", [3, 7, 11, 15, 19])
+            (c["id"], c["headline"], c["devices"]), ("device_down", "5 DOWN", [3, 7, 11, 15, 19])
         )
         self.assertEqual(c["detail"], "Box 03, Box 07, Box 11, Box 15, Box 19")
 
@@ -542,7 +542,7 @@ class ThingsRunnerTest(unittest.TestCase):
                 release.wait(10)
             return True
 
-        things = [
+        devices = [
             {
                 "name": "Vault",
                 "kind": "machine",
@@ -560,35 +560,37 @@ class ThingsRunnerTest(unittest.TestCase):
                 "down_after_s": 10,
             },
         ]
-        with mock.patch("collector.sources.things.tcp_any", check):
-            r = self.runner({"thing": things})
+        with mock.patch("collector.sources.devices.tcp_any", check):
+            r = self.runner({"device": devices})
             r._deadline_s = lambda: 0.05
             r._limit_s = lambda source: 0.1
             state = r.cycle()  # 0 s: Buildbox's first check is still running
             self.assertEqual(
-                state["sources"]["thing:Buildbox"]["error"], "first read still running"
+                state["sources"]["device:Buildbox"]["error"], "first read still running"
             )
             self.assertEqual(
-                [t["state"] for t in state["facts"]["things"]["list"]], ["up", "unknown"]
+                [t["state"] for t in state["facts"]["devices"]["list"]], ["up", "unknown"]
             )
             time.sleep(0.15)
             self.clock.advance(10)
             state = r.cycle()  # 10 s: past its limit, timed out: silent from now
-            self.assertEqual(state["sources"]["thing:Buildbox"]["error"], "timed out")
+            self.assertEqual(state["sources"]["device:Buildbox"]["error"], "timed out")
             self.assertEqual(state["conditions"], [])
             self.clock.advance(10)
             state = r.cycle()  # 20 s: still hanging, silent for 10 s
             self.assertEqual(
-                state["sources"]["thing:Buildbox"]["error"], "previous read still running"
+                state["sources"]["device:Buildbox"]["error"], "previous read still running"
             )
-            self.assertEqual([t["state"] for t in state["facts"]["things"]["list"]], ["up", "down"])
             self.assertEqual(
-                [(c["id"], c["headline"], c["things"]) for c in state["conditions"]],
-                [("thing_down", "BUILDBOX DOWN", [1])],
+                [t["state"] for t in state["facts"]["devices"]["list"]], ["up", "down"]
+            )
+            self.assertEqual(
+                [(c["id"], c["headline"], c["devices"]) for c in state["conditions"]],
+                [("device_down", "BUILDBOX DOWN", [1])],
             )
             self.assertEqual(contract.validate(state), [])
 
-    def test_a_thing_goes_down_and_comes_back_by_tcp_and_by_web_address(self):
+    def test_a_device_goes_down_and_comes_back_by_tcp_and_by_web_address(self):
         http = FakeHttp()
         self.addCleanup(http.close)
         http.routes["/"] = (401, b"")
@@ -597,7 +599,7 @@ class ThingsRunnerTest(unittest.TestCase):
         r = self.runner(
             {
                 "collector": {"http_timeout_s": 0.3},
-                "thing": [
+                "device": [
                     {
                         "name": "Vault",
                         "kind": "machine",
@@ -624,7 +626,7 @@ class ThingsRunnerTest(unittest.TestCase):
             cam.settings["url"] = up_url if step == "U" else down_url
             state = r.cycle()
             headline = state["conditions"][0]["headline"] if state["conditions"] else ""
-            seen.append(([t["state"] for t in state["facts"]["things"]["list"]], headline))
+            seen.append(([t["state"] for t in state["facts"]["devices"]["list"]], headline))
             self.clock.advance(10)
         up, down = ["up", "up"], ["down", "down"]
         self.assertEqual(
@@ -644,12 +646,12 @@ class ThingsRunnerTest(unittest.TestCase):
             ],
         )
 
-    def test_the_file_with_things(self):
+    def test_the_file_with_devices(self):
         refused = closed_port()
         r = self.runner(
             {
                 "sources": {"pi": {"host": "localhost", "ports": [refused]}},
-                "thing": [
+                "device": [
                     {
                         "name": "Vault",
                         "kind": "machine",
@@ -672,7 +674,7 @@ class ThingsRunnerTest(unittest.TestCase):
         self.assertEqual(contract.validate(state), [])
         self.assertEqual(state["facts"]["pi"], {"up": True})
         self.assertEqual(
-            [(t["name"], t["state"], t["seen"]) for t in state["facts"]["things"]["list"]],
+            [(t["name"], t["state"], t["seen"]) for t in state["facts"]["devices"]["list"]],
             [
                 ("Pi", "up", True),
                 ("Vault", "up", True),
@@ -681,15 +683,15 @@ class ThingsRunnerTest(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            list(state["sources"]), ["pi", "thing:Vault", "thing:Laptop", "thing:Gate cam"]
+            list(state["sources"]), ["pi", "device:Vault", "device:Laptop", "device:Gate cam"]
         )
-        # With no thing at all, the section is null.
-        self.assertIsNone(self.runner({}).cycle()["facts"]["things"])
+        # With no device at all, the section is null.
+        self.assertIsNone(self.runner({}).cycle()["facts"]["devices"])
 
     # The record of facts.pi, sources.pi and pi_silent at each poll, taken from the collector as
-    # it was before watched things, for these same inputs: (facts.pi.up, sources.pi.ok, the end of
+    # it was before devices, for these same inputs: (facts.pi.up, sources.pi.ok, the end of
     # sources.pi.at, sources.pi.error, (the end of pi_silent's since, its detail) or None).
-    PI_BEFORE_THINGS: ClassVar[list] = [
+    PI_BEFORE_DEVICES: ClassVar[list] = [
         (True, True, "0:00Z", "", None),
         (True, True, "0:00Z", "", None),
         (False, True, "0:20Z", "", None),
@@ -747,7 +749,7 @@ class ThingsRunnerTest(unittest.TestCase):
             ]
             rows.append((f["up"], s["ok"], s["at"][-5:], s["error"], silent[0] if silent else None))
             self.clock.advance(10)
-        self.assertEqual(rows, self.PI_BEFORE_THINGS)
+        self.assertEqual(rows, self.PI_BEFORE_DEVICES)
 
 
 class MemoryTest(unittest.TestCase):

@@ -43,7 +43,7 @@ function sandbox() {
     vm.runInContext(fs.readFileSync(path.join(WEB, f), 'utf8'), box, { filename: f });
   }
   const KW = box.window.KW;
-  KW.things = { draw() { log.push('things'); } };
+  KW.devices = { draw() { log.push('devices'); } };
   KW.draw.setCtx(ctx);
   return { box, KW, K: KW.knight, log, lines, delays };
 }

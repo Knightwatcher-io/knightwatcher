@@ -1,5 +1,5 @@
 /* Knightwatcher: the props that more than one scene uses, or that the engine draws over a scene:
-   the raspberry pie (the Raspberry Pi) and the other watched things, fire, sky and stars, the
+   the raspberry pie (the Raspberry Pi) and the other devices, fire, sky and stars, the
    greatsword, brick, the barrel, the table and the wall torch, the flies, the crate and its
    parachute, and the foes (the goblin) with the smoke, the sparkles and the hole they come and
    go by. */
@@ -84,7 +84,7 @@
      the dish stands empty but for crumbs and one raspberry, which stays the lamp, under a question
      mark.
      part 'still' draws only what does not move, and 'moving' only the steam and the raspberry; the
-     engine draws the question mark of a watched thing itself (see KINDS). */
+     engine draws the question mark of a device itself (see KINDS). */
   const CRUST = ['#ffd98a', '#f2ac4e', '#cc7f32', '#93521d'], FILLING = ['#d2325f', '#9a1640', '#5c0a24'];
   const DISH = [[.1, C.W], [.42, C.S0], [.74, C.S1], [1, C.S2]];
   /* The pie's top, in the dish's frame: u across from the middle, v down from the rim's middle. The
@@ -219,7 +219,7 @@
     ctx.drawImage(berrySprite(ok, false), px, py);
     alpha(a); ctx.drawImage(berrySprite(ok, true), px, py); alpha(1);
   }
-  /* ---- The other watched things -------------------------------------------------------------
+  /* ---- The other devices -------------------------------------------------------------
      Drawn as the devices they are, in the steels and whites of the palette. Each takes
      (x, y, t, ok, part) like the pie, but (x, y) is the middle of the base, the line it stands on
      (for a camera, the foot of the wall plate it hangs from), and it fits within 80 by 64 above it.
@@ -336,10 +336,10 @@
     if (part !== 'still') lampHD(x + lp[0], y + lp[1], t, ok);
   }
 
-  /* The kinds of watched thing the page draws, by the contract's kind. draw(x, y, t, ok, part)
+  /* The kinds of device the page draws, by the contract's kind. draw(x, y, t, ok, part)
      draws one standing on the base (x, y), and mark is the height above the base of the top of
-     the question mark the engine draws over a gone thing that alerts: its foot clears the gone
-     thing by 4 pixels or more, except over the pie, whose mark stands where it always has. A kind
+     the question mark the engine draws over a gone device that alerts: its foot clears the gone
+     device by 4 pixels or more, except over the pie, whose mark stands where it always has. A kind
      not listed here is drawn as box. */
   const KINDS = {
     pi: { draw: (x, y, t, ok, part) => pieHD(x - 32, y - 31, t, ok, part), mark: 93 },
@@ -503,7 +503,7 @@
                    poses, and an unknown name gives stand
        anchor      the feet in that canvas, [x, y]
        h           its height from the feet to its top
-       w           half its width across the body, which must stay clear of a watched thing
+       w           half its width across the body, which must stay clear of a device
        mid         the middle of its body above the feet, where the smoke of its exit gathers
        crown       the points of its top, [x, y] from the feet as drawn facing left: the knight's
                    blade stops at the first of them it meets, so no blade passes through it
@@ -568,7 +568,7 @@
   }
   /* A hole in the grass with its middle at (x, y) on the ground, open by k (0 to 1): a ring of
      earth round a dark pit, 88 pixels across when open, no wider than a foe's place beside a
-     watched thing. */
+     device. */
   function holeHD(x, y, k) {
     if (k <= 0) return;
     ell(x, y + 4, 44 * k, 12 * k, C.K); ell(x, y + 3, 41 * k, 9 * k, [[.2, C.N1], [.7, C.N2], [1, C.N3]]);

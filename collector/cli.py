@@ -109,9 +109,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.check_config:
         names = ", ".join(config.sources) or "none"
         line = f"config ok: {len(config.sources)} sources enabled ({names})"
-        if config.things:
-            watched = ", ".join(t["name"] for t in config.things)
-            line += f"; {len(config.things)} watched ({watched})"
+        if config.devices:
+            watched = ", ".join(t["name"] for t in config.devices)
+            line += f"; {len(config.devices)} watched ({watched})"
         print(line)
         return 0
 

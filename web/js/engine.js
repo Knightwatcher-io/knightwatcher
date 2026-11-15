@@ -6,7 +6,7 @@
      turns   the quiet scenes that take turns, in that order; all four (TURNS) when it is left out
              or empty
      turnMs  how long each quiet scene lasts while they take turns
-     things  the watched things standing in the scene's places, as KW.state.map() gives them:
+     devices  the devices standing in the scene's places, as KW.state.map() gives them:
              { place, kind, ok, alert }, place naming one of the scene's places
      tv      whether the television in the house is on
      helmet  'auto' (off indoors), 'on' or 'off'
@@ -25,7 +25,7 @@
   const { alpha, Rh, strip, lerp, clamp01, ease, hash } = D;
 
   const E = KW.engine = {
-    input: { w: KW.state.IDLE, is: 'auto', turnMs: 60000, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: 'auto' },
+    input: { w: KW.state.IDLE, is: 'auto', turnMs: 60000, devices: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: 'auto' },
     note: ''
   };
   /* Whether the address's t= hook freezes time; KW.hooks.t is then the frozen time. */
@@ -115,7 +115,7 @@
     // how far inside the weapon's furthest reach the foe wants to stand, as a share of the blade's
     // length, so the blade meets it a little short of the point
     reachIn: .12,
-    // how far a foe keeps from the box of a watched thing's place, beyond its own half width
+    // how far a foe keeps from the box of a device's place, beyond its own half width
     clear: 0,
     enter: { open: [60, 260], rise: [250, 650], peek: [650, 850], hop: [850, 1150], land: [1150, 1230], taunt: [1230, 1480], brace: 1480,
       // how high above the line it peeks (its feet below the line by this), and clears the line in its hop
@@ -134,13 +134,13 @@
 
   /* Where the foe F stands with the knight at kx in scene sc, as { x, side }, or null when there is
      no room. The scene's foeZone gives the side tried first and the spans of ground clear of its
-     own props; the places that hold a watched thing on the ground or the pie's are kept clear too.
+     own props; the places that hold a device on the ground or the pie's are kept clear too.
      The spot is the one nearest the wanted gap on the first side that has room. */
-  function foeSpot(F, sc, things, places, kx, gaps) {
+  function foeSpot(F, sc, devices, places, kx, gaps) {
     const z = sc.foeZone; if (!z) return null;
     const m = F.w + FOE.clear, blocked = [];
-    for (const th of things || []) {
-      const pl = th && places && places[th.place];
+    for (const dv of devices || []) {
+      const pl = dv && places && places[dv.place];
       if (pl && (pl.cls === 'pie' || pl.cls === 'ground')) blocked.push([pl.x - pl.w / 2 - m, pl.x + pl.w / 2 + m]);
     }
     const first = z.side < 0 ? -1 : 1;
@@ -211,7 +211,7 @@
      reach, so a foe never plays a hit the blade did not give. */
   function foePlan(type, sc, s, o) {
     const e = EVENTS[type], F = P.FOES[e.foe]; if (!F) return null;
-    const gaps = { 1: foeGaps(F, o, 1), '-1': foeGaps(F, o, -1) }, spot = foeSpot(F, sc, s.things, s.places, o.x, gaps);
+    const gaps = { 1: foeGaps(F, o, 1), '-1': foeGaps(F, o, -1) }, spot = foeSpot(F, sc, s.devices, s.places, o.x, gaps);
     if (!spot) return null;
     const q = contactQ(F, spot.x, spot.side, o), S = FOE.strike; if (q >= 1) return null;
     const burrow = !sc.wallAt, lineAt = burrow ? () => V.HFL + FOE.enter.holeLine : sc.wallAt;
@@ -289,16 +289,16 @@
     }
   }
 
-  /* ---- Watched things in their places --------------------------------------------------------
+  /* ---- Devices in their places --------------------------------------------------------
      Each scene names its places in its places field (docs/page.md): the pie's, three high ones
      for cameras (h1 to h3) and three on the ground for every other device (g1 to g3). KW.state
-     puts each thing in one. The still part of each thing, with the pole a high place may have, is
+     puts each device in one. The still part of each device, with the pole a high place may have, is
      painted once into a small canvas of its own, kept by place, kind and state, and drawn with one
      call where the scene's draw reaches its places, so the scene's drawing order stays as it was.
      Only what moves is drawn each frame: the pie's steam and a device's lamp, whose loop starts at
-     a different moment in each place. The question mark over a gone thing that alerts blinks, and
+     a different moment in each place. The question mark over a gone device that alerts blinks, and
      is kept in a canvas of its own too. A place in front of the ground line (front) is drawn by the
-     engine after the knight, and a place with flip shows its thing the other way round. */
+     engine after the knight, and a place with flip shows its device the other way round. */
   const ORDER = ['pie', 'h1', 'h2', 'h3', 'g1', 'g2', 'g3'], PHASE_MS = 523;
   const SPRITES = new Map(), SPRITE_MAX = 64;
   const kindName = k => (typeof k === 'string' && Object.prototype.hasOwnProperty.call(P.KINDS, k) ? k : 'box');
@@ -326,36 +326,36 @@
     return sp;
   }
 
-  function placeHD(name, pl, th, t) {
-    const kind = kindName(th.kind), k = P.KINDS[kind], ctx = D.getCtx(), foot = pl.pole || 0;
+  function placeHD(name, pl, dv, t) {
+    const kind = kindName(dv.kind), k = P.KINDS[kind], ctx = D.getCtx(), foot = pl.pole || 0;
     const ox = pl.x - 64, oy = pl.y - 136, h = Math.max(168, foot - oy + 8);
-    const sp = cached([pl.x, pl.y, pl.flip ? 'flip' : '', foot, kind, th.ok ? 'up' : 'gone'].join('|'), ox, oy, 128, h, pl.flip, pl.x, () => {
+    const sp = cached([pl.x, pl.y, pl.flip ? 'flip' : '', foot, kind, dv.ok ? 'up' : 'gone'].join('|'), ox, oy, 128, h, pl.flip, pl.x, () => {
       if (foot) poleHD(pl.x, pl.y, foot);
-      k.draw(pl.x, pl.y, 0, th.ok, 'still');
+      k.draw(pl.x, pl.y, 0, dv.ok, 'still');
     });
     ctx.drawImage(sp.cv, sp.ox, sp.oy);
     const tt = t + Math.max(0, ORDER.indexOf(name)) * PHASE_MS;
-    if (pl.flip) { ctx.save(); ctx.transform(-1, 0, 0, 1, 2 * pl.x, 0); k.draw(pl.x, pl.y, tt, th.ok, 'moving'); ctx.restore(); }
-    else k.draw(pl.x, pl.y, tt, th.ok, 'moving');
-    if (!th.ok && th.alert && Math.floor(t / 400) % 2) {
+    if (pl.flip) { ctx.save(); ctx.transform(-1, 0, 0, 1, 2 * pl.x, 0); k.draw(pl.x, pl.y, tt, dv.ok, 'moving'); ctx.restore(); }
+    else k.draw(pl.x, pl.y, tt, dv.ok, 'moving');
+    if (!dv.ok && dv.alert && Math.floor(t / 400) % 2) {
       const my = pl.y - k.mark, m = cached('mark|' + pl.x + ',' + my, pl.x - 32, my - 8, 64, 80, false, pl.x, () => SP.mark(pl.x, my, '?'));
       ctx.drawImage(m.cv, m.ox, m.oy);
     }
   }
 
-  /* Draws the things in the scene's places, those behind the knight (front false) or those in
+  /* Draws the devices in the scene's places, those behind the knight (front false) or those in
      front of it (front true). */
   function placesHD(t, s, front) {
     const places = s.places; if (!places) return;
-    for (const th of s.things) {
-      const pl = th && places[th.place];
-      if (pl && !pl.front === !front) placeHD(th.place, pl, th, t);
+    for (const dv of s.devices) {
+      const pl = dv && places[dv.place];
+      if (pl && !pl.front === !front) placeHD(dv.place, pl, dv, t);
     }
   }
 
   /* The address's pl=1: every place's box outlined and named, for reviewing where they stand.
      The outer box is the place's, 88 by 112 above the base; the inner one, 80 by 64, is what a
-     thing may fill; the base is the white line. The pie's place is white, high places blue and
+     device may fill; the base is the white line. The pie's place is white, high places blue and
      ground places amber; a place in front of the knight has a broken outline. */
   const GLYPHS = { P: '111101111100100', H: '101101111101101', G: '111100101101111', 1: '010110010010111', 2: '111001111100111', 3: '111001111001111' };
   const CLASS_COLOUR = { pie: C.W, high: '#7fe9ff', ground: '#ffb000' };
@@ -373,11 +373,11 @@
     }
   }
 
-  KW.things = {
-    /* For a scene's draw: the things behind the knight. */
+  KW.devices = {
+    /* For a scene's draw: the devices behind the knight. */
     draw(t, s) { placesHD(t, s, false); },
-    /* The x of a place with a thing in it, or null. */
-    placeX(s, name) { const pl = s.places && name ? s.places[name] : null; return pl && s.things.some(th => th && th.place === name) ? pl.x : null; }
+    /* The x of a place with a device in it, or null. */
+    placeX(s, name) { const pl = s.places && name ? s.places[name] : null; return pl && s.devices.some(dv => dv && dv.place === name) ? pl.x : null; }
   };
 
   /* A scene's still part is painted once into its own canvas and kept until the key changes or
@@ -392,7 +392,7 @@
 
   function draw(t) {
     const { HL, HR, HT, HH, HFL } = V, freeze = frozen();
-    const inp = E.input, w = inp.w, scene = sceneOf(w, t), sc = KW.scenes[scene], things = inp.things || [];
+    const inp = E.input, w = inp.w, scene = sceneOf(w, t), sc = KW.scenes[scene], devices = inp.devices || [];
     if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
     const serious = w.lv >= 3, inBed = !!sc.bed && (w.id === 'night' || w.id === 'container_unhealthy');
     const funOK = !serious && !!sc.outdoors;
@@ -413,11 +413,11 @@
         if (here.act === 'yawn') { const c = el % 6500; if (c > 3800 && c < 5600) { o.eyes = 'closed'; o.mouth = 'o'; } }
       }
     }
-    const s = { w, things, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false,
+    const s = { w, devices, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false,
       mon: inp.mon || 'a', monSkin: inp.monSkin || null, monHair: inp.monHair || null, monRobe: inp.monRobe || null };
-    // a watched thing down: the knight stays put and looks towards its place, or straight ahead
+    // a device down: the knight stays put and looks towards its place, or straight ahead
     // when it is not drawn
-    if (w.id === 'thing_down') { const px = KW.things.placeX(s, w.place); o.look = px === null ? 0 : Math.sign(px - kx); }
+    if (w.id === 'device_down') { const px = KW.devices.placeX(s, w.place); o.look = px === null ? 0 : Math.sign(px - kx); }
     if (sc.act) sc.act(t, s);
     o.x = kx;
     // a foe's event: where the foe stands and when the blade meets it, worked out on its first frame

@@ -57,12 +57,12 @@ function load(pack, opts) {
 
 const PIE = { place: 'pie', kind: 'pi', ok: true, alert: true };
 const plain = o => JSON.parse(JSON.stringify(o));
-const thing = place => ({ place, kind: 'machine', ok: true, alert: false });
+const device = place => ({ place, kind: 'machine', ok: true, alert: false });
 /* The knight's pose for the event at el, placed at kx as the engine places it. */
 function pose(K, V, kx, el) { const o = K.pose('idle', 20000 + el); o.floor = V.HFL; o.x = kx; o.helmet = true; o.bob = 0; return o; }
-function planFor(m, scene, kx, things) {
+function planFor(m, scene, kx, devices) {
   const sc = m.KW.scenes[scene];
-  return m.F.plan('goblin', sc, { things, places: sc.places }, pose(m.K, m.V, kx, 0));
+  return m.F.plan('goblin', sc, { devices, places: sc.places }, pose(m.K, m.V, kx, 0));
 }
 /* Every spot the knight strolls to in a scene, and a few between them, in grid pixels. */
 function spots(m, scene) {
@@ -121,24 +121,24 @@ test('the entrance runs in order, and the poof is over within the event, whereve
   }
 });
 
-test('where the goblin stands: in its zone, clear of the knight, the pie and every watched thing on the ground', () => {
+test('where the goblin stands: in its zone, clear of the knight, the pie and every device on the ground', () => {
   const m = load(true), [gMin, , gMax] = m.F.FOE.gap;
-  const sets = [[PIE], [PIE, thing('g3')], [PIE, thing('g1'), thing('g2')], [PIE, thing('g1'), thing('g2'), thing('g3')], [thing('g1')]];
+  const sets = [[PIE], [PIE, device('g3')], [PIE, device('g1'), device('g2')], [PIE, device('g1'), device('g2'), device('g3')], [device('g1')]];
   const seen = { battlement: new Set(), camp: new Set() };
   for (const scene of ['battlement', 'camp']) {
     const sc = m.KW.scenes[scene];
-    for (const things of sets) for (const kx of spots(m, scene)) {
-      const spot = m.F.spot(m.P.FOES.goblin, sc, things, sc.places, kx);
+    for (const devices of sets) for (const kx of spots(m, scene)) {
+      const spot = m.F.spot(m.P.FOES.goblin, sc, devices, sc.places, kx);
       if (!spot) continue;
-      seen[scene].add(things.map(t => t.place).join() + '|' + kx);
+      seen[scene].add(devices.map(t => t.place).join() + '|' + kx);
       const d = Math.abs(spot.x - kx);
       assert.ok(d >= gMin && d <= gMax, `${scene} ${kx}: gap ${d}`);
       assert.equal(Math.sign(spot.x - kx), spot.side);
       assert.ok(sc.foeZone.spans.some(([a, b]) => spot.x >= a && spot.x <= b), `${scene} ${kx}: in the zone`);
-      for (const th of things) {
-        const pl = sc.places[th.place];
+      for (const dv of devices) {
+        const pl = sc.places[dv.place];
         if (pl.cls !== 'pie' && pl.cls !== 'ground') continue;
-        assert.ok(spot.x + 40 <= pl.x - pl.w / 2 || spot.x - 40 >= pl.x + pl.w / 2, `${scene} ${kx}: clear of ${th.place}`);
+        assert.ok(spot.x + 40 <= pl.x - pl.w / 2 || spot.x - 40 >= pl.x + pl.w / 2, `${scene} ${kx}: clear of ${dv.place}`);
       }
     }
   }
@@ -149,9 +149,9 @@ test('where the goblin stands: in its zone, clear of the knight, the pie and eve
   assert.deepEqual(plain(m.F.spot(G, bat, [PIE], bat.places, 480)), { x: 690, side: 1 });
   assert.deepEqual(plain(m.F.spot(G, bat, [PIE], bat.places, 630)), { x: 420, side: -1 }, 'not among the pie and the cameras');
   assert.deepEqual(plain(m.F.spot(G, camp, [PIE], camp.places, 440)), { x: 230, side: -1 });
-  assert.deepEqual(plain(m.F.spot(G, camp, [PIE, thing('g3')], camp.places, 440)), { x: 284, side: -1 }, 'beside the device in g3, not over it');
-  assert.deepEqual(plain(m.F.spot(G, camp, [PIE, thing('g2'), thing('g3')], camp.places, 340)), { x: 494, side: 1 }, 'between the knight and the pie');
-  assert.equal(m.F.spot(G, camp, [PIE, thing('g2'), thing('g3')], camp.places, 400), null, 'no room: the goblin does not come');
+  assert.deepEqual(plain(m.F.spot(G, camp, [PIE, device('g3')], camp.places, 440)), { x: 284, side: -1 }, 'beside the device in g3, not over it');
+  assert.deepEqual(plain(m.F.spot(G, camp, [PIE, device('g2'), device('g3')], camp.places, 340)), { x: 494, side: 1 }, 'between the knight and the pie');
+  assert.equal(m.F.spot(G, camp, [PIE, device('g2'), device('g3')], camp.places, 400), null, 'no room: the goblin does not come');
   assert.equal(m.F.spot(G, m.KW.scenes.house, [PIE], m.KW.scenes.house.places, 480), null, 'a scene without foeZone hosts no foe');
 });
 
@@ -183,9 +183,9 @@ for (const [name, pack, opts] of WEAPONS.concat(BUILT)) {
   test(`the blade meets the goblin's pot at the bonk and never passes through it (${name})`, () => {
     const m = load(pack, opts), S = m.F.FOE.strike;
     let plans = 0;
-    for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) for (const things of [[PIE], [PIE, thing('g3')]]) {
-      const pl = planFor(m, scene, kx, things);
-      if (things.length === 1) assert.ok(pl, `${scene} knight ${kx}: the goblin comes with the pie alone`);
+    for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) for (const devices of [[PIE], [PIE, device('g3')]]) {
+      const pl = planFor(m, scene, kx, devices);
+      if (devices.length === 1) assert.ok(pl, `${scene} knight ${kx}: the goblin comes with the pie alone`);
       if (!pl) continue;
       plans++;
       // the goblin stands within the reach the weapon gives on its side
@@ -232,10 +232,10 @@ test('on every build, with either weapon, the goblin comes wherever it does on C
     for (const [scene, kx0] of [['battlement', 480], ['camp', 440]]) {
       const got = [a, ...others].map(m => planFor(m, scene, kx0, [PIE]).hit);
       assert.deepEqual(got, HITS[grip][scene], `${grip} ${scene}`);
-      for (const kx of spots(a, scene)) for (const things of [[PIE], [PIE, thing('g3')]]) {
-        const pa = planFor(a, scene, kx, things);
+      for (const kx of spots(a, scene)) for (const devices of [[PIE], [PIE, device('g3')]]) {
+        const pa = planFor(a, scene, kx, devices);
         others.forEach((m, i) => {
-          const p = planFor(m, scene, kx, things), what = `${grip} ${looks[i + 1].look.build} ${scene} ${kx} ${things.length}`;
+          const p = planFor(m, scene, kx, devices), what = `${grip} ${looks[i + 1].look.build} ${scene} ${kx} ${devices.length}`;
           assert.equal(!!p, !!pa, what + ': the goblin comes where it does on Classic');
           if (!p) return;
           assert.deepEqual([p.x, p.side], [pa.x, pa.side], what + ': where it stands');

@@ -2,9 +2,9 @@
 
 collector/settings-schema.json describes every setting: its type, its allowed values or range and
 its default. The defaults and the plain checks here are built from it, and the checks that are not
-plain (the priority list, addresses, patterns, watched things and the Pi) are written out below.
-A source runs when its table is present in config.toml and its `enabled` is not false. Watched
-things are the `[[thing]]` tables, checked here and turned into one list with the Pi of
+plain (the priority list, addresses, patterns, devices and the Pi) are written out below.
+A source runs when its table is present in config.toml and its `enabled` is not false.
+Devices are the `[[device]]` tables, checked here and turned into one list with the Pi of
 `[sources.pi]` first. The `[look]`, `[display]`, `[quiet]` and `[scenes]` tables are the settings
 screen's household defaults; they have no defaults here, and only what they set is written to
 state.json. Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>,
@@ -65,25 +65,25 @@ MIN_WINDOW_S = schema.setting("conditions.cpu_hot", "window_s")["min"]
 
 _HHMM = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
-# Watched things: the [[thing]] tables.
-_THING = {s["key"]: s for s in schema.settings("thing")}
-THING_KINDS = tuple(_THING["kind"]["values"])
-MAX_THINGS = schema.TABLES["thing"]["max"]  # the Pi of [sources.pi] included
-MAX_THING_PORTS = _THING["ports"]["max_items"]
-THING_EVERY_S = (_THING["every_s"]["min"], _THING["every_s"]["max"])
-MAX_DOWN_AFTER_S = _THING["down_after_s"]["max"]
-# The settings of a [[thing]] table that have a default. name and kind have none; host, port,
+# Devices: the [[device]] tables.
+_DEVICE = {s["key"]: s for s in schema.settings("device")}
+DEVICE_KINDS = tuple(_DEVICE["kind"]["values"])
+MAX_DEVICES = schema.TABLES["device"]["max"]  # the Pi of [sources.pi] included
+MAX_DEVICE_PORTS = _DEVICE["ports"]["max_items"]
+DEVICE_EVERY_S = (_DEVICE["every_s"]["min"], _DEVICE["every_s"]["max"])
+MAX_DOWN_AFTER_S = _DEVICE["down_after_s"]["max"]
+# The settings of a [[device]] table that have a default. name and kind have none; host, port,
 # ports and url have none either, and which of them are given decides the check.
-THING_DEFAULTS: dict[str, Any] = {
-    k: s["default"] for k, s in _THING.items() if s.get("default") is not None
+DEVICE_DEFAULTS: dict[str, Any] = {
+    k: s["default"] for k, s in _DEVICE.items() if s.get("default") is not None
 }
-# Every setting a [[thing]] table may have.
-THING_SETTINGS = tuple(_THING)
+# Every setting a [[device]] table may have.
+DEVICE_SETTINGS = tuple(_DEVICE)
 # 1 to 20 printable ASCII characters, with no space at either end.
-_THING_NAME = re.compile(r"^[!-~](?:[ -~]{0,18}[!-~])?$")
+_DEVICE_NAME = re.compile(r"^[!-~](?:[ -~]{0,18}[!-~])?$")
 # A web address is printable ASCII with no space in it.
 _PLAIN_URL = re.compile(r"^[!-~]+$")
-# The name the Pi of [sources.pi] has as a thing.
+# The name the Pi of [sources.pi] has as a device.
 PI_NAME = "Pi"
 
 # The household defaults for the display's settings screen: the [look], [display], [quiet] and
@@ -124,8 +124,8 @@ class Config:
     conditions: dict[str, Any]
     sources: dict[str, dict[str, Any]]
     secrets: dict[str, dict[str, str]] = field(default_factory=dict, repr=False)
-    # Every enabled watched thing, the Pi of [sources.pi] first; see _things.
-    things: list[dict[str, Any]] = field(default_factory=list)
+    # Every enabled device, the Pi of [sources.pi] first; see _devices.
+    devices: list[dict[str, Any]] = field(default_factory=list)
     # The settings screen's household defaults, holding only what the config sets; see _defaults.
     defaults: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {t: {} for t in DEFAULT_TABLES}
@@ -297,7 +297,7 @@ def _is_port(value: Any) -> bool:
 
 
 def _url_problem(url: Any) -> str | None:
-    """What is wrong with a thing's url, or None."""
+    """What is wrong with a device's url, or None."""
     if not isinstance(url, str) or not re.match(r"^https?://", url):
         return "must start with http:// or https://"
     if not _PLAIN_URL.match(url):
@@ -314,17 +314,17 @@ def _url_problem(url: Any) -> str | None:
     return None
 
 
-def _thing(w: str, t: dict, problems: list[str]) -> dict[str, Any]:
-    """Check one [[thing]] table and return it with its defaults filled in."""
+def _device(w: str, t: dict, problems: list[str]) -> dict[str, Any]:
+    """Check one [[device]] table and return it with its defaults filled in."""
     for key in t:
-        if key not in THING_SETTINGS:
+        if key not in DEVICE_SETTINGS:
             problems.append(f"{w}.{key}: unknown setting")
-    out = {**THING_DEFAULTS, **{k: v for k, v in t.items() if k in THING_DEFAULTS}}
+    out = {**DEVICE_DEFAULTS, **{k: v for k, v in t.items() if k in DEVICE_DEFAULTS}}
 
     name = t.get("name")
     if "name" not in t:
         problems.append(f"{w}.name: required")
-    elif not isinstance(name, str) or not _THING_NAME.match(name):
+    elif not isinstance(name, str) or not _DEVICE_NAME.match(name):
         problems.append(f"{w}.name: 1 to 20 printable ASCII characters, no space at either end")
     kind = t.get("kind")
     if "kind" not in t:
@@ -333,18 +333,18 @@ def _thing(w: str, t: dict, problems: list[str]) -> dict[str, Any]:
         problems.append(f"{w}.kind: expected str")
     elif "/" in kind:
         problems.append(f"{w}.kind: kinds from packs are not supported yet")
-    elif kind not in THING_KINDS:
-        kinds = f"{', '.join(THING_KINDS[:-1])} or {THING_KINDS[-1]}"
+    elif kind not in DEVICE_KINDS:
+        kinds = f"{', '.join(DEVICE_KINDS[:-1])} or {DEVICE_KINDS[-1]}"
         problems.append(f'{w}.kind: unknown kind "{kind}"; use {kinds}')
 
     for key in ("refused_counts", "verify_tls", "alert", "enabled"):
         if not isinstance(out[key], bool):
             problems.append(f"{w}.{key}: expected bool")
     every = out["every_s"]
-    low, high = THING_EVERY_S
+    low, high = DEVICE_EVERY_S
     if not _is_int(every) or not low <= every <= high:
         problems.append(f"{w}.every_s: must be from {low} to {high}")
-    floor = every if _is_int(every) else THING_DEFAULTS["every_s"]
+    floor = every if _is_int(every) else DEVICE_DEFAULTS["every_s"]
     if not _is_int(out["down_after_s"]) or not floor <= out["down_after_s"] <= MAX_DOWN_AFTER_S:
         problems.append(
             f"{w}.down_after_s: must be at least every_s ({floor}) and at most {MAX_DOWN_AFTER_S}"
@@ -358,10 +358,10 @@ def _thing(w: str, t: dict, problems: list[str]) -> dict[str, Any]:
     ports = t.get("ports")
     if "ports" in t and (
         not isinstance(ports, list)
-        or not 1 <= len(ports) <= MAX_THING_PORTS
+        or not 1 <= len(ports) <= MAX_DEVICE_PORTS
         or not all(_is_port(p) for p in ports)
     ):
-        problems.append(f"{w}.ports: 1 to {MAX_THING_PORTS} port numbers from 1 to 65535")
+        problems.append(f"{w}.ports: 1 to {MAX_DEVICE_PORTS} port numbers from 1 to 65535")
     if "url" in t:
         why = _url_problem(t["url"])
         if why:
@@ -395,7 +395,7 @@ def _thing(w: str, t: dict, problems: list[str]) -> dict[str, Any]:
         kind=kind,
         host=host if by_tcp else "",
         url=t.get("url", "") if by_url else "",
-        source=f"thing:{name}",
+        source=f"device:{name}",
         legacy=False,
     )
     return out
@@ -413,18 +413,18 @@ def _say_names(names: list[str]) -> str:
     return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
 
 
-def _things(raw: Any, sources: dict, conditions: dict, problems: list[str]) -> list[dict]:
-    """Check the [[thing]] tables and return every enabled thing, the Pi of [sources.pi] first.
+def _devices(raw: Any, sources: dict, conditions: dict, problems: list[str]) -> list[dict]:
+    """Check the [[device]] tables and return every enabled device, the Pi of [sources.pi] first.
 
     The Pi keeps the rules of [sources.pi]: its ports are tried as given, a refused connection
     counts as an answer, and it is silent after pi_silent's for_s. It raises pi_silent rather
-    than thing_down, and only when the priority list names pi_silent.
+    than device_down, and only when the priority list names pi_silent.
     """
     priority = conditions["priority"]
-    things: list[dict] = []
+    devices: list[dict] = []
     pi = sources.get("pi")
     if pi is not None:
-        things.append(
+        devices.append(
             {
                 "name": PI_NAME,
                 "kind": "pi",
@@ -442,48 +442,48 @@ def _things(raw: Any, sources: dict, conditions: dict, problems: list[str]) -> l
             }
         )
     if raw is None:
-        return things
+        return devices
     if not isinstance(raw, list):
-        problems.append("thing: expected [[thing]] tables")
-        return things
+        problems.append("device: expected [[device]] tables")
+        return devices
 
     named: dict[str, int] = {}
     for i, t in enumerate(raw):
-        w = f"thing[{i}]"
+        w = f"device[{i}]"
         if not isinstance(t, dict):
             problems.append(f"{w}: expected a table")
             continue
-        thing = _thing(w, t, problems)
-        name = thing["name"]
+        device = _device(w, t, problems)
+        name = device["name"]
         if isinstance(name, str) and name:
             key = name.lower()
             if pi is not None and key == PI_NAME.lower():
                 problems.append(f'{w}.name: "{name}" is taken by [sources.pi]')
             elif key in named:
-                problems.append(f'{w}.name: "{name}" is already the name of thing[{named[key]}]')
+                problems.append(f'{w}.name: "{name}" is already the name of device[{named[key]}]')
             else:
                 named[key] = i
         if pi is not None and pi["host"]:
             watched = pi["host"].lower()
-            if isinstance(thing["host"], str) and thing["host"].lower() == watched:
+            if isinstance(device["host"], str) and device["host"].lower() == watched:
                 problems.append(
-                    f"{w}.host: {thing['host']} is already watched by [sources.pi]; remove one"
+                    f"{w}.host: {device['host']} is already watched by [sources.pi]; remove one"
                 )
-            elif thing["url"] and _url_host(thing["url"]).lower() == watched:
+            elif device["url"] and _url_host(device["url"]).lower() == watched:
                 problems.append(
-                    f"{w}.url: {_url_host(thing['url'])} is already watched by [sources.pi]; "
+                    f"{w}.url: {_url_host(device['url'])} is already watched by [sources.pi]; "
                     "remove one"
                 )
-        if thing["enabled"] is True:
-            things.append(thing)
+        if device["enabled"] is True:
+            devices.append(device)
 
-    if len(things) > MAX_THINGS:
-        problems.append(f"thing: at most {MAX_THINGS} things")
-    alerting = [str(t["name"]) for t in things if not t["legacy"] and t["alert"] is True]
-    if alerting and "thing_down" not in priority:
+    if len(devices) > MAX_DEVICES:
+        problems.append(f"device: at most {MAX_DEVICES} devices")
+    alerting = [str(t["name"]) for t in devices if not t["legacy"] and t["alert"] is True]
+    if alerting and "device_down" not in priority:
         # Say where it goes: after the nearest condition above it in the default order that the
         # list names, or before the nearest one below it.
-        at = CONDITION_IDS.index("thing_down")
+        at = CONDITION_IDS.index("device_down")
         above = [c for c in CONDITION_IDS[:at] if c in priority]
         below = [c for c in CONDITION_IDS[at + 1 :] if c in priority]
         if above:
@@ -494,10 +494,10 @@ def _things(raw: Any, sources: dict, conditions: dict, problems: list[str]) -> l
             where = "add it to the list"
         it = "it" if len(alerting) == 1 else "them"
         problems.append(
-            f'conditions.priority: leaves out "thing_down", so {_say_names(alerting)} would '
+            f'conditions.priority: leaves out "device_down", so {_say_names(alerting)} would '
             f"never alert; {where}, or set alert = false on {it}"
         )
-    return things
+    return devices
 
 
 def _say_or(values: tuple) -> str:
@@ -633,7 +633,7 @@ def build(raw: dict, env: Mapping[str, str] | None = None, missing: str = "refus
         raise ValueError(f"missing: {missing!r}")
     problems: list[str] = []
     for key in raw:
-        if key not in ("collector", "conditions", "sources", "thing", *DEFAULT_TABLES):
+        if key not in ("collector", "conditions", "sources", "device", *DEFAULT_TABLES):
             problems.append(f"{key}: unknown table")
     collector = _merge("collector", COLLECTOR_DEFAULTS, raw.get("collector", {}), problems)
     conditions = _merge("conditions", CONDITION_DEFAULTS, raw.get("conditions", {}), problems)
@@ -653,7 +653,7 @@ def build(raw: dict, env: Mapping[str, str] | None = None, missing: str = "refus
         _validate_conditions(conditions, problems)
         for name, s in sources.items():
             _validate_source(name, s, problems)
-    things = _things(raw.get("thing"), sources, conditions, problems)
+    devices = _devices(raw.get("device"), sources, conditions, problems)
     defaults = _defaults(raw, problems)
     lacking: dict[str, list[str]] = {}
     report = lacking if missing == "report" else None
@@ -664,7 +664,7 @@ def build(raw: dict, env: Mapping[str, str] | None = None, missing: str = "refus
     scrub = [env[n] for n in names if env is not None and isinstance(env.get(n), str) and env[n]]
     if problems:
         raise ConfigError(problems)
-    return Config(collector, conditions, sources, secrets, things, defaults, scrub, lacking)
+    return Config(collector, conditions, sources, secrets, devices, defaults, scrub, lacking)
 
 
 def read(config_path: str) -> dict:

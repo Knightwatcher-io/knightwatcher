@@ -23,14 +23,14 @@
   const hv = k => (H0.match(new RegExp('[#&]' + k + '=([\\w.-]+)')) || [])[1];
   /* t=<ms> freezes time for screenshots, t=0 included, and kx=<x> places the knight (in units of
      U). frozen says whether the address holds a t= with a number, and t is the frozen time, or 0
-     without one. pl=1 outlines the scene's places for watched things. th= sets the demo's watched
-     things: kinds separated by commas, each followed by - for down or ! for down and alerting; th
+     without one. pl=1 outlines the scene's places for devices. dv= sets the demo's
+     devices: kinds separated by commas, each followed by - for down or ! for down and alerting; dv
      is the list in the contract's shape, or null without the hook. set= opens the settings screen
      at load on a page (knight, monarch, display, quiet, scenes, status), or shows the hold's cue (hold). */
   const tHook = hv('t') == null ? NaN : +hv('t');
-  const thHook = (H0.match(/[#&]th=([^&]*)/) || [])[1];
+  const dvHook = (H0.match(/[#&]dv=([^&]*)/) || [])[1];
   KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'),
-    pl: hv('pl') === '1', th: thHook == null ? null : ST.listFromHook(thHook), fixed };
+    pl: hv('pl') === '1', dv: dvHook == null ? null : ST.listFromHook(dvHook), fixed };
   const freeze = KW.hooks.frozen;
 
   /* The page's own version, from the meta tag tools/deploy.sh stamps. The repository's own page
@@ -166,7 +166,7 @@
   function startDemo() { mode = 'demo'; Demo.start(); fit(); Demo.hooks(); }
   /* Shows a valid view's state; its events are played separately. */
   function showLive(v) {
-    E.input = Object.assign({ w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, things: v.things, tv: v.tv, helmet: S.h }, KW.ui.extras(LIVE_TURN_MS));
+    E.input = Object.assign({ w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, devices: v.devices, tv: v.tv, helmet: S.h }, KW.ui.extras(LIVE_TURN_MS));
     showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more } : { st: 'ok', hl: '', sub: '', quiet: v.quietLine, more: { n: 0, crit: false } });
   }
   function onView(v) {
@@ -252,7 +252,7 @@
     E.draw(now);
     if (mode === 'demo') Demo.note(E.note);
   }
-  E.input = Object.assign({ w: ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: S.h }, KW.ui.extras(LIVE_TURN_MS));
+  E.input = Object.assign({ w: ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, devices: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: S.h }, KW.ui.extras(LIVE_TURN_MS));
   if (fromDisk || forceDemo) { mode = 'demo'; Demo.start(); }
   else { document.body.classList.add('nobar'); showOnce({ st: 'ok', hl: '', sub: '', quiet: '', more: { n: 0, crit: false } }); }
   fit();

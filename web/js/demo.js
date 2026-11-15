@@ -14,7 +14,7 @@
     { id: 'disk_full',           alias: 'disk',   name: 'Disk',        hl: 'DISK 93% FULL',  sub: "/data has 640 GB left · about 11 days at this week's pace" },
     { id: 'backup_overdue',      alias: 'backup', name: 'Backup',      hl: 'BACKUP OVERDUE', sub: 'last restic snapshot was 41 h ago · the 03:00 run failed' },
     { id: 'pi_silent',           alias: 'pi',     name: 'Pi silent',   hl: 'PI SILENT',      sub: 'no heartbeat from the Raspberry Pi for 22 min' },
-    { id: 'thing_down',          alias: 'thing',  name: 'Thing down',  hl: 'VAULT DOWN',     sub: 'no answer for 6 min' },
+    { id: 'device_down',          alias: 'device',  name: 'Device down',  hl: 'VAULT DOWN',     sub: 'no answer for 6 min' },
     { id: 'cpu_hot',             alias: 'cpu',    name: 'CPU',         hl: 'RUNNING HOT',    sub: 'CPU 96% · load 14.2 on 12 cores for 9 min · Plex transcoding' },
     { id: 'memory_tight',        alias: 'swap',   name: 'Swap',        hl: 'SWAP FILLING',   sub: 'swap 91% and climbing · RAM 93% · VS Code server holds most' },
     { id: 'ssh_session',         alias: 'ssh',    name: 'SSH session', hl: 'AT COURT',       sub: 'admin signed in from 192.0.2.10 · session open 14 min' },
@@ -31,7 +31,7 @@
     { on: '', is: 'battlement', dur: 9000, flies: 4, swat: 3200 }, { on: '', is: 'battlement', dur: 6000, ev: 'goblin' },
     { on: '', is: 'camp', dur: 9000, ev: 'crate' }, { on: '', is: 'yard', dur: 8000 }, { on: 'ssh_session', dur: 9000 }, { on: 'cpu_hot', dur: 7000 },
     { on: 'streaming', dur: 7000 }, { on: 'container_unhealthy', dur: 7000 }, { on: 'backup_overdue', dur: 7000 }, { on: '', is: 'house', dur: 6500, ev: 'feast' },
-    { on: 'disk_full', dur: 8000 }, { on: 'pi_silent', dur: 7000 }, { on: 'thing_down', is: 'camp', dur: 8000, th: 'pi,camera,camera,machine!,vm,box' },
+    { on: 'disk_full', dur: 8000 }, { on: 'pi_silent', dur: 7000 }, { on: 'device_down', is: 'camp', dur: 8000, dv: 'pi,camera,camera,machine!,vm,box' },
     { on: 'updating', dur: 8000 }, { on: 'wan_down', dur: 6500 },
     { on: 'attack,memory_tight,ssh_session', dur: 8000 }, { on: 'night', dur: 8000 } ];
 
@@ -39,7 +39,7 @@
      length (docs/page.md). */
   const DEMO_TURN_MS = 60 * 1000;
 
-  let S = null, E = null, running = false, built = false, flyTimer = 0, demoAt = 0, demoI = -1, swatNote = null, stepThings = null;
+  let S = null, E = null, running = false, built = false, flyTimer = 0, demoAt = 0, demoI = -1, swatNote = null, stepDevices = null;
   let ads = 4812;
   const idleLine = () => 'ALL QUIET · 29 up · backup 03:12 · ' + ads.toLocaleString('en-GB') + ' ads slain';
   const active = () => { const on = S.on.split(',').filter(Boolean); return CONDS.filter(c => on.includes(c.id)); };
@@ -59,9 +59,9 @@
     document.body.classList.toggle('nobar', S.bar === '0');
     const act = active(), others = act.slice(1).filter(c => c.lv >= 3), list = demoList(), placed = ST.arrange(list);
     let w = act[0] || IDLE;
-    // thing_down names the things that are down and alert, as the collector would
-    if (w.id === 'thing_down') w = Object.assign({}, w, { place: ST.lookPlace(list.map((e, i) => (e && e.state === 'down' && e.alert ? i : -1)).filter(i => i >= 0), placed.at) });
-    E.input = Object.assign({ w, is: S.is, turnMs: DEMO_TURN_MS, things: placed.things, tv: isOn('streaming'), helmet: S.h }, KW.ui.extras(DEMO_TURN_MS));
+    // device_down names the devices that are down and alert, as the collector would
+    if (w.id === 'device_down') w = Object.assign({}, w, { place: ST.lookPlace(list.map((e, i) => (e && e.state === 'down' && e.alert ? i : -1)).filter(i => i >= 0), placed.at) });
+    E.input = Object.assign({ w, is: S.is, turnMs: DEMO_TURN_MS, devices: placed.devices, tv: isOn('streaming'), helmet: S.h }, KW.ui.extras(DEMO_TURN_MS));
     KW.ui.show({ st: w.st, hl: w.hl, sub: w.sub, quiet: idleLine(), more: { n: others.length, crit: others.some(c => c.lv >= 4) } });
     // the helmet and the headline size go into the address only when the address or this bar set
     // them; otherwise they are the settings' (KW.hooks.fixed)
@@ -69,11 +69,11 @@
     history.replaceState(null, '', '#' + Object.entries(S).filter(inHash).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&'));
   }
 
-  /* The list of watched things: that of the demo loop's step, else that of the address's th=
-     hook, else the Pi alone, down while it is silent, as before there were things. */
+  /* The list of devices: that of the demo loop's step, else that of the address's dv=
+     hook, else the Pi alone, down while it is silent, as before there were devices. */
   function demoList() {
-    if (stepThings && S.demo === '1') return stepThings;
-    if (KW.hooks.th) return KW.hooks.th;
+    if (stepDevices && S.demo === '1') return stepDevices;
+    if (KW.hooks.dv) return KW.hooks.dv;
     return [{ kind: 'pi', state: isOn('pi_silent') ? 'down' : 'up', alert: true }];
   }
 
@@ -113,7 +113,7 @@
   function tick(t) {
     if (S.demo !== '1' || t < demoAt) return;
     demoI = (demoI + 1) % DEMO.length; const d = DEMO[demoI]; demoAt = t + d.dur;
-    if (d.is) S.is = d.is; stepThings = d.th ? ST.listFromHook(d.th) : null; set('on', d.on);
+    if (d.is) S.is = d.is; stepDevices = d.dv ? ST.listFromHook(d.dv) : null; set('on', d.on);
     if (d.flies) for (let i = 0; i < d.flies; i++) setTimeout(() => addFly(performance.now() - 1000), 200 + i * 250);
     if (d.swat) setTimeout(() => { if (running && S.demo === '1') E.startSwat(performance.now()); }, d.swat);
     if (d.ev) setTimeout(() => { if (running && S.demo === '1') fire(d.ev); }, 1500);
@@ -139,7 +139,7 @@
       const go = () => { if (!running) return; if (hv('e') && EVENTS[hv('e')]) fire(hv('e')); if (hv('sw')) E.startSwat(freeze ? KW.hooks.t : performance.now()); };
       if (freeze) go(); else setTimeout(go, 300);
     },
-    stop() { running = false; clearInterval(flyTimer); S.demo = '0'; stepThings = null; },
+    stop() { running = false; clearInterval(flyTimer); S.demo = '0'; stepDevices = null; },
     /* Applies the demo's settings again, after the settings screen changed something. */
     refresh() { if (running) apply(); },
     tick,

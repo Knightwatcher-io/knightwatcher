@@ -60,10 +60,10 @@
 
   function draw(t, s) {
     glow(478, 160, 170, '#ffb000', .09 + .025 * Math.sin(t / 150)); P.flameHD(478, 180, .62, t);
-    KW.things.draw(t, s);
+    KW.devices.draw(t, s);
   }
 
-  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+  /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
     pie: { cls: 'pie', kind: 'surface', x: 480, y: 463, w: 88, h: 112 },
