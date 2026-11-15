@@ -831,6 +831,63 @@ if (MODE === 'write') {
     assert.deepEqual(breaches({ items: { main: 'kw.base/main.arming' } }), []);
   });
 
+  /* The blade passes in front of the face, and only for a moment (docs/design.md). Each frame is
+     drawn as breaches() draws it, and the steel, the weapon's pixels at least FROM along its frame,
+     that lies on the head as drawn is counted in three boxes from the head anchor: the eyes (the
+     brows and the eyes, x -37 to 37, y -21 to 12), the mouth (y 12 to 23) and the chin (the helmet's
+     rim or the bare chin, x -46 to 46, y 23 to 50). Returns the counts for each frame made. */
+  function steelOnHead(look, frames) {
+    const b = withLook(look), { KW, K } = b, lib = KW.pack, seq0 = lib.sequence, draw0 = lib.draw;
+    let names = [], i = 0, cur = null;
+    const px = {};
+    KW.draw.setCtx(new Proxy({}, {
+      set() { return true; },
+      get(_, k) {
+        if (k === 'fillRect') return (x, y, w, h) => { if (!cur) return; const set = px[cur] || (px[cur] = new Set()); for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) set.add(yy * 4096 + xx); };
+        return () => {};
+      },
+    }));
+    lib.sequence = (mode, helmet) => { const seq = seq0(mode, helmet); names = seq.filter(n => !ENGINE_STEPS.includes(n)); i = 0; return seq; };
+    lib.draw = (list, A, V, P, face) => { cur = names[i++]; try { return draw0(list, A, V, P, face); } finally { cur = null; } };
+    return frames.map(make => {
+      for (const k of Object.keys(px)) delete px[k];
+      const o = make(K); K.draw(o);
+      const r = K.rig(o), [hx, hy] = r.anchors.head, m = r.anchors.main, sx = Math.sin(m[2]), sy = -Math.cos(m[2]), head = px.headOn || px.headOff || new Set();
+      const n = { eyes: 0, mouth: 0, chin: 0 };
+      for (const p of px.main || []) {
+        if (!head.has(p)) continue;
+        const x = p % 4096, y = Math.floor(p / 4096), dx = x - hx, dy = y - hy;
+        if ((x + 0.5 - m[0]) * sx + (y + 0.5 - m[1]) * sy < FROM) continue;
+        if (dx >= -37 && dx < 37 && dy >= -21 && dy < 12) n.eyes++;
+        else if (dx >= -37 && dx < 37 && dy >= 12 && dy < 23) n.mouth++;
+        else if (dx >= -46 && dx < 46 && dy >= 23 && dy < 50) n.chin++;
+      }
+      return n;
+    });
+  }
+  /* The swing to the left turns the blade from one side of the body to the other, so it must pass
+     the face; it does so quickly and comes back low. Over the whole swing, every 0.004 of it, the
+     steel lies on the eyes for under 50 ms of the 900 with the sword and shield, and under 70 with
+     the greatsword (the swings before this one: 189 and 225). */
+  test('the swing to the left keeps the steel off the eyes but for a moment', () => {
+    for (const [look, most] of [[ONE_LOOK, 50], [{}, 70]]) {
+      const frames = [];
+      for (let k = 0; k <= 250; k++) frames.push(K => { const o = at(K, 'idle', 2300); K.swing(o, k / 250, -1); return o; });
+      const ms = steelOnHead(look, frames).filter(n => n.eyes).length * 0.004 * 900;
+      assert.ok(ms > 0 && ms < most, `${look.items ? 'sword and shield' : 'greatsword'}: ${ms.toFixed(1)} ms on the eyes`);
+    }
+  });
+  /* The two-handed wind-up holds the hands out past the far shoulder with the blade laid back, so
+     the guard's quillons stay off the chin: from q .25 to the cut, both ways, on every build, no
+     steel lies on the face or the chin. */
+  test('the two-handed wind-up keeps the guard off the face and the chin, on every build', () => {
+    for (const build of ['build.a', 'build.b', 'build.c']) for (const dir of [1, -1]) {
+      const qs = []; for (let k = 250; k <= 300; k += 5) qs.push(k / 1000);
+      const got = steelOnHead({ build: 'kw.base/' + build }, qs.map(q => K => { const o = at(K, 'idle', 2300); K.swing(o, q, dir); return o; }));
+      got.forEach((n, j) => assert.deepEqual([n.eyes, n.mouth, n.chin], [0, 0, 0], `${build} ${dir > 0 ? 'right' : 'left'} q${qs[j]}`));
+    }
+  });
+
   /* ---- The three builds -------------------------------------------------------------------- */
 
   /* The base pack's builds, by the names the settings screen shows, and each weapon's look. Classic

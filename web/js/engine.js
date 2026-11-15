@@ -223,7 +223,10 @@
 
   /* The strike on the knight's pose o at el: the swing until the hit, then the bounce back and the
      return to the stance the pose began in. With a weapon in one hand the shield hand (fx, fy)
-     comes back with it. */
+     comes back with it. Where the swing comes back by a return of its own (K.ownReturn: the swings
+     to the left, which bring the blade back low so that it does not pass the face again), the
+     strike's return plays that return over its own time, offset by where the bounce left the blade
+     against the cut's end, the offset easing out; otherwise it goes straight back to the stance. */
   function strike(o, el, pl) {
     const S = FOE.strike, one = o.fx != null, base = { gx: o.gx, gy: o.gy, wang: o.wang, fx: o.fx, fy: o.fy };
     if (el < S.at) return;
@@ -231,6 +234,14 @@
     const r = el - pl.hit; if (r >= S.rebound + S.recover) return;
     const c = { gx: 0, gy: 0, wang: 0, fx: o.fx, fy: o.fy }; K.swing(c, pl.q, pl.side);
     const b = { gx: c.gx - pl.side * .5, gy: c.gy - 2, wang: c.wang - pl.side * S.kick, fx: c.fx, fy: c.fy };
+    if (r >= S.rebound && K.ownReturn(pl.side)) {
+      const u = clamp01((r - S.rebound) / S.recover), w = 1 - ease(u), h = { fx: o.fx, fy: o.fy }, p = { fx: o.fx, fy: o.fy };
+      K.swing(h, .55, pl.side); K.swing(p, .55 + .45 * u, pl.side);
+      let da = b.wang - h.wang; da -= Math.round(da / (2 * Math.PI)) * 2 * Math.PI;
+      o.gx = p.gx + (b.gx - h.gx) * w; o.gy = p.gy + (b.gy - h.gy) * w; o.wang = p.wang + da * w; o.eyes = 'angry';
+      if (one) { o.fx = p.fx + (b.fx - h.fx) * w; o.fy = p.fy + (b.fy - h.fy) * w; }
+      return;
+    }
     const [f, t, k] = r < S.rebound ? [c, b, ease(r / S.rebound)] : [b, base, ease(clamp01((r - S.rebound) / S.recover))];
     o.gx = lerp(f.gx, t.gx, k); o.gy = lerp(f.gy, t.gy, k); o.wang = lerp(f.wang, t.wang, k); o.eyes = 'angry';
     if (one) { o.fx = lerp(f.fx, t.fx, k); o.fy = lerp(f.fy, t.fy, k); }

@@ -18,7 +18,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/effects.js` | `KW.effects`: the effects, drawings the engine owns that a scene names with numbers (sky, stars, bricks, flame and the rest), each with its table of fields, its cost and its drawing; see [The effects](#the-effects) |
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`), flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
-| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
+| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `ownReturn()` says whether a swing comes back by a return of its own (see [The knight's rig](#the-knights-rig)), `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
@@ -164,15 +164,47 @@ the look's weapon is one-handed, from three sets of numbers beside the greatswor
 | `BASE1`, the stance | 37.6, 40.8, 0.3 | 20, 38.4 | sword hand at (+68, -96), shield hand at (-20, -108) |
 | `ATTACK1`, the attack | 42, 24.4, 0.2 with the tremble of 0.12 | 19.6, 37.6 | sword hand at (+90, -178), shield hand at (-22, -112) |
 | `SWING1`, to the right: wind-up, cut | 43.2, 23.2, 0; 44.8, 38.4, 2.0 | 16, 38; 14, 40 | the shield stays in front |
-| `SWING1`, to the left: wind-up, cut | 38.8, 23.2, 1.0; 17.2, 40.8, -2.0 | 12, 37.6; 3.2, 26.4 | the shield lifts as the sword crosses, and the blade passes in front of it |
+| `SWING1`, to the left: wind-up, cut | 38.8, 23.2, 1.0; 17.2, 40.8, -2.0, with keys between (below) | 12, 37.6; 3.2, 26.4 | the shield lifts as the sword crosses, and the blade passes in front of it |
 
 In the attack the guard sits on the helmet's outer shell, clear of the opening's rim. The wind-up
 to the right raises the sword over the right shoulder with the blade upright, a little over the
 attack's hand, so the blade never crosses the face on that side. The swing's angle at the cut is
 the greatsword's, and both wind-ups lie short of the nearest fly (0.35 less 0.15), so the swat's
-hit test in `engine.js` holds for both weapons. Every other condition keeps its pose; the sword is
+hit test in `engine.js` holds for both weapons.
+
+**The swings.** `swing()` reads each swing as a list of keyframes after the stance it starts
+from at q 0: a pose (`gx`, `gy`, the angle and, in one hand, `fx`, `fy`) reached at q, by the
+easing of the segment that ends there (the page's ease, smoothstep or linear), the last key the
+stance again. The cut runs from q .3 to .55 in every swing and ends at the angle 2.0 towards its
+side. The blade passes in front of the knight, never behind the head, and a blade that turns from
+one side of the body to the other must point past the face on the way, so the swings keep that pass
+short and low:
+
+| Swing | Keys after the stance (q: `gx`, `gy`, angle; shield `fx`, `fy`) |
+|---|---|
+| Two hands, the wind-up | .3: `24 - 14.8 dir`, 33.2, `-1.0 dir`: the hands out past the far shoulder with the blade laid back, so the guard's quillons stay clear of the chin |
+| Two hands, to the right | the wind-up; .55: 34, 46, 2.0 (smoothstep); the stance at 1 |
+| Two hands, to the left | the wind-up; .55: 14, 46, -2.0 (smoothstep); .68: 16, 43.2, -1.62; .8: 36.8, 42.8, -1.52 (smoothstep); .835: 40.8, 39.6, -0.05 (linear); the stance at 1 |
+| One hand, to the right | .3: the wind-up above; .55: the cut above (smoothstep); the stance at 1 |
+| One hand, to the left | .3: the wind-up above; .39: 39.6, 34.8, 0.05; 10, 35.6 (smoothstep); .425: 33.2, 40.4, -0.85; 6.4, 32 (linear); .5: 25.2, 40.8, -1.1; 4.8, 29.2 (linear); .55: the cut above (smoothstep); .68: 16, 40.4, -1.62; 7.2, 30; .8: 38.8, 40, -1.45; 16.8, 36.4 (smoothstep); .83: 40, 38.4, -0.05; 18.4, 37.2 (linear); the stance at 1 |
+
+Every segment not marked eases out as the page's other moves do. In one hand to the left the sword
+hand drops down the right side to the chest with the blade still upright, the blade turns past the
+face between q .39 and .425, is held steep down to q .5 so that it meets the goblin's pot from above
+as the straight cut did, and finishes the cut across the shield. Both swings to the left come back
+low: the blade is carried level across the waist, pointing left, and turns up only once the hands
+are out on the right, instead of turning back through upright over the face. To the right the
+two-handed recovery is a single segment, as it always was. The longsword and the mace take these
+poses, as they take every other, from the grip their stations give. Every other condition keeps its pose; the sword is
 put away where the scene says so (`sword: false` in the house and the cellar, the hammer in the
 smithy), and the shield with it.
+
+**The blade past the face.** `tests/web/knight.test.js` draws each swing to the left every 0.004 of
+its length on Classic and counts the steel (everything from 17 along the frame) lying on the head as
+drawn, on the eyes (from the head anchor, x -37 to 37, y -21 to 12): under 50 ms of the 900 with the
+arming sword and the heater shield, under 70 with the greatsword. It also draws the two-handed
+wind-up from q .25 to .3 both ways on every build, and finds no steel on the eyes, the mouth (y 12
+to 23) or the chin (x -46 to 46, y 23 to 50).
 
 **No arm over a blade or a shield.** `tests/web/knight.test.js` draws every frame the engine can
 draw with the weapon held (both swings at every hundredth of their length and at every odd
@@ -536,7 +568,9 @@ hides the review bar and drives the display:
   as tall as the knight's shoulders: it climbs over the battlement's wall or digs up out of the
   camp's grass beside the knight, pulls a face, is bonked on the saucepan it wears, and vanishes
   in a puff of smoke. The knight's swing stops where the blade meets the pot, so the blade never
-  passes through it; nothing gory is shown. The goblin stands where the weapon the knight holds
+  passes through it; nothing gory is shown. After the bounce the knight returns to the stance; where
+  the swing comes back low (the swings to the left, `KW.knight.ownReturn`), the return follows the
+  swing's own, offset by where the bounce left the blade, so the blade does not pass the face again. The goblin stands where the weapon the knight holds
   reaches it, the greatsword or the arming sword alike, on whichever build is drawn, and does not
   come where none can; the
   burst on the pot lasts the 80 ms the blade bounces off it. A foe is described in `KW.props.FOES` and played by
@@ -1131,8 +1165,8 @@ hit and of a drawn pixel of its sprite, that the hit pose plays only from that m
 blade never enters any drawn pixel of the goblin by more than 2. The same check runs on Broad and
 Slim with each weapon. On every build and with each weapon the goblin comes wherever it comes on
 Classic, at the same spot, and is struck within 12 ms of Classic's hit; at the knight's first spot
-the hits are 1659, 1661 and 1657 ms with the greatsword on Classic, Broad and Slim, and with the
-sword and shield 1645, 1651 and 1642 on the battlement and 1672, 1675 and 1672 at the camp. The
+the hits are 1662, 1664 and 1661 ms with the greatsword on Classic, Broad and Slim, and with the
+sword and shield 1645, 1651 and 1642 on the battlement and 1711, 1713 and 1711 at the camp. The
 blade `bladeOf` measures is the rig's on the look's build, its grip raised by the build's height,
 and the present knight's on the code path. A blade too short to reach it anywhere keeps the goblin
 away.
@@ -1343,9 +1377,9 @@ shots of devices (below), so a change to devices that leaves a Pi-only setup alo
 byte for byte the same.
 
 The seven `goblin-` shots play the goblin's event with the greatsword: on the battlement as it
-rises over the wall (`goblin-rise`), at the hit (`goblin-bonk`, 1659 ms) and in the puff
+rises over the wall (`goblin-rise`), at the hit (`goblin-bonk`, 1662 ms) and in the puff
 (`goblin-poof`); at the camp as it comes out of its hole (`goblin-camp-rise`), at the hit
-(`goblin-camp-bonk`, 1659 ms) and in the puff (`goblin-camp-poof`); and at the camp with three
+(`goblin-camp-bonk`, 1662 ms) and in the puff (`goblin-camp-poof`); and at the camp with three
 devices on the ground, which it stands clear of, as it pulls a face (`goblin-camp-g3`).
 
 The nine `arm-` shots draw the arming sword and the heater shield (`arm=one`): the quiet battlement
@@ -1355,7 +1389,7 @@ smithy with the sword on the anvil and the shield on the wall (`arm-update`), th
 at the moment the sword passes in front of the shield (`arm-swat-left`), the cellar with the
 crate carried against the chest, at the largest headline (`arm-disk`), and the goblin a
 millisecond after the hit on the battlement (`arm-goblin-bonk`, hit at 1645 ms) and two after it
-at the camp, with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1672 ms). Every other shot but `settings-look` has no `arm=`, so a change to the one-handed look leaves them
+at the camp, with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1711 ms). Every other shot but `settings-look` has no `arm=`, so a change to the one-handed look leaves them
 byte for byte the same. A copy of the page from before the hook draws the greatsword in the `arm-`
 shots, so against such a reference those differ and the rest compare as usual.
 
@@ -1398,7 +1432,7 @@ cellar's crate carried, the smithy's hammering, asleep in bed, the sick tint in 
 the yard and the court (`on-`); the stance with the sword and shield (`arm-battlement`); the swat
 on the battlement, which is the swing, with each weapon (`swing-two-`, `swing-one-`), both ways at
 the wind-up (q .3), mid cut (q .42) and the cut's end (q .55); the goblin a millisecond after each
-weapon's hit on that build (`goblin-bonk` at 1662 and 1658 ms, `arm-goblin-bonk` at 1652 and 1643);
+weapon's hit on that build (`goblin-bonk` at 1665 and 1662 ms, `arm-goblin-bonk` at 1652 and 1643);
 and the settings screen's knight page with the build chosen (`settings-knight`), the build chosen
 by the address's `bd=` hook. No other shot has `bd=`, so they change nothing else in a comparison,
 and against a reference from before them they are missing.
