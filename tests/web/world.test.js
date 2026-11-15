@@ -1,8 +1,9 @@
 // Tests for the scene compiler, web/js/world.js, and the medieval world's pack that ships with the
 // page, web/packs/medieval.pack.json: that the pack reads clean, where a page draws the battlement,
-// the camp, the yard and the cellar from (the pack on a 'dev' page, code on a deployed page until the pack is signed, code when
-// the pack is refused, missing or fails to compile), the console lines and the status, the long
-// names, and what the compiler builds and refuses. Run with: node --test tests/web/
+// the camp, the yard, the cellar and the smithy from (the pack on a 'dev' page, code on a deployed
+// page until the pack is signed, code when the pack is refused, missing or fails to compile), the
+// console lines and the status, the long names, and what the compiler builds and refuses. Run with:
+// node --test tests/web/
 //
 // That each scene from the pack draws what the code draws, call for call, and keys its backdrop
 // alike, is tests/web/scenes.test.js's; that its hosts and quiet agree with the engine's lists, and
@@ -73,18 +74,19 @@ const CODE = 'knightwatcher: the scenes of kw.medieval are drawn from code: ';
 
 // ---- The pack ---------------------------------------------------------------------------------------
 
-test('the medieval world\'s pack reads clean: kw.medieval 0.2.0, format 1.1, the battlement, the camp, the yard, the cellar and their stamps', () => {
+test('the medieval world\'s pack reads clean: kw.medieval 0.2.0, format 1.1, the battlement, the camp, the yard, the cellar, the smithy and their stamps', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual([r.id, r.version, plain(r.format), r.signed], ['kw.medieval', '0.2.0', [1, 1], false]);
   assert.deepEqual(plain(r.provides), ['scenes', 'stamps']);
-  assert.deepEqual(Object.keys(r.data.scenes), ['battlement', 'camp', 'yard', 'cellar']);
+  assert.deepEqual(Object.keys(r.data.scenes), ['battlement', 'camp', 'yard', 'cellar', 'smithy']);
   assert.deepEqual(Object.keys(r.data.stamps), ['sconce', 'barrel']);
   // the costs the counts step found, at the widest screen the checks assume
   assert.deepEqual(plain(r.world.scenes.battlement), { still: { n: 342, cost: 25967 }, frame: { n: 7, cost: 185, glows: 1 } });
   assert.deepEqual(plain(r.world.scenes.camp), { still: { n: 66, cost: 56668 }, frame: { n: 7, cost: 718, glows: 8 } });
   assert.deepEqual(plain(r.world.scenes.yard), { still: { n: 298, cost: 28929 }, frame: { n: 44, cost: 2086, glows: 1 } });
   assert.deepEqual(plain(r.world.scenes.cellar), { still: { n: 440, cost: 76803 }, frame: { n: 3, cost: 120, glows: 1 } });
+  assert.deepEqual(plain(r.world.scenes.smithy), { still: { n: 339, cost: 15212 }, frame: { n: 9, cost: 508, glows: 2 } });
   // a deployed page refuses it unsigned
   assert.deepEqual([PK.read(TEXT).ok, PK.read(TEXT).step, PK.read(TEXT).reason], [false, 'signature', MISSING]);
 });
@@ -93,7 +95,7 @@ test('the pack as it ships: signed, a deployed page draws its scenes from it; un
   const s = sandbox(), st = s.W.start([SHIPPED], false);
   if (Object.prototype.hasOwnProperty.call(JSON.parse(SHIPPED), 'sig')) {
     assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.2.0', signed: true }, st.note);
-    assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack' });
+    assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack' });
   } else {
     assert.deepEqual([st.source, st.refused.step], ['code', 'signature']);
   }
@@ -114,14 +116,15 @@ test('the page loads the compiler after the pack library and the medieval carrie
 // ---- Where the scenes are drawn from ------------------------------------------------------------------
 
 /* The scenes kw.medieval gives, in the pack's order. */
-const GIVEN = ['battlement', 'camp', 'yard', 'cellar'];
+const GIVEN = ['battlement', 'camp', 'yard', 'cellar', 'smithy'];
 
-test('a dev page draws the battlement, the camp, the yard and the cellar from kw.medieval unsigned, under their short names and their long ones, and says so', () => {
+test('a dev page draws the battlement, the camp, the yard, the cellar and the smithy from kw.medieval unsigned, under their short names and their long ones, and says so', () => {
   const s = sandbox(), before = Object.keys(s.KW.scenes);
   const st = s.W.start([TEXT], true);
   assert.equal(s.W.status, st);
-  assert.deepEqual(plain(st), { source: 'pack', pack: { id: 'kw.medieval', version: '0.2.0', signed: false }, refused: null, scenes: { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack' }, faults: [],
-    note: 'knightwatcher: the scenes battlement, camp, yard and cellar are drawn from the pack kw.medieval 0.2.0, unsigned' });
+  assert.deepEqual(plain(st), { source: 'pack', pack: { id: 'kw.medieval', version: '0.2.0', signed: false }, refused: null,
+    scenes: { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack' }, faults: [],
+    note: 'knightwatcher: the scenes battlement, camp, yard, cellar and smithy are drawn from the pack kw.medieval 0.2.0, unsigned' });
   assert.deepEqual(s.lines, [['info', st.note]]);
   for (const n of GIVEN) {
     const sc = s.KW.scenes[n];
@@ -144,11 +147,11 @@ test('a deployed page refuses kw.medieval unsigned and draws its scenes from cod
   }
 });
 
-test('a deployed page draws the battlement, the camp, the yard and the cellar from kw.medieval once it is signed with a key it knows', () => {
+test('a deployed page draws the battlement, the camp, the yard, the cellar and the smithy from kw.medieval once it is signed with a key it knows', () => {
   const s = sandbox(), st = s.W.start([signedText(TEXT)], false, { keys: keysIn(s) });
   assert.equal(st.source, 'pack', st.note);
   assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.2.0', signed: true });
-  assert.equal(st.note, 'knightwatcher: the scenes battlement, camp, yard and cellar are drawn from the pack kw.medieval 0.2.0, signed');
+  assert.equal(st.note, 'knightwatcher: the scenes battlement, camp, yard, cellar and smithy are drawn from the pack kw.medieval 0.2.0, signed');
   for (const n of GIVEN) assert.notEqual(s.KW.scenes[n], s.code[n], n);
   // a signature that does not verify is refused, as for any pack
   const bad = s.W.start([signedText(TEXT).replace('"Cellar"', '"Cellars"')], false, { keys: keysIn(s) });
@@ -164,12 +167,12 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   broken.scenes.cellar.still[0].shapes[3].k = 'zz';
   s.KW.pack = Object.assign({}, lib, { read: () => Object.assign({}, real, { data: broken }) });
   const st = s.W.start([TEXT], true);
-  assert.equal(st.source, 'pack', 'the battlement, the camp and the yard are still drawn from the pack');
+  assert.equal(st.source, 'pack', 'the battlement, the camp, the yard and the smithy are still drawn from the pack');
   assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.2.0', signed: false });
-  assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code' });
+  assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack' });
   assert.deepEqual(plain(st.faults), [{ scene: 'cellar', reason: 'scenes.cellar.still[0].shapes[3].k: the shape kind "zz" is not built in this engine yet' }]);
   assert.deepEqual(s.lines, [['warn', 'knightwatcher: the scene cellar is drawn from code: it could not be compiled: ' + st.faults[0].reason],
-    ['info', 'knightwatcher: the scenes battlement, camp and yard are drawn from the pack kw.medieval 0.2.0, unsigned']]);
+    ['info', 'knightwatcher: the scenes battlement, camp, yard and smithy are drawn from the pack kw.medieval 0.2.0, unsigned']]);
   assert.equal(s.KW.scenes.cellar, s.code.cellar);
   assert.equal(s.KW.scenes['kw.medieval/cellar'], undefined);
   assert.notEqual(s.KW.scenes.camp, s.code.camp);
@@ -177,8 +180,8 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   for (const n of GIVEN) broken.scenes[n].still[0].shapes[3].k = 'zz';
   s.lines.length = 0;
   const all = s.W.start([TEXT], true);
-  assert.deepEqual([all.source, plain(all.scenes), all.faults.length], ['code', { battlement: 'code', camp: 'code', yard: 'code', cellar: 'code' }, 4]);
-  assert.deepEqual(s.lines.map(l => l[0]), ['warn', 'warn', 'warn', 'warn']);
+  assert.deepEqual([all.source, plain(all.scenes), all.faults.length], ['code', { battlement: 'code', camp: 'code', yard: 'code', cellar: 'code', smithy: 'code' }, 5]);
+  assert.deepEqual(s.lines.map(l => l[0]), ['warn', 'warn', 'warn', 'warn', 'warn']);
   for (const n of GIVEN) assert.equal(s.KW.scenes[n], s.code[n], n);
   // the same from a pack the library reads clean, naming a part of format 1.1 this engine does
   // not build yet (a dithered patch); this one changes when that part is built
@@ -186,7 +189,7 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   const dith = edited(p => { p.scenes.cellar.still[0].shapes.push({ k: 'dith', p: [0, 0], w: 8, h: 8, colour: '#000000' }); });
   assert.equal(lib.read(dith, { allowUnsigned: true }).ok, true);
   const d = s.W.start([dith], true);
-  assert.deepEqual(plain(d.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code' });
+  assert.deepEqual(plain(d.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack' });
   assert.match(d.faults[0].reason, /^scenes\.cellar\.still\[0\]\.shapes\[\d+\]\.k: the shape kind "dith" is not built in this engine yet$/);
   assert.equal(s.KW.scenes.cellar, s.code.cellar);
 });
@@ -274,7 +277,11 @@ test('what the compiler does not build yet it refuses by name, and the reason na
     ['a channel but show', p => { sparks(p).anim.tracks[0] = { g: 'sparks', ch: 'dy', ease: 'step', keys: [[0, 0], [150, -2]] }; }, 'scenes.battlement.moving[1].anim.tracks[0].ch: the channel "dy" is not built in this engine yet', 'battlement'],
     ['a wave track', p => { sparks(p).anim.tracks[0] = { g: 'sparks', ch: 'dx', wave: [1.5, 190, 0], round: true }; }, 'scenes.battlement.moving[1].anim.tracks[0]: a wave track is not built in this engine yet', 'battlement'],
     ['"only" on a shape', p => { p.scenes.cellar.still[0].shapes[5].shapes[0].only = [31, 5]; }, 'scenes.cellar.still[0].shapes[5].shapes[0].only: "only" on a shape is not built in this engine yet'],
-    ['a rest', p => { p.scenes.cellar.rests = { shelf: { kind: 'surface', x: 300, y: 380, w: 40, h: 40 } }; }, 'scenes.cellar.rests: the scene\'s rests is not built in this engine yet'],
+    ['a seat', p => { p.scenes.cellar.seat = { x: 820, y: 505, bubble: [672, 180], turn: 3200, mouth: 230 }; }, 'scenes.cellar.seat: the scene\'s seat is not built in this engine yet'],
+    // a triggered effect runs on the clock of the scene's one act
+    ['straw on the hammer\'s blow', p => { p.scenes.smithy.moving[1].shapes[0].piece = 'straw'; }, 'scenes.smithy.moving[1].shapes[0].piece: a burst of straw on the hammer\'s blow is not built in this engine yet', 'smithy'],
+    ['a target and an anvil', p => { p.scenes.smithy.target = { group: 'fire', hitAt: 420, every: 5600 }; p.scenes.smithy.moving[0].groups = { fire: { pivot: [840, 410] } }; },
+      'scenes.smithy: a scene with both a target and an anvil is not built in this engine yet', 'smithy'],
     // the flies and the crate follow the one flag outdoors, so a scene hosts both or neither
     ['the flies alone', p => { p.scenes.cellar.hosts = ['flies']; }, 'scenes.cellar.hosts: hosting the flies without the crate is not built in this engine yet'],
     ['the crate alone', p => { p.scenes.camp.hosts = ['crate', 'feast', 'foe']; }, 'scenes.camp.hosts: hosting the crate without the flies is not built in this engine yet', 'camp'],
@@ -373,7 +380,7 @@ test('the pack library reads targetDx, the target\'s, with three decimals on its
     'references', 'pack.scenes.camp.still[0].shapes[66].p[0].targetDx: cannot be used in a still layer');
   no(trained(sc => { sc.moving[1].shapes[1].p1[0].targetDx = 9; }), 'fields', 'pack.scenes.camp.moving[1].shapes[1].p1[0].targetDx: must be a number from -8 to 8');
   // the costs bound the lean over targetDx's range, ACT_RANGE
-  assert.deepEqual(plain(PK.ACT_RANGE), { targetDx: [-15, 15] });
+  assert.deepEqual(plain(PK.ACT_RANGE), { targetDx: [-15, 15], spot: [150, 810] });
 });
 
 test('the target\'s act trains as yard.js does: a blow 420 ms into the round, the group moved by the wobble, the post leaning by 0.8 of it, and the straw from the blow', () => {
@@ -417,7 +424,7 @@ test('an ell\'s clip keeps the rows between its ys, and a tile\'s pick takes a c
 
 test('the yard\'s pieces refuse what they do not build by name', () => {
   const cases = [
-    ['a burst without a target', p => { p.scenes.cellar.moving[0].shapes.push({ k: 'fx', fx: 'burst', p: [1, 1], piece: 'straw' }); }, 'cellar', /^scenes\.cellar\.moving\[0\]\.shapes\[3\]\.fx: the triggered effect "burst" in a scene without a target is not built in this engine yet$/],
+    ['a burst without a target', p => { p.scenes.cellar.moving[0].shapes.push({ k: 'fx', fx: 'burst', p: [1, 1], piece: 'straw' }); }, 'cellar', /^scenes\.cellar\.moving\[0\]\.shapes\[3\]\.fx: the triggered effect "burst" in a scene without a target or an anvil is not built in this engine yet$/],
     ['sparks on the target\'s hit', null, 'camp', /^scenes\.camp\.moving\[1\]\.shapes\[2\]\.piece: a burst of sparks on the target's hit is not built in this engine yet$/, sc => { sc.moving[1].shapes[2].piece = 'spark'; }],
     ['"g" on an effect', null, 'camp', /^scenes\.camp\.moving\[1\]\.shapes\[2\]\.g: "g" on an effect is not built in this engine yet$/, sc => { sc.moving[1].shapes[2].g = 'dummy'; }],
     ['a pick in a band list', p => { const t = p.scenes.cellar.still[0].shapes[5]; t.pick = { wood: { seed: 1, of: ['#000000', '#111111'] } }; t.shapes[0].fill = [[0.5, '@pick.wood'], [1, '#222222']]; }, 'cellar', /^scenes\.cellar\.still\[0\]\.shapes\[5\]\.shapes\[0\]\.fill\[0\]\[1\]: a pick inside a band list is not built in this engine yet$/],
@@ -427,4 +434,94 @@ test('the yard\'s pieces refuse what they do not build by name', () => {
     assert.equal(r.ok, true, what + ': ' + r.reason);
     assert.throws(() => s.W.compile(r, id), e => reason.test(e.message), what);
   }
+});
+
+// ---- The smithy's pieces: rests, the rest mark, the anvil's act ---------------------------------------
+
+/* The smithy compiled, with the knight's calls at rest written as lines: { s, sc, K, lines }. */
+function smithy(text) {
+  const c = compiled(text || TEXT, 'smithy'), K = c.s.KW.knight;
+  K.rest.draw = (...a) => c.s.log.push(['rest.draw', ...a].join(' '));
+  return Object.assign(c, { K });
+}
+const at440 = (t, over) => frameOf(Object.assign({ kx: 440, o: {} }, over));
+
+test('rests compile to the code scenes\' form: "flat" and "upright" as angles, a number as it is, and "from": "spot" kept out of the interface', () => {
+  const { sc } = smithy(), code = sandbox().code.smithy;
+  assert.deepEqual(plain(sc.rests), plain(code.rests));
+  assert.equal(sc.rests.anvil.a, Math.PI / 2);
+  const other = smithy(edited(p => { Object.assign(p.scenes.smithy.rests, { up: { x: 10, y: 20, a: 'upright' }, slant: { x: 30, y: 40, a: 0.7 } }); })).sc;
+  assert.deepEqual([other.rests.up.a, other.rests.slant.a], [0, 0.7]);
+  // a scene with no rests gives none, and a scene with an anvil gives no rounds to stroll between
+  assert.equal('rests' in compiled(TEXT).sc, false);
+  assert.equal('rounds' in sc, false);
+  assert.equal(code.rounds, undefined);
+});
+
+test('the rest mark paints the gear at rest into the backdrop, counted from the spot where its rest says so, and the key follows the gear and the spot', () => {
+  const { s, sc, K } = smithy();
+  const painted = kx => { s.log.length = 0; sc.paint(frameOf({ kx })); return s.log.filter(l => l.startsWith('rest.draw')); };
+  assert.deepEqual(painted(440), ['rest.draw off 145 312', 'rest.draw main 490 425 ' + Math.PI / 2]);
+  assert.deepEqual(painted(300), ['rest.draw off 145 312', 'rest.draw main 350 425 ' + Math.PI / 2]);
+  // the key: no predicate, then the spot, then the shield's and the weapon's names
+  assert.equal(sc.key(frameOf({ kx: 440 })), '|440|code|code');
+  assert.equal(sc.key(frameOf({ kx: 299.6 })), '|300|code|code');
+  K.rest.key = slot => (slot === 'main' ? 'kw.base/main.arming' : '');
+  assert.equal(sc.key(frameOf({ kx: 440 })), '|440||kw.base/main.arming');
+  // a scene without gear in its still layers keys as before
+  assert.equal(compiled(TEXT, 'camp').sc.key(frameOf({ kx: 440 })), '');
+});
+
+test('a rest mark in a moving layer draws the gear each frame, at a place or on a frame, and its layer\'s when still holds first', () => {
+  const text = edited(p => {
+    const sc = p.scenes.cellar;
+    sc.rests = { stool: { kind: 'surface', x: 460, y: 476, w: 76, h: 80 }, pegs: { x: 618, y: 228, a: 'flat' } };
+    sc.moving.push({ when: ['helmOff'], shapes: [{ k: 'rest', slot: 'helmet', at: 'stool' }, { k: 'rest', slot: 'main', at: 'pegs' }] });
+  });
+  const { s, sc } = compiled(text), lines = [];
+  s.KW.knight.rest.draw = (...a) => lines.push(a.join(' '));
+  sc.draw(0, frameOf({ helmOff: false }));
+  assert.deepEqual(lines, []);
+  sc.draw(0, frameOf({ helmOff: true }));
+  assert.deepEqual(lines, ['helmet 460 476', 'main 618 228 ' + Math.PI / 2]);
+  // drawn each frame, so the backdrop's key does not follow it
+  assert.equal(sc.key(frameOf({ helmOff: true })), '');
+});
+
+test('the anvil\'s act hammers as smithy.js does, the sparks fly only while it strikes, and the hot tip lies on the blade', () => {
+  const { s, sc, K } = smithy(), code = sandbox().code.smithy;
+  assert.equal(typeof sc.act, 'function');
+  for (let t = 0; t <= 9100; t += 10) {
+    const a = at440(t), b = at440(t);
+    sc.act(t, a); code.act(t, b);
+    assert.deepEqual([plain(a.o), a.strike], [plain(b.o), b.strike], 't ' + t);
+  }
+  const drawn = t => { const f = at440(t); sc.act(t, f); s.log.length = 0; sc.draw(t, f); return s.log; };
+  // struck at 0 (the first 6 hundredths of the cycle) and from 1209 ms (93 hundredths): the sparks'
+  // glow, 44 across, at the spot plus 132 and at 418
+  const glowAt = (log, x, y) => log.some(l => l.startsWith(`arc ${x} ${y} 44 `));
+  assert.ok(glowAt(drawn(0), 572, 418) && glowAt(drawn(1250), 572, 418), 'the sparks\' glow at the spot plus 132');
+  assert.ok(!glowAt(drawn(300), 572, 418) && !glowAt(drawn(1000), 572, 418), 'no sparks while the hammer rises');
+  const at300 = t => { const f = at440(t, { kx: 300 }); sc.act(t, f); s.log.length = 0; sc.draw(t, f); return s.log; };
+  assert.ok(glowAt(at300(0), 432, 418), 'the sparks follow the spot');
+  // the hot tip: its bands start 73, 57 and 43 short of the greatsword's point, 263 along the blade from 490
+  const tip = drawn(300);
+  for (const [x0, c] of [[73, '#8f231d'], [57, '#cc352c'], [43, '#ff5a1e']]) assert.ok(tip.includes('s ' + c) && tip.some(l => l.startsWith(`r ${490 + 263 - x0} 410 `)), c);
+  K.rest.blade = () => null;
+  const none = drawn(300);
+  assert.ok(!none.includes('s #8f231d') && !none.includes('s #7a2a1d'), 'no hot tip for a weapon without a blade');
+  assert.equal(none[none.length - 1], 'devices');
+});
+
+test('the pack library reads spot, the watcher\'s x at the anvil, only in a moving or over layer of a scene with an anvil', () => {
+  const no = (text, step, reason) => { const r = PK.read(text, { allowUnsigned: true }); assert.deepEqual([r.ok, r.step, r.reason], [false, step, reason]); };
+  no(edited(p => { p.scenes.camp.moving[0].shapes.push({ k: 'rect', p: [{ spot: 1, c: 10 }, 400], w: 2, h: 2, fill: '#000000' }); }),
+    'references', 'pack.scenes.camp.moving[0].shapes[' + JSON.parse(TEXT).pack.scenes.camp.moving[0].shapes.length + '].p[0].spot: is the watcher\'s x at the anvil, and needs the scene\'s anvil');
+  no(edited(p => { p.scenes.smithy.still[0].shapes.push({ k: 'rect', p: [{ spot: 1 }, 400], w: 2, h: 2, fill: '#000000' }); }),
+    'references', 'pack.scenes.smithy.still[0].shapes[' + JSON.parse(TEXT).pack.scenes.smithy.still[0].shapes.length + '].p[0].spot: cannot be used in a still layer');
+  // the sparks' point is costed and bounded over the spot's range
+  const far = edited(p => { p.scenes.smithy.moving[1].shapes[0].p[0] = { spot: 2, c: 600 }; });
+  const r = PK.read(far, { allowUnsigned: true });
+  assert.deepEqual([r.ok, r.step], [false, 'rules']);
+  assert.match(r.reason, /^pack\.scenes\.smithy\.moving\[1\]\.shapes\[0\]\.p\[0\]: the offset reaches 2220 at its greatest, above 2048$/);
 });
