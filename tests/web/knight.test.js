@@ -15,7 +15,12 @@
 // not alter it. To find the first differing call in a pose that has only hashes stored, dump both
 // trees into two folders and compare the files.
 'use strict';
-const test = require('node:test');
+/* KNIGHT_PART, set by tests/web/knight-free-*.test.js, runs only the checks of the base pack's free
+   items of 1.4.0 on one build (free:build.a, free:build.b or free:build.c), in a process of its own
+   beside this file's; without it every other test here runs and those do not. */
+const PART = process.env.KNIGHT_PART || '';
+const test = PART ? () => {} : require('node:test');
+const freeTest = /^free:build\.[abc]$/.test(PART) ? require('node:test') : () => {};
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -39,6 +44,8 @@ const SIGN = require('../../tools/sign-pack.js');
 const SHIPPED = fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8');
 const SIGNED = Object.prototype.hasOwnProperty.call(JSON.parse(SHIPPED), 'sig');
 const UNSIGNED = SIGN.withoutSig(SHIPPED);
+// The base pack's version, which the console line names.
+const VERSION = JSON.parse(SHIPPED).pack.version;
 /* The two paths, each as the page that takes it: from code, as on a deployed page given the
    unsigned base pack, and from the base pack as it ships, as on a 'dev' page, which reads it signed
    or not. */
@@ -249,10 +256,10 @@ if (MODE === 'write') {
   /* What a page says when it draws from a base pack, signed or not. */
   const fromPack = (status, signed) => {
     assert.equal(status.source, 'pack', status.note);
-    assert.deepEqual(plain(status.base), { id: 'kw.base', version: '1.3.0', signed });
+    assert.deepEqual(plain(status.base), { id: 'kw.base', version: VERSION, signed });
     assert.deepEqual(plain(status.refused), []);
     assert.deepEqual(plain(status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), []);
-    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base 1.3.0, ' + (signed ? 'signed' : 'unsigned'));
+    assert.equal(status.note, 'knightwatcher: the knight is drawn from the base pack kw.base ' + VERSION + ', ' + (signed ? 'signed' : 'unsigned'));
   };
   const MISSING = 'sig: is missing, and this page accepts only signed packs';
   /* The unsigned base pack signed with a key made for the run: { text, kw1 }, kw1 the public key in
@@ -323,7 +330,8 @@ if (MODE === 'write') {
     let s = load(true, ['not json']).status;
     assert.equal(s.source, 'code');
     assert.deepEqual(plain(s.refused), [{ id: null, file: null, step: 'json', reason: 'the file is not valid JSON' }]);
-    const v = load(true, [text.replace('"version": "1.3.0"', '"version": "1.2"')]);
+    const v = load(true, [text.replace('"version": "' + VERSION + '"', '"version": "1.2"')]);
+    assert.notEqual(v.status.note, CODE + 'no base pack is loaded', 'the version was replaced');
     assert.equal(v.status.note, CODE + 'the base pack kw.base was refused at the fields step');
     assert.deepEqual(v.lines[0], ['warn', 'knightwatcher: the pack kw.base was refused at the fields step: pack.version: must be major.minor.patch, each 0 to 999']);
     const box = load(true);
@@ -982,4 +990,107 @@ if (MODE === 'write') {
       assert.ok(cam.every(c => c[2] <= 960), `${tag}: the camera stays on the grid`);
     }
   });
+
+  /* ---- The free items of 1.4.0 ------------------------------------------------------------------
+     The checks above for the weapons, shields, sleeves and gloves the base pack gained in 1.4.0, on
+     the build KNIGHT_PART names, and every free item drawn in every pose there. Each build runs in a
+     process of its own (tests/web/knight-free-classic.test.js, -broad and -slim). */
+  const FREE_BUILD = (/^free:(build\.[abc])$/.exec(PART) || [])[1];
+  if (FREE_BUILD) {
+    const KB = id => 'kw.base/' + id, FB = BUILD_NAMES[FREE_BUILD], LIB = [PK.read(UNSIGNED, { allowUnsigned: true })];
+    const look = items => ({ build: KB(FREE_BUILD), items });
+    const MAIL = { arms: KB('arms.mail'), gauntlets: KB('gauntlets.mail') }, PADDED = { arms: KB('arms.padded'), gauntlets: KB('gauntlets.leather') };
+    /* Every new weapon with every shield it may carry, in plate; and each new kind of sleeve and
+       glove with a two-handed and a one-handed weapon, since the gauntlets are drawn after the
+       weapon in every grip and the sword arm after the shield. */
+    const KITS = {
+      'the longsword': { main: KB('main.longsword') },
+      'the mace alone': { main: KB('main.mace') },
+      'the mace and the round shield': { main: KB('main.mace'), off: KB('off.round') },
+      'the mace and the kite shield': { main: KB('main.mace'), off: KB('off.kite') },
+      'the arming sword and the round shield': { main: KB('main.arming'), off: KB('off.round') },
+      'the arming sword and the kite shield': { main: KB('main.arming'), off: KB('off.kite') },
+      'the greatsword in mail sleeves and mittens': Object.assign({ main: KB('main.greatsword') }, MAIL),
+      'the longsword in padded sleeves and leather gloves': Object.assign({ main: KB('main.longsword') }, PADDED),
+      'the arming sword and the heater shield in padded sleeves and leather gloves': Object.assign({ main: KB('main.arming'), off: KB('off.heater') }, PADDED),
+      'the mace and the kite shield in mail sleeves and mittens': Object.assign({ main: KB('main.mace'), off: KB('off.kite') }, MAIL)
+    };
+    for (const [what, items] of Object.entries(KITS)) {
+      freeTest(`no arm is drawn over a blade, its guard or the shield, frame by frame: ${FB} with ${what}`, () => {
+        const b = withLook(look(items));
+        assert.deepEqual(plain(b.status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), [], 'drawn as chosen');
+        assert.deepEqual(breaches(look(items)), []);
+      });
+    }
+
+    /* Each free item in every pose of the call record, both swings and the attack: no throw, no
+       fallback, no broken number, within the look's cost. The items take the greatsword and the mace
+       with the kite shield in turn (a shield the mace); the painted house and smithy, whose backdrops
+       show only the weapon and the shield, are drawn for those two slots alone. */
+    const FREE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-free-items.json'), 'utf8')).items;
+    freeTest(`${FB}: every free item draws in every pose and swing frame without a throw, each frame within the look's cost`, () => {
+      let n = 0;
+      for (const [i, id] of Object.keys(FREE).entries()) {
+        const slot = FREE[id].slot, kits = slot === 'main' ? [{}] : slot === 'off' ? [{ main: KB('main.mace') }] : [i % 2 ? { main: KB('main.mace'), off: KB('off.kite') } : {}];
+        for (const kit of kits) {
+          const L0 = look(Object.assign({}, kit, { [slot]: KB(id) })), b = withLook(L0), lib = b.KW.pack, draw0 = lib.draw, log = b.log;
+          const what = `${FB}, ${id}${kit.main ? ' with ' + kit.main.slice(8) : ''}`;
+          assert.equal(b.status.source, 'pack', what);
+          assert.deepEqual(plain(b.status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), [], what);
+          const L = PK.resolve(LIB, L0);
+          assert.ok(L.shapes <= PK.LIMITS.lookShapes && L.cost <= PK.LIMITS.lookCost, `${what}: ${L.shapes} shapes, cost ${L.cost}`);
+          let fills = 0, inList = false;
+          lib.draw = (...a) => { inList = true; try { return draw0(...a); } finally { inList = false; } };
+          const frames = POSES(b.K, b.KW.scenes).filter(([name]) => slot === 'main' || slot === 'off' || !/painted/.test(name));
+          for (const dir of [1, -1]) for (let k = 0; k <= 20; k++) frames.push([`swing ${dir} q${k / 20}`, () => { const o = at(b.K, 'idle', 2300); b.K.swing(o, k / 20, dir); b.K.draw(o); }]);
+          for (let t = 0; t < 1000; t += 100) frames.push([`attack t${t}`, () => b.K.draw(at(b.K, 'attack', t))]);
+          for (const [name, fn] of frames) {
+            log.length = 0; fills = 0;
+            const fr = log.push; log.push = (...ls) => { if (inList) for (const l of ls) if (l.startsWith('r ')) fills++; return fr.apply(log, ls); };
+            fn();
+            log.push = fr;
+            assert.equal(b.K.source, 'pack', `${what} ${name}: nothing threw`);
+            assert.deepEqual(plain(b.K.status.refused), [], `${what} ${name}`);
+            assert.ok(fills <= L.cost, `${what} ${name}: ${fills} fills, more than the cost of ${L.cost}`);
+            assert.ok(!log.some(l => /NaN|undefined/.test(l)), `${what} ${name}: no broken number or colour`);
+          }
+          n++;
+        }
+      }
+      assert.equal(n, 25);
+    });
+
+    /* The poses belong to the engine, not to the weapon: the longsword is held exactly where the
+       greatsword is, and the mace where the arming sword is, in every frame, since each has the same
+       stations along its grip. */
+    freeTest(`${FB}: the longsword and the mace are held as the greatsword and the arming sword are, frame by frame`, () => {
+      for (const [mine, theirs, off] of [['main.longsword', 'main.greatsword'], ['main.mace', 'main.arming', 'off.kite']]) {
+        const extra = off ? { off: KB(off) } : {};
+        const a = withLook(look(Object.assign({ main: KB(mine) }, extra))).K, c = withLook(look(Object.assign({ main: KB(theirs) }, extra))).K;
+        const frames = [];
+        for (const dir of [1, -1]) for (let k = 0; k <= 100; k++) frames.push(K2 => { const o = at(K2, 'idle', 2300); K2.swing(o, k / 100, dir); return o; });
+        for (let t = 0; t < 2000; t += 50) frames.push(K2 => at(K2, 'attack', t));
+        for (const id of ['idle', 'memory_tight', 'cpu_hot', 'wan_down', 'night', 'updating']) frames.push(K2 => at(K2, id, 2300));
+        for (const make of frames) {
+          const ra = a.rig(make(a)), rc = c.rig(make(c));
+          assert.equal(ra.grip, rc.grip, mine);
+          for (const k of ['main', 'handL', 'handR', 'off']) assert.deepEqual([...ra.anchors[k]], [...rc.anchors[k]], `${mine}: ${k}`);
+        }
+      }
+    });
+
+    /* The smithy heats the mace's head as it heats a blade: its blade field names the haft and the
+       head, 34 to 136 along the frame, so the hot tip glows on the head. */
+    freeTest(`${FB}: the mace's head glows on the anvil`, () => {
+      const mace = withLook(look({ main: KB('main.mace'), off: KB('off.kite') })), sword = withLook(look({ main: KB('main.arming'), off: KB('off.kite') }));
+      assert.deepEqual(plain(mace.K.rest.blade()), { from: 34, to: 136, half: 16 });
+      assert.equal(mace.K.rest.key('main'), 'kw.base/main.mace');
+      assert.equal(mace.K.rest.key('off'), 'kw.base/off.kite');
+      assert.equal(mace.KW.scenes.smithy.key({ kx: 440 }), '440|kw.base/main.mace|kw.base/off.kite');
+      const drawn = box => { box.log.length = 0; const s = { kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
+      const hot = drawn(mace), cold = drawn(sword);
+      assert.ok(hot.includes('s #7a2a1d') && hot.includes('s #fff3a0'), 'the hot bands and the glowing point');
+      assert.notDeepEqual(hot, cold, 'the glow follows the mace\'s head, not the sword\'s point');
+    });
+  }
 }

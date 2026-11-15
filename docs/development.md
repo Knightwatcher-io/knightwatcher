@@ -34,10 +34,11 @@ tests/
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
                      shield as approved (base-onehand.items.json), its free options as
                      approved (base-options.json), its three builds and the items fitted to
-                     them as approved (base-builds.json), a world pack of format 1.1 for the
-                     library's tests (world-1.1.json), the base pack's read stored from the
-                     library before format 1.1 (base-read.json), and a state file with the
-                     settings' defaults (state-defaults.json)
+                     them as approved (base-builds.json), its free items of 1.4.0 as approved
+                     (base-free-items.json), a world pack of format 1.1 for the library's tests
+                     (world-1.1.json), the base pack's read, first stored from the library
+                     before format 1.1 (base-read.json), and a state file with the settings'
+                     defaults (state-defaults.json)
   tools/             node tests for tools/deploy.sh, tools/pack-carrier.js, tools/sign-pack.js and
                      tools/settings-schema.js
 tools/
@@ -143,7 +144,15 @@ scenes into pack data, beside the scenes' call records below: each condition in 
 act it where no other shot shows it, the helmet on in the house, the smithy's hammer raised, the
 yard's dummy struck, each monarch in each skin no other shot shows, the devices in all seven places
 up and gone in every scene, and every scene at 1400 by 600 and at 960 by 720 (4:3). Against a
-reference from before them they are missing too. A headless browser has no saved choices, so every shot shows what its address asks for.
+reference from before them they are missing too. The 34 `free-` shots after them show the base
+pack's free items of 1.4.0: each new weapon and shield, the gear at rest, three whole looks, the
+new hair, the back in the attack, with the cellar's crate and in the bloat, the same on Broad and
+Slim, and the settings screen's knight page with every row in view, chosen with `arm=` and the
+gear's look hooks ([page.md](./page.md#checks)); against a reference from before them they are
+missing. Against a reference from base pack 1.3.0 six shots differ besides: the settings screen's
+knight page in `settings-knight`, `settings-look`, `settings-tablet`, `bd-b-settings-knight` and
+`bd-c-settings-knight`, whose weapon and hair style rows gained choices, and `settings-status`,
+which names the base pack's version and whether it is signed. A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
@@ -152,7 +161,12 @@ from code and once from the base pack, and compares every call with a
 stored record, in about a second. The record is stored again only when the knight or those scenes are meant to change;
 [page.md](./page.md#checks) says how. The same file draws every frame of the swings, the attack
 and the goblin strike with the greatsword and with the sword and shield, and fails if an arm is
-drawn over a blade or a shield ([page.md](./page.md#the-knights-rig)). For the three builds it draws
+drawn over a blade or a shield ([page.md](./page.md#the-knights-rig)). The same checks for the
+base pack's free items of 1.4.0 (every new weapon with every shield it may carry, the mail and
+padded sleeves and gloves, every free item in every pose, on each build) run from
+`knight-free-classic.test.js`, `knight-free-broad.test.js` and `knight-free-slim.test.js`, which
+load `knight.test.js` with `KNIGHT_PART` naming one build, so that they run in processes of their
+own beside it; each takes about two minutes, the longest files of the suite. For the three builds it draws
 Classic, chosen by name, against the stored record; Broad and Slim with each weapon in every pose
 and swing frame without a throw and within the look's cost; the hands on the grip on every build
 through both swings, the attack and the goblin strike; and the arm check on Broad and Slim.
@@ -189,8 +203,9 @@ and two displays sharing one server. `tests/web/settings.test.js` checks the set
 the reset, the 12-hour clock, the monarch's hair and robe with "As drawn", the scene chosen per
 condition and which scenes can act which condition, the build row's names from the base pack), the
 engine's quiet rotation and its choice of scene, the monarch's skin, hair and robe, and the knight
-drawn from the base pack in 216 looks of the settings', each build meeting every weapon, skin, hair
-colour and hair style, and every monarch in every skin, hair and robe.
+drawn from the base pack in 720 looks of the settings', each build meeting every weapon, skin, hair
+colour and hair style, every choice of the gear on every build, the gear's look, what the screen
+greys and the choices' names, and every monarch in every skin, hair and robe.
 
 `tests/web/scenes.test.js` does for the scenes what the knight test does for the knight. Against the
 same kind of fake canvas it records every scene's `paint()` and `draw()`, with `act()` and `over()`

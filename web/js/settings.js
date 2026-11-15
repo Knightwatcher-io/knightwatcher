@@ -20,12 +20,22 @@
   const SCHEMA = {
     look: {
       build: { values: ['a', 'b', 'c'], page: null },
-      weapon: { values: ['greatsword', 'sword_and_shield'], page: 'greatsword' },
+      weapon: { values: ['greatsword', 'sword_and_shield', 'longsword', 'mace_and_shield'], page: 'greatsword' },
       skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], page: 'warm' },
       hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], page: 'brown' },
-      hair_style: { values: ['short', 'tied', 'curls'], page: 'short' },
+      hair_style: { values: ['short', 'tied', 'curls', 'long', 'close'], page: 'short' },
       tabard: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], page: 'blue' },
       plume: { values: ['red', 'white', 'gold', 'royal', 'green', 'violet'], page: 'red' },
+      shield: { values: ['heater', 'round', 'kite'], page: 'heater' },
+      helmet: { values: ['open', 'kettle', 'coif', 'bascinet'], page: 'open' },
+      plume_style: { values: ['crest', 'feather', 'horsehair'], page: 'crest' },
+      body: { values: ['tabard', 'cuirass', 'gambeson'], page: 'tabard' },
+      shoulders: { values: ['plate', 'lames', 'leather'], page: 'plate' },
+      arms: { values: ['plate', 'mail', 'padded'], page: 'plate' },
+      hands: { values: ['plate', 'leather', 'mail'], page: 'plate' },
+      legs: { values: ['plate', 'mail', 'hose'], page: 'plate' },
+      feet: { values: ['leather', 'sabatons', 'shoes'], page: 'leather' },
+      back: { values: ['none', 'cloak', 'cape'], page: 'none' },
       monarch: { values: ['a', 'b', 'c'], page: 'a' },
       monarch_skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], page: 'warm' },
       monarch_hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], page: null },
@@ -118,9 +128,22 @@
     return out;
   }
 
+  /* The look's gear, in the contract's names: each weapon and the base pack's item it carries, the
+     one-handed ones with the shield the shield key chooses; and each key that chooses one item, the
+     slot it fills and the prefix of the base pack's ids for it, so that hair_style "long" is
+     kw.base/hair.long and feet "shoes" kw.base/boots.shoes. back "none" fills nothing. */
+  const WEAPONS = { greatsword: 'main.greatsword', sword_and_shield: 'main.arming', longsword: 'main.longsword', mace_and_shield: 'main.mace' };
+  const ONE_HANDED = ['sword_and_shield', 'mace_and_shield'];
+  /* Each weapon as the settings screen and the admin page show it: its name and how it is held. */
+  const WEAPON_CHIPS = { greatsword: ['Greatsword', 'Two hands'], sword_and_shield: ['Sword and shield', 'One hand each'], longsword: ['Longsword', 'Two hands'],
+    mace_and_shield: ['Mace and shield', 'One hand each'] };
+  const ITEMS = { shield: ['off', 'off'], hair_style: ['hair', 'hair'], helmet: ['helmet', 'helm'], plume_style: ['plume', 'plume'], body: ['torso', 'torso'],
+    shoulders: ['pauldrons', 'pauldrons'], arms: ['arms', 'arms'], hands: ['gauntlets', 'gauntlets'], legs: ['legs', 'legs'], feet: ['boots', 'boots'], back: ['back', 'back'] };
+  const itemId = (k, v) => ITEMS[k][1] + '.' + v;
+
   /* The page's own look, from the base pack's defaults where there is one: its default build,
-     weapon, hair style and swatches, each as the contract names it; and each condition that takes
-     part in its own scene. */
+     weapon, gear and swatches, each as the contract names it; and each condition that takes part in
+     its own scene. */
   function builtIn(pack, world) {
     const out = JSON.parse(JSON.stringify(BUILT_IN)), d = isObj(pack) && isObj(pack.defaults) ? pack.defaults : null;
     const W = worldOf(world);
@@ -129,9 +152,13 @@
     const L = out.look, items = isObj(d.items) ? d.items : {}, sw = isObj(d.swatches) ? d.swatches : {};
     const b = /^build\.([abc])$/.exec(d.build || '');
     L.build = b ? b[1] : null;
-    if (items.main === 'main.arming') L.weapon = 'sword_and_shield';
-    const hs = /^hair\.(\w+)$/.exec(items.hair || '');
-    if (hs && ONE_OF.look.hair_style.includes(hs[1])) L.hair_style = hs[1];
+    for (const w of ONE_OF.look.weapon) if (items.main === WEAPONS[w]) L.weapon = w;
+    for (const k of Object.keys(ITEMS)) {
+      const [slot, prefix] = ITEMS[k], id = typeof items[slot] === 'string' ? items[slot] : '';
+      const v = id.startsWith(prefix + '.') ? id.slice(prefix.length + 1) : null;
+      if (v !== null && ONE_OF.look[k].includes(v)) L[k] = v;
+      else if (k === 'back' && !id) L.back = 'none';
+    }
     for (const k of ['skin', 'hair', 'tabard', 'plume']) if (ONE_OF.look[k].includes(sw[k])) L[k] = sw[k];
     return out;
   }
@@ -199,11 +226,38 @@
      as before there were settings. */
   function knightLook(r) {
     const v = r.values.look, set = k => r.from.look[k] !== 'built-in', B = 'kw.base/', look = {};
+    const item = (slot, id) => { (look.items = look.items || {})[slot] = B + id; };
     if (set('build') && v.build) look.build = B + 'build.' + v.build;
-    if (set('weapon')) look.items = v.weapon === 'sword_and_shield' ? { main: B + 'main.arming', off: B + 'off.heater' } : { main: B + 'main.greatsword' };
+    // a weapon set carries its shield, the one the shield key gives, when it is one-handed; a shield
+    // set alone matters only beside a one-handed weapon
+    const one = ONE_HANDED.includes(v.weapon);
+    if (set('weapon')) { item('main', WEAPONS[v.weapon]); if (one) item('off', itemId('shield', v.shield)); }
+    else if (set('shield') && one) item('off', itemId('shield', v.shield));
     for (const k of ['skin', 'hair', 'tabard', 'plume']) if (set(k)) (look.swatches = look.swatches || {})[k] = B + v[k];
-    if (set('hair_style')) (look.items = look.items || {}).hair = B + 'hair.' + v.hair_style;
+    for (const k of Object.keys(ITEMS)) if (k !== 'shield' && set(k) && v[k] !== 'none') item(ITEMS[k][0], itemId(k, v[k]));
     return look;
+  }
+  /* What the settings screen greys, from what the look shows: the shield with a two-handed weapon,
+     which carries none; and the plume with a helmet the base pack gives no plume mount, the mail
+     coif, its colour too unless the long cloak, which takes the plume's colours, is worn. Each is
+     the line said when a greyed choice is tapped, or '' when the row is live. */
+  function greyed(v, pack) {
+    const out = { shield: '', plume_style: '', plume: '' };
+    if (!ONE_HANDED.includes(v.weapon)) out.shield = 'A shield is carried only with a one-handed weapon: the sword and shield or the mace and shield.';
+    const helm = isObj(pack) && isObj(pack.items) ? pack.items[itemId('helmet', v.helmet)] : null;
+    if (isObj(helm) && !(isObj(helm.mounts) && helm.mounts.plume)) {
+      out.plume_style = 'The ' + helm.name.toLowerCase() + ' has no plume mount, so no plume is drawn with it.';
+      if (v.back !== 'cloak') out.plume = out.plume_style;
+    }
+    return out;
+  }
+  /* The choices of a gear key the base pack in use draws, in the schema's order, each { id, name }
+     with the item's name from the pack; back's "none" is named Nothing. The weapons are those whose
+     item the pack holds, named as WEAPON_CHIPS names them. */
+  function itemChoices(pack, k) {
+    const items = isObj(pack) && isObj(pack.items) ? pack.items : {};
+    if (k === 'weapon') return ONE_OF.look.weapon.filter(w => isObj(items[WEAPONS[w]])).map(w => ({ id: w, name: WEAPON_CHIPS[w][0], sub: WEAPON_CHIPS[w][1] }));
+    return ONE_OF.look[k].filter(v => v === 'none' || isObj(items[itemId(k, v)])).map(v => ({ id: v, name: v === 'none' ? 'Nothing' : items[itemId(k, v)].name }));
   }
 
   /* What the engine takes from the settings (docs/page.md): the quiet scenes in turn and how long
@@ -496,7 +550,7 @@
     return { can, homes };
   }
 
-  const api = { SCHEMA, KEY, SHARED_KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, buildsOf, buildName, buildChoices, builtIn, worldOf, offered, clean, resolve, knightLook, engineInput, clock, load, save, sharedOf, create, connect, pageWorld };
+  const api = { SCHEMA, KEY, SHARED_KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, WEAPONS, ONE_HANDED, WEAPON_CHIPS, ITEMS, itemId, itemChoices, buildsOf, buildName, buildChoices, builtIn, worldOf, offered, clean, resolve, knightLook, greyed, engineInput, clock, load, save, sharedOf, create, connect, pageWorld };
   KW.settings = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
@@ -517,7 +571,9 @@
   /* Each condition by a plain name, after the headline the page shows for it. */
   const CONDITION_NAMES = { attack: 'Under attack', wan_down: 'WAN down', container_unhealthy: 'Unwell', disk_full: 'Disk full', backup_overdue: 'Backup overdue',
     pi_silent: 'Pi silent', cpu_hot: 'Running hot', ssh_session: 'At court', updating: 'Updating', streaming: 'Now showing', night: 'Night watch' };
-  const WEAPONS = [['greatsword', 'Greatsword', 'Two hands'], ['sword_and_shield', 'Sword and shield', 'One hand each']];
+  /* The gear rows under the colours, grouped as Armour, in the order the screen shows them. */
+  const ARMOUR = [['shield', 'Shield'], ['helmet', 'Helmet'], ['plume_style', 'Plume style'], ['body', 'Body'], ['shoulders', 'Shoulders'], ['arms', 'Arms'],
+    ['hands', 'Hands'], ['legs', 'Legs'], ['feet', 'Feet'], ['back', 'Back']];
   const SETS = { skin: 'skin', hair: 'hair', tabard: 'tabard', plume: 'plume', monarch_skin: 'skin', monarch_hair: 'hair', monarch_robe: 'tabard' };
   const HEADLINES = [['small', 'Small', 20], ['medium', 'Medium', 27], ['large', 'Large', 36]];
   /* The line under the title on the pages that save: where choices are kept. */
@@ -669,10 +725,16 @@
     function lookWords(v, pack) {
       const sw = (set, id) => (pack && pack.swatches[set] && pack.swatches[set][id] ? lower(pack.swatches[set][id].name) : id);
       const style = pack && pack.items['hair.' + v.hair_style] ? lower(pack.items['hair.' + v.hair_style].name) : v.hair_style;
+      const name = (k, id) => (pack && pack.items[itemId(k, id)] ? lower(pack.items[itemId(k, id)].name) : id);
+      // the weapon, with its shield when it is one-handed; the heater shield as it always read
+      const arm = ONE_HANDED.includes(v.weapon) ? (v.weapon === 'mace_and_shield' ? 'mace' : 'sword') + ' and ' + (v.shield === 'heater' ? 'shield' : name('shield', v.shield)) : v.weapon;
+      // the gear that differs from the base pack's own, after the plume
+      const own = builtIn(pack).look, gear = ARMOUR.map(([k]) => k).filter(k => k !== 'shield' && v[k] !== own[k] && v[k] !== 'none').map(k => 'a ' + name(k, v[k]));
       const mh = v.monarch_hair ? sw('hair', v.monarch_hair) + ' hair' : '', mr = v.monarch_robe ? 'a ' + sw('tabard', v.monarch_robe) + ' robe' : '';
       const dress = mh && mr ? mh + ', ' + mr : mh ? mh + ', the robe as drawn' : mr ? 'the hair as drawn, ' + mr : 'hair and robe as drawn';
-      return (v.build ? 'the ' + buildName(pack, v.build) + ' build, ' : '') + 'the ' + (v.weapon === 'sword_and_shield' ? 'sword and shield' : 'greatsword') + ', ' + sw('skin', v.skin) + ' skin, ' +
-        sw('hair', v.hair) + ' hair (' + style + '), a ' + sw('tabard', v.tabard) + ' tabard, a ' + sw('plume', v.plume) + ' plume; monarch ' + v.monarch.toUpperCase() + ', ' + sw('skin', v.monarch_skin) + ' skin, ' + dress;
+      return (v.build ? 'the ' + buildName(pack, v.build) + ' build, ' : '') + 'the ' + arm + ', ' + sw('skin', v.skin) + ' skin, ' +
+        sw('hair', v.hair) + ' hair (' + style + '), a ' + sw('tabard', v.tabard) + ' tabard, a ' + sw('plume', v.plume) + ' plume' + (gear.length ? ', with ' + gear.join(', ') : '') +
+        '; monarch ' + v.monarch.toUpperCase() + ', ' + sw('skin', v.monarch_skin) + ' skin, ' + dress;
     }
     /* What a section falls back to when this display's choices are cleared, the defaults in the
        state file over the page's own, and whether any of it comes from config.toml. */
@@ -690,13 +752,19 @@
         if (!pack) list.appendChild(el('p', 'kws-line', 'The knight is drawn from code, which has only the default look: the base pack could not be used (see Status). Choices made here are kept and show once it can.'));
         else {
           list.appendChild(row('build', 'Build', buildChoices(pack, v.build), v.build, choose('look', 'build'), hookNote(r, 'look', 'build')));
-          list.appendChild(row('weapon', 'Weapon', WEAPONS.map(([id, chip, nm]) => ({ id, chip, name: nm, kind: 'text' })), v.weapon, choose('look', 'weapon'), hookNote(r, 'look', 'weapon')));
+          list.appendChild(row('weapon', 'Weapon', itemChoices(pack, 'weapon').map(c => ({ id: c.id, chip: c.name, name: c.sub, kind: 'text' })), v.weapon, choose('look', 'weapon'), hookNote(r, 'look', 'weapon')));
           list.appendChild(row('skin', 'Skin tone', swatches(pack, 'skin'), v.skin, choose('look', 'skin'), hookNote(r, 'look', 'skin')));
           list.appendChild(row('hair', 'Hair colour', swatches(pack, 'hair'), v.hair, choose('look', 'hair'), hookNote(r, 'look', 'hair')));
-          list.appendChild(row('hair_style', 'Hair style', ONE_OF.look.hair_style.filter(id => pack.items['hair.' + id]).map(id => ({ id, chip: pack.items['hair.' + id].name, kind: 'text' })),
+          list.appendChild(row('hair_style', 'Hair style', itemChoices(pack, 'hair_style').map(c => ({ id: c.id, chip: c.name, kind: 'text' })),
             v.hair_style, choose('look', 'hair_style'), hookNote(r, 'look', 'hair_style')));
           list.appendChild(row('tabard', 'Tabard', swatches(pack, 'tabard'), v.tabard, choose('look', 'tabard'), hookNote(r, 'look', 'tabard')));
-          list.appendChild(row('plume', 'Plume', swatches(pack, 'plume'), v.plume, choose('look', 'plume'), hookNote(r, 'look', 'plume')));
+          // a row the look does not show is greyed, each choice saying why when tapped
+          const grey = greyed(v, pack), off = (choices, why) => (why ? choices.map(c => Object.assign(c, { off: true, offNote: why })) : choices);
+          list.appendChild(row('plume', 'Plume', off(swatches(pack, 'plume'), grey.plume), v.plume, choose('look', 'plume'), grey.plume || hookNote(r, 'look', 'plume')));
+          list.appendChild(el('p', 'kws-intro', 'Armour: each piece from the base pack, worn on every build.'));
+          for (const [k, label] of ARMOUR) {
+            list.appendChild(row(k, label, off(itemChoices(pack, k).map(c => ({ id: c.id, chip: c.name, kind: 'text' })), grey[k]), v[k], choose('look', k), grey[k] || hookNote(r, 'look', k)));
+          }
         }
         const d = defaultsOf('look');
         list.appendChild(reset('look', 'look', lookWords(d.values, pack), d.fromConfig, hooked(r, 'look')));

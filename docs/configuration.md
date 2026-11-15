@@ -436,17 +436,27 @@ Machines on the network to watch, each a [[device]] table at the top level of co
 
 ### [look]
 
-The knight and the monarch at court, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The colours, tones and hair styles are those of the base pack.
+The knight and the monarch at court, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The colours, tones, hair styles and gear are those of the base pack.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `build` | `"a"`, `"b"` or `"c"` | none | display | The knight's build, by the base pack's names: Classic (a), the present knight, Broad (b) and Slim (c). The page's own is the base pack's default build, and only a build the packs in use declare is shown. |
-| `weapon` | `"greatsword"` or `"sword_and_shield"` | none; the page's own is `"greatsword"` | display | What the knight carries. |
+| `weapon` | `"greatsword"`, `"sword_and_shield"`, `"longsword"` or `"mace_and_shield"` | none; the page's own is `"greatsword"` | display | What the knight carries: the greatsword or the longsword in both hands, or the arming sword (sword_and_shield) or the flanged mace (mace_and_shield) in one hand with the shield in the other. |
 | `skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"` | none; the page's own is `"warm"` | display | The knight's skin tone. |
 | `hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"` or `"silver"` | none; the page's own is `"brown"` | display | The knight's hair colour. |
-| `hair_style` | `"short"`, `"tied"` or `"curls"` | none; the page's own is `"short"` | display | The knight's hair. |
-| `tabard` | `"blue"`, `"forest"`, `"violet"`, `"wine"`, `"teal"` or `"sable"` | none; the page's own is `"blue"` | display | The tabard's colour. |
-| `plume` | `"red"`, `"white"`, `"gold"`, `"royal"`, `"green"` or `"violet"` | none; the page's own is `"red"` | display | The plume's colour. |
+| `hair_style` | `"short"`, `"tied"`, `"curls"`, `"long"` or `"close"` | none; the page's own is `"short"` | display | The knight's hair. |
+| `tabard` | `"blue"`, `"forest"`, `"violet"`, `"wine"`, `"teal"` or `"sable"` | none; the page's own is `"blue"` | display | The tabard's colour, which the shields' fields, the coat under the breastplate, the gambeson, the padded sleeves and the short cape take too. |
+| `plume` | `"red"`, `"white"`, `"gold"`, `"royal"`, `"green"` or `"violet"` | none; the page's own is `"red"` | display | The plume's colour, which the long cloak takes too. |
+| `shield` | `"heater"`, `"round"` or `"kite"` | none; the page's own is `"heater"` | display | The shield carried with a one-handed weapon: the heater shield of the watch, a round shield or a kite shield. With a two-handed weapon no shield is carried. |
+| `helmet` | `"open"`, `"kettle"`, `"coif"` or `"bascinet"` | none; the page's own is `"open"` | display | The helmet: the open helm, a kettle hat, a mail coif or a bascinet. The mail coif carries no plume. |
+| `plume_style` | `"crest"`, `"feather"` or `"horsehair"` | none; the page's own is `"crest"` | display | The plume on the helmet: the crest, a tall feather or horsehair. None is drawn on the mail coif. |
+| `body` | `"tabard"`, `"cuirass"` or `"gambeson"` | none; the page's own is `"tabard"` | display | What the knight wears on the body: the tabard of the watch, a breastplate (cuirass) or a quilted gambeson. |
+| `shoulders` | `"plate"`, `"lames"` or `"leather"` | none; the page's own is `"plate"` | display | The shoulders: plate pauldrons, layered spaulders (lames) or leather pauldrons. |
+| `arms` | `"plate"`, `"mail"` or `"padded"` | none; the page's own is `"plate"` | display | The arms: plate, mail sleeves or padded sleeves. |
+| `hands` | `"plate"`, `"leather"` or `"mail"` | none; the page's own is `"plate"` | display | The hands: plate gauntlets, leather gloves or mail mittens. |
+| `legs` | `"plate"`, `"mail"` or `"hose"` | none; the page's own is `"plate"` | display | The legs: plate greaves, mail chausses or padded hose. |
+| `feet` | `"leather"`, `"sabatons"` or `"shoes"` | none; the page's own is `"leather"` | display | The feet: riding boots (leather), sabatons or turnshoes. |
+| `back` | `"none"`, `"cloak"` or `"cape"` | none; the page's own is `"none"` | display | What hangs from the shoulders: nothing, a long cloak in the plume's colour or a short cape in the tabard's. |
 | `monarch` | `"a"`, `"b"` or `"c"` | none; the page's own is `"a"` | display | Which of the three monarchs sits in the court. |
 | `monarch_skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"` | none; the page's own is `"warm"` | display | The monarch's skin tone. The page's own is the court's own skin. |
 | `monarch_hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"` or `"silver"` | none | display | The monarch's hair colour. Left out, each monarch keeps the hair the court draws them with ("As drawn"). |
@@ -648,7 +658,7 @@ cpu_hot = "camp"
 ```
 
 `config.example.toml` has all four tables commented out, every setting shown with the allowed
-values beside it. The colours, tones and hair styles are those of the base pack
+values beside it. The colours, tones, hair styles and gear are those of the base pack
 (`web/packs/base.pack.json`). The monarch's hair and robe have no value for "as drawn": leaving the
 setting out is how a display keeps the monarch's own colours.
 

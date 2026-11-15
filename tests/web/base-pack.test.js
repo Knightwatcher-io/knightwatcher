@@ -1,7 +1,8 @@
 // Tests for the base pack that ships with the page, web/packs/base.pack.json: that it is the present
 // knight, complete, with the arming sword and the heater shield besides, the free options (six of
-// each colour set and three hair styles), the three builds and the items fitted to them, and nothing
-// more, that every choice of them resolves, and
+// each colour set and three hair styles), the three builds and the items fitted to them, the free
+// items of 1.4.0 (two to four more in every slot the user chooses), and nothing more, that every
+// choice of them resolves, and
 // that the page's rules for signing apply to it, whether it ships signed or not. Run with:
 // node --test tests/web/
 // That drawing it gives the same calls as the code is checked pose by pose in knight.test.js.
@@ -32,6 +33,9 @@ const OPTIONS = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-o
 // in pieces that narrow to the waist and widen to the hip, the greaves that grow with the leg and
 // the pauldrons that grow with the shoulders. The tabard's iris already follows the tabard there.
 const BUILDS = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-builds.json'), 'utf8'));
+// The free items of 1.4.0 as approved, 25 of them, and the wool of the pack's own cloth palette that
+// the padded hose and the turnshoes are drawn in.
+const FREE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-free-items.json'), 'utf8'));
 // The iris of the watch's eye follows the tabard: the tabard's and the shield's, worn and at rest,
 // take the tabard's darkest band where the fixture and the approved shield have the fixed blue.
 const irisFollows = item => JSON.parse(JSON.stringify(item).split('"@base.b3"').join('"@tabard.3"'));
@@ -40,14 +44,24 @@ const ORDER = { skin: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], hair: 
   tabard: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], plume: ['red', 'white', 'gold', 'royal', 'green', 'violet'] };
 // The builds in the order the settings screen shows them, by the names it shows.
 const BUILD_NAMES = { 'build.a': 'Classic', 'build.b': 'Broad', 'build.c': 'Slim' };
+// Every item of each slot a look chooses, today's first and then the free items of 1.4.0 in the order
+// the settings screen shows them.
+const SLOTS = { legs: ['legs.plate', 'legs.mail', 'legs.hose'], boots: ['boots.leather', 'boots.sabatons', 'boots.shoes'],
+  torso: ['torso.tabard', 'torso.cuirass', 'torso.gambeson'], head: ['head.plain'], hair: ['hair.short', 'hair.tied', 'hair.curls', 'hair.long', 'hair.close'],
+  helmet: ['helm.open', 'helm.kettle', 'helm.coif', 'helm.bascinet'], plume: ['plume.crest', 'plume.feather', 'plume.horsehair'],
+  pauldrons: ['pauldrons.plate', 'pauldrons.lames', 'pauldrons.leather'], arms: ['arms.plate', 'arms.mail', 'arms.padded'],
+  gauntlets: ['gauntlets.plate', 'gauntlets.leather', 'gauntlets.mail'], main: ['main.greatsword', 'main.arming', 'main.longsword', 'main.mace'],
+  off: ['off.heater', 'off.round', 'off.kite'], back: ['back.cloak', 'back.cape'] };
+const B = id => 'kw.base/' + id;
+const grip = id => PACK.items[id].grip.kind;
 
 test('the base pack unsigned is read on a dev page and refused at the signature step elsewhere', () => {
   const r = PK.read(UNSIGNED, { allowUnsigned: true, verify });
   assert.equal(r.ok, true, r.reason);
   assert.equal(r.id, 'kw.base');
-  assert.equal(r.version, '1.3.0');
+  assert.equal(r.version, '1.4.0');
   assert.equal(r.signed, false);
-  assert.deepEqual(r.provides, ['builds', 'items', 'swatches']);
+  assert.deepEqual(r.provides, ['builds', 'items', 'palettes', 'swatches']);
   assert.deepEqual(PK.read(UNSIGNED, { verify }), { ok: false, step: 'signature', reason: 'sig: is missing, and this page accepts only signed packs', id: 'kw.base' });
 });
 
@@ -90,15 +104,22 @@ test('three builds as approved, Classic the present knight\'s measurements, all 
   assert.equal(c.height, a.height - 6);
 });
 
-test('every slot the present drawing has, the one-handed sword and the shield, three hair styles, and nothing else', () => {
+test('every slot the present drawing has, the one-handed sword and the shield, five hair styles, the free items of 1.4.0, and nothing else', () => {
   const slots = {};
   for (const [id, it] of Object.entries(PACK.items)) (slots[it.slot] = slots[it.slot] || []).push(id);
-  assert.deepEqual(slots, { legs: ['legs.plate'], boots: ['boots.leather'], torso: ['torso.tabard'], head: ['head.plain'], hair: ['hair.short', 'hair.tied', 'hair.curls'],
-    helmet: ['helm.open'], plume: ['plume.crest'], pauldrons: ['pauldrons.plate'], arms: ['arms.plate'], gauntlets: ['gauntlets.plate'],
-    main: ['main.greatsword', 'main.arming'], off: ['off.heater'] });
-  assert.equal(Object.keys(PACK.items).length, 15);
+  for (const s of Object.keys(slots)) slots[s].sort();
+  const want = {};
+  for (const s of Object.keys(SLOTS)) want[s] = SLOTS[s].slice().sort();
+  assert.deepEqual(slots, want);
+  // the 15 of 1.3.0 first, as they were, then the 25 free items in the fixture's order
+  assert.equal(Object.keys(PACK.items).length, 40);
+  assert.deepEqual(Object.keys(PACK.items).slice(15), Object.keys(FREE.items));
+  // the defaults are 1.3.0's, so the default knight is drawn exactly as before, and nothing on the back
   assert.deepEqual(PACK.defaults, FIXTURE.defaults);
-  assert.equal(PACK.palettes, undefined);
+  assert.equal(PACK.defaults.items.back, undefined);
+  // the pack's own palette holds the wool of the hose and the turnshoes, and nothing else
+  assert.deepEqual(PACK.palettes, FREE.palettes);
+  assert.deepEqual(Object.keys(PACK.palettes.cloth), ['wool0', 'wool1', 'wool2']);
   assert.equal(PACK.decorations, undefined);
 });
 
@@ -109,7 +130,7 @@ test('six choices in each colour set, in the order the settings screen shows the
 });
 
 test('each item and swatch is as approved: the fixture\'s, the one-handed items, the free options, the iris following the tabard', () => {
-  const want = id => (BUILDS.items[id] || OPTIONS.items[id] || ONEHAND[id] || FIXTURE.items[id]);
+  const want = id => (FREE.items[id] || BUILDS.items[id] || OPTIONS.items[id] || ONEHAND[id] || FIXTURE.items[id]);
   for (const id of Object.keys(PACK.items)) {
     const w = id === 'off.heater' ? irisFollows(want(id)) : want(id);
     assert.deepEqual(PACK.items[id], w, id);
@@ -117,6 +138,13 @@ test('each item and swatch is as approved: the fixture\'s, the one-handed items,
   assert.deepEqual(Object.keys(ONEHAND), ['main.arming', 'off.heater']);
   assert.deepEqual(Object.keys(OPTIONS.items), ['hair.tied', 'hair.curls']);
   assert.deepEqual(Object.keys(BUILDS.items), ['legs.plate', 'torso.tabard', 'pauldrons.plate']);
+  assert.equal(Object.keys(FREE.items).length, 25);
+  // no free item shares an id with an item of 1.3.0; the library's fixture has a long hair and a
+  // round shield of its own, made for its tests, which the free items replace here
+  for (const id of Object.keys(FREE.items)) assert.ok(!BUILDS.items[id] && !OPTIONS.items[id] && !ONEHAND[id] && !['legs.plate', 'boots.leather', 'torso.tabard', 'head.plain',
+    'hair.short', 'helm.open', 'plume.crest', 'pauldrons.plate', 'arms.plate', 'gauntlets.plate', 'main.greatsword'].includes(id), id);
+  assert.notDeepEqual(PACK.items['hair.long'], FIXTURE.items['hair.long']);
+  assert.notDeepEqual(PACK.items['off.round'], FIXTURE.items['off.round']);
   for (const set of Object.keys(PACK.swatches)) for (const sw of Object.keys(PACK.swatches[set])) {
     const today = FIXTURE.swatches[set][sw];
     // today's swatch is unchanged; the rest are the approved options, the green tabard of the
@@ -198,4 +226,101 @@ test('every choice of build, skin, hair colour, hair style, tabard and plume res
   // cap and well under half the cost cap
   assert.deepEqual(most, { shapes: 135, cost: 14470, style: 'hair.tied', w: true });
   assert.ok(most.shapes <= PK.LIMITS.lookShapes && most.cost <= PK.LIMITS.lookCost);
+});
+
+test('every item of every slot resolves with nothing missing on every build, with each weapon where the grip matters', () => {
+  const lib = [PK.read(TEXT, { allowUnsigned: true, verify })];
+  const missing = L => L.fallbacks.filter(f => f.reason !== 'not set');
+  const one = SLOTS.main.filter(id => grip(id) === 'one'), two = SLOTS.main.filter(id => grip(id) === 'two');
+  assert.deepEqual([one, two], [['main.arming', 'main.mace'], ['main.greatsword', 'main.longsword']]);
+  let n = 0;
+  for (const build of Object.keys(BUILD_NAMES)) for (const [slot, ids] of Object.entries(SLOTS)) {
+    if (slot === 'head') continue;
+    for (const id of ids) {
+      // a shield with each one-handed weapon; a weapon alone, with the heater shield when it takes one;
+      // anything else with each weapon, the one-handed ones with the heater shield
+      const kits = slot === 'off' ? one.map(m => ({ main: m, off: id })) : slot === 'main' ? [grip(id) === 'one' ? { main: id, off: 'off.heater' } : { main: id }]
+        : SLOTS.main.map(m => (grip(m) === 'one' ? { main: m, off: 'off.heater' } : { main: m }));
+      for (const kit of kits) {
+        const items = Object.assign({ [slot]: B(id) }, { main: B(kit.main) }, kit.off ? { off: B(kit.off) } : {});
+        const L = PK.resolve(lib, { build: B(build), items });
+        assert.equal(L.ok, true);
+        assert.deepEqual(missing(L), [], build + ' ' + JSON.stringify(items));
+        assert.equal(L.look.items[slot], B(id));
+        assert.equal(L.look.items.main, B(kit.main));
+        assert.deepEqual(L.grip, PACK.items[kit.main].grip);
+        assert.ok(L.shapes <= PK.LIMITS.lookShapes && L.cost <= PK.LIMITS.lookCost);
+        n++;
+      }
+    }
+  }
+  assert.equal(n, 3 * (4 * (3 + 3 + 3 + 5 + 4 + 3 + 3 + 3 + 3 + 2) + 4 + 3 * 2));
+  // a shield with a two-handed weapon is carried nowhere, as the heater shield is
+  for (const m of two) for (const off of SLOTS.off) {
+    const L = PK.resolve(lib, { items: { main: B(m), off: B(off) } });
+    assert.equal(L.look.items.off, undefined);
+    assert.equal(L.fallbacks.find(f => f.key === 'off').reason, 'a shield is carried only with a one-handed weapon');
+  }
+});
+
+test('the mail coif has no plume mount, so no plume is drawn with it; every other helmet carries each plume', () => {
+  const lib = [PK.read(TEXT, { allowUnsigned: true, verify })];
+  assert.equal(PACK.items['helm.coif'].mounts, undefined);
+  for (const helm of SLOTS.helmet) for (const plume of SLOTS.plume) {
+    const L = PK.resolve(lib, { items: { helmet: B(helm), plume: B(plume) } });
+    assert.deepEqual(L.fallbacks.filter(f => f.reason !== 'not set'), [], helm + ' ' + plume);
+    assert.equal(L.plumeShown, helm !== 'helm.coif', helm + ' ' + plume);
+    assert.ok(helm === 'helm.coif' || PACK.items[helm].mounts.plume, helm);
+  }
+});
+
+test('the long cloak takes the plume\'s colours and the short cape the tabard\'s, with no colour set of their own', () => {
+  const lib = [PK.read(TEXT, { allowUnsigned: true, verify })];
+  const sets = id => [...new Set((JSON.stringify(PACK.items[id]).match(/"@([a-z]+)\./g) || []).map(r => r.slice(2, -1)))].sort();
+  assert.deepEqual(sets('back.cloak'), ['base', 'plume']);
+  assert.deepEqual(sets('back.cape'), ['base', 'tabard']);
+  // resolved: the cloak changes with the plume and not the tabard, the cape the other way round; the
+  // back is drawn first in the body's list, six shapes for each
+  const body = (back, plume, tabard) => JSON.stringify(PK.resolve(lib, { items: { back: B(back) }, swatches: { plume: B(plume), tabard: B(tabard) } }).lists.body.slice(0, 6));
+  assert.equal(PACK.items['back.cloak'].parts.reduce((n, p) => n + p.shapes.length, 0), 6);
+  assert.equal(PACK.items['back.cape'].parts.reduce((n, p) => n + p.shapes.length, 0), 6);
+  assert.notEqual(body('back.cloak', 'red', 'blue'), body('back.cloak', 'gold', 'blue'));
+  assert.equal(body('back.cloak', 'red', 'blue'), body('back.cloak', 'red', 'sable'));
+  assert.notEqual(body('back.cape', 'red', 'blue'), body('back.cape', 'red', 'sable'));
+  assert.equal(body('back.cape', 'red', 'blue'), body('back.cape', 'gold', 'blue'));
+});
+
+test('each weapon\'s blade: the longsword\'s steel, and the mace\'s haft and head, which the smithy heats as it does a blade', () => {
+  assert.deepEqual(PACK.items['main.longsword'].blade, { from: 34, to: 222, half: 11 });
+  assert.deepEqual(PACK.items['main.mace'].blade, { from: 34, to: 136, half: 16 });
+  assert.deepEqual(PACK.items['main.longsword'].grip, { kind: 'two', hands: [2, -30] });
+  assert.deepEqual(PACK.items['main.mace'].grip, { kind: 'one', hands: [0] });
+  for (const id of SLOTS.main) assert.ok(PACK.items[id].blade, id);
+});
+
+test('the heaviest whole look of the free items stays well under the caps, on every build, with no fallback', () => {
+  const lib = [PK.read(TEXT, { allowUnsigned: true, verify })];
+  const sum = id => { const s = lib[0].sums[id]; return { n: s.parts.n + s.view.n + s.rest.n, cost: s.parts.cost + s.view.cost + s.rest.cost }; };
+  // each slot's costliest item, with each grip
+  const most = (k, ids) => ids.slice().sort((a, b) => sum(b)[k] - sum(a)[k])[0];
+  const out = {};
+  for (const k of ['cost']) for (const kind of ['one', 'two']) {
+    const items = {};
+    for (const s of ['back', 'legs', 'boots', 'torso', 'hair', 'plume', 'helmet', 'pauldrons', 'arms', 'gauntlets']) items[s] = B(most(k, SLOTS[s]));
+    items.main = B(most(k, SLOTS.main.filter(id => grip(id) === kind)));
+    if (kind === 'one') items.off = B(most(k, SLOTS.off));
+    const got = Object.keys(BUILD_NAMES).map(build => {
+      const L = PK.resolve(lib, { build: B(build), items });
+      assert.deepEqual(L.fallbacks.filter(f => f.reason !== 'not set'), [], build + ' ' + JSON.stringify(items));
+      return [L.shapes, L.cost];
+    });
+    // the cost is a bound, the same on every build
+    assert.deepEqual(got[1], got[0]); assert.deepEqual(got[2], got[0]);
+    out[k + ' ' + kind] = got[0];
+  }
+  // the mace and the kite shield, and the longsword, each with the bascinet and its tall feather, the
+  // tied hair, the breastplate, the layered spaulders, mail sleeves and chausses, plate gauntlets,
+  // turnshoes and the long cloak: about a sixth of the shape cap and half the cost cap
+  assert.deepEqual(out, { 'cost one': [201, 20493], 'cost two': [188, 19721] });
+  for (const [n, cost] of Object.values(out)) assert.ok(n <= PK.LIMITS.lookShapes / 5 && cost <= PK.LIMITS.lookCost * 0.52);
 });

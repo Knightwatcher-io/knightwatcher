@@ -239,6 +239,48 @@ SHOTS=(
   "ref-43-cellar|bar=0&t=2300&on=disk|960,720"
   "ref-43-smithy|bar=0&t=2300&on=update|960,720"
   "ref-43-court|bar=0&t=3450&on=ssh|960,720"
+  # the free items of the base pack 1.4.0: the longsword and the mace by arm=, the gear by the look
+  # hooks sh= hm= ps= bo= so= am= hn= lg= ft= bk=. Each weapon standing, in the swat and the attack;
+  # the shields; the gear at rest in the house and the mace's head on the smithy's anvil; three whole
+  # looks, one per new helmet, in the battlement, the camp and the yard; the new hair, under a helmet
+  # too; the cloak and the cape in the attack, with the cellar's crate and in the bloat; the
+  # sleeper's long hair; the same on Broad and Slim; and the settings screen's knight page with every
+  # row in view, the shield greyed beside the greatsword, and the plume greyed with the mail coif.
+  # The gear hooks are read by main.js; without them these shots show the default gear
+  "free-longsword|bar=0&t=2300&is=battlement&arm=longsword"
+  "free-longsword-swat|bar=0&t=470&is=battlement&f=6&sw=1&arm=longsword"
+  "free-longsword-swat-left|bar=0&t=1330&is=battlement&f=6&sw=1&arm=longsword"
+  "free-mace-round|bar=0&t=2300&is=battlement&arm=mace_and_shield&sh=round"
+  "free-mace-attack|bar=0&t=2300&on=attack&arm=mace_and_shield&sh=kite"
+  "free-mace-swat-left|bar=0&t=1330&is=battlement&f=6&sw=1&arm=mace_and_shield&sh=kite"
+  "free-kite-yard|bar=0&t=2470&on=cpu&arm=one&sh=kite"
+  "free-round-swat-left|bar=0&t=1330&is=battlement&f=6&sw=1&arm=one&sh=round"
+  "free-mace-update|bar=0&t=1250&on=update&arm=mace_and_shield&sh=kite"
+  "free-house-kettle|bar=0&t=2300&is=house&arm=mace_and_shield&sh=round&hm=kettle&ps=feather"
+  "free-house-coif|bar=0&t=2300&is=house&arm=longsword&hm=coif"
+  "free-house-bascinet|bar=0&t=2300&is=house&arm=one&sh=kite&hm=bascinet&ps=horsehair&pm=white"
+  "free-look-kettle|bar=0&t=2300&is=battlement&hm=kettle&ps=feather&bo=cuirass&so=lames&am=mail&hn=leather&lg=mail&ft=sabatons&bk=cloak&pm=gold"
+  "free-look-coif|bar=0&t=2300&is=camp&arm=mace_and_shield&sh=round&hm=coif&bo=gambeson&so=leather&am=padded&hn=mail&lg=hose&ft=shoes&bk=cape&tb=forest"
+  "free-look-bascinet|bar=0&t=2300&is=yard&arm=longsword&hm=bascinet&ps=horsehair&bo=cuirass&am=padded&hn=mail&lg=mail&ft=shoes&bk=cape&tb=wine&pm=white"
+  "free-hair-long|bar=0&t=2300&is=battlement&h=off&hy=long&hc=auburn&sk=tan"
+  "free-hair-long-helmet|bar=0&t=2300&is=battlement&hy=long&hc=blonde&hm=bascinet&ps=feather"
+  "free-hair-close|bar=0&t=2300&on=cpu&h=off&hy=close&hc=black&sk=deep"
+  "free-attack-cloak|bar=0&t=2300&on=attack&arm=longsword&hm=kettle&bk=cloak&pm=royal"
+  "free-disk-cape|bar=0&t=2300&on=disk&bo=gambeson&bk=cape&tb=teal"
+  "free-swap-cuirass|bar=0&t=2300&on=swap&bo=cuirass&am=mail&so=lames&bk=cloak"
+  "free-night-long|bar=0&t=2300&on=night&hy=long&hc=silver"
+  "free-bd-b-look|bar=0&t=2300&is=battlement&bd=b&hm=kettle&ps=feather&bo=cuirass&so=lames&am=mail&hn=leather&lg=mail&ft=sabatons&bk=cloak&pm=gold"
+  "free-bd-c-look|bar=0&t=2300&is=battlement&bd=c&arm=mace_and_shield&sh=round&hm=coif&bo=gambeson&so=leather&am=padded&hn=mail&lg=hose&ft=shoes&bk=cape&tb=forest"
+  "free-bd-b-swat-mace|bar=0&t=1330&is=battlement&f=6&sw=1&bd=b&arm=mace_and_shield&sh=kite"
+  "free-bd-c-swat-longsword|bar=0&t=470&is=battlement&f=6&sw=1&bd=c&arm=longsword"
+  "free-bd-b-attack|bar=0&t=2300&on=attack&bd=b&arm=mace_and_shield&sh=round&bo=gambeson&bk=cape"
+  "free-bd-c-attack|bar=0&t=2300&on=attack&bd=c&arm=longsword&bo=cuirass&bk=cloak&hm=bascinet&ps=horsehair"
+  "free-bd-b-hair-long|bar=0&t=2300&is=battlement&h=off&bd=b&hy=long&hc=dark"
+  "free-bd-c-hair-close|bar=0&t=2300&is=battlement&h=off&bd=c&hy=close&hc=blonde"
+  "free-settings-knight|bar=0&t=2300&is=battlement&set=knight|1480,2800"
+  "free-settings-coif-cloak|bar=0&t=2300&is=battlement&set=knight&arm=mace_and_shield&sh=kite&hm=coif&bk=cloak|1480,2800"
+  "free-settings-bd-b|bar=0&t=2300&is=battlement&set=knight&bd=b&hm=kettle&ps=feather&bo=cuirass&so=lames&am=mail&hn=leather&lg=mail&ft=sabatons&bk=cloak&pm=gold|1480,2800"
+  "free-settings-bd-c|bar=0&t=2300&is=battlement&set=knight&bd=c&arm=mace_and_shield&sh=round&hm=coif&bo=gambeson&so=leather&am=padded&hn=mail&lg=hose&ft=shoes&bk=cape&tb=forest|1480,2800"
 )
 
 take() {

@@ -55,8 +55,9 @@ test('with nothing set, every value is the page\'s own and the knight\'s look is
   const { s, lines } = store();
   const r = s.now();
   assert.deepEqual(r.values, {
-    look: { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red', monarch: 'a', monarch_skin: 'warm',
-      monarch_hair: null, monarch_robe: null },
+    look: { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red',
+      shield: 'heater', helmet: 'open', plume_style: 'crest', body: 'tabard', shoulders: 'plate', arms: 'plate', hands: 'plate', legs: 'plate', feet: 'leather', back: 'none',
+      monarch: 'a', monarch_skin: 'warm', monarch_hair: null, monarch_robe: null },
     display: { headline: 'medium', clock: 24, helmet_indoors: false },
     quiet: { scenes: ['battlement', 'camp', 'house', 'yard'], minutes: 10 },
     scenes: { attack: 'battlement', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house', cpu_hot: 'yard' } });
@@ -67,12 +68,19 @@ test('with nothing set, every value is the page\'s own and the knight\'s look is
 });
 
 test('the page\'s own look is the base pack\'s defaults, read from the pack', () => {
-  assert.deepEqual(SET.builtIn(PACK).look, { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red', monarch: 'a', monarch_skin: 'warm',
-    monarch_hair: null, monarch_robe: null });
+  assert.deepEqual(SET.builtIn(PACK).look, { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red',
+    shield: 'heater', helmet: 'open', plume_style: 'crest', body: 'tabard', shoulders: 'plate', arms: 'plate', hands: 'plate', legs: 'plate', feet: 'leather', back: 'none',
+    monarch: 'a', monarch_skin: 'warm', monarch_hair: null, monarch_robe: null });
   const other = JSON.parse(JSON.stringify(PACK));
   Object.assign(other.defaults.swatches, { skin: 'deep', plume: 'gold' }); other.defaults.items.main = 'main.arming'; other.defaults.items.hair = 'hair.curls';
   const L = SET.builtIn(other).look;
   assert.deepEqual([L.skin, L.plume, L.weapon, L.hair_style], ['deep', 'gold', 'sword_and_shield', 'curls']);
+  // a base pack whose defaults name other gear, as a fork's might: each key takes it, the mace as
+  // mace_and_shield, a shield and a cloak among them; an item the contract has no value for leaves the
+  // key at the schema's
+  Object.assign(other.defaults.items, { main: 'main.mace', off: 'off.kite', helmet: 'helm.coif', torso: 'torso.gambeson', boots: 'boots.shoes', back: 'back.cloak', legs: 'legs.unknown' });
+  const G = SET.builtIn(other).look;
+  assert.deepEqual([G.weapon, G.shield, G.helmet, G.body, G.feet, G.back, G.legs, G.arms], ['mace_and_shield', 'kite', 'coif', 'gambeson', 'shoes', 'cloak', 'plate', 'plate']);
   assert.equal(SET.builtIn(null).look.build, null, 'with no base pack no build is ready');
 });
 
@@ -279,8 +287,11 @@ test('the state file\'s defaults reach the store through KW.state.map, with its 
   const { s } = store();
   s.defaults(v.defaults);
   const r = s.now();
-  assert.deepEqual(r.values.look, { build: 'a', weapon: 'sword_and_shield', skin: 'deep', hair: 'black', hair_style: 'curls', tabard: 'sable', plume: 'gold', monarch: 'b', monarch_skin: 'brown',
-    monarch_hair: 'silver', monarch_robe: 'teal' });
+  // a state file from before the gear keys sets none of them, so they are the page's own
+  assert.deepEqual(r.values.look, { build: 'a', weapon: 'sword_and_shield', skin: 'deep', hair: 'black', hair_style: 'curls', tabard: 'sable', plume: 'gold',
+    shield: 'heater', helmet: 'open', plume_style: 'crest', body: 'tabard', shoulders: 'plate', arms: 'plate', hands: 'plate', legs: 'plate', feet: 'leather', back: 'none',
+    monarch: 'b', monarch_skin: 'brown', monarch_hair: 'silver', monarch_robe: 'teal' });
+  for (const k of ['shield', 'helmet', 'plume_style', 'body', 'shoulders', 'arms', 'hands', 'legs', 'feet', 'back']) assert.equal(r.from.look[k], 'built-in', k);
   assert.deepEqual([r.values.scenes.cpu_hot, r.from.scenes.cpu_hot, r.values.scenes.pi_silent, r.from.scenes.pi_silent], ['camp', 'defaults', 'battlement', 'defaults']);
   assert.deepEqual(r.values.display, { headline: 'large', clock: 12, helmet_indoors: true });
   assert.deepEqual(r.values.quiet, { scenes: ['battlement', 'yard'], minutes: 15 });
@@ -668,8 +679,8 @@ test('every combination renders: weapon by skin by hair by hair style, the build
     most = Math.max(most, L.cost);
     n++;
   }
-  assert.equal(n, 2 * 6 * 6 * 3);
-  assert.equal(seen.size, 3 * (2 + 6 + 6 + 3), 'every build with every weapon, skin, hair colour and hair style');
+  assert.equal(n, 4 * 6 * 6 * 5);
+  assert.equal(seen.size, 3 * (4 + 6 + 6 + 5), 'every build with every weapon, skin, hair colour and hair style');
   assert.ok(most <= PK.LIMITS.lookCost);
 });
 
@@ -691,4 +702,121 @@ test('every monarch renders in every skin, hair and robe, as drawn among them, f
     n++;
   }
   assert.equal(n, 3 * 6 * 7 * 7);
+});
+
+/* ---- The gear --------------------------------------------------------------------------------- */
+
+/* The gear keys and the slot each fills, with the base pack's prefix: the contract's value "long"
+   of hair_style is kw.base/hair.long, "shoes" of feet kw.base/boots.shoes. */
+const GEAR = { hair_style: 'hair.', helmet: 'helm.', plume_style: 'plume.', body: 'torso.', shoulders: 'pauldrons.', arms: 'arms.', hands: 'gauntlets.', legs: 'legs.', feet: 'boots.', back: 'back.' };
+const SLOT = { hair_style: 'hair', helmet: 'helmet', plume_style: 'plume', body: 'torso', shoulders: 'pauldrons', arms: 'arms', hands: 'gauntlets', legs: 'legs', feet: 'boots', back: 'back' };
+
+test('every gear value names an item of the base pack in its slot, and the page\'s own are the base pack\'s defaults', () => {
+  const O = SET.ONE_OF.look, own = SET.builtIn(PACK).look;
+  for (const k of Object.keys(GEAR)) {
+    for (const v of O[k]) {
+      if (v === 'none') { assert.equal(k, 'back'); continue; }
+      const it = PACK.items[GEAR[k] + v];
+      assert.ok(it, k + ' ' + v + ' is an item of the base pack');
+      assert.equal(it.slot, SLOT[k], k + ' ' + v);
+    }
+    // the page's own is the pack's default, and back nothing, which the pack's defaults leave out
+    assert.equal(k === 'back' ? 'none' : GEAR[k] + own[k], k === 'back' ? own.back : PACK.defaults.items[SLOT[k]], k);
+    // and every item of the slot is offered
+    const ids = Object.keys(PACK.items).filter(id => PACK.items[id].slot === SLOT[k]).map(id => id.slice(GEAR[k].length)).sort();
+    assert.deepEqual(O[k].filter(v => v !== 'none').slice().sort(), ids, k + ': every item of the slot');
+  }
+  for (const v of O.shield) assert.equal(PACK.items['off.' + v].slot, 'off');
+  assert.deepEqual(O.shield, ['heater', 'round', 'kite']);
+  assert.deepEqual(Object.keys(SET.WEAPONS), O.weapon);
+  for (const w of O.weapon) assert.equal(PACK.items[SET.WEAPONS[w]].grip.kind === 'one', SET.ONE_HANDED.includes(w), w);
+});
+
+test('the look carries each gear choice to its slot, the shield only beside a one-handed weapon, and nothing for no back', () => {
+  const look = (choices, hooks) => { const { s } = store({ hooks }); for (const [k, v] of Object.entries(choices)) assert.equal(s.choose('look', k, v), true, k + ' ' + v); return SET.knightLook(s.now()); };
+  const B = 'kw.base/';
+  assert.deepEqual(look({ helmet: 'kettle', plume_style: 'feather', body: 'cuirass', shoulders: 'lames', arms: 'mail', hands: 'leather', legs: 'hose', feet: 'sabatons', back: 'cloak', hair_style: 'long' }),
+    { items: { hair: B + 'hair.long', helmet: B + 'helm.kettle', plume: B + 'plume.feather', torso: B + 'torso.cuirass', pauldrons: B + 'pauldrons.lames', arms: B + 'arms.mail',
+      gauntlets: B + 'gauntlets.leather', legs: B + 'legs.hose', boots: B + 'boots.sabatons', back: B + 'back.cloak' } });
+  // no back, chosen, puts nothing on the back, as the base pack's defaults have nothing there
+  assert.deepEqual(look({ back: 'none' }), {});
+  // the weapons, each with its shield when one-handed
+  assert.deepEqual(look({ weapon: 'longsword' }), { items: { main: B + 'main.longsword' } });
+  assert.deepEqual(look({ weapon: 'mace_and_shield' }), { items: { main: B + 'main.mace', off: B + 'off.heater' } });
+  assert.deepEqual(look({ weapon: 'mace_and_shield', shield: 'round' }), { items: { main: B + 'main.mace', off: B + 'off.round' } });
+  assert.deepEqual(look({ weapon: 'sword_and_shield', shield: 'kite' }), { items: { main: B + 'main.arming', off: B + 'off.kite' } });
+  assert.deepEqual(look({ weapon: 'sword_and_shield' }), { items: { main: B + 'main.arming', off: B + 'off.heater' } });
+  // a shield chosen beside a two-handed weapon is kept, carried nowhere, and carried again once the
+  // weapon is one-handed
+  assert.deepEqual(look({ shield: 'kite' }), {});
+  assert.deepEqual(look({ weapon: 'longsword', shield: 'kite' }), { items: { main: B + 'main.longsword' } });
+  assert.deepEqual(look({ shield: 'kite' }, { look: { weapon: 'mace_and_shield' } }), { items: { main: B + 'main.mace', off: B + 'off.kite' } });
+  // a value the page does not know is refused, and a hook's is ignored with its line
+  const { s, lines } = store({ hooks: { look: { helmet: 'great', back: 'wings' } } });
+  assert.equal(s.choose('look', 'helmet', 'great'), false);
+  assert.equal(s.choose('look', 'shield', 'buckler'), false);
+  assert.equal(s.choose('look', 'weapon', 'falchion'), false);
+  assert.deepEqual([s.now().values.look.helmet, s.now().values.look.back], ['open', 'none']);
+  assert.ok(lines.includes('knightwatcher: settings: look.helmet "great" in the address is ignored: not a value the page knows'));
+});
+
+test('the settings screen greys the shield beside a two-handed weapon, and the plume with the mail coif, its colour too unless the long cloak is worn', () => {
+  const v = o => Object.assign({}, SET.builtIn(PACK).look, o);
+  assert.deepEqual(SET.greyed(v({ weapon: 'sword_and_shield' }), PACK), { shield: '', plume_style: '', plume: '' });
+  assert.deepEqual(SET.greyed(v({ weapon: 'mace_and_shield', helmet: 'kettle' }), PACK), { shield: '', plume_style: '', plume: '' });
+  const SHIELD = 'A shield is carried only with a one-handed weapon: the sword and shield or the mace and shield.';
+  for (const weapon of ['greatsword', 'longsword']) assert.equal(SET.greyed(v({ weapon }), PACK).shield, SHIELD);
+  for (const helmet of ['open', 'kettle', 'bascinet']) assert.equal(SET.greyed(v({ helmet }), PACK).plume_style, '', helmet);
+  const COIF = 'The mail coif has no plume mount, so no plume is drawn with it.';
+  assert.deepEqual(SET.greyed(v({ weapon: 'mace_and_shield', helmet: 'coif' }), PACK), { shield: '', plume_style: COIF, plume: COIF });
+  for (const back of ['none', 'cape']) assert.equal(SET.greyed(v({ helmet: 'coif', back }), PACK).plume, COIF, back);
+  assert.deepEqual(SET.greyed(v({ weapon: 'mace_and_shield', helmet: 'coif', back: 'cloak' }), PACK), { shield: '', plume_style: COIF, plume: '' });
+  // with no base pack nothing is known of the helmets, and only the shield's rule holds
+  assert.deepEqual(SET.greyed(v({ helmet: 'coif' }), null), { shield: SHIELD, plume_style: '', plume: '' });
+});
+
+test('the screen\'s and the admin page\'s choices of gear are the base pack\'s, named as it names them', () => {
+  assert.deepEqual(SET.itemChoices(PACK, 'weapon'), [{ id: 'greatsword', name: 'Greatsword', sub: 'Two hands' }, { id: 'sword_and_shield', name: 'Sword and shield', sub: 'One hand each' },
+    { id: 'longsword', name: 'Longsword', sub: 'Two hands' }, { id: 'mace_and_shield', name: 'Mace and shield', sub: 'One hand each' }]);
+  const names = k => SET.itemChoices(PACK, k).map(c => c.name);
+  assert.deepEqual(names('shield'), ['Heater shield of the watch', 'Round shield', 'Kite shield']);
+  assert.deepEqual(names('helmet'), ['Open helm', 'Kettle hat', 'Mail coif', 'Bascinet']);
+  assert.deepEqual(names('plume_style'), ['Crest', 'Tall feather', 'Horsehair']);
+  assert.deepEqual(names('body'), ['Tabard of the watch', 'Breastplate', 'Quilted gambeson']);
+  assert.deepEqual(names('shoulders'), ['Plate pauldrons', 'Layered spaulders', 'Leather pauldrons']);
+  assert.deepEqual(names('arms'), ['Plate arms', 'Mail sleeves', 'Padded sleeves']);
+  assert.deepEqual(names('hands'), ['Plate gauntlets', 'Leather gloves', 'Mail mittens']);
+  assert.deepEqual(names('legs'), ['Plate greaves', 'Mail chausses', 'Padded hose']);
+  assert.deepEqual(names('feet'), ['Riding boots', 'Sabatons', 'Turnshoes']);
+  assert.deepEqual(names('back'), ['Nothing', 'Long cloak', 'Short cape']);
+  assert.deepEqual(names('hair_style'), ['Short crop', 'Tied back', 'Curls', 'Long', 'Close crop']);
+  // a base pack without an item offers only what it draws, as a fork's might
+  const fewer = JSON.parse(JSON.stringify(PACK)); delete fewer.items['helm.coif']; delete fewer.items['main.mace'];
+  assert.deepEqual(SET.itemChoices(fewer, 'helmet').map(c => c.id), ['open', 'kettle', 'bascinet']);
+  assert.deepEqual(SET.itemChoices(fewer, 'weapon').map(c => c.id), ['greatsword', 'sword_and_shield', 'longsword']);
+  assert.deepEqual(SET.itemChoices(null, 'back').map(c => c.id), ['none']);
+});
+
+test('every gear choice renders on every build with each kind of weapon, from the base pack, through the settings, within the caps', () => {
+  const m = load(), lib = [PK.read(SIGN.withoutSig(PACK_TEXT), { allowUnsigned: true })], O = SET.ONE_OF.look;
+  let n = 0;
+  for (const build of O.build) for (const k of ['shield', 'helmet', 'plume_style', 'body', 'shoulders', 'arms', 'hands', 'legs', 'feet', 'back', 'hair_style']) for (const v of O[k]) {
+    // with a two-handed weapon and a one-handed one in turn; a shield beside the mace, the long cloak
+    // with a gold plume to show its colour
+    const weapon = k === 'shield' ? 'mace_and_shield' : n % 2 ? 'longsword' : 'mace_and_shield', plume = 'gold';
+    const { s } = store();
+    for (const [kk, vv] of Object.entries({ build, weapon, plume, [k]: v })) assert.equal(s.choose('look', kk, vv), true, kk + ' ' + vv);
+    const look = SET.knightLook(s.now()), what = JSON.stringify(look), st = m.K.look(look);
+    assert.equal(st.source, 'pack', what);
+    assert.deepEqual(plain(st.refused), [], what);
+    assert.deepEqual(plain(st.fallbacks).filter(f => f.reason !== 'not set'), [], what);
+    const drawn = drawAll(m);
+    assert.equal(m.K.source, 'pack', what + ': nothing threw while drawing');
+    assert.ok(!/NaN|undefined/.test(drawn), what + ' draws no broken number or colour');
+    if (k === 'back' && v === 'cloak') assert.ok(drawn.includes(PACK.swatches.plume.gold.entries['2']), what + ': the cloak in the plume\'s colour');
+    const L = PK.resolve(lib, look);
+    assert.ok(L.shapes <= PK.LIMITS.lookShapes && L.cost <= PK.LIMITS.lookCost, what + ' within the caps');
+    n++;
+  }
+  assert.equal(n, 3 * (3 + 4 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 5));
 });

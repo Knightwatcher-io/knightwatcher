@@ -202,12 +202,18 @@ says where the two are in `facts.devices.list`. The laptop, which does not alert
   objects, `look`, `display`, `quiet` and `scenes`, and each holds only the settings the config
   sets, so a table the config leaves out is `{}`. The collector fills in nothing: for a setting
   that is absent the page uses its own default.
-  - `look`: `build` and `monarch` are `a`, `b` or `c`; `weapon` is `greatsword` or
-    `sword_and_shield`; `skin` and `monarch_skin` are `fair`, `warm`, `golden`, `tan`, `brown`
-    or `deep`; `hair` and `monarch_hair` are `black`, `dark`, `brown`, `auburn`, `blonde` or
-    `silver`; `hair_style` is `short`, `tied` or `curls`; `tabard` and `monarch_robe` are
-    `blue`, `forest`, `violet`, `wine`, `teal` or `sable`; `plume` is `red`, `white`, `gold`,
-    `royal`, `green` or `violet`. `monarch_hair` and `monarch_robe` left out mean each monarch
+  - `look`: `build` and `monarch` are `a`, `b` or `c`; `weapon` is `greatsword`,
+    `sword_and_shield`, `longsword` or `mace_and_shield`; `skin` and `monarch_skin` are `fair`,
+    `warm`, `golden`, `tan`, `brown` or `deep`; `hair` and `monarch_hair` are `black`, `dark`,
+    `brown`, `auburn`, `blonde` or `silver`; `hair_style` is `short`, `tied`, `curls`, `long` or
+    `close`; `tabard` and `monarch_robe` are `blue`, `forest`, `violet`, `wine`, `teal` or
+    `sable`; `plume` is `red`, `white`, `gold`, `royal`, `green` or `violet`. The gear: `shield`
+    is `heater`, `round` or `kite`, carried only with `sword_and_shield` or `mace_and_shield`;
+    `helmet` is `open`, `kettle`, `coif` or `bascinet`; `plume_style` is `crest`, `feather` or
+    `horsehair`; `body` is `tabard`, `cuirass` or `gambeson`; `shoulders` is `plate`, `lames` or
+    `leather`; `arms` is `plate`, `mail` or `padded`; `hands` is `plate`, `leather` or `mail`;
+    `legs` is `plate`, `mail` or `hose`; `feet` is `leather`, `sabatons` or `shoes`; `back` is
+    `none`, `cloak` or `cape`. `monarch_hair` and `monarch_robe` left out mean each monarch
     keeps the colours the court draws them in; there is no value for that.
   - `display`: `headline` is `small`, `medium` or `large`; `clock` is the number `24` or `12`;
     `helmet_indoors` is `true` or `false`.

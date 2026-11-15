@@ -181,9 +181,11 @@ two seconds; the goblin's strike on both sides, from contacts at q .45, .5, .53 
 bounce and recovery every 10 ms, with the engine's own `strike()`; the stance of each condition
 that holds a weapon; and the largest bloat), keeps the pixels each of the look's lists fills, and checks, in the order the frame was
 drawn in, that no arm or gauntlet drawn after the weapon fills a pixel of its blade or guard and
-none drawn after the shield fills a pixel of the shield. For both swords the check takes the blade and the guard,
-everything from 17 along the frame, where both guards begin, and checks the gauntlets as well as
-the arms.
+none drawn after the shield fills a pixel of the shield. For every weapon the check takes the blade and the guard,
+everything from 17 along the frame, where the swords' guards begin and the mace's haft is clear of
+the hand, and checks the gauntlets as well as the arms. It runs for every weapon of the base pack,
+every shield with each one-handed weapon, and the mail and padded sleeves and gloves, on every
+build.
 
 The engine's own drawing hangs on the same anchors: the face on `head`; the crate, sweat, steam, the mark, the thought bubble, the progress bar and the speech bubble on `neck`; the hearts on
 `root`. The drumstick takes its height from `head` and its x from `neck`, so it follows the head up
@@ -209,7 +211,9 @@ that `draw()` in `pack.js` reads, made once by `newAnchors()` and `newValues()`:
   measurements.
 
 On the pack path the hand stations along the weapon are the weapon's own `grip.hands`: for the
-base pack's greatsword the same 2 and -30, and for its arming sword the one station 0.
+base pack's greatsword the same 2 and -30, and for its arming sword the one station 0. The
+longsword's are the greatsword's and the mace's the arming sword's, so each is held, swung and
+raised exactly where those are.
 
 ## The knight from the base pack
 
@@ -326,7 +330,8 @@ draw what they always drew; a scene from a world pack asks `fits()` first and dr
 shield only where its rest view fits the place, which every view of the base pack does in every
 place the medieval scenes give. The house's two pegs sit under the weapon's blade,
 28 past where it starts and 45 short of its point, from `blade()`: for the greatsword at 680 and
-836, where they always were, and for the arming sword at 680 and 748. A weapon with no `blade` gets
+836, where they always were, for the arming sword at 680 and 748, and for the mace, whose `blade`
+names its haft and head, at 680 and 709. A weapon with no `blade` gets
 the greatsword's pegs. The house's shield clears the arming sword's point on the pegs, the jug on
 the mantel and a camera at the house's high place `h2`, which stays where it was, at 926; a test
 draws that camera and its question mark and checks them against both swords on the pegs, the
@@ -695,8 +700,9 @@ knight.
 A display's look, its display preferences, its quiet scenes and the scene each offered condition
 plays in are its settings. Each comes from four levels, highest first, key by key:
 
-1. **The address's hooks**: `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, `mon=`, `ms=`, `mh=`,
-   `mr=`, `hs=`, `h=`, `ck=` and `sc=` (see [The address](#the-address)). They keep screenshots the
+1. **The address's hooks**: `bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
+   `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`,
+   `hs=`, `h=`, `ck=` and `sc=` (see [The address](#the-address)). They keep screenshots the
    same whatever is saved.
 2. **The saved settings**, made on the settings screen. Served by the bundled server they are the
    deployment's, kept by the server and the same on every display (see
@@ -705,7 +711,9 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
 3. **The `defaults` of the state file**, which the collector takes from `config.toml` (see
    [state.md](./state.md)). A file from an older collector has none.
 4. **The page's own**: the base pack's defaults for the knight (Classic, the greatsword, warm skin,
-   brown hair cut short, a blue tabard and a red plume), monarch A in the court's own skin with
+   brown hair cut short, a blue tabard and a red plume, the open helm with its crest, plate and
+   riding boots, nothing on the back, and the heater shield should a one-handed weapon be chosen),
+   monarch A in the court's own skin with
    each monarch's own hair and robe ("As drawn", `null` in what `now()` gives), a medium headline,
    a 24-hour clock, the helmet off indoors, all four quiet scenes, ten minutes each in live mode
    and one in the demo, and each condition in its own scene.
@@ -714,7 +722,9 @@ The keys, the values each may take and the page's own defaults come from the set
 `collector/settings-schema.json`, through the copy `tools/settings-schema.js` writes between the
 `settings-schema` markers of `settings.js` (`KW.settings.SCHEMA`); `ONE_OF`, `SCENES`,
 `ALL_SCENES`, `MINUTES` and `BUILT_IN` are made from it. They are the contract's: `look` holds `build`, `weapon`, `skin`, `hair`,
-`hair_style`, `tabard`, `plume`, `monarch`, `monarch_skin`, `monarch_hair` and `monarch_robe`;
+`hair_style`, `tabard`, `plume`, the gear (`shield`, `helmet`, `plume_style`, `body`, `shoulders`,
+`arms`, `hands`, `legs`, `feet` and `back`), `monarch`, `monarch_skin`, `monarch_hair` and
+`monarch_robe`;
 `display` holds `headline`, `clock` and `helmet_indoors`; `quiet` holds `scenes` and `minutes`;
 `scenes` holds a scene id for each condition offered, by its condition id. Which conditions are
 offered, and which scenes each may take, the store works out from the world it is given: each
@@ -736,7 +746,11 @@ collector can add one.
 
 **What the levels drive.** `KW.settings.knightLook(r)` turns what the levels give into the look for
 `KW.knight.look()`, holding only what a level above the page's own sets: with nothing set it is
-`{}`, and the knight is exactly as before there were settings. `engineInput(r, pack, ownMs)` gives
+`{}`, and the knight is exactly as before there were settings. A weapon set brings its item and,
+when it is one-handed (`sword_and_shield`, `mace_and_shield`), the shield `shield` names; a shield
+set beside a two-handed weapon is kept and carried nowhere. Each other gear key brings the base
+pack's item of its slot (`KW.settings.ITEMS`: `helmet` "kettle" is `kw.base/helm.kettle`, `feet`
+"shoes" `kw.base/boots.shoes`), and `back` "none" brings nothing. `engineInput(r, pack, ownMs)` gives
 the engine's `turns`, `turnMs`, `mon`, `monSkin`, `monHair`, `monRobe` and `scenes` (see
 [The engine's input](#the-engines-input)); `turnMs` is `ownMs`, the demo's minute or live mode's
 ten, while no level sets `minutes`, the monarch's colours are `null` while no level sets them, and
@@ -846,13 +860,24 @@ with labels above their choices and the house's preview left out; every touch ta
 least 48 pixels tall.
 
 **The knight.** Build, weapon, skin tone, hair colour, hair style, tabard and plume, each a row of
-choices; names and colours come from the base pack. The build row shows the contract's three
+choices, and under a line headed Armour ten more rows of gear: shield, helmet, plume style, body,
+shoulders, arms, hands, legs, feet and back; names and colours come from the base pack. The weapon
+row shows the greatsword and the longsword (Two hands) and the sword and shield and the mace and
+shield (One hand each); each gear row shows the items of its slot the base pack in use draws, by
+their names, in the schema's order (`KW.settings.itemChoices`), and the back starts with Nothing. A
+row the look does not show is greyed as an unready build is, and a tap on a greyed choice says why
+in the line under the row and changes nothing (`KW.settings.greyed`): the shield beside a
+two-handed weapon ("A shield is carried only with a one-handed weapon: the sword and shield or the
+mace and shield."), and the plume style with a helmet that has no plume mount, the mail coif ("The
+mail coif has no plume mount, so no plume is drawn with it."), the plume's colour too unless the
+long cloak, which takes the plume's colours, is worn. The build row shows the contract's three
 builds, `a`, `b` and `c`, each by the name the base pack gives it, Classic, Broad and Slim, with
 Ready under each (`KW.settings.buildChoices`). A build the base pack in use does not declare, as a
 fork's base pack might, is greyed with a dashed border, named by its letter (Build B) and says
 Coming, and a tap on it says in a line under the row that it is not drawn yet and changes nothing.
 The line under the knight's page that names the default look gives the build by its name too
-("the Classic build, the greatsword, ..."). Beside the rows the
+("the Classic build, the greatsword, ..."), and after the plume any gear that differs from the base
+pack's own ("..., a red plume, with a kettle hat, a long cloak; ..."). Beside the rows the
 knight's own code draws the knight with the chosen look, helmet on and helmet off, every frame,
 and the house with the gear at rest. On the code path the page says the look cannot show until the
 base pack can be used, and keeps the choices.
@@ -934,8 +959,9 @@ build the input.
 ## The address
 
 The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `pl=`,
-`set=` and the settings hooks (`arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, `mon=`, `ms=`, `mh=`,
-`mr=`, `ck=`, `sc=`) also work in live mode. `f=`, `e=`, `sw=` and `dv=` act in the demo and do nothing elsewhere. The
+`set=` and the settings hooks (`bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
+`hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`,
+`ck=`, `sc=`) also work in live mode. `f=`, `e=`, `sw=` and `dv=` act in the demo and do nothing elsewhere. The
 settings hooks, `h=` and `hs=` are the highest of the settings' levels (see [Settings](#settings)):
 each outranks this display's saved choices and the state file's defaults while the address holds
 it, and a value it does not know is ignored, with a line in the console, so that the next level
@@ -962,9 +988,10 @@ down is used.
 | `set=` | opens the settings screen at load on a page: `knight`, `monarch`, `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
 | `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `device_down` on, the knight looks towards the first device that is down and alerts |
 | `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`. A page that cannot draw from the base pack draws Classic whatever the hook says |
-| `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its heater shield in the other, `two` the greatsword. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
+| `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its shield in the other, `two` the greatsword, or any weapon by its contract name: `longsword`, `mace_and_shield`. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
+| `sh=`, `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=`, `bk=` | the knight's gear by its contract value: the shield (`sh=round`), the helmet (`hm=coif`), the plume's style (`ps=feather`), the body (`bo=cuirass`), the shoulders (`so=lames`), the arms (`am=mail`), the hands (`hn=leather`), the legs (`lg=hose`), the feet (`ft=sabatons`) and the back (`bk=cloak`, or `bk=none`); the values are in [state.md](./state.md) |
 | `sk=`, `hc=`, `tb=`, `pm=` | the knight's skin, hair colour, tabard and plume: the id of one of the base pack's swatches, such as `sk=deep&hc=black&tb=sable&pm=gold` (the ids are in [packs.md](./packs.md#the-base-pack)) |
-| `hy=` | the knight's hair style: `short`, `tied` or `curls`, the base pack's `hair.<value>` |
+| `hy=` | the knight's hair style: `short`, `tied`, `curls`, `long` or `close`, the base pack's `hair.<value>` |
 | `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box, the 80 by 64 a device may fill inside it, and the base. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
 
 `e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time.
@@ -972,7 +999,7 @@ With time frozen the knight never starts a swat alone, so the flies of `f=` hove
 starts one, and a knight placed away from their spot by `kx=` stays exactly there, in mid-stride,
 rather than walking a step in each frame.
 
-The look hooks (`bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=` and `pm=`) take the values the contract gives
+The look hooks (`bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=` and the gear's) take the values the contract gives
 the look in [state.md](./state.md) and keep screenshots the same whatever a display has saved; on
 the code path they do nothing. A value outside the contract's is ignored, as at every level.
 
@@ -1193,11 +1220,17 @@ none is given or one cannot be read, each swatch's bands where one is, and the b
 from the base pack's names with Ready under each, a renamed build shown by its new name, and a
 base pack that draws build A alone greying the other two by their letters. It also draws the
 knight from the base pack in every combination the settings offer, weapon by skin by hair by hair
-style with the build, the tabard and the plume cycled, 216 looks, the build turning so that each
+style with the build, the tabard and the plume cycled, 720 looks, the build turning so that each
 meets every weapon, skin, hair colour and hair style, each standing, attacking and swinging both
 ways, helmet on and off, the bare head and the gear at rest, and checks that none throws, falls
-back or passes the caps, that it is rigged on its build, and that its colours are drawn; and every monarch
-in every skin, hair and robe, "As drawn" among them, 882 courts, each drawing its own colours.
+back or passes the caps, that it is rigged on its build, and that its colours are drawn; every
+choice of the gear on every build, 108 looks, beside the longsword and the mace in turn, the long
+cloak drawn in the gold plume's colours; and every monarch in every skin, hair and robe, "As drawn"
+among them, 882 courts, each drawing its own colours. For the gear it checks that every value names
+an item of its slot in the base pack and every item of a slot is offered, the page's own being the
+base pack's defaults; the look each choice makes, the shield carried only beside a one-handed
+weapon and no back putting nothing on; what the screen greys and the words it says; and the
+choices' names from the base pack, a base pack without an item offering only what it draws.
 
 The stored record changes only when the knight is meant to look different. Store it again from the
 code as it is with `KNIGHT_LOG=write node --test tests/web/knight.test.js`, and look at the
@@ -1383,6 +1416,24 @@ Against a reference from before them they are missing. At 4:3 the clock is large
 and the left edge of its first digit, from x 728, lies outside the comparison's mask, which starts
 at 740; so a reference and a result taken either side of 10:00, 20:00 or midnight differ in the
 `ref-43-` shots there.
+
+The 34 `free-` shots after them show the base pack's free items of 1.4.0, chosen with `arm=`
+(`longsword`, `mace_and_shield`) and the gear's hooks (`sh=`, `hm=`, `ps=`, `bo=`, `so=`, `am=`,
+`hn=`, `lg=`, `ft=`, `bk=`): the longsword standing and in the swat both ways; the mace with the
+round shield, in the attack and the swat to the left with the kite shield; the kite shield in the
+yard and the round in the swat to the left with the arming sword; the mace's head hot on the
+smithy's anvil; the house with the kettle hat and its feather, the mail coif and the bascinet on
+the stool and each weapon and shield at rest; three whole looks, one per new helmet, on the
+battlement, at the camp and in the yard; the long hair and the close crop, the long hair under the
+bascinet and on the sleeper's pillow; the long cloak in the attack, the short cape with the
+cellar's crate and the breastplate and cloak in the bloat; whole looks, the swat and the attack and
+the new hair on Broad (`free-bd-b-`) and Slim (`free-bd-c-`); and the settings screen's knight
+page at 1480 by 2800 with every row in view, as the defaults leave it (the shield greyed beside the
+greatsword), with the mail coif and the long cloak (the plume's style greyed, its colour live for
+the cloak), and with a whole new look on Broad and on Slim. Against a reference from before them
+they are missing. Against a reference from base pack 1.3.0 the six settings shots of the knight's
+page and of the status differ too: the weapon and hair style rows gained choices, and the status
+names the base pack's version and whether it is signed.
 
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
 Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade

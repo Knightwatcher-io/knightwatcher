@@ -564,6 +564,16 @@ FULL_LOOK = {
     "hair_style": "curls",
     "tabard": "teal",
     "plume": "gold",
+    "shield": "kite",
+    "helmet": "bascinet",
+    "plume_style": "horsehair",
+    "body": "gambeson",
+    "shoulders": "leather",
+    "arms": "padded",
+    "hands": "mail",
+    "legs": "hose",
+    "feet": "shoes",
+    "back": "cloak",
     "monarch": "c",
     "monarch_skin": "deep",
     "monarch_hair": "silver",
@@ -621,15 +631,49 @@ class DefaultsConfigTest(unittest.TestCase):
         self.assertProblems(
             {"look": {"build": "d", "weapon": "axe", "skin": "pale", "hair": "green"}},
             'look.build: unknown value "d"; use a, b or c',
-            'look.weapon: unknown value "axe"; use greatsword or sword_and_shield',
+            'look.weapon: unknown value "axe"; use greatsword, sword_and_shield, longsword or '
+            "mace_and_shield",
             'look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep',
             'look.hair: unknown value "green"; use black, dark, brown, auburn, blonde or silver',
         )
         self.assertProblems(
             {"look": {"hair_style": "bald", "tabard": "red", "plume": "blue"}},
-            'look.hair_style: unknown value "bald"; use short, tied or curls',
+            'look.hair_style: unknown value "bald"; use short, tied, curls, long or close',
             'look.tabard: unknown value "red"; use blue, forest, violet, wine, teal or sable',
             'look.plume: unknown value "blue"; use red, white, gold, royal, green or violet',
+        )
+        self.assertProblems(
+            {
+                "look": {
+                    "shield": "buckler",
+                    "helmet": "great",
+                    "plume_style": "twin",
+                    "back": "wings",
+                }
+            },
+            'look.shield: unknown value "buckler"; use heater, round or kite',
+            'look.helmet: unknown value "great"; use open, kettle, coif or bascinet',
+            'look.plume_style: unknown value "twin"; use crest, feather or horsehair',
+            'look.back: unknown value "wings"; use none, cloak or cape',
+        )
+        self.assertProblems(
+            {
+                "look": {
+                    "body": "surcoat",
+                    "shoulders": "mail",
+                    "arms": "leather",
+                    "hands": "plates",
+                }
+            },
+            'look.body: unknown value "surcoat"; use tabard, cuirass or gambeson',
+            'look.shoulders: unknown value "mail"; use plate, lames or leather',
+            'look.arms: unknown value "leather"; use plate, mail or padded',
+            'look.hands: unknown value "plates"; use plate, leather or mail',
+        )
+        self.assertProblems(
+            {"look": {"legs": "greaves", "feet": "boots"}},
+            'look.legs: unknown value "greaves"; use plate, mail or hose',
+            'look.feet: unknown value "boots"; use leather, sabatons or shoes',
         )
         self.assertProblems(
             {"look": {"monarch": "A", "monarch_skin": "Warm"}},
@@ -857,6 +901,16 @@ class LoadTest(unittest.TestCase):
                     "hair_style": "short",
                     "tabard": "blue",
                     "plume": "red",
+                    "shield": "heater",
+                    "helmet": "open",
+                    "plume_style": "crest",
+                    "body": "tabard",
+                    "shoulders": "plate",
+                    "arms": "plate",
+                    "hands": "plate",
+                    "legs": "plate",
+                    "feet": "leather",
+                    "back": "none",
                     "monarch": "a",
                     "monarch_skin": "warm",
                     "monarch_hair": "brown",

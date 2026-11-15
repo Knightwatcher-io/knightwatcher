@@ -60,12 +60,14 @@
      page; this browser's own otherwise), the defaults in the state file and the page's own
      (KW.settings). The
      hooks, in the contract's names: bd= the build (a, b or c); arm=one the sword and shield and
-     arm=two the greatsword; sk=, hc=, tb= and pm= the skin, hair, tabard and plume swatches; hy= the
-     hair style; mon= the monarch, ms= the monarch's skin, mh= the monarch's hair (a hair swatch)
-     and mr= the monarch's robe (a tabard swatch); hs= the headline size (s, m, l), h= the helmet
-     (on, or auto and off for the helmet off indoors; off also takes it off outdoors) and ck= the
-     clock (12 or 24); and sc=<condition>:<scene>, separated by commas, the scene each condition
-     plays in. A value a level does not know is ignored, with a line in the console. */
+     arm=two the greatsword, or any weapon by its contract name (arm=longsword); sk=, hc=, tb= and
+     pm= the skin, hair, tabard and plume swatches; hy= the hair style; the gear: sh= the shield,
+     hm= the helmet, ps= the plume's style, bo= the body, so= the shoulders, am= the arms, hn= the
+     hands, lg= the legs, ft= the feet and bk= the back; mon= the monarch, ms= the monarch's skin,
+     mh= the monarch's hair (a hair swatch) and mr= the monarch's robe (a tabard swatch); hs= the
+     headline size (s, m, l), h= the helmet (on, or auto and off for the helmet off indoors; off
+     also takes it off outdoors) and ck= the clock (12 or 24); and sc=<condition>:<scene>,
+     separated by commas, the scene each condition plays in. A value a level does not know is ignored, with a line in the console. */
   // The helmet and the headline size are read from S each time, since the review bar may set
   // them as the address does.
   const HOOK = { look: {}, quiet: {}, scenes: {}, get display() {
@@ -77,7 +79,8 @@
   } };
   if (hv('arm') !== undefined) HOOK.look.weapon = { one: 'sword_and_shield', two: 'greatsword' }[hv('arm')] || hv('arm');
   for (const [h, k] of [['bd', 'build'], ['sk', 'skin'], ['hc', 'hair'], ['hy', 'hair_style'], ['tb', 'tabard'], ['pm', 'plume'], ['mon', 'monarch'], ['ms', 'monarch_skin'],
-    ['mh', 'monarch_hair'], ['mr', 'monarch_robe']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
+    ['mh', 'monarch_hair'], ['mr', 'monarch_robe'], ['sh', 'shield'], ['hm', 'helmet'], ['ps', 'plume_style'], ['bo', 'body'], ['so', 'shoulders'], ['am', 'arms'],
+    ['hn', 'hands'], ['lg', 'legs'], ['ft', 'feet'], ['bk', 'back']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
   const scHook = (H0.match(/[#&]sc=([^&]*)/) || [])[1];
   if (scHook !== undefined) for (const item of scHook.split(',').filter(Boolean)) { const [c, v] = item.split(':'); HOOK.scenes[c] = v === undefined ? '' : v; }
   /* Served, the page starts from its copy of the shared settings, if it has one, until the server
