@@ -234,6 +234,24 @@
     }
   };
 
+  /* pebbles: pebbles on the ground below y across the screen, one in each step: along by a hash up
+     to spread, drop[0] below y plus a hash up to drop[1], size[0] across plus a hash up to size[1]
+     and ry high, in one of of by a hash, with a fleck of light at its top left. */
+  const pebbles = {
+    fields: { y: { kind: 'offset' }, step: { kind: 'int', lo: 8, hi: 960, def: 23 }, spread: { kind: 'int', lo: 1, hi: 960, def: 17 },
+      seed: { kind: 'int', lo: 0, hi: 996, def: 3 }, drop: { kind: 'pair', int: true, of: [[0, 600], [1, 600]], def: [10, 56] },
+      size: { kind: 'pair', int: true, of: [[1, 64], [1, 64]], def: [3, 3] }, ry: { kind: 'int', lo: 1, hi: 64, def: 2 },
+      of: { kind: 'colours', min: 1, max: 8, def: ['#2e2619', '#3a3020'] }, light: { kind: 'colour', def: '#4f4330' } },
+    cost: b => (Math.floor(hi(b.view.W) / b.step) + 2) * (B.ell(b.ry) + 1),
+    draw(f) {
+      const { y, step, spread, seed, drop, size, ry, of } = f;
+      for (let x = Math.floor(V.HL / step) * step; x < V.HR; x += step) {
+        const px = x + hsh(x, seed) % spread, py = y + drop[0] + hsh(x, seed + 1) % drop[1];
+        ell(px, py, size[0] + hsh(x, seed + 2) % size[1], ry, of[hsh(x, seed + 3) % of.length]); Rh(px - 2, py - 1, 2, 1, f.light);
+      }
+    }
+  };
+
   /* flame: a flame of three tongues standing at p, size times the torch's, its points moving by two
      sines of the time plus dt. */
   const TONGUES = [[1, '#ff5a1e', 0], [.7, '#ffb000', 1.7], [.42, '#fff3a0', 3.1]];
@@ -356,7 +374,7 @@
   /* ---- The library ------------------------------------------------------------------------------ */
 
   /* The effects, in the order the world format lists them (pack.js names the same list). */
-  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, flame, twinkle, drift, wander, coals, steam, burst };
+  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, flame, twinkle, drift, wander, coals, steam, burst };
   const NAMES = Object.freeze(Object.keys(TABLE));
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const SCALAR = ['offset', 'length', 'term'];

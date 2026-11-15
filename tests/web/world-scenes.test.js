@@ -346,3 +346,62 @@ test('the scenes from the pack: a camera\'s question mark is never higher than y
   const { KW, scenes } = loadPlaces(), mark = KW.props.KINDS.camera.mark;
   for (const [name, sc] of scenes) for (const [p, pl] of Object.entries(sc.places)) if (pl.cls === 'high') assert.ok(pl.y - mark >= 172, `${name} ${p}: the mark's top at ${pl.y - mark}`);
 });
+
+// ---- The acts ------------------------------------------------------------------------------------
+// The call records draw five moments of each state. A scene with an act (the yard's training) keeps
+// what it did on one frame for the next, the time of its last blow, so the scenes from the pack that
+// have an act are also run frame by frame beside their code scenes, and every frame's calls and
+// changes compared: every 10 ms for two of the yard's 5.6 s training rounds while all is quiet and
+// while the CPU runs hot, and every 50 ms for six seconds in two conditions where the act rests.
+
+/* The page's scripts drawing into a context that writes one line per call, with the knight's swing
+   written as one line, and the scenes the pack gives compiled from it (from 'pack') or from code. */
+function loadDrawn(from) {
+  const log = [];
+  const ctx = new Proxy({}, {
+    set(_, k, v) { log.push(String(k) + ' ' + v); return true; },
+    get(_, k) { return (...a) => { log.push([String(k), ...a].join(' ')); }; },
+  });
+  const box = vm.createContext({ window: {}, document: { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) }, console: { info() {}, warn() {} } });
+  for (const f of PAGE) { if (box.window.KW) box.KW = box.window.KW; vm.runInContext(fs.readFileSync(path.join(WEB, f), 'utf8'), box, { filename: f }); }
+  const KW = box.window.KW;
+  KW.knight.start([], false);
+  if (from === 'pack') KW.world.start([MEDIEVAL], true);
+  KW.knight.swing = (o, q, dir) => log.push(`swing ${q} ${dir}`);
+  KW.devices.draw = () => log.push('devices');
+  KW.draw.setCtx(ctx);
+  return { KW, log };
+}
+/* The frame the engine makes for the condition id at t, the knight at the scene's first spot and
+   strolling there from time 0, as tests/web/scenes.test.js makes it. */
+function frameAt(KW, name, id, t) {
+  const sc = KW.scenes[name], K = KW.knight, V = KW.view, ST = KW.state, k = ST.CONDITIONS[id];
+  const w = k ? { id, lv: k.lv, st: ST.LEVELS[k.level], scene: k.scene, hl: '', sub: '' } : ST.IDLE;
+  const o = K.pose(id, t); o.floor = V.HFL; o.helmet = sc.helmet !== false; o.x = sc.spot * V.U;
+  const free = (w.lv < 3 || id === 'memory_tight' || id === 'disk_full') && w.lv !== 2 && id !== 'backup_overdue' && id !== 'pi_silent';
+  return { w, devices: [], places: sc.places, tv: false, kx: o.x, o, here: free ? { act: sc.rounds[0].act, el: t } : null, inBed: false, helmOff: false, strike: false };
+}
+const ACTED = GIVEN.filter(n => READ.data.scenes[n].target);
+
+for (const name of ACTED) {
+  test(`${name} from kw.medieval acts as the code scene does, frame by frame`, () => {
+    for (const [id, every, until] of [['idle', 10, 11200], ['cpu_hot', 10, 11200], ['attack', 50, 6000], ['memory_tight', 50, 6000]]) {
+      const c = loadDrawn('code'), p = loadDrawn('pack');
+      assert.notEqual(c.KW.scenes[name], p.KW.scenes[name]);
+      for (let t = 0; t <= until; t += every) {
+        const run = m => {
+          const s = frameAt(m.KW, name, id, t), before = JSON.stringify(s.o);
+          m.log.length = 0;
+          m.KW.scenes[name].act(t, s); m.log.push('o ' + (JSON.stringify(s.o) === before ? 'unchanged' : JSON.stringify(s.o)));
+          m.KW.scenes[name].draw(t, s);
+          return m.log.join('\n');
+        };
+        const a = run(c), b = run(p);
+        if (a !== b) {
+          const x = a.split('\n'), y = b.split('\n'); let i = 0; while (x[i] === y[i]) i++;
+          assert.fail(`${name}, ${id}, t ${t}: call ${i} is ${JSON.stringify(y[i])} from the pack and ${JSON.stringify(x[i])} from code`);
+        }
+      }
+    }
+  });
+}

@@ -1076,7 +1076,7 @@
      and its drawing by the effects library, effects.js (KW.effects). The page loads that file before
      this one; under Node this file asks for it beside itself, the first time a pack names an
      effect. */
-  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'flame', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst'];
+  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'flame', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst'];
   /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
      for, the patron's anchors and the critter's frames. */
   const ROLES = ['patron', 'foe', 'critter'];
@@ -1109,6 +1109,10 @@
   /* The named values of a scene, the range the checks assume for each (the screen at most three
      grid widths by two grid heights), and the grid unit the spots count in. */
   const SCENE_RANGE = freeze({ L: [-976, -16], R: [976, 1936], T: [-602, -2], W: [992, 2912] });
+  /* The named values a scene's acts give its moving and over layers, and their ranges: targetDx, the
+     pixels the training act moves the target's group by when it is struck, in a scene with a
+     target. Its coefficient may have three decimals, as the yard's lean, 713 + targetDx * 0.8, needs. */
+  const ACT_RANGE = freeze({ targetDx: [-15, 15] });
   const U = 5;
   const WORLD_LIMITS = freeze({ scenes: 16, cast: 16, props: 8, overlays: 8, words: 8, worlds: 8, stamps: 64, stampShapes: 64,
     layers: 32, tiles: 64, effects: 48, tileShapes: 32, stillShapes: 2000, frameShapes: 400, stillCost: 200000, frameCost: 16000,
@@ -1128,7 +1132,8 @@
   /* A scalar of a world section: a number, or a term object of c, named values, h ([seed, mod]:
      the engine's hash of the tile's x, modulo mod) and wave ([amp, div, phase]: amp times the sine
      of the scene's time in ms over div, plus phase). lo and hi bound c. Coordinates are multiples of
-     1/8; an alpha (alpha true) may have three decimals and takes only c and wave. */
+     1/8, and so are the coefficients of named values but those an act gives (ACT_RANGE), which may
+     have three decimals; an alpha (alpha true) may have three decimals and takes only c and wave. */
   function wscalar(v, path, lo, hi, alpha) {
     const n = alpha ? num : eighth;
     if (typeof v === 'number') { n(v, path, lo, hi); return; }
@@ -1139,6 +1144,7 @@
       else if (k === 'wave') wave(v.wave, p);
       else if (alpha) fail(p, 'an alpha takes only c and wave');
       else if (k === 'h') { if (!Array.isArray(v.h) || v.h.length !== 2) fail(p, 'must be [seed, mod]'); int(v.h[0], idx(p, 0), 0, 999); int(v.h[1], idx(p, 1), 2, 960); }
+      else if (has(ACT_RANGE, k)) num(v[k], p, -8, 8);
       else if (!TERM_NAME.test(k)) fail(p, 'is not a name');
       else eighth(v[k], p, -8, 8);
     }
@@ -1719,7 +1725,8 @@
   /* ---- Step 6 for 1.1: references ---- */
 
   /* The named values a world scalar may lean on: the screen's edges in a layer of a scene, the
-     tile's x and its hash inside a tile, and a wave in a moving or over layer. Nothing elsewhere. */
+     tile's x and its hash inside a tile, and a wave and the target's dx (in a scene with a
+     target) in a moving or over layer. Nothing elsewhere. */
   function wnames(v, path, ctx) {
     if (!isObj(v)) return;
     for (const k of Object.keys(v)) {
@@ -1729,7 +1736,10 @@
       if (has(SCENE_RANGE, k)) ok = layer;
       else if (k === 'x' || k === 'h') { if (layer && !ctx.tile) fail(p, (k === 'x' ? 'is the tile\'s x' : 'hashes the tile\'s x') + ', and cannot be used outside a tile'); ok = !!ctx.tile; }
       else if (k === 'wave') ok = ctx.where === 'moving' || ctx.where === 'over';
-      else if (DIFFS.includes(k) || VALUES.includes(k) || k === 'step') ok = false;
+      else if (has(ACT_RANGE, k)) {
+        ok = ctx.where === 'moving' || ctx.where === 'over';
+        if (ok && !(ctx.scene && ctx.scene.target)) fail(p, 'is the target\'s dx, and needs the scene\'s target');
+      } else if (DIFFS.includes(k) || VALUES.includes(k) || k === 'step') ok = false;
       else fail(p, 'is not a named value');
       if (!ok) fail(p, 'cannot be used in ' + WWHERE[ctx.where]);
     }
@@ -1887,7 +1897,7 @@
     return [bound(fr, false, null, SCENE_RANGE) - t.step + t.phase, bound(to, true, null, SCENE_RANGE)];
   }
   /* The ranges a world shape's scalars are taken over: the screen's edges, and a tile's x. */
-  const rangesOf = ctx => (ctx.tile ? Object.assign({ x: tileX(ctx.tile) }, SCENE_RANGE) : SCENE_RANGE);
+  const rangesOf = ctx => Object.assign(ctx.tile ? { x: tileX(ctx.tile) } : {}, SCENE_RANGE, ACT_RANGE);
   const W_SIZE = { w: [0, 'length'], h: [0, 'length'], r: [0, 'radius'], rx: [1, 'radius'], ry: [1, 'radius'], hw0: [0, 'half-width'], hw1: [0, 'half-width'] };
   function worldShapeRanges(s, path, ctx) {
     const R = rangesOf(ctx), wide = LAYERED.includes(ctx.where), O = wide ? WORLD_LIMITS.offset : 512, Lg = wide ? WORLD_LIMITS.length : 512;
@@ -2721,7 +2731,7 @@
     PROP_KINDS: PROP_KINDS.slice(), CLASS_OF: Object.assign({}, CLASS_OF), CLASS_BOX: JSON.parse(JSON.stringify(CLASS_BOX)), LABELS: LABELS.slice(),
     QUIET_PARTS: JSON.parse(JSON.stringify(QUIET_PARTS)), CAPTIONS: JSON.parse(JSON.stringify(CAPTIONS)), LEVELS: JSON.parse(JSON.stringify(LEVELS)) });
   const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, VALUES, VALUE, MEASURES, TORSO, BASE, KEYS, ORDERS,
-    WORLD_LIMITS, WORLD_LISTS, SCENE_RANGE,
+    WORLD_LIMITS, WORLD_LISTS, SCENE_RANGE, ACT_RANGE,
     read, canonical, message, gather, resolve, draw, sequence, animate, fitsPlace, newAnchors, newValues };
   KW.pack = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
