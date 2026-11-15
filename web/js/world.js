@@ -11,19 +11,23 @@
    a reason that says so: a scene that names something it does not build stays the code scene. What
    it builds:
    - terms: numbers, and term objects of c, the named values L, R, T and W (the screen's edges and
-     width, from KW.view), x (a tile's x), h (a hash of the tile's x) and wave (a sine of the scene's
-     time), added in the order they are written, so that a term gives the same bits as the code it
-     replaces;
+     width, from KW.view), x (a tile's x), h (a hash of the tile's x), wave (a sine of the scene's
+     time) and the values the acts give (targetDx and spot), added in the order they are written, so
+     that a term gives the same bits as the code it replaces;
    - colours: hex, @base and the pack's own palettes, translucent colours spelt as the code spells
      them ('rgba(0,0,0,.3)'), and band lists of these;
    - shapes: rect, ell, rrect, poly and strip without clip, glow, fx, use and tile without pick or
      only;
    - layers: still (painted into the cached backdrop), moving (in draw) and over (in over), each with
      its when; a moving or over layer's groups, and keyframes on a clock in ms with show tracks;
-   - the things mark, where the devices behind the watcher are drawn;
-   - the backdrop's key, worked out from what the still layers read: the predicates of their when;
+   - the things mark, where the devices behind the watcher are drawn, and the rest mark, where the
+     watcher's gear at rest is drawn at one of the scene's rests;
+   - the backdrop's key, worked out from what the still layers read: the predicates of their when,
+     the gear they show at rest, and the spot when a rest they show it at counts from the spot;
    - hosts, as outdoors when a scene hosts both the flies and the crate, and from foe the foe's
-     zone, foeZone, and with a wall the line it climbs over, wallAt.
+     zone, foeZone, and with a wall the line it climbs over, wallAt;
+   - the acts of the target (the yard's training) and of the anvil (the smithy's hammer, with the
+     hot tip of the blade on the anvil).
    Each later step adds rows to these tables. */
 (function (KW) {
   'use strict';
@@ -44,10 +48,11 @@
      the order written: [CONST, c], [NAMED, name, coefficient], [HASH, seed, mod] or [WAVE, amp, div,
      phase]. val() adds them up from the first, so { "x": 1, "c": 178 } is x + 178 and { "c": 0.09,
      "wave": [0.025, 150, 0] } is 0.09 + 0.025 * sin(t / 150), as the code writes them. E holds the
-     named values of the moment: L, R, T, W, x, t and, in a scene with a target, targetDx (the pixels
-     the training act moves the target by, below). */
+     named values of the moment: L, R, T, W, x, t, in a scene with a target targetDx (the pixels the
+     training act moves the target by), and in a scene with an anvil spot (the x of the spot the
+     watcher works at, which the anvil's places count from), both below. */
   const CONST = 0, NAMED = 1, HASH = 2, WAVE = 3;
-  const NAMES = ['L', 'R', 'T', 'W', 'x', 'targetDx'];
+  const NAMES = ['L', 'R', 'T', 'W', 'x', 'targetDx', 'spot'];
   function term(v, path) {
     if (typeof v === 'number') return v;
     if (!isObj(v)) throw new Error(path + ': is not a term');
@@ -73,7 +78,7 @@
   }
   const point = (v, path) => [term(v[0], idx(path, 0)), term(v[1], idx(path, 1))];
   /* The named values of the screen now, at scene time t, with s the frame. */
-  const named = (t, s) => ({ L: V.HL, R: V.HR, T: V.HT, W: V.HR - V.HL, x: 0, t, s, targetDx: 0, since: Infinity, dx: null, picks: null, off: null });
+  const named = (t, s) => ({ L: V.HL, R: V.HR, T: V.HT, W: V.HR - V.HL, x: 0, t, s, targetDx: 0, spot: 0, since: Infinity, dx: null, picks: null, off: null });
 
   /* ---- Colours ----------------------------------------------------------------------------------
      A colour resolves once, at compile, to what the primitives take: a string, or a band list. A
@@ -138,18 +143,22 @@
       draw(r, E, ox, oy) { D.glow(ox + val(r.p[0], E), oy + val(r.p[1], E), val(r.r, E), hue(r.c, E), val(r.a, E)); }
     },
     /* An effect of KW.effects, its fields compiled by the kinds its table gives: scalars as terms,
-       colours resolved, the rest as written. It is drawn with the scene's time when it moves; a
-       triggered one (burst) only in a scene with a target, with the ms since the target was last
-       struck, which is the straw the dummy sheds. */
+       colours resolved, the rest as written. It is drawn with the scene's time when it moves. A
+       triggered one (burst) is drawn only in a scene with a target or an anvil: with the ms since
+       the target was last struck, which is the straw the dummy sheds, or with the progress of the
+       hammer's blow, which is the sparks it throws, and not at all while the hammer is not
+       striking. */
     fx: {
       compile(s, path, env) {
         if (env.stamp) throw notBuilt(path, 'an effect in a stamp');
         const lib = KW.effects && KW.effects[s.fx];
         if (!lib) throw new Error(at(path, 'fx') + ': the effects library has no ' + quote(s.fx));
         if (lib.clock === 'trigger') {
-          if (!env.target) throw notBuilt(at(path, 'fx'), 'the triggered effect ' + quote(s.fx) + ' in a scene without a target');
-          // sparks run on the progress of a hammer's blow, which a target does not give
-          if (s.piece !== 'straw') throw notBuilt(at(path, 'piece'), 'a burst of sparks on the target\'s hit');
+          if (!env.target && !env.anvil) throw notBuilt(at(path, 'fx'), 'the triggered effect ' + quote(s.fx) + ' in a scene without a target or an anvil');
+          // sparks run on the progress of a hammer's blow, which a target does not give, and straw
+          // on the ms since a blow, which the hammer does not give
+          if (env.target && s.piece !== 'straw') throw notBuilt(at(path, 'piece'), 'a burst of sparks on the target\'s hit');
+          if (env.anvil && s.piece === 'straw') throw notBuilt(at(path, 'piece'), 'a burst of straw on the hammer\'s blow');
         }
         const F = lib.fields, fields = [], inner = Object.assign({}, env, { inEffect: true });
         for (const k of Object.keys(s)) {
@@ -166,7 +175,7 @@
         const f = {};
         for (const [k, how, v] of r.fields) f[k] = how === 'point' ? [val(v[0], E), val(v[1], E)] : how === 'term' ? val(v, E) : v;
         if (r.clock === 'time') KW.effects[r.fx].draw(f, E.t);
-        else if (r.clock === 'trigger') KW.effects[r.fx].draw(f, E.since);
+        else if (r.clock === 'trigger') { if (E.since !== null) KW.effects[r.fx].draw(f, E.since); }
         else KW.effects[r.fx].draw(f);
       }
     },
@@ -203,9 +212,26 @@
       }
     }
   };
-  /* The marks: where in the scene's order the engine draws something of its own. */
+  /* The marks: where in the scene's order the engine draws something of its own. things draws the
+     devices behind the watcher. rest draws the watcher's gear of a slot at one of the scene's rests
+     (below) through KW.knight.rest, which draws what is equipped on either of the knight's paths:
+     the weapon on a frame, { x, y, a }, the helmet or the shield in a place, { kind, x, y, w, h }.
+     A rest that counts from the spot has its x counted from where the watcher stands, s.kx. In a
+     still layer the gear is painted into the backdrop, which the key then follows. At the rest the
+     scene's anvil names, the weapon lies in the backdrop and the hammer works it: there a rest mark
+     for the weapon in a moving or over layer draws, each frame, the anvil act's hot tip on the
+     blade (hotTip, below), and not the weapon again. */
   const MARKS = {
-    things: { compile: () => ({}), draw(r, E) { KW.devices.draw(E.t, E.s); } }
+    things: { compile: () => ({}), draw(r, E) { KW.devices.draw(E.t, E.s); } },
+    rest: {
+      compile: (s, path, env) => ({ slot: s.slot, at: env.rests[s.at], hot: s.slot === 'main' && !!env.anvil && env.anvil.rest === s.at && env.where !== 'still' }),
+      draw(r, E) {
+        const R = KW.knight.rest, x = r.at.spot ? E.s.kx + r.at.x : r.at.x, y = r.at.y;
+        if (r.hot) hotTip(x, y, R.blade(), E.t);
+        else if (r.slot === 'main') R.draw('main', x, y, r.at.a);
+        else R.draw(r.slot, x, y);
+      }
+    }
   };
 
   function shape(s, path, env) {
@@ -293,11 +319,28 @@
 
   /* ---- Scenes ---------------------------------------------------------------------------------- */
 
-  /* The fields of a scene this engine does not build yet: the parts of the acts, gear at rest and
-     the pole drawn under a high place. decor, quiet, name, sound and companion are not read:
-     nothing draws decorations yet, the engine's own lists say which scenes take turns while all is
-     quiet, and the other three are names and reserved slots. */
-  const LATER = ['rests', 'bed', 'screen', 'seat', 'anvil', 'pole'];
+  /* The fields of a scene this engine does not build yet: the parts of the bed's, the screen's and
+     the seat's acts, and the pole drawn under a high place. decor, quiet, name, sound and companion
+     are not read: nothing draws decorations yet, the engine's own lists say which scenes take turns
+     while all is quiet, and the other three are names and reserved slots. */
+  const LATER = ['bed', 'screen', 'seat', 'pole'];
+
+  /* The rests of a scene: where the watcher's gear is set down (docs/page.md, Gear at rest). A frame,
+     { x, y, a }, is where the weapon lies, its grip's middle at (x, y) and a its angle, "upright" 0
+     and "flat" pi/2 or a number of radians; a place, { kind, x, y, w, h }, is where a rest view
+     goes. Each compiles to the code scenes' own form, with spot true when its x counts from the
+     spot ("from": "spot"). */
+  const ANGLES = { upright: 0, flat: Math.PI / 2 };
+  function restOf(r) {
+    const spot = r.from === 'spot';
+    return has(r, 'kind') ? { kind: r.kind, x: r.x, y: r.y, w: r.w, h: r.h, spot } : { x: r.x, y: r.y, a: typeof r.a === 'number' ? r.a : ANGLES[r.a], spot };
+  }
+  /* The rests as the scene interface gives them, as the code scenes' RESTS: without spot. */
+  function restsOut(rests) {
+    const out = {};
+    for (const n of Object.keys(rests)) { const { spot, ...r } = rests[n]; out[n] = r; }
+    return out;
+  }
 
   /* What a scene hosts, as the engine reads it until worlds can be chosen: the flies and the crate
      both follow the one flag outdoors, so a scene gives outdoors when it hosts both, and one that
@@ -351,33 +394,93 @@
     return { act, frame };
   }
 
+  /* The anvil: the watcher hammers the weapon that lies on it. It is act() in smithy.js with the
+     smithy's numbers: whatever else is up, the weapon put away and the hammer rising slowly and
+     falling fast once every ANVIL.period ms, a progress bar filling over ANVIL.progress ms, and the
+     hammer striking from ANVIL.strike[0] of the cycle to ANVIL.strike[1] of the next, the eyes shut
+     while it does; the predicate strike holds then. While it strikes, a triggered effect is drawn
+     at the blow's progress, from 0 at ANVIL.blow[1] of the cycle over ANVIL.blow[3] of it, which is
+     the sparks the hammer throws. The anvil's places count from the spot the watcher works at: the
+     act gives its layers that x as the named value spot. The hot tip on the blade is drawn by the
+     rest mark at the anvil's rest, below. */
+  const ANVIL = { period: 1300, rise: .55, fall: .45, strike: [.93, .06], blow: [.5, .93, .07, .13], progress: 9000 };
+  function anvilOn() {
+    const A = ANVIL;
+    function act(t, s) {
+      const o = s.o, c = (t % A.period) / A.period; o.sword = false;
+      o.hammer = c < A.rise ? 1 - D.ease(c / A.rise) : Math.pow((c - A.rise) / A.fall, 3); s.strike = c > A.strike[0] || c < A.strike[1]; o.progress = (t % A.progress) / A.progress; if (s.strike) o.eyes = 'closed';
+    }
+    /* The frame's values at t: the spot's x, and the blow's progress while the hammer strikes. */
+    function frame(E, t) {
+      const b = A.blow;
+      E.spot = E.s.kx;
+      if (E.s.strike) { const c = (t % A.period) / A.period; E.since = (c > b[0] ? c - b[1] : c + b[2]) / b[3]; } else E.since = null;
+      return E;
+    }
+    return { act, frame };
+  }
+  /* The blade's hot tip, part of the anvil's act, on the weapon lying with its grip's middle at
+     (x, y): at its point (b.to along the blade) and between its edges (b.half either side), a glow
+     that flickers, a dithered patch where the heat starts, three bands of red to orange that start
+     TIP.bands[i][0] short of the point, the point white-hot and two lines of shine and shade, all
+     from smithy.js. A weapon that gives no blade (b null) shows none. */
+  const TIP = {
+    glow: { back: 31, r: 56, colour: '#ff8a3d', a: [.14, .03, 120] }, dith: { back: 87, w: 14, colour: '#7a2a1d' },
+    bands: [[73, 57, '#8f231d'], [57, 43, '#cc352c'], [43, 30, '#ff5a1e']],
+    point: { back: 30, colour: '#ffb000' }, core: { back: 27, to: 11, inset: 7, colour: '#fff3a0' },
+    lines: { back: 71, w: 42, shine: [3, 'rgba(255,240,180,.55)'], shade: [6, 'rgba(60,10,0,.35)'] }
+  };
+  function hotTip(gx, gy, b, t) {
+    if (!b) return;
+    const to = b.to, h = b.half, G = TIP.glow, Q = TIP.dith, P = TIP.point, C = TIP.core, Ln = TIP.lines;
+    D.glow(gx + (to - G.back), gy, G.r, G.colour, G.a[0] + G.a[1] * Math.sin(t / G.a[2]));
+    D.dith(gx + (to - Q.back), gy - (h - 1), Q.w, 2 * h - 1, Q.colour);
+    for (const [x0, x1, c] of TIP.bands) D.Rh(gx + (to - x0), gy - h, x0 - x1, 2 * h + 1, c);
+    D.poly([[gx + (to - P.back), gy - h], [gx + to, gy], [gx + (to - P.back), gy + h]], P.colour); D.poly([[gx + (to - C.back), gy - (h - C.inset)], [gx + (to - C.to), gy], [gx + (to - C.back), gy + (h - C.inset)]], C.colour);
+    D.Rh(gx + (to - Ln.back), gy - (h - Ln.shine[0]), Ln.w, 2, Ln.shine[1]); D.Rh(gx + (to - Ln.back), gy + (h - Ln.shade[0]), Ln.w, 2, Ln.shade[1]);
+  }
+
   /* The scene id of the loaded pack (a read() result of format 1.1) compiled to an object with the
      scene interface. Throws when the scene names something this engine does not build. */
   function compile(pack, id) {
     const v = pack.data.scenes[id], path = 'scenes.' + id;
     if (!isObj(v)) throw new Error(path + ': the pack has no such scene');
     for (const k of LATER) if (has(v, k)) throw notBuilt(at(path, k), 'the scene\'s ' + k);
+    if (has(v, 'target') && has(v, 'anvil')) throw notBuilt(path, 'a scene with both a target and an anvil');
     const out = outdoors(v.hosts, at(path, 'hosts')), foe = has(v, 'foe') ? foeOf(v.foe) : null;
-    const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: has(v, 'target'), picks: null };
-    // the target's act, and the frame's values it gives the moving and over layers
-    const train = has(v, 'target') ? trainOn(v.target) : null;
-    const frameAt = (t, s) => (train ? train.frame(named(t, s), t) : named(t, s));
+    const rests = {};
+    if (has(v, 'rests')) for (const n of Object.keys(v.rests)) rests[n] = freeze(restOf(v.rests[n]));
+    const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: has(v, 'target'), anvil: has(v, 'anvil') ? v.anvil : null, rests, picks: null };
+    // the act, the target's or the anvil's, and the frame's values it gives the moving and over layers
+    const acted = has(v, 'target') ? trainOn(v.target) : has(v, 'anvil') ? anvilOn() : null;
+    const frameAt = (t, s) => (acted ? acted.frame(named(t, s), t) : named(t, s));
     const lists = {};
-    for (const k of ['still', 'moving', 'over']) lists[k] = freeze(v[k].map((l, i) => layer(l, idx(at(path, k), i), env)));
-    // the backdrop's key: each predicate the still layers wait on, once, in the order first named
-    const keyed = [], seen = new Set();
-    for (const l of lists.still) for (const p of l.when) { const n = (p.neg ? '!' : '') + p.n + (p.id ? ':' + p.id : ''); if (!seen.has(n)) { seen.add(n); keyed.push(p); } }
-    freeze(keyed);
+    for (const k of ['still', 'moving', 'over']) lists[k] = freeze(v[k].map((l, i) => layer(l, idx(at(path, k), i), Object.assign({}, env, { where: k }))));
+    // the backdrop's key: each predicate the still layers wait on, once, in the order first named;
+    // then, when they show gear at rest, the spot's x (rounded) if any of its rests counts from the
+    // spot, and the name of each slot's equipped item, KW.knight.rest.key(slot), once
+    const keyed = [], seen = new Set(), slots = [];
+    let bySpot = false;
+    for (const l of lists.still) {
+      for (const p of l.when) { const n = (p.neg ? '!' : '') + p.n + (p.id ? ':' + p.id : ''); if (!seen.has(n)) { seen.add(n); keyed.push(p); } }
+      for (const c of l.shapes) if (c.k === 'rest') { if (!slots.includes(c.r.slot)) slots.push(c.r.slot); if (c.r.at.spot) bySpot = true; }
+    }
+    freeze(keyed); freeze(slots);
+    const gear = s => (bySpot ? '|' + Math.round(s.kx) : '') + slots.map(n => '|' + KW.knight.rest.key(n)).join('');
     const places = {};
     for (const n of Object.keys(v.things)) places[n] = Object.assign({}, v.things[n]);
     const sc = {
-      spot: v.spot, places, can: v.can.slice(), rounds: v.rounds.map(r => ({ x: r.x, act: r.act, dur: r.dur })),
-      key: s => keyed.map(p => (holds(p, s) ? '1' : '0')).join(''),
+      spot: v.spot, places, can: v.can.slice(),
+      key: slots.length ? s => keyed.map(p => (holds(p, s) ? '1' : '0')).join('') + gear(s) : s => keyed.map(p => (holds(p, s) ? '1' : '0')).join(''),
       draw(t, s) { drawLayers(lists.moving, frameAt(t, s)); }
     };
+    // the anvil's act holds the watcher at the anvil, so a scene with one gives no rounds to stroll
+    // between, as smithy.js gives none
+    if (!has(v, 'anvil')) sc.rounds = v.rounds.map(r => ({ x: r.x, act: r.act, dur: r.dur }));
+    if (has(v, 'rests')) sc.rests = restsOut(rests);
     if (lists.still.length) sc.paint = s => drawLayers(lists.still, named(0, s));
     if (lists.over.length) sc.over = (t, s) => drawLayers(lists.over, frameAt(t, s));
-    if (train) sc.act = train.act;
+    if (acted) sc.act = acted.act;
     if (v.weapon === 'away') sc.sword = false;
     if (v.helmet === 'off') sc.helmet = false;
     if (out) sc.outdoors = true;

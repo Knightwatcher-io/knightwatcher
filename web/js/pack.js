@@ -1076,7 +1076,7 @@
      and its drawing by the effects library, effects.js (KW.effects). The page loads that file before
      this one; under Node this file asks for it beside itself, the first time a pack names an
      effect. */
-  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'flame', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst'];
+  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'horseshoe', 'hood', 'flame', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst'];
   /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
      for, the patron's anchors and the critter's frames. */
   const ROLES = ['patron', 'foe', 'critter'];
@@ -1111,8 +1111,12 @@
   const SCENE_RANGE = freeze({ L: [-976, -16], R: [976, 1936], T: [-602, -2], W: [992, 2912] });
   /* The named values a scene's acts give its moving and over layers, and their ranges: targetDx, the
      pixels the training act moves the target's group by when it is struck, in a scene with a
-     target. Its coefficient may have three decimals, as the yard's lean, 713 + targetDx * 0.8, needs. */
-  const ACT_RANGE = freeze({ targetDx: [-15, 15] });
+     target; and spot, the x in pixels of the spot the watcher stands at by the anvil (its spot
+     times U), which the anvil's places count from, in a scene with an anvil. Their coefficients may
+     have three decimals, as the yard's lean, 713 + targetDx * 0.8, needs. ACT_PART names the part
+     each needs, and the reason a scene without it is refused with. */
+  const ACT_RANGE = freeze({ targetDx: [-15, 15], spot: [150, 810] });
+  const ACT_PART = freeze({ targetDx: ['target', 'is the target\'s dx, and needs the scene\'s target'], spot: ['anvil', 'is the watcher\'s x at the anvil, and needs the scene\'s anvil'] });
   const U = 5;
   const WORLD_LIMITS = freeze({ scenes: 16, cast: 16, props: 8, overlays: 8, words: 8, worlds: 8, stamps: 64, stampShapes: 64,
     layers: 32, tiles: 64, effects: 48, tileShapes: 32, stillShapes: 2000, frameShapes: 400, stillCost: 200000, frameCost: 16000,
@@ -1725,8 +1729,8 @@
   /* ---- Step 6 for 1.1: references ---- */
 
   /* The named values a world scalar may lean on: the screen's edges in a layer of a scene, the
-     tile's x and its hash inside a tile, and a wave and the target's dx (in a scene with a
-     target) in a moving or over layer. Nothing elsewhere. */
+     tile's x and its hash inside a tile, and a wave and the values an act gives (ACT_RANGE, each in
+     a scene with the part ACT_PART names) in a moving or over layer. Nothing elsewhere. */
   function wnames(v, path, ctx) {
     if (!isObj(v)) return;
     for (const k of Object.keys(v)) {
@@ -1738,7 +1742,7 @@
       else if (k === 'wave') ok = ctx.where === 'moving' || ctx.where === 'over';
       else if (has(ACT_RANGE, k)) {
         ok = ctx.where === 'moving' || ctx.where === 'over';
-        if (ok && !(ctx.scene && ctx.scene.target)) fail(p, 'is the target\'s dx, and needs the scene\'s target');
+        if (ok && !(ctx.scene && ctx.scene[ACT_PART[k][0]])) fail(p, ACT_PART[k][1]);
       } else if (DIFFS.includes(k) || VALUES.includes(k) || k === 'step') ok = false;
       else fail(p, 'is not a named value');
       if (!ok) fail(p, 'cannot be used in ' + WWHERE[ctx.where]);

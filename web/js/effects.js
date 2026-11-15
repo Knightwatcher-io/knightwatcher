@@ -27,7 +27,7 @@
   const { alpha, glow, Rh, ell, rrect, poly, strip, hsh, dith } = D;
 
   /* The palette's colours the effects' defaults use, as draw.js has them. */
-  const K = '#1a1524', W = '#ffffff', N0 = '#b98045', N1 = '#96622f', N2 = '#70461f', N3 = '#4c2e12';
+  const K = '#1a1524', W = '#ffffff', S2 = '#aab6c6', S3 = '#7d899b', N0 = '#b98045', N1 = '#96622f', N2 = '#70461f', N3 = '#4c2e12';
 
   /* ---- Bounds --------------------------------------------------------------------------------- */
 
@@ -252,6 +252,45 @@
     }
   };
 
+  /* horseshoe: a horseshoe hung open end down, its arc round p, r[0] to either side and r[1] above:
+     a line through the points of the arc every .23 radians from -2.3 to 2.3, stroked in of[0], then
+     narrower in of[1], with a short shine of of[2] along its left shoulder, as the smithy's tool
+     board hangs two. The arc's points fall between the grid's eighths, which no shape of a pack may
+     name. */
+  const SHOE = { from: -2.3, to: 2.31, step: .23, hw: [6, 3.5, 1], shine: [2, 8] };
+  function shoeArc(f) {
+    const [x, y] = f.p, [rx, ry] = f.r, pts = [];
+    for (let a = SHOE.from; a <= SHOE.to; a += SHOE.step) pts.push([x + Math.sin(a) * rx, y - Math.cos(a) * ry]);
+    return pts;
+  }
+  /* What SP.stroke(pts, hw) fills (sprites.js): a strip along each segment and a disc on each point. */
+  const strokeCost = (pts, hw) => pts.reduce((n, q, i) => n + B.ell(hw) + (i ? B.strip(q[0] - pts[i - 1][0], q[1] - pts[i - 1][1], hw) : 0), 0);
+  const horseshoe = {
+    fields: { p: { kind: 'point' }, r: { kind: 'pair', of: [[1, 64], [1, 64]], def: [18, 22] }, of: { kind: 'colours', min: 3, max: 3, def: [K, S3, S2] } },
+    cost(b) {
+      const pts = shoeArc({ p: [0, 0], r: b.r }), [s0, s1] = SHOE.shine;
+      return strokeCost(pts, SHOE.hw[0]) + strokeCost(pts, SHOE.hw[1]) + strokeCost(pts.slice(s0, s1), SHOE.hw[2]);
+    },
+    draw(f) {
+      const pts = shoeArc(f), [s0, s1] = SHOE.shine;
+      SP.stroke(pts, SHOE.hw[0], f.of[0]); SP.stroke(pts, SHOE.hw[1], f.of[1]); SP.stroke(pts.slice(s0, s1), SHOE.hw[2], f.of[2]);
+    }
+  };
+
+  /* hood: a chimney w wide from p down to neck, over a hood that flares out by flare either side
+     down to foot, filled in colour as one polygon by rows, as the smithy's forge has it. The corners
+     where the chimney meets the hood turn inwards, so no polygon of a pack, which must be convex,
+     can say it. */
+  const hood = {
+    fields: { p: { kind: 'point' }, w: { kind: 'length' }, neck: { kind: 'offset' }, foot: { kind: 'offset' }, flare: { kind: 'num', lo: 0, hi: 512 },
+      colour: { kind: 'colour', def: K } },
+    cost: b => B.poly(Math.max(hi(b.p[1]), hi(b.neck), hi(b.foot)) - Math.min(lo(b.p[1]), lo(b.neck), lo(b.foot))),
+    draw(f) {
+      const [x, y] = f.p, { w, neck, foot, flare } = f;
+      poly([[x, y], [x + w, y], [x + w, neck], [x + w + flare, foot], [x - flare, foot], [x, neck]], f.colour);
+    }
+  };
+
   /* flame: a flame of three tongues standing at p, size times the torch's, its points moving by two
      sines of the time plus dt. */
   const TONGUES = [[1, '#ff5a1e', 0], [.7, '#ffb000', 1.7], [.42, '#fff3a0', 3.1]];
@@ -374,7 +413,7 @@
   /* ---- The library ------------------------------------------------------------------------------ */
 
   /* The effects, in the order the world format lists them (pack.js names the same list). */
-  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, flame, twinkle, drift, wander, coals, steam, burst };
+  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, horseshoe, hood, flame, twinkle, drift, wander, coals, steam, burst };
   const NAMES = Object.freeze(Object.keys(TABLE));
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const SCALAR = ['offset', 'length', 'term'];

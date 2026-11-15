@@ -4,8 +4,9 @@ A world is what the knight's surroundings are made of: the scenes, the supportin
 drawings of the devices, the words and the overlay. Format 1.1 of the packs carries a world as
 data ([packs.md](./packs.md#format-11) gives the format and its checks). This page describes what
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
-pack, `kw.medieval`, which holds four scenes, the battlement, the camp, the yard and the cellar. Every other
-scene, the cast, the devices, the words and the overlay are still drawn from code.
+pack, `kw.medieval`, which holds five scenes, the battlement, the camp, the yard, the cellar and the
+smithy. The house and the court, the cast, the devices, the words and the overlay are still drawn
+from code.
 
 ## The medieval world's pack
 
@@ -50,6 +51,21 @@ loads it after the base pack's. It holds:
   their seams, the two crate stacks and the barrel. Its one moving layer holds the sconce's light,
   the flame and the mark where the devices are drawn. Its places, spot, rounds and `can` are the code
   scene's, and it keeps the weapon away (`"weapon": "away"`) and the helmet on;
+- the scene `smithy`, the smithy of `web/js/scenes/smithy.js` written as data. Its one still layer
+  holds, in the code's order, the wall's bricks and its beam, the tool board with the hammer, the
+  tongs and the two horseshoes (the effect `horseshoe`), the quench barrel and the glint on its
+  water, the small table, the forge's hood and chimney (the effect `hood`), its bricks, the hearth
+  (a tile of one repeat, below), the mouth of the fire, the floor of slabs and the ash, the anvil,
+  and last the gear at rest: the shield on the wall and the weapon across the anvil, each through a
+  `rest` mark. Its first moving layer holds the fire's light, the coals, the three flames, the
+  sparks over them, the hot tip of the blade (a `rest` mark for the weapon at the anvil's rest) and
+  the mark where the devices are drawn; its second, while the hammer strikes (`"when": ["strike"]`),
+  the burst of sparks at the blow, `{ "k": "fx", "fx": "burst", "p": [{ "spot": 1, "c": 132 }, 418]
+  }`. Its places, spot and `can` (`updating` alone) are the code scene's, and so are its rests,
+  `anvil`, `{ "from": "spot", "x": 50, "y": 425, "a": "flat" }`, and `wall`, `{ "kind": "hang", "x":
+  145, "y": 312, "w": 100, "h": 132 }`. It takes the helmet off, holds the weapon (the act puts it
+  on the anvil), is not quiet and hosts nothing, and its `anvil` is `{ "rest": "anvil", "spark":
+  [132, 418] }`, which gives it the anvil's act. Its one round, at its spot, is not compiled (below);
 - two stamps, `sconce` and `barrel`: the props `sconceHD` and `barrelHD` of `props.js`, the barrel at
   the 84 by 72 the cellar and the yard draw it.
 
@@ -61,16 +77,19 @@ At the widest screen they assume, the checks find:
 | camp | 66 shapes, 56 668 fills | 7 shapes, 718 fills, 8 glows |
 | yard | 298 shapes, 28 929 fills | 44 shapes, 2 086 fills, 1 glow |
 | cellar | 440 shapes, 76 803 fills | 3 shapes, 120 fills, 1 glow |
+| smithy | 339 shapes, 15 212 fills | 9 shapes, 508 fills, 2 glows |
 
 against limits of 200 000 fills for the still layers, and 16 000 fills and 24 glows for a frame.
 The shapes are counted with each tile's repeats and each stamp's shapes written out. The camp's
-glows are the fire's light and the seven fireflies.
+glows are the fire's light and the seven fireflies, the smithy's the fire's light and the sparks'.
+The gear at rest and the hot tip are the engine's drawing, as the devices are, and count toward no
+scene's cost.
 
 Version 0.1.0, which held the cellar alone, shipped signed with `kw1` by a signing run as the base
 pack is ([development.md](./development.md#signing-the-packs)). Version 0.2.0 ships unsigned while
 the other scenes are written as data, and is signed when they are all in: until then a deployed page
 refuses it and draws every scene from code, and a `dev` page draws the battlement, the camp, the
-yard and the cellar from it. A change to a signed pack takes the signature's validity with it in the same way.
+yard, the cellar and the smithy from it. A change to a signed pack takes the signature's validity with it in the same way.
 
 ## Where the scenes are drawn from
 
@@ -79,8 +98,8 @@ yard and the cellar from it. A change to a signed pack takes the signature's val
 whose `kw-version` meta tag says `dev`. A `dev` page reads `kw.medieval` signed or not; a deployed
 page reads it only when it carries a signature that verifies against a key in `KEYS`.
 
-Each scene of `kw.medieval` whose id names a code scene (today the battlement, the camp, the yard
-and the cellar) is compiled and takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
+Each scene of `kw.medieval` whose id names a code scene (today the battlement, the camp, the yard,
+the cellar and the smithy) is compiled and takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
 which is not enumerable, so the engine and the settings, which list the scenes by their short names
 until worlds can be chosen, see the same seven scenes as before. The code scenes stay where they
 are, in `js/scenes/`, and are the fallback: the owner decided that the medieval world keeps a copy
@@ -96,11 +115,11 @@ A scene is drawn from code when:
 | reading threw, which `read()` never should | `...: the pack kw.medieval was refused at the size step`, the reason `the pack could not be read: <message>` |
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
 
-Otherwise the line is `knightwatcher: the scenes battlement, camp, yard and cellar are drawn from the pack
-kw.medieval 0.2.0, unsigned` (or `signed`), written with `console.info`; the others are
-`console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the cellar
-failing to compile it is `the scenes battlement, camp and yard are drawn ...`, after the cellar's own
-line. Of two copies of `kw.medieval` the higher
+Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar and smithy are drawn
+from the pack kw.medieval 0.2.0, unsigned` (or `signed`), written with `console.info`; the others
+are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
+cellar failing to compile it is `the scenes battlement, camp, yard and smithy are drawn ...`, after
+the cellar's own line. Of two copies of `kw.medieval` the higher
 version is used, as `gather` chooses.
 
 The knight reads the same texts, so it reads `kw.medieval` too. The pack carries no items and
@@ -148,14 +167,16 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 
 | Interface | From |
 |---|---|
-| `spot`, `rounds`, `can` | the same fields |
+| `spot`, `can` | the same fields |
+| `rounds` | the same field, but in a scene with an `anvil`, below |
 | `places` | `things`, each place copied as it is |
+| `rests` | `rests`, below; only when there are any |
 | `sword: false` | `"weapon": "away"` |
 | `helmet: false` | `"helmet": "off"` |
 | `outdoors: true` | `hosts` naming both `flies` and `crate` |
 | `foeZone` | `foe`: its `side` and `spans`, as `{ side, spans }` |
 | `wallAt(x)` | `foe.wall`, below; only when it has one |
-| `act(t, s)` | `target`: the training act, below; only when there is one |
+| `act(t, s)` | `target`, the training act, or `anvil`, the anvil's act, both below; only when there is one |
 | `paint(s)` | the still layers, into the cached backdrop; only when there are any |
 | `draw(t, s)` | the moving layers |
 | `over(t, s)` | the over layers; only when there are any, as a code scene without `over` has none |
@@ -172,8 +193,9 @@ right when the engine comes to read it. `decor` is not read, since nothing draws
 **Terms.** A scalar is a number, or a term object whose keys are added up in the order they are
 written: `c`, the named values `L`, `R`, `T` and `W` (the canvas's edges and width on the grid,
 from `KW.view`, `W` being `HR - HL`), inside a tile `x` and `h` (`hsh(x, seed) % mod`), and in a
-moving or over layer `wave` (`amp * Math.sin(t / div + phase)`) and, in a scene with a target,
-`targetDx` (the pixels the training act moves the target by, below). The first key gives the value and
+moving or over layer `wave` (`amp * Math.sin(t / div + phase)`), in a scene with a target
+`targetDx` (the pixels the training act moves the target by) and in a scene with an anvil `spot`
+(the x of the spot the watcher works the anvil from, `s.kx`), both below. The first key gives the value and
 each next one is added to it, so a term is written in the order the code adds: `{ "x": 1, "c": 178 }`
 for `x + 178`, `{ "c": 0.09, "wave": [0.025, 150, 0] }` for `.09 + .025 * Math.sin(t / 150)`. That
 is what makes the floating-point bits come out as the code's.
@@ -188,7 +210,9 @@ it `rgba(0,0,0,0.3)`; [page.md](./page.md#checks) says how its test allows for t
 **Shapes.** A `rect` filled with one colour draws as `Rh` and with a band list as `Rv`; `ell`,
 `rrect`, `poly`, `strip` and `glow` draw through the primitive of their name. `fx` draws the effect
 of `KW.effects` it names, its scalars evaluated as terms and its colours resolved, with the scene's
-time when it moves, and a triggered one, `burst`, with the time since the target was last struck.
+time when it moves, and a triggered one, `burst`, with the clock of the scene's act: the ms since
+the target was last struck, or the progress of the hammer's blow, and not at all while the hammer
+is not striking.
 `use` draws a stamp's shapes moved to its point. A `tile` draws its shapes at each `x` from
 `Math.floor(from / step) * step + phase` while `x` is below `to`, as the scenes' loops run; each of
 its picks gives `@pick.<name>` one of its colours at each `x`, `of[hsh(x, seed) % of.length]`. An
@@ -196,17 +220,37 @@ its picks gives `@pick.<name>` one of its colours at each `x`, `of[hsh(x, seed) 
 from the same anchor as its point, `null` for no bound: the code's `ell(460, 360, 82, 66, c, null,
 360)` is `"clip": [null, 360]`. The mark `things` is where the devices behind the knight are drawn, `KW.devices.draw(t, s)`.
 
+**Rests and the rest mark.** A scene's `rests` compile to the form the code scenes give in `RESTS`:
+a frame for the weapon, `{ x, y, a }`, its angle `"upright"` as 0, `"flat"` as `Math.PI / 2` and a
+number as it is, and a place, `{ kind, x, y, w, h }`, for a rest view. A rest with `"from": "spot"`
+counts its x from where the watcher stands, `s.kx`; the interface leaves that field out, as the code
+scenes have it, and `x` is then the distance from the spot. The mark `{ "k": "rest", "slot": "main",
+"at": "anvil" }` draws the watcher's equipped gear of its slot at that rest through
+`KW.knight.rest.draw`: the weapon on the frame with its angle, the helmet or the shield in the place
+at its `x` and `y`, which is the call `smithy.js` makes, `K.rest.draw('main', kx + 50, 425, Math.PI /
+2)`. In a still layer the gear is painted into the backdrop, and in a moving or over layer each
+frame, as the house will draw the helmet on its stool. At the rest the scene's `anvil` names, the
+weapon lies in the backdrop and the hammer works it, so there a rest mark for the weapon in a moving
+or over layer draws the anvil's hot tip on the blade (below), and not the weapon a second time. A
+rest view is not yet held to the place's `kind`, `w` and `h`: `KW.knight.rest` does not say what a
+view fits, and every view in the base pack fits every place the medieval scenes give it.
+
 **Layers and the key.** A layer is drawn when every predicate of its `when` holds:
 `cond:<id>` when the winning condition is `id`, `tv`, `inBed`, `helmOff` and `strike` from the
 frame, each after an optional `!`. `night` always holds and `day` never does, since the medieval
 world is drawn at night and nothing yet decides between them. The backdrop's key is worked out
 from what the still layers read: one character for each predicate their `when` names, in the order
 first named, `1` where it holds. A scene writes no key of its own, so the key cannot miss something
-the backdrop reads. The cellar's and the camp's still layers wait on nothing, so their keys are
-always empty and each backdrop is painted once for each shape of the screen, as the code scenes' are.
-The battlement's rope is painted only while the WAN is down, so its key is `1` then and `0`
+the backdrop reads. Where the still layers paint gear at rest, the key goes on with the spot's x,
+rounded, when any of their rests counts from the spot, and then, once for each slot in the order
+first painted, `'|'` and the equipped item's name, `KW.knight.rest.key(slot)`, so a change of gear
+paints the backdrop again. The cellar's and the camp's still layers wait on nothing, so their keys
+are always empty and each backdrop is painted once for each shape of the screen, as the code scenes'
+are. The battlement's rope is painted only while the WAN is down, so its key is `1` then and `0`
 otherwise, where the code scene's is `wan` and the empty string: the strings differ, and the states
-they tell apart are the same.
+they tell apart are the same. The smithy's key is `|440||kw.base/main.greatsword` at its spot with
+the greatsword and no shield, and `|440|code|code` on the knight's code path, where the code
+smithy's are `440|kw.base/main.greatsword` and `440|code`.
 
 **Groups and keyframes.** A moving or over layer may declare `groups`, a shape in it may name one
 with `"g"`, and its `anim` drives them. What is built is what the battlement needs: a clock in
@@ -241,20 +285,49 @@ as `yard.js` keeps `dummyHit`. The wobble cannot be keyframes: it changes value 
 in the layer; the mark `{ "k": "target" }` is reserved, and refused by name until it is given a
 use.
 
+**The anvil's act.** A scene with an `anvil`, `{ rest, spark }`, gets the act the engine plays in
+the smithy, built beside the target's in the compiler's table of acts. It is `act()` in `smithy.js`
+with its numbers in the compiler's table `ANVIL`: whatever else is up, the weapon put away
+(`o.sword = false`) and the hammer rising slowly and falling fast once every 1 300 ms, `o.hammer`
+`1 - ease(c / .55)` for the first 55 hundredths of the cycle `c` and `((c - .55) / .45) ** 3` after,
+a progress bar filling over 9 seconds, and the hammer striking from 93 hundredths of a cycle to 6 of
+the next, when `strike` holds and the eyes shut. While it strikes, a triggered effect gets the
+blow's progress, `(c > .5 ? c - .93 : c + .07) / .13`, from 0 to 1 over the strike, which is the
+sparks the hammer throws; while it does not, no triggered effect is drawn. The act gives the moving
+and over layers the named value `spot`, the watcher's x, which the anvil's places count from, so
+that the sparks fly where the hammer falls: the smithy's are at `[{ "spot": 1, "c": 132 }, 418]`,
+the code's `[s.kx + 132, 418]`. The anvil's `spark` says the same point, counted from the spot, and
+is not read: the sparks are the scene's own `burst`, in a layer that waits on `strike`.
+
+The act holds the watcher at the anvil, so a scene with an `anvil` gives no `rounds`, as
+`smithy.js` gives none: with rounds the engine would walk the knight between them, and the hammer
+would follow. The format asks for one round at least, so the smithy's data has one at its spot,
+guarding, which is where the act keeps the knight.
+
+The **hot tip** of the blade is part of the anvil's act, and reads the equipped weapon's `blade`,
+`KW.knight.rest.blade()`: it is drawn where a `rest` mark for the weapon at the anvil's rest stands
+in a moving or over layer, on the weapon as that rest lays it, and only for a weapon that gives a
+blade. It is the code smithy's drawing with its numbers in the compiler's table `TIP`: from the
+point, `to` along the blade, and its edges, `half` either side, a glow that flickers, a dithered
+patch 87 short of the point, three bands of red to orange starting 73, 57 and 43 short of it, the
+point white-hot, and a line of shine and one of shade. No pack can say it, since it is drawn from
+the weapon's own measurements.
+
 **What it does not build yet,** it refuses by name: the scene does not compile, the reason says
 `<field>: <what> is not built in this engine yet`, and the scene is drawn from code. That covers
-the shape kinds `dith` and `pix`, the marks other than `things` (`rest`, `patron`, `sleeper`,
+the shape kinds `dith` and `pix`, the marks other than `things` and `rest` (`patron`, `sleeper`,
 `target`, `bubble`), `only` on a shape, `"g"` on an effect or a mark, of keyframes a clock in
 seconds, a triggered clock (`trigger`), a wave track, a palette track and any channel but `show`, a
 mixed colour, a pick inside a band list or an effect, an effect inside a stamp, a triggered effect
-(`burst`) in a scene without a target and a burst of sparks on a target's blow, a scene that hosts
-the flies without the crate or the crate without the flies, and the fields `rests`, `bed`, `screen`,
-`seat`, `anvil` and `pole`. Each later scene adds the rows it needs to the compiler's tables: a shape kind to `SHAPES`, a mark to
-`MARKS`, a part of the key beside the predicates.
+(`burst`) in a scene without a target or an anvil, a burst of sparks on a target's blow and of straw
+on the hammer's, a scene with both a target and an anvil, a scene that hosts the flies without the
+crate or the crate without the flies, and the fields `bed`, `screen`, `seat` and `pole`. Each later
+scene adds the rows it needs to the compiler's tables: a shape kind to `SHAPES`, a mark to `MARKS`,
+an act beside the target's and the anvil's, a part of the key beside the predicates and the gear.
 
 ## Writing a scene as data
 
-The cellar, the camp and the battlement show how code becomes data:
+The cellar, the camp, the battlement, the yard and the smithy show how code becomes data:
 
 - a loop of fixed shapes across the screen becomes a tile. `for (let x = Math.floor(HL / 160) * 160 +
   60; x < HR; x += 160)` is `{ "k": "tile", "step": 160, "phase": 60, "from": { "L": 1 }, "to": { "R":
@@ -293,6 +366,23 @@ numbers as its defaults: `{ "k": "fx", "fx": "pebbles", "y": 530 }` is the yard'
 ([page.md](./page.md#the-effects)). `yard.js` keeps its own loop, and the call records hold the two
 equal.
 
+The smithy needed two more effects and one turn of a tile:
+
+- its horseshoes are an arc stroked three times, `SP.stroke` through points every .23 radians,
+  `x + Math.sin(a) * 18`, which fall between the eighths a coordinate of a pack must keep to.
+  `horseshoe` draws one, its arc round `p`: `{ "k": "fx", "fx": "horseshoe", "p": [290, 230] }`;
+- its forge's hood is a chimney over a hood that flares out, one polygon that `poly()` fills by rows
+  and whose corners at the chimney's foot turn inwards, so it is not convex, which a pack's polygon
+  must be. `hood` draws it: `{ "k": "fx", "fx": "hood", "p": [762, { "T": 1, "c": -2 }], "w": 168,
+  "neck": 246, "foot": 292, "flare": 46 }` is the code's six points from `HT - 2` down to 292;
+- its hearth runs from fixed xs to the right edge, `Rh(728, 324, HR - 728, ...)` and three more,
+  and a length's `c` may not be below 0, so `{ "R": 1, "c": -728 }` is refused. The four shapes sit in
+  a tile of one repeat at x 732, `{ "step": 4, "phase": 0, "from": 732, "to": 733 }`, and each width
+  subtracts the tile's x instead: `{ "R": 1, "x": -1, "c": 4 }` is `HR - 732 + 4`, the bits of `HR -
+  728` on the whole numbers the edges always are.
+
+`smithy.js` keeps its own drawing of all three, and the call records hold the two equal.
+
 ## Two copies, held equal
 
 Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallback, and its data in
@@ -307,12 +397,20 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   pack when, and only when, they share it from code. The keys themselves may differ. The check walks
   every scene the pack gives, so each later scene comes under it as it is added.
 - The same test checks that the compiled scene gives the code scene's interface: the same spot,
-  places, rounds, `can`, weapon and helmet, `outdoors` and `foeZone`, and the same parts drawn,
-  `wallAt` among them.
-- A scene with an act keeps what it did on one frame for the next, so `tests/web/world-scenes.test.js`
-  also runs every scene of the pack that has a `target` frame by frame beside its code scene, every
-  10 ms through two training rounds while all is quiet and while the CPU runs hot, and compares every
-  call and every change to the knight's pose.
+  places, rests, rounds, `can`, weapon and helmet, `outdoors` and `foeZone`, and the same parts
+  drawn, `wallAt` among them.
+- An act changes the knight's pose and the drawing from one moment to the next, and the target's
+  keeps the time of its last blow from one frame for the next, so `tests/web/world-scenes.test.js`
+  also runs every scene of the pack that has a `target` or an `anvil` frame by frame beside its code
+  scene, and compares every call, every change to the knight's pose and `strike`: the target's every
+  10 ms through two training rounds while all is quiet and while the CPU runs hot, the anvil's every
+  10 ms through five blows of the hammer, idle and while updating, at the spot and at x 300.
+- `tests/web/knight.test.js` draws the smithy from code with the knight's gear at rest, and
+  `tests/web/world-knight.test.js` runs its checks on the smithy from the pack: the smithy painted at
+  two spots and drawn at two moments against the knight's stored records, with the knight from code
+  and from the base pack; the same calls as the code smithy in the base pack's other looks (the
+  arming sword and the shield, Broad and Slim); the backdrop key, which names the gear; the rests;
+  and no hot tip for a weapon without a blade.
 - The records sample five moments, which cannot pin down where a blink starts and stops, so
   `tests/web/world.test.js` draws the battlement's sparks every 25 ms over four seconds, and at the
   edges of the blink, against the code's `Math.floor(t / 150) % 3 === 0`, and compares `wallAt`
@@ -334,9 +432,11 @@ again from the code if the scene is meant to look different (`SCENES_LOG=write`,
 it is signed needs a signing run again ([development.md](./development.md#signing-the-packs)).
 
 `tests/web/world.test.js` checks the rest: that the pack reads clean with the costs above, where a
-`dev` and a deployed page draw the battlement, the camp, the yard and the cellar from, the console lines and
+`dev` and a deployed page draw the battlement, the camp, the yard, the cellar and the smithy from, the console lines and
 the status, the long names, a compile that throws for one scene or for all, the predicates and the
 key, the terms and the colours' spelling, `outdoors`, `foeZone` and `wallAt` from `hosts` and `foe`,
 the keyframes' clock with a phase and played once, an ell's clip and a tile's picks, the target's
-act with its blow, its wobble and its straw, the pack library's rules for `targetDx`, and that what
-the compiler does not build is refused by name.
+act with its blow, its wobble and its straw, the rests and their angles, the rest mark in a still
+and a moving layer and the key it adds to, the anvil's act against the code smithy's every 10 ms
+over nine seconds with its sparks and its hot tip, the pack library's rules for `targetDx` and
+`spot`, and that what the compiler does not build is refused by name.
