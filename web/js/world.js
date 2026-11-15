@@ -19,11 +19,11 @@
    - shapes: rect, ell, rrect, poly and strip without clip, glow, fx, use and tile without pick or
      only;
    - layers: still (painted into the cached backdrop), moving (in draw) and over (in over), each with
-     its when; no groups or keyframes yet;
+     its when; a moving or over layer's groups, and keyframes on a clock in ms with show tracks;
    - the things mark, where the devices behind the watcher are drawn;
    - the backdrop's key, worked out from what the still layers read: the predicates of their when;
-   - hosts, as outdoors when a scene hosts both the flies and the crate, and the foe's zone,
-     foeZone, from foe without a wall.
+   - hosts, as outdoors when a scene hosts both the flies and the crate, and from foe the foe's
+     zone, foeZone, and with a wall the line it climbs over, wallAt.
    Each later step adds rows to these tables. */
 (function (KW) {
   'use strict';
@@ -187,10 +187,15 @@
   function shape(s, path, env) {
     const kind = has(SHAPES, s.k) ? SHAPES[s.k] : has(MARKS, s.k) ? MARKS[s.k] : null;
     if (!kind) throw notBuilt(at(path, 'k'), (env.marks.includes(s.k) ? 'the mark ' : 'the shape kind ') + quote(s.k));
-    for (const k of ['g', 'only']) if (has(s, k)) throw notBuilt(at(path, k), quote(k) + ' on a shape');
-    return { k: s.k, r: kind.compile(s, path, env) };
+    if (has(s, 'only')) throw notBuilt(at(path, 'only'), '"only" on a shape');
+    if (has(s, 'g') && !(env.groups && has(env.groups, s.g))) throw notBuilt(at(path, 'g'), '"g" outside its layer\'s groups');
+    return { k: s.k, g: has(s, 'g') ? s.g : null, r: kind.compile(s, path, env) };
   }
-  function drawShape(c, E, ox, oy) { (has(SHAPES, c.k) ? SHAPES[c.k] : MARKS[c.k]).draw(c.r, E, ox, oy); }
+  /* Draws a shape, unless its group is hidden in this frame (E.off, from its layer's keyframes). */
+  function drawShape(c, E, ox, oy) {
+    if (c.g !== null && E.off && E.off[c.g]) return;
+    (has(SHAPES, c.k) ? SHAPES[c.k] : MARKS[c.k]).draw(c.r, E, ox, oy);
+  }
 
   /* ---- Predicates and layers -------------------------------------------------------------------
      A predicate compiles to { n, id, neg }: n a name of PREDICATES or 'cond', with id the condition.
@@ -205,14 +210,58 @@
     const v = p.n === 'cond' ? !!(s.w && s.w.id === p.id) : p.n === 'night' ? true : p.n === 'day' ? false : !!s[FROM_FRAME[p.n]];
     return p.neg ? !v : v;
   }
+  /* ---- Groups and keyframes ---------------------------------------------------------------------
+     A moving or over layer may declare groups, name one on a shape with "g", and drive them with
+     keyframes. What is built is what the scenes so far need: a clock in whole milliseconds ("ms":
+     true), looping or not, started at phase, and show tracks, which hide a group's shapes while
+     their value is 0. A key holds from its time until the next one's, as 1.0's step ease does, and
+     the first key's value holds before it. The clock is the scene's time modulo the period, both in
+     ms, so a show track of [[0, 1], [150, 0]] over 450 shows its group from 0 to before 150 of every
+     450 ms, the code's Math.floor(t / 150) % 3 === 0. (Dividing first, as (t / period) % 1, would
+     put 600 ms of a 450 ms clock a hair before the key at 150.) */
+  function keyframes(a, path) {
+    if (a.ms !== true) throw notBuilt(path, 'a clock in seconds');
+    if (has(a, 'trigger')) throw notBuilt(at(path, 'trigger'), 'a triggered clock');
+    const tracks = a.tracks.map((t, i) => {
+      const p = idx(at(path, 'tracks'), i);
+      if (has(t, 'wave')) throw notBuilt(p, 'a wave track');
+      if (has(t, 'pal')) throw notBuilt(p, 'a palette track');
+      if (t.ch !== 'show') throw notBuilt(at(p, 'ch'), 'the channel ' + quote(t.ch));
+      return { g: t.g, times: t.keys.map(k => k[0]), values: t.keys.map(k => k[1]) };
+    });
+    return { period: a.period, loop: a.loop, phase: (a.phase || 0) * a.period, tracks };
+  }
+  /* The value of a step track at u ms into the clock. */
+  function stepAt(tr, u) {
+    const T = tr.times, n = T.length;
+    if (n === 1 || u <= T[0]) return tr.values[0];
+    if (u >= T[n - 1]) return tr.values[n - 1];
+    let i = 0;
+    while (T[i + 1] <= u) i++;
+    return tr.values[i];
+  }
+  /* The groups the keyframes a hide at scene time t, by name. */
+  function hidden(a, t) {
+    const tt = t > 0 ? t : 0, P = a.period;
+    const u = a.loop ? ((tt + a.phase) % P + P) % P : Math.min(P, a.phase + tt);
+    const off = {};
+    for (const tr of a.tracks) if (stepAt(tr, u) === 0) off[tr.g] = true;
+    return off;
+  }
+
   function layer(l, path, env) {
-    for (const k of ['groups', 'anim']) if (has(l, k)) throw notBuilt(at(path, k), 'a layer\'s ' + k);
     const when = (l.when || []).map(predicate);
     for (const p of when) if (p.n !== 'cond' && p.n !== 'night' && p.n !== 'day' && !has(FROM_FRAME, p.n)) throw notBuilt(at(path, 'when'), 'the predicate ' + quote(p.n));
-    return { when, shapes: l.shapes.map((s, i) => shape(s, idx(at(path, 'shapes'), i), env)) };
+    const anim = has(l, 'anim') ? keyframes(l.anim, at(path, 'anim')) : null, inner = Object.assign({}, env, { groups: l.groups || null });
+    return { when, anim, shapes: l.shapes.map((s, i) => shape(s, idx(at(path, 'shapes'), i), inner)) };
   }
   function drawLayers(list, E) {
-    for (const l of list) if (l.when.every(p => holds(p, E.s))) for (const c of l.shapes) drawShape(c, E, 0, 0);
+    for (const l of list) {
+      if (!l.when.every(p => holds(p, E.s))) continue;
+      E.off = l.anim ? hidden(l.anim, E.t) : null;
+      for (const c of l.shapes) drawShape(c, E, 0, 0);
+      E.off = null;
+    }
   }
 
   /* ---- Scenes ---------------------------------------------------------------------------------- */
@@ -233,11 +282,15 @@
     if (flies !== crate) throw notBuilt(path, flies ? 'hosting the flies without the crate' : 'hosting the crate without the flies');
     return flies;
   }
-  /* The foe's zone, { side, spans }, as a code scene gives it. A wall the foe climbs over (wallAt)
-     is not built yet: without one the foe digs out of the ground. */
-  function foeZone(z, path) {
-    if (has(z, 'wall')) throw notBuilt(at(path, 'wall'), 'a foe\'s wall');
-    return { side: z.side, spans: z.spans.map(s => [s[0], s[1]]) };
+  /* The foe's zone, { side, spans }, as a code scene gives it, and with a wall the line the foe
+     climbs over, wallAt(x): high[1] where x + offset falls in the first high[0] of each period, low
+     elsewhere, with the battlement's own arithmetic, ((x + 70) % 160 + 160) % 160 < 80. Without a
+     wall there is no wallAt, and the foe digs out of the ground. */
+  function foeOf(z) {
+    const zone = { side: z.side, spans: z.spans.map(s => [s[0], s[1]]) };
+    if (!has(z, 'wall')) return { zone, wallAt: null };
+    const { period, offset, low } = z.wall, width = z.wall.high[0], high = z.wall.high[1];
+    return { zone, wallAt: x => ((((x + offset) % period) + period) % period < width ? high : low) };
   }
 
   /* The scene id of the loaded pack (a read() result of format 1.1) compiled to an object with the
@@ -246,7 +299,7 @@
     const v = pack.data.scenes[id], path = 'scenes.' + id;
     if (!isObj(v)) throw new Error(path + ': the pack has no such scene');
     for (const k of LATER) if (has(v, k)) throw notBuilt(at(path, k), 'the scene\'s ' + k);
-    const out = outdoors(v.hosts, at(path, 'hosts')), zone = has(v, 'foe') ? foeZone(v.foe, at(path, 'foe')) : null;
+    const out = outdoors(v.hosts, at(path, 'hosts')), foe = has(v, 'foe') ? foeOf(v.foe) : null;
     const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS };
     const lists = {};
     for (const k of ['still', 'moving', 'over']) lists[k] = freeze(v[k].map((l, i) => layer(l, idx(at(path, k), i), env)));
@@ -266,7 +319,7 @@
     if (v.weapon === 'away') sc.sword = false;
     if (v.helmet === 'off') sc.helmet = false;
     if (out) sc.outdoors = true;
-    if (zone) sc.foeZone = freeze(zone);
+    if (foe) { sc.foeZone = freeze(foe.zone); if (foe.wallAt) sc.wallAt = foe.wallAt; }
     return sc;
   }
 

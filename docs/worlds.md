@@ -4,8 +4,8 @@ A world is what the knight's surroundings are made of: the scenes, the supportin
 drawings of the devices, the words and the overlay. Format 1.1 of the packs carries a world as
 data ([packs.md](./packs.md#format-11) gives the format and its checks). This page describes what
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
-pack, `kw.medieval`, which holds two scenes, the camp and the cellar. Every other scene, the cast,
-the devices, the words and the overlay are still drawn from code.
+pack, `kw.medieval`, which holds three scenes, the battlement, the camp and the cellar. Every other
+scene, the cast, the devices, the words and the overlay are still drawn from code.
 
 ## The medieval world's pack
 
@@ -14,6 +14,17 @@ version 0.2.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pa
 `tools/pack-carrier.js` like the base pack's ([packs.md](./packs.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
+- the scene `battlement`, the battlement of `web/js/scenes/battlement.js` written as data. Its first
+  still layer holds, in the code's order, the sky, the stars, the two ridges of hills, the far keep
+  with its crenels and lit windows, the moon, the parapet's bricks and coping, the merlons, the
+  walkway and its flagstones, and the torch's bracket. Its second still layer, drawn while the WAN is
+  down (`"when": ["cond:wan_down"]`), holds the cut rope of the bell, its frayed end and the length
+  of rope on the walkway. Its first moving layer holds the stars that blink, the torch's light, its
+  flame and the mark where the devices are drawn; its second, also while the WAN is down, the three
+  sparks at the rope's end, which blink on a keyframe clock. Its places, spot, rounds and `can` are
+  the code scene's. It is quiet, hosts the flies, the crate, the feast and the foe, and gives the foe
+  the code scene's zone and a wall, the merlons and the parapet between them, which the goblin
+  climbs over;
 - the scene `camp`, the camp of `web/js/scenes/camp.js` written as data. Its one still layer holds,
   in the code's order, the sky, the stars, the two rows of pines, the four broad trees, the ground
   and the worn patch round the fire, the tufts of grass, the tent with its pole and guy ropes, the
@@ -35,17 +46,19 @@ At the widest screen they assume, the checks find:
 
 | Scene | Still layers | One frame of the moving and over layers |
 |---|---|---|
+| battlement | 342 shapes, 25 967 fills | 7 shapes, 185 fills, 1 glow |
 | camp | 66 shapes, 56 668 fills | 7 shapes, 718 fills, 8 glows |
 | cellar | 440 shapes, 76 803 fills | 3 shapes, 120 fills, 1 glow |
 
 against limits of 200 000 fills for the still layers, and 16 000 fills and 24 glows for a frame.
-The camp's glows are the fire's light and the seven fireflies.
+The shapes are counted with each tile's repeats and each stamp's shapes written out. The camp's
+glows are the fire's light and the seven fireflies.
 
 Version 0.1.0, which held the cellar alone, shipped signed with `kw1` by a signing run as the base
 pack is ([development.md](./development.md#signing-the-packs)). Version 0.2.0 ships unsigned while
 the other scenes are written as data, and is signed when they are all in: until then a deployed page
-refuses it and draws every scene from code, and a `dev` page draws the camp and the cellar from it.
-A change to a signed pack takes the signature's validity with it in the same way.
+refuses it and draws every scene from code, and a `dev` page draws the battlement, the camp and the
+cellar from it. A change to a signed pack takes the signature's validity with it in the same way.
 
 ## Where the scenes are drawn from
 
@@ -54,8 +67,8 @@ A change to a signed pack takes the signature's validity with it in the same way
 whose `kw-version` meta tag says `dev`. A `dev` page reads `kw.medieval` signed or not; a deployed
 page reads it only when it carries a signature that verifies against a key in `KEYS`.
 
-Each scene of `kw.medieval` whose id names a code scene (today the camp and the cellar) is compiled
-and takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
+Each scene of `kw.medieval` whose id names a code scene (today the battlement, the camp and the
+cellar) is compiled and takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
 which is not enumerable, so the engine and the settings, which list the scenes by their short names
 until worlds can be chosen, see the same seven scenes as before. The code scenes stay where they
 are, in `js/scenes/`, and are the fallback: the owner decided that the medieval world keeps a copy
@@ -71,10 +84,11 @@ A scene is drawn from code when:
 | reading threw, which `read()` never should | `...: the pack kw.medieval was refused at the size step`, the reason `the pack could not be read: <message>` |
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
 
-Otherwise the line is `knightwatcher: the scenes camp and cellar are drawn from the pack kw.medieval
-0.2.0, unsigned` (or `signed`), written with `console.info`; the others are `console.warn`. The line
-lists the scenes drawn from the pack in the pack's order, so with the cellar failing to compile it is
-`the scene camp is drawn ...`, after the cellar's own line. Of two copies of `kw.medieval` the higher
+Otherwise the line is `knightwatcher: the scenes battlement, camp and cellar are drawn from the pack
+kw.medieval 0.2.0, unsigned` (or `signed`), written with `console.info`; the others are
+`console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the cellar
+failing to compile it is `the scenes battlement and camp are drawn ...`, after the cellar's own
+line. Of two copies of `kw.medieval` the higher
 version is used, as `gather` chooses.
 
 The knight reads the same texts, so it reads `kw.medieval` too. The pack carries no items and
@@ -128,6 +142,7 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 | `helmet: false` | `"helmet": "off"` |
 | `outdoors: true` | `hosts` naming both `flies` and `crate` |
 | `foeZone` | `foe`: its `side` and `spans`, as `{ side, spans }` |
+| `wallAt(x)` | `foe.wall`, below; only when it has one |
 | `paint(s)` | the still layers, into the cached backdrop; only when there are any |
 | `draw(t, s)` | the moving layers |
 | `over(t, s)` | the over layers; only when there are any, as a code scene without `over` has none |
@@ -169,34 +184,59 @@ frame, each after an optional `!`. `night` always holds and `day` never does, si
 world is drawn at night and nothing yet decides between them. The backdrop's key is worked out
 from what the still layers read: one character for each predicate their `when` names, in the order
 first named, `1` where it holds. A scene writes no key of its own, so the key cannot miss something
-the backdrop reads. The cellar's still layer waits on nothing, so its key is always empty and its
-backdrop is painted once for each shape of the screen, as the code cellar's is.
+the backdrop reads. The cellar's and the camp's still layers wait on nothing, so their keys are
+always empty and each backdrop is painted once for each shape of the screen, as the code scenes' are.
+The battlement's rope is painted only while the WAN is down, so its key is `1` then and `0`
+otherwise, where the code scene's is `wan` and the empty string: the strings differ, and the states
+they tell apart are the same.
+
+**Groups and keyframes.** A moving or over layer may declare `groups`, a shape in it may name one
+with `"g"`, and its `anim` drives them. What is built is what the battlement needs: a clock in
+whole milliseconds (`"ms": true`), looping or played once, from its `phase`, with `show` tracks. A
+group whose `show` is 0 is not drawn; a key holds from its time to the next key's, the first key's
+value before it and the last's after it, as the step ease does in format 1.0. The clock is the
+scene's time modulo the period, both in ms. The rope's sparks are a layer of three rects in the group
+`sparks`, over a period of 450 ms with the keys `[[0, 1], [150, 0]]`: shown from 0 to before 150 of
+every 450 ms, which is the code's `Math.floor(t / 150) % 3 === 0` for every whole millisecond.
+Dividing first, `(t / period) % 1` against `150 / 450`, would not be: at 600 ms the quotient's
+fraction falls a hair below the key's, and the sparks would show where the code hides them.
+
+**The foe's wall.** `foe.wall`, `{ period, offset, high: [width, y], low }`, compiles to `wallAt(x)`,
+`((x + offset) % period + period) % period < width ? y : low`, the battlement's own arithmetic: its
+`{ "period": 160, "offset": 70, "high": [80, 411], "low": 464 }` is the code's
+`((x + 70) % 160 + 160) % 160 < 80 ? HFL - 119 : HFL - 66`. A `foe` without a wall gives no `wallAt`,
+and the goblin digs out of the ground, as at the camp.
 
 **What it does not build yet,** it refuses by name: the scene does not compile, the reason says
 `<field>: <what> is not built in this engine yet`, and the scene is drawn from code. That covers
 the shape kinds `dith` and `pix`, the marks other than `things` (`rest`, `patron`, `sleeper`,
-`target`, `bubble`), a `clip`, `g` and `only` on a shape, a tile's `pick`, a layer's `groups` and
-`anim`, a mixed colour, an effect inside a stamp, a triggered effect (`burst`), a scene that hosts
-the flies without the crate or the crate without the flies, a foe's `wall` (the line it climbs over,
-`wallAt` in the code scenes), and the fields `rests`, `bed`, `screen`, `seat`, `anvil`, `target`
-and `pole`. Each
-later scene adds the rows it needs to the compiler's tables: a shape kind to `SHAPES`, a mark to
+`target`, `bubble`), a `clip` and `only` on a shape, a tile's `pick`, of keyframes a clock in
+seconds, a triggered clock (`trigger`), a wave track, a palette track and any channel but `show`, a
+mixed colour, an effect inside a stamp, a triggered effect (`burst`), a scene that hosts the flies
+without the crate or the crate without the flies, and the fields `rests`, `bed`, `screen`, `seat`,
+`anvil`, `target` and `pole`. Each later scene adds the rows it needs to the compiler's tables: a shape kind to `SHAPES`, a mark to
 `MARKS`, a part of the key beside the predicates.
 
 ## Writing a scene as data
 
-The cellar and the camp show how code becomes data:
+The cellar, the camp and the battlement show how code becomes data:
 
 - a loop of fixed shapes across the screen becomes a tile. `for (let x = Math.floor(HL / 160) * 160 +
   60; x < HR; x += 160)` is `{ "k": "tile", "step": 160, "phase": 60, "from": { "L": 1 }, "to": { "R":
   1 } }`, and a loop that starts from `Math.floor((HL - 140) / 320) * 320 + 140` has `from` `{ "L": 1,
-  "c": -140 }` and `phase` 140;
+  "c": -140 }` and `phase` 140. A loop that counts from a fixed start, as the keep's crenels do
+  with `232 + i * 19` for three passes, is a tile from 0 whose phase is the start: `{ "step": 19,
+  "phase": 232, "from": 0, "to": 289 }`;
 - a loop over a fixed list (the shelves at 260 and 380, the cobwebs' corners, the floor's four rows
   of seams, the camp's four trees) is written out, one copy of its shapes for each pass, the
   arithmetic done. So is a short loop whose passes differ in more than x, as the fire ring's eight
   stones step up and down and change their fill, and a hash of a pass's number rather than of an x
   (the bark on the camp's log, `790 + i * 13 + hsh(i, 12) % 6`) is worked out once and written as
   the number it gives;
+- what a code scene draws only while a condition is up becomes a layer whose `when` names it, in the
+  same place in the order: the battlement's rope is a second still layer after the first, and its
+  sparks a second moving layer after the devices. A blink on a whole-millisecond clock, such as
+  `Math.floor(t / 150) % 3 === 0`, is a `show` track over the period the expression repeats on;
 - a `poly` names the way it is filled: `"dir": "rows"` for the code's `poly(pts, c)`, which fills by
   rows, and `"cols"` where the code passes `true`;
 - a prop drawn by a function of `props.js` becomes a stamp, its coordinates counted from the point
@@ -225,7 +265,12 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   pack when, and only when, they share it from code. The keys themselves may differ. The check walks
   every scene the pack gives, so each later scene comes under it as it is added.
 - The same test checks that the compiled scene gives the code scene's interface: the same spot,
-  places, rounds, `can`, weapon and helmet, `outdoors` and `foeZone`, and the same parts drawn.
+  places, rounds, `can`, weapon and helmet, `outdoors` and `foeZone`, and the same parts drawn,
+  `wallAt` among them.
+- The records sample five moments, which cannot pin down where a blink starts and stops, so
+  `tests/web/world.test.js` draws the battlement's sparks every 25 ms over four seconds, and at the
+  edges of the blink, against the code's `Math.floor(t / 150) % 3 === 0`, and compares `wallAt`
+  with the code scene's at every whole x from -1 200 to 2 400.
 - `tests/web/world-scenes.test.js` runs the checks of `foe.test.js` and `places.test.js` that depend
   on a scene on each scene the pack gives, compiled from it: the goblin's way in, where it stands, its
   hit and the blade against it in every scene that hosts a foe, and the places of the devices on the
@@ -243,7 +288,8 @@ again from the code if the scene is meant to look different (`SCENES_LOG=write`,
 it is signed needs a signing run again ([development.md](./development.md#signing-the-packs)).
 
 `tests/web/world.test.js` checks the rest: that the pack reads clean with the costs above, where a
-`dev` and a deployed page draw the camp and the cellar from, the console lines and the status, the
-long names, a compile that throws for one scene or for both, the predicates and the key, the terms
-and the colours' spelling, `outdoors` and `foeZone` from `hosts` and `foe`, and that what the
-compiler does not build is refused by name.
+`dev` and a deployed page draw the battlement, the camp and the cellar from, the console lines and
+the status, the long names, a compile that throws for one scene or for all, the predicates and the
+key, the terms and the colours' spelling, `outdoors`, `foeZone` and `wallAt` from `hosts` and `foe`,
+the keyframes' clock with a phase and played once, and that what the compiler does not build is
+refused by name.

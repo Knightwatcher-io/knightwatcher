@@ -480,7 +480,7 @@ steps as the rest, in the same order, and keeps it as data in the loaded pack's 
 
 **`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
 compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
-page draws the camp and the cellar from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
+page draws the battlement, the camp and the cellar from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
 engine parts that will read the sections (the acts, the cast and the props from data) come in later
 steps. The closed lists those parts own are fixed in `pack.js` under the names below and exported
 as `WORLD_LISTS`. The effects library is built: `effects.js` gives each effect's table of fields and
@@ -612,7 +612,9 @@ is declared in one layer of a scene only.
 
 `anim` is 1.0's keyframes with three additions. `"ms": true` gives the period in whole
 milliseconds, 200 to 600 000, and each key's time as a whole number of milliseconds from 0 to the
-period. `"trigger"` is `hit` (needs a `target`) or `strike` (needs an `anvil`), and a triggered clock
+period. Such a clock runs in milliseconds too: the scene's time modulo the period, compared with
+the keys' times as they are written, so that a key falls where the code's whole-millisecond steps
+fall ([worlds.md](./worlds.md#the-scene-compiler)). `"trigger"` is `hit` (needs a `target`) or `strike` (needs an `anvil`), and a triggered clock
 does not loop. A track may be a wave, `{ g, ch, wave, round }`, driving `dx` or `dy` only, with no
 keys or ease. No two tracks of a layer drive one thing.
 
@@ -1258,7 +1260,7 @@ is the tied hair with the sword and shield: 135 shapes, cost 14 470, against the
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
 `[1, 1]`, version 0.2.0, unsigned until the rest of the scenes are in it (0.1.0, the cellar alone,
-was signed with `kw1`). It holds the camp and the cellar as data and the two stamps the cellar uses,
+was signed with `kw1`). It holds the battlement, the camp and the cellar as data and the two stamps the cellar uses,
 and the page draws those scenes from it on a `dev` page, and on a deployed page once it is signed.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
@@ -1488,7 +1490,7 @@ the world's pack changes no look: `resolve()` gives the same with it loaded as w
 
 `tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
 clean, with its signature taken off, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
-draws the camp and the cellar from it and a deployed page from code while it is unsigned, and from it
+draws the battlement, the camp and the cellar from it and a deployed page from code while it is unsigned, and from it
 once signed with a key made for the run, and the shipped file on a deployed page draws from it when
 it carries a signature; a refused, missing or unreadable pack, a missing library and a compile
 that throws all leave the scenes concerned the code scenes, each with its console line and its

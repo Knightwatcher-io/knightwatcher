@@ -164,6 +164,7 @@ test('the scenes from the pack that host a foe: the entrance runs in order and t
 /* Where the goblin stands in a scene, as foe.test.js expects it in the code scene: the devices, the
    knight's x and the spot, or null for no room. */
 const SPOTS = {
+  battlement: [[[PIE], 480, { x: 690, side: 1 }], [[PIE], 630, { x: 420, side: -1 }]],
   camp: [[[PIE], 440, { x: 230, side: -1 }], [[PIE, device('g3')], 440, { x: 284, side: -1 }], [[PIE, device('g2'), device('g3')], 340, { x: 494, side: 1 }],
     [[PIE, device('g2'), device('g3')], 400, null]] };
 
@@ -206,7 +207,7 @@ test('the scenes from the pack that host a foe: the goblin\'s plan is the code s
 
 /* The hit at the knight's first spot, the pie alone, for each grip on Classic, Broad and Slim, as
    foe.test.js has it. */
-const HITS = { camp: { two: [1659, 1661, 1657], one: [1672, 1675, 1672] } };
+const HITS = { battlement: { two: [1659, 1661, 1657], one: [1645, 1651, 1642] }, camp: { two: [1659, 1661, 1657], one: [1672, 1675, 1672] } };
 
 test('the scenes from the pack that host a foe: on every build the goblin is struck when foe.test.js says', () => {
   for (const scene of FOES) {
