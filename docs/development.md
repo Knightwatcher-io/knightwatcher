@@ -32,8 +32,10 @@ tests/
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
                      shield as approved (base-onehand.items.json), its free options as
                      approved (base-options.json), its three builds and the items fitted to
-                     them as approved (base-builds.json), and a state file with the settings'
-                     defaults (state-defaults.json)
+                     them as approved (base-builds.json), a world pack of format 1.1 for the
+                     library's tests (world-1.1.json), the base pack's read stored from the
+                     library before format 1.1 (base-read.json), and a state file with the
+                     settings' defaults (state-defaults.json)
   tools/             node tests for tools/deploy.sh, tools/pack-carrier.js, tools/sign-pack.js and
                      tools/settings-schema.js
 tools/
@@ -153,7 +155,13 @@ the blade the engine measures is the one drawn. `node --test tests/tools/` also 
 carrier matches its pack file, that the copy of the settings schema in `web/js/settings.js` and the
 reference in `docs/configuration.md` are what `tools/settings-schema.js` writes, tests the signing tool with keys generated for the run, and checks
 that every pack in `web/packs/` that carries a `sig` verifies against the key table in `pack.js`.
-`tests/web/loading.test.js` checks the downloaded packs, the refusals and the knight drawn from code
+`tests/web/format-1.1.test.js` checks the world sections of pack format 1.1, which the library reads
+and checks and nothing yet draws from: one refused copy of its world fixture for each rule, the
+limits at their edges, the costs, the signature over a 1.1 pack, and that a 1.0 pack reads as it did.
+`tests/web/base-read.test.js` holds the shipped base pack's whole read, its signed bytes and six of
+its looks, records included, equal to a copy stored from the library before format 1.1;
+[packs.md](./packs.md#tests) says how to store it again, which only a change to the base pack calls
+for. `tests/web/loading.test.js` checks the downloaded packs, the refusals and the knight drawn from code
 when no base pack can be used; its signed packs use keys generated for the run. `tests/web/places.test.js`
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
 and that no two places draw over each other. `tests/web/settings-schema.test.js` checks the page's lists of

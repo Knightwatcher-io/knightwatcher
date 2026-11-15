@@ -1,0 +1,649 @@
+{
+  "kwpack": 1,
+  "pack": {
+    "id": "test.world",
+    "name": "Test world",
+    "version": "1.0.0",
+    "format": [1,1],
+    "licence": "Invented for the tests.",
+    "provides": ["builds","items","scenes","cast","props","words","overlays","worlds","stamps"],
+    "builds": {
+      "body.courier": {
+        "name": "Courier",
+        "head": "head.visor",
+        "m": {"shoulder":62,"chest":54,"waist":44,"hip":44,"stance":26,"leg":82,"height":140,"head":48}
+      }
+    },
+    "items": {
+      "head.visor": {
+        "slot": "head",
+        "name": "Visor head",
+        "parts": [
+          {
+            "at": "head",
+            "shapes": [
+              {"k":"rrect","p":[-48,-60],"w":96,"h":104,"r":30,"fill":"@base.k"},
+              {"k":"rrect","p":[-45,-57],"w":90,"h":98,"r":27,"fill":"@skin.face"}
+            ]
+          }
+        ]
+      }
+    },
+    "stamps": {
+      "sconce": [
+        {"k":"rect","p":[-6,-20],"w":12,"h":24,"fill":"@base.k"},
+        {"k":"rect","p":[-4,-18],"w":8,"h":20,"fill":"@base.steel3"}
+      ],
+      "barrel": [
+        {"k":"rrect","p":[-30,-72],"w":60,"h":72,"r":10,"fill":"@base.k"},
+        {"k":"rrect","p":[-27,-69],"w":54,"h":66,"r":8,"fill":"@base.leather"}
+      ],
+      "berry.lit": [{"k":"pix","p":[-3,-3],"rows":[".r.","rRr",".r."],"key":{"r":"#ff4a3d","R":"#ff8676"}}],
+      "berry.dark": [{"k":"pix","p":[-3,-3],"rows":[".d.","ddd",".d."],"key":{"d":"#5a1a2a"}}],
+      "berry.down": [{"k":"pix","p":[-3,-3],"rows":[".r.","rRr",".r."],"key":{"r":"@lamp.down","R":"@lamp.downHi"}}]
+    },
+    "scenes": {
+      "scene.battlement": {
+        "name": "Battlement",
+        "spot": 96,
+        "rounds": [{"x":96,"act":"guard","dur":18},{"x":66,"act":"look","dur":16},{"x":126,"act":"sniff","dur":12}],
+        "can": ["attack","wan_down","backup_overdue","pi_silent","device_down","cpu_hot","memory_tight"],
+        "quiet": true,
+        "hosts": ["flies","crate","feast","foe"],
+        "helmet": "on",
+        "weapon": "held",
+        "still": [
+          {
+            "shapes": [
+              {
+                "k": "fx",
+                "fx": "sky",
+                "p": [{"L":1},{"T":1}],
+                "w": {"W":1},
+                "h": {"c":530,"T":-1},
+                "of": ["#0b0f24","#121838","#1b2350"],
+                "seed": 3
+              },
+              {"k":"fx","fx":"stars","p":[{"L":1},{"T":1}],"w":{"W":1},"h":300,"n":190,"seed":4},
+              {"k":"rect","p":[{"L":1},530],"w":{"W":1},"h":90,"fill":"#2a2433"},
+              {
+                "k": "tile",
+                "step": 160,
+                "phase": -70,
+                "from": {"L":1},
+                "to": {"R":1},
+                "shapes": [{"k":"rect","p":[{"x":1},411],"w":80,"h":53,"fill":"#3b3247"}]
+              }
+            ]
+          }
+        ],
+        "moving": [
+          {"shapes":[{"k":"things"}]},
+          {
+            "when": ["cond:wan_down"],
+            "shapes": [{"k":"strip","p0":[612,300],"p1":[640,360],"hw0":1.5,"hw1":1.5,"fill":"@base.n2"}]
+          }
+        ],
+        "over": [],
+        "things": {
+          "pie": {"cls":"pie","kind":"surface","x":800,"y":416,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":926,"y":300,"w":88,"h":112,"pole":413},
+          "h2": {"cls":"high","kind":"surface","x":858,"y":300,"w":88,"h":112,"pole":466},
+          "h3": {"cls":"high","kind":"surface","x":37,"y":300,"w":88,"h":112,"flip":true,"pole":413},
+          "g1": {"cls":"ground","kind":"floor","x":150,"y":566,"w":88,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":820,"y":566,"w":88,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":60,"y":566,"w":88,"h":112,"front":true}
+        },
+        "foe": {"side":1,"spans":[[70,890]],"wall":{"period":160,"offset":70,"high":[80,411],"low":464}}
+      },
+      "scene.camp": {
+        "name": "Camp",
+        "spot": 88,
+        "rounds": [{"x":88,"act":"sniff","dur":22},{"x":68,"act":"yawn","dur":14},{"x":96,"act":"look","dur":16}],
+        "can": ["attack","backup_overdue","pi_silent","device_down","cpu_hot","memory_tight"],
+        "quiet": true,
+        "hosts": ["flies","crate","feast","foe"],
+        "helmet": "on",
+        "weapon": "held",
+        "still": [
+          {
+            "shapes": [
+              {
+                "k": "fx",
+                "fx": "sky",
+                "p": [{"L":1},{"T":1}],
+                "w": {"W":1},
+                "h": {"c":530,"T":-1},
+                "of": ["#0b0f24","#121838","#1b2350"],
+                "seed": 3
+              },
+              {"k":"fx","fx":"pines","p":[{"L":1},530],"w":{"W":1},"seed":5},
+              {"k":"rect","p":[{"L":1},530],"w":{"W":1},"h":90,"fill":"#14261a"}
+            ]
+          }
+        ],
+        "moving": [{"shapes":[{"k":"fx","fx":"flame","p":[700,500],"size":1,"dt":0},{"k":"things"}]}],
+        "over": [],
+        "things": {
+          "pie": {"cls":"pie","kind":"surface","x":580,"y":517,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":852,"y":312,"w":88,"h":112},
+          "h2": {"cls":"high","kind":"surface","x":80,"y":312,"w":88,"h":112,"flip":true},
+          "h3": {"cls":"high","kind":"surface","x":227,"y":312,"w":88,"h":112,"flip":true,"pole":366},
+          "g1": {"cls":"ground","kind":"floor","x":830,"y":566,"w":88,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":120,"y":566,"w":88,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":200,"y":530,"w":88,"h":112}
+        },
+        "foe": {"side":-1,"spans":[[70,494]]},
+        "sound": {"ambience":"reserved"}
+      },
+      "scene.house": {
+        "name": "House",
+        "spot": 114,
+        "rounds": [{"x":114,"act":"sniff","dur":16},{"x":100,"act":"yawn","dur":14},{"x":110,"act":"look","dur":14}],
+        "can": [
+          "container_unhealthy",
+          "backup_overdue",
+          "pi_silent",
+          "device_down",
+          "cpu_hot",
+          "memory_tight",
+          "streaming",
+          "night"
+        ],
+        "quiet": true,
+        "hosts": ["feast"],
+        "helmet": "off",
+        "weapon": "away",
+        "still": [
+          {
+            "shapes": [
+              {"k":"rect","p":[{"L":1},530],"w":{"W":1},"h":90,"fill":"#1a1620"},
+              {
+                "k": "tile",
+                "step": 36,
+                "phase": 0,
+                "from": {"L":1},
+                "to": {"R":1},
+                "pick": {"plank":{"seed":3,"of":["#2a1d14","#2d1f15","#261a11","#301f14"]}},
+                "shapes": [
+                  {"k":"rect","p":[{"x":1,"c":2},176],"w":33,"h":354,"fill":"@pick.plank"},
+                  {"k":"rect","p":[{"x":1,"c":2},176],"w":1,"h":354,"fill":{"rgb":"#ffffff","a":0.04}},
+                  {"k":"ell","only":[31,5],"p":[{"x":1,"c":18},230],"rx":4,"ry":3,"fill":"#1a110b"}
+                ]
+              },
+              {"k":"rest","slot":"main","at":"pegs"},
+              {"k":"rest","slot":"off","at":"wall"}
+            ]
+          }
+        ],
+        "moving": [
+          {
+            "when": ["!tv"],
+            "groups": {"breath":{"pivot":[258,430]}},
+            "anim": {
+              "ms": true,
+              "period": 3800,
+              "loop": true,
+              "tracks": [{"g":"breath","ch":"dy","ease":"step","keys":[[0,0],[1900,-3]]}]
+            },
+            "shapes": [
+              {
+                "k": "poly",
+                "g": "breath",
+                "pts": [[129,465],[129,410],[171,397],[289,395],[370,408],[386,420],[386,465]],
+                "fill": [[0.12,"@base.b0"],[0.5,"@base.b1"],[0.85,"@base.b2"],[1,"@base.b3"]],
+                "dir": "rows"
+              }
+            ]
+          },
+          {
+            "groups": {"blanket":{"pivot":[258,430]}},
+            "shapes": [{"k":"rect","g":"blanket","p":[129,440],"w":257,"h":25,"fill":"@base.b2"}]
+          },
+          {
+            "when": ["tv"],
+            "groups": {"tv":{"pivot":[764,396]}},
+            "shapes": [{"k":"rect","g":"tv","p":[740,380],"w":48,"h":32,"fill":"#9aa6c6"}]
+          },
+          {"when":["inBed"],"shapes":[{"k":"sleeper"}]},
+          {"when":["helmOff"],"shapes":[{"k":"rest","slot":"helmet","at":"stool"}]},
+          {"shapes":[{"k":"things"}]}
+        ],
+        "over": [{"when":["!tv"],"shapes":[{"k":"fx","fx":"flame","p":[258,300],"size":0.5,"dt":0}]}],
+        "things": {
+          "pie": {"cls":"pie","kind":"surface","x":688,"y":435,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":406,"y":300,"w":88,"h":112},
+          "h2": {"cls":"high","kind":"surface","x":926,"y":300,"w":88,"h":112},
+          "h3": {"cls":"high","kind":"surface","x":70,"y":300,"w":88,"h":112,"flip":true},
+          "g1": {"cls":"ground","kind":"floor","x":120,"y":594,"w":88,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":300,"y":594,"w":88,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":760,"y":530,"w":88,"h":112}
+        },
+        "rests": {
+          "stool": {"kind":"surface","x":460,"y":476,"w":76,"h":80},
+          "pegs": {"x":618,"y":228,"a":"flat"},
+          "wall": {"kind":"hang","x":844,"y":164,"w":100,"h":140}
+        },
+        "bed": {"head":[-15,262],"blanket":"blanket","zeds":[150,270]},
+        "screen": {"group":"tv","glow":[764,396,130]}
+      },
+      "scene.yard": {
+        "name": "Yard",
+        "spot": 104,
+        "rounds": [{"x":104,"act":"train","dur":21},{"x":80,"act":"look","dur":14}],
+        "can": ["attack","disk_full","backup_overdue","device_down","cpu_hot","memory_tight"],
+        "quiet": true,
+        "hosts": ["flies","crate","feast"],
+        "helmet": "on",
+        "weapon": "held",
+        "still": [
+          {
+            "shapes": [
+              {
+                "k": "fx",
+                "fx": "sky",
+                "p": [{"L":1},{"T":1}],
+                "w": {"W":1},
+                "h": {"c":530,"T":-1},
+                "of": ["#0b0f24","#121838","#1b2350"],
+                "seed": 3
+              },
+              {"k":"rect","p":[{"L":1},530],"w":{"W":1},"h":90,"fill":"#1d2a1a"}
+            ]
+          }
+        ],
+        "moving": [
+          {
+            "groups": {"dummy":{"pivot":[713,470]}},
+            "anim": {
+              "ms": true,
+              "period": 600,
+              "loop": false,
+              "trigger": "hit",
+              "tracks": [{"g":"dummy","ch":"dx","ease":"smooth","keys":[[0,0],[150,4],[600,0]]}]
+            },
+            "shapes": [{"k":"target"},{"k":"rect","g":"dummy","p":[705,400],"w":16,"h":130,"fill":"@base.n2"}]
+          },
+          {"shapes":[{"k":"things"}]}
+        ],
+        "over": [],
+        "things": {
+          "pie": {"cls":"pie","kind":"surface","x":280,"y":463,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":905,"y":300,"w":88,"h":112},
+          "h2": {"cls":"high","kind":"surface","x":250,"y":310,"w":88,"h":112,"flip":true},
+          "h3": {"cls":"high","kind":"surface","x":40,"y":300,"w":88,"h":112,"flip":true},
+          "g1": {"cls":"ground","kind":"floor","x":160,"y":568,"w":88,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":870,"y":568,"w":88,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":40,"y":568,"w":88,"h":112,"front":true}
+        },
+        "target": {"group":"dummy","hitAt":420,"every":5600}
+      },
+      "scene.cellar": {
+        "name": "Cellar",
+        "spot": 124,
+        "rounds": [{"x":124,"act":"guard","dur":7},{"x":146,"act":"guard","dur":7}],
+        "quiet": false,
+        "can": ["disk_full","backup_overdue","cpu_hot"],
+        "hosts": [],
+        "helmet": "on",
+        "weapon": "away",
+        "still": [
+          {
+            "shapes": [
+              {
+                "k": "fx",
+                "fx": "bricks",
+                "p": [{"L":1},{"T":1}],
+                "w": {"W":1},
+                "h": {"c":530,"T":-1},
+                "size": [64,26],
+                "of": ["#1b1622","#1e1926","#18141e","#211b29"],
+                "mortar": "#0d0a11",
+                "seed": 5
+              },
+              {"k":"fx","fx":"shelf","y":380,"seed":2},
+              {"k":"rect","p":[{"L":1},380],"w":{"W":1},"h":12,"fill":"@base.k"},
+              {"k":"rect","p":[{"L":1},381],"w":{"W":1},"h":9,"fill":[[0.3,"@base.n1"],[1,"@base.n3"]]},
+              {
+                "k": "tile",
+                "step": 160,
+                "phase": 60,
+                "from": {"L":1},
+                "to": {"R":1},
+                "shapes": [
+                  {"k":"rect","p":[{"x":1},392],"w":8,"h":18,"fill":"@base.k"},
+                  {"k":"rect","p":[{"x":1,"c":2},392],"w":4,"h":15,"fill":"@base.n3"}
+                ]
+              },
+              {"k":"use","stamp":"sconce","p":[478,180]},
+              {"k":"rect","p":[{"L":1},530],"w":{"W":1},"h":90,"fill":"#1a1620"},
+              {"k":"rect","p":[{"L":1},530],"w":{"W":1},"h":3,"fill":"#3b3247"},
+              {"k":"use","stamp":"barrel","p":[438,458]}
+            ]
+          }
+        ],
+        "moving": [
+          {
+            "shapes": [
+              {"k":"glow","p":[478,160],"r":170,"colour":"#ffb000","a":{"c":0.09,"wave":[0.025,150,0]}},
+              {"k":"fx","fx":"flame","p":[478,180],"size":0.62,"dt":0},
+              {"k":"things"}
+            ]
+          }
+        ],
+        "over": [],
+        "things": {
+          "pie": {"cls":"pie","kind":"surface","x":480,"y":463,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":450,"y":320,"w":88,"h":112},
+          "h2": {"cls":"high","kind":"surface","x":830,"y":300,"w":88,"h":112,"pole":280},
+          "h3": {"cls":"high","kind":"surface","x":139,"y":300,"w":88,"h":112,"flip":true,"pole":280},
+          "g1": {"cls":"ground","kind":"floor","x":890,"y":568,"w":88,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":400,"y":568,"w":88,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":200,"y":568,"w":88,"h":112,"front":true}
+        }
+      },
+      "scene.smithy": {
+        "name": "Smithy",
+        "spot": 88,
+        "rounds": [{"x":88,"act":"guard","dur":10}],
+        "can": ["updating"],
+        "quiet": false,
+        "hosts": [],
+        "helmet": "off",
+        "weapon": "held",
+        "still": [
+          {
+            "shapes": [
+              {"k":"rect","p":[{"L":1},530],"w":{"W":1},"h":90,"fill":"#1a1620"},
+              {"k":"rest","slot":"off","at":"wall"}
+            ]
+          }
+        ],
+        "moving": [
+          {
+            "shapes": [
+              {"k":"rest","slot":"main","at":"anvil"},
+              {"k":"fx","fx":"coals","p":[820,440],"w":140,"seed":6},
+              {"k":"things"}
+            ]
+          },
+          {
+            "when": ["strike"],
+            "anim": {
+              "ms": true,
+              "period": 500,
+              "loop": false,
+              "trigger": "strike",
+              "tracks": [{"g":"sparks","ch":"alpha","ease":"linear","keys":[[0,1],[500,0]]}]
+            },
+            "groups": {"sparks":{"pivot":[132,418]}},
+            "shapes": [{"k":"fx","fx":"burst","g":"sparks","p":[132,418],"n":8,"seed":9}]
+          }
+        ],
+        "over": [],
+        "things": {
+          "pie": {"cls":"pie","kind":"surface","x":280,"y":475,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":560,"y":300,"w":88,"h":112},
+          "h2": {"cls":"high","kind":"surface","x":660,"y":300,"w":88,"h":112},
+          "h3": {"cls":"high","kind":"surface","x":40,"y":300,"w":88,"h":112,"flip":true},
+          "g1": {"cls":"ground","kind":"floor","x":140,"y":568,"w":88,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":820,"y":568,"w":88,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":40,"y":568,"w":88,"h":112,"front":true}
+        },
+        "rests": {"anvil":{"from":"spot","x":50,"y":425,"a":"flat"},"wall":{"kind":"hang","x":145,"y":312,"w":100,"h":132}},
+        "anvil": {"rest":"anvil","spark":[132,418]}
+      },
+      "scene.court": {
+        "name": "Court",
+        "spot": 72,
+        "rounds": [{"x":72,"act":"guard","dur":10}],
+        "can": ["ssh_session"],
+        "quiet": false,
+        "hosts": [],
+        "helmet": "on",
+        "weapon": "held",
+        "still": [{"shapes":[{"k":"rect","p":[{"L":1},530],"w":{"W":1},"h":90,"fill":"#2a1f2e"},{"k":"patron"}]}],
+        "moving": [{"shapes":[{"k":"patron"},{"k":"bubble"},{"k":"things"}]}],
+        "over": [],
+        "things": {
+          "pie": {"cls":"pie","kind":"surface","x":154,"y":475,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":620,"y":300,"w":88,"h":112},
+          "h2": {"cls":"high","kind":"surface","x":700,"y":355,"w":88,"h":112},
+          "h3": {"cls":"high","kind":"surface","x":132,"y":300,"w":88,"h":112,"flip":true},
+          "g1": {"cls":"ground","kind":"floor","x":40,"y":592,"w":88,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":900,"y":592,"w":88,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":555,"y":511,"w":88,"h":112}
+        },
+        "seat": {"x":820,"y":505,"bubble":[672,180],"turn":3200,"mouth":230}
+      }
+    },
+    "cast": {
+      "patron.a": {
+        "role": "patron",
+        "name": "Monarch A",
+        "box": [180,340],
+        "anchors": {"seat":[0,0],"eyes":[0,-208],"mouth":[0,-193]},
+        "sets": {"skin":"skin","hair":"hair","robe":"tabard"},
+        "own": {
+          "hair": {"0":"#a8703c","1":"#7f4f27","2":"#5a3417","brow":"#4a2a12"},
+          "robe": {"0":"#ff8676","1":"#ff4a3d","2":"#cc352c","3":"#8f231d"}
+        },
+        "palettes": {"mon":{"dark":{"mix":["@hair.2","#000000"],"k":0.3},"iris":"#5a3a22"}},
+        "still": [
+          {
+            "at": "seat",
+            "shapes": [
+              {"k":"poly","pts":[[-58,-160],[58,-160],[80,-8],[-80,-8]],"fill":"@base.k","dir":"rows"},
+              {
+                "k": "poly",
+                "pts": [[-55,-157],[55,-157],[76,-11],[-76,-11]],
+                "fill": [[0.12,"@robe.0"],[0.5,"@robe.1"],[0.85,"@robe.2"],[1,"@robe.3"]],
+                "dir": "rows"
+              },
+              {"k":"rrect","p":[-34,-247],"w":68,"h":78,"r":31,"fill":"@skin.face"}
+            ]
+          }
+        ],
+        "states": {
+          "shut": [{"k":"rect","at":"mouth","p":[-5,-1],"w":10,"h":3,"fill":"@base.k"}],
+          "open": [
+            {"k":"ell","at":"mouth","p":[0,0],"rx":6,"ry":5,"fill":"@base.k"},
+            {"k":"ell","at":"mouth","p":[0,2],"rx":4,"ry":2,"fill":"@base.r1"}
+          ]
+        }
+      },
+      "foe.goblin": {
+        "role": "foe",
+        "name": "Goblin",
+        "sprite": {"size":[220,230],"feet":[110,214]},
+        "h": 160,
+        "w": 40,
+        "mid": 78,
+        "crown": [
+          [-83,-119],
+          [-80,-112],
+          [-70,-121],
+          [-58,-123],
+          [-45,-125],
+          [-36,-133],
+          [-36,-141],
+          [-31,-150],
+          [-30,-155],
+          [-27,-159],
+          [-23,-160],
+          [-10,-160],
+          [0,-160],
+          [10,-160],
+          [17,-160],
+          [21,-159],
+          [24,-155],
+          [25,-150],
+          [30,-141],
+          [30,-133],
+          [40,-143],
+          [54,-146],
+          [59,-147],
+          [76,-114]
+        ],
+        "exit": "poof",
+        "parts": {
+          "legs": [{"k":"rrect","p":[-20,-40],"w":14,"h":40,"r":5,"fill":"@base.k"}],
+          "head": [{"k":"ell","p":[-3,-109],"rx":38,"ry":30,"fill":"@base.k"}]
+        },
+        "poses": {
+          "stand": {"parts":["legs","head"],"shapes":[]},
+          "climb": {"parts":["legs","head"],"shapes":[]},
+          "taunt0": {"parts":["legs","head"],"shapes":[]},
+          "taunt1": {"parts":["legs","head"],"shapes":[]},
+          "brace": {"parts":["legs","head"],"shapes":[]},
+          "hit": {"parts":["legs","head"],"shapes":[]}
+        }
+      },
+      "critter.fly": {
+        "role": "critter",
+        "name": "Fly",
+        "groups": {"wings":{"pivot":[0,0]}},
+        "alpha": {"wings":0.85},
+        "frames": {
+          "flap0": [
+            {"k":"ell","g":"wings","p":[-6,-2],"rx":6,"ry":3,"fill":"@base.w"},
+            {"k":"ell","g":"wings","p":[6,-2],"rx":6,"ry":3,"fill":"@base.w"},
+            {"k":"ell","p":[0,0],"rx":5,"ry":4,"fill":"#3a3344"},
+            {"k":"rect","p":[-3,-2],"w":2,"h":2,"fill":"@base.r1"}
+          ],
+          "flap1": [
+            {"k":"ell","g":"wings","p":[-6,-6],"rx":6,"ry":3,"fill":"@base.w"},
+            {"k":"ell","g":"wings","p":[6,-6],"rx":6,"ry":3,"fill":"@base.w"},
+            {"k":"ell","p":[0,0],"rx":5,"ry":4,"fill":"#3a3344"},
+            {"k":"rect","p":[-3,-2],"w":2,"h":2,"fill":"@base.r1"}
+          ]
+        },
+        "dead": [{"k":"rect","p":[-3,0],"w":6,"h":5,"fill":"#3a3344"}]
+      }
+    },
+    "props": {
+      "props.medieval": {
+        "name": "Medieval devices",
+        "kinds": {
+          "camera": {
+            "name": "Camera",
+            "mark": 128,
+            "up": {
+              "still": [
+                {"k":"rrect","p":[22,-64],"w":10,"h":28,"r":2,"fill":"@base.k"},
+                {"k":"rrect","p":[24,-62],"w":6,"h":24,"r":1,"fill":"@base.steel3"}
+              ],
+              "lamp": [-8,-40]
+            },
+            "gone": {
+              "still": [
+                {"k":"rrect","p":[22,-64],"w":10,"h":28,"r":2,"fill":"@base.k"},
+                {"k":"rrect","p":[24,-62],"w":6,"h":24,"r":1,"fill":"@base.steel3"}
+              ],
+              "lamp": [5,-28]
+            }
+          },
+          "pi": {
+            "name": "Raspberry pie",
+            "mark": 93,
+            "up": {
+              "still": [{"k":"ell","p":[0,-25],"rx":40,"ry":10,"fill":"@base.k"}],
+              "moving": [{"k":"fx","fx":"steam","p":[0,-54],"n":3,"period":1800}],
+              "lamp": {"at":[0,-54],"box":[27,34],"lit":"berry.lit","dark":"berry.dark","light":"#ff7a6a"}
+            },
+            "gone": {
+              "still": [{"k":"ell","p":[0,-25],"rx":40,"ry":10,"fill":"@base.k"}],
+              "lamp": {"at":[20,-29],"box":[27,34],"lit":"berry.down","dark":"berry.dark"}
+            }
+          }
+        }
+      }
+    },
+    "words": {
+      "words.medieval": {
+        "name": "Medieval",
+        "watcher": "the knight",
+        "labels": {
+          "watcher": "The knight",
+          "patron": "The monarch",
+          "build": "Build",
+          "tabard": "Tabard",
+          "plume": "Plume",
+          "helmet": "Helmet",
+          "foe": "Foe",
+          "critter": "Pest"
+        },
+        "quiet": {
+          "quiet": ["ALL QUIET"],
+          "up": ["{n} up"],
+          "backup": ["backup {at}"],
+          "ads": ["{n} ads slain","{short} ads slain","{short} slain"]
+        },
+        "captions": {
+          "ip_banned": ["BANISHED {addr} · {jail}","BANISHED {addr}"],
+          "import": ["DELIVERED · {title}"],
+          "backup_done": ["STORES SAFE {at}"]
+        }
+      }
+    },
+    "overlays": {
+      "overlay.phosphor": {
+        "name": "Phosphor",
+        "font": "vt323",
+        "levels": {
+          "ok": ["#39ff6a","#2fd95a"],
+          "warn": ["#ffb000","#f0a400"],
+          "crit": ["#ff4a3d","#ff6a5e"],
+          "info": ["#3fd0ff","#3fc4f0"],
+          "sleep": ["#1c8a3a","#1c8a3a"]
+        },
+        "outline": "#000000",
+        "scrim": "#000000",
+        "caption": {"rgb":"#000000","a":0.66}
+      }
+    },
+    "worlds": {
+      "world.medieval": {
+        "name": "Medieval",
+        "body": "kw.base/build.a",
+        "outfit": {
+          "items": {
+            "legs": "kw.base/legs.plate",
+            "boots": "kw.base/boots.leather",
+            "torso": "kw.base/torso.tabard",
+            "hair": "kw.base/hair.short",
+            "plume": "kw.base/plume.crest",
+            "helmet": "kw.base/helm.open",
+            "pauldrons": "kw.base/pauldrons.plate",
+            "arms": "kw.base/arms.plate",
+            "gauntlets": "kw.base/gauntlets.plate",
+            "main": "kw.base/main.greatsword"
+          },
+          "swatches": {"skin":"kw.base/warm","hair":"kw.base/brown","tabard":"kw.base/blue","plume":"kw.base/red"}
+        },
+        "scenes": {
+          "quiet": ["scene.battlement","scene.camp","scene.house","scene.yard"],
+          "for": {
+            "attack": "scene.battlement",
+            "wan_down": "scene.battlement",
+            "container_unhealthy": "scene.house",
+            "disk_full": "scene.cellar",
+            "backup_overdue": "scene.house",
+            "pi_silent": "scene.house",
+            "cpu_hot": "scene.yard",
+            "ssh_session": "scene.court",
+            "updating": "scene.smithy",
+            "streaming": "scene.house",
+            "night": "scene.house"
+          }
+        },
+        "cast": {"patron":"patron.a","foe":"foe.goblin","critter":"critter.fly"},
+        "props": "props.medieval",
+        "overlay": "overlay.phosphor",
+        "words": "words.medieval",
+        "picture": "scene.camp"
+      }
+    },
+    "sounds": {}
+  }
+}
