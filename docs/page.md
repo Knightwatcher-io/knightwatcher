@@ -1361,8 +1361,8 @@ To shoot the code path from disk, copy `web/` to a folder outside the repository
 copy's `kw-version` meta tag any value but `dev`; a page opened from disk runs the demo whatever
 its version. Take the copy's signature off its base pack with
 `node tools/sign-pack.js --unsign <copy>/packs/base.pack.json`, so that the copy refuses it and
-draws from code whichever state ships; the copy draws the cellar from code while the medieval
-world's pack ships unsigned, and once it is signed, unsign it the same way. Do it before and after a change and compare each path's two
+draws from code whichever state ships; unsign the copy's medieval world's pack
+the same way (`<copy>/packs/medieval.pack.json`), so that it draws the cellar from code too. Do it before and after a change and compare each path's two
 sets:
 
 ```bash
