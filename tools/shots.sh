@@ -59,16 +59,16 @@ SHOTS=(
   "arm-swat-left|bar=0&t=1330&is=battlement&f=6&sw=1&arm=one"
   "arm-disk|bar=0&t=2300&on=disk&hs=l&arm=one"
   "goblin-rise|bar=0&t=460&is=battlement&e=goblin"
-  "goblin-bonk|bar=0&t=1659&is=battlement&e=goblin"
+  "goblin-bonk|bar=0&t=1662&is=battlement&e=goblin"
   "goblin-poof|bar=0&t=1900&is=battlement&e=goblin"
   "goblin-camp-rise|bar=0&t=500&is=camp&e=goblin"
-  "goblin-camp-bonk|bar=0&t=1659&is=camp&e=goblin"
+  "goblin-camp-bonk|bar=0&t=1662&is=camp&e=goblin"
   "goblin-camp-poof|bar=0&t=2400&is=camp&e=goblin"
   "goblin-camp-g3|bar=0&t=1300&is=camp&e=goblin&dv=pi,machine,vm,box"
   # the goblin bonked with the sword and shield, a moment after the hit: on the battlement at 1645,
-  # at the camp at 1672
+  # at the camp at 1711
   "arm-goblin-bonk|bar=0&t=1646&is=battlement&e=goblin&arm=one"
-  "arm-goblin-camp-bonk|bar=0&t=1674&is=camp&e=goblin&arm=one"
+  "arm-goblin-camp-bonk|bar=0&t=1712&is=camp&e=goblin&arm=one"
   # the free options, chosen by the look hooks (sk= hc= hy= tb= pm=): looks other than the default,
   # the tail of the tied hair under the helmet, a sick and a hot face on dark skins, and the brows'
   # dark edge where the brows are near the skin's own lightness
@@ -141,7 +141,7 @@ SHOTS=(
   "bd-b-swing-one-left-wind|bar=0&t=1170&is=battlement&f=6&sw=1&arm=one&bd=b"
   "bd-b-swing-one-left-cut|bar=0&t=1278&is=battlement&f=6&sw=1&arm=one&bd=b"
   "bd-b-swing-one-left-end|bar=0&t=1395&is=battlement&f=6&sw=1&arm=one&bd=b"
-  "bd-b-goblin-bonk|bar=0&t=1662&is=battlement&e=goblin&bd=b"
+  "bd-b-goblin-bonk|bar=0&t=1665&is=battlement&e=goblin&bd=b"
   "bd-b-arm-goblin-bonk|bar=0&t=1652&is=battlement&e=goblin&arm=one&bd=b"
   "bd-b-settings-knight|bar=0&t=2300&is=battlement&set=knight&bd=b"
   "bd-c-is-battlement|bar=0&t=2300&is=battlement&bd=c"
@@ -169,7 +169,7 @@ SHOTS=(
   "bd-c-swing-one-left-wind|bar=0&t=1170&is=battlement&f=6&sw=1&arm=one&bd=c"
   "bd-c-swing-one-left-cut|bar=0&t=1278&is=battlement&f=6&sw=1&arm=one&bd=c"
   "bd-c-swing-one-left-end|bar=0&t=1395&is=battlement&f=6&sw=1&arm=one&bd=c"
-  "bd-c-goblin-bonk|bar=0&t=1658&is=battlement&e=goblin&bd=c"
+  "bd-c-goblin-bonk|bar=0&t=1662&is=battlement&e=goblin&bd=c"
   "bd-c-arm-goblin-bonk|bar=0&t=1643&is=battlement&e=goblin&arm=one&bd=c"
   "bd-c-settings-knight|bar=0&t=2300&is=battlement&set=knight&bd=c"
   # the reference set for converting the scenes to pack data, beside the call records of

@@ -210,7 +210,7 @@ test('the scenes from the pack that host a foe: the goblin\'s plan is the code s
 
 /* The hit at the knight's first spot, the pie alone, for each grip on Classic, Broad and Slim, as
    foe.test.js has it. */
-const HITS = { battlement: { two: [1659, 1661, 1657], one: [1645, 1651, 1642] }, camp: { two: [1659, 1661, 1657], one: [1672, 1675, 1672] } };
+const HITS = { battlement: { two: [1662, 1664, 1661], one: [1645, 1651, 1642] }, camp: { two: [1662, 1664, 1661], one: [1711, 1713, 1711] } };
 
 test('the scenes from the pack that host a foe: on every build the goblin is struck when foe.test.js says', () => {
   for (const scene of FOES) {

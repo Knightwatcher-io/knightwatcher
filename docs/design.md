@@ -47,8 +47,9 @@ blue it is the blue it always was. The
 knight holds the sword in the right hand and the shield in front of the chest with the left; in
 the attack the sword goes up over the right shoulder and the shield comes in to the middle. A
 swing to the right winds up with the sword upright over the right shoulder, clear of the face; in
-a swing to the left the shield lifts as the sword crosses the body, and the blade passes in front
-of it, so a blow struck on that side is always seen. A shield is carried only with a
+a swing to the left the sword hand drops to the chest before the blade turns, the shield lifts as
+the sword crosses the body, and the blade passes in front of it, so a blow struck on that side is
+always seen; the sword then comes back low across the shield and rises again on its own side. A shield is carried only with a
 one-handed weapon, and a one-handed weapon without a shield leaves the other hand hanging free.
 
 The knight comes in three builds, all free and all in the base pack, which the owner approved from
@@ -97,7 +98,15 @@ With the sword and shield the shield's arm goes behind the shield and the sword'
 sword, and while the sword crosses the body both arms go behind the shield and the blade goes in
 front of it.
 A test draws every frame of the swings and the attack and checks this pixel by pixel, for every
-weapon, shield, sleeve and glove on every build ([page.md](./page.md#the-knights-rig)). The helmet comes off in the house and the
+weapon, shield, sleeve and glove on every build ([page.md](./page.md#the-knights-rig)).
+
+The blade always passes in front of the watcher, never behind the head. A blade that turns from one
+side of the body to the other must point past the face on the way, so the swings keep that pass
+short and low: the blade turns past the face in about a frame, and the swings to the left come back
+low, across the waist, instead of turning back over the face. The two-handed wind-up holds the
+hands out past the far shoulder, so the guard stays clear of the chin. A test holds the time the
+blade spends over the eyes in a swing to the left under a ceiling, and keeps the guard off the face
+in the wind-up ([page.md](./page.md#the-knights-rig)). The helmet comes off in the house and the
 smithy. Gear is drawn in slots over one body so that new items can be added later; the slots are
 listed in [packs.md](./packs.md#slots-and-the-drawing-order).
 

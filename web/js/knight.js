@@ -718,31 +718,59 @@
     }
     return o;
   }
-  /* The one-handed swing's wind-up and cut, by direction: to the right, the sword's own side, the
-     wind-up raises the sword upright over the right shoulder, a little over the attack, so the
-     blade never crosses the face, and the shield stays in front; to the left, across the body, the
-     shield lifts and the blade passes in front of it. The cut's angle is the two-handed swing's,
-     and both wind-ups lie short of the nearest fly, so the swat's hit test is the same for both
-     weapons. */
+  /* The swings, as keyframes. A swing is a list of keys after the stance it starts from at q 0:
+     each key is a pose (the grip's gx, gy and the blade's angle a, and with a weapon in one hand the
+     shield hand's fx, fy) reached at q, by the easing of the segment that ends there (e the page's
+     ease, s smoothstep, l linear); len, where given, is that segment's length as it was first
+     written, so that a segment kept from an earlier swing gives the same numbers. The last key is
+     the stance again (stance: true). The cut runs from q .3 to .55 in every swing, and every cut
+     ends at the angle 2.0 towards its side, so the swat's hit test in engine.js holds; every
+     wind-up lies short of the nearest fly (its angle towards the cut below 0.2).
+
+     A blade that turns from one side of the body to the other must point past the face on the way.
+     The swings keep that pass short and low, with the blade always in front:
+       one hand, to the right (the sword's own side): the wind-up raises the sword upright over the
+         right shoulder, a little over the attack, the blade never crosses the face, and the shield
+         stays in front;
+       one hand, to the left (across the body): from the same wind-up the sword hand drops down the
+         right side to the chest with the blade still upright, the blade turns past the face in
+         about a frame, is held steep as it meets whatever it strikes, and cuts down across the
+         shield, which lifts; the return carries the blade back level across the waist and the
+         shield and turns it up only once the hand is out on the right;
+       two hands: the wind-up holds the hands out past the shoulder on the far side with the blade
+         laid back, so the guard's quillons stay clear of the chin; to the left the return comes
+         back low as in one hand. */
+  const SMOOTH = k => k * k * (3 - 2 * k), EASES = { e: ease, s: SMOOTH, l: k => k };
+  const key = (q, e, gx, gy, a, fx, fy) => (fx === undefined ? { q, e, gx, gy, a } : { q, e, gx, gy, a, fx, fy });
+  const STANCE = (q, e, len) => ({ q, e, len, stance: true });
   const SWING1 = {
-    1: { wind: { gx: 43.2, gy: 23.2, a: 0, fx: 16, fy: 38 }, hit: { gx: 44.8, gy: 38.4, a: 2.0, fx: 14, fy: 40 } },
-    '-1': { wind: { gx: 38.8, gy: 23.2, a: 1.0, fx: 12, fy: 37.6 }, hit: { gx: 17.2, gy: 40.8, a: -2.0, fx: 3.2, fy: 26.4 } }
+    1: [Object.assign(key(.3, 'e', 43.2, 23.2, 0, 16, 38), { len: .3 }), Object.assign(key(.55, 's', 44.8, 38.4, 2.0, 14, 40), { len: .25 }), STANCE(1, 'e', .45)],
+    '-1': [Object.assign(key(.3, 'e', 38.8, 23.2, 1.0, 12, 37.6), { len: .3 }), key(.39, 's', 39.6, 34.8, .05, 10, 35.6), key(.425, 'l', 33.2, 40.4, -.85, 6.4, 32),
+      key(.5, 'l', 25.2, 40.8, -1.1, 4.8, 29.2), key(.55, 's', 17.2, 40.8, -2.0, 3.2, 26.4),
+      key(.68, 'e', 16, 40.4, -1.62, 7.2, 30), key(.8, 's', 38.8, 40, -1.45, 16.8, 36.4), key(.83, 'l', 40, 38.4, -.05, 18.4, 37.2), STANCE(1, 'e')]
   };
-  /* A swing: wind up over one shoulder, cut across, recover. dir +1 cuts to the right. In both hands
-     the keyframes follow from dir; in one hand they are SWING1's, and the shield hand moves with
-     the sword. Returns whether the blade is in the cut. */
+  const SWING2 = {
+    1: [Object.assign(key(.3, 'e', 24 - 14.8, 33.2, -1.0), { len: .3 }), Object.assign(key(.55, 's', 34, 46, 2.0), { len: .25 }), STANCE(1, 'e', .45)],
+    '-1': [Object.assign(key(.3, 'e', 24 + 14.8, 33.2, 1.0), { len: .3 }), Object.assign(key(.55, 's', 14, 46, -2.0), { len: .25 }),
+      key(.68, 'e', 16, 43.2, -1.62), key(.8, 's', 36.8, 42.8, -1.52), key(.835, 'l', 40.8, 39.6, -.05), STANCE(1, 'e')]
+  };
+  const swingKeys = dir => (ONE ? SWING1 : SWING2)[dir > 0 ? 1 : -1];
+  /* A swing: wind up over one shoulder, cut across, recover. dir +1 cuts to the right. With a
+     weapon in one hand the shield hand moves with the sword. Returns whether the blade is in the
+     cut. */
   function swing(o, q, dir) {
-    const one = ONE ? SWING1[dir > 0 ? 1 : -1] : null, base = one ? BASE1 : BASE;
-    const wind = one ? one.wind : { gx: 24 - dir * 2, gy: 36, a: -1.0 * dir }, hit = one ? one.hit : { gx: 24 + dir * 10, gy: 46, a: 2.0 * dir };
-    let from, to, k;
-    if (q < .3) { from = base; to = wind; k = ease(q / .3); }
-    else if (q < .55) { from = wind; to = hit; k = (q - .3) / .25; k = k * k * (3 - 2 * k); }
-    else { from = hit; to = base; k = ease((q - .55) / .45); }
+    const base = ONE ? BASE1 : BASE, keys = swingKeys(dir);
+    let from = base, q0 = 0, i = 0;
+    while (i < keys.length - 1 && q >= keys[i].q) { from = keys[i]; q0 = keys[i].q; i++; }
+    const at = keys[i], to = at.stance ? base : at, k = EASES[at.e](clamp01((q - q0) / (at.len || at.q - q0)));
     o.gx = lerp(from.gx, to.gx, k); o.gy = lerp(from.gy, to.gy, k); o.wang = lerp(from.a, to.a, k);
-    if (one) { o.fx = lerp(from.fx, to.fx, k); o.fy = lerp(from.fy, to.fy, k); }
+    if (ONE) { o.fx = lerp(from.fx, to.fx, k); o.fy = lerp(from.fy, to.fy, k); }
     if (q > .2 && q < .6) o.eyes = 'angry';
     return q >= .3 && q < .56;
   }
+  /* Whether the swing towards dir comes back to the stance by a return of its own, rather than in
+     one segment from the cut's end. The goblin strike's return follows it (strike in engine.js). */
+  const ownReturn = dir => swingKeys(dir).filter(k => k.q > .55).length > 1;
 
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
@@ -757,6 +785,6 @@
      foes (bladeOf in engine.js, and through it foeGaps, contactQ and the foe's plan) is the blade
      drawn. */
   const rigOf = (o, b) => rig(o, b || (PK.look ? PK.look.m : BUILD));
-  KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD,
+  KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, ownReturn, head: headAtCorner, speech: speechHD,
     rest: { draw: restHD, blade: restBlade, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);

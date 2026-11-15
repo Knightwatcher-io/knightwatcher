@@ -222,8 +222,8 @@ for (const [name, pack, opts] of WEAPONS.concat(BUILT)) {
    event, for each grip on Classic, Broad and Slim. The poses are the present knight's, raised and
    lowered with each build's shoulders, so the hit moves by a few ms at most. */
 const HITS = {
-  two: { battlement: [1659, 1661, 1657], camp: [1659, 1661, 1657] },
-  one: { battlement: [1645, 1651, 1642], camp: [1672, 1675, 1672] } };
+  two: { battlement: [1662, 1664, 1661], camp: [1662, 1664, 1661] },
+  one: { battlement: [1645, 1651, 1642], camp: [1711, 1713, 1711] } };
 
 test('on every build, with either weapon, the goblin comes wherever it does on Classic, and is struck within a few ms of Classic\'s hit', () => {
   for (const grip of ['two', 'one']) {
