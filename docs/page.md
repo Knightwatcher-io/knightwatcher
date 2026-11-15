@@ -22,18 +22,21 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
+| `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names; see [worlds.md](./worlds.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
+| `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds the cellar as data; see [worlds.md](./worlds.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the devices in their places (`KW.devices`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
 | `js/settings.js` | `KW.settings`: the levels the display's settings come from, the saved settings (the server's, shared by every display, or this browser's own), keeping them in step with the server (`connect`), the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
-| `js/main.js` | start-up (starting the knight, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
+| `js/main.js` | start-up (starting the knight and then the scenes from the medieval world's pack, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 | `admin/index.html`, `admin/admin.js`, `admin/admin.css` | the admin page, served by the bundled server alone; see [The admin page](#the-admin-page) |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
 `KW.packText`, so it comes after `knight.js`; `ed25519.js` comes before `pack.js`, and `effects.js`
-comes before `props.js`, the scenes and `pack.js`, which use it.
+comes before `props.js`, the scenes and `pack.js`, which use it. `world.js` comes after the scenes
+and `pack.js`, and does nothing at load but define `KW.world`.
 
 ## One grid
 
@@ -342,7 +345,10 @@ every frame, so it adds nothing.
 
 Each file in `js/scenes/` registers one object on `KW.scenes` under the scene's name, and draws
 nothing outside it. The engine reads only what is listed here, and sets the grid's transform
-before it calls `paint`, `draw` and `over`.
+before it calls `paint`, `draw` and `over`. A scene may also come from a world pack: the scene
+compiler (`js/world.js`) builds an object with this same interface from the pack's data and puts it
+in the code scene's place, which a `dev` page does today for the cellar
+([worlds.md](./worlds.md)). The compiled scene works out its own `key`.
 
 | Field | Required | Meaning |
 |---|---|---|
@@ -361,7 +367,7 @@ before it calls `paint`, `draw` and `over`.
 | `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy` |
 | `helmet` | no | `false` where the helmet comes off (unless the address says otherwise) |
 | `sword` | no | `false` where the knight puts the sword away |
-| `can` | no | the conditions the scene can act out, by the contract's ids, such as `['disk_full', 'backup_overdue', 'cpu_hot']` for the cellar: plain data, kept so for the world format being drafted to carry. A condition plays in a scene the settings chose for it only when that scene lists it, and the settings offer a choice only between scenes that list it (see [Settings](#settings)); a scene without it is never chosen. [design.md](./design.md#scenes-chosen-per-condition) gives the table and the reasons |
+| `can` | no | the conditions the scene can act out, by the contract's ids, such as `['disk_full', 'backup_overdue', 'cpu_hot']` for the cellar: plain data, which a world pack carries as the scene's `can`. A condition plays in a scene the settings chose for it only when that scene lists it, and the settings offer a choice only between scenes that list it (see [Settings](#settings)); a scene without it is never chosen. [design.md](./design.md#scenes-chosen-per-condition) gives the table and the reasons |
 
 `s` is the same object for every call in a frame:
 
@@ -399,7 +405,7 @@ the time the dummy was last struck and swings the knight's sword in `act`.
 say: stars at hashed points, pines whose tiers depend on a hashed height, a flame whose points move
 by two sines, anything filled out to the screen's real edges. Each is an effect of `KW.effects`,
 named as the world format names it, and a scene calls it with its fields as a world pack's `fx`
-shape will give them:
+shape gives them:
 
 ```js
 E.bricks.draw({ p: [HL, HT], w: HR - HL, h: HFL - HT, size: [64, 26], of: WALL, mortar: '#0d0a11', seed: 5 });
@@ -434,7 +440,7 @@ beside itself the first time a pack names an effect.
 | `bricks` | `p`, `w`, `h`, `size`, `of` (1 to 16), `mortar`, `seed` (0), `lit` (0.06) | 3 a block, one more than fit in a course, and the mortar | battlement (`lit` 0.07), house, yard, cellar, smithy, court, and `bricksHD` |
 | `pines` | `p`, `w`, `step` (120), `phase` (0), `off` ([40, 50]), `tall` ([240, 130]), `seed` (5), `colour` | each pine's tiers at its tallest, times the pines across `w` | camp, two rows |
 | `tree` | `p`, `bark`, `leaves`, `light` (the camp's) | its trunk, streaks, roots and twelve leaves at their largest | camp |
-| `arch` | `p`, `rx`, `ry`, `n` (11), `of`, `outline` (K) | two strips a stone | cellar |
+| `arch` | `p`, `rx`, `ry`, `n` (11), `of`, `outline` (K), `step` (0), `phase` (0), `past` (0) | two strips a stone, for each arch: one, or with a `step` as many as fit from a step before the left edge to `past` beyond the right | cellar: one arch at a time from code, the row from the medieval world's pack |
 | `shelf` | `y`, `seed` (1) | a cheese's 92 in every slot of 38 across the screen | cellar |
 | `stacks` | `p`, `dir`, `step` (70), `heights` ([]), `seed` (0), `more` ([3, 5]), `past` (0) | the crate's 150 for each crate of the tallest column, times the columns to the edge | cellar, both sides |
 | `tufts` | `y`, `step` (41), `spread` (30), `seed` (9), `tall` ([8, 10]), `gap` (5), `lean` (1.6), `colour`, `light`, `bare` ([0, 0]) | three blades at their tallest, for each tuft across the screen | camp, yard |
@@ -974,7 +980,7 @@ default, range and list of values is taken, and its settings from `api/admin/set
 `api/settings`, again every five seconds, and sooner after a change. A field being typed in is
 never redrawn under the cursor: news waits until it is left.
 
-The layout is the approved mock-up's (`plan/admin/`): a side rail of nine sections with a count of
+The layout is a side rail of nine sections with a count of
 what is set there or failing, the collector's pulse, Download config.toml and Sign out in the
 header; below 720 pixels one column, with the sections in a sheet. Each row shows where its value
 comes from: `config.toml`, `Default`, or `Set here` in gold with what the file or the default holds
@@ -1035,7 +1041,8 @@ node --test tests/web/
 
 `tests/web/knight.test.js` checks the knight call by call. It loads the scripts `index.html` loads
 that the knight's drawing needs (`draw.js`, `sprites.js`, `effects.js`, `props.js`, `knight.js`, the
-house and the smithy, `ed25519.js`, `pack.js` and the carriers, in the page's order) under Node
+house and the smithy, `ed25519.js`, `pack.js` and the base pack's carrier, in the page's order; not
+the scene compiler or the medieval world's pack, which dress no knight) under Node
 with an empty `window` and a fake canvas context that records every call and every property set;
 `KW.devices.draw` writes one line in the record. It chooses the knight's source as `main.js` does
 and draws 112 records: the knight in 94 poses, the bare head in bed twice, the speech bubble twice,
@@ -1187,10 +1194,22 @@ shut, the question marks shown and hidden, the WAN's sparks and the sleeper's br
 moments of the dummy's wobble. The goblin's six poses, the flies, the hole, the clods, the smoke, the
 sparkles, the crate and its parachute are recorded once, apart (`cast`).
 
+Each scene the medieval world's pack gives (today the cellar) is then drawn again, compiled from the
+pack by `world.js` as a `dev` page compiles it, in the same states, at the same sizes and moments,
+and held to the same stored records: the code and the pack must draw the same calls
+([worlds.md](./worlds.md#two-copies-held-equal)). The backdrop's key is not in the records, so the
+test also works out each scene's key in every recorded state, from code and from the pack, and
+requires the two to tell the states apart alike: two states share a key from the pack exactly when
+they share one from code, whatever the strings. And it requires the compiled scene to give the code
+scene's spot, places, rounds, `can`, weapon and helmet, and the same parts drawn. The records are
+stored from code alone: `SCENES_LOG=write` never stores the pack's copy, and `SCENES_LOG=dump:`
+writes it to a folder of its own, `cellar@kw.medieval`.
+
 The 1 803 records are stored in `tests/web/fixtures/scenes/`, one file per scene and `cast.json`:
 for each record the first 16 characters of the hash of its calls, and for each distinct record its
 number of calls and a hash of each block of 1 024 calls, about 230 KB in all, where the records in
-full would weigh 287 MB (123 MB counting each distinct record once). A run takes about 17 seconds. When a record differs, the test draws it again
+full would weigh 287 MB (123 MB counting each distinct record once). A run takes about 19 seconds,
+the 162 records of the cellar from the pack included. When a record differs, the test draws it again
 from the repository's `HEAD` (`git show`), and when `HEAD` draws the stored record it names the
 scene, the state, the size, the record and the first call that differs, with what `HEAD` drew there
 and what was drawn. Without git, or when `HEAD` draws something else too, it names the block the
@@ -1330,8 +1349,9 @@ in. With time frozen the events and the swat start before the first frame and no
 one frame to the next, so every shot depends only on its address: two takes of the same tree come
 out byte for byte the same, on a busy machine too, apart from the clock when the minute turns.
 
-The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack.
-A deployed copy draws from the base pack too while it ships signed, and from code otherwise.
+The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
+and the cellar drawn from the medieval world's pack. A deployed copy draws from each pack while it
+ships signed, and from code otherwise: today the knight from the base pack and the cellar from code.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches
@@ -1341,7 +1361,8 @@ To shoot the code path from disk, copy `web/` to a folder outside the repository
 copy's `kw-version` meta tag any value but `dev`; a page opened from disk runs the demo whatever
 its version. Take the copy's signature off its base pack with
 `node tools/sign-pack.js --unsign <copy>/packs/base.pack.json`, so that the copy refuses it and
-draws from code whichever state ships. Do it before and after a change and compare each path's two
+draws from code whichever state ships; the copy draws the cellar from code while the medieval
+world's pack ships unsigned, and once it is signed, unsign it the same way. Do it before and after a change and compare each path's two
 sets:
 
 ```bash

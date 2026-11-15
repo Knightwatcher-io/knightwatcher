@@ -147,19 +147,31 @@
   };
 
   /* arch: a ring of n wedge-shaped stones round p, rx across and ry high, in of in turn, each
-     outlined. */
+     outlined. With a step, a row of them across the screen, as the cellar's arches stand: one for
+     each x from the last at or before the screen's left edge that is phase more than a multiple of
+     step, to before past beyond its right edge, each round p moved along by x. A step of 0 draws
+     the one arch. */
+  function ring(cx, cy, f) {
+    const { rx, ry, n } = f;
+    for (let i = 0; i < n; i++) {
+      const a0 = -Math.PI / 2 + Math.PI * i / n, a1 = -Math.PI / 2 + Math.PI * (i + 1) / n, am = (a0 + a1) / 2;
+      const p = (a, r) => [cx + Math.sin(a) * rx * r, cy - Math.cos(a) * ry * r];
+      const [x0, y0] = p(am, .93), [x1, y1] = p(am, 1.07);
+      strip(x0, y0, x1, y1, 14, 14, f.outline); strip(x0, y0, x1, y1, 11.5, 11.5, f.of[i % f.of.length]);
+    }
+  }
   const arch = {
     fields: { p: { kind: 'point' }, rx: { kind: 'num', lo: 1, hi: 512 }, ry: { kind: 'num', lo: 1, hi: 512 }, n: { kind: 'int', lo: 1, hi: 32, def: 11 },
-      of: { kind: 'colours', min: 1, max: 8 }, outline: { kind: 'colour', def: K } },
-    cost: b => { const m = .14 * Math.max(b.rx, b.ry); return b.n * (B.strip(m, m, 14) + B.strip(m, m, 11.5)); },
+      of: { kind: 'colours', min: 1, max: 8 }, outline: { kind: 'colour', def: K },
+      step: { kind: 'int', lo: 0, hi: 960, def: 0 }, phase: { kind: 'int', lo: -960, hi: 960, def: 0 }, past: { kind: 'int', lo: 0, hi: 960, def: 0 } },
+    cost: b => {
+      const m = .14 * Math.max(b.rx, b.ry), one = b.n * (B.strip(m, m, 14) + B.strip(m, m, 11.5));
+      return b.step ? Math.max(0, Math.ceil((hi(b.view.W) + b.past + b.step) / b.step)) * one : one;
+    },
     draw(f) {
-      const [cx, cy] = f.p, { rx, ry, n } = f;
-      for (let i = 0; i < n; i++) {
-        const a0 = -Math.PI / 2 + Math.PI * i / n, a1 = -Math.PI / 2 + Math.PI * (i + 1) / n, am = (a0 + a1) / 2;
-        const p = (a, r) => [cx + Math.sin(a) * rx * r, cy - Math.cos(a) * ry * r];
-        const [x0, y0] = p(am, .93), [x1, y1] = p(am, 1.07);
-        strip(x0, y0, x1, y1, 14, 14, f.outline); strip(x0, y0, x1, y1, 11.5, 11.5, f.of[i % f.of.length]);
-      }
+      const [px, py] = f.p, step = f.step;
+      if (!step) { ring(px, py, f); return; }
+      for (let x = Math.floor((V.HL - f.phase) / step) * step + f.phase; x < V.HR + f.past; x += step) ring(x + px, py, f);
     }
   };
 

@@ -766,10 +766,12 @@ test('the reader never throws, on truncated and mangled copies of a pack', () =>
   }
 });
 
-test('the source makes no code from data', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'web/js/pack.js'), 'utf8');
-  assert.doesNotMatch(src, /\beval\b/);
-  assert.ok(!src.includes('Function('));
+test('the source makes no code from data: the pack library and the scene compiler', () => {
+  for (const f of ['web/js/pack.js', 'web/js/world.js']) {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    assert.doesNotMatch(src, /\beval\b/, f);
+    assert.ok(!src.includes('Function('), f);
+  }
 });
 
 // ---- The canonical form ------------------------------------------------------------------------------

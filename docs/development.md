@@ -4,7 +4,9 @@ Read this page before changing anything, and [security.md](./security.md) before
 The design is in [design.md](./design.md), and the contract between the collector and the page
 is in [state.md](./state.md). Read [page.md](./page.md) before touching `web/`,
 [collector.md](./collector.md) before touching `collector/`, [server.md](./server.md) before
-touching `server/`, and [packs.md](./packs.md) before touching `web/js/pack.js` or a pack file.
+touching `server/`, [packs.md](./packs.md) before touching `web/js/pack.js` or a pack file, and
+[worlds.md](./worlds.md) before touching `web/js/world.js`, the medieval world's pack or a scene it
+holds.
 
 ## Layout
 
@@ -61,6 +63,10 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 - **A pack file and its carrier change together.** After editing a file in `web/packs/`, run
   `node tools/pack-carrier.js` and commit both; a test fails while they differ. See
   [packs.md](./packs.md#carriers).
+- **A change to the medieval art is made in both copies, in the same commit.** A scene the medieval
+  world's pack holds (today the cellar) is drawn from the pack and, as the fallback, from its code in
+  `web/js/scenes/`. Change both, write the carrier, and `node --test tests/web/` holds the two to the
+  same call records. See [worlds.md](./worlds.md#two-copies-held-equal).
 - **A setting starts in the schema.** Every setting of `config.toml` and every variable of `.env`
   is described in `collector/settings-schema.json`. A new or changed one is written there first,
   then in `config.example.toml` or `.env.example`; then run `node tools/settings-schema.js`, which
@@ -190,25 +196,34 @@ the raspberry, a pose of the goblin) is written into the record with its calls. 
 on the knight (the sleeper's head, the gear at rest, the speech bubble, a swing) the record holds
 one line with the call and its arguments, since the knight test checks the knight. The goblin, the
 flies and the other props of the events are recorded apart. It compares 1 803 records with those in
-`tests/web/fixtures/scenes/`, one file per scene and one for those props (`cast.json`), in about 17
-seconds. A failure names the scene, the state, the size, the record and the first call that
+`tests/web/fixtures/scenes/`, one file per scene and one for those props (`cast.json`). Then it draws
+each scene the medieval world's pack holds (today the cellar, 162 records) a second time, compiled
+from the pack, against the same stored records; checks that the compiled scene's backdrop key tells
+the recorded states apart exactly as the code scene's does; and checks that it gives the code scene's
+interface. All of it takes about 19 seconds. A failure names the scene, the state, the size, the record and the first call that
 differs, with what `HEAD` draws there and what was drawn; without git, the block of 1 024 calls
 where the difference lies. Store the records again only when a scene is meant to change, from code
 whose drawing is known to be right:
 
 ```bash
-SCENES_LOG=write node --test tests/web/scenes.test.js      # stores the records of the code as it is
+SCENES_LOG=write node --test tests/web/scenes.test.js      # stores the records of the code as it is, never the pack's
 SCENES_LOG=dump:DIR node --test tests/web/scenes.test.js   # writes every record in full to DIR
 SCENES_WEB=DIR node --test tests/web/scenes.test.js        # draws a copy of web/ in DIR instead
 ```
 
 [page.md](./page.md#checks) has the details.
 
-The repository's own page draws the knight from the base pack, so the screenshots of the
-repository's page check the pack path, and the knight test checks both paths. A deployed copy
-draws from the base pack while it ships signed, and from code otherwise; to shoot the code path as
-well, take a second pair of sets from a copy of `web/` whose `kw-version` is not `dev` and whose
-base pack carries no signature; [page.md](./page.md#checks) shows how.
+`tests/web/world.test.js` checks the scene compiler and the medieval world's pack: that the pack
+reads clean, where a `dev` and a deployed page draw the cellar from, a refused, missing or unreadable
+pack and a compile that throws, each leaving the cellar the code scene with its console line, the
+predicates and the backdrop's key, and that what the compiler does not build yet is refused by name.
+
+The repository's own page draws the knight from the base pack and the cellar from the medieval
+world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
+and the scene test check both paths. A deployed copy draws from each pack while it ships signed, and
+from code otherwise; to shoot the code path as well, take a second pair of sets from a copy of
+`web/` whose `kw-version` is not `dev` and whose packs carry no signature; [page.md](./page.md#checks)
+shows how.
 
 ## The logo and the icons
 
@@ -246,7 +261,9 @@ steps 1 and 3 is refused there and needs another run. [packs.md](./packs.md#sign
 describes the tool, and how a fork signs with a key of its own.
 
 Whether the base pack ships signed today, and what a deployed page draws in each case, is in
-[packs.md](./packs.md#where-the-knight-is-drawn-from). The page's tests hold in either state, so carrying a signature
+[packs.md](./packs.md#where-the-knight-is-drawn-from). The medieval world's pack, `kw.medieval`, ships
+unsigned until its first signing run, and until then a deployed page draws the cellar from code
+([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
 across changes no test.
 
 ## Deploying
