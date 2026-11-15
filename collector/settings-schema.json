@@ -32,7 +32,7 @@
       "settings": [
         { "key": "interval_s", "type": "integer", "default": 10, "min": 5, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Collector", "label": "Poll every" } }, "editable": true,
-          "help": "Seconds between polls. Also written to state.json as interval_s, and the page treats a file older than three intervals as stale." },
+          "help": "Seconds between polls. The displays treat a state file older than three polls as stale and say so." },
         { "key": "output_dir", "type": "string", "default": "/out", "form": "a folder inside the container", "scope": "household",
           "gui": { "admin": { "section": "Collector", "label": "Output folder" } }, "editable": false,
           "help": "Folder state.json is written to. compose.yaml mounts KNIGHTWATCHER_OUT here." },
@@ -44,13 +44,13 @@
           "help": "Zone for the night hours and the times shown in words." },
         { "key": "http_timeout_s", "type": "number", "default": 5.0, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Collector", "label": "Network timeout" } }, "editable": true,
-          "help": "Timeout for each network call. Must be shorter than interval_s, so an interval of 5 needs it lowered. A watched thing's check uses at most 3 seconds of it for each step." },
+          "help": "Timeout for each network call. Must be shorter than the time between polls, so a poll every 5 seconds needs it lowered. A watched thing's check uses at most 3 seconds of it for each step." },
         { "key": "auth_backoff_s", "type": "integer", "default": 1200, "min": 1200, "problem": "must be at least 1200 (20 minutes)", "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Collector", "label": "Pause after a refused login" } }, "editable": true,
           "help": "Pause after a 401, 403 or 429 before the service is called again. Cannot be set below 1200." },
         { "key": "proc_root", "type": "string", "default": "/host/proc", "form": "a folder inside the container", "scope": "household",
-          "gui": { "admin": { "section": "Collector", "label": "Host /proc" } }, "editable": false,
-          "help": "Where the host's /proc is mounted." }
+          "gui": { "admin": { "section": "Collector", "label": "Host's process folder" } }, "editable": false,
+          "help": "Where the host's /proc is mounted, for CPU, memory, load and the lock table." }
       ]
     },
     {
@@ -61,7 +61,7 @@
           "default": ["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "thing_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night"],
           "form": "condition ids, each once", "scope": "household",
           "gui": { "admin": { "section": "Conditions", "label": "Priority" } }, "editable": true,
-          "help": "Conditions, highest first. One left out is never raised, and a list that leaves out thing_down is refused while any watched thing alerts." },
+          "help": "Conditions, highest first. One left out is never raised. Thing down (thing_down) must stay in the list while any watched thing alerts." },
         { "key": "clear_after_s", "type": "integer", "default": 30, "min": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Conditions", "label": "Clear after" } }, "editable": true,
           "help": "How long a cause must be absent before its condition clears." }
@@ -88,7 +88,7 @@
       "settings": [
         { "key": "failed_checks", "type": "integer", "default": 2, "min": 1, "scope": "household",
           "gui": { "admin": { "section": "Conditions: WAN down", "label": "Failed checks" } }, "editable": true,
-          "help": "Failed internet checks in a row before wan_down. Each check is a fresh read of the wan source, so they are its every_s apart." }
+          "help": "Failed internet checks in a row before the WAN counts as down. Each check is a fresh read of the internet source, so they are as far apart as it is read." }
       ]
     },
     {
@@ -150,7 +150,7 @@
       "settings": [
         { "key": "available_pct", "type": "number", "default": 10.0, "above": 0, "max": 100, "unit": "percent", "scope": "household",
           "gui": { "admin": { "section": "Conditions: memory tight", "label": "Available" } }, "editable": true,
-          "help": "MemAvailable as a percent of MemTotal, averaged over the window: at or below." },
+          "help": "Memory available, as a percent of all memory, averaged over the window: at or below." },
         { "key": "window_s", "type": "integer", "default": 30, "min": 10, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Conditions: memory tight", "label": "Window" } }, "editable": true,
           "help": "The window available memory is averaged over." }
@@ -165,7 +165,7 @@
           "help": "Open SSH sessions needed." },
         { "key": "show_for_s", "type": "integer", "default": 600, "min": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Conditions: at court", "label": "Show for" } }, "editable": true,
-          "help": "How long a new SSH session keeps ssh_session up. 0 keeps it up for as long as min_sessions sessions are open." }
+          "help": "How long a new SSH session keeps the condition up. 0 keeps it up for as long as the sessions it needs are open." }
       ]
     },
     {
@@ -200,7 +200,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: host", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 10, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: host", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read. Should be at least as often as the shorter averaging window; when it is read less often, an average reaches back to the previous read instead." },
@@ -216,7 +216,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: containers", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 10, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: containers", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -234,7 +234,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: internet", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: internet", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -249,7 +249,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: DNS", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: DNS", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -270,7 +270,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: backup", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 60, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: backup", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -294,7 +294,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: Pi", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: Pi", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -312,7 +312,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: updates", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 10, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: updates", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -328,7 +328,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: SSH", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 10, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: SSH", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -346,7 +346,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -354,8 +354,8 @@
           "gui": { "admin": { "section": "Sources: streams", "label": "Address" } }, "editable": true,
           "help": "Base URL of Tautulli." },
         { "key": "secret", "type": "string", "default": "tautulli", "form": "letters, digits and underscores", "scope": "household",
-          "gui": { "admin": { "section": "Sources: streams", "label": "Credentials" } }, "editable": false,
-          "help": "Names the .env variables holding its credentials: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals." }
+          "gui": { "admin": { "section": "Sources: streams", "label": "Credential name" } }, "editable": false,
+          "help": "The name its credential is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone." }
       ]
     },
     {
@@ -364,7 +364,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -372,8 +372,8 @@
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Address" } }, "editable": true,
           "help": "Base URL of AdGuard Home." },
         { "key": "secret", "type": "string", "default": "adguard", "form": "letters, digits and underscores", "scope": "household",
-          "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Credentials" } }, "editable": false,
-          "help": "Names the .env variables holding its credentials: KNIGHTWATCHER_<SECRET>_USERNAME and KNIGHTWATCHER_<SECRET>_PASSWORD, in capitals." },
+          "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Credential name" } }, "editable": false,
+          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_USERNAME and KNIGHTWATCHER_<SECRET>_PASSWORD, in capitals. Set in config.toml alone." },
         { "key": "fly_every_s", "type": "number", "default": 300.0, "min": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "A fly every" } }, "editable": true,
           "help": "Average seconds between flies while blocking runs at the household's normal rate, which AdGuard Home's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query." }
@@ -385,7 +385,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: security", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: security", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -400,7 +400,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: Sonarr", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: Sonarr", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -408,8 +408,8 @@
           "gui": { "admin": { "section": "Sources: Sonarr", "label": "Address" } }, "editable": true,
           "help": "Base URL of Sonarr." },
         { "key": "secret", "type": "string", "default": "sonarr", "form": "letters, digits and underscores", "scope": "household",
-          "gui": { "admin": { "section": "Sources: Sonarr", "label": "Credentials" } }, "editable": false,
-          "help": "Names the .env variable holding its API key: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals." }
+          "gui": { "admin": { "section": "Sources: Sonarr", "label": "Credential name" } }, "editable": false,
+          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone." }
       ]
     },
     {
@@ -418,7 +418,7 @@
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: Radarr", "label": "On" } }, "editable": true,
-          "help": "Set to false to turn the source off while keeping its table." },
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: Radarr", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
@@ -426,15 +426,15 @@
           "gui": { "admin": { "section": "Sources: Radarr", "label": "Address" } }, "editable": true,
           "help": "Base URL of Radarr." },
         { "key": "secret", "type": "string", "default": "radarr", "form": "letters, digits and underscores", "scope": "household",
-          "gui": { "admin": { "section": "Sources: Radarr", "label": "Credentials" } }, "editable": false,
-          "help": "Names the .env variable holding its API key: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals." }
+          "gui": { "admin": { "section": "Sources: Radarr", "label": "Credential name" } }, "editable": false,
+          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone." }
       ]
     },
     {
       "table": "thing",
       "many": true,
       "max": 32,
-      "help": "Each [[thing]] table, at the top level, is one machine on the network to watch. There can be 32, the Pi of [sources.pi] included. A thing has exactly one check: host with port or ports, or url. Watched things, below, says how they are checked and drawn.",
+      "help": "Machines on the network to watch, each a [[thing]] table at the top level of config.toml. There can be 32, the Pi of [sources.pi] included. A thing has exactly one check: an address with one or more ports (host with port or ports), or a web address (url).",
       "settings": [
         { "key": "name", "type": "string", "default": null, "required": true, "form": "1 to 20 printable ASCII characters, with no space at either end", "scope": "household",
           "gui": { "admin": { "section": "Watched things", "label": "Name" } }, "editable": true,
@@ -468,20 +468,20 @@
           "help": "Seconds of silence before the thing counts as down." },
         { "key": "alert", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Watched things", "label": "Alerts" } }, "editable": true,
-          "help": "Whether the thing also raises thing_down while it is down." },
+          "help": "Whether the thing raises Thing down (thing_down) while it is down." },
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Watched things", "label": "On" } }, "editable": true,
-          "help": "Set to false to keep the table but stop the checks and leave the thing out of the state file." }
+          "help": "Whether the thing is checked. Off (false in config.toml) keeps it in the list, stops its checks and leaves it off the displays." }
       ]
     },
     {
       "table": "look",
       "defaults_for": "display",
-      "help": "The household default for the knight and the monarch at court. Each display may choose its own on its settings screen. The colours, tones and hair styles are those of the base pack.",
+      "help": "The knight and the monarch at court, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The colours, tones and hair styles are those of the base pack.",
       "settings": [
         { "key": "build", "type": "string", "default": null, "values": ["a", "b", "c"], "page_default": null, "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Build" }, "wall": { "section": "The knight", "label": "Build" } }, "editable": true,
-          "help": "The knight's build, by the base pack's names: \"a\" Classic, the present knight, \"b\" Broad and \"c\" Slim. The page's own is the base pack's default build, and only a build the packs in use declare is shown." },
+          "help": "The knight's build, by the base pack's names: Classic (a), the present knight, Broad (b) and Slim (c). The page's own is the base pack's default build, and only a build the packs in use declare is shown." },
         { "key": "weapon", "type": "string", "default": null, "values": ["greatsword", "sword_and_shield"], "page_default": "greatsword", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Weapon" }, "wall": { "section": "The knight", "label": "Weapon" } }, "editable": true,
           "help": "What the knight carries." },
@@ -517,14 +517,14 @@
     {
       "table": "display",
       "defaults_for": "display",
-      "help": "The household default for how the display shows the words. Each display may choose its own.",
+      "help": "How every display shows the words. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment.",
       "settings": [
         { "key": "headline", "type": "string", "default": null, "values": ["small", "medium", "large"], "page_default": "medium", "scope": "display",
           "gui": { "admin": { "section": "Household display", "label": "Headline size" }, "wall": { "section": "Display", "label": "Headline size" } }, "editable": true,
           "help": "The size of the headline." },
         { "key": "clock", "type": "integer", "default": null, "values": [24, 12], "page_default": 24, "scope": "display",
           "gui": { "admin": { "section": "Household display", "label": "Clock" }, "wall": { "section": "Display", "label": "Clock" } }, "editable": true,
-          "help": "The clock's hours, as a number." },
+          "help": "Whether the clock shows 24 hours or 12." },
         { "key": "helmet_indoors", "type": "boolean", "default": null, "page_default": false, "scope": "display",
           "gui": { "admin": { "section": "Household display", "label": "Helmet indoors" }, "wall": { "section": "Display", "label": "Helmet indoors" } }, "editable": true,
           "help": "Whether the helmet stays on in the house and the smithy." }
@@ -533,7 +533,7 @@
     {
       "table": "quiet",
       "defaults_for": "display",
-      "help": "The household default for the scenes that take turns while all is quiet. Each display may choose its own.",
+      "help": "The scenes that take turns while all is quiet, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment.",
       "settings": [
         { "key": "scenes", "type": "list", "items": "scene", "default": null, "values": ["battlement", "camp", "house", "yard"], "page_default": ["battlement", "camp", "house", "yard"],
           "form": "one or more quiet scenes, each once", "scope": "display",
@@ -548,7 +548,7 @@
       "table": "scenes",
       "defaults_for": "display",
       "keys": "condition",
-      "help": "The household default for the scene a condition plays in. Each key is a condition id and each value one of the page's scenes. The page offers a choice for the conditions below, which more than one scene can act. The collector accepts any condition id and any scene, but the page plays a condition in its own scene when the scene given cannot act it, with a line in the browser's console.",
+      "help": "Where the knight acts out each condition that more than one scene can play, for every display. A condition left out plays in its own scene. In config.toml each key is a condition and each value a scene; a scene that cannot act its condition is ignored, and the condition plays in its own.",
       "settings": [
         { "key": "attack", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "acts": ["battlement", "camp", "yard"], "page_default": "battlement", "scope": "display",
           "gui": { "admin": { "section": "Scenes", "label": "Under attack" }, "wall": { "section": "Scenes", "label": "Under attack" } }, "editable": true,
@@ -581,9 +581,9 @@
     { "name": "KNIGHTWATCHER_VAR", "scope": "path", "required": false, "default": "./var", "mount": "/var/lib/knightwatcher", "example": "./var",
       "gui": { "admin": { "section": "Host", "label": "Memory folder" } }, "editable": false,
       "help": "The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account." },
-    { "name": "KNIGHTWATCHER_SERVER_VAR", "scope": "path", "required": false, "default": "./var/server", "mount": "/var/lib/knightwatcher-server", "services": ["server"], "example": "./var/server",
+    { "name": "KNIGHTWATCHER_SERVER_VAR", "scope": "path", "required": false, "default": "./var/server", "mount": "/var/lib/knightwatcher-server", "services": ["collector", "server"], "example": "./var/server",
       "gui": { "admin": { "section": "Server", "label": "Server folder" } }, "editable": false,
-      "help": "The host folder for the bundled server's own files: the settings saved for every display, in settings.json. Mounted at /var/lib/knightwatcher-server, the one place the server writes. Must exist and be writable by the server's account." },
+      "help": "The host folder for the bundled server's own files: the settings saved for every display, in settings.json, and those set on the admin page, in admin.json, with the admin page's sessions. Mounted at /var/lib/knightwatcher-server, the one place the server writes, and read-only at the same place in the collector, which takes up admin.json. Must exist and be writable by the server's account." },
     { "name": "KNIGHTWATCHER_SERVER_ADDRESS", "scope": "server", "required": false, "default": "", "services": ["server"], "example": "127.0.0.1",
       "form": "an address of this host, or empty for all of them",
       "gui": { "admin": { "section": "Server", "label": "Address" } }, "editable": false,
@@ -592,6 +592,10 @@
       "form": "a TCP port number from 1 to 65535",
       "gui": { "admin": { "section": "Server", "label": "Port" } }, "editable": false,
       "help": "The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is." },
+    { "name": "KNIGHTWATCHER_ADMIN_PASSWORD", "scope": "server", "required": false, "default": "", "services": ["server"], "example": "a-long-password-of-your-own",
+      "form": "a password of at least 12 characters, or empty to leave the admin page off",
+      "gui": { "admin": { "section": "Admin", "label": "Admin password" } }, "editable": false,
+      "help": "The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out." },
     { "name": "KNIGHTWATCHER_TAUTULLI_API_KEY", "scope": "credential", "source": "streams", "field": "api_key", "secret": "tautulli", "default": null,
       "example": "0123456789abcdef0123456789abcdef", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Tautulli API key" } }, "editable": false,

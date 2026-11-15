@@ -3,7 +3,8 @@
 # never set here: they go in .env (see .env.example), named by each source's `secret`.
 # A source runs when its [sources.*] table is present and `enabled` is not false. Each source is
 # read every `every_s` seconds; between reads its last reading stands. The settings screen's
-# defaults and the watched things, at the end, are commented out.
+# defaults and the watched things, at the end, are commented out. A setting changed on the bundled
+# server's admin page is kept there, over this file, and its Download config.toml writes them all.
 
 [collector]
 interval_s = 10
@@ -141,9 +142,10 @@ every_s = 30
 url = "http://192.0.2.31:7878"
 secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 
-# The household defaults for the display's settings screen. Each display starts from these and
-# may change them for itself. A setting left out takes the page's own default. Remove the "# "
-# before a table and its settings to use them.
+# The household defaults for the display's settings screen. Every display starts from these; a
+# choice made on a wall's settings screen or the admin page is saved over them, for the whole
+# deployment. A setting left out takes the page's own default. Remove the "# " before a table and
+# its settings to use them.
 
 # [look]
 # build = "a"                 # a Classic, b Broad, c Slim

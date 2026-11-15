@@ -243,13 +243,24 @@ class TemplatesAgreeTest(unittest.TestCase):
                 if not e["required"]:
                     self.assertEqual(default.group(1), e["default"], f"{name}: {e['name']}")
 
-    def test_the_server_gets_no_variable_from_env_but_its_address_and_port(self):
+    def test_the_server_gets_the_admin_password_alone_from_env(self):
         server = services(compose_text())["server"]
-        self.assertNotIn("environment:", server)
+        environment = server.split("    environment:\n", 1)[1].split("    ports:\n", 1)[0]
+        entries = [
+            ln for ln in environment.splitlines() if ln.strip() and not ln.strip().startswith("#")
+        ]
+        self.assertEqual(
+            entries, ["      KNIGHTWATCHER_ADMIN_PASSWORD: ${KNIGHTWATCHER_ADMIN_PASSWORD:-}"]
+        )
         named = set(re.findall(r"\$\{(KNIGHTWATCHER_[A-Z0-9_]+)", server))
         mine = {e["name"] for e in S["env"] if "server" in e.get("services", ["collector"])}
         self.assertEqual(named, mine)
         self.assertNotIn("credential", {e["scope"] for e in S["env"] if e["name"] in named})
+        # The admin password reaches the server and nothing else.
+        password = next(e for e in S["env"] if e["name"] == "KNIGHTWATCHER_ADMIN_PASSWORD")
+        self.assertEqual(password["services"], ["server"])
+        self.assertEqual(password["scope"], "server")
+        self.assertNotIn("KNIGHTWATCHER_ADMIN_PASSWORD", services(compose_text())["collector"])
         ports = server.split("    ports:\n", 1)[1].split("    volumes:\n", 1)[0]
         self.assertIn("${KNIGHTWATCHER_SERVER_ADDRESS:+${KNIGHTWATCHER_SERVER_ADDRESS:-}:}", ports)
         port = schema.SCHEMA["env"][
@@ -267,6 +278,25 @@ class TemplatesAgreeTest(unittest.TestCase):
         self.assertNotIn("/proc", server)
         out = re.search(r"\$\{KNIGHTWATCHER_OUT[^\n]*\n\s+target: /out\n\s+read_only: true", server)
         self.assertIsNotNone(out, "the collector's output is mounted read-only")
+        config = re.search(
+            r"source: \./config\.toml\n\s+target: /etc/knightwatcher/config\.toml\n"
+            r"\s+read_only: true",
+            server,
+        )
+        self.assertIsNotNone(
+            config, "config.toml is mounted read-only, for the admin page's checks"
+        )
+
+    def test_the_collector_reads_the_servers_folder_read_only(self):
+        collector = services(compose_text())["collector"]
+        mount = re.search(
+            r"\$\{KNIGHTWATCHER_SERVER_VAR:-[^}]*\}\n\s+target: (\S+)\n\s+read_only: true",
+            collector,
+        )
+        self.assertIsNotNone(mount, "the server's folder is mounted read-only in the collector")
+        from collector import overlay
+
+        self.assertEqual(os.path.dirname(overlay.DEFAULT_PATH), mount.group(1))
 
 
 def compose_text() -> str:

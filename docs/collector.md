@@ -31,8 +31,11 @@ standard library alone, and it runs as a container. Its settings are in
    output folder before renaming it into place. The file is mode 644 so that the web server can
    read it. The memory file is then saved if anything in it changed. Every file also carries
    `defaults`, the settings screen's household defaults, copied unchanged from the `[look]`,
-   `[display]`, `[quiet]` and `[scenes]` tables of `config.toml`. The configuration is read once,
-   at start, so a change to those tables reaches the file at the next start.
+   `[display]`, `[quiet]` and `[scenes]` tables of `config.toml`, and `config`, which says which
+   settings are in use (see [Taking up a change](#taking-up-a-change)).
+
+Before step 1, the collector looks at whether `config.toml` or the admin page's `admin.json` has
+been written since it last read them, and takes up a change between polls.
 
 Between reads a source's last reading stands. It is written to the file and judged at every
 poll, but it is not observed again, so it raises no events, and its entry in `sources` keeps the
@@ -52,6 +55,63 @@ this rule keeps the collector well short of that. The pause is kept in the memor
 restarting the container does not end it, and `sources` shows when it ends. Credentials are
 sent with the first request: urllib's own handler would send one request without them first,
 then retry.
+
+## Taking up a change
+
+The settings the collector uses are `config.toml` with what is set on the bundled server's admin
+page laid over it: the server keeps that in `admin.json` in its own folder, which `compose.yaml`
+mounts read-only in the collector at `/var/lib/knightwatcher-server`
+([server.md](./server.md#the-admin-store)). Both are read by the code in `collector/overlay.py` and
+`collector/reload.py`, which the server uses too, so the two always agree on what is set.
+
+**At start**, `config.toml` must pass on its own, its credentials included, or the collector does
+not start, as it always has; `check-config` checks the same. `admin.json` is then laid over it. When
+the result passes, it is used. When it needs a credential that the environment lacks, it is used
+all the same, and that source runs and fails at every read with the variable's name
+(`KNIGHTWATCHER_SONARR_API_KEY missing`), so a mistake in `.env` stops one source rather than the
+display. When it fails for any other reason, the collector runs on `config.toml` alone and says
+why in the state file.
+
+**While it runs**, the collector looks at both files at the start of every poll, by their inode,
+size and time. When either has changed it builds the settings again the same way, without
+requiring `config.toml` to pass alone, and when they pass it swaps to them between polls:
+
+- a source whose reads would be the same (the same class, settings and collector settings, and for
+  `host` the same averaging windows) keeps its last reading, any read in flight and, for `host`,
+  its samples; any other source starts afresh, and one that was taken away is dropped, a read of it
+  still running left to finish unseen. A change to the collector's own settings, the interval
+  among them, starts every source afresh;
+- each condition keeps its state and takes up its new thresholds; one left out of the priority is
+  forgotten;
+- each watched thing keeps its record while its name and its check are the same, at its new place
+  in the list, and one renamed, given a new check or added starts as after a restart;
+- the next poll is scheduled at the new interval.
+
+A change that fails is not taken up: the collector keeps the settings it has and says why. The
+output and memory folders change only at a restart, and a change to them is refused while it runs.
+Each change taken up or refused is logged (`settings taken up: admin.json 3f9c0d12ab45e6789a0b`,
+`settings not taken up: ...`).
+
+The state file's `config` says which settings are in use: the version of `admin.json` laid over
+`config.toml`, when they were taken up, the problems of the last change looked at, and `refused`
+when that change was not taken up ([state.md](./state.md#fields)). The admin page shows it as "In
+use by the collector since".
+
+### Credentials by name
+
+At start the collector writes `credentials.json` beside `state.json`, mode 640: the name of every
+credential variable the schema lists and of any other `KNIGHTWATCHER_<SECRET>_<FIELD>` variable in
+its environment, each `true` when it holds a value, and nothing else. Never a value.
+
+```json
+{"KNIGHTWATCHER_ADGUARD_PASSWORD": true, "KNIGHTWATCHER_ADGUARD_USERNAME": true,
+ "KNIGHTWATCHER_RADARR_API_KEY": false, "KNIGHTWATCHER_SONARR_API_KEY": true,
+ "KNIGHTWATCHER_TAUTULLI_API_KEY": true}
+```
+
+The bundled server reads it to check a change on the admin page and to say which credentials
+`.env` holds, and never serves it. The environment does not change while a container runs, so the
+file is written once.
 
 ## Conditions
 
@@ -292,7 +352,7 @@ resolver hangs is caught only by the poll's limit on the read. An address avoids
 ## Running it
 
 ```bash
-python3 -m collector --check-config     # validate config.toml and the credentials, then exit
+python3 -m collector --check-config     # validate config.toml alone and its credentials, then exit
 python3 -m collector --once             # one poll, write state.json, exit
 python3 -m collector --health           # exit 1 if state.json is older than three intervals
 python3 -m collector                    # poll until stopped
@@ -300,7 +360,11 @@ python3 -m collector                    # poll until stopped
 
 `--config` names the settings file. It defaults to the environment variable
 `KNIGHTWATCHER_CONFIG`, and where that is unset to `/etc/knightwatcher/config.toml`, the path
-inside the container. Credentials come from environment variables, which `compose.yaml` passes
+inside the container. `--admin` names the admin page's `admin.json`, laid over it; it defaults to
+`KNIGHTWATCHER_ADMIN_FILE`, and where that is unset to
+`/var/lib/knightwatcher-server/admin.json`, the path inside the container. A missing file sets
+nothing. `--health` measures the state file's age against the larger of `config.toml`'s interval
+and the one the file says is in use, since the admin page may have set another. Credentials come from environment variables, which `compose.yaml` passes
 from `.env` (see [configuration.md](./configuration.md#env-host-paths-and-credentials)).
 `--check-config --env-file PATH` reads them from a `.env` file instead, for the check alone, so a
 new image can be checked against a host's `.env` before it starts; nothing in the file is

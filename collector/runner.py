@@ -75,6 +75,60 @@ class Runner:
         self._last_ok: dict[str, bool] = {}
         self._secrets = sorted(config.secret_values(), key=len, reverse=True)
         self.out_path = os.path.join(config.collector["output_dir"], STATE_FILE)
+        # The settings in use: the version of admin.json laid over config.toml, when they were
+        # taken up, and the problems of the last change looked at (collector/reload.py). Written
+        # to the file as `config`.
+        self.config_note: dict = {"admin": None, "at": text.iso(clock()), "problems": []}
+
+    # Taking up a change ------------------------------------------------------------------------
+
+    @staticmethod
+    def _sameness(source: Source, config: Config) -> str:
+        """What a source's reads depend on: its class, its settings and the collector's settings,
+        and for the host source the averaging windows it keeps samples for."""
+        windows = (
+            [config.conditions[c]["window_s"] for c in ("cpu_hot", "memory_tight")]
+            if source.name == "host"
+            else []
+        )
+        return json.dumps(
+            [type(source).__name__, source.settings, config.collector, windows],
+            sort_keys=True,
+            default=str,
+        )
+
+    def reconfigure(self, config: Config, sources: list[Source] | None = None) -> None:
+        """Take up a new configuration between polls.
+
+        A source whose reads would be the same keeps its instance, its last reading and any read
+        in flight, so that it is not read again early and the host keeps its samples. A source
+        that changed, was added or was taken away starts afresh: its last reading is dropped, and
+        a read still running for it is left to finish unseen. The conditions keep their state
+        (see Conditions.reconfigure), and the interval takes effect from the next poll.
+        """
+        new = sources if sources is not None else build_sources(config)
+        before = {s.name: s for s in self.sources}
+        kept: list[Source] = []
+        for source in new:
+            old = before.get(source.name)
+            if old is not None and self._sameness(old, self.config) == self._sameness(
+                source, config
+            ):
+                old.config = config
+                kept.append(old)
+            else:
+                self._forget(source.name)
+                kept.append(source)
+        for name in set(before) - {s.name for s in kept}:
+            self._forget(name)
+        self.sources = kept
+        self.config = config
+        self.conditions.reconfigure(config)
+        self._secrets = sorted(config.secret_values(), key=len, reverse=True)
+
+    def _forget(self, name: str) -> None:
+        for held in (self._inflight, self._read_at, self._last, self._last_ok):
+            held.pop(name, None)
 
     # Errors ------------------------------------------------------------------------------------
 
@@ -287,8 +341,10 @@ class Runner:
             "events": list(self.memory.data["events"]),
             "facts": facts,
             "sources": {s.name: status[s.name] for s in self.sources},
-            # The settings screen's household defaults, as the config set them at start.
+            # The settings screen's household defaults, as the settings in use set them.
             "defaults": copy.deepcopy(self.config.defaults),
+            # The settings in use, for the admin page.
+            "config": copy.deepcopy(self.config_note),
         }
         problems = contract.validate(state)
         for problem in problems:

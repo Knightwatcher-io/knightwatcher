@@ -1,6 +1,6 @@
 """The bundled server: the page, the collector's output and the shared settings, over plain HTTP.
 
-It serves three things and nothing else:
+It serves four things and nothing else:
 
   - the page, the files of web/ as the image holds them (stamped with their version by
     server/stamp.py), read into memory once at start, so that an address is looked up by name and
@@ -8,12 +8,15 @@ It serves three things and nothing else:
   - the collector's output, from its folder mounted read-only: data/state.json, and the packs it
     downloaded in data/packs/, each by a plain name;
   - the shared settings at api/settings: GET gives them, PUT replaces one or more sections (see
-    server/store.py).
+    server/store.py);
+  - the admin page's API under api/admin/, behind the admin password (see server/admin.py); the
+    admin page itself is one of the page's files, at admin/.
 
-No directory is ever listed. GET and HEAD are answered everywhere, PUT at api/settings alone, and
-every other method is refused. A write must be JSON, at most MAX_BODY bytes, and, when the browser
-says where it came from, come from a page of this server's own address. docs/server.md describes
-the server, its API and how to run it behind a reverse proxy.
+No directory is ever listed. GET and HEAD are answered everywhere, PUT at api/settings alone, POST
+and PATCH at the admin addresses that take them, and every other method is refused. A write must
+be JSON, of a bounded size, and, when the browser says where it came from, come from a page of
+this server's own address. docs/server.md describes the server, its API and how to run it behind a
+reverse proxy.
 """
 
 from __future__ import annotations
@@ -33,6 +36,9 @@ import time
 import urllib.parse
 import urllib.request
 
+from collector import schema
+from server import admin as admin_mod
+from server.stamp import stamp_index
 from server.store import Refused, Store
 
 # Where the image and compose.yaml put things.
@@ -44,6 +50,19 @@ PORT = 8080
 
 API = "/api/settings"
 MAX_BODY = 16 * 1024
+# The admin page, its API, and what a request to each may be.
+ADMIN_PAGE = "/admin"
+ADMIN_API = "/api/admin/"
+MAX_ADMIN_BODY = 64 * 1024
+_ADMIN_METHODS = {
+    "/api/admin/state": "GET, HEAD",
+    "/api/admin/sign-in": "POST",
+    "/api/admin/sign-out": "POST",
+    "/api/admin/settings": "GET, HEAD, PATCH",
+    "/api/admin/reset": "POST",
+    "/api/admin/export": "GET, HEAD",
+    "/api/admin/schema": "GET, HEAD",
+}
 # The most the server reads of one file of the collector's output.
 MAX_DATA = 4 * 1024 * 1024
 # A refused write's body is read and dropped up to this size, so that the answer reaches the
@@ -65,7 +84,7 @@ TYPES = {
     ".txt": "text/plain; charset=utf-8",
 }
 # The files the page reads to find out about itself: never kept by a cache without asking.
-_ALWAYS_ASK = {"/", "/index.html", "/version.json"}
+_ALWAYS_ASK = {"/", "/index.html", "/version.json", "/admin/", "/admin/index.html"}
 # Sent with every answer.
 _HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -103,6 +122,14 @@ def load_web(folder: str) -> dict[str, tuple[bytes, str, str]]:
     if "/index.html" not in files:
         raise FileNotFoundError(f"{folder}/index.html not found")
     files["/"] = files["/index.html"]
+    if "/admin/index.html" in files:
+        if "/version.json" in files:
+            # A stamped copy: the admin page's addresses carry the version as the page's do.
+            version = json.loads(files["/version.json"][0])["version"]
+            text = files["/admin/index.html"][0].decode("utf-8")
+            data = stamp_index(text, version).encode("utf-8")
+            files["/admin/index.html"] = (data, TYPES[".html"], _etag(data))
+        files["/admin/"] = files["/admin/index.html"]
     return files
 
 
@@ -252,6 +279,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         address = _address(self.path)
         if address is None:
             self._not_found()
+        elif address == ADMIN_PAGE and "/admin/" in self.server.web:
+            # The page's own addresses are relative, so it is served from /admin/.
+            self._send(302, b"", TYPES[".txt"], {"Location": "admin/", "Cache-Control": "no-cache"})
+        elif address.startswith(ADMIN_API):
+            self._admin(address)
         elif address == API:
             body, tag = self.server.store.get()
             headers = {"Cache-Control": "no-cache", "ETag": tag}
@@ -279,11 +311,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     # ---- Writing -----------------------------------------------------------------------------
 
-    def do_PUT(self) -> None:
-        address = _address(self.path)
-        if address != API:
-            self._not_allowed(address)
-            return
+    def _body(self, limit: int, what: str = "the settings"):
+        """The JSON body of a write, or _NO_BODY once a refusal has been sent: a browser's
+        write from a page at another address, a type other than JSON, no Content-Length, a body
+        over limit bytes or one that is not JSON."""
         length = self.headers.get("Content-Length")
         chunked = self.headers.get("Transfer-Encoding") is not None
         size = int(length) if length is not None and length.isdigit() and not chunked else None
@@ -293,29 +324,43 @@ class Handler(http.server.BaseHTTPRequestHandler):
         else:
             # The body, if any, is not read, so the connection is not used again.
             self.close_connection = True
-        origin = self.headers.get("Origin")
-        if self.headers.get("Sec-Fetch-Site") == "cross-site" or (
-            origin is not None and not same_origin(origin, self.headers.get("Host"))
-        ):
+        if not self._same_origin():
             self._refuse(403, ["a page from another address may not change the settings"])
-            return
+            return _NO_BODY
         ctype = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
         if ctype != "application/json":
-            self._refuse(415, ["the settings are sent as application/json"])
-            return
+            self._refuse(415, [f"{what} are sent as application/json"])
+            return _NO_BODY
         if length is None or chunked:
-            self._refuse(411, ["send the settings with a Content-Length"])
-            return
+            self._refuse(411, [f"send {what} with a Content-Length"])
+            return _NO_BODY
         if size is None:
             self._refuse(400, ["the Content-Length is not a number"])
-            return
-        if size > MAX_BODY:
-            self._refuse(413, [f"the settings are larger than {MAX_BODY} bytes"])
-            return
+            return _NO_BODY
+        if size > limit:
+            self._refuse(413, [f"{what} are larger than {limit} bytes"])
+            return _NO_BODY
         try:
-            body = json.loads(raw.decode("utf-8"), parse_constant=_no_constant)
+            return json.loads(raw.decode("utf-8"), parse_constant=_no_constant)
         except (UnicodeDecodeError, ValueError):
             self._refuse(400, ["the body is not JSON"])
+            return _NO_BODY
+
+    def _same_origin(self) -> bool:
+        """Whether a write may come from where the browser says it does: not from a page at
+        another address. A request with no Origin, such as one from curl, is not a browser's."""
+        origin = self.headers.get("Origin")
+        return self.headers.get("Sec-Fetch-Site") != "cross-site" and (
+            origin is None or same_origin(origin, self.headers.get("Host"))
+        )
+
+    def do_PUT(self) -> None:
+        address = _address(self.path)
+        if address != API:
+            self._not_allowed(address)
+            return
+        body = self._body(MAX_BODY)
+        if body is _NO_BODY:
             return
         try:
             saved, tag = self.server.store.put(body)
@@ -330,6 +375,132 @@ class Handler(http.server.BaseHTTPRequestHandler):
         headers = {"Cache-Control": "no-store", "ETag": tag}
         self._send(200, saved, "application/json; charset=utf-8", headers)
 
+    # ---- The admin page's API ----------------------------------------------------------------
+
+    def _secure(self) -> bool:
+        """Whether the browser reached the server over HTTPS, as a reverse proxy in front says."""
+        return self.headers.get("X-Forwarded-Proto", "").strip().lower() == "https"
+
+    def _session(self) -> tuple[bool, dict]:
+        """(whether the request carries a live session, the headers that renew its cookie)."""
+        token = admin_mod.token_of(self.headers.get("Cookie"))
+        live, renew = self.server.admin.gate.check(token)
+        if live and renew:
+            return True, {"Set-Cookie": admin_mod.cookie(token, self._secure())}
+        return live, {}
+
+    def _admin(self, address: str) -> None:
+        """A request under /api/admin/: see docs/server.md for each."""
+        admin = self.server.admin
+        method = "GET" if self.command == "HEAD" else self.command
+        allowed = _ADMIN_METHODS.get(address)
+        if allowed is None:
+            self._drain()
+            self._not_found()
+            return
+        if method not in allowed.split(", "):
+            self._drain()
+            self.close_connection = True
+            self._send(
+                405,
+                b"Method not allowed\n",
+                TYPES[".txt"],
+                {"Allow": allowed, "Cache-Control": "no-store"},
+            )
+            return
+        gate = admin.gate if admin is not None else None
+        off = gate.off if gate is not None else "the admin page is off: this server has none"
+        if address == "/api/admin/state":
+            live = False if off else self._session()[0]
+            state = {"on": off is None, "signed_in": live}
+            if off:
+                state["error"] = off
+            elif not live and gate.paused_s():
+                state["paused_s"] = gate.paused_s()
+            self._json(200, state)
+            return
+        if off:
+            self._drain()
+            self._json(503, {"error": off})
+            return
+        if address == "/api/admin/sign-in":
+            body = self._body(4096, "the password")
+            if body is _NO_BODY:
+                return
+            given = body.get("password") if isinstance(body, dict) else None
+            status, answer, token = gate.sign_in(given)
+            if token is None:
+                self._json(status, answer)
+                return
+            headers = {"Set-Cookie": admin_mod.cookie(token, self._secure())}
+            self._send(204, b"", TYPES[".txt"], {"Cache-Control": "no-store", **headers})
+            return
+        if address == "/api/admin/sign-out":
+            self._drain()
+            if not self._same_origin():
+                self._refuse(403, ["a page from another address may not change the settings"])
+                return
+            gate.sign_out(admin_mod.token_of(self.headers.get("Cookie")))
+            headers = {"Set-Cookie": admin_mod.cookie("", self._secure(), 0)}
+            self._send(204, b"", TYPES[".txt"], {"Cache-Control": "no-store", **headers})
+            return
+        live, renew = self._session()
+        if not live:
+            self._drain()
+            self._json(401, {"error": "sign in first"})
+            return
+        if method == "GET":
+            self._admin_read(address, renew)
+            return
+        body = self._body(MAX_ADMIN_BODY)
+        if body is _NO_BODY:
+            return
+        try:
+            answer = admin.reset_all() if address == "/api/admin/reset" else admin.change(body)
+        except admin_mod.Refused as exc:
+            self._refuse(400, exc.problems, renew)
+            return
+        except OSError as exc:
+            log.error("admin settings: cannot write %s: %s", admin.folder, exc.strerror)
+            self._refuse(500, [f"the server cannot write its settings file ({exc.strerror})"])
+            return
+        self._json(200, answer, renew)
+
+    def _admin_read(self, address: str, headers: dict) -> None:
+        admin = self.server.admin
+        if address == "/api/admin/settings":
+            self._json(200, admin.answer(), headers)
+        elif address == "/api/admin/schema":
+            data = json.dumps(schema.SCHEMA, ensure_ascii=False).encode("utf-8")
+            self._send(
+                200,
+                data,
+                "application/json; charset=utf-8",
+                {"Cache-Control": "no-store", **headers},
+            )
+        else:
+            data = admin.export().encode("utf-8")
+            self._send(
+                200,
+                data,
+                TYPES[".txt"],
+                {
+                    "Cache-Control": "no-store",
+                    "Content-Disposition": 'attachment; filename="config.toml"',
+                    **headers,
+                },
+            )
+
+    def _drain(self) -> None:
+        """Reads and drops a small body, so the connection can be used again; a larger one, or
+        one of unknown length, closes it."""
+        length = self.headers.get("Content-Length")
+        chunked = self.headers.get("Transfer-Encoding") is not None
+        if not chunked and length is not None and length.isdigit() and int(length) <= MAX_DRAIN:
+            self.rfile.read(int(length))
+        elif chunked or length is not None:
+            self.close_connection = True
+
     def _not_allowed(self, address: str | None = None) -> None:
         if address is None:
             address = _address(self.path)
@@ -343,9 +514,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
         )
 
     def do_POST(self) -> None:
-        self._not_allowed()
+        address = _address(self.path)
+        if address is not None and address.startswith(ADMIN_API):
+            self._admin(address)
+        else:
+            self._not_allowed(address)
 
-    do_DELETE = do_PATCH = do_OPTIONS = do_TRACE = do_CONNECT = do_POST
+    do_PATCH = do_POST
+
+    def do_DELETE(self) -> None:
+        address = _address(self.path)
+        if address is not None and address.startswith(ADMIN_API):
+            self._admin(address)
+        else:
+            self._not_allowed(address)
+
+    do_OPTIONS = do_TRACE = do_CONNECT = do_DELETE
+
+
+# What _body gives once it has refused a write.
+_NO_BODY = object()
 
 
 def _no_constant(name: str):
@@ -355,10 +543,17 @@ def _no_constant(name: str):
 class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, address: tuple[str, int], web: dict, out: str, store: Store):
+    def __init__(
+        self,
+        address: tuple[str, int],
+        web: dict,
+        out: str,
+        store: Store,
+        admin: admin_mod.Admin | None = None,
+    ):
         if ":" in address[0]:
             self.address_family = socket.AF_INET6
-        self.web, self.out, self.store = web, out, store
+        self.web, self.out, self.store, self.admin = web, out, store, admin
         super().__init__(address, Handler)
 
 
@@ -393,6 +588,11 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--port", type=int, default=PORT, help="the port to listen on (default %(default)s)"
     )
+    p.add_argument(
+        "--config",
+        default=admin_mod.CONFIG_PATH,
+        help="config.toml, read for the admin page's checks (default %(default)s)",
+    )
     p.add_argument("--health", action="store_true", help="exit 1 unless the server answers")
     return p
 
@@ -421,8 +621,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     store = Store(args.data)
+    # The admin password is read once and taken out of the environment, so that nothing this
+    # process starts could inherit it. It is never logged.
+    gate = admin_mod.Gate(os.environ.pop(admin_mod.PASSWORD_VARIABLE, None), folder=args.data)
+    admin = admin_mod.Admin(args.data, args.out, args.config, gate, store)
+    if gate.off:
+        log.info("%s; the walls are not affected", gate.off)
     try:
-        httpd = Server((args.address, args.port), web, args.out, store)
+        httpd = Server((args.address, args.port), web, args.out, store, admin)
     except OSError as exc:
         print(
             f"server: cannot listen on {args.address}:{args.port}: {exc.strerror}", file=sys.stderr

@@ -225,9 +225,18 @@ The settings belong to the deployment, not to one display: the bundled server ke
 screen chooses, and every display shows the same, a change on one reaching the others within
 seconds. A display with no keyboard or mouse, such as a monitor on a headless host, therefore
 shows what was chosen on the tablet. The wall's screen saves without a code, since it holds only
-how the display looks; the sources, thresholds and watched things stay in `config.toml`. Each
-setting comes from the highest of four levels: the address (for screenshots), the saved settings,
-the defaults in `config.toml` that the collector passes on in `state.json`, and the page's own.
+how the display looks. Each setting comes from the highest of four levels: the address (for
+screenshots), the saved settings, the defaults in `config.toml` that the collector passes on in
+`state.json`, and the page's own.
+
+The sources, thresholds and watched things are set on the admin page, which the bundled server
+serves at `/admin` behind a password kept in `.env`, from a laptop or a phone; `config.toml` is the
+level under it, and still the way to set them by hand. A change there is checked by the
+collector's own rules before it is kept, and the collector takes it up at its next poll with no
+restart. The admin page also writes the look, display, quiet scenes and scenes through the same
+store as the walls' screens, so the two never disagree. Credentials stay in `.env`: the page says
+which are there, by name, and never shows or takes one. It is described in
+[page.md](./page.md#the-admin-page) and [server.md](./server.md#the-admin-page).
 Without the server (opened from disk, the website's demo, or served by another web server) each
 browser keeps its own choices. The demo has the same screen.
 The builds are shown by their names, Classic, Broad and Slim, all three ready. [page.md](./page.md#settings)

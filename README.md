@@ -53,6 +53,12 @@ The page is open to anyone on your network, with no login. Read [The server](doc
 before you let it be reached from anywhere else, and never publish it to the internet without a
 login in front.
 
+To change the sources, thresholds and watched things from a browser rather than in `config.toml`,
+give `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env` a password of your own of at least 12 characters, run
+`docker compose up -d` again and open `http://<this machine>:8080/admin`. A change there is checked
+by the collector's own rules and used from its next poll; Download config.toml keeps what is set
+there in a file. Credentials stay in `.env` ([The admin page](docs/server.md#the-admin-page)).
+
 ## Try the page
 
 Open `web/index.html` in a browser. With no `state.json` beside it, the page runs on invented data
@@ -71,8 +77,9 @@ browser. The defaults under it are set in `config.toml`; see
 A small collector, run as a container, reads the homelab and writes `state.json`. A static page
 under `web/` fetches that file and draws the knight. The collector knows nothing of knights and the
 page knows nothing of Docker or DNS. A small server, a second container from the same image,
-serves the page and the file and keeps the settings the displays choose. Any other web server can
-serve the page instead, with each browser then keeping its own settings.
+serves the page and the file, keeps the settings the displays choose, and serves the admin page,
+where the household's settings are changed behind a password. Any other web server can serve the
+page instead, with each browser then keeping its own settings and no admin page.
 
 ## Documentation
 
@@ -81,7 +88,7 @@ serve the page instead, with each browser then keeping its own settings.
 - [The page](docs/page.md): the files, the one grid, the scene interface, the modes and the address
 - [The collector](docs/collector.md): one poll, conditions, events, sources and how to add one
 - [Configuration](docs/configuration.md): how settings work, `config.toml`, `.env`, and a reference of every setting
-- [The server](docs/server.md): what it serves, the settings API and store, its security, and a reverse proxy in front
+- [The server](docs/server.md): what it serves, the settings API and store, the admin page, its security, and a reverse proxy in front
 - [Security](docs/security.md): what never enters this repository, and the collector's and the server's privileges
 - [Packs](docs/packs.md): the format of a pack, its checks and signing, and the library that reads it
 - [A monitor on the host](docs/monitor.md): showing the display on a screen wired to a headless host

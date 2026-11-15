@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The page's version, as in ../index.html. The bundled server stamps it with the rest. -->
+<meta name="kw-version" content="dev">
+<meta name="referrer" content="no-referrer">
+<title>Knightwatcher household settings</title>
+<link rel="icon" href="../favicon.ico" sizes="32x32">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<!-- The admin page: the household's settings, behind the admin password, served by the bundled
+     server alone. It draws the household look's previews with the walls' own scripts and base
+     pack, loaded below as ../index.html loads them, without demo.js and main.js: it runs no
+     display. docs/page.md describes the page and docs/server.md its API. -->
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="../js/draw.js"></script>
+<script src="../js/sprites.js"></script>
+<script src="../js/props.js"></script>
+<script src="../js/knight.js"></script>
+<script src="../js/scenes/battlement.js"></script>
+<script src="../js/scenes/camp.js"></script>
+<script src="../js/scenes/house.js"></script>
+<script src="../js/scenes/yard.js"></script>
+<script src="../js/scenes/cellar.js"></script>
+<script src="../js/scenes/smithy.js"></script>
+<script src="../js/scenes/court.js"></script>
+<script src="../js/ed25519.js"></script>
+<script src="../js/pack.js"></script>
+<script src="../packs/base.pack.js"></script>
+<script src="../js/state.js"></script>
+<script src="../js/engine.js"></script>
+<script src="../js/settings.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

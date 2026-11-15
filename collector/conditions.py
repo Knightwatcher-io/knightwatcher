@@ -64,6 +64,8 @@ KIND_WORDS = {"pi": "SILENT", "camera": "DARK", "machine": "DOWN", "vm": "DOWN"}
 OTHER_KIND_WORD = "DOWN"
 # The status of a source whose first read has not finished: its thing is not yet known.
 FIRST_READ = "first read still running"
+# What makes a watched thing the same thing across a change of configuration.
+_CHECK_KEYS = ("kind", "host", "ports", "url", "refused_counts", "verify_tls", "legacy")
 
 
 class Tracker:
@@ -215,6 +217,47 @@ class Conditions:
         # reading. None until the first reading.
         self.ssh_seen: dict[tuple[str, int], dt.datetime | None] | None = None
         self.causes: dict[str, Cause] = {}
+
+    def reconfigure(self, config: Config) -> None:
+        """Take up a new configuration between polls, keeping what is known.
+
+        Each condition keeps its state and takes up its new thresholds; one left out of the
+        priority is forgotten, so that it starts afresh if it comes back. Each watched thing keeps
+        its record while its source and its check are the same, at its new place in the list; a
+        thing renamed, given a new check or added starts afresh, as after a restart.
+        """
+        self.config = config
+        c = config.conditions
+        self.priority = list(c["priority"])
+        clear = c["clear_after_s"]
+        for cid in LEVELS:
+            if cid not in self.priority:
+                self.trackers[cid] = Tracker(clear_after_s=clear)
+                self.causes.pop(cid, None)
+            self.trackers[cid].clear_after_s = clear
+        self.trackers["wan_down"].for_reads = c["wan_down"]["failed_checks"]
+        self.trackers["pi_silent"].for_s = c["pi_silent"]["for_s"]
+        old = {w.thing["source"]: w for w in self.watches}
+        watches = []
+        for i, t in enumerate(config.things):
+            w = old.get(t["source"])
+            if w is not None and all(w.thing[k] == t[k] for k in _CHECK_KEYS):
+                w.index, w.thing = i, t
+            else:
+                w = Watch(i, t)
+            watches.append(w)
+        self.watches = watches
+        # Words held through thing_down's clearing period name things by their places, which may
+        # have moved; a thing no longer watched is dropped from them.
+        held = self.causes.get("thing_down")
+        if held is not None:
+            places = {w.thing["name"]: w.index for w in self.watches if not w.thing["legacy"]}
+            kept = [dict(d, index=places[d["name"]]) for d in held.context if d["name"] in places]
+            if kept:
+                held.context = kept
+            else:
+                self.causes.pop("thing_down")
+                self.trackers["thing_down"] = Tracker(clear_after_s=clear)
 
     # Causes -----------------------------------------------------------------------------------
 

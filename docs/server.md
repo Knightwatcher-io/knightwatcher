@@ -2,12 +2,14 @@
 
 Knightwatcher comes with a small web server of its own, run beside the collector by
 `docker compose up`. It serves the page, the collector's `state.json` and the packs the collector
-downloaded, and keeps the settings chosen on the displays' settings screens for the whole
-deployment, so that every display shows the same knight. It is written in Python with the
+downloaded, keeps the settings chosen on the displays' settings screens for the whole deployment,
+so that every display shows the same knight, and serves the admin page, where the household's
+sources, thresholds and watched things are set behind a password. It is written in Python with the
 standard library alone, in `server/`, and runs from the same image as the collector.
 
 The server is optional. The page still works from any web server of your own (see
-[page.md](./page.md#deploying)); each browser then keeps its own settings.
+[page.md](./page.md#deploying)); each browser then keeps its own settings, and there is no admin
+page.
 
 ## What it serves
 
@@ -19,6 +21,9 @@ The server is optional. The page still works from any web server of your own (se
 | `/data/state.json` | the collector's latest state file | `no-cache` |
 | `/data/packs/<name>.json` | the packs the collector downloaded, each by a plain name | `no-cache` |
 | `/api/settings` | the shared settings: `GET` and `PUT` | `no-cache` |
+| `/admin` | sends the browser on to `admin/`, the admin page | `no-cache` |
+| `/admin/` | the admin page, stamped with the page's version | `no-cache` |
+| `/api/admin/...` | the admin page's API, below | never kept (`no-store`) |
 
 Everything else is `404 Not found`, a folder included: no folder is ever listed. Each file and
 the settings carry an entity tag, and a request that names it with `If-None-Match` gets `304` with no body,
@@ -41,8 +46,9 @@ server reads each afresh, since the collector rewrites them.
 answer also says `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and a
 content security policy that lets the page load only from its own address.
 
-**Methods.** `GET` and `HEAD` everywhere, `PUT` at `/api/settings` alone. Any other method is
-`405 Method not allowed`, with an `Allow` header naming what is.
+**Methods.** `GET` and `HEAD` everywhere, `PUT` at `/api/settings` alone, and `POST` and `PATCH`
+at the admin addresses that take them (below). Any other method is `405 Method not allowed`, with
+an `Allow` header naming what is.
 
 ## The settings API
 
@@ -111,6 +117,156 @@ taken. So a page on another site, opened in a browser on your LAN, cannot change
 Behind a reverse proxy the proxy must pass the original `Host` on, which Caddy does by itself; see
 [Behind a reverse proxy](#behind-a-reverse-proxy).
 
+## The admin page
+
+The admin page, at `/admin/` on the server, is where the household's settings are changed from any
+browser: the collector, the conditions, the sources and the watched things, and the household look,
+display, quiet scenes and scenes that the walls' settings screens also change. Its value for each
+setting comes from one of three levels, highest first: what is set on the page, `config.toml`, and
+the default ([configuration.md](./configuration.md#where-the-collectors-settings-come-from)).
+Credentials are never typed or shown there: the page says, by name, which ones `.env` holds. The
+page itself is described in [page.md](./page.md#the-admin-page).
+
+It is behind the admin password, `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env`, which `compose.yaml`
+gives to the server alone. While it is missing, or shorter than 12 characters, the page is off and
+says why, and the walls work as before. A changed password needs the containers made again
+(`docker compose up -d`), which signs every browser out.
+
+### The addresses
+
+Every answer under `/api/admin/` is JSON unless said otherwise, and is never kept by a cache
+(`Cache-Control: no-store`). Every address but `state` and `sign-in` needs a signed-in browser and
+answers `401 {"error": "sign in first"}` without one. While the page is off, every address but
+`state` answers `503` with the reason in `error`.
+
+| Method and address | What | Answers |
+|---|---|---|
+| `GET /api/admin/state` | whether the page is on, and whether this browser is signed in | `{"on": true, "signed_in": false}`; `"paused_s": 232` while signing in is paused; `"error"` with the reason while the page is off |
+| `POST /api/admin/sign-in` | `{"password": "..."}` | `204` with the session cookie; `401 {"error": "That is not the admin password."}`; `429 {"error": ..., "retry_after_s": 60}` while signing in is paused |
+| `POST /api/admin/sign-out` | ends this browser's session | `204`, with the cookie cleared |
+| `GET /api/admin/settings` | everything the page shows | below |
+| `PATCH /api/admin/settings` | `{"v": 1, "set": {"collector.interval_s": 15}, "reset": ["conditions.cpu_hot.pct"]}` | `200` with what `GET` then gives; `400 {"error": first, "problems": [...]}`, keeping nothing |
+| `POST /api/admin/reset` | puts everything back to `config.toml`: clears what is set on the page and the shared settings | `200` with what `GET` then gives; `400` while `config.toml` alone would be refused |
+| `GET /api/admin/export` | the complete `config.toml` the collector now uses | `text/plain; charset=utf-8`, with `Content-Disposition: attachment; filename="config.toml"` |
+| `GET /api/admin/schema` | `collector/settings-schema.json`, from which the page takes every label, help line, default and range | the schema |
+
+`GET /api/admin/settings` answers:
+
+```json
+{
+  "v": 1,
+  "set": {"collector.interval_s": 15, "thing": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}]},
+  "version": "3f9c0d12ab45e6789a0b",
+  "file": {"collector": {"timezone": "Europe/London"}, "sources": {"pi": {"host": "192.0.2.4"}}},
+  "status": {"generated_at": "2026-01-15T21:42:10Z", "interval_s": 15, "sources": {}, "things": [],
+             "config": {"admin": "3f9c0d12ab45e6789a0b", "at": "2026-01-15T21:42:10Z", "problems": []}},
+  "credentials": {"KNIGHTWATCHER_SONARR_API_KEY": true, "KNIGHTWATCHER_RADARR_API_KEY": false},
+  "problems": [],
+  "now": "2026-01-15T21:42:14Z"
+}
+```
+
+`set` is what is set on the page, by path, and `version` the version of the store that holds it
+(below). `file` is `config.toml` as parsed, or `null` with `file_problem` saying why it could not
+be read. `status` is taken from the collector's latest state file: when it was written and how
+often, each source's health, each watched thing's state, and `config`, the settings the collector
+says it uses ([state.md](./state.md#fields)), so that the page can say "In use by the collector
+since" once `status.config.admin` equals `version`. `credentials` is the collector's report of
+which credential variables it holds, by name ([collector.md](./collector.md#credentials-by-name)), or
+`null` while it has written none. `problems` is every problem the collector's checks find with
+`config.toml` and what is set laid over it, empty in the ordinary course. `now` is the server's
+clock, against which the page counts ages.
+
+A `PATCH` names paths to set and paths to reset (put back to `config.toml`'s value, or the default).
+A path is a setting's table and key, as `check-config` names them: `collector.interval_s`,
+`conditions.cpu_hot.pct`, `sources.sonarr.enabled`. A list is one value, and `thing` is the whole
+list of watched things: set here, each replaces `config.toml`'s whole. A path into a source that
+`config.toml` does not set up creates its table. Only the collector's settings that the schema
+marks editable can be set; the folders, `proc_root`, the backup log and each source's `secret` are
+fixed, and the look, display, quiet scenes and scenes are set through `PUT /api/settings`, as the
+walls set them.
+
+### The check before a change is kept
+
+The server builds the configuration exactly as the collector will: `config.toml` parsed, what is
+set on the page laid over it by path (a list whole), the change on top, then the collector's own
+`config.build` from the same image. It refuses with every problem it finds, in the words
+`check-config` prints after `config: `, the problems the change brings first:
+
+```http
+HTTP/1.1 400 Bad Request
+Content-Type: application/json; charset=utf-8
+
+{"error": "collector.http_timeout_s: must be shorter than interval_s",
+ "problems": ["collector.http_timeout_s: must be shorter than interval_s"]}
+```
+
+The server has no credential, so it checks credentials by the names the collector reports holding,
+in `credentials.json`, with the same words: turning on Sonarr while `.env` has no key for it is
+refused with `.env: KNIGHTWATCHER_SONARR_API_KEY missing (for sonarr)`. While the collector has
+reported none, credentials are not checked here, and a source that turns out to lack one runs and
+fails, saying which ([collector.md](./collector.md#taking-up-a-change)).
+
+The other refusals of a write are those of `PUT /api/settings` above, except that a body may be up
+to 64 KiB, and a write that names an unknown or fixed path is refused with
+`collector.output_dir: not set on the admin page` or `collector.nothing: unknown setting`.
+
+### Signing in
+
+One password, compared in constant time. Each wrong one is answered after a second. After five
+wrong in a row, signing in is paused for every browser for one minute, doubling with each further
+wrong password to fifteen minutes; while paused, every attempt, the right password included, is
+answered `429`. A right password clears the count. The count is for the whole server rather than
+per browser or per address: the server logs no client address, and behind a reverse proxy every
+request comes from the proxy's.
+
+A session is a random 32-byte token in a cookie, `kw_admin`, `HttpOnly`, `SameSite=Strict`,
+`Path=/`, and `Secure` when the request arrived over HTTPS, as a reverse proxy in front says with
+`X-Forwarded-Proto: https`. It lasts 30 days from its last use, and the browser's cookie is renewed
+at most once a day while it is used, until Sign out.
+
+The server keeps its sessions in `sessions.json` in its own folder, so that a restart or a new image
+keeps every browser signed in. The file holds, for each session, an HMAC of its token keyed with
+the admin password, and when the session was last used and its cookie last sent; never the token
+or the password, so the file signs nobody in. It is written as the other stores are (whole, to a
+temporary name, renamed into place, mode 640) when a browser signs in or out, when a cookie is
+renewed, and otherwise at most once an hour as a session is used, so a restart may cost a session
+up to an hour of its 30 days. Sessions unused for 30 days are dropped at each write. A new admin
+password signs every browser out, since no stored HMAC matches it, and so does deleting the file
+while the server is stopped.
+
+Every write passes the origin check of `PUT /api/settings`, and the cookie is never sent with a
+request from another site, so a page elsewhere can neither sign in nor change a setting.
+
+## The admin store
+
+What is set on the admin page is kept in its own file in the server's folder, `admin.json`, never
+in `config.toml`, which stays the owner's file and the level under it:
+
+```json
+{
+  "v": 1,
+  "set": {
+    "collector.interval_s": 15,
+    "conditions.cpu_hot.pct": 90.0,
+    "thing": [
+      {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}
+    ]
+  }
+}
+```
+
+It is written as `settings.json` is: whole, to a temporary name in the same folder, renamed into
+place, mode 640. Its version is the first 20 hex characters of a sha256 over its bytes, which the
+collector reports back once it uses it. The server reads it at start, and again whenever it has
+changed on disk, as when it is edited or deleted by hand; a path it cannot hold (one a newer or older version knows and this one does not, or a value of the
+wrong type) is left out with a line in the log, and the collector, reading the same file with the
+same code, leaves out the same. The collector mounts the folder read-only and takes a new version
+up between polls ([collector.md](./collector.md#taking-up-a-change)).
+
+To start again with nothing set on the page, use Put everything back on the page's `.env` section,
+or delete `admin.json`: the server and the collector both notice within a poll.
+
 ## The settings store
 
 The shared settings live in one file, `settings.json`, in the server's own folder
@@ -154,9 +310,12 @@ does it from nothing. The server's part of `compose.yaml`:
 
 - the image's `python -m server`, as uid and gid 10001, with a read-only root filesystem, no
   capabilities and `no-new-privileges`;
-- the collector's output folder (`KNIGHTWATCHER_OUT`) mounted read-only at `/out`, and the
-  server's own folder (`KNIGHTWATCHER_SERVER_VAR`) at `/var/lib/knightwatcher-server`, the one
-  place it writes;
+- the collector's output folder (`KNIGHTWATCHER_OUT`) mounted read-only at `/out`, `config.toml`
+  read-only at `/etc/knightwatcher/config.toml`, for the admin page's checks, and the server's own
+  folder (`KNIGHTWATCHER_SERVER_VAR`) at `/var/lib/knightwatcher-server`, the one place it writes
+  (`settings.json`, `admin.json` and the admin page's `sessions.json`);
+- `KNIGHTWATCHER_ADMIN_PASSWORD` from `.env`, its one variable, which it reads once at start and
+  takes out of its own environment;
 - inside the container it listens on port 8080, published on the host at
   `KNIGHTWATCHER_SERVER_ADDRESS` and `KNIGHTWATCHER_SERVER_PORT` (all addresses and 8080 unless
   set);
@@ -167,25 +326,30 @@ Its own folder must exist and be writable by uid 10001, as the collector's are;
 [configuration.md](./configuration.md#the-accounts) has the commands. The server refuses to start
 without it, and says so.
 
-**Logs.** The server logs its start, each save (`settings saved: look`), each refused write with
-its reason, and its errors. It does not log ordinary requests, since every display asks every
-five seconds, and it logs no client address.
+**Logs.** The server logs its start, each save (`settings saved: look`, `admin settings saved:
+collector.interval_s`), each refused write with its reason, `admin sign-in refused` for each wrong
+password, `admin sign-in paused for 1 minute`, `admin signed in` and `admin signed out`, and its
+errors. It never logs the admin password or what was typed. It does not log ordinary requests,
+since every display asks every five seconds, and it logs no client address.
 
 **Outside Docker**, for development, from the repository's root:
 
 ```bash
 python3 -m server.stamp /tmp/kw-page   # a copy of web/, made first with cp -r web /tmp/kw-page
+KNIGHTWATCHER_ADMIN_PASSWORD='a-long-password-of-your-own' \
 python3 -m server --web /tmp/kw-page --out /path/to/the/collectors/output --data /tmp/kw-data \
-  --address 127.0.0.1 --port 8080
+  --config config.toml --address 127.0.0.1 --port 8080
 ```
 
 `--web` may name `web/` itself, unstamped, for a `dev` page that never checks for a new version.
+`--config` names the `config.toml` the admin page checks against, `/etc/knightwatcher/config.toml`
+unless given; without the password the admin page is off.
 
 ## Security
 
-**Open on the LAN, with no login.** By default the server is published on every address of the
-host, and anyone who can reach that port can see the display, read `state.json` and change the
-shared settings. `state.json` describes the homelab: its containers, its machines, what is being
+**The walls are open on the LAN, with no login.** By default the server is published on every
+address of the host, and anyone who can reach that port can see the display, read `state.json` and
+change the shared settings. The admin page is behind its own password; everything else is not. `state.json` describes the homelab: its containers, its machines, what is being
 watched. That is the owner's call for a home network, and it is the default because a wall
 display has no keyboard to log in with. Choose it knowingly:
 
@@ -199,17 +363,23 @@ display has no keyboard to log in with. Choose it knowingly:
   points its own name at your server's address can read what the server serves through a
   visitor's browser. A login in front closes that too.
 
-**What it can touch.** The server gets no credential: `compose.yaml` passes it no variable from
-`.env` at all, and reads only its address and port to publish it. It mounts no secret, not
-`config.toml`, not `/proc` and not the collector's memory. It reads the collector's output
-read-only and writes only its own folder. It runs on Docker's own network for the project, not the
+**What it can touch.** The server gets no credential: from `.env`, `compose.yaml` passes it the
+admin password alone, and reads its address and port to publish it. It mounts no secret: it reads
+`config.toml`, which holds none, read-only, and not `/proc` and not the collector's memory. It
+reads the collector's output read-only, `credentials.json` there included, which names the
+credential variables the collector holds and never their values, and which the server reads and
+never serves. It writes only its own folder. It runs on Docker's own network for the project, not the
 host's, so it reaches nothing on the host's loopback. It shares uid 10001 with the collector;
 since the two run in separate containers, it cannot see the collector's processes or their
 environment.
 
-**What a write can do.** A `PUT` changes how the knight looks, the words' size and clock, the
-quiet scenes and where some conditions play, for every display. It cannot change a source, a
-threshold, a watched thing or a credential, and every value is one the collector's checks accept.
+**What a write can do.** A `PUT` to `/api/settings`, open to anyone who reaches the server,
+changes how the knight looks, the words' size and clock, the quiet scenes and where some conditions
+play, for every display. It cannot change a source, a threshold, a watched thing or a credential.
+A signed-in write on the admin page can: it reaches every source's address, the thresholds and the
+whole watch list, so the collector can be pointed at any address on the LAN that the host reaches.
+It still cannot change a credential, a folder or what the collector mounts, and every change is
+one the collector's own checks accept. Keep the password long and to yourself, as you keep `.env`.
 
 ## Behind a reverse proxy
 
@@ -232,7 +402,8 @@ knightwatcher.example.com {
 }
 ```
 
-Caddy passes the original `Host` on by itself. With nginx, say so, or every write is refused as
+Caddy passes the original `Host` on by itself, and `X-Forwarded-Proto`, which makes the admin
+page's cookie `Secure`. With nginx, say so, or every write is refused as
 coming from another address:
 
 ```nginx
@@ -261,5 +432,16 @@ folder, and checks the types, the caching, the conditional requests, that no fol
 list of attempts to reach outside the served files (`/../`, encoded dots and slashes, a link, the
 collector's memory, the settings file itself), every refusal of a write above, that a refused
 value gets the same words `config.toml` gets, the atomic write and the store read again at start.
+`tests/server/test_admin.py` checks the admin page's side with a password made for the run: the
+page off without a password and with one of 11 characters, the cookie's flags, the wait after a
+wrong password and the pause after five, doubling to fifteen minutes, the constant-time compare,
+sessions renewed by use and ended after 30 days or by Sign out, sessions kept in `sessions.json`
+across a restart, ended by a new password, never stored as a usable token, the session every
+address needs,
+cross-origin writes refused, a change kept and written, a refused one with the collector's words
+and nothing kept, a credential refused by its variable's name, the watched things replaced whole,
+the reset, the export read back and built by the collector, `credentials.json` never served, the
+admin page stamped and served at `/admin/`, and that the password never reaches a log, an answer
+or the environment once read.
 `tests/server/test_stamp.py` stamps a copy of `web/` and checks it is byte for byte what
 `tools/deploy.sh` makes of it.

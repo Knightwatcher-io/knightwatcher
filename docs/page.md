@@ -27,6 +27,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
 | `js/settings.js` | `KW.settings`: the levels the display's settings come from, the saved settings (the server's, shared by every display, or this browser's own), keeping them in step with the server (`connect`), the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
 | `js/main.js` | start-up (starting the knight, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
+| `admin/index.html`, `admin/admin.js`, `admin/admin.css` | the admin page, served by the bundled server alone; see [The admin page](#the-admin-page) |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
@@ -880,6 +881,40 @@ force. The test hooks (`t=`, `kx=`, `th=`, `pl=`, `set=`, the settings hooks, `f
 are read once when the page loads, and the rewritten hash leaves them out, so they last until the
 page is opened again.
 
+## The admin page
+
+`admin/` holds the household's admin page: its own HTML, script and stylesheet, served by the
+bundled server at `/admin/` and nowhere else, since it needs the server's API
+([server.md](./server.md#the-admin-page)). From disk, or from a web server of your own, it says
+the admin page is off and why. It loads the same drawing scripts and base pack as `index.html`,
+in the same order, without `demo.js` and `main.js`: it runs no display, and uses `KW.knight`,
+the scenes' own `paint()` and `draw()` and `KW.settings` to draw the household look's previews
+exactly as every wall draws them. It reads the base pack as a deployed wall does, signed unless
+its own `kw-version` is `dev`. The server stamps its addresses with the page's version, as the
+rest; it works under the same content security policy, from its own address only, with its own
+script and stylesheet and no inline script.
+
+It has no checks of its own and no copy of the schema. At start it asks `api/admin/state` whether
+it is on and signed in, and shows the sign-in, or "The admin page is off" with the reason; once
+signed in it reads the schema from `api/admin/schema`, from which every section, label, help line,
+default, range and list of values is taken, and its settings from `api/admin/settings` and
+`api/settings`, again every five seconds, and sooner after a change. A field being typed in is
+never redrawn under the cursor: news waits until it is left.
+
+The layout is the approved mock-up's (`plan/admin/`): a side rail of nine sections with a count of
+what is set there or failing, the collector's pulse, Download config.toml and Sign out in the
+header; below 720 pixels one column, with the sections in a sheet. Each row shows where its value
+comes from: `config.toml`, `Default`, or `Set here` in gold with what the file or the default holds
+and a Reset. A change applies on the click, or on Enter or leaving a field: the page sends it, and
+shows it kept when the server keeps it ("Checked by the collector's rules", then "In use by the
+collector since" once `state.json` says so), or refused, with the field as typed outlined in red
+and the server's words after "Not saved: ". A new watched thing is filled in first and sent whole
+by Add to the list. A change to the look, display, quiet scenes or scenes is sent to
+`api/settings`, as a wall's screen sends it. Put everything back, at the foot of the `.env`
+section, asks first and says what it clears.
+
+`?t=` on its address holds the previews' knights at one moment, for screenshots.
+
 ## Deploying
 
 The bundled server serves the copy of `web/` its image holds, stamped at build time by
@@ -899,7 +934,9 @@ files of `web/`, in a stable order and leaving `data/` out. It writes `version.j
 `?v=<hash>` to every local script and stylesheet address there, the pack carriers included, so a
 new version is fetched under addresses no cache has seen. A deployed copy's version is not `dev`, so
 it reads only packs that carry a signature that verifies, and draws the knight from code when the
-base pack does not. The tool leaves `data/packs/`, where the collector writes the packs it downloads, alone
+base pack does not. The admin page under `admin/` is copied with the rest and is part of the
+version, but `tools/deploy.sh` stamps `index.html` alone: the admin page works only behind the
+bundled server, which stamps it as it loads it. The tool leaves `data/packs/`, where the collector writes the packs it downloads, alone
 with the rest of `data/`. The fonts the stylesheet loads are not stamped. A deploy that changes
 nothing in `web/` gives the same version and reloads no open page. The version does not depend on
 git, so the tool works from an exported copy too. It refuses a folder that is `web/`, lies inside
@@ -911,7 +948,7 @@ about five minutes of a deploy that changes something.
 Syntax, from the repository's root:
 
 ```bash
-for f in $(find web/js web/packs -name '*.js'); do node --check "$f" || exit 1; done
+for f in $(find web/js web/packs web/admin -name '*.js'); do node --check "$f" || exit 1; done
 ```
 
 The mapping from a state file (the watched things and the fallback to the pie among it), `judge`,

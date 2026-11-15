@@ -29,13 +29,15 @@ protects.
 
 ## The collector's privileges
 
-The collector reads and never writes, except for its output file and its memory folder.
+The collector reads and never writes, except for its output folder (`state.json`, the packs it
+downloads and `credentials.json`) and its memory folder.
 
 - It has no Docker socket. Container state comes from a Docker API proxy that allows read calls
   alone.
 - It runs as a non-root user with a read-only root filesystem and no capabilities.
 - It mounts host paths read-only, and only the ones a source needs, apart from the output folder
-  and the memory folder.
+  and the memory folder. It also mounts the bundled server's folder read-only, to take up what is
+  set on the admin page.
 - It opens no listening port.
 - It connects only to the addresses in its configuration: the services it reads, and the
   machines listed as watched things. A watched thing gets a TCP connection, or one `GET` with no
@@ -62,24 +64,40 @@ environment can be read by root, by its own uid through `/proc` (an account that
 else), and by anyone who may run `docker inspect`, who could equally read `.env` itself. The
 configuration check names a missing credential by its variable and never shows a value, and a
 source's error text is scrubbed of every credential value before it reaches the state file.
-Treat `.env` as you would the services' own configuration.
+`credentials.json`, which the collector writes for the admin page, holds the names of the
+credential variables and whether each holds a value, never a value. Treat `.env` as you would the
+services' own configuration.
 
 ## The server's privileges
 
-The bundled server ([server.md](./server.md)) serves the page and `state.json` and keeps the
-settings saved on the displays. It is the one part with a listening port, so it gets less than
-the collector:
+The bundled server ([server.md](./server.md)) serves the page and `state.json`, keeps the
+settings saved on the displays, and serves the admin page. It is the one part with a listening
+port, so it gets less than the collector:
 
-- No credential and no secret. `compose.yaml` passes it no variable from `.env`, and reads only
-  its address and port to publish it. It does not mount `config.toml`, `/proc`, the collector's
-  memory or anything of the host's beyond two folders.
+- No credential. From `.env`, `compose.yaml` passes it the admin page's password alone, and reads
+  its address and port to publish it. It reads the password once at start, takes it out of its
+  own environment, and never logs it, answers it or writes it anywhere. It mounts `config.toml`
+  read-only, which holds no secret, and not `/proc`, the collector's memory or anything of the
+  host's beyond two folders.
 - The collector's output folder read-only, and one folder of its own, the only place it writes.
+  It reads the collector's `credentials.json` there, names only, and never serves it.
 - The same uid as the collector, a read-only root filesystem, no capabilities and
   `no-new-privileges`, on Docker's network for the project rather than the host's.
 - It serves the page's files from memory, looked up by name, and two kinds of file from the
   output folder, so no address reaches anything else; the tests try the usual ways.
-- A write is JSON of at most 16 KiB, checked by the collector's own rules, and refused when a
-  browser says it comes from a page at another address. It can change only how the displays look.
+- A write to the shared settings is JSON of at most 16 KiB, checked by the collector's own rules,
+  and refused when a browser says it comes from a page at another address. It can change only how
+  the displays look.
+- The admin page changes what the collector watches, so it is behind a password of at least 12
+  characters, and off without one. The password is compared in constant time, each wrong one is
+  answered after a second, and five wrong in a row pause signing in for every browser, for a
+  minute doubling to fifteen. A session is a random token in an `HttpOnly`, `SameSite=Strict`
+  cookie, `Secure` behind HTTPS, lasting 30 days from its last use. The server keeps sessions in
+  `sessions.json` in its folder, mode 640, each by an HMAC of its token keyed with the password,
+  so the file signs nobody in and a new password ends every session. Every
+  write passes the same origin check, and every change is checked by the collector's own rules
+  before it is kept. A signed-in browser can point the collector at any address the host reaches,
+  but cannot change a credential, a folder or a mount.
 
 ## The page
 
@@ -90,8 +108,12 @@ its own server.
 `state.json` is not public information. The bundled server is open to anyone who can reach its
 port, with no login, by default; put authentication in front of it, or bind it to the loopback
 address, before it is reached from beyond a network you trust, and never publish it to the
-internet without a login. [server.md](./server.md#security) says how. Knightwatcher provides no
-login of its own yet.
+internet without a login. [server.md](./server.md#security) says how. Knightwatcher's own
+password covers the admin page alone, not the walls or `state.json`.
+
+The admin page fetches from its own server and nothing else: the schema, its settings, the shared
+settings, and the export. It never receives a credential, and sends the admin password only to
+sign in.
 
 ## Commits
 

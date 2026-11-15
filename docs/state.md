@@ -67,7 +67,8 @@ Every value below is invented.
     "display": { "clock": 12 },
     "quiet": {},
     "scenes": { "cpu_hot": "camp" }
-  }
+  },
+  "config": { "admin": "3f9c0d12ab45e6789a0b", "at": "2026-01-15T21:30:02Z", "problems": [] }
 }
 ```
 
@@ -196,8 +197,8 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
 - **`defaults`** is the household default for the display's settings screen: what a display
   shows until someone changes a setting on it, and what it goes back to when told to use the
   config default. It comes from the `[look]`, `[display]`, `[quiet]` and `[scenes]` tables of
-  `config.toml` (see [configuration.md](./configuration.md#the-settings-screens-defaults)), read
-  when the collector starts, and is written unchanged into every file. It always has four
+  `config.toml` (see [configuration.md](./configuration.md#the-settings-screens-defaults)), as the
+  collector last read it, and is written unchanged into every file. It always has four
   objects, `look`, `display`, `quiet` and `scenes`, and each holds only the settings the config
   sets, so a table the config leaves out is `{}`. The collector fills in nothing: for a setting
   that is absent the page uses its own default.
@@ -225,6 +226,21 @@ says where the two are in `facts.things.list`. The laptop, which does not alert,
   `scenes` leaves that object alone. A file from a collector older than this section has no
   `defaults`, and the page then uses its own defaults throughout; one from a collector older than
   `scenes` has the other three, and the page plays each condition in its own scene.
+
+- **`config`** says which settings the collector is using, for the bundled server's admin page:
+  - `admin`: the version of the admin page's `admin.json` laid over `config.toml` (20 hex
+    characters), or `null` when none is.
+  - `at`: when these settings were taken up, at start or at the poll that took up the last change,
+    as a UTC timestamp.
+  - `problems`: the problems of the last change the collector looked at, in the words of
+    `check-config`, empty when it went in cleanly. A credential the settings need and the
+    environment lacks is listed here while the settings are in use, that source failing.
+  - `refused`: present only when the last change looked at was not taken up, and then the
+    version of `admin.json` that was refused, or `null` when the change was to `config.toml`
+    alone; `admin` and `at` still describe the settings in use, and `problems` says why.
+
+  The page ignores `config`. A file from a collector older than the admin page has no `config`.
+  [collector.md](./collector.md#taking-up-a-change) says when the collector takes up a change.
 
 ## Who decides what
 
