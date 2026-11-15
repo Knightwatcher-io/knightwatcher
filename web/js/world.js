@@ -44,9 +44,10 @@
      the order written: [CONST, c], [NAMED, name, coefficient], [HASH, seed, mod] or [WAVE, amp, div,
      phase]. val() adds them up from the first, so { "x": 1, "c": 178 } is x + 178 and { "c": 0.09,
      "wave": [0.025, 150, 0] } is 0.09 + 0.025 * sin(t / 150), as the code writes them. E holds the
-     named values of the moment: L, R, T, W, x and t. */
+     named values of the moment: L, R, T, W, x, t and, in a scene with a target, targetDx (the pixels
+     the training act moves the target by, below). */
   const CONST = 0, NAMED = 1, HASH = 2, WAVE = 3;
-  const NAMES = ['L', 'R', 'T', 'W', 'x'];
+  const NAMES = ['L', 'R', 'T', 'W', 'x', 'targetDx'];
   function term(v, path) {
     if (typeof v === 'number') return v;
     if (!isObj(v)) throw new Error(path + ': is not a term');
@@ -72,10 +73,12 @@
   }
   const point = (v, path) => [term(v[0], idx(path, 0)), term(v[1], idx(path, 1))];
   /* The named values of the screen now, at scene time t, with s the frame. */
-  const named = (t, s) => ({ L: V.HL, R: V.HR, T: V.HT, W: V.HR - V.HL, x: 0, t, s });
+  const named = (t, s) => ({ L: V.HL, R: V.HR, T: V.HT, W: V.HR - V.HL, x: 0, t, s, targetDx: 0, since: Infinity, dx: null, picks: null, off: null });
 
   /* ---- Colours ----------------------------------------------------------------------------------
-     A colour resolves once, at compile, to what the primitives take: a string, or a band list. */
+     A colour resolves once, at compile, to what the primitives take: a string, or a band list. A
+     tile's pick, "@pick.<name>", is the one colour chosen at each x as the tile is drawn: it compiles
+     to { pick: name }, which hue() reads from the tile's picks of the moment. */
   const REF = /^@([a-z][a-z0-9-]{0,31})\.([a-z0-9][a-z0-9-]{0,31})$/;
   /* A translucent colour as the scenes spell it, 'rgba(0,0,0,.3)': the alpha without its 0. */
   const rgba = c => 'rgba(' + parseInt(c.rgb.slice(1, 3), 16) + ',' + parseInt(c.rgb.slice(3, 5), 16) + ',' + parseInt(c.rgb.slice(5, 7), 16) + ',' + String(c.a).replace(/^0\./, '.') + ')';
@@ -84,6 +87,10 @@
       if (v[0] === '#') return v;
       const m = REF.exec(v);
       if (m && m[1] === 'base' && has(KW.pack.BASE, m[2])) return KW.pack.BASE[m[2]];
+      if (m && m[1] === 'pick' && env.picks && has(env.picks, m[2])) {
+        if (env.inBand || env.inEffect) throw notBuilt(path, env.inBand ? 'a pick inside a band list' : 'a pick in an effect');
+        return { pick: m[2] };
+      }
       const own = env.pack.data.palettes;
       if (m && own && has(own, m[1]) && has(own[m[1]], m[2]) && (depth || 0) < 2) return fill(own[m[1]][m[2]], path, env, (depth || 0) + 1);
       throw notBuilt(path, 'the colour ' + quote(v));
@@ -93,61 +100,74 @@
   }
   function fill(v, path, env, depth) {
     if (!Array.isArray(v)) return colour(v, path, env, depth);
-    return v.map((b, i) => [b[0], colour(b[1], idx(idx(path, i), 1), env, depth)]);
+    const inner = Object.assign({}, env, { inBand: true });
+    return v.map((b, i) => [b[0], colour(b[1], idx(idx(path, i), 1), inner, depth)]);
   }
+  const hue = (f, E) => (f !== null && typeof f === 'object' && !Array.isArray(f) ? E.picks[f.pick] : f);
 
   /* ---- Shapes -----------------------------------------------------------------------------------
      Each kind compiles a shape to a record and draws a record. draw(r, E, ox, oy) draws it moved by
-     (ox, oy), which is where a stamp is put; a layer's shapes are drawn at (0, 0). */
-  const noClip = (s, path) => { if (has(s, 'clip')) throw notBuilt(at(path, 'clip'), 'a clip in a scene'); };
+     (ox, oy), which is where a stamp is put; a layer's shapes are drawn at (0, 0). An ell's or an
+     rrect's clip, [top, bottom], keeps the rows between its two ys, each counted from the same
+     anchor as the shape's point, either null for no bound. */
+  const clipOf = (s, path) => (has(s, 'clip') ? s.clip.map((c, i) => (c === null ? null : term(c, idx(at(path, 'clip'), i)))) : null);
+  const clipAt = (r, i, E, oy) => (r.clip && r.clip[i] !== null ? oy + val(r.clip[i], E) : null);
   const SHAPES = {
     rect: {
       compile: (s, path, env) => ({ p: point(s.p, at(path, 'p')), w: term(s.w, at(path, 'w')), h: term(s.h, at(path, 'h')), f: fill(s.fill, at(path, 'fill'), env) }),
-      draw(r, E, ox, oy) { (typeof r.f === 'string' ? D.Rh : D.Rv)(ox + val(r.p[0], E), oy + val(r.p[1], E), val(r.w, E), val(r.h, E), r.f); }
+      draw(r, E, ox, oy) { const f = hue(r.f, E); (typeof f === 'string' ? D.Rh : D.Rv)(ox + val(r.p[0], E), oy + val(r.p[1], E), val(r.w, E), val(r.h, E), f); }
     },
     ell: {
-      compile: (s, path, env) => { noClip(s, path); return { p: point(s.p, at(path, 'p')), rx: term(s.rx, at(path, 'rx')), ry: term(s.ry, at(path, 'ry')), f: fill(s.fill, at(path, 'fill'), env) }; },
-      draw(r, E, ox, oy) { D.ell(ox + val(r.p[0], E), oy + val(r.p[1], E), val(r.rx, E), val(r.ry, E), r.f); }
+      compile: (s, path, env) => ({ p: point(s.p, at(path, 'p')), rx: term(s.rx, at(path, 'rx')), ry: term(s.ry, at(path, 'ry')), f: fill(s.fill, at(path, 'fill'), env), clip: clipOf(s, path) }),
+      draw(r, E, ox, oy) { D.ell(ox + val(r.p[0], E), oy + val(r.p[1], E), val(r.rx, E), val(r.ry, E), hue(r.f, E), clipAt(r, 0, E, oy), clipAt(r, 1, E, oy)); }
     },
     rrect: {
-      compile: (s, path, env) => { noClip(s, path); return { p: point(s.p, at(path, 'p')), w: term(s.w, at(path, 'w')), h: term(s.h, at(path, 'h')), r: term(s.r, at(path, 'r')), f: fill(s.fill, at(path, 'fill'), env) }; },
-      draw(r, E, ox, oy) { D.rrect(ox + val(r.p[0], E), oy + val(r.p[1], E), val(r.w, E), val(r.h, E), val(r.r, E), r.f); }
+      compile: (s, path, env) => ({ p: point(s.p, at(path, 'p')), w: term(s.w, at(path, 'w')), h: term(s.h, at(path, 'h')), r: term(s.r, at(path, 'r')), f: fill(s.fill, at(path, 'fill'), env), clip: clipOf(s, path) }),
+      draw(r, E, ox, oy) { D.rrect(ox + val(r.p[0], E), oy + val(r.p[1], E), val(r.w, E), val(r.h, E), val(r.r, E), hue(r.f, E), clipAt(r, 0, E, oy), clipAt(r, 1, E, oy)); }
     },
     poly: {
       compile: (s, path, env) => ({ pts: s.pts.map((q, i) => point(q, idx(at(path, 'pts'), i))), cols: s.dir === 'cols', f: fill(s.fill, at(path, 'fill'), env) }),
-      draw(r, E, ox, oy) { D.poly(r.pts.map(q => [ox + val(q[0], E), oy + val(q[1], E)]), r.f, r.cols); }
+      draw(r, E, ox, oy) { D.poly(r.pts.map(q => [ox + val(q[0], E), oy + val(q[1], E)]), hue(r.f, E), r.cols); }
     },
     strip: {
       compile: (s, path, env) => ({ p0: point(s.p0, at(path, 'p0')), p1: point(s.p1, at(path, 'p1')), hw0: term(s.hw0, at(path, 'hw0')), hw1: term(s.hw1, at(path, 'hw1')), f: fill(s.fill, at(path, 'fill'), env) }),
-      draw(r, E, ox, oy) { D.strip(ox + val(r.p0[0], E), oy + val(r.p0[1], E), ox + val(r.p1[0], E), oy + val(r.p1[1], E), val(r.hw0, E), val(r.hw1, E), r.f); }
+      draw(r, E, ox, oy) { D.strip(ox + val(r.p0[0], E), oy + val(r.p0[1], E), ox + val(r.p1[0], E), oy + val(r.p1[1], E), val(r.hw0, E), val(r.hw1, E), hue(r.f, E)); }
     },
     glow: {
       compile: (s, path, env) => ({ p: point(s.p, at(path, 'p')), r: term(s.r, at(path, 'r')), c: colour(s.colour, at(path, 'colour'), env), a: term(s.a, at(path, 'a')) }),
-      draw(r, E, ox, oy) { D.glow(ox + val(r.p[0], E), oy + val(r.p[1], E), val(r.r, E), r.c, val(r.a, E)); }
+      draw(r, E, ox, oy) { D.glow(ox + val(r.p[0], E), oy + val(r.p[1], E), val(r.r, E), hue(r.c, E), val(r.a, E)); }
     },
     /* An effect of KW.effects, its fields compiled by the kinds its table gives: scalars as terms,
-       colours resolved, the rest as written. It is drawn with the scene's time when it moves. */
+       colours resolved, the rest as written. It is drawn with the scene's time when it moves; a
+       triggered one (burst) only in a scene with a target, with the ms since the target was last
+       struck, which is the straw the dummy sheds. */
     fx: {
       compile(s, path, env) {
         if (env.stamp) throw notBuilt(path, 'an effect in a stamp');
         const lib = KW.effects && KW.effects[s.fx];
         if (!lib) throw new Error(at(path, 'fx') + ': the effects library has no ' + quote(s.fx));
-        if (lib.clock === 'trigger') throw notBuilt(at(path, 'fx'), 'the triggered effect ' + quote(s.fx));
-        const F = lib.fields, fields = [];
+        if (lib.clock === 'trigger') {
+          if (!env.target) throw notBuilt(at(path, 'fx'), 'the triggered effect ' + quote(s.fx) + ' in a scene without a target');
+          // sparks run on the progress of a hammer's blow, which a target does not give
+          if (s.piece !== 'straw') throw notBuilt(at(path, 'piece'), 'a burst of sparks on the target\'s hit');
+        }
+        const F = lib.fields, fields = [], inner = Object.assign({}, env, { inEffect: true });
         for (const k of Object.keys(s)) {
           if (k === 'k' || k === 'fx') continue;
           const p = at(path, k), kind = has(F, k) ? F[k].kind : null;
           if (!kind) throw notBuilt(p, 'the field ' + quote(k) + ' of an effect');
           const how = kind === 'point' ? 'point' : kind === 'offset' || kind === 'length' || kind === 'term' ? 'term' : 'plain';
-          const v = how === 'point' ? point(s[k], p) : how === 'term' ? term(s[k], p) : kind === 'colour' ? colour(s[k], p, env) : kind === 'colours' ? s[k].map((c, i) => colour(c, idx(p, i), env)) : s[k];
+          const v = how === 'point' ? point(s[k], p) : how === 'term' ? term(s[k], p) : kind === 'colour' ? colour(s[k], p, inner) : kind === 'colours' ? s[k].map((c, i) => colour(c, idx(p, i), inner)) : s[k];
           fields.push([k, how, v]);
         }
-        return { fx: s.fx, time: lib.clock === 'time', fields };
+        return { fx: s.fx, clock: lib.clock, fields };
       },
       draw(r, E) {
         const f = {};
         for (const [k, how, v] of r.fields) f[k] = how === 'point' ? [val(v[0], E), val(v[1], E)] : how === 'term' ? val(v, E) : v;
-        if (r.time) KW.effects[r.fx].draw(f, E.t); else KW.effects[r.fx].draw(f);
+        if (r.clock === 'time') KW.effects[r.fx].draw(f, E.t);
+        else if (r.clock === 'trigger') KW.effects[r.fx].draw(f, E.since);
+        else KW.effects[r.fx].draw(f);
       }
     },
     /* A stamp of the pack, its shapes drawn moved to p. */
@@ -163,19 +183,23 @@
       }
     },
     /* A tile: its shapes drawn at each x from the step-aligned x at or before from, plus phase, to
-       before to, as the scenes' loops run. */
+       before to, as the scenes' loops run. Each pick chooses one of its colours at each x, of[hsh(x,
+       seed) % of.length], as the yard's pebbles take hsh(x, 6) % 2. */
     tile: {
       compile(s, path, env) {
-        if (has(s, 'pick')) throw notBuilt(at(path, 'pick'), 'a tile\'s picks');
-        return { step: s.step, phase: s.phase, from: term(s.from, at(path, 'from')), to: term(s.to, at(path, 'to')),
-          shapes: s.shapes.map((t, i) => shape(t, idx(at(path, 'shapes'), i), env)) };
+        const picks = has(s, 'pick') ? Object.keys(s.pick).map(n => [n, s.pick[n].seed, s.pick[n].of.slice()]) : null;
+        const inner = picks ? Object.assign({}, env, { picks: s.pick }) : env;
+        return { step: s.step, phase: s.phase, from: term(s.from, at(path, 'from')), to: term(s.to, at(path, 'to')), picks,
+          shapes: s.shapes.map((t, i) => shape(t, idx(at(path, 'shapes'), i), inner)) };
       },
       draw(r, E, ox, oy) {
-        const to = val(r.to, E);
+        const to = val(r.to, E), was = E.picks;
         for (let x = Math.floor(val(r.from, E) / r.step) * r.step + r.phase; x < to; x += r.step) {
           E.x = x;
+          if (r.picks) { E.picks = {}; for (const [n, seed, of] of r.picks) E.picks[n] = of[D.hsh(x, seed) % of.length]; }
           for (const t of r.shapes) drawShape(t, E, ox, oy);
         }
+        E.picks = was;
       }
     }
   };
@@ -189,12 +213,15 @@
     if (!kind) throw notBuilt(at(path, 'k'), (env.marks.includes(s.k) ? 'the mark ' : 'the shape kind ') + quote(s.k));
     if (has(s, 'only')) throw notBuilt(at(path, 'only'), '"only" on a shape');
     if (has(s, 'g') && !(env.groups && has(env.groups, s.g))) throw notBuilt(at(path, 'g'), '"g" outside its layer\'s groups');
+    if (has(s, 'g') && (s.k === 'fx' || has(MARKS, s.k) || env.marks.includes(s.k))) throw notBuilt(at(path, 'g'), '"g" on ' + (s.k === 'fx' ? 'an effect' : 'a mark'));
     return { k: s.k, g: has(s, 'g') ? s.g : null, r: kind.compile(s, path, env) };
   }
-  /* Draws a shape, unless its group is hidden in this frame (E.off, from its layer's keyframes). */
+  /* Draws a shape, unless its group is hidden in this frame (E.off, from its layer's keyframes),
+     moved along by its group's dx (E.dx, which the training act gives the target's group). */
   function drawShape(c, E, ox, oy) {
     if (c.g !== null && E.off && E.off[c.g]) return;
-    (has(SHAPES, c.k) ? SHAPES[c.k] : MARKS[c.k]).draw(c.r, E, ox, oy);
+    const dx = c.g !== null && E.dx && has(E.dx, c.g) ? E.dx[c.g] : 0;
+    (has(SHAPES, c.k) ? SHAPES[c.k] : MARKS[c.k]).draw(c.r, E, dx ? ox + dx : ox, oy);
   }
 
   /* ---- Predicates and layers -------------------------------------------------------------------
@@ -270,7 +297,7 @@
      the pole drawn under a high place. decor, quiet, name, sound and companion are not read:
      nothing draws decorations yet, the engine's own lists say which scenes take turns while all is
      quiet, and the other three are names and reserved slots. */
-  const LATER = ['rests', 'bed', 'screen', 'seat', 'anvil', 'target', 'pole'];
+  const LATER = ['rests', 'bed', 'screen', 'seat', 'anvil', 'pole'];
 
   /* What a scene hosts, as the engine reads it until worlds can be chosen: the flies and the crate
      both follow the one flag outdoors, so a scene gives outdoors when it hosts both, and one that
@@ -293,6 +320,37 @@
     return { zone, wallAt: x => ((((x + offset) % period) + period) % period < width ? high : low) };
   }
 
+  /* ---- Acts -----------------------------------------------------------------------------------
+     The acts the engine plays in a scene through its act(t, s), which the engine calls each frame
+     after strolling (engine.js). Until the engine plays them from a scene's act parts itself, the
+     compiler builds act from the part, with the numbers of the act as the code scenes have them, so
+     that the engine reads a compiled scene as it reads a code one.
+
+     The target: the watcher trains on it. At the spot whose round's act is train, while all is
+     quiet, a swing of TRAIN.swing ms every target.every ms, the target struck target.hitAt ms in;
+     while the CPU runs hot, a swing every second, struck 470 ms in, the eyes half shut and the body
+     bobbing. A blow counts once, and is not counted again within TRAIN.rest ms (TRAIN.hot.rest while
+     hot). Struck, the target's group wobbles for TRAIN.wobble.ms, by a sine that dies away, rounded
+     to whole pixels: the named value targetDx, and the group's dx. A triggered effect counts its time
+     from the blow. Each compiled scene keeps the time of its last blow, as yard.js keeps dummyHit. */
+  const TRAIN = { swing: 900, rest: 2000, hot: { every: 1000, at: 470, rest: 600, bob: 170 }, wobble: { ms: 900, div: 60, amp: 15 } };
+  function trainOn(part) {
+    let hit = -1e9;
+    const H = TRAIN.hot, Wb = TRAIN.wobble;
+    function act(t, s) {
+      const o = s.o, here = s.here, K = KW.knight;
+      if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % part.every; if (c < TRAIN.swing) { K.swing(o, c / TRAIN.swing, 1); if (c > part.hitAt && t - hit > TRAIN.rest) hit = t; } }
+      if (s.w.id === 'cpu_hot') { const c = t % H.every; K.swing(o, c / H.every, 1); if (c > H.at && t - hit > H.rest) hit = t; o.eyes = 'half'; o.bob = Math.floor(t / H.bob) % 2; }
+    }
+    /* The frame's values at t: the wobble, the time since the blow, and the group it moves. */
+    function frame(E, t) {
+      const a = t - hit, w = a < Wb.ms ? Math.round(Math.sin(a / Wb.div) * Wb.amp * (1 - a / Wb.ms)) : 0;
+      E.targetDx = w; E.since = a; E.dx = { [part.group]: w };
+      return E;
+    }
+    return { act, frame };
+  }
+
   /* The scene id of the loaded pack (a read() result of format 1.1) compiled to an object with the
      scene interface. Throws when the scene names something this engine does not build. */
   function compile(pack, id) {
@@ -300,7 +358,10 @@
     if (!isObj(v)) throw new Error(path + ': the pack has no such scene');
     for (const k of LATER) if (has(v, k)) throw notBuilt(at(path, k), 'the scene\'s ' + k);
     const out = outdoors(v.hosts, at(path, 'hosts')), foe = has(v, 'foe') ? foeOf(v.foe) : null;
-    const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS };
+    const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: has(v, 'target'), picks: null };
+    // the target's act, and the frame's values it gives the moving and over layers
+    const train = has(v, 'target') ? trainOn(v.target) : null;
+    const frameAt = (t, s) => (train ? train.frame(named(t, s), t) : named(t, s));
     const lists = {};
     for (const k of ['still', 'moving', 'over']) lists[k] = freeze(v[k].map((l, i) => layer(l, idx(at(path, k), i), env)));
     // the backdrop's key: each predicate the still layers wait on, once, in the order first named
@@ -312,10 +373,11 @@
     const sc = {
       spot: v.spot, places, can: v.can.slice(), rounds: v.rounds.map(r => ({ x: r.x, act: r.act, dur: r.dur })),
       key: s => keyed.map(p => (holds(p, s) ? '1' : '0')).join(''),
-      draw(t, s) { drawLayers(lists.moving, named(t, s)); }
+      draw(t, s) { drawLayers(lists.moving, frameAt(t, s)); }
     };
     if (lists.still.length) sc.paint = s => drawLayers(lists.still, named(0, s));
-    if (lists.over.length) sc.over = (t, s) => drawLayers(lists.over, named(t, s));
+    if (lists.over.length) sc.over = (t, s) => drawLayers(lists.over, frameAt(t, s));
+    if (train) sc.act = train.act;
     if (v.weapon === 'away') sc.sword = false;
     if (v.helmet === 'off') sc.helmet = false;
     if (out) sc.outdoors = true;

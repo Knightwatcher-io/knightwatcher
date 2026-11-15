@@ -480,7 +480,7 @@ steps as the rest, in the same order, and keeps it as data in the loaded pack's 
 
 **`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
 compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
-page draws the battlement, the camp and the cellar from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
+page draws the battlement, the camp, the yard and the cellar from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
 engine parts that will read the sections (the acts, the cast and the props from data) come in later
 steps. The closed lists those parts own are fixed in `pack.js` under the names below and exported
 as `WORLD_LISTS`. The effects library is built: `effects.js` gives each effect's table of fields and
@@ -547,8 +547,9 @@ layers of a scene:
 tile on its x. Two more term forms are allowed: `"h": [seed, mod]` adds the engine's hash of the
 tile's x modulo `mod` (seed 0 to 999, mod 2 to 960), and `"wave": [amp, div, phase]` adds
 `amp * sin(t / div + phase)`, with `amp` from -512 to 512, `div` from 1 to 100 000 ms and `phase`
-from -100 to 100. Coordinates stay multiples of 1/8; an alpha may have three decimals and takes only
-`c` and `wave`.
+from -100 to 100. Coordinates stay multiples of 1/8, and so do the coefficients of named values,
+but `targetDx`'s, which may have three decimals (from -8 to 8), as `713 + targetDx * 0.8` needs; an
+alpha may have three decimals and takes only `c` and `wave`.
 
 | Name | Is | Range the checks assume | Allowed |
 |---|---|---|---|
@@ -556,12 +557,13 @@ from -100 to 100. Coordinates stay multiples of 1/8; an alpha may have three dec
 | `x` | the tile's x | from its `from` at the least, less a `step`, plus its `phase`, to its `to` at the most | inside a tile |
 | `h` | a hash of the tile's x | 0 to `mod` - 1 | inside a tile |
 | `wave` | a sine of the scene's time | `-amp` to `amp` | a moving or over layer |
+| `targetDx` | the pixels the training act moves the target's group by, while it wobbles after a blow | -15 to 15 | a moving or over layer of a scene with a `target` |
 
 Nothing else may lean on a named value: stamps, the cast and props are drawn at fixed sizes. The
 knight's names (`drop`, `dShoulder` and the rest) are refused in every 1.1 section.
 
 **Effects.** `fx` is one of `sky`, `stars`, `ridge`, `bricks`, `pines`, `tree`, `arch`, `shelf`,
-`stacks`, `tufts`, `flame`, `twinkle`, `drift`, `wander`, `coals`, `steam` and `burst`, and the other
+`stacks`, `tufts`, `pebbles`, `flame`, `twinkle`, `drift`, `wander`, `coals`, `steam` and `burst`, and the other
 fields of an `fx` shape are the fields of that effect's table in `effects.js`
 ([page.md](./page.md#the-effects) lists them): a field the table lacks is refused, one without a
 default is required, and each holds a value of its kind in its range. A point, an offset or a length
@@ -1260,7 +1262,7 @@ is the tied hair with the sword and shield: 135 shapes, cost 14 470, against the
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
 `[1, 1]`, version 0.2.0, unsigned until the rest of the scenes are in it (0.1.0, the cellar alone,
-was signed with `kw1`). It holds the battlement, the camp and the cellar as data and the two stamps the cellar uses,
+was signed with `kw1`). It holds the battlement, the camp, the yard and the cellar as data and the two stamps the cellar and the yard use,
 and the page draws those scenes from it on a `dev` page, and on a deployed page once it is signed.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
@@ -1490,7 +1492,7 @@ the world's pack changes no look: `resolve()` gives the same with it loaded as w
 
 `tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
 clean, with its signature taken off, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
-draws the battlement, the camp and the cellar from it and a deployed page from code while it is unsigned, and from it
+draws the battlement, the camp, the yard and the cellar from it and a deployed page from code while it is unsigned, and from it
 once signed with a key made for the run, and the shipped file on a deployed page draws from it when
 it carries a signature; a refused, missing or unreadable pack, a missing library and a compile
 that throws all leave the scenes concerned the code scenes, each with its console line and its

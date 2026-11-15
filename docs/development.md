@@ -64,7 +64,7 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
   `node tools/pack-carrier.js` and commit both; a test fails while they differ. See
   [packs.md](./packs.md#carriers).
 - **A change to the medieval art is made in both copies, in the same commit.** A scene the medieval
-  world's pack holds (today the battlement, the camp and the cellar) is drawn from the pack and, as the fallback, from its code in
+  world's pack holds (today the battlement, the camp, the yard and the cellar) is drawn from the pack and, as the fallback, from its code in
   `web/js/scenes/`. Change both, write the carrier, and `node --test tests/web/` holds the two to the
   same call records. See [worlds.md](./worlds.md#two-copies-held-equal).
 - **A setting starts in the schema.** Every setting of `config.toml` and every variable of `.env`
@@ -175,8 +175,8 @@ when no base pack can be used; its signed packs use keys generated for the run. 
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
 and that no two places draw over each other. `tests/web/world-scenes.test.js` runs those checks of
 `foe.test.js` and `places.test.js` that depend on a scene on each scene of the medieval world's pack,
-compiled from it, holds the goblin's plan there to the code scene's for every weapon and build, and
-checks each scene's `quiet` and `hosts` against the engine's and the settings' own lists of the quiet
+compiled from it, holds the goblin's plan there to the code scene's for every weapon and build, runs
+each scene of the pack with an act frame by frame beside its code scene, and checks each scene's `quiet` and `hosts` against the engine's and the settings' own lists of the quiet
 scenes and the events. `tests/web/settings-schema.test.js` checks the page's lists of
 settings, scenes and conditions against the settings schema. `tests/web/shared-settings.test.js` checks the shared settings against a fake server: the first
 answer, the carry-over of a browser's own choices, no server, a choice sent and a write refused,
@@ -201,10 +201,10 @@ on the knight (the sleeper's head, the gear at rest, the speech bubble, a swing)
 one line with the call and its arguments, since the knight test checks the knight. The goblin, the
 flies and the other props of the events are recorded apart. It compares 1 803 records with those in
 `tests/web/fixtures/scenes/`, one file per scene and one for those props (`cast.json`). Then it draws
-each scene the medieval world's pack holds (today the battlement, the camp and the cellar, 612 records) a second time, compiled
+each scene the medieval world's pack holds (today the battlement, the camp, the yard and the cellar, 846 records) a second time, compiled
 from the pack, against the same stored records; checks that the compiled scene's backdrop key tells
 the recorded states apart exactly as the code scene's does; and checks that it gives the code scene's
-interface. All of it takes about 24 seconds. A failure names the scene, the state, the size, the record and the first call that
+interface. All of it takes about 29 seconds. A failure names the scene, the state, the size, the record and the first call that
 differs, with what `HEAD` draws there and what was drawn; without git, the block of 1 024 calls
 where the difference lies. Store the records again only when a scene is meant to change, from code
 whose drawing is known to be right:
@@ -218,12 +218,12 @@ SCENES_WEB=DIR node --test tests/web/scenes.test.js        # draws a copy of web
 [page.md](./page.md#checks) has the details.
 
 `tests/web/world.test.js` checks the scene compiler and the medieval world's pack: that the pack
-reads clean, where a `dev` and a deployed page draw the battlement, the camp and the cellar from, a refused, missing
+reads clean, where a `dev` and a deployed page draw the battlement, the camp, the yard and the cellar from, a refused, missing
 or unreadable pack and a compile that throws, each leaving the scenes concerned the code scenes with
 its console line, the predicates and the backdrop's key, `outdoors` and the foe's zone, and that what
 the compiler does not build yet is refused by name.
 
-The repository's own page draws the knight from the base pack and the battlement, the camp and the cellar from the
+The repository's own page draws the knight from the base pack and the battlement, the camp, the yard and the cellar from the
 medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
 and the scene test check both paths. A deployed copy draws from each pack while it ships signed, and
 from code otherwise; to shoot the code path as well, take a second pair of sets from a copy of
@@ -268,9 +268,9 @@ describes the tool, and how a fork signs with a key of its own.
 Whether the base pack ships signed today, and what a deployed page draws in each case, is in
 [packs.md](./packs.md#where-the-knight-is-drawn-from). The medieval world's pack, `kw.medieval`, was
 signed on 15 November 2026 at version 0.1.0, which held the cellar alone. Version 0.2.0, which adds
-the camp and the battlement, ships unsigned while the other scenes are written as data, and is signed
+the camp, the battlement and the yard, ships unsigned while the other scenes are written as data, and is signed
 once they are all in; meanwhile a deployed page draws every scene from code, and a `dev` page draws
-the battlement, the camp and the cellar from the pack ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
+the battlement, the camp, the yard and the cellar from the pack ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
 across changes no test.
 
 ## Deploying

@@ -201,7 +201,7 @@ test('a 1.0 pack reads as it did: no world section, builds only in the base pack
 
 test('the closed lists are the format\'s, by name', () => {
   const L = PK.WORLD_LISTS;
-  assert.deepEqual(L.EFFECTS, ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'flame', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst']);
+  assert.deepEqual(L.EFFECTS, ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'flame', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst']);
   assert.deepEqual(L.MARKS, ['things', 'rest', 'patron', 'sleeper', 'target', 'bubble']);
   assert.deepEqual(L.PREDICATES, ['tv', 'inBed', 'helmOff', 'strike', 'day', 'night']);
   assert.deepEqual(L.ROUND_ACTS, ['guard', 'look', 'sniff', 'yawn', 'train']);
@@ -300,7 +300,7 @@ const RULES = [
   ['tiles: 9 picks', 'fields', p => { for (const i of range(8)) planks(p).pick['p' + i] = { seed: 1, of: ['#000000', '#ffffff'] }; }, "pack.scenes[\"scene.house\"].still[0].shapes[1].pick: must hold 1 to 8 picks, not 9"],
   ['tiles: only is [seed, mod]', 'fields', p => { planks(p).shapes[2].only = [31]; }, "pack.scenes[\"scene.house\"].still[0].shapes[1].shapes[2].only: must be [seed, mod]"],
   ['effects: fx is required', 'fields', p => { delete still(p)[0].fx; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].fx: is missing"],
-  ['effects: fx names an effect of the engine', 'fields', p => { still(p)[0].fx = 'lightning'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].fx: must be one of \"sky\", \"stars\", \"ridge\", \"bricks\", \"pines\", \"tree\", \"arch\", \"shelf\", \"stacks\", \"tufts\", \"flame\", \"twinkle\", \"drift\", \"wander\", \"coals\", \"steam\", \"burst\""],
+  ['effects: fx names an effect of the engine', 'fields', p => { still(p)[0].fx = 'lightning'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].fx: must be one of \"sky\", \"stars\", \"ridge\", \"bricks\", \"pines\", \"tree\", \"arch\", \"shelf\", \"stacks\", \"tufts\", \"pebbles\", \"flame\", \"twinkle\", \"drift\", \"wander\", \"coals\", \"steam\", \"burst\""],
   ['effects: only the fields of its table', 'fields', p => { for (const i of range(10)) still(p)[0]['f' + i] = 1; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].f0: is not a field of the effect \"bricks\""],
   ['effects: a field without a default is required', 'fields', p => { delete still(p)[0].mortar; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].mortar: is missing"],
   ['effects: a colour field holds no text but a colour', 'fields', p => { still(p)[0].mortar = 'bricks.png'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].mortar: must be a hex colour or a reference such as \"@base.k\""],
