@@ -1076,7 +1076,7 @@
      and its drawing by the effects library, effects.js (KW.effects). The page loads that file before
      this one; under Node this file asks for it beside itself, the first time a pack names an
      effect. */
-  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'horseshoe', 'hood', 'flame', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst'];
+  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst'];
   /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
      for, the patron's anchors and the critter's frames. */
   const ROLES = ['patron', 'foe', 'critter'];
@@ -1116,6 +1116,9 @@
      have three decimals, as the yard's lean, 713 + targetDx * 0.8, needs. ACT_PART names the part
      each needs, and the reason a scene without it is refused with. */
   const ACT_RANGE = freeze({ targetDx: [-15, 15], spot: [150, 810] });
+  /* How many times the engine draws the stamp a weapon's rest names: once under each end of the
+     blade, as the house's pegs. */
+  const REST_STAMPS = 2;
   const ACT_PART = freeze({ targetDx: ['target', 'is the target\'s dx, and needs the scene\'s target'], spot: ['anvil', 'is the watcher\'s x at the anvil, and needs the scene\'s anvil'] });
   const U = 5;
   const WORLD_LIMITS = freeze({ scenes: 16, cast: 16, props: 8, overlays: 8, words: 8, worlds: 8, stamps: 64, stampShapes: 64,
@@ -1386,16 +1389,18 @@
     if (has(v, 'pole')) int(v.pole, key(path, 'pole'), 0, 600);
   }
   /* A rest: a place a rest view fits ({ kind, x, y, w, h }), or a frame the weapon lies on
-     ({ x, y, a }, a the angle: "upright", "flat" or a number of radians). Either may count its x
-     from the watcher's spot. */
+     ({ x, y, a }, a the angle: "upright", "flat" or a number of radians), which may name a stamp
+     of the pack, the scene's own pegs or rack drawn under the weapon. Either may count its x from
+     the watcher's spot. */
   function restPlace(v, path) {
     if (isObj(v) && has(v, 'kind')) {
       obj(v, path, ['kind', 'x', 'y', 'w', 'h', 'from'], ['kind', 'x', 'y', 'w', 'h']);
       oneOf(v.kind, key(path, 'kind'), FITS);
       int(v.w, key(path, 'w'), 1, LIMITS.box); int(v.h, key(path, 'h'), 1, LIMITS.box);
     } else {
-      obj(v, path, ['x', 'y', 'a', 'from'], ['x', 'y', 'a']);
+      obj(v, path, ['x', 'y', 'a', 'from', 'stamp'], ['x', 'y', 'a']);
       if (typeof v.a !== 'number' && v.a !== 'upright' && v.a !== 'flat') fail(key(path, 'a'), 'must be "upright", "flat" or a number of radians');
+      if (has(v, 'stamp')) id(v.stamp, key(path, 'stamp'), LOCAL_ID);
       if (typeof v.a === 'number') num(v.a, key(path, 'a'), -3.142, 3.142);
     }
     int(v.x, key(path, 'x'), -960, 960); int(v.y, key(path, 'y'), 0, 600);
@@ -1435,10 +1440,13 @@
     }
     if (has(v, 'screen')) {
       const p = f('screen');
-      obj(v.screen, p, ['group', 'glow'], ['group', 'glow']);
+      // glow is reserved, and not read: the screen's light is a glow of the scene's own
+      obj(v.screen, p, ['group', 'glow'], ['group']);
       id(v.screen.group, key(p, 'group'), LOCAL_ID);
-      if (!Array.isArray(v.screen.glow) || v.screen.glow.length !== 3) fail(key(p, 'glow'), 'must be [x, y, r]');
-      gridPair(v.screen.glow.slice(0, 2), key(p, 'glow')); eighth(v.screen.glow[2], idx(key(p, 'glow'), 2), 1, 512);
+      if (has(v.screen, 'glow')) {
+        if (!Array.isArray(v.screen.glow) || v.screen.glow.length !== 3) fail(key(p, 'glow'), 'must be [x, y, r]');
+        gridPair(v.screen.glow.slice(0, 2), key(p, 'glow')); eighth(v.screen.glow[2], idx(key(p, 'glow'), 2), 1, 512);
+      }
     }
     if (has(v, 'seat')) {
       const p = f('seat');
@@ -1447,8 +1455,10 @@
       gridPair(v.seat.bubble, key(p, 'bubble')); ms(v.seat.turn, key(p, 'turn')); ms(v.seat.mouth, key(p, 'mouth'));
     }
     if (has(v, 'anvil')) {
-      obj(v.anvil, f('anvil'), ['rest', 'spark'], ['rest', 'spark']);
-      id(v.anvil.rest, key(f('anvil'), 'rest'), LOCAL_ID); gridPair(v.anvil.spark, key(f('anvil'), 'spark'));
+      // spark is reserved, and not read: the hammer's sparks are a burst of the scene's own
+      obj(v.anvil, f('anvil'), ['rest', 'spark'], ['rest']);
+      id(v.anvil.rest, key(f('anvil'), 'rest'), LOCAL_ID);
+      if (has(v.anvil, 'spark')) gridPair(v.anvil.spark, key(f('anvil'), 'spark'));
     }
     if (has(v, 'target')) {
       const p = f('target');
@@ -1809,6 +1819,10 @@
       if (v.screen) group(v.screen.group, key(key(sp, 'screen'), 'group'));
       if (v.target) group(v.target.group, key(key(sp, 'target'), 'group'));
       if (v.anvil && !(v.rests && has(v.rests, v.anvil.rest))) fail(key(key(sp, 'anvil'), 'rest'), 'names a rest, ' + quote(v.anvil.rest) + ', that the scene does not have');
+      for (const r of Object.keys(v.rests || {})) {
+        const st = v.rests[r].stamp;
+        if (st !== undefined && !(pack.stamps && has(pack.stamps, st))) fail(key(key(key(sp, 'rests'), r), 'stamp'), 'names a stamp, ' + quote(st) + ', that the pack does not have');
+      }
       const needs = { tv: 'screen', inBed: 'bed', strike: 'anvil' };
       for (const k of LAYERED) v[k].forEach((l, i) => {
         const lp = idx(key(sp, k), i);
@@ -2138,6 +2152,12 @@
         return t;
       }
       default:
+        // the weapon at a rest that names a stamp: the stamp twice, under each end of the blade
+        if (s.k === 'rest' && s.slot === 'main' && ctx.scene && ctx.scene.rests && ctx.scene.rests[s.at] && ctx.scene.rests[s.at].stamp !== undefined) {
+          const t = zero();
+          for (const x of pack.stamps[ctx.scene.rests[s.at].stamp]) addCost(t, wcost(pack, x, { where: 'stamp' }), REST_STAMPS);
+          return t;
+        }
         if (MARKS.includes(s.k)) return one;
         return Object.assign(one, { cost: shapeCost(pack, s, 'scene', R, s.k === 'pix' ? 1 : wbands(pack, s.fill, ctx)) });
     }
@@ -2167,8 +2187,8 @@
       const v = pack.scenes[n], sp = key(key(P, 'scenes'), n);
       cap(sp, v.still.length + v.moving.length + v.over.length, L.layers, 'holds', 'layers');
       const still = zero(), frame = zero();
-      for (const l of v.still) addCost(still, listCost(pack, l.shapes, { where: 'still' }), 1);
-      for (const k of ['moving', 'over']) for (const l of v[k]) addCost(frame, listCost(pack, l.shapes, { where: k }), 1);
+      for (const l of v.still) addCost(still, listCost(pack, l.shapes, { where: 'still', scene: v }), 1);
+      for (const k of ['moving', 'over']) for (const l of v[k]) addCost(frame, listCost(pack, l.shapes, { where: k, scene: v }), 1);
       // the pole, once under each of the three high places
       if (v.pole) addCost(frame, listCost(pack, v.pole, { where: 'pole' }), 3);
       cap(sp, still.tiles + frame.tiles, L.tiles, 'holds', 'tiles');

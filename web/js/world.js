@@ -78,12 +78,14 @@
   }
   const point = (v, path) => [term(v[0], idx(path, 0)), term(v[1], idx(path, 1))];
   /* The named values of the screen now, at scene time t, with s the frame. */
-  const named = (t, s) => ({ L: V.HL, R: V.HR, T: V.HT, W: V.HR - V.HL, x: 0, t, s, targetDx: 0, spot: 0, since: Infinity, dx: null, picks: null, off: null });
+  const named = (t, s) => ({ L: V.HL, R: V.HR, T: V.HT, W: V.HR - V.HL, x: 0, t, s, targetDx: 0, spot: 0, since: Infinity, dx: null, picks: null, off: null, mv: null, pal: null });
 
   /* ---- Colours ----------------------------------------------------------------------------------
      A colour resolves once, at compile, to what the primitives take: a string, or a band list. A
      tile's pick, "@pick.<name>", is the one colour chosen at each x as the tile is drawn: it compiles
-     to { pick: name }, which hue() reads from the tile's picks of the moment. */
+     to { pick: name }, which hue() reads from the tile's picks of the moment. An entry of the pack's
+     palettes that a palette track of the layer drives compiles to { pal: "set.entry" }, which hue()
+     reads from the layer's keyframes of the moment. */
   const REF = /^@([a-z][a-z0-9-]{0,31})\.([a-z0-9][a-z0-9-]{0,31})$/;
   /* A translucent colour as the scenes spell it, 'rgba(0,0,0,.3)': the alpha without its 0. */
   const rgba = c => 'rgba(' + parseInt(c.rgb.slice(1, 3), 16) + ',' + parseInt(c.rgb.slice(3, 5), 16) + ',' + parseInt(c.rgb.slice(5, 7), 16) + ',' + String(c.a).replace(/^0\./, '.') + ')';
@@ -97,6 +99,11 @@
         return { pick: m[2] };
       }
       const own = env.pack.data.palettes;
+      if (m && env.animPal && env.animPal.includes(m[1] + '.' + m[2])) {
+        // an entry a palette track of the layer drives: chosen as the layer is drawn
+        if (env.inBand || env.inEffect || depth) throw notBuilt(path, 'a colour a palette track drives, ' + (env.inBand ? 'inside a band list' : env.inEffect ? 'in an effect' : 'named through another entry'));
+        return { pal: m[1] + '.' + m[2] };
+      }
       if (m && own && has(own, m[1]) && has(own[m[1]], m[2]) && (depth || 0) < 2) return fill(own[m[1]][m[2]], path, env, (depth || 0) + 1);
       throw notBuilt(path, 'the colour ' + quote(v));
     }
@@ -108,7 +115,7 @@
     const inner = Object.assign({}, env, { inBand: true });
     return v.map((b, i) => [b[0], colour(b[1], idx(idx(path, i), 1), inner, depth)]);
   }
-  const hue = (f, E) => (f !== null && typeof f === 'object' && !Array.isArray(f) ? E.picks[f.pick] : f);
+  const hue = (f, E) => (f !== null && typeof f === 'object' && !Array.isArray(f) ? (has(f, 'pal') ? E.pal[f.pal] : E.picks[f.pick]) : f);
 
   /* ---- Shapes -----------------------------------------------------------------------------------
      Each kind compiles a shape to a record and draws a record. draw(r, E, ox, oy) draws it moved by
@@ -220,19 +227,62 @@
      still layer the gear is painted into the backdrop, which the key then follows. At the rest the
      scene's anvil names, the weapon lies in the backdrop and the hammer works it: there a rest mark
      for the weapon in a moving or over layer draws, each frame, the anvil act's hot tip on the
-     blade (hotTip, below), and not the weapon again. */
+     blade (hotTip, below), and not the weapon again. The helmet or the shield is drawn only when its
+     rest view fits the place, KW.knight.rest.fits: its fits the place's kind and its box within the
+     place's w by h. A frame that names a stamp has the stamp drawn under the weapon first, as the
+     house's pegs, at PEGS from the blade (pegsAt, below). sleeper draws the watcher's head in bed,
+     with the ice bag while unwell, where the scene's bed puts it (sleeperAt, below). */
   const MARKS = {
     things: { compile: () => ({}), draw(r, E) { KW.devices.draw(E.t, E.s); } },
     rest: {
-      compile: (s, path, env) => ({ slot: s.slot, at: env.rests[s.at], hot: s.slot === 'main' && !!env.anvil && env.anvil.rest === s.at && env.where !== 'still' }),
+      compile(s, path, env) {
+        const hot = s.slot === 'main' && !!env.anvil && env.anvil.rest === s.at && env.where !== 'still';
+        const stamp = s.slot === 'main' && !hot ? env.restStamps[s.at] || null : null;
+        return { slot: s.slot, at: env.rests[s.at], hot, stamp };
+      },
       draw(r, E) {
         const R = KW.knight.rest, x = r.at.spot ? E.s.kx + r.at.x : r.at.x, y = r.at.y;
         if (r.hot) hotTip(x, y, R.blade(), E.t);
-        else if (r.slot === 'main') R.draw('main', x, y, r.at.a);
-        else R.draw(r.slot, x, y);
+        else if (r.slot === 'main') {
+          if (r.stamp) for (const px of pegsAt(x, R.blade())) for (const t of r.stamp) drawShape(t, E, px, y);
+          R.draw('main', x, y, r.at.a);
+        } else if (typeof R.fits !== 'function' || R.fits(r.slot, r.at)) R.draw(r.slot, x, y);
       }
-    }
+    },
+    sleeper: { compile: (s, path, env) => ({ bed: env.bed }), draw(r, E) { sleeperAt(r.bed, E.s.o); } }
   };
+  /* The xs of a frame's stamp, from the blade of the weapon lying on it with its grip's middle at x:
+     PEGS.from past where the blade starts and PEGS.to short of its point, as the house's pegs, which
+     a weapon that gives no blade gets for the greatsword's, PEGS.blade. */
+  const PEGS = { from: 28, to: 45, blade: { from: 34, to: 263 } };
+  function pegsAt(x, b) {
+    const d = b || PEGS.blade;
+    return [x + d.from + PEGS.from, x + d.to - PEGS.to];
+  }
+  /* The sleeper: the watcher's bare head with the corner of its box at the bed's head, moved by
+     SLEEPER.shake pixels for each unit of the pose's headDx, and while the pose holds the ice bag
+     (o.icebag), the bag on the brow at SLEEPER.bag from the head's corner, all from house.js. */
+  const SLEEPER = { shake: 5, bag: [[[83, 8], 70, 30, 12, 'k'], [[86, 11], 64, 24, 10, [[.2, '#d4f6ff'], [.6, '#9fdcf0'], [1, '#6fb6d4']]], [[109, -4], 18, 16, 4, 'k'], [[112, -1], 12, 11, 3, 'w']], glint: [[93, 15], 10, 3, 'w'] };
+  function sleeperAt(bed, o) {
+    const [hx, hy] = bed.head, C = D.C, c = v => (v === 'k' ? C.K : v === 'w' ? C.W : v);
+    KW.knight.head(hx + (o.headDx || 0) * SLEEPER.shake, hy, o);
+    if (!o.icebag) return;
+    for (const [[dx, dy], w, h, r, f] of SLEEPER.bag) D.rrect(hx + dx, hy + dy, w, h, r, c(f));
+    const [[gx, gy], gw, gh, gc] = SLEEPER.glint;
+    D.Rh(hx + gx, hy + gy, gw, gh, c(gc));
+  }
+  /* The sleeper's Zs, over everything while the watcher sleeps at night: ZEDS.n of them, each
+     rising from the bed's zeds over ZEDS.period ms a third of the way after the last, ZEDS.rise
+     across and up, growing from ZEDS.size[0] to ZEDS.size[0] + ZEDS.size[1] pixels and fading out
+     over the last fifth, as house.js draws them. */
+  const ZEDS = { n: 3, period: 2600, rise: [110, 140], size: [16, 16], fade: [.8, 5] };
+  function zedsAt(bed, t) {
+    const [x, y] = bed.zeds, A = D.alpha;
+    for (let i = 0; i < ZEDS.n; i++) {
+      const ph = ((t / ZEDS.period) + i / ZEDS.n) % 1;
+      A(ph > ZEDS.fade[0] ? (1 - ph) * ZEDS.fade[1] : 1); KW.sprites.zed(x + ph * ZEDS.rise[0], y - ph * ZEDS.rise[1], Math.round(ZEDS.size[0] + ph * ZEDS.size[1])); A(1);
+    }
+  }
 
   function shape(s, path, env) {
     const kind = has(SHAPES, s.k) ? SHAPES[s.k] : has(MARKS, s.k) ? MARKS[s.k] : null;
@@ -242,12 +292,14 @@
     if (has(s, 'g') && (s.k === 'fx' || has(MARKS, s.k) || env.marks.includes(s.k))) throw notBuilt(at(path, 'g'), '"g" on ' + (s.k === 'fx' ? 'an effect' : 'a mark'));
     return { k: s.k, g: has(s, 'g') ? s.g : null, r: kind.compile(s, path, env) };
   }
-  /* Draws a shape, unless its group is hidden in this frame (E.off, from its layer's keyframes),
-     moved along by its group's dx (E.dx, which the training act gives the target's group). */
+  /* Draws a shape, unless its group is hidden in this frame (E.off, from its layer's keyframes and
+     the screen), moved along by its group's dx (E.dx, which the training act gives the target's
+     group) and by its group's dx and dy from its layer's keyframes (E.mv, [dx, dy]). */
   function drawShape(c, E, ox, oy) {
     if (c.g !== null && E.off && E.off[c.g]) return;
-    const dx = c.g !== null && E.dx && has(E.dx, c.g) ? E.dx[c.g] : 0;
-    (has(SHAPES, c.k) ? SHAPES[c.k] : MARKS[c.k]).draw(c.r, E, dx ? ox + dx : ox, oy);
+    let dx = c.g !== null && E.dx && has(E.dx, c.g) ? E.dx[c.g] : 0, dy = 0;
+    if (c.g !== null && E.mv && has(E.mv, c.g)) { dx += E.mv[c.g][0]; dy = E.mv[c.g][1]; }
+    (has(SHAPES, c.k) ? SHAPES[c.k] : MARKS[c.k]).draw(c.r, E, dx ? ox + dx : ox, dy ? oy + dy : oy);
   }
 
   /* ---- Predicates and layers -------------------------------------------------------------------
@@ -265,25 +317,34 @@
   }
   /* ---- Groups and keyframes ---------------------------------------------------------------------
      A moving or over layer may declare groups, name one on a shape with "g", and drive them with
-     keyframes. What is built is what the scenes so far need: a clock in whole milliseconds ("ms":
-     true), looping or not, started at phase, and show tracks, which hide a group's shapes while
-     their value is 0. A key holds from its time until the next one's, as 1.0's step ease does, and
-     the first key's value holds before it. The clock is the scene's time modulo the period, both in
-     ms, so a show track of [[0, 1], [150, 0]] over 450 shows its group from 0 to before 150 of every
-     450 ms, the code's Math.floor(t / 150) % 3 === 0. (Dividing first, as (t / period) % 1, would
-     put 600 ms of a 450 ms clock a hair before the key at 150.) */
+     keyframes. What is built: a clock in whole milliseconds ("ms": true), looping or not, started at
+     phase, with four kinds of track. A show track hides its group's shapes while its value is 0; a
+     dx or a dy track moves them by its value; a palette track ("pal": "set.entry") gives the pack's
+     palette entry its colour, for the shapes of the layer that name it. Each of those holds a key
+     from its time until the next one's, as 1.0's step ease does, the first key's value before it.
+     A wave track ({ g, ch, wave: [amp, div, phase], round }) moves its group by amp * sin(t / div +
+     phase) of the scene's time t, rounded to whole pixels when round is true, as Math.round(
+     Math.sin(t / 190) * 1.5) is. The clock is the scene's time modulo the period, both in ms, so a
+     show track of [[0, 1], [150, 0]] over 450 shows its group from 0 to before 150 of every 450 ms,
+     the code's Math.floor(t / 150) % 3 === 0. (Dividing first, as (t / period) % 1, would put 600 ms
+     of a 450 ms clock a hair before the key at 150.) */
+  const SHOW = 0, MOVE = 1, WAVE_MOVE = 2, PAL = 3;
   function keyframes(a, path) {
     if (a.ms !== true) throw notBuilt(path, 'a clock in seconds');
     if (has(a, 'trigger')) throw notBuilt(at(path, 'trigger'), 'a triggered clock');
     const tracks = a.tracks.map((t, i) => {
-      const p = idx(at(path, 'tracks'), i);
-      if (has(t, 'wave')) throw notBuilt(p, 'a wave track');
-      if (has(t, 'pal')) throw notBuilt(p, 'a palette track');
-      if (t.ch !== 'show') throw notBuilt(at(p, 'ch'), 'the channel ' + quote(t.ch));
-      return { g: t.g, times: t.keys.map(k => k[0]), values: t.keys.map(k => k[1]) };
+      const p = idx(at(path, 'tracks'), i), axis = t.ch === 'dy' ? 1 : 0;
+      if (has(t, 'wave')) return { kind: WAVE_MOVE, g: t.g, axis, wave: t.wave.slice(), round: t.round === true };
+      if (has(t, 'ease') && t.ease !== 'step') throw notBuilt(at(p, 'ease'), 'the ease ' + quote(t.ease));
+      const times = t.keys.map(k => k[0]), values = t.keys.map(k => k[1]);
+      if (has(t, 'pal')) return { kind: PAL, pal: t.pal, times, values };
+      if (t.ch !== 'show' && t.ch !== 'dx' && t.ch !== 'dy') throw notBuilt(at(p, 'ch'), 'the channel ' + quote(t.ch));
+      return { kind: t.ch === 'show' ? SHOW : MOVE, g: t.g, axis, times, values };
     });
     return { period: a.period, loop: a.loop, phase: (a.phase || 0) * a.period, tracks };
   }
+  /* The palette entries a layer's keyframes drive, as "set.entry". */
+  const palsOf = a => (a ? a.tracks.filter(t => t.kind === PAL).map(t => t.pal) : []);
   /* The value of a step track at u ms into the clock. */
   function stepAt(tr, u) {
     const T = tr.times, n = T.length;
@@ -293,37 +354,51 @@
     while (T[i + 1] <= u) i++;
     return tr.values[i];
   }
-  /* The groups the keyframes a hide at scene time t, by name. */
-  function hidden(a, t) {
+  /* What the keyframes a do at scene time t: the groups hidden, by name (off); each group's move,
+     [dx, dy] (mv); and the colours of the palette entries they drive (pal). */
+  function animate(a, t) {
     const tt = t > 0 ? t : 0, P = a.period;
     const u = a.loop ? ((tt + a.phase) % P + P) % P : Math.min(P, a.phase + tt);
-    const off = {};
-    for (const tr of a.tracks) if (stepAt(tr, u) === 0) off[tr.g] = true;
-    return off;
+    const off = {}, mv = {}, pal = {};
+    const move = (g, axis, d) => { if (!has(mv, g)) mv[g] = [0, 0]; mv[g][axis] += d; };
+    for (const tr of a.tracks) {
+      if (tr.kind === SHOW) { if (stepAt(tr, u) === 0) off[tr.g] = true; }
+      else if (tr.kind === MOVE) move(tr.g, tr.axis, stepAt(tr, u));
+      else if (tr.kind === WAVE_MOVE) { const v = tr.wave[0] * Math.sin(t / tr.wave[1] + tr.wave[2]); move(tr.g, tr.axis, tr.round ? Math.round(v) : v); }
+      else pal[tr.pal] = stepAt(tr, u);
+    }
+    return { off, mv, pal };
   }
 
   function layer(l, path, env) {
     const when = (l.when || []).map(predicate);
     for (const p of when) if (p.n !== 'cond' && p.n !== 'night' && p.n !== 'day' && !has(FROM_FRAME, p.n)) throw notBuilt(at(path, 'when'), 'the predicate ' + quote(p.n));
-    const anim = has(l, 'anim') ? keyframes(l.anim, at(path, 'anim')) : null, inner = Object.assign({}, env, { groups: l.groups || null });
-    return { when, anim, shapes: l.shapes.map((s, i) => shape(s, idx(at(path, 'shapes'), i), inner)) };
+    const anim = has(l, 'anim') ? keyframes(l.anim, at(path, 'anim')) : null, inner = Object.assign({}, env, { groups: l.groups || null, animPal: palsOf(anim) });
+    const screen = env.screen && l.groups && has(l.groups, env.screen) ? env.screen : null;
+    return { when, anim, screen, shapes: l.shapes.map((s, i) => shape(s, idx(at(path, 'shapes'), i), inner)) };
   }
+  /* Draws the layers whose when holds, each with its keyframes of the moment, and with the screen's
+     group (the scene's screen.group) hidden while the television is off. */
   function drawLayers(list, E) {
     for (const l of list) {
       if (!l.when.every(p => holds(p, E.s))) continue;
-      E.off = l.anim ? hidden(l.anim, E.t) : null;
+      const a = l.anim ? animate(l.anim, E.t) : null;
+      E.off = a ? a.off : null; E.mv = a ? a.mv : null; E.pal = a ? a.pal : null;
+      if (l.screen && !E.s.tv) E.off = Object.assign({}, E.off, { [l.screen]: true });
       for (const c of l.shapes) drawShape(c, E, 0, 0);
-      E.off = null;
+      E.off = null; E.mv = null; E.pal = null;
     }
   }
 
   /* ---- Scenes ---------------------------------------------------------------------------------- */
 
-  /* The fields of a scene this engine does not build yet: the parts of the bed's, the screen's and
-     the seat's acts, and the pole drawn under a high place. decor, quiet, name, sound and companion
-     are not read: nothing draws decorations yet, the engine's own lists say which scenes take turns
-     while all is quiet, and the other three are names and reserved slots. */
-  const LATER = ['bed', 'screen', 'seat', 'pole'];
+  /* The fields of a scene this engine does not build yet: the part of the seat's act, and the pole
+     drawn under a high place. decor, quiet, name, sound and companion are not read: nothing draws
+     decorations yet, the engine's own lists say which scenes take turns while all is quiet, and the
+     other three are names and reserved slots. Nor are the anvil's spark, the bed's blanket and the
+     screen's glow, which say what the scene's own shapes draw (the hammer's sparks, the blanket over
+     the sleeper and the television's light). */
+  const LATER = ['seat', 'pole'];
 
   /* The rests of a scene: where the watcher's gear is set down (docs/page.md, Gear at rest). A frame,
      { x, y, a }, is where the weapon lies, its grip's middle at (x, y) and a its angle, "upright" 0
@@ -339,6 +414,17 @@
   function restsOut(rests) {
     const out = {};
     for (const n of Object.keys(rests)) { const { spot, ...r } = rests[n]; out[n] = r; }
+    return out;
+  }
+  /* The shapes of the stamp each frame of the scene names, compiled as a stamp's, by rest. */
+  function restStamps(v, env) {
+    const out = {};
+    for (const n of Object.keys(v.rests || {})) {
+      const st = v.rests[n].stamp;
+      if (st === undefined) continue;
+      const inner = Object.assign({}, env, { stamp: true, using: [st] });
+      out[n] = freeze(env.pack.data.stamps[st].map((t, i) => shape(t, 'stamps.' + st + '[' + i + ']', inner)));
+    }
     return out;
   }
 
@@ -450,7 +536,10 @@
     const out = outdoors(v.hosts, at(path, 'hosts')), foe = has(v, 'foe') ? foeOf(v.foe) : null;
     const rests = {};
     if (has(v, 'rests')) for (const n of Object.keys(v.rests)) rests[n] = freeze(restOf(v.rests[n]));
-    const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: has(v, 'target'), anvil: has(v, 'anvil') ? v.anvil : null, rests, picks: null };
+    const bed = has(v, 'bed') ? freeze({ head: v.bed.head.slice(), zeds: v.bed.zeds.slice() }) : null;
+    const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: has(v, 'target'), anvil: has(v, 'anvil') ? v.anvil : null, rests, restStamps: {},
+      bed, screen: has(v, 'screen') ? v.screen.group : null, picks: null };
+    env.restStamps = restStamps(v, env);
     // the act, the target's or the anvil's, and the frame's values it gives the moving and over layers
     const acted = has(v, 'target') ? trainOn(v.target) : has(v, 'anvil') ? anvilOn() : null;
     const frameAt = (t, s) => (acted ? acted.frame(named(t, s), t) : named(t, s));
@@ -479,7 +568,9 @@
     if (!has(v, 'anvil')) sc.rounds = v.rounds.map(r => ({ x: r.x, act: r.act, dur: r.dur }));
     if (has(v, 'rests')) sc.rests = restsOut(rests);
     if (lists.still.length) sc.paint = s => drawLayers(lists.still, named(0, s));
-    if (lists.over.length) sc.over = (t, s) => drawLayers(lists.over, frameAt(t, s));
+    // the over layers, and the sleeper's Zs over everything at night in a scene with a bed
+    if (lists.over.length || bed) sc.over = (t, s) => { drawLayers(lists.over, frameAt(t, s)); if (bed && s.w && s.w.id === 'night') zedsAt(bed, t); };
+    if (bed) sc.bed = true;
     if (acted) sc.act = acted.act;
     if (v.weapon === 'away') sc.sword = false;
     if (v.helmet === 'off') sc.helmet = false;

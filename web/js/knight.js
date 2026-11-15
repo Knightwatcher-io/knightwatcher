@@ -466,6 +466,16 @@
   /* What a scene adds to its backdrop key for an item it paints at rest: the equipped item's name,
      '<pack>/<item>', or '' when none is equipped; 'code' on the code path. */
   const restKey = slot => (PK.look ? PK.look.look.items[slot] || '' : 'code');
+  /* Whether the equipped item of slot may be drawn at rest in the place pl, { kind, w, h }: its rest
+     view's fits is the place's kind and its box no wider than w nor taller than h. The weapon has
+     no rest view and lies on the scene's frame, so it always may; so may an item with no rest view,
+     which draws nothing, and anything on the code path, which draws what the scenes always held. */
+  function restFits(slot, pl) {
+    const n = PK.look && slot !== 'main' ? PK.look.look.items[slot] : null;
+    if (!n) return true;
+    const p = PK.packs.get(n.slice(0, n.indexOf('/'))), it = p && p.data.items ? p.data.items[n.slice(n.indexOf('/') + 1)] : null, v = it && it.rest;
+    return !v || (v.fits === pl.kind && v.box[0] <= pl.w && v.box[1] <= pl.h);
+  }
 
   /* ---- Loading the packs ------------------------------------------------------------------------
      start() reads the packs that ship with the page, add() the ones fetchPacks() fetched, and each
@@ -737,7 +747,7 @@
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
      knight is. speech draws a speech bubble. rest holds what a scene calls for the gear at rest
-     (described above): draw(slot, x, y, a), blade() and key(slot). rig, start, add, look,
+     (described above): draw(slot, x, y, a), blade(), key(slot) and fits(slot, place). rig, start, add, look,
      basePack, fetchPacks and packIndex are described above, except that rig from outside takes the
      look's build when b is left out (below), build is the present knight's measurements, source is
      'pack' or 'code' and status what start() found. */
@@ -748,5 +758,5 @@
      drawn. */
   const rigOf = (o, b) => rig(o, b || (PK.look ? PK.look.m : BUILD));
   KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, head: headAtCorner, speech: speechHD,
-    rest: { draw: restHD, blade: restBlade, key: restKey }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
+    rest: { draw: restHD, blade: restBlade, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);

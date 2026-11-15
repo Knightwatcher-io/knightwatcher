@@ -425,8 +425,9 @@ rest view: a scene draws its worn shapes on a frame of its own. Its `blade` tell
 blade lies along that frame, for the smithy's hot tip.
 
 The page shows three rest views (the helmet, its plume and the shield) and one weapon at rest; see
-[Gear at rest](#gear-at-rest). `fits` and `box` are checked and are not yet compared with the place
-a scene puts the view in. The base pack's shield fits `hang`: its rest view hangs it by a strap
+[Gear at rest](#gear-at-rest). `fits` and `box` are checked, and a scene from a world pack draws the
+view only in a place of that kind with room for the box (`KW.knight.rest.fits`); the code scenes
+draw what they always drew. The base pack's shield fits `hang`: its rest view hangs it by a strap
 from a nail at the rest anchor, the top middle of the place.
 
 ## Decorations
@@ -480,7 +481,7 @@ steps as the rest, in the same order, and keeps it as data in the loaded pack's 
 
 **`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
 compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
-page draws the battlement, the camp, the yard, the cellar and the smithy from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
+page draws every scene but the court from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
 engine parts that will read the sections (the acts, the cast and the props from data) come in later
 steps. The closed lists those parts own are fixed in `pack.js` under the names below and exported
 as `WORLD_LISTS`. The effects library is built: `effects.js` gives each effect's table of fields and
@@ -565,7 +566,7 @@ Nothing else may lean on a named value: stamps, the cast and props are drawn at 
 knight's names (`drop`, `dShoulder` and the rest) are refused in every 1.1 section.
 
 **Effects.** `fx` is one of `sky`, `stars`, `ridge`, `bricks`, `pines`, `tree`, `arch`, `shelf`,
-`stacks`, `tufts`, `pebbles`, `horseshoe`, `hood`, `flame`, `twinkle`, `drift`, `wander`, `coals`, `steam` and `burst`, and the other
+`stacks`, `tufts`, `pebbles`, `planks`, `rafters`, `horseshoe`, `hood`, `flame`, `candle`, `twinkle`, `drift`, `wander`, `coals`, `steam` and `burst`, and the other
 fields of an `fx` shape are the fields of that effect's table in `effects.js`
 ([page.md](./page.md#the-effects) lists them): a field the table lacks is refused, one without a
 default is required, and each holds a value of its kind in its range. A point, an offset or a length
@@ -649,12 +650,16 @@ from 500 to 598. The class boxes, from the base, measured on today's drawings:
 
 `rests` holds up to 8: a place `{ kind, x, y, w, h }` (`w` and `h` 1 to 240) for a rest view, or a
 frame `{ x, y, a }` for the weapon, `a` being `upright`, `flat` or a number of radians from -3.142 to
-3.142. Either may count its x from the watcher's spot with `"from": "spot"`; `x` is a whole number
-from -960 to 960 and `y` from 0 to 600. `decor` holds up to 16 places `{ kind, x, y, w, h }`.
+3.142. A frame may name a `stamp` of the pack, the scene's own pegs or rack, which the engine draws
+under the weapon twice, where the weapon's blade puts them ([worlds.md](./worlds.md#the-scene-compiler)).
+Either may count its x from the watcher's spot with `"from": "spot"`; `x` is a whole number from
+-960 to 960 and `y` from 0 to 600. `decor` holds up to 16 places `{ kind, x, y, w, h }`.
 
 **The act parts.** `bed` is `{ head, blanket, zeds }`, `blanket` a group of a layer; `screen`
 `{ group, glow: [x, y, r] }`; `seat` `{ x, y, bubble, turn, mouth }`, `turn` and `mouth` in ms;
-`anvil` `{ rest, spark }`, `rest` a rest of the scene; `target` `{ group, hitAt, every }`, `hitAt`
+`anvil` `{ rest, spark }`, `rest` a rest of the scene. A screen's `glow` and an anvil's `spark` are
+optional, reserved and not read: the television's light and the hammer's sparks are the scene's own
+`glow` and `burst`; `target` `{ group, hitAt, every }`, `hitAt`
 before `every`. `foe` is `{ side, spans, wall }`: `side` 1 or -1, 1 to 4 spans `[from, to]` on the
 grid with `from` below `to`, and an optional `wall` `{ period, offset, high: [width, y], low }` whose
 width is less than its period. A target's `aim` is format 1.2 and refused here.
@@ -769,7 +774,8 @@ scene lists the condition.
 A world shape costs what the 1.0 measure gives, at the ends of every value's range, the screen's
 edges included. A glow costs 3 and counts toward the glows; a `dith` its dots; a `use` its stamp's
 shapes; a tile its shapes times the most repeats its range allows; a mark nothing, since the engine
-counts its own drawing; an effect what its own cost function in `effects.js` gives for its fields
+counts its own drawing, but a `rest` mark for the weapon at a frame that names a stamp, which costs
+the stamp's shapes twice, for the two the engine draws; an effect what its own cost function in `effects.js` gives for its fields
 at the ends of their ranges, 3 for each glow among it, which also count toward the glows. A band
 list of the user's skin counts as 8 bands, here as in 1.0, a pick, a mix and the down lamp as one
 colour.
@@ -1263,9 +1269,10 @@ is the tied hair with the sword and shield: 135 shapes, cost 14 470, against the
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.2.0, unsigned until the rest of the scenes are in it (0.1.0, the cellar alone,
-was signed with `kw1`). It holds the battlement, the camp, the yard, the cellar and the smithy as data and the two stamps the cellar and the yard use,
-and the page draws those scenes from it on a `dev` page, and on a deployed page once it is signed.
+`[1, 1]`, version 0.2.0, unsigned until its signing run (0.1.0, the cellar alone, was signed with
+`kw1`). It holds every scene but the court as data, the three stamps they use (the sconce, the
+barrel and the house's peg) and one palette entry, `house.screen`, the television's colour, and the
+page draws those scenes from it on a `dev` page, and on a deployed page once it is signed.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 
@@ -1462,7 +1469,8 @@ each scene declares in its `rests` field, the numbers of the hot tip and the key
 
 A scene of a world pack names the same places in its `rests` field and asks for the gear with a
 `rest` mark, `{ "k": "rest", "slot": "main", "at": "anvil" }`, which the scene compiler turns into
-the same calls, the hot tip among them. The smithy of `kw.medieval` does so
+the same calls, the hot tip and the pegs among them, and draws a helmet or a shield only where its
+rest view fits the place. The house and the smithy of `kw.medieval` do so
 ([worlds.md](./worlds.md#the-scene-compiler)).
 
 ## Tests
@@ -1499,7 +1507,7 @@ the world's pack changes no look: `resolve()` gives the same with it loaded as w
 
 `tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
 clean, with its signature taken off, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
-draws the battlement, the camp, the yard, the cellar and the smithy from it and a deployed page from code while it is unsigned, and from it
+draws every scene but the court from it and a deployed page from code while it is unsigned, and from it
 once signed with a key made for the run, and the shipped file on a deployed page draws from it when
 it carries a signature; a refused, missing or unreadable pack, a missing library and a compile
 that throws all leave the scenes concerned the code scenes, each with its console line and its

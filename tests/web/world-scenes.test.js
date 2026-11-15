@@ -349,13 +349,16 @@ test('the scenes from the pack: a camera\'s question mark is never higher than y
 
 // ---- The acts ------------------------------------------------------------------------------------
 // The call records draw five moments of each state. A scene with an act (the yard's training, the
-// smithy's hammer) changes the knight's pose and what it draws from one moment to the next, and the
-// yard's keeps the time of its last blow from one frame for the next, so the scenes from the pack
-// that have an act are also run frame by frame beside their code scenes, and every frame's calls,
-// changes to the pose and strike compared. The target's: every 10 ms for two of the yard's 5.6 s
-// training rounds while all is quiet and while the CPU runs hot, and every 50 ms for six seconds in
-// two conditions where the act rests. The anvil's: every 10 ms for five of the hammer's 1.3 s
-// blows, idle and while updating, the one condition the smithy acts, at the spot and at x 300.
+// smithy's hammer, the house's bed and screen) changes the knight's pose and what it draws from one
+// moment to the next, and the yard's keeps the time of its last blow from one frame for the next,
+// so the scenes from the pack that have an act are also run frame by frame beside their code scenes,
+// and every frame's calls (over's among them), changes to the pose and strike compared. The
+// target's: every 10 ms for two of the yard's 5.6 s training rounds while all is quiet and while
+// the CPU runs hot, and every 50 ms for six seconds in two conditions where the act rests. The
+// anvil's: every 10 ms for five of the hammer's 1.3 s blows, idle and while updating, the one
+// condition the smithy acts, at the spot and at x 300. The bed's and the screen's: every 10 ms for
+// 8.4 s, two of the television's figure's rounds, asleep at night and sick in bed, the television
+// on while streaming, and off while all is quiet.
 
 /* The page's scripts drawing into a context that writes one line per call, with the knight's swing
    written as one line, and the scenes the pack gives compiled from it (from 'pack') or from code. */
@@ -383,28 +386,34 @@ function frameAt(KW, name, id, t, kx) {
   const w = k ? { id, lv: k.lv, st: ST.LEVELS[k.level], scene: k.scene, hl: '', sub: '' } : ST.IDLE;
   const o = K.pose(id, t); o.floor = V.HFL; o.helmet = sc.helmet !== false; o.x = kx === undefined ? sc.spot * V.U : kx;
   if (sc.sword === false) o.sword = false;
-  const free = (w.lv < 3 || id === 'memory_tight' || id === 'disk_full') && w.lv !== 2 && id !== 'backup_overdue' && id !== 'pi_silent';
-  return { w, devices: [], places: sc.places, tv: false, kx: o.x, o, here: sc.rounds && free ? { act: sc.rounds[0].act, el: t } : null, inBed: false, helmOff: false, strike: false };
+  const inBed = !!sc.bed && (id === 'night' || id === 'container_unhealthy');
+  const free = (w.lv < 3 || id === 'memory_tight' || id === 'disk_full') && !inBed && w.lv !== 2 && id !== 'backup_overdue' && id !== 'pi_silent';
+  return { w, devices: [], places: sc.places, tv: id === 'streaming', kx: o.x, o, here: sc.rounds && free ? { act: sc.rounds[0].act, el: t } : null, inBed,
+    helmOff: inBed || o.helmet === false, strike: false };
 }
 /* The scenes with an act, and the runs each is compared in: [condition, every ms, until ms, kx]. */
-const ACTED = GIVEN.filter(n => READ.data.scenes[n].target || READ.data.scenes[n].anvil);
+const PART = sc => (sc.target ? 'target' : sc.anvil ? 'anvil' : sc.bed || sc.screen ? 'bed' : null);
+const ACTED = GIVEN.filter(n => PART(READ.data.scenes[n]));
 const RUNS = {
   target: [['idle', 10, 11200], ['cpu_hot', 10, 11200], ['attack', 50, 6000], ['memory_tight', 50, 6000]],
-  anvil: [['idle', 10, 6500], ['updating', 10, 6500], ['updating', 10, 6500, 300]]
+  anvil: [['idle', 10, 6500], ['updating', 10, 6500], ['updating', 10, 6500, 300]],
+  bed: [['night', 10, 8400], ['container_unhealthy', 10, 8400], ['streaming', 10, 8400], ['idle', 10, 8400]]
 };
 
 for (const name of ACTED) {
   test(`${name} from kw.medieval acts as the code scene does, frame by frame`, () => {
     let frames = 0;
-    for (const [id, every, until, kx] of RUNS[READ.data.scenes[name].target ? 'target' : 'anvil']) {
+    for (const [id, every, until, kx] of RUNS[PART(READ.data.scenes[name])]) {
       const c = loadDrawn('code'), p = loadDrawn('pack');
       assert.notEqual(c.KW.scenes[name], p.KW.scenes[name]);
       for (let t = 0; t <= until; t += every) {
         const run = m => {
           const s = frameAt(m.KW, name, id, t, kx), before = JSON.stringify(s.o);
           m.log.length = 0;
-          m.KW.scenes[name].act(t, s); m.log.push('o ' + (JSON.stringify(s.o) === before ? 'unchanged' : JSON.stringify(s.o)), 'strike ' + s.strike);
+          if (m.KW.scenes[name].act) m.KW.scenes[name].act(t, s);
+          m.log.push('o ' + (JSON.stringify(s.o) === before ? 'unchanged' : JSON.stringify(s.o)), 'strike ' + s.strike);
           m.KW.scenes[name].draw(t, s);
+          if (m.KW.scenes[name].over) { m.log.push('over'); m.KW.scenes[name].over(t, s); }
           return m.log.join('\n');
         };
         const a = run(c), b = run(p);
