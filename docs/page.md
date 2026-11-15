@@ -24,7 +24,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
 | `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names; see [worlds.md](./worlds.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
-| `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds the battlement, the camp, the yard, the cellar and the smithy as data; see [worlds.md](./worlds.md) |
+| `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene but the court as data; see [worlds.md](./worlds.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the devices in their places (`KW.devices`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
@@ -298,6 +298,7 @@ compiler turns into the same calls ([worlds.md](./worlds.md#the-scene-compiler))
 | `draw(slot, x, y, a)` | draws the equipped item of `slot` at rest. `'helmet'`: the helmet's rest view on the `rest` anchor at `(x, y)`, the middle of its foot on a surface, with the plume's rest view behind it on the view's plume mount. `'off'`: the shield's rest view on the `rest` anchor at `(x, y)`, the top middle of a `hang` place, which for the base pack's shield is the nail it hangs from. `'main'`: the weapon's worn shapes on a frame with the middle of its grip at `(x, y)` along the angle `a` (0 is straight up, and `Math.PI / 2` lays it flat with the point to the right). Any other slot draws nothing, and on the code path `'off'` draws nothing, since the code path has no shield |
 | `blade()` | the equipped weapon's `blade`, `{ from, to, half }` in frame units, or `null` when it gives none. On the code path, the greatsword's `{ from: 34, to: 263, half: 15 }` |
 | `key(slot)` | the equipped item's name, `<pack>/<item>`, or `''` when the slot is empty; `'code'` on the code path |
+| `fits(slot, place)` | whether the equipped item of `slot` may rest in `place`, `{ kind, w, h }`: its rest view's `fits` is the place's `kind` and its `box` no wider than `w` nor taller than `h`. Always true for `'main'`, which has no rest view, for an empty slot or an item without a rest view, and on the code path |
 
 On the pack path a helmet with no rest view shows nothing on the stool, and a helmet whose rest
 view has no plume mount rests without its plume. A shield with no rest view, or no shield, shows
@@ -320,8 +321,10 @@ and its `rest` marks pass the numbers.
 | smithy | `anvil` | the weapon | `x` 50, counted from the knight's spot `s.kx` so that the blade lies where the hammer falls; `y` 425; `a` `Math.PI / 2` |
 | smithy | `wall` | the shield | `kind: 'hang'`, `x` 145 and `y` 312 the nail on the wall over the quench barrel, `w` 100 by `h` 132 the room below it |
 
-The `kind`, `w` and `h` give a place in the shape the pack format gives places; nothing checks a
-rest view's `fits` and `box` against them yet. The house's two pegs sit under the weapon's blade,
+The `kind`, `w` and `h` give a place in the shape the pack format gives places. The code scenes
+draw what they always drew; a scene from a world pack asks `fits()` first and draws a helmet or a
+shield only where its rest view fits the place, which every view of the base pack does in every
+place the medieval scenes give. The house's two pegs sit under the weapon's blade,
 28 past where it starts and 45 short of its point, from `blade()`: for the greatsword at 680 and
 836, where they always were, and for the arming sword at 680 and 748. A weapon with no `blade` gets
 the greatsword's pegs. The house's shield clears the arming sword's point on the pegs, the jug on
@@ -347,7 +350,9 @@ the smithy's `440|kw.base/main.greatsword` at its spot; with the sword and shiel
 every frame, so it adds nothing. The smithy from the medieval world's pack works its key out from
 what its still layers paint: the spot, since the anvil's rest counts from it, then the shield's name
 and the weapon's, each after a `'|'`, so `|440||kw.base/main.greatsword` at its spot with no shield.
-The strings differ from the code smithy's, and they tell the same states apart.
+The strings differ from the code smithy's, and they tell the same states apart. The house from the
+pack keys its backdrop `10|kw.base/main.greatsword|` with the television on and `01|...` with it
+off ([worlds.md](./worlds.md#the-scene-compiler)).
 
 ## The scene interface
 
@@ -355,7 +360,7 @@ Each file in `js/scenes/` registers one object on `KW.scenes` under the scene's 
 nothing outside it. The engine reads only what is listed here, and sets the grid's transform
 before it calls `paint`, `draw` and `over`. A scene may also come from a world pack: the scene
 compiler (`js/world.js`) builds an object with this same interface from the pack's data and puts it
-in the code scene's place, which a `dev` page does today for the battlement, the camp, the yard, the cellar and the smithy
+in the code scene's place, which a `dev` page does today for every scene but the court
 ([worlds.md](./worlds.md)). The compiled scene works out its own `key`, gives `outdoors` from the
 pack's `hosts`, and `foeZone` and, where the foe has a wall, `wallAt` from its `foe`.
 
@@ -456,7 +461,10 @@ beside itself the first time a pack names an effect.
 | `pebbles` | `y`, `step` (23), `spread` (17), `seed` (3, with the next three), `drop` ([10, 56]), `size` ([3, 3]), `ry` (2), `of` (1 to 8, the yard's two browns), `light` | an ell of `ry` and one fill a pebble, one pebble a step across the screen | the yard as data; `yard.js` keeps its own loop, and the call records hold the two equal |
 | `horseshoe` | `p`, `r` ([18, 22]), `of` (three colours: the outline, the iron and the shine) | each of its three strokes: a strip a segment and an ell a point | the smithy as data, its two horseshoes; `smithy.js` keeps its own loop |
 | `hood` | `p`, `w`, `neck`, `foot`, `flare`, `colour` (K) | one fill a row from its highest point to its lowest | the smithy as data, its forge's hood; `smithy.js` keeps its own polygon |
+| `planks` | `y`, `h`, `step` (36), `seed` (3), `of` (1 to 8, the house's four browns), `lit` (0.04), `grain` (0.28), `knots` (two colours) | for each plank across the screen, the plank, its light, three streaks and a knot | the house as data; `house.js` keeps its own loop |
+| `rafters` | `y`, `top`, `step` (120), `lean` (90), `past` (120), `hw` ([7, 5]), `of` (two colours) | two strips a rafter, from a step before the left edge to `past` beyond the right | the house as data; `house.js` keeps its own loop |
 | `flame` | `p`, `size` (1), `dt` (0) | three tongues, each an ell and a triangle at their largest | every scene |
+| `candle` | `p`, `sway` ([190, 1.5]), `of` (two colours) | two ells and a triangle | the house as data, the candle's flame; `house.js` keeps its own drawing |
 | `twinkle` | `p`, `w`, `h`, `n` (14), `seed` (41), `ms` (1100), `gap` (0.7), `cycle` (6), `lit` (0.9), `size` (3), `colour` | 1 a point | battlement |
 | `drift` | `p`, `n` (4), `gap` (6), `period` (2300), `sway` ([5, 14]), `rise` (130), `size` (3), `colour` | 1 a particle | camp, the embers |
 | `wander` | `p`, `w`, `h`, `n` (7), `seed` (31), `ms` (900), `gap` (1.3), `cycle` (4), `lit` (1.4), `sway`, `bob`, `glow` ([9, 0.18]), `size` (3), `colour` | a glow and a fill a light, one glow each | camp, the fireflies |
@@ -477,10 +485,11 @@ in its scene, as plain shapes, loops of fixed shapes (the world format's tiles) 
   squares, the cellar's brackets and piers (each pier's bricks an effect inside the tile);
 - the dummy, the television, the candle, the blanket and the sleeper's Zs, the hammer's act, the
   monarch and the ermine: the acts and the patron, which later steps move out with their parts (the
-  scene compiler builds the target's and the anvil's acts for the scenes from the medieval world's
-  pack);
+  scene compiler builds the target's and the anvil's acts, the bed and the screen for the scenes from
+  the medieval world's pack);
 - the weapon's pegs in the house and the hot tip on the anvil, which read the weapon's blade: what
-  reads the knight's gear stays the engine's;
+  reads the knight's gear stays the engine's (from the pack, the pegs are the scene's stamp, drawn by
+  the engine where the blade puts them);
 - the props shared as stamps (`barrelHD`, `tableHD`, `sconceHD`, `crateHD`), and the glows, which
   are a shape of their own.
 
@@ -1107,12 +1116,14 @@ where the goblin stands, the hits on every build and the blade against the gobli
 It also holds the goblin's whole plan there (where it stands, the line it comes over, the moment of
 the hit) to the plan in the code scene, for every weapon and build, and runs the checks of
 `places.test.js` on every scene of the pack. It runs every scene of the pack that has an act (a
-`target` or an `anvil`) frame by frame beside its code scene, comparing every call, every change to
-the knight's pose and `strike`. `tests/web/world-knight.test.js` runs the knight test's checks of the
-smithy on the smithy from the pack: the four records of it painted and drawn against the stored
-ones, with the knight from code and from the base pack; in each of the base pack's other looks
-(the arming sword and the shield, Broad and Slim) the same calls as the code smithy; its backdrop
-key; its rests; and no hot tip for a weapon without a blade. `foe.test.js` and
+`target`, an `anvil`, a `bed` or a `screen`) frame by frame beside its code scene, comparing every
+call, `over`'s among them, every change to the knight's pose and `strike`.
+`tests/web/world-knight.test.js` runs the knight test's checks of the house and the smithy on the
+two from the pack: the ten records of them painted and drawn against the stored ones, with the
+knight from code and from the base pack; in each of the base pack's other looks (the arming sword
+and the shield, Broad and Slim) the same calls as the code scenes; their backdrop keys; their
+rests, and the house's places and rounds; the pegs under the arming sword's blade; no hot tip for a
+weapon without a blade; and no shield on the house's wall when its rest view does not fit. `foe.test.js` and
 `places.test.js` draw the code scenes.
 
 The same knight test checks the choice itself: the console lines, the refusal at the `signature`
@@ -1222,7 +1233,7 @@ shut, the question marks shown and hidden, the WAN's sparks and the sleeper's br
 moments of the dummy's wobble. The goblin's six poses, the flies, the hole, the clods, the smoke, the
 sparkles, the crate and its parachute are recorded once, apart (`cast`).
 
-Each scene the medieval world's pack gives (today the battlement, the camp, the yard, the cellar and the smithy) is then drawn again, compiled from the
+Each scene the medieval world's pack gives (today every scene but the court) is then drawn again, compiled from the
 pack by `world.js` as a `dev` page compiles it, in the same states, at the same sizes and moments,
 and held to the same stored records: the code and the pack must draw the same calls
 ([worlds.md](./worlds.md#two-copies-held-equal)). The backdrop's key is not in the records, so the
@@ -1237,9 +1248,9 @@ writes it to a folder of its own, such as `cellar@kw.medieval`.
 The 1 803 records are stored in `tests/web/fixtures/scenes/`, one file per scene and `cast.json`:
 for each record the first 16 characters of the hash of its calls, and for each distinct record its
 number of calls and a hash of each block of 1 024 calls, about 230 KB in all, where the records in
-full would weigh 287 MB (123 MB counting each distinct record once). A run takes about 32 seconds,
-the 990 records of the scenes from the pack included (the battlement's and the yard's 234 each, the
-camp's 216, the cellar's 162 and the smithy's 144). When a record differs, the test draws it again
+full would weigh 287 MB (123 MB counting each distinct record once). A run takes about 39 seconds,
+the 1 260 records of the scenes from the pack included (the house's 270, the battlement's and the
+yard's 234 each, the camp's 216, the cellar's 162 and the smithy's 144). When a record differs, the test draws it again
 from the repository's `HEAD` (`git show`), and when `HEAD` draws the stored record it names the
 scene, the state, the size, the record and the first call that differs, with what `HEAD` drew there
 and what was drawn. Without git, or when `HEAD` draws something else too, it names the block the
@@ -1380,7 +1391,7 @@ one frame to the next, so every shot depends only on its address: two takes of t
 out byte for byte the same, on a busy machine too, apart from the clock when the minute turns.
 
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
-and the battlement, the camp, the yard, the cellar and the smithy drawn from the medieval world's pack. A deployed copy draws from each
+and every scene but the court drawn from the medieval world's pack. A deployed copy draws from each
 pack while it ships signed, and from code otherwise: today the knight from the base pack and every
 scene from code, since `kw.medieval` 0.2.0 ships unsigned.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
@@ -1393,7 +1404,7 @@ copy's `kw-version` meta tag any value but `dev`; a page opened from disk runs t
 its version. Take the copy's signature off its base pack with
 `node tools/sign-pack.js --unsign <copy>/packs/base.pack.json`, so that the copy refuses it and
 draws from code whichever state ships; unsign the copy's medieval world's pack
-the same way (`<copy>/packs/medieval.pack.json`), so that it draws the battlement, the camp, the yard, the cellar and the smithy from code too. Do it before and after a change and compare each path's two
+the same way (`<copy>/packs/medieval.pack.json`), so that it draws every scene but the court from code too. Do it before and after a change and compare each path's two
 sets:
 
 ```bash

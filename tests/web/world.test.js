@@ -74,19 +74,21 @@ const CODE = 'knightwatcher: the scenes of kw.medieval are drawn from code: ';
 
 // ---- The pack ---------------------------------------------------------------------------------------
 
-test('the medieval world\'s pack reads clean: kw.medieval 0.2.0, format 1.1, the battlement, the camp, the yard, the cellar, the smithy and their stamps', () => {
+test('the medieval world\'s pack reads clean: kw.medieval 0.2.0, format 1.1, the battlement, the camp, the yard, the cellar, the smithy, the house and their stamps', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual([r.id, r.version, plain(r.format), r.signed], ['kw.medieval', '0.2.0', [1, 1], false]);
-  assert.deepEqual(plain(r.provides), ['scenes', 'stamps']);
-  assert.deepEqual(Object.keys(r.data.scenes), ['battlement', 'camp', 'yard', 'cellar', 'smithy']);
-  assert.deepEqual(Object.keys(r.data.stamps), ['sconce', 'barrel']);
+  assert.deepEqual(plain(r.provides), ['palettes', 'scenes', 'stamps']);
+  assert.deepEqual(Object.keys(r.data.scenes), ['battlement', 'camp', 'yard', 'cellar', 'smithy', 'house']);
+  assert.deepEqual(Object.keys(r.data.stamps), ['sconce', 'barrel', 'peg']);
+  assert.deepEqual(plain(r.data.palettes), { house: { screen: '#7fe9ff' } });
   // the costs the counts step found, at the widest screen the checks assume
   assert.deepEqual(plain(r.world.scenes.battlement), { still: { n: 342, cost: 25967 }, frame: { n: 7, cost: 185, glows: 1 } });
   assert.deepEqual(plain(r.world.scenes.camp), { still: { n: 66, cost: 56668 }, frame: { n: 7, cost: 718, glows: 8 } });
   assert.deepEqual(plain(r.world.scenes.yard), { still: { n: 298, cost: 28929 }, frame: { n: 44, cost: 2086, glows: 1 } });
   assert.deepEqual(plain(r.world.scenes.cellar), { still: { n: 440, cost: 76803 }, frame: { n: 3, cost: 120, glows: 1 } });
   assert.deepEqual(plain(r.world.scenes.smithy), { still: { n: 339, cost: 15212 }, frame: { n: 9, cost: 508, glows: 2 } });
+  assert.deepEqual(plain(r.world.scenes.house), { still: { n: 370, cost: 71245 }, frame: { n: 46, cost: 2128, glows: 3 } });
   // a deployed page refuses it unsigned
   assert.deepEqual([PK.read(TEXT).ok, PK.read(TEXT).step, PK.read(TEXT).reason], [false, 'signature', MISSING]);
 });
@@ -95,7 +97,7 @@ test('the pack as it ships: signed, a deployed page draws its scenes from it; un
   const s = sandbox(), st = s.W.start([SHIPPED], false);
   if (Object.prototype.hasOwnProperty.call(JSON.parse(SHIPPED), 'sig')) {
     assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.2.0', signed: true }, st.note);
-    assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack' });
+    assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack', house: 'pack' });
   } else {
     assert.deepEqual([st.source, st.refused.step], ['code', 'signature']);
   }
@@ -116,23 +118,26 @@ test('the page loads the compiler after the pack library and the medieval carrie
 // ---- Where the scenes are drawn from ------------------------------------------------------------------
 
 /* The scenes kw.medieval gives, in the pack's order. */
-const GIVEN = ['battlement', 'camp', 'yard', 'cellar', 'smithy'];
+const GIVEN = ['battlement', 'camp', 'yard', 'cellar', 'smithy', 'house'];
 
-test('a dev page draws the battlement, the camp, the yard, the cellar and the smithy from kw.medieval unsigned, under their short names and their long ones, and says so', () => {
+test('a dev page draws the battlement, the camp, the yard, the cellar, the smithy and the house from kw.medieval unsigned, under their short names and their long ones, and says so', () => {
   const s = sandbox(), before = Object.keys(s.KW.scenes);
   const st = s.W.start([TEXT], true);
   assert.equal(s.W.status, st);
   assert.deepEqual(plain(st), { source: 'pack', pack: { id: 'kw.medieval', version: '0.2.0', signed: false }, refused: null,
-    scenes: { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack' }, faults: [],
-    note: 'knightwatcher: the scenes battlement, camp, yard, cellar and smithy are drawn from the pack kw.medieval 0.2.0, unsigned' });
+    scenes: { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack', house: 'pack' }, faults: [],
+    note: 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy and house are drawn from the pack kw.medieval 0.2.0, unsigned' });
   assert.deepEqual(s.lines, [['info', st.note]]);
   for (const n of GIVEN) {
     const sc = s.KW.scenes[n];
     assert.notEqual(sc, s.code[n], n);
     assert.equal(s.KW.scenes['kw.medieval/' + n], sc, n);
   }
-  // the long names are not listed, so the engine and the settings see the same seven scenes
+  // the long names are not listed, so the engine and the settings see the same seven scenes, and
+  // the court, which waits for the patron, stays the code scene
   assert.deepEqual(Object.keys(s.KW.scenes), before);
+  assert.deepEqual(before.filter(n => !GIVEN.includes(n)), ['court']);
+  assert.equal(s.KW.scenes.court, s.code.court);
   for (const n of before.filter(n => !GIVEN.includes(n))) assert.equal(s.KW.scenes[n], s.code[n], n);
 });
 
@@ -147,11 +152,11 @@ test('a deployed page refuses kw.medieval unsigned and draws its scenes from cod
   }
 });
 
-test('a deployed page draws the battlement, the camp, the yard, the cellar and the smithy from kw.medieval once it is signed with a key it knows', () => {
+test('a deployed page draws the battlement, the camp, the yard, the cellar, the smithy and the house from kw.medieval once it is signed with a key it knows', () => {
   const s = sandbox(), st = s.W.start([signedText(TEXT)], false, { keys: keysIn(s) });
   assert.equal(st.source, 'pack', st.note);
   assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.2.0', signed: true });
-  assert.equal(st.note, 'knightwatcher: the scenes battlement, camp, yard, cellar and smithy are drawn from the pack kw.medieval 0.2.0, signed');
+  assert.equal(st.note, 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy and house are drawn from the pack kw.medieval 0.2.0, signed');
   for (const n of GIVEN) assert.notEqual(s.KW.scenes[n], s.code[n], n);
   // a signature that does not verify is refused, as for any pack
   const bad = s.W.start([signedText(TEXT).replace('"Cellar"', '"Cellars"')], false, { keys: keysIn(s) });
@@ -167,12 +172,12 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   broken.scenes.cellar.still[0].shapes[3].k = 'zz';
   s.KW.pack = Object.assign({}, lib, { read: () => Object.assign({}, real, { data: broken }) });
   const st = s.W.start([TEXT], true);
-  assert.equal(st.source, 'pack', 'the battlement, the camp, the yard and the smithy are still drawn from the pack');
+  assert.equal(st.source, 'pack', 'the battlement, the camp, the yard, the smithy and the house are still drawn from the pack');
   assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.2.0', signed: false });
-  assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack' });
+  assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack', house: 'pack' });
   assert.deepEqual(plain(st.faults), [{ scene: 'cellar', reason: 'scenes.cellar.still[0].shapes[3].k: the shape kind "zz" is not built in this engine yet' }]);
   assert.deepEqual(s.lines, [['warn', 'knightwatcher: the scene cellar is drawn from code: it could not be compiled: ' + st.faults[0].reason],
-    ['info', 'knightwatcher: the scenes battlement, camp, yard and smithy are drawn from the pack kw.medieval 0.2.0, unsigned']]);
+    ['info', 'knightwatcher: the scenes battlement, camp, yard, smithy and house are drawn from the pack kw.medieval 0.2.0, unsigned']]);
   assert.equal(s.KW.scenes.cellar, s.code.cellar);
   assert.equal(s.KW.scenes['kw.medieval/cellar'], undefined);
   assert.notEqual(s.KW.scenes.camp, s.code.camp);
@@ -180,8 +185,8 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   for (const n of GIVEN) broken.scenes[n].still[0].shapes[3].k = 'zz';
   s.lines.length = 0;
   const all = s.W.start([TEXT], true);
-  assert.deepEqual([all.source, plain(all.scenes), all.faults.length], ['code', { battlement: 'code', camp: 'code', yard: 'code', cellar: 'code', smithy: 'code' }, 5]);
-  assert.deepEqual(s.lines.map(l => l[0]), ['warn', 'warn', 'warn', 'warn', 'warn']);
+  assert.deepEqual([all.source, plain(all.scenes), all.faults.length], ['code', { battlement: 'code', camp: 'code', yard: 'code', cellar: 'code', smithy: 'code', house: 'code' }, 6]);
+  assert.deepEqual(s.lines.map(l => l[0]), ['warn', 'warn', 'warn', 'warn', 'warn', 'warn']);
   for (const n of GIVEN) assert.equal(s.KW.scenes[n], s.code[n], n);
   // the same from a pack the library reads clean, naming a part of format 1.1 this engine does
   // not build yet (a dithered patch); this one changes when that part is built
@@ -189,7 +194,7 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   const dith = edited(p => { p.scenes.cellar.still[0].shapes.push({ k: 'dith', p: [0, 0], w: 8, h: 8, colour: '#000000' }); });
   assert.equal(lib.read(dith, { allowUnsigned: true }).ok, true);
   const d = s.W.start([dith], true);
-  assert.deepEqual(plain(d.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack' });
+  assert.deepEqual(plain(d.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack', house: 'pack' });
   assert.match(d.faults[0].reason, /^scenes\.cellar\.still\[0\]\.shapes\[\d+\]\.k: the shape kind "dith" is not built in this engine yet$/);
   assert.equal(s.KW.scenes.cellar, s.code.cellar);
 });
@@ -272,10 +277,11 @@ const sparks = p => p.scenes.battlement.moving[1];
 
 test('what the compiler does not build yet it refuses by name, and the reason names the field', () => {
   const cases = [
-    // keyframes: a clock in ms with show tracks is built, and nothing else of them yet
+    // keyframes: a clock in ms with show, dx, dy, wave and palette tracks, stepped, is built, and
+    // nothing else of them yet
     ['a clock in seconds', p => { sparks(p).anim = { period: 0.45, loop: true, tracks: [{ g: 'sparks', ch: 'show', keys: [[0, 1], [0.333, 0]] }] }; }, 'scenes.battlement.moving[1].anim: a clock in seconds is not built in this engine yet', 'battlement'],
-    ['a channel but show', p => { sparks(p).anim.tracks[0] = { g: 'sparks', ch: 'dy', ease: 'step', keys: [[0, 0], [150, -2]] }; }, 'scenes.battlement.moving[1].anim.tracks[0].ch: the channel "dy" is not built in this engine yet', 'battlement'],
-    ['a wave track', p => { sparks(p).anim.tracks[0] = { g: 'sparks', ch: 'dx', wave: [1.5, 190, 0], round: true }; }, 'scenes.battlement.moving[1].anim.tracks[0]: a wave track is not built in this engine yet', 'battlement'],
+    ['an ease but step', p => { sparks(p).anim.tracks[0] = { g: 'sparks', ch: 'dy', ease: 'linear', keys: [[0, 0], [150, -2]] }; }, 'scenes.battlement.moving[1].anim.tracks[0].ease: the ease "linear" is not built in this engine yet', 'battlement'],
+    ['a channel but show, dx and dy', p => { sparks(p).anim.tracks[0] = { g: 'sparks', ch: 'alpha', ease: 'step', keys: [[0, 1], [150, 0.5]] }; }, 'scenes.battlement.moving[1].anim.tracks[0].ch: the channel "alpha" is not built in this engine yet', 'battlement'],
     ['"only" on a shape', p => { p.scenes.cellar.still[0].shapes[5].shapes[0].only = [31, 5]; }, 'scenes.cellar.still[0].shapes[5].shapes[0].only: "only" on a shape is not built in this engine yet'],
     ['a seat', p => { p.scenes.cellar.seat = { x: 820, y: 505, bubble: [672, 180], turn: 3200, mouth: 230 }; }, 'scenes.cellar.seat: the scene\'s seat is not built in this engine yet'],
     // a triggered effect runs on the clock of the scene's one act
@@ -524,4 +530,100 @@ test('the pack library reads spot, the watcher\'s x at the anvil, only in a movi
   const r = PK.read(far, { allowUnsigned: true });
   assert.deepEqual([r.ok, r.step], [false, 'rules']);
   assert.match(r.reason, /^pack\.scenes\.smithy\.moving\[1\]\.shapes\[0\]\.p\[0\]: the offset reaches 2220 at its greatest, above 2048$/);
+});
+
+// ---- The house's pieces: tracks, the screen, the bed, the pegs, rest views that fit ---------------------
+
+/* The camp of the pack's text with a moving layer of three rects: one in a group a track drives,
+   one in no group, and one in the group that a palette track's colour fills. */
+const tracked = (tracks, extra) => edited(p => {
+  p.palettes = Object.assign({}, p.palettes, { camp: { glow: '#111111' } });
+  if (!p.provides.includes('palettes')) p.provides = ['palettes'].concat(p.provides);
+  p.scenes.camp.moving.push({ groups: { pot: { pivot: [500, 400] } }, anim: { ms: true, period: 1000, loop: true, tracks }, shapes: [
+    { k: 'rect', g: 'pot', p: [500, 400], w: 4, h: 4, fill: '#123456' },
+    { k: 'rect', p: [600, 400], w: 4, h: 4, fill: '#654321' },
+    { k: 'rect', p: [700, 400], w: 4, h: 4, fill: '@camp.glow' },
+    { k: 'glow', g: 'pot', p: [500, 300], r: 10, colour: '#000000', a: 0.5 }] });
+  if (extra) extra(p);
+});
+const rectsAt = (log, w) => log.filter(l => l.startsWith('r ') && l.endsWith(` ${w} ${w}`));
+
+test('keyframes move a group by a step track and a wave track, rounded where it asks, and a palette track colours the shapes that name its entry', () => {
+  const steps = compiled(tracked([{ g: 'pot', ch: 'dx', ease: 'step', keys: [[0, 0], [400, 6]] }, { g: 'pot', ch: 'dy', ease: 'step', keys: [[0, 0], [700, -2]] },
+    { pal: 'camp.glow', ease: 'step', keys: [[0, '#aa0000'], [500, '#00bb00']] }]), 'camp');
+  const at = t => { steps.s.log.length = 0; steps.sc.draw(t, frameOf({})); return steps.s.log; };
+  assert.ok(at(0).includes('r 500 400 4 4') && at(399).includes('r 500 400 4 4'));
+  assert.ok(at(400).includes('r 506 400 4 4') && at(700).includes('r 506 398 4 4') && at(1399).includes('r 500 400 4 4') && at(1400).includes('r 506 400 4 4'), 'the clock is t % 1000');
+  assert.ok(at(700).includes('r 600 400 4 4'), 'a shape in no group stays');
+  const fillOf = (log, r) => log[log.indexOf(r) - 1];
+  assert.deepEqual([fillOf(at(0), 'r 700 400 4 4'), fillOf(at(500), 'r 700 400 4 4'), fillOf(at(1250), 'r 700 400 4 4')], ['s #aa0000', 's #00bb00', 's #aa0000']);
+  // a wave track: 1.5 * sin(t / 190) rounded, as the candle's tip sways, and one left as it is; a
+  // glow's arc is drawn where it falls, unrounded
+  const wave = compiled(tracked([{ g: 'pot', ch: 'dx', wave: [1.5, 190, 0], round: true }, { g: 'pot', ch: 'dy', wave: [2, 100, 0] }]), 'camp');
+  for (const t of [0, 100, 300, 600, 1234.5]) {
+    wave.s.log.length = 0; wave.sc.draw(t, frameOf({}));
+    const want = `arc ${500 + Math.round(Math.sin(t / 190) * 1.5)} ${300 + 2 * Math.sin(t / 100)} 10 `;
+    assert.ok(wave.s.log.some(l => l.startsWith(want)), `t ${t}: ${want}`);
+  }
+  // a palette track's colour inside a band list is not built
+  const band = tracked([{ pal: 'camp.glow', ease: 'step', keys: [[0, '#aa0000']] }], p => { p.scenes.camp.moving[1].shapes[2].fill = [[0.5, '@camp.glow'], [1, '#000000']]; });
+  const s = sandbox();
+  assert.throws(() => s.W.compile(s.KW.pack.read(band, { allowUnsigned: true }), 'camp'), /^Error: scenes\.camp\.moving\[1\]\.shapes\[2\]\.fill\[0\]\[1\]: a colour a palette track drives, inside a band list is not built in this engine yet$/);
+});
+
+test('the house\'s screen: its group is drawn only while the television is on, and its picture takes the palette track\'s colour every 400 ms', () => {
+  const { s, sc } = compiled(TEXT, 'house');
+  const at = (t, tv, inBed) => { s.log.length = 0; sc.draw(t, frameOf({ tv, inBed: !!inBed, o: {} })); return s.log; };
+  const colours = ['#7fe9ff', '#e8f0ff', '#6f9eff', '#ff8fb0', '#fff3a0', '#8fe07a'];
+  for (const t of [0, 399, 400, 1999, 2000, 2399, 2400, 5000]) assert.ok(at(t, true).includes('s ' + colours[Math.floor(t / 400) % 6]), 't ' + t);
+  const off = at(0, false);
+  assert.ok(!off.includes('s #7fe9ff') && !off.some(l => l.startsWith('arc 764 396 130 ')), 'no picture and no light while the television is off');
+  // the figure crosses the picture 6 pixels every 700 ms
+  for (const t of [0, 700, 3500, 4200]) assert.ok(at(t, true).includes(`r ${745 + (Math.floor(t / 700) % 6) * 6} 407 3 5`), 't ' + t);
+});
+
+test('the bed: the sleeper\'s head where the bed puts it, shaken by headDx, the ice bag while unwell, the blanket breathing, and the Zs over everything at night', () => {
+  const { s, sc } = compiled(TEXT, 'house'), heads = [];
+  s.KW.knight.head = (x, y) => heads.push([x, y]);
+  const drawn = (t, o) => { s.log.length = 0; sc.draw(t, frameOf({ inBed: true, o })); return s.log.slice(); };
+  drawn(0, {}); drawn(0, { headDx: -1, icebag: 1 });
+  assert.deepEqual(heads, [[-15, 262], [-20, 262]]);
+  const bag = drawn(0, { icebag: 1 }), plain_ = drawn(0, {});
+  assert.ok(bag.includes('r 78 277 10 3') && !plain_.includes('r 78 277 10 3'), 'the ice bag only while unwell');
+  // the blanket's top rises 3 pixels for every other 1.9 seconds
+  assert.ok(drawn(0, {}).includes('r 160 401 2 64') && drawn(1900, {}).includes('r 160 398 2 67') && drawn(3800, {}).includes('r 160 401 2 64'));
+  // the Zs: three, only at night
+  const zeds = [];
+  s.KW.sprites.zed = (x, y, n) => zeds.push([x, y, n]);
+  sc.over(1300, frameOf({ w: { id: 'night' } }));
+  sc.over(1300, frameOf({ w: { id: 'container_unhealthy' } }));
+  assert.deepEqual(zeds, [0, 1, 2].map(i => { const ph = ((1300 / 2600) + i / 3) % 1; return [150 + ph * 110, 270 - ph * 140, Math.round(16 + ph * 16)]; }));
+  assert.equal(sc.bed, true);
+  assert.equal(sc.act, undefined, 'the house has no act of its own');
+});
+
+test('a frame that names a stamp draws it under each end of the weapon\'s blade, the greatsword\'s for a weapon that gives none', () => {
+  const { s, sc } = compiled(TEXT, 'house'), K = s.KW.knight;
+  const pegs = () => { s.log.length = 0; sc.paint(frameOf({})); return s.log.filter(l => /^r \d+ 254 14 1$/.test(l)).map(l => +l.split(' ')[1] + 7); };
+  assert.deepEqual([...new Set(pegs())], [680, 836]);
+  K.rest.blade = () => ({ from: 34, to: 175, half: 10 });
+  assert.deepEqual([...new Set(pegs())], [680, 748]);
+  K.rest.blade = () => null;
+  assert.deepEqual([...new Set(pegs())], [680, 836]);
+  // the stamp a rest names must be the pack's, and it is costed twice
+  const r = PK.read(edited(p => { p.scenes.house.rests.pegs.stamp = 'nails'; }), { allowUnsigned: true });
+  assert.deepEqual([r.ok, r.step, r.reason], [false, 'references', 'pack.scenes.house.rests.pegs.stamp: names a stamp, "nails", that the pack does not have']);
+  const without = PK.read(edited(p => { delete p.scenes.house.rests.pegs.stamp; }), { allowUnsigned: true });
+  const peg = PK.read(TEXT, { allowUnsigned: true }).world;
+  assert.equal(peg.scenes.house.still.cost - without.world.scenes.house.still.cost, 2 * peg.stamps.peg);
+});
+
+test('the rest mark draws a helmet or a shield only where its rest view fits the place, by KW.knight.rest.fits', () => {
+  const { s, sc } = compiled(TEXT, 'house'), K = s.KW.knight, drawn = [], asked = [];
+  K.rest.draw = (...a) => drawn.push(a[0]);
+  K.rest.fits = (slot, pl) => { asked.push([slot, pl.kind, pl.w, pl.h]); return slot !== 'off'; };
+  sc.paint(frameOf({}));
+  sc.draw(0, frameOf({ helmOff: true, o: {} }));
+  assert.deepEqual(drawn, ['main', 'helmet']);
+  assert.deepEqual(asked, [['off', 'hang', 100, 140], ['helmet', 'surface', 76, 80]]);
 });

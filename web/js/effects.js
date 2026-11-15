@@ -252,6 +252,46 @@
     }
   };
 
+  /* planks: a wall of planks from y down h, one a step across the screen from the step at or before
+     its left edge: a plank of one of of's colours chosen by a hash of its x, step less 3 wide from 2
+     past x, a line of light lit along its left edge, three streaks of grain darkened by grain at
+     hashed places, and on one plank in five a knot in the two colours of knots, as the house's wall
+     has them. The streaks and knots sit at points hashed from the plank's x, which a pack can say
+     only inside a tile, nested deeper than a pack may go. */
+  const PLANK = { inset: 2, less: 3, grain: [3, 6, 24, 10, 280, 24, 50], knot: [31, 5, 18, 54, 32, 220] };
+  const planks = {
+    fields: { y: { kind: 'offset' }, h: { kind: 'length' }, step: { kind: 'int', lo: 8, hi: 960, def: 36 }, seed: { kind: 'int', lo: 0, hi: 999, def: 3 },
+      of: { kind: 'colours', min: 1, max: 8, def: ['#2a1d14', '#2d1f15', '#261a11', '#301f14'] }, lit: { kind: 'num', lo: 0, hi: 1, def: .04 },
+      grain: { kind: 'num', lo: 0, hi: 1, def: .28 }, knots: { kind: 'colours', min: 2, max: 2, def: ['#1a110b', '#3a2716'] } },
+    cost: b => (Math.floor(hi(b.view.W) / b.step) + 2) * (2 + PLANK.grain[0] + B.ell(3) + B.ell(1)),
+    draw(f) {
+      const { y, h, step, seed, of } = f, [n, gx, gw, gy, gh, gl, gm] = PLANK.grain, [ks, km, kx, ky, kys, kh] = PLANK.knot;
+      const light = tint('255,255,255', f.lit), dark = tint('0,0,0', f.grain);
+      for (let x = Math.floor(V.HL / step) * step; x < V.HR; x += step) {
+        Rh(x + PLANK.inset, y, step - PLANK.less, h, of[hsh(x, seed) % of.length]); Rh(x + PLANK.inset, y, 1, h, light);
+        for (let k = 0; k < n; k++) Rh(x + gx + hsh(x, k) % gw, y + gy + hsh(x, k + 9) % gh, 1, gl + hsh(x, k + 5) % gm, dark);
+        if (hsh(x, ks) % km === 0) { const yy = y + ky + hsh(x, kys) % kh; ell(x + kx, yy, 4, 3, f.knots[0]); ell(x + kx, yy, 2, 1, f.knots[1]); }
+      }
+    }
+  };
+
+  /* rafters: a row of rafters under a roof, one a step across the screen from a step before its
+     left edge to past beyond its right: each a strip from (x, y) up to (x + lean, top), stroked hw[0]
+     either side in of[0] and then hw[1] in of[1], as the house's roof has them. The last rafters
+     reach past the 2 048 a pack's shapes may, on the widest screen the checks assume. */
+  const rafters = {
+    fields: { y: { kind: 'offset' }, top: { kind: 'offset' }, step: { kind: 'int', lo: 8, hi: 960, def: 120 }, lean: { kind: 'num', lo: -512, hi: 512, def: 90 },
+      past: { kind: 'int', lo: 0, hi: 960, def: 120 }, hw: { kind: 'pair', of: [[0, 64], [0, 64]], def: [7, 5] }, of: { kind: 'colours', min: 2, max: 2, def: ['#0b0705', '#24180f'] } },
+    cost(b) {
+      const dy = Math.max(Math.abs(hi(b.y) - lo(b.top)), Math.abs(lo(b.y) - hi(b.top)));
+      return (Math.floor((hi(b.view.W) + b.step + b.past) / b.step) + 2) * (B.strip(b.lean, dy, b.hw[0]) + B.strip(b.lean, dy, b.hw[1]));
+    },
+    draw(f) {
+      const { y, top, step, lean, past, hw, of } = f;
+      for (let x = Math.floor(V.HL / step) * step - step; x < V.HR + past; x += step) { strip(x, y, x + lean, top, hw[0], hw[0], of[0]); strip(x, y, x + lean, top, hw[1], hw[1], of[1]); }
+    }
+  };
+
   /* horseshoe: a horseshoe hung open end down, its arc round p, r[0] to either side and r[1] above:
      a line through the points of the arc every .23 radians from -2.3 to 2.3, stroked in of[0], then
      narrower in of[1], with a short shine of of[2] along its left shoulder, as the smithy's tool
@@ -304,6 +344,20 @@
         const h = (46 + 7 * Math.sin(tt / 110 + ph)) * k * q, w = 14 * k * q, sw = Math.sin(tt / 170 + ph) * 5 * k, by = y - w * .6;
         ell(x, by, w, w, c); poly([[x - w, by], [x + sw, by - h], [x + w, by]], c);
       }
+    }
+  };
+
+  /* candle: a candle's flame standing at p, an ell and a tongue over it whose tip sways by
+     sway[1] times the sine of the time over sway[0], rounded to whole pixels, and a small core,
+     as the house's candle burns. Only the tip moves, which no group of a pack can say: a group
+     moves all of a shape. */
+  const candle = {
+    clock: 'time',
+    fields: { p: { kind: 'point' }, sway: { kind: 'pair', of: [[1, 60000], [0, 64]], def: [190, 1.5] }, of: { kind: 'colours', min: 2, max: 2, def: ['#ffb000', '#fff3a0'] } },
+    cost: () => B.ell(6) + B.poly(14) + B.ell(3),
+    draw(f, t) {
+      const [x, y] = f.p, sw = Math.round(Math.sin(t / f.sway[0]) * f.sway[1]), [c0, c1] = f.of;
+      ell(x, y, 4, 6, c0); poly([[x - 4, y], [x + sw, y - 14], [x + 4, y]], c0); ell(x, y + 1, 2, 3, c1);
     }
   };
 
@@ -413,7 +467,7 @@
   /* ---- The library ------------------------------------------------------------------------------ */
 
   /* The effects, in the order the world format lists them (pack.js names the same list). */
-  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, horseshoe, hood, flame, twinkle, drift, wander, coals, steam, burst };
+  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, burst };
   const NAMES = Object.freeze(Object.keys(TABLE));
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const SCALAR = ['offset', 'length', 'term'];
