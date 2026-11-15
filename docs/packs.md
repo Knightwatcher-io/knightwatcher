@@ -1391,13 +1391,13 @@ knight reads every carried text, so while `kw.medieval` ships unsigned (between 
 signature step: sig: is missing, and this page accepts only signed packs`). Where the scenes are
 drawn from is the scene compiler's to say, in a line of its own ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)).
 
-**Today the base pack, version 1.4.0, ships unsigned** until the owner's next signing run with
-`kw1` (see [development.md](./development.md#signing-the-packs)); version 1.3.0 was signed. While it
-is unsigned a `dev` page draws the knight from it, in every build and with every item, and a
-deployed page refuses it at the `signature` step and draws the knight from the code in
-`knight.js`, the full knight as it shipped before packs, which looks the same as the default look
-(see [When packs fail](#when-packs-fail)). Once signed, a deployed page draws from it as a `dev`
-page does.
+**Today the base pack, version 1.4.0, ships signed** with `kw1` (see
+[development.md](./development.md#signing-the-packs)), so a deployed page draws the knight from it
+as a `dev` page does, in every build and with every item. A version changed after signing ships
+unsigned until the next signing run: meanwhile a `dev` page still draws from it, and a deployed
+page refuses it at the `signature` step and draws the knight from the code in `knight.js`, the
+full knight as it shipped before packs, which looks the same as the default look (see
+[When packs fail](#when-packs-fail)).
 From code the knight always holds the greatsword and is always Classic, and the settings screen
 says the knight is drawn from code.
 

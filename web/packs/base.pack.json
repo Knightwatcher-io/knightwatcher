@@ -1613,5 +1613,6 @@
         ]
       }
     }
-  }
+  },
+  "sig": { "alg": "ed25519", "kid": "kw1", "value": "XB4G3f51qZ7AN379V9BLoPoXTPL9gmcV42IwReCd3gFNZnh3V1WpXHmCizLfq8xS19RajagzpA/gYJCZzTr7Dg==" }
 }
