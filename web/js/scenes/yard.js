@@ -99,11 +99,11 @@
 
   function draw(t, s) {
     glow(346, 314, 120, '#ffb000', .09 + .025 * Math.sin(t / 140)); P.flameHD(346, 330, .62, t);
-    KW.things.draw(t, s);
+    KW.devices.draw(t, s);
     dummy(t);
   }
 
-  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+  /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
     pie: { cls: 'pie', kind: 'surface', x: 280, y: 463, w: 88, h: 112 },
@@ -119,10 +119,10 @@
     spot: 104, places: PLACES, outdoors: true,
     // The conditions this scene can act out (docs/page.md): the attack with the weapon raised, the
     // crate carried between its spots, whose acts leave the knight's face alone, hunger, and running
-    // hot at the dummy; and, as a quiet scene, a thing down and memory running tight. Not the stare
+    // hot at the dummy; and, as a quiet scene, a device down and memory running tight. Not the stare
     // at the empty dish: the pie stands to the knight's left. Kept as plain data for the world
     // format being drafted to take over.
-    can: ['attack', 'disk_full', 'backup_overdue', 'thing_down', 'cpu_hot', 'memory_tight'],
+    can: ['attack', 'disk_full', 'backup_overdue', 'device_down', 'cpu_hot', 'memory_tight'],
     rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 80, act: 'look', dur: 14 }],
     act, paint, draw
   };

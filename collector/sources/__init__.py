@@ -86,13 +86,13 @@ def build_sources(config: Config) -> list[Source]:
         adblock,
         backup,
         containers,
+        devices,
         dns,
         host,
         imports,
         security,
         ssh,
         streams,
-        things,
         updates,
         wan,
     )
@@ -114,13 +114,13 @@ def build_sources(config: Config) -> list[Source]:
     built: list[Source] = []
     for name, settings in config.sources.items():
         if name == "pi":
-            # The Pi of [sources.pi] is a watched thing, kept in its place among the sources.
-            pi = next(t for t in config.things if t["legacy"])
-            built.append(things.ThingSource(pi, config))
+            # The Pi of [sources.pi] is a device, kept in its place among the sources.
+            pi = next(t for t in config.devices if t["legacy"])
+            built.append(devices.DeviceSource(pi, config))
         elif name in config.missing:
             variables = _variables(config.missing[name])
             built.append(MissingCredentials(name, settings, config, variables))
         else:
             built.append(classes[name](settings, config))
-    built += [things.ThingSource(t, config) for t in config.things if not t["legacy"]]
+    built += [devices.DeviceSource(t, config) for t in config.devices if not t["legacy"]]
     return built

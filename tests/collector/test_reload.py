@@ -32,7 +32,7 @@ def write_admin(path: str, given: dict) -> str:
 
 
 class OverlayTest(unittest.TestCase):
-    def test_paths_are_the_collectors_editable_settings_and_the_things(self):
+    def test_paths_are_the_collectors_editable_settings_and_the_devices(self):
         self.assertIn("collector.interval_s", overlay.PATHS)
         self.assertIn("conditions.cpu_hot.pct", overlay.PATHS)
         self.assertIn("sources.sonarr.enabled", overlay.PATHS)
@@ -64,13 +64,13 @@ class OverlayTest(unittest.TestCase):
             overlay.path_problem("collector.interval_s", True),
             "collector.interval_s: expected a whole number",
         )
-        self.assertEqual(overlay.path_problem("thing", {}), "thing: expected [[thing]] tables")
+        self.assertEqual(overlay.path_problem("device", {}), "device: expected [[device]] tables")
 
     def test_lay_sets_each_path_and_replaces_a_list_whole(self):
         raw = {
             "collector": {"interval_s": 10},
             "conditions": {"attack": {"jails": ["sshd", "caddy"]}},
-            "thing": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}],
+            "device": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}],
         }
         laid = overlay.lay(
             raw,
@@ -78,13 +78,13 @@ class OverlayTest(unittest.TestCase):
                 "collector.interval_s": 15,
                 "conditions.attack.jails": ["sshd"],
                 "sources.radarr.url": "http://192.0.2.31:7878",
-                "thing": [],
+                "device": [],
             },
         )
         self.assertEqual(laid["collector"]["interval_s"], 15)
         self.assertEqual(laid["conditions"]["attack"]["jails"], ["sshd"])
         self.assertEqual(laid["sources"]["radarr"], {"url": "http://192.0.2.31:7878"})
-        self.assertEqual(laid["thing"], [])
+        self.assertEqual(laid["device"], [])
         self.assertEqual(raw["collector"]["interval_s"], 10, "the file's parse is not changed")
         self.assertEqual(
             overlay.value_at(raw, "conditions.attack.jails"), (True, ["sshd", "caddy"])
@@ -291,9 +291,9 @@ class ReconfigureTest(unittest.TestCase):
                 f'[collector]\noutput_dir = "{self.out}"\nstate_dir = "{self.var}"\n'
                 f'proc_root = "{self.proc.root}"\n'
                 "[sources.host]\n[sources.ssh]\n"
-                f'[[thing]]\nname = "Vault"\nkind = "machine"\nhost = "127.0.0.1"\n'
+                f'[[device]]\nname = "Vault"\nkind = "machine"\nhost = "127.0.0.1"\n'
                 f"port = {self.port}\nrefused_counts = true\nevery_s = 10\n"
-                f'[[thing]]\nname = "Gate cam"\nkind = "camera"\nhost = "127.0.0.1"\n'
+                f'[[device]]\nname = "Gate cam"\nkind = "camera"\nhost = "127.0.0.1"\n'
                 f"port = {self.port}\nevery_s = 10\n"
             )
         self.clock = Clock()
@@ -320,7 +320,7 @@ class ReconfigureTest(unittest.TestCase):
             {
                 "sources.ssh.enabled": False,
                 "conditions.disk_full.pct": 80,
-                "thing": [
+                "device": [
                     {"name": "Gate cam", "kind": "camera", "host": "127.0.0.1", "port": self.port},
                     {
                         "name": "Vault",
@@ -337,7 +337,7 @@ class ReconfigureTest(unittest.TestCase):
         with self.assertLogs("collector", "INFO"):
             reload.poll(self.settings, self.runner, self.clock)
         names = [s.name for s in self.runner.sources]
-        self.assertEqual(names, ["host", "thing:Gate cam", "thing:Vault"])
+        self.assertEqual(names, ["host", "device:Gate cam", "device:Vault"])
         self.assertIs(
             next(s for s in self.runner.sources if s.name == "host"),
             host,
@@ -348,7 +348,7 @@ class ReconfigureTest(unittest.TestCase):
         s = self.state()
         self.assertEqual(s["config"]["admin"], version)
         self.assertEqual(s["config"]["at"], "2026-01-15T21:00:10Z")
-        self.assertEqual([t["name"] for t in s["facts"]["things"]["list"]], ["Gate cam", "Vault"])
+        self.assertEqual([t["name"] for t in s["facts"]["devices"]["list"]], ["Gate cam", "Vault"])
         self.assertNotIn("ssh", s["sources"])
         self.assertEqual(contract.validate(s), [])
 
@@ -382,14 +382,14 @@ class ReconfigureTest(unittest.TestCase):
         )
         self.assertEqual(contract.validate(s), [])
 
-    def test_a_watched_things_record_follows_it_to_its_new_place(self):
+    def test_a_watched_devices_record_follows_it_to_its_new_place(self):
         self.runner.cycle()
         vault = self.runner.conditions.watches[0]
-        self.assertEqual(vault.thing["name"], "Vault")
+        self.assertEqual(vault.device["name"], "Vault")
         write_admin(
             self.admin_path,
             {
-                "thing": [
+                "device": [
                     {"name": "Gate cam", "kind": "camera", "host": "127.0.0.1", "port": self.port},
                     {
                         "name": "Vault",

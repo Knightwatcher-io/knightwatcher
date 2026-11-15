@@ -1,9 +1,9 @@
-"""Watched things: one source per thing, each answering yes or no to one reachability check.
+"""Devices: one source per device, each answering yes or no to one reachability check.
 
 A check is a TCP connection to any of up to three ports, or one GET to a web address that counts
 any HTTP status as an answer. ICMP would need a capability the container does not have.
 
-A thing's source never raises: any failure inside the check is no answer. The only readings it
+A device's source never raises: any failure inside the check is no answer. The only readings it
 can lack are the first one, while that check is still running, and one that ran out of time,
 which the conditions count as silence.
 """
@@ -21,13 +21,13 @@ log = logging.getLogger("collector")
 CHECK_TIMEOUT_S = 3.0
 
 
-class ThingSource(Source):
-    """One watched thing. The Pi of [sources.pi] is one too, named `pi` with facts `pi`."""
+class DeviceSource(Source):
+    """One device. The Pi of [sources.pi] is one too, named `pi` with facts `pi`."""
 
-    def __init__(self, thing: dict, config):
-        super().__init__(thing, config)
-        self.name = thing["source"]
-        self.section = "pi" if thing["legacy"] else None
+    def __init__(self, device: dict, config):
+        super().__init__(device, config)
+        self.name = device["source"]
+        self.section = "pi" if device["legacy"] else None
 
     def fetch(self, now):
         t = self.settings

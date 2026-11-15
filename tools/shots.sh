@@ -44,10 +44,10 @@ SHOTS=(
   "kx|bar=0&t=2300&is=camp&kx=60"
   "mon-b|bar=0&t=3450&on=ssh&mon=b"
   "mon-c|bar=0&t=3450&on=ssh&mon=c"
-  "things-camp|bar=0&t=2300&is=camp&th=pi,camera,camera!,machine-,vm,x,machine"
-  "things-court|bar=0&t=3600&on=ssh&th=pi,camera!,machine,camera,vm-,x"
-  "thing-down|bar=0&t=2300&is=camp&on=thing&th=pi,camera,camera,machine,vm!,x"
-  "places-yard|bar=0&t=2300&is=yard&pl=1&th=pi,camera!,camera,camera,machine,vm-,x!"
+  "devices-camp|bar=0&t=2300&is=camp&dv=pi,camera,camera!,machine-,vm,x,machine"
+  "devices-court|bar=0&t=3600&on=ssh&dv=pi,camera!,machine,camera,vm-,x"
+  "device-down|bar=0&t=2300&is=camp&on=device&dv=pi,camera,camera,machine,vm!,x"
+  "places-yard|bar=0&t=2300&is=yard&pl=1&dv=pi,camera!,camera,camera,machine,vm-,x!"
   # the arming sword and the heater shield (arm=one): the stance, the yard's hot training mid-swing,
   # the attack, the gear at rest in the house and the smithy, the swat to the left at the moment the
   # sword passes in front of the shield, and the cellar's crate carried at the largest headline
@@ -64,7 +64,7 @@ SHOTS=(
   "goblin-camp-rise|bar=0&t=500&is=camp&e=goblin"
   "goblin-camp-bonk|bar=0&t=1659&is=camp&e=goblin"
   "goblin-camp-poof|bar=0&t=2400&is=camp&e=goblin"
-  "goblin-camp-g3|bar=0&t=1300&is=camp&e=goblin&th=pi,machine,vm,box"
+  "goblin-camp-g3|bar=0&t=1300&is=camp&e=goblin&dv=pi,machine,vm,box"
   # the goblin bonked with the sword and shield, a moment after the hit: on the battlement at 1645,
   # at the camp at 1672
   "arm-goblin-bonk|bar=0&t=1646&is=battlement&e=goblin&arm=one"

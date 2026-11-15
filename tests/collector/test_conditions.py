@@ -662,7 +662,7 @@ class PriorityTest(unittest.TestCase):
         self.assertEqual(ids(out), ["ssh_session"])
 
 
-def thing(name, kind="machine", **over):
+def device(name, kind="machine", **over):
     return {"name": name, "kind": kind, "host": "192.0.2.40", "port": 22, **over}
 
 
@@ -673,37 +673,37 @@ def answer(yes: bool) -> Reading:
 YES, NO = answer(True), answer(False)
 
 
-class Things(Harness):
-    """A harness for watched things: poll(Vault=NO, ...) by name, and the things' facts."""
+class Devices(Harness):
+    """A harness for devices: poll(Vault=NO, ...) by name, and the devices' facts."""
 
-    def __init__(self, things, raw=None, step=10):
+    def __init__(self, devices, raw=None, step=10):
         raw = dict(raw or {})
-        raw["thing"] = [
-            {**t, "host": f"192.0.2.{40 + i}"} if "host" in t else t for i, t in enumerate(things)
+        raw["device"] = [
+            {**t, "host": f"192.0.2.{40 + i}"} if "host" in t else t for i, t in enumerate(devices)
         ]
         super().__init__(raw, step)
 
     def poll(self, fresh=None, status=None, **answers):
         readings = {
-            (k if k == "pi" else f"thing:{k.replace('_', ' ')}"): v for k, v in answers.items()
+            (k if k == "pi" else f"device:{k.replace('_', ' ')}"): v for k, v in answers.items()
         }
         status = {
-            (k if k == "pi" else f"thing:{k.replace('_', ' ')}"): v
+            (k if k == "pi" else f"device:{k.replace('_', ' ')}"): v
             for k, v in (status or {}).items()
         }
         return super().poll(fresh, status, **readings)
 
     def facts(self, i=0) -> dict:
-        return self.c.things()["list"][i]
+        return self.c.devices()["list"][i]
 
 
 def down(out) -> dict | None:
-    return next((c for c in out if c["id"] == "thing_down"), None)
+    return next((c for c in out if c["id"] == "device_down"), None)
 
 
-class ThingDownTest(unittest.TestCase):
+class DeviceDownTest(unittest.TestCase):
     def test_down_after_down_after_s_and_not_before(self):
-        h = Things([thing("Vault")])
+        h = Devices([device("Vault")])
         h.poll(Vault=YES)  # 0 s: answers once
         self.assertEqual(
             h.facts(),
@@ -720,16 +720,16 @@ class ThingDownTest(unittest.TestCase):
             self.assertEqual(ids(h.poll(Vault=NO)), [])
             self.assertEqual(h.facts()["state"], "up")
         out = h.poll(Vault=NO)  # 190 s: silent for 180 s
-        self.assertEqual(ids(out), ["thing_down"])
+        self.assertEqual(ids(out), ["device_down"])
         self.assertEqual(
             out[0],
             {
-                "id": "thing_down",
+                "id": "device_down",
                 "level": "warning",
                 "since": "2026-01-15T21:00:10Z",
                 "headline": "VAULT DOWN",
                 "detail": "no answer for 3 min",
-                "things": [0],
+                "devices": [0],
             },
         )
         self.assertEqual(h.facts()["state"], "down")
@@ -737,31 +737,31 @@ class ThingDownTest(unittest.TestCase):
         self.assertEqual(down(h.poll(Vault=NO))["detail"], "no answer for 3 min")
 
     def test_one_answer_ends_the_silence(self):
-        h = Things([thing("Vault")])
+        h = Devices([device("Vault")])
         for _ in range(17):  # 0 .. 160 s
             h.poll(Vault=NO)
         h.poll(Vault=YES)  # 170 s
         self.assertEqual((h.facts()["state"], h.facts()["since"]), ("up", "2026-01-15T21:02:50Z"))
         for _ in range(18):  # 180 .. 350 s: a new silence, from 180 s
             self.assertEqual(ids(h.poll(Vault=NO)), [])
-        self.assertEqual(ids(h.poll(Vault=NO)), ["thing_down"])  # 360 s
+        self.assertEqual(ids(h.poll(Vault=NO)), ["device_down"])  # 360 s
 
     def test_answering_again_clears_after_clear_after_s_and_the_prop_returns_at_once(self):
-        h = Things([thing("Vault", every_s=10, down_after_s=10)])
+        h = Devices([device("Vault", every_s=10, down_after_s=10)])
         h.poll(Vault=YES)
         h.poll(Vault=NO)
         first = h.poll(Vault=NO)  # 20 s
-        self.assertEqual(ids(first), ["thing_down"])
+        self.assertEqual(ids(first), ["device_down"])
         for _ in range(3):  # 30, 40, 50 s: held with its last words
             held = h.poll(Vault=YES)
             self.assertEqual(held[0]["headline"], "VAULT DOWN")
-            self.assertEqual(ids(held), ["thing_down"])
-            self.assertEqual(held[0]["things"], [0])
+            self.assertEqual(ids(held), ["device_down"])
+            self.assertEqual(held[0]["devices"], [0])
             self.assertEqual(h.facts()["state"], "up")
         self.assertEqual(ids(h.poll(Vault=YES)), [])  # 60 s: 30 s since it answered
 
-    def test_a_thing_that_never_answered(self):
-        h = Things([thing("Vault")])
+    def test_a_device_that_never_answered(self):
+        h = Devices([device("Vault")])
         for _ in range(18):  # 0 .. 170 s
             h.poll(Vault=NO)
             self.assertEqual(h.facts()["state"], "unknown")
@@ -782,7 +782,7 @@ class ThingDownTest(unittest.TestCase):
         )
 
     def test_unknown_until_the_first_check_finishes(self):
-        h = Things([thing("Vault")])
+        h = Devices([device("Vault")])
         running = {
             "Vault": {
                 "ok": False,
@@ -800,12 +800,12 @@ class ThingDownTest(unittest.TestCase):
     def test_a_check_that_ran_out_of_time_is_silence(self):
         for error in ("timed out", "previous read still running"):
             with self.subTest(error=error):
-                h = Things([thing("Vault")])
+                h = Devices([device("Vault")])
                 h.poll(Vault=YES)
                 late = {"Vault": {"ok": False, "at": "2026-01-15T21:00:10Z", "error": error}}
                 for _ in range(18):
                     self.assertEqual(ids(h.poll(status=late)), [])
-                self.assertEqual(ids(h.poll(status=late)), ["thing_down"])
+                self.assertEqual(ids(h.poll(status=late)), ["device_down"])
 
     def test_the_word_is_the_kinds(self):
         for kind, name, headline in (
@@ -815,7 +815,7 @@ class ThingDownTest(unittest.TestCase):
             ("pi", "Pi", "PI SILENT"),
         ):
             with self.subTest(kind=kind):
-                h = Things([thing(name, kind, every_s=10, down_after_s=10)])
+                h = Devices([device(name, kind, every_s=10, down_after_s=10)])
                 key = name.replace(" ", "_")
                 h.poll(**{key: YES})
                 h.poll(**{key: NO})
@@ -824,13 +824,13 @@ class ThingDownTest(unittest.TestCase):
                     (down(out)["headline"], down(out)["detail"]), (headline, "no answer for 10 s")
                 )
         # A kind the collector does not know, as a later configuration may give.
-        h = Things([thing("Lantern", every_s=10, down_after_s=10)])
-        h.c.watches[0].thing["kind"] = "base/owl"
+        h = Devices([device("Lantern", every_s=10, down_after_s=10)])
+        h.c.watches[0].device["kind"] = "base/owl"
         h.poll(Lantern=NO)
         self.assertEqual(down(h.poll(Lantern=NO))["headline"], "LANTERN DOWN")
 
     def test_a_long_name_is_cut_in_the_headline_and_whole_in_the_detail(self):
-        h = Things([thing("Gatehouse camera", "camera", every_s=60, down_after_s=600)])
+        h = Devices([device("Gatehouse camera", "camera", every_s=60, down_after_s=600)])
         h.poll(Gatehouse_camera=YES)
         for _ in range(73):  # 10 .. 730 s
             out = h.poll(Gatehouse_camera=NO)
@@ -838,7 +838,7 @@ class ThingDownTest(unittest.TestCase):
         self.assertEqual(down(out)["detail"], "Gatehouse camera · no answer for 12 min")
         # Names at the limit of 20 characters, seen and unseen.
         for name in ("Abcdefghijklmnopqrst", "Back garden west cam"):
-            h = Things([thing(name, "vm", every_s=10, down_after_s=10)])
+            h = Devices([device(name, "vm", every_s=10, down_after_s=10)])
             key = name.replace(" ", "_")
             for _ in range(3):
                 out = h.poll(**{key: NO})
@@ -847,7 +847,7 @@ class ThingDownTest(unittest.TestCase):
             self.assertTrue(c["headline"].endswith("… DOWN"))
             self.assertEqual(c["detail"], f"{name} · not answered in 20 s since start")
         # A name that just fits beside its word is not repeated.
-        h = Things([thing("Kitchen cam", "camera", every_s=10, down_after_s=10)])
+        h = Devices([device("Kitchen cam", "camera", every_s=10, down_after_s=10)])
         for _ in range(3):
             out = h.poll(Kitchen_cam=NO)
         self.assertEqual(
@@ -856,12 +856,12 @@ class ThingDownTest(unittest.TestCase):
         )
 
     def test_several_down_make_one_condition(self):
-        h = Things(
+        h = Devices(
             [
-                thing("Vault"),
-                thing("Gate cam", "camera"),
-                thing("Buildbox", "vm"),
-                thing("Laptop", alert=False),
+                device("Vault"),
+                device("Gate cam", "camera"),
+                device("Buildbox", "vm"),
+                device("Laptop", alert=False),
             ]
         )
         h.poll(Vault=YES, Gate_cam=YES, Buildbox=YES, Laptop=YES)  # 0 s
@@ -871,49 +871,49 @@ class ThingDownTest(unittest.TestCase):
             out = h.poll(Vault=NO, Gate_cam=NO, Buildbox=NO, Laptop=NO)
         self.assertEqual(ids(out), [])
         out = h.poll(Vault=NO, Gate_cam=NO, Buildbox=NO, Laptop=NO)  # 190 s
-        self.assertEqual(ids(out), ["thing_down"])  # Buildbox alone, silent since 10 s
+        self.assertEqual(ids(out), ["device_down"])  # Buildbox alone, silent since 10 s
         self.assertEqual(down(out)["headline"], "BUILDBOX DOWN")
         for _ in range(2):  # 200, 210 s
             out = h.poll(Vault=NO, Gate_cam=NO, Buildbox=NO, Laptop=NO)
-        self.assertEqual(ids(out), ["thing_down"])
+        self.assertEqual(ids(out), ["device_down"])
         c = down(out)
         self.assertEqual(
-            (c["headline"], c["detail"], c["since"], c["things"]),
+            (c["headline"], c["detail"], c["since"], c["devices"]),
             ("3 DOWN", "Buildbox, Vault, Gate cam", "2026-01-15T21:00:10Z", [2, 0, 1]),
         )
         self.assertEqual([h.facts(i)["state"] for i in range(4)], ["down"] * 4)
         # One comes back: the words change to the two that remain.
         out = h.poll(Vault=YES, Gate_cam=NO, Buildbox=NO, Laptop=NO)
         self.assertEqual(
-            (down(out)["headline"], down(out)["detail"], down(out)["things"]),
+            (down(out)["headline"], down(out)["detail"], down(out)["devices"]),
             ("2 DOWN", "Buildbox, Gate cam", [2, 1]),
         )
         # Then one: its own words, with its own silence.
         out = h.poll(Vault=YES, Gate_cam=YES, Buildbox=NO, Laptop=NO)
         self.assertEqual(
-            (down(out)["headline"], down(out)["detail"], down(out)["things"]),
+            (down(out)["headline"], down(out)["detail"], down(out)["devices"]),
             ("BUILDBOX DOWN", "no answer for 3 min", [2]),
         )
 
     def test_many_names_end_in_a_count(self):
         names = [f"Back garden cam {i}" for i in range(6)]
-        h = Things([thing(n, "camera", every_s=10, down_after_s=10) for n in names])
+        h = Devices([device(n, "camera", every_s=10, down_after_s=10) for n in names])
         for _ in range(3):
             out = h.poll(**{n.replace(" ", "_"): NO for n in names})
         c = down(out)
         self.assertEqual(c["headline"], "6 DOWN")
         self.assertEqual(c["detail"], "Back garden cam 0, Back garden cam 1, Back garden cam 2 +3")
-        self.assertEqual(c["things"], [0, 1, 2, 3, 4, 5])
+        self.assertEqual(c["devices"], [0, 1, 2, 3, 4, 5])
 
     def test_alert_false_raises_nothing(self):
-        h = Things([thing("Laptop", alert=False)])
+        h = Devices([device("Laptop", alert=False)])
         h.poll(Laptop=YES)
         for _ in range(40):
             self.assertEqual(ids(h.poll(Laptop=NO)), [])
         self.assertEqual((h.facts()["state"], h.facts()["alert"]), ("down", False))
 
     def test_a_clock_that_goes_back_starts_the_silence_again(self):
-        h = Things([thing("Vault")])
+        h = Devices([device("Vault")])
         h.poll(Vault=YES)  # 0 s
         for _ in range(10):  # 10 .. 100 s: silent since 10 s
             h.poll(Vault=NO)
@@ -921,37 +921,37 @@ class ThingDownTest(unittest.TestCase):
         for _ in range(18):  # -490 .. -320 s: silent since -490 s
             self.assertEqual(ids(h.poll(Vault=NO)), [])
         out = h.poll(Vault=NO)  # -310 s: 180 s after the new start, not 780 s
-        self.assertEqual(ids(out), ["thing_down"])
+        self.assertEqual(ids(out), ["device_down"])
         self.assertEqual(down(out)["detail"], "no answer for 3 min")
 
     def test_a_priority_list_orders_and_leaves_out_as_for_every_condition(self):
         raw = {"sources": {"pi": {"host": "192.0.2.4"}}, "conditions": {"pi_silent": {"for_s": 10}}}
-        h = Things([thing("Vault", every_s=10, down_after_s=10)], raw)
+        h = Devices([device("Vault", every_s=10, down_after_s=10)], raw)
         h.poll(pi=Reading({"up": False}, {"answered": False}), Vault=NO)
         out = h.poll(pi=Reading({"up": False}, {"answered": False}), Vault=NO)
-        self.assertEqual(ids(out), ["pi_silent", "thing_down"])
+        self.assertEqual(ids(out), ["pi_silent", "device_down"])
         # The Pi is at position 0 and raises pi_silent alone; Vault is at 1.
-        self.assertEqual(down(out)["things"], [1])
-        self.assertEqual(h.c.things()["list"][0]["name"], "Pi")
+        self.assertEqual(down(out)["devices"], [1])
+        self.assertEqual(h.c.devices()["list"][0]["name"], "Pi")
         raw["conditions"]["priority"] = ["pi_silent"]
-        h = Things([thing("Vault", every_s=10, down_after_s=10, alert=False)], raw)
+        h = Devices([device("Vault", every_s=10, down_after_s=10, alert=False)], raw)
         for _ in range(3):
             out = h.poll(pi=Reading({"up": False}, {"answered": False}), Vault=NO)
         self.assertEqual(ids(out), ["pi_silent"])
 
-    def test_no_things_no_facts(self):
-        self.assertIsNone(Harness().c.things())
+    def test_no_devices_no_facts(self):
+        self.assertIsNone(Harness().c.devices())
 
 
-class PiAsAThingTest(unittest.TestCase):
-    """The Pi of [sources.pi]: pi_silent as before, and its place in facts.things."""
+class PiAsADeviceTest(unittest.TestCase):
+    """The Pi of [sources.pi]: pi_silent as before, and its place in facts.devices."""
 
     RAW: ClassVar[dict] = {"sources": {"pi": {"host": "192.0.2.4"}}}
 
     def test_pi_silent_and_the_pies_state(self):
         h = Harness(self.RAW)
         h.poll(pi=Reading({"up": True}))
-        pi = h.c.things()["list"][0]
+        pi = h.c.devices()["list"][0]
         self.assertEqual(
             pi,
             {
@@ -966,12 +966,12 @@ class PiAsAThingTest(unittest.TestCase):
         for _ in range(18):  # 10 .. 180 s
             out = h.poll(pi=Reading({"up": False}))
             # Silent, but not yet judged down: the dish keeps its pie for a new page.
-            self.assertEqual(h.c.things()["list"][0]["state"], "up")
+            self.assertEqual(h.c.devices()["list"][0]["state"], "up")
             self.assertEqual(ids(out), [])
         out = h.poll(pi=Reading({"up": False}))  # 190 s
         self.assertEqual(out[0]["headline"], "PI SILENT")
-        self.assertNotIn("things", out[0])
-        self.assertEqual(h.c.things()["list"][0]["state"], "down")
+        self.assertNotIn("devices", out[0])
+        self.assertEqual(h.c.devices()["list"][0]["state"], "down")
 
     def test_a_pi_read_that_ran_out_of_time_is_silence(self):
         # A deliberate change: it used to count as the cause being absent.
@@ -982,7 +982,7 @@ class PiAsAThingTest(unittest.TestCase):
             self.assertEqual(ids(h.poll(status=late)), [])
         self.assertEqual(ids(h.poll(status=late)), ["pi_silent"])
 
-    def test_the_pi_never_raises_thing_down(self):
+    def test_the_pi_never_raises_device_down(self):
         h = Harness({**self.RAW, "conditions": {"pi_silent": {"for_s": 0}}})
         out = h.poll(pi=Reading({"up": False}))
         self.assertEqual(ids(out), ["pi_silent"])

@@ -542,7 +542,7 @@
       V.HL = 0; V.HR = V.HW; V.HT = 0; D.setCtx(ctx);
       try { fn(); } finally { D.setCtx(was); Object.assign(V, edges); }
     }
-    const sceneState = (sc, o2, mon, monSkin, monHair, monRobe) => ({ w: KW.state.IDLE, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], places: sc.places || null, tv: false,
+    const sceneState = (sc, o2, mon, monSkin, monHair, monRobe) => ({ w: KW.state.IDLE, devices: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], places: sc.places || null, tv: false,
       kx: sc.spot * U, o: o2, here: null, inBed: false, helmOff: o2.helmet === false, strike: false, mon, monSkin, monHair: monHair || null, monRobe: monRobe || null });
     /* Pictures that do not move, kept until the look or the helmet changes: the quiet scenes with the
        knight at its arrival spot, and the monarchs cropped from the court's own drawing. */

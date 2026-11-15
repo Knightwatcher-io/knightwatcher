@@ -48,11 +48,11 @@
     const { HL, HR, HFL } = V;
     glow(690, HFL - 40, 190, '#ffb000', .09 + .025 * Math.sin(t / 150)); P.flameHD(676, HFL - 16, 1.25, t); P.flameHD(704, HFL - 14, 1.05, t + 400); P.flameHD(690, HFL - 22, 1.5, t + 900);
     for (let i = 0; i < 4; i++) { const ph = ((t / 2300) + i / 4) % 1; alpha(1 - ph); Rh(684 + i * 6 + Math.sin(ph * 5 + i) * 14, HFL - 80 - ph * 130, 3, 3, '#ffb000'); alpha(1); }
-    KW.things.draw(t, s);
+    KW.devices.draw(t, s);
     for (let i = 0; i < 7; i++) if (((t / 900 + i * 1.3) % 4) < 1.4) { const x = HL + hsh(i, 31) % (HR - HL) + Math.sin(t / 3100 + i) * 40, y = 270 + hsh(i, 32) % 200 + Math.cos(t / 2700 + i * 2) * 24; glow(x + 1, y + 1, 9, '#fff3a0', .18); Rh(x, y, 3, 3, '#fff3a0'); }
   }
 
-  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+  /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
     pie: { cls: 'pie', kind: 'surface', x: 580, y: 517, w: 88, h: 112 },
@@ -72,9 +72,9 @@
     spot: 88, places: PLACES, outdoors: true,
     // The conditions this scene can act out (docs/page.md): the attack with the weapon raised,
     // hunger, the stare at the empty dish to the knight's right, and running hot; and, as a quiet
-    // scene, a thing down and memory running tight. Kept as plain data for the world format being
+    // scene, a device down and memory running tight. Kept as plain data for the world format being
     // drafted to take over.
-    can: ['attack', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight'],
+    can: ['attack', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
     rounds: [{ x: 88, act: 'sniff', dur: 22 }, { x: 68, act: 'yawn', dur: 14 }, { x: 96, act: 'look', dur: 16 }],
     paint, draw, foeZone: FOE_ZONE
   };

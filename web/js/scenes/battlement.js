@@ -52,7 +52,7 @@
     const { HL, HR, HT, HFL } = V;
     for (let i = 0; i < 14; i++) if (((t / 1100 + i * .7) % 6) < .9) Rh(HL + hsh(i, 41) % (HR - HL), HT + hsh(i, 42) % 300, 3, 3, C.W);
     glow(160, HFL - 190, 86, '#ffb000', .1 + .03 * Math.sin(t / 140)); P.flameHD(160, HFL - 170, .9, t);
-    KW.things.draw(t, s);
+    KW.devices.draw(t, s);
     if (s.w.id === 'wan_down' && Math.floor(t / 150) % 3 === 0) { Rh(740, 290, 4, 4, '#fff3a0'); Rh(760, 300, 3, 3, '#fff3a0'); Rh(748, 306, 3, 3, C.W); }
   }
 
@@ -61,7 +61,7 @@
   const FOE_ZONE = { side: 1, spans: [[70, 890]] };
   function wallAt(x) { return ((((x + 70) % 160) + 160) % 160 < 80 ? V.HFL - 119 : V.HFL - 66); }
 
-  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+  /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
     pie: { cls: 'pie', kind: 'surface', x: 800, y: 416, w: 88, h: 112 },
@@ -77,9 +77,9 @@
     spot: 96, places: PLACES, outdoors: true,
     // The conditions this scene can act out (docs/page.md): the attack with the weapon raised, the
     // WAN's cut rope, which only it has, hunger, the stare at the empty dish to the knight's right,
-    // and running hot; and, as a quiet scene, a thing down and memory running tight. Kept as plain
+    // and running hot; and, as a quiet scene, a device down and memory running tight. Kept as plain
     // data for the world format being drafted to take over.
-    can: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight'],
+    can: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
     rounds: [{ x: 96, act: 'guard', dur: 18 }, { x: 66, act: 'look', dur: 16 }, { x: 126, act: 'sniff', dur: 12 }],
     key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt, foeZone: FOE_ZONE
   };

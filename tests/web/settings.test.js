@@ -383,10 +383,10 @@ test('the engine\'s input carries the monarch\'s hair and robe from the base pac
 /* The scenes that can act each condition, as each scene declares it: the table docs/design.md
    gives. A change to a scene's can changes this on purpose or not at all. */
 const CAN = {
-  battlement: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight'],
-  camp: ['attack', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight'],
-  house: ['container_unhealthy', 'backup_overdue', 'pi_silent', 'thing_down', 'cpu_hot', 'memory_tight', 'streaming', 'night'],
-  yard: ['attack', 'disk_full', 'backup_overdue', 'thing_down', 'cpu_hot', 'memory_tight'],
+  battlement: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
+  camp: ['attack', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
+  house: ['container_unhealthy', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming', 'night'],
+  yard: ['attack', 'disk_full', 'backup_overdue', 'device_down', 'cpu_hot', 'memory_tight'],
   cellar: ['disk_full', 'backup_overdue', 'cpu_hot'],
   smithy: ['updating'],
   court: ['ssh_session'] };
@@ -411,7 +411,7 @@ test('each scene declares the conditions it can act, every condition can be acte
   // night is never offered, whatever can act it; nor is a condition with no scene of its own
   const more = plain(w); more.can.camp.push('night');
   assert.ok(!('night' in SET.offered(more)));
-  assert.ok(!('thing_down' in SET.offered(w)) && !('memory_tight' in SET.offered(w)));
+  assert.ok(!('device_down' in SET.offered(w)) && !('memory_tight' in SET.offered(w)));
   assert.deepEqual(SET.offered(null), {});
   assert.deepEqual(store().s.offered(), OFFERED);
 });
@@ -432,7 +432,7 @@ test('the scene for a condition comes from each level in turn, and the engine is
 
 test('a scene that cannot act its condition, a condition not offered and a name the page does not know are each ignored at their level with one line', () => {
   const { s, lines } = store({ storage: storage(saved({ scenes: { attack: 'house', moon: 'camp' } })), hooks: { scenes: { pi_silent: 'yard', cpu_hot: '' } } });
-  s.defaults({ scenes: { attack: 'camp', night: 'camp', ssh_session: 'court', thing_down: 'camp', cpu_hot: 'moon', disk_full: 7, backup_overdue: 'cellar' } });
+  s.defaults({ scenes: { attack: 'camp', night: 'camp', ssh_session: 'court', device_down: 'camp', cpu_hot: 'moon', disk_full: 7, backup_overdue: 'cellar' } });
   const r = s.now();
   assert.deepEqual([r.values.scenes.attack, r.from.scenes.attack], ['camp', 'defaults'], 'the house cannot act the attack, so the defaults\' camp');
   assert.deepEqual([r.values.scenes.pi_silent, r.from.scenes.pi_silent], ['house', 'built-in'], 'the pie stands left of the knight in the yard');
@@ -449,7 +449,7 @@ test('a scene that cannot act its condition, a condition not offered and a name 
     'scenes.cpu_hot "" in the address is ignored: not a scene the page knows',
     'scenes.night "camp" in the defaults in state.json is ignored: the page offers no choice of scene for it',
     'scenes.ssh_session "court" in the defaults in state.json is ignored: the page offers no choice of scene for it',
-    'scenes.thing_down "camp" in the defaults in state.json is ignored: the page offers no choice of scene for it',
+    'scenes.device_down "camp" in the defaults in state.json is ignored: the page offers no choice of scene for it',
     'scenes.cpu_hot "moon" in the defaults in state.json is ignored: not a scene the page knows',
     'scenes.disk_full 7 in the defaults in state.json is ignored: not a scene the page knows'])
     assert.ok(lines.includes('knightwatcher: settings: ' + want), want + ' in ' + lines.join('\n'));
@@ -514,7 +514,7 @@ function load() {
 test('the engine\'s quiet rotation takes the input\'s scenes in turn for its length, and all four when it has none', () => {
   const { KW, E } = load();
   E.init(new Proxy({}, { set() { return true; }, get: () => () => {} }));
-  const base = { w: KW.state.IDLE, is: 'auto', things: [], tv: false, helmet: 'auto' };
+  const base = { w: KW.state.IDLE, is: 'auto', devices: [], tv: false, helmet: 'auto' };
   const at = (input, ts) => ts.map(t => { E.input = Object.assign({}, base, input); E.restartTurns(0); E.draw(t); return E.scene(); });
   assert.deepEqual(at({ turnMs: 1000 }, [0, 1000, 2000, 3000, 4000]), ['battlement', 'camp', 'house', 'yard', 'battlement']);
   assert.deepEqual(at({ turnMs: 1000, turns: [] }, [0, 1000, 2000, 3000]), ['battlement', 'camp', 'house', 'yard']);
@@ -528,7 +528,7 @@ test('the engine plays a condition in the scene the input chooses for it when th
   const { KW, E } = load();
   E.init(new Proxy({}, { set() { return true; }, get: () => () => {} }));
   const w = id => Object.assign({}, KW.state.CONDITIONS[id], { id, st: 'warn', hl: '', sub: '' });
-  const at = (id, scenes) => { E.input = { w: w(id), is: 'auto', things: [], tv: false, helmet: 'auto', turnMs: 1000, scenes }; E.restartTurns(0); E.draw(0); return E.scene(); };
+  const at = (id, scenes) => { E.input = { w: w(id), is: 'auto', devices: [], tv: false, helmet: 'auto', turnMs: 1000, scenes }; E.restartTurns(0); E.draw(0); return E.scene(); };
   assert.equal(at('cpu_hot'), 'yard', 'nothing chosen: its own');
   assert.equal(at('cpu_hot', {}), 'yard');
   assert.equal(at('cpu_hot', { cpu_hot: 'camp' }), 'camp');
@@ -541,7 +541,7 @@ test('the engine plays a condition in the scene the input chooses for it when th
   // the input as the settings give it with nothing set changes no scene
   for (const c of Object.keys(KW.state.CONDITIONS)) assert.equal(at(c, plain(SET.engineInput(store().s.now(), PACK, 1000).scenes)), at(c), c);
   // sceneOf, which the events also ask, gives the same scene the frame draws
-  E.input = { w: w('backup_overdue'), is: 'auto', things: [], tv: false, helmet: 'auto', turnMs: 1000, scenes: { backup_overdue: 'yard' } };
+  E.input = { w: w('backup_overdue'), is: 'auto', devices: [], tv: false, helmet: 'auto', turnMs: 1000, scenes: { backup_overdue: 'yard' } };
   assert.equal(E.sceneOf(E.input.w, 0), 'yard');
 });
 
@@ -552,7 +552,7 @@ function court(m, mon, monSkin, monHair, monRobe, narrow) {
   o.x = sc.spot * m.V.U; o.floor = m.V.HFL;
   Object.assign(m.V, { HL: narrow ? 700 : 0, HR: 960, HT: narrow ? 180 : 0 });
   m.calls.length = 0;
-  sc.paint({ w: m.KW.state.IDLE, things: [], places: sc.places, tv: false, kx: o.x, o, here: null, inBed: false, helmOff: false, strike: false, mon, monSkin,
+  sc.paint({ w: m.KW.state.IDLE, devices: [], places: sc.places, tv: false, kx: o.x, o, here: null, inBed: false, helmOff: false, strike: false, mon, monSkin,
     monHair: monHair || null, monRobe: monRobe || null });
   return m.calls.slice();
 }

@@ -16,14 +16,14 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `fonts/` | the VT323 typeface and its licence |
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
-| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie and the other watched things (`KINDS`), fire, sky and stars, flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
+| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD`, `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`), fire, sky and stars, flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
-| `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the watched things in their places (`KW.things`) |
+| `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the devices in their places (`KW.devices`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
 | `js/settings.js` | `KW.settings`: the levels the display's settings come from, the saved settings (the server's, shared by every display, or this browser's own), keeping them in step with the server (`connect`), the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
 | `js/main.js` | start-up (starting the knight, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
@@ -301,7 +301,7 @@ is drawn with every named value 0, from anchor and value arrays of its own made 
 call allocates nothing.
 
 **The places.** A scene declares the places where it sets gear down in its `rests` field, beside
-`places`, which holds the watched things' places. The engine does not read `rests`: the scene
+`places`, which holds the devices' places. The engine does not read `rests`: the scene
 passes a place's numbers to `draw`.
 
 | Scene | Place | Holds | Fields |
@@ -345,16 +345,16 @@ before it calls `paint`, `draw` and `over`.
 | Field | Required | Meaning |
 |---|---|---|
 | `spot` | yes | where the knight stands on arrival, in units of `U` across the grid |
-| `places` | yes | the places for watched things: `pie`, three high ones (`h1` to `h3`) and three on the ground (`g1` to `g3`); see [Watched things](#watched-things) |
+| `places` | yes | the places for devices: `pie`, three high ones (`h1` to `h3`) and three on the ground (`g1` to `g3`); see [Devices](#devices) |
 | `rests` | no | the places where the scene sets the knight's gear down, by name; the scene reads them itself, see [Gear at rest](#gear-at-rest) |
-| `draw(t, s)` | yes | draws the scene at time `t` in ms: everything on a scene without `paint`, otherwise what moves. It calls `KW.things.draw(t, s)` at the point where the things behind the knight belong in its drawing order |
+| `draw(t, s)` | yes | draws the scene at time `t` in ms: everything on a scene without `paint`, otherwise what moves. It calls `KW.devices.draw(t, s)` at the point where the devices behind the knight belong in its drawing order |
 | `rounds` | no | the spots the knight strolls between while free to move: `[{ x, act, dur }]`, `x` in units of `U`, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles |
 | `paint(s)` | no | the still part, painted once into a cached canvas and kept until the key or the screen's shape changes |
 | `key(s)` | no | a string; the cached backdrop is painted again when it changes. A scene that paints the knight's gear at rest into its backdrop includes `KW.knight.rest.key(slot)` for each such item |
 | `act(t, s)` | no | called each frame after strolling and before the swat and events; may change the knight's pose `s.o` |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
 | `wallAt(x)` | no | the y of the top of whatever a foe climbs over at grid x; without it a foe digs up out of the ground |
-| `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a watched thing on the ground or the pie, and 150 to 240 pixels from the knight's middle, within the reach of the weapon the knight holds; with no room the event shows its caption alone. A scene without it hosts no foe |
+| `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a device on the ground or the pie, and 150 to 240 pixels from the knight's middle, within the reach of the weapon the knight holds; with no room the event shows its caption alone. A scene without it hosts no foe |
 | `outdoors` | no | `true` where flies are swatted and the crate may land |
 | `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy` |
 | `helmet` | no | `false` where the helmet comes off (unless the address says otherwise) |
@@ -366,7 +366,7 @@ before it calls `paint`, `draw` and `over`.
 | Field | Meaning |
 |---|---|
 | `w` | the winning condition: `{ id, lv, st, scene, hl, sub }`, or the idle one with id `idle` |
-| `things` | the watched things standing in the places, each `{ place, kind, ok, alert }` with `place` the name of one of the scene's places |
+| `devices` | the devices standing in the places, each `{ place, kind, ok, alert }` with `place` the name of one of the scene's places |
 | `places` | the scene's `places` |
 | `tv` | whether the television is on |
 | `kx` | the knight's x on the grid |
@@ -419,8 +419,8 @@ hides the review bar and drives the display:
 - The file's `defaults` go to the settings (see [Settings](#settings)), which apply any change at
   once. With each fetch of the state file the page also asks `api/settings` for the shared
   settings (see [The shared settings](#the-shared-settings)).
-- The watched things come from `facts.things`, and without it the pie stands alone as before
-  there were things; see [Watched things](#watched-things). `facts.streams.count > 0`, or a
+- The devices come from `facts.devices`, and without it the pie stands alone as before
+  there were devices; see [Devices](#devices). `facts.streams.count > 0`, or a
   `streaming` condition, turns the television on.
 - Events. The first valid file's events are adopted without playing. After that each event with
   a higher `seq`, oldest first: `ad_blocked` adds `count` flies (at most 100 for one event;
@@ -474,16 +474,16 @@ a `dev` page does (see [The knight from the base pack](#the-knight-from-the-base
 
 The mapping is the pure function `KW.state.map(file, nowMs)`. Beside it,
 `judge(view, lastGood, nowMs)` decides between showing a file, holding the last one, NO SIGNAL and
-the demo, `arrange(list)` puts a list of watched things in the places (see
-[Watched things](#watched-things)), `listFromHook(text)` reads the address's `th=` hook into a list
+the demo, `arrange(list)` puts a list of devices in the places (see
+[Devices](#devices)), `listFromHook(text)` reads the address's `dv=` hook into a list
 in the contract's shape, `takeEvents()` picks the events to play and `noSignal()` builds the
 knight's NO SIGNAL state. `versionOf(file)` reads the version out of a parsed `version.json`, and
 `reloadDue(own, fetched, last, nowMs)` decides whether to reload, given the page's own version, the
 fetched one, the record of the last reload and the time. `state.js` loads under Node for the tests.
 
-## Watched things
+## Devices
 
-The state file lists the watched things in `facts.things` (see [state.md](./state.md)). Every
+The state file lists the devices in `facts.devices` (see [state.md](./state.md)). Every
 scene has seven places for them, of three classes: the pie's own place, three **high** places for
 cameras (`h1` to `h3`: on a wall, a tree, a pier or a pole, at or above the knight's head) and
 three **ground** places for every other device (`g1` to `g3`: on the floor or the earth).
@@ -492,27 +492,27 @@ three **ground** places for every other device (`g1` to `g3`: on the floor or th
 its class, in the order of the list. The first entry of kind `pi` takes the pie's place, and a
 second Pi is not drawn: a pie has only the one place that looks right. The first camera takes
 `h1`, the second `h2` and the third `h3`. Every other kind, `machine`, `vm`, a kind the page does
-not know and a pack's kind among them, takes the next free ground place. A thing with no free
+not know and a pack's kind among them, takes the next free ground place. A device with no free
 place of its class is not drawn, though it is still watched and still alerts, and an entry that is
-not an object takes no place. Places depend on the list alone, never on which things are up, so a
-thing does not move while the list stays the same.
+not an object takes no place. Places depend on the list alone, never on which devices are up, so a
+device does not move while the list stays the same.
 
-**What `map` gives the engine.** `things`, the things drawn, each `{ place, kind, ok, alert }`.
+**What `map` gives the engine.** `devices`, the devices drawn, each `{ place, kind, ok, alert }`.
 `kind` is the entry's `kind` when that is a string of at most 200 characters, and `''` otherwise.
 `ok` is false only for `state` `down`: `up`, `unknown` and anything else draw it whole, since the
 page does not judge. `alert` is true only for `alert === true`.
 
-**The fallback.** When `facts.things` is absent, `null` or not an object with a `list` array (a
-collector from before watched things), `things` is the pie alone in its place,
+**The fallback.** When `facts.devices` is absent, `null` or not an object with a `list` array (a
+collector from before devices), `devices` is the pie alone in its place,
 `{ place: 'pie', kind: 'pi', ok, alert: true }`, with `ok` false while `facts.pi.up === false` or a
-`pi_silent` condition is in the list, as before there were things. A file with a things list
+`pi_silent` condition is in the list, as before there were devices. A file with a devices list
 takes the pie's state from the list alone, so the pie leaves its dish when the Pi is judged down
 and not at the first missed check.
 
 **Places.** A scene's `places` is `{ pie, h1, h2, h3, g1, g2, g3 }`, each
 `{ cls, kind, x, y, w, h }`: `cls` is `pie`, `high` or `ground`, and the rest is the shape the
 pack format gives places (`kind` `surface` or `floor`, `x` the middle and `y` the base, the line a
-thing stands on, a box 88 wide and 112 tall above the base). For a camera the base is the foot of
+device stands on, a box 88 wide and 112 tall above the base). For a camera the base is the foot of
 the wall plate it hangs from. Three flags may follow:
 
 - `front: true` marks a ground place on the floor in front of the ground line, which the engine
@@ -526,7 +526,7 @@ The pie's place is where the pie stood before there were places, so a setup with
 the pixels it always drew. An empty place draws nothing. High places keep clear of the headline,
 the detail line and the clock at every headline size, and of the monarch and the speech bubbles,
 the fires, the moon, the sword on its pegs and the sleeper's Zs; a camera's question mark is the
-highest thing drawn, and its top is never higher than y 172. Ground places keep clear of every
+highest device drawn, and its top is never higher than y 172. Ground places keep clear of every
 spot the knight stands at, of the swings, and of the knight's boots. `pl=1` shows them all.
 
 Whatever a place may show is drawn wholly on the 960 by 600 grid, which is all a display exactly
@@ -567,9 +567,9 @@ calyx and outline stay as they are. The steam rises behind it, and nothing else 
 question mark.
 
 **Drawing.** `part` `'still'` draws what does not move and `'moving'` what does: the lamp, and the
-pie's steam and raspberry. The engine paints each thing's still part once, with its pole, into a
+pie's steam and raspberry. The engine paints each device's still part once, with its pole, into a
 small canvas of its own, kept by place, kind and state, and draws it with one call where the
-scene's `draw` calls `KW.things.draw(t, s)`, so each scene's drawing order is what it was. Only the
+scene's `draw` calls `KW.devices.draw(t, s)`, so each scene's drawing order is what it was. Only the
 moving part is drawn each frame, and the question mark is kept in a canvas of its own as well. The
 raspberry is painted once in each of its colourings, lit and dark, into small canvases of its own
 in `props.js`; each frame draws its light, the dark berry, and the lit berry over it at the loop's
@@ -577,15 +577,15 @@ level, 18 calls, as a device's lamp costs 16 to 20. The pie up costs 114 calls a
 steam, and the pie down 18. A frame with the pie and six devices costs about 75 calls more than one
 with the pie alone.
 
-**The question mark.** Over a gone thing whose `alert` is true, the engine draws the question mark,
-blinking every 400 ms, with its foot at least 4 pixels above the gone thing. A gone thing that
+**The question mark.** Over a gone device whose `alert` is true, the engine draws the question mark,
+blinking every 400 ms, with its foot at least 4 pixels above the gone device. A gone device that
 does not alert has no mark, only its red lamp. The pie's mark stands where it always has.
 
-**`thing_down`.** The condition has no scene of its own: the knight stays in the quiet scene of
-the moment, does not stroll, and frowns, as for `pi_silent`. `map` gives the winning `thing_down`
-a `place`: the place of the first position in its `things` that stands in one, or `null` when
+**`device_down`.** The condition has no scene of its own: the knight stays in the quiet scene of
+the moment, does not stroll, and frowns, as for `pi_silent`. `map` gives the winning `device_down`
+a `place`: the place of the first position in its `devices` that stands in one, or `null` when
 none does. The knight looks towards that place (`look` is the sign of the place's x less the
-knight's), or straight ahead when there is none. A thing that does not alert has no effect on the
+knight's), or straight ahead when there is none. A device that does not alert has no effect on the
 knight.
 
 ## Settings
@@ -833,7 +833,7 @@ build the input.
 
 The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `pl=`,
 `set=` and the settings hooks (`arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, `mon=`, `ms=`, `mh=`,
-`mr=`, `ck=`, `sc=`) also work in live mode. `f=`, `e=`, `sw=` and `th=` act in the demo and do nothing elsewhere. The
+`mr=`, `ck=`, `sc=`) also work in live mode. `f=`, `e=`, `sw=` and `dv=` act in the demo and do nothing elsewhere. The
 settings hooks, `h=` and `hs=` are the highest of the settings' levels (see [Settings](#settings)):
 each outranks this display's saved choices and the state file's defaults while the address holds
 it, and a value it does not know is ignored, with a line in the console, so that the next level
@@ -841,7 +841,7 @@ down is used.
 
 | Key | Meaning |
 |---|---|
-| `on=` | active conditions, comma separated, by the contract's id or the short alias (`attack`, `wan`, `sick`, `disk`, `backup`, `pi`, `thing`, `cpu`, `swap`, `ssh`, `update`, `plex`, `night`) |
+| `on=` | active conditions, comma separated, by the contract's id or the short alias (`attack`, `wan`, `sick`, `disk`, `backup`, `pi`, `device`, `cpu`, `swap`, `ssh`, `update`, `plex`, `night`) |
 | `is=` | the quiet scene: `auto` for the rotation the settings choose, or `battlement`, `camp`, `house`, `yard` to keep one. The cellar, smithy and court come from conditions |
 | `h=` | the helmet: `auto` (off in the house and the smithy), `on`, `off`. Without it the settings' helmet indoors chooses between `auto` and `on` |
 | `hs=` | the headline size: `s`, `m`, `l`. Without it the settings' headline size |
@@ -858,12 +858,12 @@ down is used.
 | `sc=` | the scene a condition plays in: `<condition>:<scene>`, by the contract's ids, separated by commas, such as `sc=cpu_hot:camp,pi_silent:battlement`. A pair the page cannot act is ignored, with a line in the console |
 | `ck=` | the clock: `24`, or `12` for 9:42 with a small PM |
 | `set=` | opens the settings screen at load on a page: `knight`, `monarch`, `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
-| `th=` | the demo's list of watched things: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `th=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `thing_down` on, the knight looks towards the first thing that is down and alerts |
+| `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `device_down` on, the knight looks towards the first device that is down and alerts |
 | `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`. A page that cannot draw from the base pack draws Classic whatever the hook says |
 | `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its heater shield in the other, `two` the greatsword. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
 | `sk=`, `hc=`, `tb=`, `pm=` | the knight's skin, hair colour, tabard and plume: the id of one of the base pack's swatches, such as `sk=deep&hc=black&tb=sable&pm=gold` (the ids are in [packs.md](./packs.md#the-base-pack)) |
 | `hy=` | the knight's hair style: `short`, `tied` or `curls`, the base pack's `hair.<value>` |
-| `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box, the 80 by 64 a thing may fill inside it, and the base. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
+| `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box, the 80 by 64 a device may fill inside it, and the base. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
 
 `e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time.
 With time frozen the knight never starts a swat alone, so the flies of `f=` hover until `sw=1`
@@ -877,7 +877,7 @@ the code path they do nothing. A value outside the contract's is ignored, as at 
 The demo rewrites the hash as its settings change, with the contract's ids in `on=`. It writes
 `h=` and `hs=` only when the address named them or the review bar's buttons set them
 (`KW.hooks.fixed`), so that a reload keeps the bar's choice and otherwise leaves the settings' in
-force. The test hooks (`t=`, `kx=`, `th=`, `pl=`, `set=`, the settings hooks, `f=`, `e=` and `sw=`)
+force. The test hooks (`t=`, `kx=`, `dv=`, `pl=`, `set=`, the settings hooks, `f=`, `e=` and `sw=`)
 are read once when the page loads, and the rewritten hash leaves them out, so they last until the
 page is opened again.
 
@@ -908,7 +908,7 @@ comes from: `config.toml`, `Default`, or `Set here` in gold with what the file o
 and a Reset. A change applies on the click, or on Enter or leaving a field: the page sends it, and
 shows it kept when the server keeps it ("Checked by the collector's rules", then "In use by the
 collector since" once `state.json` says so), or refused, with the field as typed outlined in red
-and the server's words after "Not saved: ". A new watched thing is filled in first and sent whole
+and the server's words after "Not saved: ". A new device is filled in first and sent whole
 by Add to the list. A change to the look, display, quiet scenes or scenes is sent to
 `api/settings`, as a wall's screen sends it. Put everything back, at the foot of the `.env`
 section, asks first and says what it clears.
@@ -951,8 +951,8 @@ Syntax, from the repository's root:
 for f in $(find web/js web/packs web/admin -name '*.js'); do node --check "$f" || exit 1; done
 ```
 
-The mapping from a state file (the watched things and the fallback to the pie among it), `judge`,
-the rules for events and the decision to reload, the props of the watched things, the knight's
+The mapping from a state file (the devices and the fallback to the pie among it), `judge`,
+the rules for events and the decision to reload, the props of the devices, the knight's
 drawing and rig on both paths, the base pack, the pack library, and loading the packs with what
 is drawn when they fail:
 
@@ -964,7 +964,7 @@ node --test tests/web/
 that the knight's drawing needs (`draw.js`, `sprites.js`, `props.js`, `knight.js`, the house and the
 smithy, `ed25519.js`, `pack.js` and the carriers, in the page's order) under Node with an empty
 `window` and a fake canvas context that records every call and every property set;
-`KW.things.draw` writes one line in the record. It chooses the knight's source as `main.js` does
+`KW.devices.draw` writes one line in the record. It chooses the knight's source as `main.js` does
 and draws 112 records: the knight in 94 poses, the bare head in bed twice, the speech bubble twice,
 the helmet and the weapon at rest in four, and the house and the smithy in ten, each painted and
 drawn in the states that show the gear at rest. It compares each record with the one stored in
@@ -983,7 +983,7 @@ compared, the alpha of such a fillStyle loses its leading zero. Every other char
 as drawn, and the screenshots confirm the pixels.
 
 `tests/web/props.test.js` loads `draw.js`, `sprites.js` and `props.js` the same way and checks each
-kind of watched thing: that it stays inside 80 by 64 above its base, up and gone; that its moving
+kind of device: that it stays inside 80 by 64 above its base, up and gone; that its moving
 part is only its lamp, inside the place, in both states; that the lamp fades green to black over
 3.6 seconds while up and red to black over 2 while down; that its still part does not change with
 time; that gone differs from up; and that the pie in parts draws what the whole pie drew. For the
@@ -993,7 +993,7 @@ part, and stays inside the pie's place. It prints the calls each part costs.
 `tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
 the entrance runs in order and the poof is over within the event's 3.4 seconds; that the goblin
-stands in the scene's `foeZone`, clear of the knight, the pie and every watched thing on the
+stands in the scene's `foeZone`, clear of the knight, the pie and every device on the
 ground, and does not come when there is no room; and, for the greatsword from the base pack and
 from code and for the arming sword, at every spot the knight strolls to in both scenes, that the
 goblin stands within the weapon's reach, that the blade comes within 3 pixels of its crown at the
@@ -1102,11 +1102,11 @@ CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-new
 tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
 ```
 
-Besides the scenes and states, the set shoots watched things: the camp with two cameras and four
-devices, a camera and a machine down and one device with no place left (`things-camp`), the court
-with the same mix (`things-court`), `thing_down` in the camp (`thing-down`) and the yard's places
-outlined (`places-yard`). Every other shot has no `th=` apart from `goblin-camp-g3`, so a change to
-watched things that leaves a Pi-only setup alone leaves those shots byte for byte the same.
+Besides the scenes and states, the set shoots devices: the camp with two cameras and four
+devices, a camera and a machine down and one device with no place left (`devices-camp`), the court
+with the same mix (`devices-court`), `device_down` in the camp (`device-down`) and the yard's places
+outlined (`places-yard`). Every other shot has no `dv=` apart from `goblin-camp-g3`, so a change to
+devices that leaves a Pi-only setup alone leaves those shots byte for byte the same.
 
 The seven `goblin-` shots play the goblin's event with the greatsword: on the battlement as it
 rises over the wall (`goblin-rise`), at the hit (`goblin-bonk`, 1659 ms) and in the puff

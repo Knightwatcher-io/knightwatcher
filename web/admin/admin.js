@@ -54,7 +54,7 @@
   /* ---- The page's state ------------------------------------------------------------------------- */
   let S = null, A = null, W = null;
   const auth = { mode: 'loading', error: '', pausedUntil: 0, wrong: false };
-  const SECTIONS = ['collector', 'conditions', 'sources', 'things', 'look', 'display', 'quiet', 'scenes', 'env'];
+  const SECTIONS = ['collector', 'conditions', 'sources', 'devices', 'look', 'display', 'quiet', 'scenes', 'env'];
   const st = { sec: SECTIONS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'collector', refused: null, toast: null, open: {}, edit: null, mode: {},
     draft: null, confirm: null, menu: false, exp: null, resetAsk: false, scrollTo: null, reveal: false, dirty: false };
 
@@ -81,14 +81,14 @@
   const getPath = (o, path) => path.split('.').reduce((a, k) => (has(a, k) ? a[k] : undefined), o);
   function defOf(path) {
     const s = SPEC[path];
-    if (path === 'thing') return [];
+    if (path === 'device') return [];
     if (!s) return undefined;
     if (s.scope === 'display') { const [sec, k] = path.split('.'); return has(OWN[sec], k) ? OWN[sec][k] : s.page_default; }
     return s.default;
   }
   const file = () => A.file || {};
-  const fileHas = path => (path === 'thing' ? has(file(), 'thing') : getPath(file(), path) !== undefined);
-  const fileVal = path => clone(path === 'thing' ? file().thing : getPath(file(), path));
+  const fileHas = path => (path === 'device' ? has(file(), 'device') : getPath(file(), path) !== undefined);
+  const fileVal = path => clone(path === 'device' ? file().device : getPath(file(), path));
   function setHas(path) { if (isWall(path)) { const [sec, k] = path.split('.'); return has(W[sec], k); } return has(A.set, path); }
   function setVal(path) { if (isWall(path)) { const [sec, k] = path.split('.'); return clone(W[sec][k]); } return clone(A.set[path]); }
   const from = path => (setHas(path) ? 'set' : fileHas(path) ? 'file' : 'default');
@@ -325,7 +325,7 @@
     { id: 'collector', name: 'Collector', count: () => setCount('collector') },
     { id: 'conditions', name: 'Conditions', count: () => setCount('conditions') },
     { id: 'sources', name: 'Sources', count: () => setCount('sources'), bad: () => failing().length },
-    { id: 'things', name: 'Watched things', count: () => setCount('thing') },
+    { id: 'devices', name: 'Devices', count: () => setCount('device') },
     { id: 'look', name: 'Household look', count: () => setCount('look') },
     { id: 'display', name: 'Household display', count: () => setCount('display') },
     { id: 'quiet', name: 'Quiet scenes', count: () => setCount('quiet') },
@@ -343,7 +343,7 @@
     collector: 'How the collector runs. A change here is checked as config.toml is checked, then used from the collector\'s next poll; nothing needs restarting.',
     conditions: 'When each condition is raised, and which wins when several are. A condition left out of the priority is never raised.',
     sources: 'What the collector reads. Each source is on or off, with its address, its pace and its own options. Credentials are never typed here: each source that needs one says whether .env holds it.',
-    things: 'Machines on the network to watch, each checked at its own pace and drawn as a prop in the scene. The first Pi, the first three cameras and the first three others are drawn, in this order.',
+    devices: 'Machines on the network to watch, each checked at its own pace and drawn as a prop in the scene. The first Pi, the first three cameras and the first three others are drawn, in this order.',
     look: 'The knight and the monarch at court, for every display. These are the same settings as each wall\'s settings screen: a change here shows on every wall within about five seconds, and a choice made on a wall shows here as Set here.',
     display: 'How every display shows the words. The same settings as each wall\'s settings screen.',
     quiet: 'The scenes that take turns while all is quiet, for every display. The same settings as each wall\'s settings screen.',
@@ -379,7 +379,7 @@
   }
   function pageConditions(m) {
     const c = card('Conditions', '[conditions]', TABLES.conditions.help);
-    const hint = refusedHere('conditions.priority') && /thing_down/.test(st.refused.problems[0]) ? rich('div', 'hint', 'Leave thing_down in the list, or open Watched things and set Alerts off on each.') : null;
+    const hint = refusedHere('conditions.priority') && /device_down/.test(st.refused.problems[0]) ? rich('div', 'hint', 'Leave device_down in the list, or open Devices and set Alerts off on each.') : null;
     c.appendChild(row('conditions.priority', priorityEditor(), { stack: true, msgExtra: hint }));
     c.appendChild(row('conditions.clear_after_s'));
     m.appendChild(c);
@@ -455,8 +455,8 @@
   }
   function pageSources(m) { for (const n of SOURCES) m.appendChild(srcCard(n)); }
 
-  /* ---- Watched things ---------------------------------------------------------------------------- */
-  const things = () => val('thing') || [];
+  /* ---- Devices ---------------------------------------------------------------------------- */
+  const devices = () => val('device') || [];
   function checkWords(t) {
     if (has(t, 'url')) return t.url;
     const ps = has(t, 'port') ? [t.port] : t.ports || [];
@@ -468,7 +468,7 @@
   }
   function stateTag(name, t) {
     if (t && t.enabled === false) return el('span', 'tag off', 'Off');
-    const x = status() && status().things.find(y => y && y.name === name);
+    const x = status() && status().devices.find(y => y && y.name === name);
     if (!x) return el('span', 'tag', 'First check due');
     const age = x.since ? ageOf(x.since) : null;
     if (x.state === 'up') return el('span', 'tag ok', age === null ? 'Up' : 'Up for ' + span(age));
@@ -476,11 +476,11 @@
     return el('span', 'tag', 'Not answered yet');
   }
   const KIND_WORD = { pi: 'Pi', camera: 'camera', machine: 'machine', vm: 'virtual machine' };
-  function thingRow(t, i, list) {
-    const legacy = i < 0, r = el('div', 'thing' + (t.enabled === false ? ' off' : '') + (legacy ? ' legacy' : '') + (st.edit === i ? ' editing' : ''));
+  function deviceRow(t, i, list) {
+    const legacy = i < 0, r = el('div', 'device' + (t.enabled === false ? ' off' : '') + (legacy ? ' legacy' : '') + (st.edit === i ? ' editing' : ''));
     const mv = el('span', 'mv');
     if (!legacy) {
-      const move = d => { const nl = list.slice(); [nl[i + d], nl[i]] = [nl[i], nl[i + d]]; if (st.edit === i) st.edit = i + d; apply({ thing: nl }, { ctx: 'thing', say: t.name + ' moved ' + (d < 0 ? 'up' : 'down') }); };
+      const move = d => { const nl = list.slice(); [nl[i + d], nl[i]] = [nl[i], nl[i + d]]; if (st.edit === i) st.edit = i + d; apply({ device: nl }, { ctx: 'device', say: t.name + ' moved ' + (d < 0 ? 'up' : 'down') }); };
       const up = btn('', '▲', () => move(-1)), dn = btn('', '▼', () => move(1));
       up.disabled = i === 0; dn.disabled = i === list.length - 1;
       up.setAttribute('aria-label', 'Move ' + t.name + ' up'); dn.setAttribute('aria-label', 'Move ' + t.name + ' down');
@@ -499,105 +499,105 @@
     r.appendChild(acts);
     return r;
   }
-  /* One field of a thing: applied at once to the list (an existing thing), or kept in the draft. */
-  function thingField(t, i, key, control, o) {
-    const s = SPEC['thing.' + key], opt = o || {}, ctx = 'thing:' + i + ':' + key;
-    const r = el('div', 'row'); if (refusedHere(ctx) || (opt.keys && opt.keys.some(k => refusedHere('thing:' + i + ':' + k)))) r.classList.add('refused');
+  /* One field of a device: applied at once to the list (an existing device), or kept in the draft. */
+  function deviceField(t, i, key, control, o) {
+    const s = SPEC['device.' + key], opt = o || {}, ctx = 'device:' + i + ':' + key;
+    const r = el('div', 'row'); if (refusedHere(ctx) || (opt.keys && opt.keys.some(k => refusedHere('device:' + i + ':' + k)))) r.classList.add('refused');
     const lab = el('div', 'lab'); lab.appendChild(el('b', '', opt.label || s.gui.admin.label)); lab.appendChild(el('code', '', opt.key || key)); r.appendChild(lab);
     const ctl = el('div', 'ctl'); ctl.appendChild(control); ctl.appendChild(rich('p', 'help', opt.help || s.help)); r.appendChild(ctl);
     const w = el('div', 'where'); const present = (opt.keys || [key]).some(k => has(t, k));
     w.appendChild(el('span', 'from', present ? '' : 'Default')); r.appendChild(w);
-    const here = [key].concat(opt.keys || []).find(k => refusedHere('thing:' + i + ':' + k));
+    const here = [key].concat(opt.keys || []).find(k => refusedHere('device:' + i + ':' + k));
     if (here) r.appendChild(msgBox());
     r.dataset.ctx = ctx;
     return r;
   }
   function editor(t, i) {
-    const draft = i === 'new', list = things(), idx = draft ? list.length : i;
+    const draft = i === 'new', list = devices(), idx = draft ? list.length : i;
     const box = el('div', 'editor'), hd = el('div', 'ehead'); box.dataset.ctx = 'editor';
-    hd.appendChild(el('h3', '', draft ? 'A new thing' : t.name));
+    hd.appendChild(el('h3', '', draft ? 'A new device' : t.name));
     const sp = el('div', 'sp');
     if (!draft) sp.appendChild(btn('btn small danger', 'Remove', () => { st.confirm = i; render(); }));
     hd.appendChild(sp); box.appendChild(hd);
     if (st.confirm === i) {
       const m = el('div', 'msg info inset');
-      m.appendChild(el('div', '', 'Remove ' + t.name + ' from the watched things? Its record in the state file goes with it, and starts afresh if it is added again.'));
+      m.appendChild(el('div', '', 'Remove ' + t.name + ' from the devices? Its record in the state file goes with it, and starts afresh if it is added again.'));
       const a = el('div', 'acts');
-      a.appendChild(btn('btn small danger', 'Remove ' + t.name, () => { st.edit = null; st.confirm = null; apply({ thing: list.filter((_, j) => j !== i) }, { ctx: 'thing', say: t.name + ' removed' }); }));
+      a.appendChild(btn('btn small danger', 'Remove ' + t.name, () => { st.edit = null; st.confirm = null; apply({ device: list.filter((_, j) => j !== i) }, { ctx: 'device', say: t.name + ' removed' }); }));
       a.appendChild(btn('btn small', 'Keep it', () => { st.confirm = null; render(); }));
       m.appendChild(a); box.appendChild(m);
     }
-    const shownT = st.refused && st.refused.thing && st.refused.thingIndex === idx ? st.refused.thing : t;
-    // A change to one field: the thing with it, applied to the list, or kept in the draft.
+    const shownT = st.refused && st.refused.device && st.refused.deviceIndex === idx ? st.refused.device : t;
+    // A change to one field: the device with it, applied to the list, or kept in the draft.
     const change = (patch, drop, field, text) => {
       const nt = Object.assign({}, shownT, patch); for (const k of drop || []) delete nt[k];
       if (draft) { st.draft = nt; st.refused = null; render(); return; }
-      const nl = list.map((x, j) => (j === i ? nt : x)), ctx = 'thing:' + idx + ':' + field;
-      apply({ thing: nl }, { ctx, say: t.name + ', ' + sayChange(SPEC['thing.' + field].gui.admin.label, patch[field] !== undefined ? patch[field] : 'default', SPEC['thing.' + field]) })
-        .then(ok => { if (!ok && st.refused) { st.refused.thing = nt; st.refused.thingIndex = idx; st.refused.shownText = text; render(); } });
+      const nl = list.map((x, j) => (j === i ? nt : x)), ctx = 'device:' + idx + ':' + field;
+      apply({ device: nl }, { ctx, say: t.name + ', ' + sayChange(SPEC['device.' + field].gui.admin.label, patch[field] !== undefined ? patch[field] : 'default', SPEC['device.' + field]) })
+        .then(ok => { if (!ok && st.refused) { st.refused.device = nt; st.refused.deviceIndex = idx; st.refused.shownText = text; render(); } });
     };
-    const fieldText = key => (st.refused && st.refused.ctx === 'thing:' + idx + ':' + key && st.refused.shownText !== undefined ? st.refused.shownText : undefined);
+    const fieldText = key => (st.refused && st.refused.ctx === 'device:' + idx + ':' + key && st.refused.shownText !== undefined ? st.refused.shownText : undefined);
     const num = (key, def) => {
-      const cur = has(shownT, key) ? shownT[key] : def, l = el('div', 'line'), i2 = textIn('num', String(cur), x => change({ [key]: typed(SPEC['thing.' + key], x) }, [], key, x), fieldText(key), SPEC['thing.' + key].gui.admin.label);
+      const cur = has(shownT, key) ? shownT[key] : def, l = el('div', 'line'), i2 = textIn('num', String(cur), x => change({ [key]: typed(SPEC['device.' + key], x) }, [], key, x), fieldText(key), SPEC['device.' + key].gui.admin.label);
       l.appendChild(i2); const u = el('span', 'unit', 'seconds'); const hm = human(cur); if (hm) u.appendChild(el('i', '', ' (' + hm + ')')); l.appendChild(u); return l;
     };
-    const flag = (key, def) => { const cur = has(shownT, key) ? shownT[key] : def; return sw(cur, () => change({ [key]: !cur }, [], key), SPEC['thing.' + key].gui.admin.label); };
-    box.appendChild(thingField(t, idx, 'name', textIn('mid', shownT.name || '', x => change({ name: x.trim() }, [], 'name', x), fieldText('name'), 'Name')));
-    box.appendChild(thingField(t, idx, 'kind', seg(SPEC['thing.kind'].values.map(k => [k, k]), shownT.kind, k => change({ kind: k }, [], 'kind'))));
+    const flag = (key, def) => { const cur = has(shownT, key) ? shownT[key] : def; return sw(cur, () => change({ [key]: !cur }, [], key), SPEC['device.' + key].gui.admin.label); };
+    box.appendChild(deviceField(t, idx, 'name', textIn('mid', shownT.name || '', x => change({ name: x.trim() }, [], 'name', x), fieldText('name'), 'Name')));
+    box.appendChild(deviceField(t, idx, 'kind', seg(SPEC['device.kind'].values.map(k => [k, k]), shownT.kind, k => change({ kind: k }, [], 'kind'))));
     const mode = st.mode[idx] || (has(shownT, 'url') ? 'url' : 'tcp');
     const modeRow = el('div', 'row'), ml = el('div', 'lab'); ml.appendChild(el('b', '', 'Check')); ml.appendChild(el('code', '', 'host or url')); modeRow.appendChild(ml);
     const mc = el('div', 'ctl'); mc.appendChild(seg([['tcp', 'Address and ports'], ['url', 'Web address']], mode, md => { st.mode[idx] = md; render(); }));
-    mc.appendChild(rich('p', 'help', 'A thing has exactly one check: an address with one or more ports, or a web address.')); modeRow.appendChild(mc); modeRow.appendChild(el('div', 'where'));
+    mc.appendChild(rich('p', 'help', 'A device has exactly one check: an address with one or more ports, or a web address.')); modeRow.appendChild(mc); modeRow.appendChild(el('div', 'where'));
     box.appendChild(modeRow);
     if (mode === 'tcp') {
       const ports = has(shownT, 'port') ? [shownT.port] : shownT.ports || [];
-      box.appendChild(thingField(t, idx, 'host', textIn('mid', shownT.host || '', x => change({ host: x.trim() }, ['url', 'verify_tls'], 'host', x), fieldText('host'), 'Host')));
-      box.appendChild(thingField(t, idx, 'ports', textIn('mid', ports.join(', '), x => {
+      box.appendChild(deviceField(t, idx, 'host', textIn('mid', shownT.host || '', x => change({ host: x.trim() }, ['url', 'verify_tls'], 'host', x), fieldText('host'), 'Host')));
+      box.appendChild(deviceField(t, idx, 'ports', textIn('mid', ports.join(', '), x => {
         const ps = x.split(/[\s,]+/).filter(Boolean).map(y => (/^\d+$/.test(y) ? parseInt(y, 10) : y));
         change(ps.length === 1 ? { port: ps[0] } : { ports: ps }, ps.length === 1 ? ['ports', 'url', 'verify_tls'] : ['port', 'url', 'verify_tls'], ps.length === 1 ? 'port' : 'ports', x);
-      }, fieldText('ports') || fieldText('port'), 'Ports'), { keys: ['port', 'ports'], key: 'port or ports', help: SPEC['thing.ports'].help + ' One port is written as port.' }));
-      box.appendChild(thingField(t, idx, 'refused_counts', flag('refused_counts', false)));
+      }, fieldText('ports') || fieldText('port'), 'Ports'), { keys: ['port', 'ports'], key: 'port or ports', help: SPEC['device.ports'].help + ' One port is written as port.' }));
+      box.appendChild(deviceField(t, idx, 'refused_counts', flag('refused_counts', false)));
     } else {
-      box.appendChild(thingField(t, idx, 'url', textIn('wide', shownT.url || '', x => change({ url: x.trim() }, ['host', 'port', 'ports', 'refused_counts'].concat(/^https:/.test(x.trim()) ? [] : ['verify_tls']), 'url', x), fieldText('url'), 'Web address')));
-      if (/^https:/.test(shownT.url || '')) box.appendChild(thingField(t, idx, 'verify_tls', flag('verify_tls', false)));
+      box.appendChild(deviceField(t, idx, 'url', textIn('wide', shownT.url || '', x => change({ url: x.trim() }, ['host', 'port', 'ports', 'refused_counts'].concat(/^https:/.test(x.trim()) ? [] : ['verify_tls']), 'url', x), fieldText('url'), 'Web address')));
+      if (/^https:/.test(shownT.url || '')) box.appendChild(deviceField(t, idx, 'verify_tls', flag('verify_tls', false)));
     }
-    box.appendChild(thingField(t, idx, 'every_s', num('every_s', 30)));
-    box.appendChild(thingField(t, idx, 'down_after_s', num('down_after_s', 180)));
-    box.appendChild(thingField(t, idx, 'alert', flag('alert', true)));
-    box.appendChild(thingField(t, idx, 'enabled', flag('enabled', true)));
+    box.appendChild(deviceField(t, idx, 'every_s', num('every_s', 30)));
+    box.appendChild(deviceField(t, idx, 'down_after_s', num('down_after_s', 180)));
+    box.appendChild(deviceField(t, idx, 'alert', flag('alert', true)));
+    box.appendChild(deviceField(t, idx, 'enabled', flag('enabled', true)));
     const f = el('div', 'efoot');
     if (draft) {
-      if (refusedHere('thing:new')) { const hold = el('div', 'full'); hold.appendChild(msgBox()); f.appendChild(hold); }
+      if (refusedHere('device:new')) { const hold = el('div', 'full'); hold.appendChild(msgBox()); f.appendChild(hold); }
       f.appendChild(btn('btn gold', 'Add to the list', () => {
-        apply({ thing: list.concat([st.draft]) }, { ctx: 'thing:new', say: (st.draft.name || 'A thing') + ' added', after: () => { st.draft = null; } });
+        apply({ device: list.concat([st.draft]) }, { ctx: 'device:new', say: (st.draft.name || 'A device') + ' added', after: () => { st.draft = null; } });
       }));
       f.appendChild(btn('btn', 'Cancel', () => { st.draft = null; st.refused = null; render(); }));
-      f.appendChild(el('p', '', 'A new thing is checked whole when it is added, since a half-filled one cannot pass. Every other change on this page applies at once.'));
-    } else f.appendChild(el('p', '', 'Each change applies at once once it is checked. The collector checks the thing from its next poll.'));
+      f.appendChild(el('p', '', 'A new device is checked whole when it is added, since a half-filled one cannot pass. Every other change on this page applies at once.'));
+    } else f.appendChild(el('p', '', 'Each change applies at once once it is checked. The collector checks the device from its next poll.'));
     box.appendChild(f);
     return box;
   }
-  function pageThings(m) {
-    const list = things(), f = from('thing'), lh = el('div', 'listhead' + (f === 'set' ? ' set' : ''));
-    const say = el('div'), inFile = (file().thing || []).length;
-    if (f === 'set') { say.appendChild(el('span', 'from set', 'Set here. ')); say.appendChild(document.createTextNode('This list replaces the ' + inFile + ' thing' + (inFile === 1 ? '' : 's') + ' in config.toml. ')); }
-    else say.appendChild(document.createTextNode(f === 'file' ? 'The list is config.toml\'s. ' : 'No things in config.toml. '));
+  function pageDevices(m) {
+    const list = devices(), f = from('device'), lh = el('div', 'listhead' + (f === 'set' ? ' set' : ''));
+    const say = el('div'), inFile = (file().device || []).length;
+    if (f === 'set') { say.appendChild(el('span', 'from set', 'Set here. ')); say.appendChild(document.createTextNode('This list replaces the ' + inFile + ' device' + (inFile === 1 ? '' : 's') + ' in config.toml. ')); }
+    else say.appendChild(document.createTextNode(f === 'file' ? 'The list is config.toml\'s. ' : 'No devices in config.toml. '));
     const n = list.filter(x => x.enabled !== false).length + (srcOn('pi') ? 1 : 0);
     say.appendChild(el('b', '', n + ' of 32 in use')); say.appendChild(document.createTextNode(', the Pi of Sources: Pi included.'));
     lh.appendChild(say);
     const spx = el('div', 'sp');
-    if (f === 'set') spx.appendChild(btn('btn small line', 'Reset to config.toml\'s list', () => apply({ thing: undefined }, { ctx: 'thing', say: 'The watched things back to config.toml\'s ' + inFile })));
+    if (f === 'set') spx.appendChild(btn('btn small line', 'Reset to config.toml\'s list', () => apply({ device: undefined }, { ctx: 'device', say: 'The devices back to config.toml\'s ' + inFile })));
     lh.appendChild(spx);
     m.appendChild(lh);
-    m.appendChild(rich('p', 'intro', TABLES.thing.help));
-    const box = el('div', 'things');
-    if (srcOn('pi')) box.appendChild(thingRow({ name: 'Pi', kind: 'pi', host: val('sources.pi.host'), ports: val('sources.pi.ports'), every_s: val('sources.pi.every_s') }, -1, list));
-    list.forEach((t, i) => { box.appendChild(thingRow(t, i, list)); if (st.edit === i) box.appendChild(editor(t, i)); });
+    m.appendChild(rich('p', 'intro', TABLES.device.help));
+    const box = el('div', 'devices');
+    if (srcOn('pi')) box.appendChild(deviceRow({ name: 'Pi', kind: 'pi', host: val('sources.pi.host'), ports: val('sources.pi.ports'), every_s: val('sources.pi.every_s') }, -1, list));
+    list.forEach((t, i) => { box.appendChild(deviceRow(t, i, list)); if (st.edit === i) box.appendChild(editor(t, i)); });
     if (st.draft) box.appendChild(editor(st.draft, 'new'));
-    if (!box.childNodes.length) box.appendChild(el('p', 'empty', 'Nothing watched yet. Add a thing below.'));
+    if (!box.childNodes.length) box.appendChild(el('p', 'empty', 'Nothing watched yet. Add a device below.'));
     m.appendChild(box);
-    if (refusedHere('thing')) { const h = el('div', 'gap'); h.appendChild(msgBox()); m.appendChild(h); }
-    if (!st.draft) { const a = btn('btn gold gap', 'Add a thing', () => { st.draft = { kind: 'machine' }; st.edit = null; st.scrollTo = 'editor'; render(); }); m.appendChild(a); }
+    if (refusedHere('device')) { const h = el('div', 'gap'); h.appendChild(msgBox()); m.appendChild(h); }
+    if (!st.draft) { const a = btn('btn gold gap', 'Add a device', () => { st.draft = { kind: 'machine' }; st.edit = null; st.scrollTo = 'editor'; render(); }); m.appendChild(a); }
   }
 
   /* ---- The household look, display, quiet scenes and scenes ------------------------------------ */
@@ -736,12 +736,12 @@
     back.appendChild(bx);
     m.appendChild(back);
   }
-  const RENDER = { collector: pageCollector, conditions: pageConditions, sources: pageSources, things: pageThings, look: pageLook, display: pageDisplay, quiet: pageQuiet, scenes: pageScenes, env: pageEnv };
+  const RENDER = { collector: pageCollector, conditions: pageConditions, sources: pageSources, devices: pageDevices, look: pageLook, display: pageDisplay, quiet: pageQuiet, scenes: pageScenes, env: pageEnv };
 
   /* ---- Drawing, with the page's own code ------------------------------------------------------- */
   const K = KW.knight, D = KW.draw, V = KW.view, P = KW.props, U = V.U;
   function onGrid(ctx, fn) { const was = D.getCtx(), edges = { HL: V.HL, HR: V.HR, HT: V.HT }; V.HL = 0; V.HR = V.HW; V.HT = 0; D.setCtx(ctx); try { fn(); } finally { D.setCtx(was); Object.assign(V, edges); } }
-  const sceneState = (sc, o2, mon, e) => ({ w: KW.state.IDLE, things: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], places: sc.places || null, tv: false,
+  const sceneState = (sc, o2, mon, e) => ({ w: KW.state.IDLE, devices: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], places: sc.places || null, tv: false,
     kx: sc.spot * U, o: o2, here: null, inBed: false, helmOff: o2.helmet === false, strike: false, mon, monSkin: e.monSkin || null, monHair: e.monHair || null, monRobe: e.monRobe || null });
   const pics = new Map(); let lookKey = '';
   function picture(key, paint, w, h) { if (!pics.has(key)) { const cv = document.createElement('canvas'); cv.width = w || V.HW; cv.height = h || V.HH; paint(cv); pics.set(key, cv); } return pics.get(key); }
@@ -989,7 +989,7 @@
     const v = el('div', 'veil'), d = el('div', 'dlg small'); d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Put everything back to config.toml');
     const dh = el('div', 'dh'); dh.appendChild(el('h2', '', 'Put everything back?')); d.appendChild(dh);
     const n = Object.keys(A.set).length, walls = WALL.reduce((a, s) => a + Object.keys(W[s] || {}).length, 0);
-    d.appendChild(el('p', '', 'This clears ' + n + ' setting' + (n === 1 ? '' : 's') + ' set on this page for the collector' + (has(A.set, 'thing') ? ', the watched things\' list among them,' : '') + ' and ' + walls + ' choice' + (walls === 1 ? '' : 's') + ' of the household look, display, quiet scenes and scenes, made here or on any wall\'s settings screen.'));
+    d.appendChild(el('p', '', 'This clears ' + n + ' setting' + (n === 1 ? '' : 's') + ' set on this page for the collector' + (has(A.set, 'device') ? ', the devices\' list among them,' : '') + ' and ' + walls + ' choice' + (walls === 1 ? '' : 's') + ' of the household look, display, quiet scenes and scenes, made here or on any wall\'s settings screen.'));
     d.appendChild(el('p', '', 'The collector then runs on config.toml and its defaults alone, from its next poll, and every wall goes back to config.toml\'s look. It cannot be undone here: download config.toml first to keep what is set.'));
     const df = el('div', 'df');
     df.appendChild(btn('btn', 'Keep them', () => { st.resetAsk = false; render(); }));

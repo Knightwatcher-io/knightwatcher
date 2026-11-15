@@ -226,5 +226,5 @@ a folder inside it and any folder that holds it. [page.md](./page.md#deploying) 
 
 **The page goes first.** When a change touches both the page and the collector, deploy the page
 before the collector. A new page reads files from an old collector and from a new one, while an
-old page skips what it does not know: a page from before watched things ignores `facts.things` and
-`thing_down`, so behind a new collector it would show nothing when a watched machine goes down.
+old page skips what it does not know: a page from before devices ignores `facts.devices` and
+`device_down`, so behind a new collector it would show nothing when a watched machine goes down.

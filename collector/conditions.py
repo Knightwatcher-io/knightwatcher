@@ -7,10 +7,10 @@ A source that could not be read counts as the cause being absent, so a dead sour
 condition up for ever. CPU and memory are judged on averages over a window, which the host
 source works out from its own history.
 
-Watched things are judged apart, each by its own watch: a check that ran out of time counts as
+Devices are judged apart, each by its own watch: a check that ran out of time counts as
 silence for them, since a machine that cannot answer in time has not answered. `pi_silent` and
-`thing_down` are raised from the watches. `pi_silent` keeps the rule it had before there were
-things: raised once the Pi has not answered at every poll for `for_s`.
+`device_down` are raised from the watches. `pi_silent` keeps the rule it had before there were
+devices: raised once the Pi has not answered at every poll for `for_s`.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ LEVELS = {
     "disk_full": "warning",
     "backup_overdue": "warning",
     "pi_silent": "warning",
-    "thing_down": "warning",
+    "device_down": "warning",
     "cpu_hot": "warning",
     "memory_tight": "warning",
     "ssh_session": "work",
@@ -59,12 +59,12 @@ class Cause:
 # a source's last reading is not a new check.
 COUNTS_READS_OF = {"wan_down": "wan"}
 
-# The headline's word for a thing that is down, by kind, and for a kind not listed.
+# The headline's word for a device that is down, by kind, and for a kind not listed.
 KIND_WORDS = {"pi": "SILENT", "camera": "DARK", "machine": "DOWN", "vm": "DOWN"}
 OTHER_KIND_WORD = "DOWN"
-# The status of a source whose first read has not finished: its thing is not yet known.
+# The status of a source whose first read has not finished: its device is not yet known.
 FIRST_READ = "first read still running"
-# What makes a watched thing the same thing across a change of configuration.
+# What makes a device the same device across a change of configuration.
 _CHECK_KEYS = ("kind", "host", "ports", "url", "refused_counts", "verify_tls", "legacy")
 
 
@@ -107,17 +107,17 @@ class Tracker:
 
 
 class Watch:
-    """What the collector knows of one watched thing since it started.
+    """What the collector knows of one device since it started.
 
-    A thing is unknown until it answers or is judged down. An answer makes it up at once and
-    ends its silence. A silence starts at the first poll that finds no answer, and the thing is
-    down once the silence has lasted its down_after_s, counted from that poll. A thing silent for
+    A device is unknown until it answers or is judged down. An answer makes it up at once and
+    ends its silence. A silence starts at the first poll that finds no answer, and the device is
+    down once the silence has lasted its down_after_s, counted from that poll. A device silent for
     less is as it was.
     """
 
-    def __init__(self, index: int, thing: dict):
-        self.index = index  # its position in facts.things.list
-        self.thing = thing
+    def __init__(self, index: int, device: dict):
+        self.index = index  # its position in facts.devices.list
+        self.device = device
         self.seen = False  # whether it has answered since the collector started
         self.answered: bool | None = None  # at the last poll, or None before the first check
         self.silent_since: dt.datetime | None = None
@@ -137,25 +137,25 @@ class Watch:
             return
         if self.silent_since is None or now < self.silent_since:
             # A clock that went back starts the silence again, rather than leaving its start in
-            # the future where it would hold the thing up until the clock caught up.
+            # the future where it would hold the device up until the clock caught up.
             self.silent_since = now
         held = (now - self.silent_since).total_seconds()
-        if held >= self.thing["down_after_s"] and self.state != "down":
+        if held >= self.device["down_after_s"] and self.state != "down":
             self.state, self.since = "down", self.silent_since
 
     def fact(self) -> dict:
         return {
-            "name": self.thing["name"],
-            "kind": self.thing["kind"],
+            "name": self.device["name"],
+            "kind": self.device["kind"],
             "state": self.state,
-            "alert": self.thing["alert"],
+            "alert": self.device["alert"],
             "seen": self.seen,
             "since": text.iso(self.since) if self.since and self.state != "unknown" else None,
         }
 
 
 def _answered(reading: Reading | None, status: dict | None) -> bool | None:
-    """A thing's answer at this poll: yes, no, or None while its first check is running."""
+    """A device's answer at this poll: yes, no, or None while its first check is running."""
     if reading is not None:
         answered = reading.data.get("answered")
         if answered is None and reading.facts is not None:
@@ -207,9 +207,9 @@ class Conditions:
             for_reads=c["wan_down"]["failed_checks"], clear_after_s=clear
         )
         self.trackers["pi_silent"] = Tracker(for_s=c["pi_silent"]["for_s"], clear_after_s=clear)
-        # thing_down needs no duration of its own: the watches judge when a thing is down, and
+        # device_down needs no duration of its own: the watches judge when a device is down, and
         # pass the start of its silence as the cause's since.
-        self.watches = [Watch(i, t) for i, t in enumerate(config.things)]
+        self.watches = [Watch(i, t) for i, t in enumerate(config.devices)]
         self.started: dt.datetime | None = None
         # Per-container short history: name -> (first seen bad, kind, status).
         self.bad_since: dict[str, tuple[dt.datetime, str, str]] = {}
@@ -222,9 +222,9 @@ class Conditions:
         """Take up a new configuration between polls, keeping what is known.
 
         Each condition keeps its state and takes up its new thresholds; one left out of the
-        priority is forgotten, so that it starts afresh if it comes back. Each watched thing keeps
+        priority is forgotten, so that it starts afresh if it comes back. Each device keeps
         its record while its source and its check are the same, at its new place in the list; a
-        thing renamed, given a new check or added starts afresh, as after a restart.
+        device renamed, given a new check or added starts afresh, as after a restart.
         """
         self.config = config
         c = config.conditions
@@ -237,27 +237,27 @@ class Conditions:
             self.trackers[cid].clear_after_s = clear
         self.trackers["wan_down"].for_reads = c["wan_down"]["failed_checks"]
         self.trackers["pi_silent"].for_s = c["pi_silent"]["for_s"]
-        old = {w.thing["source"]: w for w in self.watches}
+        old = {w.device["source"]: w for w in self.watches}
         watches = []
-        for i, t in enumerate(config.things):
+        for i, t in enumerate(config.devices):
             w = old.get(t["source"])
-            if w is not None and all(w.thing[k] == t[k] for k in _CHECK_KEYS):
-                w.index, w.thing = i, t
+            if w is not None and all(w.device[k] == t[k] for k in _CHECK_KEYS):
+                w.index, w.device = i, t
             else:
                 w = Watch(i, t)
             watches.append(w)
         self.watches = watches
-        # Words held through thing_down's clearing period name things by their places, which may
-        # have moved; a thing no longer watched is dropped from them.
-        held = self.causes.get("thing_down")
+        # Words held through device_down's clearing period name devices by their places, which may
+        # have moved; a device no longer watched is dropped from them.
+        held = self.causes.get("device_down")
         if held is not None:
-            places = {w.thing["name"]: w.index for w in self.watches if not w.thing["legacy"]}
+            places = {w.device["name"]: w.index for w in self.watches if not w.device["legacy"]}
             kept = [dict(d, index=places[d["name"]]) for d in held.context if d["name"] in places]
             if kept:
                 held.context = kept
             else:
-                self.causes.pop("thing_down")
-                self.trackers["thing_down"] = Tracker(clear_after_s=clear)
+                self.causes.pop("device_down")
+                self.trackers["device_down"] = Tracker(clear_after_s=clear)
 
     # Causes -----------------------------------------------------------------------------------
 
@@ -310,14 +310,14 @@ class Conditions:
         return Cause(now > due, since=due, context=last)
 
     def _pi_silent(self, r, now) -> Cause:
-        w = next((w for w in self.watches if w.thing["legacy"]), None)
+        w = next((w for w in self.watches if w.device["legacy"]), None)
         return Cause(w is not None and w.answered is False)
 
-    def _thing_down(self, r, now) -> Cause:
+    def _device_down(self, r, now) -> Cause:
         down = [
             w
             for w in self.watches
-            if w.state == "down" and w.thing["alert"] and not w.thing["legacy"]
+            if w.state == "down" and w.device["alert"] and not w.device["legacy"]
         ]
         if not down:
             return Cause(False)
@@ -326,8 +326,8 @@ class Conditions:
         context = [
             {
                 "index": w.index,
-                "name": w.thing["name"],
-                "kind": w.thing["kind"],
+                "name": w.device["name"],
+                "kind": w.device["kind"],
                 "seen": w.seen,
                 "silent_since": w.silent_since,
             }
@@ -441,8 +441,8 @@ class Conditions:
             return "BACKUP OVERDUE", f"last backup {age} ago"
         if cid == "pi_silent":
             return "PI SILENT", f"no answer for {held}"
-        if cid == "thing_down":
-            return self._thing_words(ctx, now)
+        if cid == "device_down":
+            return self._device_words(ctx, now)
         if cid == "cpu_hot":
             return "CPU HOT", f"{ctx['cpu_pct']:.0f}% for {held}{text.SEP}load {ctx['load1']:.1f}"
         if cid == "memory_tight":
@@ -463,7 +463,7 @@ class Conditions:
             return "NIGHT", f"quiet hours until {ctx}"
         raise KeyError(cid)
 
-    def _thing_words(self, down: list[dict], now: dt.datetime) -> tuple[str, str]:
+    def _device_words(self, down: list[dict], now: dt.datetime) -> tuple[str, str]:
         if len(down) > 1:
             return f"{len(down)} DOWN", _names([d["name"] for d in down], text.DETAIL_MAX)
         d = down[0]
@@ -489,9 +489,9 @@ class Conditions:
     def watch(
         self, readings: dict[str, Reading | None], status: dict[str, dict], now: dt.datetime
     ) -> None:
-        """Bring every thing's watch up to this poll."""
+        """Bring every device's watch up to this poll."""
         for w in self.watches:
-            name = w.thing["source"]
+            name = w.device["source"]
             w.update(_answered(readings.get(name), status.get(name)), now)
 
     def evaluate(
@@ -505,7 +505,7 @@ class Conditions:
 
         fresh names the sources read afresh at this poll; the others' readings are reused from
         an earlier read. None means every reading is fresh. status is each source's entry in
-        `sources`, which says whether a thing with no reading ran out of time.
+        `sources`, which says whether a device with no reading ran out of time.
         """
         if self.started is None:
             self.started = now
@@ -545,17 +545,17 @@ class Conditions:
                 "headline": text.headline(head),
                 "detail": text.detail(det),
             }
-            if cid == "thing_down":
-                # Where the page finds the things: their positions in facts.things.list.
-                entry["things"] = [d["index"] for d in shown.context]
+            if cid == "device_down":
+                # Where the page finds the devices: their positions in facts.devices.list.
+                entry["devices"] = [d["index"] for d in shown.context]
             out.append(entry)
         return out
 
     def active(self, cid: str) -> bool:
         return self.trackers[cid].active
 
-    def things(self) -> dict | None:
-        """facts.things: every enabled thing in order, or None when there is none."""
+    def devices(self) -> dict | None:
+        """facts.devices: every enabled device in order, or None when there is none."""
         if not self.watches:
             return None
         return {"list": [w.fact() for w in self.watches]}

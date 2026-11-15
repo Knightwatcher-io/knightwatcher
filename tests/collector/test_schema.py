@@ -43,14 +43,14 @@ def example_keys() -> dict[str, set[str]]:
     """Every key config.example.toml sets, by table, its commented settings included."""
     with open(os.path.join(ROOT, "config.example.toml"), encoding="utf-8") as fh:
         text = fh.read()
-    # A commented setting is "# key = value", "# [[thing]]" or the header of a defaults table.
-    setting = re.compile(r"^# (\[\[thing\]\]|\[(?:look|display|quiet|scenes)\]|[a-z_]+ = .+)$")
+    # A commented setting is "# key = value", "# [[device]]" or the header of a defaults table.
+    setting = re.compile(r"^# (\[\[device\]\]|\[(?:look|display|quiet|scenes)\]|[a-z_]+ = .+)$")
     lines = [m.group(1) if (m := setting.match(line)) else line for line in text.splitlines()]
     raw = tomllib.loads("\n".join(lines) + "\n")
     out: dict[str, set[str]] = {}
     for key, value in raw.items():
-        if key == "thing":
-            out["thing"] = {k for t in value for k in t}
+        if key == "device":
+            out["device"] = {k for t in value for k in t}
         elif key in ("conditions", "sources"):
             for k, v in value.items():
                 if isinstance(v, dict):
@@ -170,7 +170,7 @@ class CollectorAgreesTest(unittest.TestCase):
         # Every table the schema describes is one build accepts, and no other.
         known = {t["table"].split(".")[0] for t in S["tables"]}
         self.assertEqual(
-            known, {"collector", "conditions", "sources", "thing", *config.DEFAULT_TABLES}
+            known, {"collector", "conditions", "sources", "device", *config.DEFAULT_TABLES}
         )
 
     def test_every_source_that_logs_in_names_its_variables(self):

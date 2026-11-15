@@ -234,7 +234,7 @@
   function draw(t, s) {
     const { HL, HR } = V;
     for (let x = Math.floor((HL - 50) / 480) * 480 + 50; x < HR; x += 480) { glow(x + 25, 260, 100, '#ffb000', .09 + .025 * Math.sin(t / 140 + x)); P.flameHD(x + 25, 280, .58, t + x); }
-    KW.things.draw(t, s);
+    KW.devices.draw(t, s);
     const monarchTalks = Math.floor(t / 3200) % 2 === 1;
     mouth(KX, KB, monarchTalks && Math.floor(t / 230) % 2 === 1);
     if (monarchTalks) K.speech(672, 180, t, true);
@@ -285,7 +285,7 @@
   }
   /* The colours each monarch is drawn in, for the settings screen's "As drawn" choices. */
   const drawn = mon => { const m = MONARCHS[mon] || MONARCHS.a; return { hair: m.hair.map(b => b[1]), robe: m.robe.map(b => b[1]) }; };
-  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+  /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
     pie: { cls: 'pie', kind: 'surface', x: 154, y: 475, w: 88, h: 112 },

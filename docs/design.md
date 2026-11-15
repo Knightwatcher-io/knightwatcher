@@ -95,10 +95,10 @@ colour language says green for up, but a whole pie against an empty dish already
 and a green raspberry would read as unripe. When the Pi is judged down, silent for its
 `down_after_s`, the pie is gone and the empty dish is left, with a few crumbs and a single
 raspberry, which blinks slowly from red to black like any other lamp of a down machine. A
-collector from before watched things gives no judgement, and with it the dish empties at the
+collector from before devices gives no judgement, and with it the dish empties at the
 first missed check, as it always did.
 
-## Watched things
+## Devices
 
 Besides the Pi, a user may list other machines to watch (a NAS, a camera, a laptop, a virtual
 machine), each with a kind. Each kind is drawn as the device it is, by the owner's choice, though
@@ -107,11 +107,11 @@ dotted outline for a virtual machine, and a plain small grey box for a kind the 
 They are drawn as plainly as the rest of the display, in hard pixels and the palette's steels and
 whites.
 
-Every scene has places for them where such things would be. Cameras are mounted high, at or above
+Every scene has places for them where such devices would be. Cameras are mounted high, at or above
 the knight's head, on a wall, a tree, a pier or a pole; the other devices stand on the ground, by
 the owner's choice. Each scene has three high places and three ground places, besides the pie's,
-and they fill in the order of the list, so a thing keeps its place whether it is up or down. A
-thing with no place left is not drawn but is still watched.
+and they fill in the order of the list, so a device keeps its place whether it is up or down. A
+device with no place left is not drawn but is still watched.
 
 Every device carries one lamp that never stops: while the machine is up it fades slowly from green
 to black and back, and while it is down it blinks slowly from red to black. The pie's lamp is its
@@ -119,9 +119,9 @@ raspberry, which keeps its own colours while the Pi is up and blinks red like th
 is down. A down device also
 looks broken from across the room: the camera hangs from its arm, the tower goes dark with its
 side panel off, the dotted outline breaks up into a few dots at its corners, and the box lies on
-its side with its lid off. A question mark blinks over a down thing that alerts; a thing set not
+its side with its lid off. A question mark blinks over a down device that alerts; a device set not
 to alert, such as a laptop that sleeps, keeps only its red lamp. Names are never written in the
-scene: a thing's name shows in the headline while it alerts.
+scene: a device's name shows in the headline while it alerts.
 
 ## Conditions and scenes
 
@@ -136,7 +136,7 @@ and a state of the knight. Highest first:
 | `disk_full` | warning | cellar | crouched and sweating, carrying a heavy crate against the chest |
 | `backup_overdue` | warning | house | hungry, thinking of food |
 | `pi_silent` | warning | house | staring at the empty dish |
-| `thing_down` | warning | the quiet scene of the moment | stays put, frowning, looking towards the empty place |
+| `device_down` | warning | the quiet scene of the moment | stays put, frowning, looking towards the empty place |
 | `cpu_hot` | warning | training yard | training frantically, sweating |
 | `memory_tight` | warning | the quiet scene of the moment | bloated |
 | `ssh_session` | at work | royal court | talking with the monarch |
@@ -188,7 +188,7 @@ on the knight alone, so every scene that leaves the pose alone can act them.
 | `disk_full` | | | | yes | own | | |
 | `backup_overdue` | yes | yes | own | yes | yes | | |
 | `pi_silent` | yes | yes | own | | | | |
-| `thing_down` | yes | yes | yes | yes | | | |
+| `device_down` | yes | yes | yes | yes | | | |
 | `cpu_hot` | yes | yes | yes | own | yes | | |
 | `memory_tight` | yes | yes | yes | yes | | | |
 | `ssh_session` | | | | | | | own |
@@ -201,7 +201,7 @@ one scene can act: `attack`, `disk_full`, `backup_overdue`, `pi_silent` and `cpu
 offered: `wan_down` (only the battlement has the bell's rope to cut), `container_unhealthy` and
 `night` (the bed is in the house; the night is left out by design, since the knight sleeps where
 the bed is), `streaming` (the television), `ssh_session` (the court) and `updating` (the smithy),
-each of which one scene alone can act; and `thing_down` and `memory_tight`, which play in whichever
+each of which one scene alone can act; and `device_down` and `memory_tight`, which play in whichever
 quiet scene is showing. Nothing changes until a scene is chosen, and a choice the chosen scene
 cannot act is ignored, so the condition plays in its own scene. A chosen scene changes only where
 the condition plays: the condition's level, its headline and the knight's state stay as they are.
@@ -229,7 +229,7 @@ how the display looks. Each setting comes from the highest of four levels: the a
 screenshots), the saved settings, the defaults in `config.toml` that the collector passes on in
 `state.json`, and the page's own.
 
-The sources, thresholds and watched things are set on the admin page, which the bundled server
+The sources, thresholds and devices are set on the admin page, which the bundled server
 serves at `/admin` behind a password kept in `.env`, from a laptop or a phone; `config.toml` is the
 level under it, and still the way to set them by hand. A change there is checked by the
 collector's own rules before it is kept, and the collector takes it up at its next poll with no
@@ -259,7 +259,7 @@ A small Python program with no third-party dependencies, run as a container:
 - no Docker socket: container state comes from a read-only Docker API proxy over HTTP;
 - a non-root user, a read-only root filesystem, no capabilities;
 - host figures from read-only mounts, everything else by asking the services it watches over
-  HTTP, DNS or a TCP connection, and the machines listed as watched things by a TCP connection
+  HTTP, DNS or a TCP connection, and the machines listed as devices by a TCP connection
   or one web request each;
 - one output, written atomically: `state.json` in a folder the bundled server, or a web server
   of your own, serves.

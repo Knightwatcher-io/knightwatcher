@@ -45,7 +45,7 @@ url = "http://192.0.2.30:8989"
 [sources.updates]
 holders = [{ name = "nightly maintenance", pattern = 'nightly-maintenance\\.sh' }]
 
-[[thing]]
+[[device]]
 name = "Vault"
 kind = "machine"
 host = "192.0.2.40"
@@ -60,7 +60,7 @@ STATE = {
     "generated_at": "2026-01-15T21:00:00Z",
     "interval_s": 10,
     "sources": {"containers": {"ok": True, "at": "2026-01-15T21:00:00Z", "error": ""}},
-    "facts": {"things": {"list": [{"name": "Vault", "kind": "machine", "state": "up"}]}},
+    "facts": {"devices": {"list": [{"name": "Vault", "kind": "machine", "state": "up"}]}},
     "config": {"admin": None, "at": "2026-01-15T20:00:00Z", "problems": []},
 }
 
@@ -442,7 +442,7 @@ class SettingsTest(AdminCase):
         self.assertIsNone(body["version"])
         self.assertEqual(body["file"], tomllib.loads(CONFIG))
         self.assertEqual(body["status"]["interval_s"], 10)
-        self.assertEqual(body["status"]["things"][0]["name"], "Vault")
+        self.assertEqual(body["status"]["devices"][0]["name"], "Vault")
         self.assertEqual(body["status"]["config"], STATE["config"])
         self.assertEqual(body["credentials"], CREDENTIALS)
         self.assertEqual(body["problems"], [])
@@ -477,7 +477,7 @@ class SettingsTest(AdminCase):
         self.assertEqual(self.s.admin.answer()["version"], before)
         status, _, body = self.patch({"set": {"conditions.priority": ["attack", "wan_down"]}})
         self.assertEqual(status, 400)
-        self.assertIn('leaves out "thing_down", so Vault would never alert', body["error"])
+        self.assertIn('leaves out "device_down", so Vault would never alert', body["error"])
 
     def test_a_change_needing_an_absent_credential_names_its_variable(self):
         status, _, body = self.patch({"set": {"sources.sonarr.enabled": True}})
@@ -507,18 +507,18 @@ class SettingsTest(AdminCase):
         self.assertEqual(body["error"], "v: must be 1")
         self.assertEqual(self.patch({})[2]["error"], "name a setting in set or reset")
 
-    def test_the_watched_things_list_replaces_the_files_whole(self):
-        things = [
+    def test_the_watched_devices_list_replaces_the_files_whole(self):
+        devices = [
             {"name": "Gate cam", "kind": "camera", "url": "https://198.51.100.31/"},
             {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445},
         ]
-        status, _, body = self.patch({"set": {"thing": things}})
+        status, _, body = self.patch({"set": {"device": devices}})
         self.assertEqual(status, 200)
         raw = overlay.lay(body["file"], body["set"])
-        self.assertEqual([t["name"] for t in raw["thing"]], ["Gate cam", "Vault"])
-        status, _, body = self.patch({"set": {"thing": [things[1], dict(things[1])]}})
+        self.assertEqual([t["name"] for t in raw["device"]], ["Gate cam", "Vault"])
+        status, _, body = self.patch({"set": {"device": [devices[1], dict(devices[1])]}})
         self.assertEqual(status, 400)
-        self.assertEqual(body["error"], 'thing[1].name: "Vault" is already the name of thing[0]')
+        self.assertEqual(body["error"], 'device[1].name: "Vault" is already the name of device[0]')
 
     def test_a_source_set_up_here(self):
         status, _, body = self.patch(
@@ -601,7 +601,7 @@ class SettingsTest(AdminCase):
                 "set": {
                     "collector.interval_s": 15,
                     "conditions.disk_full.pct": 80,
-                    "thing": [
+                    "device": [
                         {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}
                     ],
                 }
@@ -619,7 +619,7 @@ class SettingsTest(AdminCase):
         self.assertEqual(exported.collector, layered.collector)
         self.assertEqual(exported.conditions, layered.conditions)
         self.assertEqual(exported.sources, layered.sources)
-        self.assertEqual(exported.things, layered.things)
+        self.assertEqual(exported.devices, layered.devices)
         self.assertEqual(exported.defaults["look"], {"skin": "tan", "tabard": "teal"})
         self.assertEqual(exported.defaults["display"], {"clock": 12})
         self.assertIn("# Not set up.", text)

@@ -2,12 +2,12 @@
 
 The bundled server keeps what is set on its admin page in one file in its own folder, admin.json:
 
-    {"v": 1, "set": {"collector.interval_s": 15, "sources.sonarr.enabled": true, "thing": [...]}}
+    {"v": 1, "set": {"collector.interval_s": 15, "sources.sonarr.enabled": true, "device": [...]}}
 
 Each key of `set` is the dotted path of one setting of config.toml (its table and its key), and
 each value replaces what config.toml holds there, or the default where the file leaves it out. A
-list is one value: set here, it replaces the file's list whole. `thing` is the whole list of
-[[thing]] tables in the same way. Only the collector's settings are kept here, and only those the
+list is one value: set here, it replaces the file's list whole. `device` is the whole list of
+[[device]] tables in the same way. Only the collector's settings are kept here, and only those the
 schema marks editable; the look, display, quiet scenes and scenes are the shared settings of
 settings.json (server/store.py), and credentials are never in either.
 
@@ -31,8 +31,8 @@ FILE = "admin.json"
 VERSION = 1
 # Where compose.yaml mounts the server's folder in both containers.
 DEFAULT_PATH = "/var/lib/knightwatcher-server/admin.json"
-# The key of the watched things' list, the [[thing]] tables of config.toml.
-THINGS = "thing"
+# The key of the devices' list, the [[device]] tables of config.toml.
+DEVICES = "device"
 # The tables whose settings the admin page may set, by the first part of their names.
 _TABLES = ("collector", "conditions", "sources")
 
@@ -81,14 +81,14 @@ def path_problem(path: Any, value: Any) -> str | None:
     """What makes a path and its value one the store cannot hold at all, or None.
 
     Only the shape is judged here: a path the admin page may set, and a value of its setting's
-    type. Everything else (ranges, addresses, the watched things' rules) is the collector's to
+    type. Everything else (ranges, addresses, the devices' rules) is the collector's to
     judge on the whole configuration.
     """
     if not isinstance(path, str):
         return "a path is text"
-    if path == THINGS:
+    if path == DEVICES:
         if not isinstance(value, list) or not all(isinstance(t, dict) for t in value):
-            return f"{THINGS}: expected [[thing]] tables"
+            return f"{DEVICES}: expected [[device]] tables"
         return None
     if path in FIXED:
         return f"{path}: not set on the admin page"
@@ -171,8 +171,8 @@ def lay(raw: dict[str, Any], given: dict[str, Any]) -> dict[str, Any]:
     """
     out = copy.deepcopy(raw)
     for path, value in given.items():
-        if path == THINGS:
-            out[THINGS] = copy.deepcopy(value)
+        if path == DEVICES:
+            out[DEVICES] = copy.deepcopy(value)
             continue
         *tables, key = path.split(".")
         here = out
@@ -186,8 +186,8 @@ def lay(raw: dict[str, Any], given: dict[str, Any]) -> dict[str, Any]:
 
 def value_at(raw: dict[str, Any], path: str) -> tuple[bool, Any]:
     """(whether the parsed file holds the path, its value there)."""
-    if path == THINGS:
-        return (THINGS in raw, raw.get(THINGS))
+    if path == DEVICES:
+        return (DEVICES in raw, raw.get(DEVICES))
     here: Any = raw
     for name in path.split("."):
         if not isinstance(here, dict) or name not in here:

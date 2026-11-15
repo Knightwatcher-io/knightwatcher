@@ -89,7 +89,7 @@
       Rh(gx + (to - 71), gy - (h - 3), 42, 2, 'rgba(255,240,180,.55)'); Rh(gx + (to - 71), gy + (h - 6), 42, 2, 'rgba(60,10,0,.35)');
     }
     // the pie, and sparks where the hammer strikes
-    KW.things.draw(t, s);
+    KW.devices.draw(t, s);
     if (s.strike) {
       const c = (t % 1300) / 1300, q = (c > .5 ? c - .93 : c + .07) / .13, sx = s.kx + 132, sy = 418;
       glow(sx, sy, 44, '#fff3a0', .35 * (1 - q));
@@ -97,7 +97,7 @@
     }
   }
 
-  /* The places for watched things (docs/page.md): the pie's, three high ones for cameras and three
+  /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
     pie: { cls: 'pie', kind: 'surface', x: 280, y: 475, w: 88, h: 112 },

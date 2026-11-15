@@ -23,7 +23,7 @@ standard library alone, and it runs as a container. Its settings are in
 2. **Observe.** Each source read afresh at this poll turns its reading into events, comparing it
    with the markers it keeps in the memory file. This step runs in the main thread, one source
    after another.
-3. **Judge.** The conditions are judged from the readings, in priority order. Watched things
+3. **Judge.** The conditions are judged from the readings, in priority order. Devices
    are judged from their sources' entries in `sources` as well, which say whether a check ran out
    of time.
 4. **Write.** The collector builds the state document, checks it against the contract (a
@@ -83,7 +83,7 @@ requiring `config.toml` to pass alone, and when they pass it swaps to them betwe
   among them, starts every source afresh;
 - each condition keeps its state and takes up its new thresholds; one left out of the priority is
   forgotten;
-- each watched thing keeps its record while its name and its check are the same, at its new place
+- each device keeps its record while its name and its check are the same, at its new place
   in the list, and one renamed, given a new check or added starts as after a restart;
 - the next poll is scheduled at the new interval.
 
@@ -121,9 +121,9 @@ that shows the cause (`attack`, `disk_full`, `backup_overdue`, `ssh_session`, `u
 
 - `pi_silent` needs the Pi of `[sources.pi]` to have missed every check for `for_s` (three
   minutes by default). A check that ran out of time counts as missed, as it does for every
-  watched thing.
-- `thing_down` needs a watched thing that alerts to have been silent for its own `down_after_s`;
-  see [Watched things](#watched-things).
+  device.
+- `device_down` needs a device that alerts to have been silent for its own `down_after_s`;
+  see [Devices](#devices).
 - `container_unhealthy` needs a container unhealthy, restarting or exited with a non-zero code
   for `for_s` (three minutes by default), and each container has its own timer.
 - `wan_down` needs `failed_checks` failed internet checks in a row (two by default). A check is a
@@ -179,38 +179,38 @@ A condition clears once its cause has been absent for `clear_after_s` seconds (3
 counted from the first poll that found it absent. While it is held it keeps the words it last
 had, and a cause that returns in that time keeps it up with its first `since`. A source that
 cannot be read counts as the cause being absent, so a dead source cannot hold a condition up
-indefinitely; the per-container timers are kept through a failed read. Watched things are the
+indefinitely; the per-container timers are kept through a failed read. Devices are the
 exception: a check that ran out of time counts as no answer, since a machine that cannot answer
 in time has not answered. `night` is held the same
 way, so it shows for up to `clear_after_s` past the end of the quiet hours.
 
-### Watched things
+### Devices
 
-Each watched thing (see [configuration.md](./configuration.md#watched-things)) is a source of its
-own, `thing:<name>`, read at the thing's own `every_s`, and the Pi of `[sources.pi]` is one too,
+Each device (see [configuration.md](./configuration.md#devices)) is a source of its
+own, `device:<name>`, read at the device's own `every_s`, and the Pi of `[sources.pi]` is one too,
 under its old name `pi`. The runner gives each the same pace, time limit and carry-over as any
-other source, so a check that hangs costs that thing's reading and nothing else. A thing's
+other source, so a check that hangs costs that device's reading and nothing else. A device's
 source never fails: anything that goes wrong inside its check is no answer.
 
-At every poll each thing is judged from its last reading:
+At every poll each device is judged from its last reading:
 
 - An answer makes it `up` at once and ends its silence.
 - A silence starts at the first poll that finds no answer, a check that ran out of time
-  included, and the thing is `down` once the silence has lasted its `down_after_s`. A thing that
+  included, and the device is `down` once the silence has lasted its `down_after_s`. A device that
   has answered and has been silent for less is still `up`.
 - Until it first answers or is judged down, it is `unknown`: nothing is known of it before its
-  first check finishes, and a thing that has never answered is not judged until its silence is
+  first check finishes, and a device that has never answered is not judged until its silence is
   long enough.
 - A clock that goes back starts the silence again from the new time.
 
-Nothing of this is kept in the memory file, so after a restart every thing is `unknown` again
+Nothing of this is kept in the memory file, so after a restart every device is `unknown` again
 and its silence is counted afresh.
 
-`thing_down` is raised while at least one thing with `alert = true` is down, the Pi of
+`device_down` is raised while at least one device with `alert = true` is down, the Pi of
 `[sources.pi]` aside, which raises `pi_silent` as before. One condition covers them all, as
 `container_unhealthy` covers every sick container, so the badge counts it once. Its `since` is
 the start of the earliest silence when it was raised, and it clears `clear_after_s` after the
-last of them answers. A thing with `alert = false` is `down` in `facts.things` and raises nothing.
+last of them answers. A device with `alert = false` is `down` in `facts.devices` and raises nothing.
 
 The headline is the name and a word for the kind: `SILENT` for `pi`, `DARK` for `camera`, and
 `DOWN` for `machine`, `vm` and any other kind.
@@ -219,17 +219,17 @@ The headline is the name and a word for the kind: `SILENT` for `pi`, `DARK` for 
 |---|---|---|
 | a machine that answered, then went silent | `VAULT DOWN` | `no answer for 6 min` |
 | a camera | `GATE CAM DARK` | `no answer for 12 min` |
-| a `[[thing]]` of kind `pi` | `PI SILENT` | `no answer for 3 min` |
+| a `[[device]]` of kind `pi` | `PI SILENT` | `no answer for 3 min` |
 | any kind, never answered since the start | `VAULT DOWN` | `not answered since the collector started 5 min ago` |
 | a name too long for the headline | `GATEHOUSE… DARK` | `Gatehouse camera · no answer for 12 min` |
 | the same, never answered | `GATEHOUSE… DARK` | `Gatehouse camera · not answered in 5 min since start` |
 | several down | `3 DOWN` | `Vault, Gate cam, Buildbox` |
 | several, names too long | `6 DOWN` | `Back garden cam 0, Back garden cam 1, Back garden cam 2 +3` |
 
-A thing that has never answered is more often a wrong address or a closed port than a machine
+A device that has never answered is more often a wrong address or a closed port than a machine
 that died, and its detail says so. With several, the names are in the order their silences
 began, joined while they fit in 60 characters, with `+N` for the rest. The condition also carries
-`things`, their positions in `facts.things.list` in that same order, so that the page can find
+`devices`, their positions in `facts.devices.list` in that same order, so that the page can find
 them ([state.md](./state.md#fields)).
 
 ### Attacks
@@ -291,14 +291,14 @@ appears.
 | `wan` | `wan.py` | each URL in turn until one answers with a 2xx | `wan` |
 | `dns` | `dns.py` | one A query over UDP to the configured server | `dns` |
 | `backup` | `backup.py` | the tail of the backup log | `backup` |
-| `pi` | `things.py` | a TCP connection to every port at once; a refusal counts as an answer | `pi` |
+| `pi` | `devices.py` | a TCP connection to every port at once; a refusal counts as an answer | `pi` |
 | `updates` | `updates.py` | the host's lock table, `/proc/locks`, and the command line of each process holding a lock | `updates` |
 | `ssh` | `ssh.py` | established connections to the SSH port in `/proc/net/tcp` and `tcp6` | `ssh` |
 | `streams` | `streams.py` | Tautulli's `get_activity` | `streams` |
 | `adblock` | `adblock.py` | AdGuard Home's `/control/stats` | `adblock` |
 | `security` | `security.py` | a fail2ban summary at `/soc` | `security` |
 | `sonarr`, `radarr` | `imports.py` | the last ten import records in each one's history | none |
-| `thing:<name>` | `things.py` | a TCP connection to every port at once, or one `GET` to a web address | none; `things` is built from the conditions |
+| `device:<name>` | `devices.py` | a TCP connection to every port at once, or one `GET` to a web address | none; `devices` is built from the conditions |
 
 The `updates` source never opens the maintenance scripts' lock files. Probing a lock with
 `flock` could make a script that starts in that instant find its lock taken and skip its run,
@@ -345,7 +345,7 @@ Then:
 `fetch` must not touch `memory`, and nothing it returns may hold a secret. Use the helpers in
 `collector/net.py`, which set timeouts, refuse redirects and turn failures into short messages.
 Their requests go direct, never through a proxy named in the environment, and only to `http`
-and `https` addresses. The checks of watched things bound the lookup of a name by their timeout;
+and `https` addresses. The checks of devices bound the lookup of a name by their timeout;
 `fetch` leaves the lookup to urllib, which the timeout does not cover, so a source whose
 resolver hangs is caught only by the poll's limit on the read. An address avoids the lookup.
 

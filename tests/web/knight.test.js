@@ -81,8 +81,8 @@ function load(dev, texts, kw1) {
     vm.runInContext(src, box, { filename: f });
   }
   const KW = box.window.KW;
-  // the engine draws the watched things where a scene's draw asks for them; here that is one line
-  KW.things = { draw() { log.push('things'); } };
+  // the engine draws the devices where a scene's draw asks for them; here that is one line
+  KW.devices = { draw() { log.push('devices'); } };
   const status = KW.knight.start(texts || KW.packText, dev === true);
   KW.draw.setCtx(ctx);
   return { KW, K: KW.knight, log, status, lines, box };
@@ -807,7 +807,7 @@ if (MODE === 'write') {
       const pl = { side, q, hit: S.at + Math.round(q * S.dur) };
       for (let r = 0; r <= S.rebound + S.recover; r += 10) { const o = at(K, 'idle', 2300, { bob: 0 }); F.strike(o, pl.hit + r, pl); check(`strike ${side} q${q} +${r} ms`, o); }
     }
-    for (const id of ['idle', 'wan_down', 'thing_down', 'memory_tight', 'ssh_session', 'cpu_hot', 'streaming', 'night']) check(id, at(K, id, 2300));
+    for (const id of ['idle', 'wan_down', 'device_down', 'memory_tight', 'ssh_session', 'cpu_hot', 'streaming', 'night']) check(id, at(K, id, 2300));
     check('bloat 6', at(K, 'memory_tight', 2300, { bloat: 6 }));
     return found;
   }

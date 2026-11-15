@@ -3,7 +3,7 @@
 # never set here: they go in .env (see .env.example), named by each source's `secret`.
 # A source runs when its [sources.*] table is present and `enabled` is not false. Each source is
 # read every `every_s` seconds; between reads its last reading stands. The settings screen's
-# defaults and the watched things, at the end, are commented out. A setting changed on the bundled
+# defaults and the devices, at the end, are commented out. A setting changed on the bundled
 # server's admin page is kept there, over this file, and its Download config.toml writes them all.
 
 [collector]
@@ -19,7 +19,7 @@ proc_root = "/host/proc"
 # Highest first. A condition left out of the list is never raised.
 priority = [
   "attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent",
-  "thing_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night",
+  "device_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night",
 ]
 clear_after_s = 30
 
@@ -177,14 +177,14 @@ secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 # pi_silent = "house"         # battlement, camp or house
 # cpu_hot = "yard"            # battlement, camp, house, yard or cellar
 
-# Watched things: machines on the network, each drawn as a prop in the scene that changes when
+# Devices: machines on the network, each drawn as a prop in the scene that changes when
 # its machine has been silent for its down_after_s. Remove the "# " before a setting to use it.
 # Here the main LAN is 192.0.2.0/24, the cameras sit on a VLAN of their own (198.51.100.0/24) and
 # a guest VLAN holds the laptop (203.0.113.0/24). The router between the VLANs must let this host
 # reach 198.51.100.31 on 443 and 203.0.113.45 on 22.
 
 # A NAS on the main LAN. Alerts after the default three minutes of silence.
-# [[thing]]
+# [[device]]
 # name = "Vault"
 # kind = "machine"
 # host = "192.0.2.40"
@@ -192,7 +192,7 @@ secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 
 # A camera on its own VLAN, checked through its web page once a minute. Cameras reboot for
 # firmware and drop off the network for a few minutes, so it alerts after ten.
-# [[thing]]
+# [[device]]
 # name = "Gate cam"
 # kind = "camera"
 # url = "https://198.51.100.31/"
@@ -202,7 +202,7 @@ secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 
 # A laptop on the guest VLAN. It sleeps, so it never alerts: when it is away its prop goes,
 # and nothing else happens. Its own firewall refuses closed ports, so a refusal means it is on.
-# [[thing]]
+# [[device]]
 # name = "Study laptop"
 # kind = "machine"
 # host = "203.0.113.45"
@@ -212,7 +212,7 @@ secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 
 # A virtual machine on the main LAN, checked on two ports at once. It is switched off for now:
 # its table stays, nothing is checked and it is left out of the display.
-# [[thing]]
+# [[device]]
 # name = "Buildbox"
 # kind = "vm"
 # host = "192.0.2.41"

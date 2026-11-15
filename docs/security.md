@@ -40,7 +40,7 @@ downloads and `credentials.json`) and its memory folder.
   set on the admin page.
 - It opens no listening port.
 - It connects only to the addresses in its configuration: the services it reads, and the
-  machines listed as watched things. A watched thing gets a TCP connection, or one `GET` with no
+  machines listed as devices. A device gets a TCP connection, or one `GET` with no
   credentials, at the pace set for it. No request goes through a proxy named in the
   environment, and only `http` and `https` addresses are opened. A web address's certificate is
   not checked unless its `verify_tls` is `true`. The check sends nothing and trusts nothing it

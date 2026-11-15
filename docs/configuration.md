@@ -50,7 +50,7 @@ Set here.
 
 ### Where the collector's settings come from
 
-Every other setting (the collector, the conditions, the sources and the watched things) has three
+Every other setting (the collector, the conditions, the sources and the devices) has three
 levels, highest first, path by path:
 
 1. **Set on the admin page**, kept by the bundled server in `admin.json`.
@@ -58,8 +58,8 @@ levels, highest first, path by path:
 3. **The default** in the reference below, when the file leaves the setting out.
 
 A list is one value: set on the admin page, it replaces `config.toml`'s list whole, and its Reset
-puts the file's list back. The watched things are one list in the same way: once set there, the
-page's list is the list, and a `[[thing]]` added to `config.toml` afterwards is not used until the
+puts the file's list back. The devices are one list in the same way: once set there, the
+page's list is the list, and a `[[device]]` added to `config.toml` afterwards is not used until the
 page's list is reset. A source that `config.toml` does not set up can be set up on the page, and
 gets a table of its own there. The folders (`output_dir`, `state_dir`, `proc_root`), the backup
 log's path and each source's `secret` are set in `config.toml` alone, since they follow what
@@ -97,7 +97,7 @@ treat `.env` as you would their own configuration; see [security.md](./security.
 
 - **A change on the admin page** is checked by the collector's own rules before the server keeps
   it, and the collector takes it up at the start of its next poll, within one interval, with no
-  restart: sources started and stopped, things added, removed and reordered, the interval
+  restart: sources started and stopped, devices added, removed and reordered, the interval
   rescheduled. The page says when the collector reports it in use. A choice of look, display,
   quiet scenes or scenes reaches every display as a settings screen's does.
 - **`config.toml`** is read when the collector starts, and again at the start of any poll after
@@ -122,7 +122,7 @@ python3 -m collector --check-config --config config.toml --env-file .env
 ```
 
 checks `config.toml` and the credentials it needs and lists every problem it finds, one per
-line, then exits 2; with none it prints `config ok:` and the sources and things it will read. It
+line, then exits 2; with none it prints `config ok:` and the sources and devices it will read. It
 checks `config.toml` alone, which is what the collector needs to start: what is set on the admin
 page is checked by the server before it is kept, and laid over the file once the collector has
 started on it ([collector.md](./collector.md#taking-up-a-change)). An
@@ -157,7 +157,7 @@ How the collector runs. The whole table may be left out to take the defaults.
 | `output_dir` | a folder inside the container | `"/out"` | household | Folder state.json is written to. compose.yaml mounts KNIGHTWATCHER_OUT here. |
 | `state_dir` | a folder inside the container | `"/var/lib/knightwatcher"` | household | Folder for memory.json and the collector's lock. compose.yaml mounts KNIGHTWATCHER_VAR here. |
 | `timezone` | an IANA time zone, such as "Europe/London" | `"UTC"` | household | Zone for the night hours and the times shown in words. |
-| `http_timeout_s` | a number of seconds, above zero | `5.0` | household | Timeout for each network call. Must be shorter than the time between polls, so a poll every 5 seconds needs it lowered. A watched thing's check uses at most 3 seconds of it for each step. |
+| `http_timeout_s` | a number of seconds, above zero | `5.0` | household | Timeout for each network call. Must be shorter than the time between polls, so a poll every 5 seconds needs it lowered. A device's check uses at most 3 seconds of it for each step. |
 | `auth_backoff_s` | a whole number of seconds, at least 1200 | `1200` | household | Pause after a 401, 403 or 429 before the service is called again. Cannot be set below 1200. |
 | `proc_root` | a folder inside the container | `"/host/proc"` | household | Where the host's /proc is mounted, for CPU, memory, load and the lock table. |
 
@@ -167,7 +167,7 @@ When each condition is raised. The whole table, and each condition's own table, 
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `priority` | condition ids, each once | `["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "thing_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night"]` | household | Conditions, highest first. One left out is never raised. Thing down (thing_down) must stay in the list while any watched thing alerts. |
+| `priority` | condition ids, each once | `["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "device_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night"]` | household | Conditions, highest first. One left out is never raised. Device down (device_down) must stay in the list while any device alerts. |
 | `clear_after_s` | a whole number of seconds, zero or more | `30` | household | How long a cause must be absent before its condition clears. |
 
 ### [conditions.attack]
@@ -220,9 +220,9 @@ Pi silent: the Pi of [sources.pi] has not answered for a while.
 |---|---|---|---|---|
 | `for_s` | a whole number of seconds, zero or more | `180` | household | How long the second machine must be unreachable. |
 
-### [conditions.thing_down]
+### [conditions.device_down]
 
-A watched thing down. It has no settings here: each watched thing carries its own pace, its own silence and whether it alerts. An empty table is accepted.
+A device down. It has no settings here: each device carries its own pace, its own silence and whether it alerts. An empty table is accepted.
 
 ### [conditions.cpu_hot]
 
@@ -330,7 +330,7 @@ The last completed backup, from the backup log.
 
 ### [sources.pi]
 
-The older way to watch a second machine, kept with no end date: it becomes the first watched thing, named Pi, with the rules it has always had.
+The older way to watch a second machine, kept with no end date: it becomes the first device, named Pi, with the rules it has always had.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
@@ -415,13 +415,13 @@ Films imported, from Radarr.
 | `url` | an http:// or https:// address | required | household | Base URL of Radarr. |
 | `secret` | letters, digits and underscores | `"radarr"` | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone. |
 
-### [[thing]]
+### [[device]]
 
-Machines on the network to watch, each a [[thing]] table at the top level of config.toml. There can be 32, the Pi of [sources.pi] included. A thing has exactly one check: an address with one or more ports (host with port or ports), or a web address (url).
+Machines on the network to watch, each a [[device]] table at the top level of config.toml. There can be 32, the Pi of [sources.pi] included. A device has exactly one check: an address with one or more ports (host with port or ports), or a web address (url).
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `name` | 1 to 20 printable ASCII characters, with no space at either end | required | household | What the display calls it. Unique among the things, ignoring case. |
+| `name` | 1 to 20 printable ASCII characters, with no space at either end | required | household | What the display calls it. Unique among the devices, ignoring case. |
 | `kind` | `"pi"`, `"camera"`, `"machine"` or `"vm"` | required | household | Chooses the headline's word, and the prop the page draws. |
 | `host` | an address or a name | none | household | Address or name to connect to. Required with port or ports. |
 | `port` | a whole number, from 1 to 65535 | none | household | One TCP port. |
@@ -430,9 +430,9 @@ Machines on the network to watch, each a [[thing]] table at the top level of con
 | `refused_counts` | `true` or `false` | `false` | household | Whether a refused connection counts as an answer. Only with host. |
 | `verify_tls` | `true` or `false` | `false` | household | Whether the certificate is checked. Only with an https url. |
 | `every_s` | a whole number of seconds, from 10 to 3600 | `30` | household | Seconds between checks. |
-| `down_after_s` | a whole number of seconds, from every_s to 86400 | `180` | household | Seconds of silence before the thing counts as down. |
-| `alert` | `true` or `false` | `true` | household | Whether the thing raises Thing down (thing_down) while it is down. |
-| `enabled` | `true` or `false` | `true` | household | Whether the thing is checked. Off (false in config.toml) keeps it in the list, stops its checks and leaves it off the displays. |
+| `down_after_s` | a whole number of seconds, from every_s to 86400 | `180` | household | Seconds of silence before the device counts as down. |
+| `alert` | `true` or `false` | `true` | household | Whether the device raises Device down (device_down) while it is down. |
+| `enabled` | `true` or `false` | `true` | household | Whether the device is checked. Off (false in config.toml) keeps it in the list, stops its checks and leaves it off the displays. |
 
 ### [look]
 
@@ -527,31 +527,31 @@ refused with a message naming its replacement: `clear_after_s`, or `window_s`.
 ### The Pi of [sources.pi]
 
 `[sources.pi]` is the older way to name the Pi, and it stays with no end date. The Pi becomes the
-first watched thing, named `Pi` and of kind `pi`, with the rules it has always had: any number of
+first device, named `Pi` and of kind `pi`, with the rules it has always had: any number of
 ports, a refused connection as an answer, its own `every_s`, and `conditions.pi_silent.for_s` as
 the silence that makes it down. It raises `pi_silent` with its own words, and only while the
-priority list names `pi_silent`; it never needs `thing_down`. See
-[Watched things](#watched-things).
+priority list names `pi_silent`; it never needs `device_down`. See
+[Devices](#devices).
 
-## Watched things
+## Devices
 
-Each `[[thing]]` table, at the top level of `config.toml`, is one machine on the network to
+Each `[[device]]` table, at the top level of `config.toml`, is one machine on the network to
 watch: a NAS, a camera, a laptop, a virtual machine. Each is checked at its own pace and counts as
 down once it has been silent for its `down_after_s`. The collector lists them in the state file,
-in the order of the tables, for the page to draw in the scene, with the prop of a thing that is
-down changed. A thing that alerts also raises `thing_down` while it is down. There can be 32
-things, the Pi of `[sources.pi]` included, and those the page does not draw are checked and alert
+in the order of the tables, for the page to draw in the scene, with the prop of a device that is
+down changed. A device that alerts also raises `device_down` while it is down. There can be 32
+devices, the Pi of `[sources.pi]` included, and those the page does not draw are checked and alert
 as usual.
 
-Where a thing stands depends on its kind. The first thing of kind `pi` is the pie, in its own
+Where a device stands depends on its kind. The first device of kind `pi` is the pie, in its own
 place. Cameras are mounted high, and every scene has three places for them; every other kind
 stands on the ground, in three more places. Each class fills in the order of the tables, so the
-display shows the first Pi, the first three cameras and the first three other things, and a thing
+display shows the first Pi, the first three cameras and the first three other devices, and a device
 keeps its place whether it is up or down.
 
 ```toml
 # A NAS on the main LAN. Alerts after the default three minutes of silence.
-[[thing]]
+[[device]]
 name = "Vault"
 kind = "machine"
 host = "192.0.2.40"
@@ -561,14 +561,14 @@ port = 445
 `config.example.toml` ends with four such tables, commented out: this one, a camera checked by
 its web page, a laptop that never alerts, and a virtual machine switched off.
 
-A thing has exactly one check: `host` with `port` or `ports`, or `url`. `refused_counts` is
+A device has exactly one check: `host` with `port` or `ports`, or `url`. `refused_counts` is
 refused beside a `url`, and `verify_tls` beside anything but an `https` `url`.
 
-**A port.** The collector opens a TCP connection to each port at the same time, and the thing
+**A port.** The collector opens a TCP connection to each port at the same time, and the device
 has answered if any is accepted. A refused connection counts only with `refused_counts = true`.
 It is off by default because a firewall between VLANs can refuse on a machine's behalf: a rule
 that rejects with a TCP reset answers for an address whether or not the machine behind it is
-on, and the thing would never go down. `refused_counts = true` suits a machine on the same
+on, and the device would never go down. `refused_counts = true` suits a machine on the same
 network segment whose own firewall refuses closed ports, such as a laptop with nothing
 listening.
 
@@ -587,7 +587,7 @@ time counts as no answer.
 
 **What the collector can reach.** It runs on the host's network (`network_mode: host` in
 `compose.yaml`), so it reaches exactly what the host reaches: the same routes, the same source
-address, the same firewall on the way out. A thing on another VLAN is reachable when the router
+address, the same firewall on the way out. A device on another VLAN is reachable when the router
 between the VLANs lets the host's address through to that port and lets the reply back.
 `127.0.0.1` is the host itself. The container has no capabilities, so there is no ping. A name in
 `host` or `url` is looked up by the host's resolver, and a lookup that takes longer than the
@@ -598,29 +598,29 @@ cannot be held up by a slow resolver.
 characters, so a name of up to 11 characters shows whole beside `DOWN` and `DARK`, and up to 9
 beside `SILENT`. A longer name is cut with an ellipsis in the headline (`Gatehouse camera`
 becomes `GATEHOUSE… DARK`) and is given whole in the detail. Names are ASCII because the display
-font's coverage past it has not been checked. The name is also the thing's key in the state
-file's `sources`, `thing:<name>`, so renaming a thing starts its record afresh.
+font's coverage past it has not been checked. The name is also the device's key in the state
+file's `sources`, `device:<name>`, so renaming a device starts its record afresh.
 
-**The Pi.** A configuration with `[sources.pi]` has the Pi as its first thing (see
-[The Pi of [sources.pi]](#the-pi-of-sourcespi)), and a `[[thing]]` named `Pi`, or one watching the
+**The Pi.** A configuration with `[sources.pi]` has the Pi as its first device (see
+[The Pi of [sources.pi]](#the-pi-of-sourcespi)), and a `[[device]]` named `Pi`, or one watching the
 Pi's `host`, is refused so that the Pi is not drawn twice. The comparison is of the text as
 written, so the same machine under another name or address is not caught. Moving to the new form
-is optional: a `[[thing]]` named `Pi`, of kind `pi`, with `refused_counts = true` and
-`down_after_s = 180`, has the same prop and still reads `PI SILENT`, but it raises `thing_down`
-rather than `pi_silent`, so the priority list must name `thing_down`, and it writes no
-`facts.pi`, which a page from before watched things needs for its pie.
+is optional: a `[[device]]` named `Pi`, of kind `pi`, with `refused_counts = true` and
+`down_after_s = 180`, has the same prop and still reads `PI SILENT`, but it raises `device_down`
+rather than `pi_silent`, so the priority list must name `device_down`, and it writes no
+`facts.pi`, which a page from before devices needs for its pie.
 
 **Checking.** `check-config` names each problem in a table by its place among the tables,
-counted from 0, as in `thing[2].name: "vault" is already the name of thing[0]`. A mistake in any
+counted from 0, as in `device[2].name: "vault" is already the name of device[0]`. A mistake in any
 table stops the collector from starting, as any other configuration error does. A priority list
-that leaves out `thing_down` while a thing alerts is refused with a message that says where to
+that leaves out `device_down` while a device alerts is refused with a message that says where to
 add it:
 
 ```
-config: conditions.priority: leaves out "thing_down", so Vault and Gate cam would never alert; add it after "pi_silent", or set alert = false on them
+config: conditions.priority: leaves out "device_down", so Vault and Gate cam would never alert; add it after "pi_silent", or set alert = false on them
 ```
 
-[collector.md](./collector.md#watched-things) says how a thing is judged down and what the
+[collector.md](./collector.md#devices) says how a device is judged down and what the
 headline and the detail say.
 
 ## The settings screen's defaults
@@ -657,7 +657,7 @@ conditions (see [design.md](./design.md#scenes-chosen-per-condition)), and the p
 choice for five; the reference above lists the scenes that can act each. The other conditions
 are not offered: `wan_down` (only the battlement has the bell rope), `container_unhealthy` and
 `night` (the bed is in the house), `streaming` (so is the television), `ssh_session` (the court),
-`updating` (the smithy), and `thing_down` and `memory_tight`, which play in whichever quiet scene
+`updating` (the smithy), and `device_down` and `memory_tight`, which play in whichever quiet scene
 is showing. The collector checks each key against its own condition ids and each value against
 the page's scenes, but it cannot know which scene can act what. A known condition paired with a
 known scene that cannot act it, such as `night = "camp"`, is therefore accepted and written, and
