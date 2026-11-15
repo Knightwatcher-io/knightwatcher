@@ -29,6 +29,8 @@ MAX_THINGS = 32
 KIND_MAX = 200
 _THING_NAME = re.compile(r"^[!-~](?:[ -~]{0,18}[!-~])?$")
 _TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+# The version of admin.json: 20 hex characters (collector/overlay.py).
+_VERSION = re.compile(r"^[0-9a-f]{20}$")
 
 
 def _ts(value: Any) -> bool:
@@ -76,6 +78,25 @@ def _things(things: Any, p: list[str]) -> int:
         if state == "up" and t.get("seen") is False:
             p.append(f"{w} is up but not seen")
     return len(entries)
+
+
+def _config(note: Any) -> list[str]:
+    """Check `config`, what the collector says of the settings it uses."""
+    p: list[str] = []
+    if not isinstance(note, dict) or not {"admin", "at", "problems"} <= set(note):
+        return ["config is not an object with admin, at and problems"]
+    if set(note) - {"admin", "at", "problems", "refused"}:
+        p.append("config has a key other than admin, at, problems and refused")
+    for key in ("admin", "refused"):
+        value = note.get(key)
+        if value is not None and not (isinstance(value, str) and _VERSION.match(value)):
+            p.append(f"config.{key} is not null or a version")
+    if not _ts(note["at"]):
+        p.append("config.at is not a UTC timestamp")
+    problems = note["problems"]
+    if not isinstance(problems, list) or not all(isinstance(x, str) for x in problems):
+        p.append("config.problems is not a list of text")
+    return p
 
 
 def validate(state: Any) -> list[str]:
@@ -178,6 +199,9 @@ def validate(state: Any) -> list[str]:
     else:
         # The same rules as the config tables they come from.
         p += [f"defaults.{problem}" for problem in check_defaults(defaults)]
+
+    if "config" in state:
+        p += _config(state["config"])
 
     sources = state.get("sources")
     if not isinstance(sources, dict):

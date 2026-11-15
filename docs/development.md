@@ -10,13 +10,17 @@ touching `server/`, and [packs.md](./packs.md) before touching `web/js/pack.js` 
 
 ```
 web/                 the page: static files, no build step (index.html, css/, fonts/, js/, packs/)
+  admin/             the admin page, served by the bundled server alone
   js/scenes/         one file per scene
   packs/             the packs that ship with the page, each a .pack.json and its .pack.js carrier
-collector/           the collector: Python, standard library only
+collector/           the collector: Python, standard library only (overlay.py reads the admin
+                     page's admin.json and lays it over config.toml, reload.py takes up a change
+                     between polls)
   sources/           one module per source
   settings-schema.json  every setting of config.toml and every variable of .env
 server/              the bundled server: Python, standard library only, reusing the collector's
-                     checks (app.py the HTTP side, store.py the shared settings, stamp.py the
+                     checks (app.py the HTTP side, store.py the shared settings, admin.py the
+                     admin page's password, sessions, store, checks and export, stamp.py the
                      page's version stamp at build time)
 tests/
   collector/         unittest tests for the collector
@@ -91,14 +95,16 @@ The last two need a `.env` and a `config.toml` in place; see
 [configuration.md](./configuration.md). `tests/collector/test_schema.py` checks the settings schema
 against the collector, `config.example.toml`, `.env.example` and `compose.yaml`, each service's
 mounts included, and that the server is given no variable but its address and port.
-`tests/server/` runs the server on the loopback; its stamp test needs bash and rsync, for
-`tools/deploy.sh`, and is skipped without them. [server.md](./server.md#checks) lists what they
+`tests/collector/test_reload.py` checks admin.json laid over `config.toml`, the start and reload
+rules, the credentials' names and the acknowledgement in the state file. `tests/server/` runs the
+server on the loopback, the admin page's side with a password made for the run; its stamp test
+needs bash and rsync, for `tools/deploy.sh`, and is skipped without them. [server.md](./server.md#checks) lists what they
 check.
 
 The page:
 
 ```bash
-for f in $(find web/js web/packs -name '*.js'); do node --check "$f" || exit 1; done
+for f in $(find web/js web/packs web/admin -name '*.js'); do node --check "$f" || exit 1; done
 node --test tests/web/
 node --test tests/tools/
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-ref    # before a change

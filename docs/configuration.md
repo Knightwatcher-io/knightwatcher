@@ -4,13 +4,15 @@ Knightwatcher is configured in two files beside `compose.yaml`, both ignored by 
 
 - `config.toml`: every setting of the collector and the household defaults of the displays. The
   committed template is `config.example.toml`.
-- `.env`: the host paths `compose.yaml` mounts, the address and port of the bundled server, and
-  the credentials of the services the collector reads. The committed template is `.env.example`.
-  Keep it to yourself: `chmod 600 .env`.
+- `.env`: the host paths `compose.yaml` mounts, the address and port of the bundled server, the
+  admin page's password, and the credentials of the services the collector reads. The committed
+  template is `.env.example`. Keep it to yourself: `chmod 600 .env`.
 
-What the displays' settings screens choose is kept by the bundled server, for the whole
-deployment, in a file of its own ([server.md](./server.md#the-settings-store)); `config.toml`
-supplies the defaults under it.
+Every setting of `config.toml` but the folders and the credentials' names can also be set on the
+bundled server's admin page, from any browser, behind the admin password
+([server.md](./server.md#the-admin-page)). What is set there is kept by the server in a file of its
+own, and so is what the displays' settings screens choose, for the whole deployment
+([server.md](./server.md#the-admin-store)); `config.toml` supplies the level under both.
 
 Every setting and every variable is described in one file, `collector/settings-schema.json`: its
 type, the values it may take, its default, and what it does. The collector checks `config.toml`
@@ -42,8 +44,31 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
 A value a level holds that the page does not know is ignored at that level, and the next one down
 is used. [page.md](./page.md#settings) has the details.
 
-Every other setting (the collector, the conditions, the sources and the watched things) has two
-levels: `config.toml`, and the default in the reference when the file leaves it out.
+The admin page sets the same household defaults through the same store, so a choice made there
+is a saved setting like any display's, and a choice made on a display shows on the admin page as
+Set here.
+
+### Where the collector's settings come from
+
+Every other setting (the collector, the conditions, the sources and the watched things) has three
+levels, highest first, path by path:
+
+1. **Set on the admin page**, kept by the bundled server in `admin.json`.
+2. **`config.toml`.**
+3. **The default** in the reference below, when the file leaves the setting out.
+
+A list is one value: set on the admin page, it replaces `config.toml`'s list whole, and its Reset
+puts the file's list back. The watched things are one list in the same way: once set there, the
+page's list is the list, and a `[[thing]]` added to `config.toml` afterwards is not used until the
+page's list is reset. A source that `config.toml` does not set up can be set up on the page, and
+gets a table of its own there. The folders (`output_dir`, `state_dir`, `proc_root`), the backup
+log's path and each source's `secret` are set in `config.toml` alone, since they follow what
+`compose.yaml` mounts and passes.
+
+The admin page's Download config.toml writes every setting as the collector uses it into one
+`config.toml`, comments included and credentials left out, to keep what was set there in the file.
+Put everything back, at the foot of its `.env` section, clears everything set there and on the
+displays' screens, so that `config.toml` and the defaults rule again.
 
 ### .env: host paths, the server's address and credentials
 
@@ -52,7 +77,9 @@ levels: `config.toml`, and the default in the reference when the file leaves it 
 and `KNIGHTWATCHER_SERVER_PORT` say where the bundled server is published on the host: all
 addresses and port 8080 unless set ([server.md](./server.md#security) says when to narrow it).
 Each credential is passed to the collector's container by name, so the container gets those
-variables and nothing else from the file, and the server gets none. A credential that no enabled
+variables and nothing else from the file, and the server gets none. The server gets one variable,
+`KNIGHTWATCHER_ADMIN_PASSWORD`, the admin page's password: left empty, or shorter than 12
+characters, the admin page stays off and says why, and the walls work as before. A credential that no enabled
 source needs may be left empty or out; the collector's check names any it needs and lacks.
 
 A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals,
@@ -68,13 +95,22 @@ treat `.env` as you would their own configuration; see [security.md](./security.
 
 ### When a change applies
 
-- **`config.toml`** is read once, when the collector starts. Restart it after a change:
-  `docker compose restart collector`. The household defaults reach the displays in the next state
-  file, within seconds of the restart, and a display that has its own choice for a setting keeps
-  it.
+- **A change on the admin page** is checked by the collector's own rules before the server keeps
+  it, and the collector takes it up at the start of its next poll, within one interval, with no
+  restart: sources started and stopped, things added, removed and reordered, the interval
+  rescheduled. The page says when the collector reports it in use. A choice of look, display,
+  quiet scenes or scenes reaches every display as a settings screen's does.
+- **`config.toml`** is read when the collector starts, and again at the start of any poll after
+  the file has been written in place. An editor that saves by writing a new file and renaming it
+  over the old one leaves the container reading the old file, since `compose.yaml` mounts the one
+  file; restart the collector after such a save: `docker compose restart collector`. A change
+  that the collector's checks refuse while it runs is not taken up: it keeps the settings it has,
+  says why in the state file and on the admin page, and refuses to start on the file until it is
+  put right. The household defaults reach the displays in the next state file, and a setting
+  saved on a screen or the admin page stays over them.
 - **`.env`** is read by docker compose when it creates the containers, so a changed path,
-  address, port or credential needs them made again: `docker compose up -d`. A plain restart
-  keeps the old values.
+  address, port, admin password or credential needs them made again: `docker compose up -d`. A
+  plain restart keeps the old values. A new admin password signs every browser out.
 - **A choice on a settings screen** applies at once on that display. With the bundled server it
   reaches every other display at its next poll of the server, within about five seconds, and that
   display reloads to show it. Without it, it stays on that display.
@@ -86,7 +122,10 @@ python3 -m collector --check-config --config config.toml --env-file .env
 ```
 
 checks `config.toml` and the credentials it needs and lists every problem it finds, one per
-line, then exits 2; with none it prints `config ok:` and the sources and things it will read. An
+line, then exits 2; with none it prints `config ok:` and the sources and things it will read. It
+checks `config.toml` alone, which is what the collector needs to start: what is set on the admin
+page is checked by the server before it is kept, and laid over the file once the collector has
+started on it ([collector.md](./collector.md#taking-up-a-change)). An
 unknown setting is an error, so a typo does not silently fall back to a default. Without
 `--env-file` the credentials are taken from the process's environment, as they are inside the
 container. A message names a missing credential by its variable and never shows a value:
@@ -114,13 +153,13 @@ How the collector runs. The whole table may be left out to take the defaults.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `interval_s` | a whole number of seconds, at least 5 | `10` | household | Seconds between polls. Also written to state.json as interval_s, and the page treats a file older than three intervals as stale. |
+| `interval_s` | a whole number of seconds, at least 5 | `10` | household | Seconds between polls. The displays treat a state file older than three polls as stale and say so. |
 | `output_dir` | a folder inside the container | `"/out"` | household | Folder state.json is written to. compose.yaml mounts KNIGHTWATCHER_OUT here. |
 | `state_dir` | a folder inside the container | `"/var/lib/knightwatcher"` | household | Folder for memory.json and the collector's lock. compose.yaml mounts KNIGHTWATCHER_VAR here. |
 | `timezone` | an IANA time zone, such as "Europe/London" | `"UTC"` | household | Zone for the night hours and the times shown in words. |
-| `http_timeout_s` | a number of seconds, above zero | `5.0` | household | Timeout for each network call. Must be shorter than interval_s, so an interval of 5 needs it lowered. A watched thing's check uses at most 3 seconds of it for each step. |
+| `http_timeout_s` | a number of seconds, above zero | `5.0` | household | Timeout for each network call. Must be shorter than the time between polls, so a poll every 5 seconds needs it lowered. A watched thing's check uses at most 3 seconds of it for each step. |
 | `auth_backoff_s` | a whole number of seconds, at least 1200 | `1200` | household | Pause after a 401, 403 or 429 before the service is called again. Cannot be set below 1200. |
-| `proc_root` | a folder inside the container | `"/host/proc"` | household | Where the host's /proc is mounted. |
+| `proc_root` | a folder inside the container | `"/host/proc"` | household | Where the host's /proc is mounted, for CPU, memory, load and the lock table. |
 
 ### [conditions]
 
@@ -128,7 +167,7 @@ When each condition is raised. The whole table, and each condition's own table, 
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `priority` | condition ids, each once | `["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "thing_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night"]` | household | Conditions, highest first. One left out is never raised, and a list that leaves out thing_down is refused while any watched thing alerts. |
+| `priority` | condition ids, each once | `["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "thing_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night"]` | household | Conditions, highest first. One left out is never raised. Thing down (thing_down) must stay in the list while any watched thing alerts. |
 | `clear_after_s` | a whole number of seconds, zero or more | `30` | household | How long a cause must be absent before its condition clears. |
 
 ### [conditions.attack]
@@ -147,7 +186,7 @@ WAN down: the internet checks fail several times in a row.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `failed_checks` | a whole number, at least 1 | `2` | household | Failed internet checks in a row before wan_down. Each check is a fresh read of the wan source, so they are its every_s apart. |
+| `failed_checks` | a whole number, at least 1 | `2` | household | Failed internet checks in a row before the WAN counts as down. Each check is a fresh read of the internet source, so they are as far apart as it is read. |
 
 ### [conditions.container_unhealthy]
 
@@ -200,7 +239,7 @@ Memory tight: available memory, averaged over the window, is at or below the thr
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `available_pct` | a percentage, above 0, at most 100 | `10.0` | household | MemAvailable as a percent of MemTotal, averaged over the window: at or below. |
+| `available_pct` | a percentage, above 0, at most 100 | `10.0` | household | Memory available, as a percent of all memory, averaged over the window: at or below. |
 | `window_s` | a whole number of seconds, at least 10 | `30` | household | The window available memory is averaged over. |
 
 ### [conditions.ssh_session]
@@ -210,7 +249,7 @@ At court: someone has an SSH session open.
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `min_sessions` | a whole number, at least 1 | `1` | household | Open SSH sessions needed. |
-| `show_for_s` | a whole number of seconds, zero or more | `600` | household | How long a new SSH session keeps ssh_session up. 0 keeps it up for as long as min_sessions sessions are open. |
+| `show_for_s` | a whole number of seconds, zero or more | `600` | household | How long a new SSH session keeps the condition up. 0 keeps it up for as long as the sessions it needs are open. |
 
 ### [conditions.updating]
 
@@ -239,7 +278,7 @@ CPU, memory and load from the host's /proc, and the size of each configured disk
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `10` | household | How often the source is read. Should be at least as often as the shorter averaging window; when it is read less often, an average reaches back to the previous read instead. |
 | `disks` | tables of mount and path, such as { mount = "/data", path = "/host/disks/data" } | `[]` | household | Disks to report. mount is the label written to the file; path is any path inside the container on that filesystem. |
 
@@ -249,7 +288,7 @@ Container health, from a read-only Docker API proxy.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `10` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of a read-only Docker API proxy, such as http://192.0.2.10:2375. |
 | `ignore` | shell patterns, such as "*-run-*" | `[]` | household | Container names to leave out. Use it for one-off and intentionally stopped containers. |
@@ -260,7 +299,7 @@ Whether the internet answers.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `urls` | one or more http:// or https:// addresses | `["https://1.1.1.1/cdn-cgi/trace"]` | household | Tried in turn; the internet is up if any answers with a 2xx. An address avoids depending on DNS. |
 
@@ -270,7 +309,7 @@ Whether the DNS server answers.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `server` | an address | `"127.0.0.1"` | household | DNS server to ask. |
 | `port` | a whole number | `53` | household | Its port. |
@@ -282,7 +321,7 @@ The last completed backup, from the backup log.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `60` | household | How often the source is read. |
 | `log` | a file inside the container | `"/host/backup.log"` | household | The backup log, inside the container. compose.yaml mounts KNIGHTWATCHER_BACKUP_LOG here. |
 | `pattern` | a regular expression with one group | `"System Backup Completed: (.+)$"` | household | Regular expression for a completion line; its first group is the date, in ISO 8601 or the form date prints, such as Thu 15 Jan 03:12:00 UTC 2026. |
@@ -295,7 +334,7 @@ The older way to watch a second machine, kept with no end date: it becomes the f
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `host` | an address or a name | required | household | Address of the second machine, such as 192.0.2.4. |
 | `ports` | one or more TCP port numbers | `[22]` | household | TCP ports to try, all at once. A refused connection counts as an answer. |
@@ -306,7 +345,7 @@ Whether a lock holder, such as nightly maintenance, is running.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `10` | household | How often the source is read. |
 | `holders` | tables of name and pattern, such as { name = "nightly maintenance", pattern = 'nightly-maintenance\.sh' } | required | household | While a process whose command line matches pattern holds any lock, name is reported as running. |
 
@@ -316,7 +355,7 @@ Open SSH sessions.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `10` | household | How often the source is read. |
 | `port` | a whole number | `22` | household | The SSH server's port. |
 | `ignore_sources` | address ranges, such as "198.51.100.0/24" | `[]` | household | Address ranges whose sessions are not counted. |
@@ -327,10 +366,10 @@ Streams playing, from Tautulli.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Tautulli. |
-| `secret` | letters, digits and underscores | `"tautulli"` | household | Names the .env variables holding its credentials: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. |
+| `secret` | letters, digits and underscores | `"tautulli"` | household | The name its credential is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone. |
 
 ### [sources.adblock]
 
@@ -338,10 +377,10 @@ Blocked adverts, from AdGuard Home.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of AdGuard Home. |
-| `secret` | letters, digits and underscores | `"adguard"` | household | Names the .env variables holding its credentials: KNIGHTWATCHER_<SECRET>_USERNAME and KNIGHTWATCHER_<SECRET>_PASSWORD, in capitals. |
+| `secret` | letters, digits and underscores | `"adguard"` | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_USERNAME and KNIGHTWATCHER_<SECRET>_PASSWORD, in capitals. Set in config.toml alone. |
 | `fly_every_s` | a number of seconds, zero or more | `300.0` | household | Average seconds between flies while blocking runs at the household's normal rate, which AdGuard Home's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query. |
 
 ### [sources.security]
@@ -350,7 +389,7 @@ Bans and the threat score, from a fail2ban summary.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of the fail2ban summary; the collector calls /soc on it. |
 
@@ -360,10 +399,10 @@ Episodes imported, from Sonarr.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Sonarr. |
-| `secret` | letters, digits and underscores | `"sonarr"` | household | Names the .env variable holding its API key: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. |
+| `secret` | letters, digits and underscores | `"sonarr"` | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone. |
 
 ### [sources.radarr]
 
@@ -371,14 +410,14 @@ Films imported, from Radarr.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `enabled` | `true` or `false` | `true` | household | Set to false to turn the source off while keeping its table. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Radarr. |
-| `secret` | letters, digits and underscores | `"radarr"` | household | Names the .env variable holding its API key: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. |
+| `secret` | letters, digits and underscores | `"radarr"` | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone. |
 
 ### [[thing]]
 
-Each [[thing]] table, at the top level, is one machine on the network to watch. There can be 32, the Pi of [sources.pi] included. A thing has exactly one check: host with port or ports, or url. Watched things, below, says how they are checked and drawn.
+Machines on the network to watch, each a [[thing]] table at the top level of config.toml. There can be 32, the Pi of [sources.pi] included. A thing has exactly one check: an address with one or more ports (host with port or ports), or a web address (url).
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
@@ -392,16 +431,16 @@ Each [[thing]] table, at the top level, is one machine on the network to watch. 
 | `verify_tls` | `true` or `false` | `false` | household | Whether the certificate is checked. Only with an https url. |
 | `every_s` | a whole number of seconds, from 10 to 3600 | `30` | household | Seconds between checks. |
 | `down_after_s` | a whole number of seconds, from every_s to 86400 | `180` | household | Seconds of silence before the thing counts as down. |
-| `alert` | `true` or `false` | `true` | household | Whether the thing also raises thing_down while it is down. |
-| `enabled` | `true` or `false` | `true` | household | Set to false to keep the table but stop the checks and leave the thing out of the state file. |
+| `alert` | `true` or `false` | `true` | household | Whether the thing raises Thing down (thing_down) while it is down. |
+| `enabled` | `true` or `false` | `true` | household | Whether the thing is checked. Off (false in config.toml) keeps it in the list, stops its checks and leaves it off the displays. |
 
 ### [look]
 
-The household default for the knight and the monarch at court. Each display may choose its own on its settings screen. The colours, tones and hair styles are those of the base pack.
+The knight and the monarch at court, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The colours, tones and hair styles are those of the base pack.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `build` | `"a"`, `"b"` or `"c"` | none | display | The knight's build, by the base pack's names: "a" Classic, the present knight, "b" Broad and "c" Slim. The page's own is the base pack's default build, and only a build the packs in use declare is shown. |
+| `build` | `"a"`, `"b"` or `"c"` | none | display | The knight's build, by the base pack's names: Classic (a), the present knight, Broad (b) and Slim (c). The page's own is the base pack's default build, and only a build the packs in use declare is shown. |
 | `weapon` | `"greatsword"` or `"sword_and_shield"` | none; the page's own is `"greatsword"` | display | What the knight carries. |
 | `skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"` | none; the page's own is `"warm"` | display | The knight's skin tone. |
 | `hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"` or `"silver"` | none; the page's own is `"brown"` | display | The knight's hair colour. |
@@ -415,17 +454,17 @@ The household default for the knight and the monarch at court. Each display may 
 
 ### [display]
 
-The household default for how the display shows the words. Each display may choose its own.
+How every display shows the words. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `headline` | `"small"`, `"medium"` or `"large"` | none; the page's own is `"medium"` | display | The size of the headline. |
-| `clock` | `24` or `12` | none; the page's own is `24` | display | The clock's hours, as a number. |
+| `clock` | `24` or `12` | none; the page's own is `24` | display | Whether the clock shows 24 hours or 12. |
 | `helmet_indoors` | `true` or `false` | none; the page's own is `false` | display | Whether the helmet stays on in the house and the smithy. |
 
 ### [quiet]
 
-The household default for the scenes that take turns while all is quiet. Each display may choose its own.
+The scenes that take turns while all is quiet, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
@@ -434,7 +473,7 @@ The household default for the scenes that take turns while all is quiet. Each di
 
 ### [scenes]
 
-The household default for the scene a condition plays in. Each key is a condition id and each value one of the page's scenes. The page offers a choice for the conditions below, which more than one scene can act. The collector accepts any condition id and any scene, but the page plays a condition in its own scene when the scene given cannot act it, with a line in the browser's console.
+Where the knight acts out each condition that more than one scene can play, for every display. A condition left out plays in its own scene. In config.toml each key is a condition and each value a scene; a scene that cannot act its condition is ignored, and the condition plays in its own.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
@@ -446,7 +485,7 @@ The household default for the scene a condition plays in. Each key is a conditio
 
 ### .env
 
-Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, and the credentials reach the collector alone.
+Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, the admin password reaches the server alone, and the credentials reach the collector alone.
 
 | Variable | Scope | Values | Default | What it is |
 |---|---|---|---|---|
@@ -454,9 +493,10 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KNIGHTWATCHER_BACKUP_LOG` | path | a host path, such as `/var/log/backup.log` | required | The host's backup log, a single file. Mounted read-only at /host/backup.log. |
 | `KNIGHTWATCHER_DATA_DISK` | path | a host path, such as `/data/lost+found` | required | Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size. |
 | `KNIGHTWATCHER_VAR` | path | a host path, such as `./var` | `./var` | The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account. |
-| `KNIGHTWATCHER_SERVER_VAR` | path | a host path, such as `./var/server` | `./var/server` | The host folder for the bundled server's own files: the settings saved for every display, in settings.json. Mounted at /var/lib/knightwatcher-server, the one place the server writes. Must exist and be writable by the server's account. |
+| `KNIGHTWATCHER_SERVER_VAR` | path | a host path, such as `./var/server` | `./var/server` | The host folder for the bundled server's own files: the settings saved for every display, in settings.json, and those set on the admin page, in admin.json, with the admin page's sessions. Mounted at /var/lib/knightwatcher-server, the one place the server writes, and read-only at the same place in the collector, which takes up admin.json. Must exist and be writable by the server's account. |
 | `KNIGHTWATCHER_SERVER_ADDRESS` | server | an address of this host, or empty for all of them, such as `127.0.0.1` | empty | The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network. |
 | `KNIGHTWATCHER_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
+| `KNIGHTWATCHER_ADMIN_PASSWORD` | server | a password of at least 12 characters, or empty to leave the admin page off, such as `a-long-password-of-your-own` | empty | The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out. |
 | `KNIGHTWATCHER_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for [sources.streams]. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for [sources.adblock]. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
@@ -641,7 +681,8 @@ config: scenes.cpu_hot: unknown value "forest"; use battlement, camp, house, yar
 
 Both containers run as uid and gid 10001, an account that exists only inside the image and owns
 nothing on the host. The collector needs to write in its output folder and its memory folder, and
-the server in its own folder; the server reads the output folder. Access control lists grant that
+the server in its own folder; the server reads the output folder, and the collector the server's
+folder. Access control lists grant that
 without root, as long as you own the folders, and leave their owner and mode alone. With the
 folders of `.env.example`, all under `./var`:
 
@@ -657,7 +698,7 @@ folders from then on, and names your own uid as well so that you can still read 
 containers write. Files already there from an earlier run under another uid need the grant once:
 `setfacl -m u:10001:rw` on each. Stop that earlier collector first, since every file it rewrites
 comes back without the grant. `config.toml` and the backup log only need to be readable by
-everyone, and `/proc` needs nothing. `.env` needs no grant: docker compose reads it as you, and the
+everyone (both containers read `config.toml`), and `/proc` needs nothing. `.env` needs no grant: docker compose reads it as you, and the
 collector gets its credentials as environment variables.
 
 To run them under another uid, change `user:` in `compose.yaml` and grant that uid instead.

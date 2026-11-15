@@ -114,7 +114,7 @@ function reference(schema) {
     for (const s of t.settings) out.push('| ' + [code(s.key), valuesText(s), defaultText(s), s.scope, s.help].map(cell).join(' | ') + ' |');
     out.push('');
   }
-  out.push('### .env', '', 'Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server\'s address and port are where it publishes the bundled server, and the credentials reach the collector alone.', '');
+  out.push('### .env', '', 'Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server\'s address and port are where it publishes the bundled server, the admin password reaches the server alone, and the credentials reach the collector alone.', '');
   out.push('| Variable | Scope | Values | Default | What it is |', '|---|---|---|---|---|');
   for (const e of schema.env) {
     const values = e.scope === 'path' ? 'a host path, such as ' + code(e.example) : e.form + ', such as ' + code(e.example);

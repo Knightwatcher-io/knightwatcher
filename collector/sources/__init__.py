@@ -14,7 +14,14 @@ from typing import Any
 from collector.config import Config
 from collector.net import AuthError, SourceError
 
-__all__ = ["AuthError", "Reading", "Source", "SourceError", "build_sources"]
+__all__ = [
+    "AuthError",
+    "MissingCredentials",
+    "Reading",
+    "Source",
+    "SourceError",
+    "build_sources",
+]
 
 
 @dataclass
@@ -53,6 +60,27 @@ class Source:
         return []
 
 
+class MissingCredentials(Source):
+    """A source whose credentials the environment lacks, taken up while the collector runs.
+
+    It fails at every read with the variables it lacks, by name, so the state file shows the
+    source failing and why, and the rest of the collector carries on.
+    """
+
+    def __init__(self, name: str, settings: dict[str, Any], config: Config, variables: list[str]):
+        super().__init__(settings, config)
+        self.name = name
+        self.variables = variables
+
+    def fetch(self, now: dt.datetime) -> Reading:
+        raise SourceError(f"{' and '.join(self.variables)} missing")
+
+
+def _variables(problems: list[str]) -> list[str]:
+    """The variables named by the problems of Config.missing: ".env: NAME missing (for x)"."""
+    return [p.split(": ", 1)[1].split(" ", 1)[0] for p in problems]
+
+
 def build_sources(config: Config) -> list[Source]:
     from collector.sources import (
         adblock,
@@ -89,6 +117,9 @@ def build_sources(config: Config) -> list[Source]:
             # The Pi of [sources.pi] is a watched thing, kept in its place among the sources.
             pi = next(t for t in config.things if t["legacy"])
             built.append(things.ThingSource(pi, config))
+        elif name in config.missing:
+            variables = _variables(config.missing[name])
+            built.append(MissingCredentials(name, settings, config, variables))
         else:
             built.append(classes[name](settings, config))
     built += [things.ThingSource(t, config) for t in config.things if not t["legacy"]]

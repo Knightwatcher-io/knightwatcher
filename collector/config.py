@@ -145,6 +145,9 @@ class Config:
 
     # The value of every credential variable the environment held, used or not, for scrubbing.
     scrub: list[str] = field(default_factory=list, repr=False)
+    # Built with missing="report": each enabled source whose credentials the environment lacks,
+    # with the problems that name them. Such a source runs and fails, saying which is missing.
+    missing: dict[str, list[str]] = field(default_factory=dict)
 
     def secret_values(self) -> list[str]:
         """Every secret string, so that error text can be scrubbed of them."""
@@ -586,12 +589,16 @@ def _quiet_scenes(w: str, value: Any, problems: list[str]) -> None:
 
 
 def _credentials(
-    sources: dict[str, dict], env: Mapping[str, str], problems: list[str]
+    sources: dict[str, dict],
+    env: Mapping[str, str],
+    problems: list[str],
+    missing: dict[str, list[str]] | None = None,
 ) -> dict[str, dict[str, str]]:
     """The credentials of the enabled sources, by their `secret`, read from env.
 
-    A credential that is unset or empty is a problem naming its variable. No message here, or
-    anywhere else, carries a credential's value.
+    A credential that is unset or empty is a problem naming its variable, added to problems, or
+    to missing under its source's name when missing is given. No message here, or anywhere else,
+    carries a credential's value.
     """
     out: dict[str, dict[str, str]] = {}
     for name, s in sources.items():
@@ -604,18 +611,26 @@ def _credentials(
             variable = schema.env_name(secret, f)
             value = env.get(variable)
             if not isinstance(value, str) or not value:
-                problems.append(f".env: {variable} missing (for {name})")
+                problem = f".env: {variable} missing (for {name})"
+                if missing is None:
+                    problems.append(problem)
+                else:
+                    missing.setdefault(name, []).append(problem)
             else:
                 section[f] = value
     return out
 
 
-def build(raw: dict, env: Mapping[str, str] | None = None) -> Config:
+def build(raw: dict, env: Mapping[str, str] | None = None, missing: str = "refuse") -> Config:
     """Validate a parsed config.toml and fill in the defaults.
 
     The credentials are read from env, a mapping of environment variables, and checked too,
-    unless env is None, which the health check uses so that it needs none.
+    unless env is None, which the health check uses so that it needs none. A credential env lacks
+    is a problem, or with missing="report" is kept in the Config's `missing` instead, so that a
+    collector taking up a change while it runs keeps going with that source failing.
     """
+    if missing not in ("refuse", "report"):
+        raise ValueError(f"missing: {missing!r}")
     problems: list[str] = []
     for key in raw:
         if key not in ("collector", "conditions", "sources", "thing", *DEFAULT_TABLES):
@@ -640,26 +655,59 @@ def build(raw: dict, env: Mapping[str, str] | None = None) -> Config:
             _validate_source(name, s, problems)
     things = _things(raw.get("thing"), sources, conditions, problems)
     defaults = _defaults(raw, problems)
-    secrets = _credentials(sources, env, problems) if env is not None else {}
+    lacking: dict[str, list[str]] = {}
+    report = lacking if missing == "report" else None
+    secrets = _credentials(sources, env, problems, report) if env is not None else {}
     # The credentials the schema names are scrubbed from error text whether or not a source uses
     # them, as every section of the old secrets file was.
     names = [e["name"] for e in schema.credentials()]
     scrub = [env[n] for n in names if env is not None and isinstance(env.get(n), str) and env[n]]
     if problems:
         raise ConfigError(problems)
-    return Config(collector, conditions, sources, secrets, things, defaults, scrub)
+    return Config(collector, conditions, sources, secrets, things, defaults, scrub, lacking)
 
 
-def load(config_path: str, env: Mapping[str, str] | None) -> Config:
-    """Read config.toml and build it, with the credentials from env (see build)."""
+def read(config_path: str) -> dict:
+    """config.toml, parsed; ConfigError when it cannot be read or is not TOML."""
     try:
         with open(config_path, "rb") as fh:
-            raw = tomllib.load(fh)
+            return tomllib.load(fh)
     except OSError as exc:
         raise ConfigError([f"{config_path}: cannot read ({exc.strerror})"]) from None
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError([f"{config_path}: {exc}"]) from None
-    return build(raw, env)
+
+
+def load(config_path: str, env: Mapping[str, str] | None) -> Config:
+    """Read config.toml and build it, with the credentials from env (see build)."""
+    return build(read(config_path), env)
+
+
+# The fields a credential variable ends with: KNIGHTWATCHER_<SECRET>_<FIELD>.
+_CREDENTIAL = re.compile(
+    r"^KNIGHTWATCHER_[A-Z0-9_]+_(?:"
+    + "|".join(sorted({e["field"].upper() for e in schema.credentials()}))
+    + r")$"
+)
+
+
+def credential_names(env: Mapping[str, str]) -> dict[str, bool]:
+    """Which credential variables env holds, by name and never by value.
+
+    Every variable the schema names is listed, true when it holds a value; so is any other
+    variable of the form KNIGHTWATCHER_<SECRET>_<FIELD> that holds one, such as the variables a
+    source's own `secret` names. The bundled server reads this to check a change on the admin
+    page, since it gets no credential itself.
+    """
+    out = {e["name"]: False for e in schema.credentials()}
+    # The schema's other variables, the admin password among them, are never credentials.
+    others = {e["name"] for e in schema.SCHEMA["env"] if e["scope"] != "credential"}
+    for name, value in env.items():
+        if name in others:
+            continue
+        if _CREDENTIAL.match(name) and isinstance(value, str) and value:
+            out[name] = True
+    return dict(sorted(out.items()))
 
 
 def read_env_file(path: str) -> dict[str, str]:

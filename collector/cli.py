@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import signal
@@ -10,11 +11,15 @@ import sys
 import threading
 import time
 
-from collector.config import ConfigError, load, read_env_file
-from collector.runner import STATE_FILE, Runner
-from collector.store import Memory
+from collector import overlay, reload
+from collector.config import ConfigError, credential_names, load, read_env_file
+from collector.runner import STATE_FILE, Runner, utcnow
+from collector.store import Memory, atomic_write
 
 DEFAULT_CONFIG = "/etc/knightwatcher/config.toml"
+# Beside state.json: the names of the credential variables the collector's environment holds, for
+# the bundled server's admin page. Never a value.
+CREDENTIALS_FILE = "credentials.json"
 
 log = logging.getLogger("collector")
 
@@ -22,6 +27,12 @@ log = logging.getLogger("collector")
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="collector", description="Knightwatcher collector")
     p.add_argument("--config", default=os.environ.get("KNIGHTWATCHER_CONFIG", DEFAULT_CONFIG))
+    p.add_argument(
+        "--admin",
+        default=os.environ.get("KNIGHTWATCHER_ADMIN_FILE", overlay.DEFAULT_PATH),
+        metavar="PATH",
+        help="the admin page's settings, laid over the config (default %(default)s)",
+    )
     p.add_argument(
         "--env-file",
         metavar="PATH",
@@ -47,7 +58,16 @@ def _health(config) -> int:
     except OSError:
         print(f"unhealthy: {STATE_FILE} missing", file=sys.stderr)
         return 1
-    if age > 3 * config.interval_s:
+    # The admin page may have set another interval: the file says the one in use.
+    interval = config.interval_s
+    try:
+        with open(path, encoding="utf-8") as fh:
+            written = json.load(fh).get("interval_s")
+        if isinstance(written, int) and not isinstance(written, bool) and written > 0:
+            interval = max(interval, written)
+    except (OSError, ValueError, AttributeError):
+        pass
+    if age > 3 * interval:
         print(f"unhealthy: {STATE_FILE} is {age:.0f} s old", file=sys.stderr)
         return 1
     return 0
@@ -65,6 +85,7 @@ def main(argv: list[str] | None = None) -> int:
         stream=sys.stderr,
     )
     logging.Formatter.converter = time.gmtime
+    settings = None
     try:
         if args.health:
             env = None  # the health check needs no credentials
@@ -72,7 +93,12 @@ def main(argv: list[str] | None = None) -> int:
             env = read_env_file(args.env_file)
         else:
             env = os.environ
-        config = load(args.config, env)
+        if args.health or args.check_config:
+            # config.toml alone, which is what the collector needs to start.
+            config = load(args.config, env)
+        else:
+            settings = reload.Settings(args.config, args.admin, env)
+            config, said = settings.start()
     except ConfigError as exc:
         for problem in exc.problems:
             print(f"config: {problem}", file=sys.stderr)
@@ -104,6 +130,12 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     runner = Runner(config, memory)
+    runner.config_note = reload.note(said, utcnow())
+    try:
+        names = json.dumps(credential_names(env), indent=1).encode("utf-8")
+        atomic_write(os.path.join(config.collector["output_dir"], CREDENTIALS_FILE), names, 0o640)
+    except OSError as exc:
+        log.warning("cannot write %s: %s", CREDENTIALS_FILE, exc.strerror)
     log.info("collector started: %d sources, every %d s", len(runner.sources), config.interval_s)
     if args.once:
         runner.cycle()
@@ -122,8 +154,12 @@ def main(argv: list[str] | None = None) -> int:
     while not stop.is_set():
         started = time.monotonic()
         try:
+            reload.poll(settings, runner, utcnow)
+        except Exception:
+            log.exception("the settings could not be read again")
+        try:
             runner.cycle()
         except Exception:
             log.exception("poll failed")
-        stop.wait(max(0.0, config.interval_s - (time.monotonic() - started)))
+        stop.wait(max(0.0, runner.config.interval_s - (time.monotonic() - started)))
     return 0

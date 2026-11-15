@@ -1,6 +1,7 @@
 # Knightwatcher: the collector and the bundled server, both from the image the Dockerfile builds.
-# Host paths, the server's address and port, and the credentials come from .env beside this file
-# (ignored by git; .env.example is the template); see docs/configuration.md and docs/server.md.
+# Host paths, the server's address and port, the admin password and the credentials come from .env
+# beside this file (ignored by git; .env.example is the template); see docs/configuration.md and
+# docs/server.md.
 # Every host path is bound with create_host_path: false, so a missing path stops the container
 # instead of Docker creating an empty folder in its place.
 name: knightwatcher
@@ -33,7 +34,7 @@ services:
       KNIGHTWATCHER_SONARR_API_KEY: ${KNIGHTWATCHER_SONARR_API_KEY:-}
       KNIGHTWATCHER_RADARR_API_KEY: ${KNIGHTWATCHER_RADARR_API_KEY:-}
     volumes:
-      # Settings, read once at start.
+      # Settings, read at start and again whenever the file is written in place.
       - type: bind
         source: ./config.toml
         target: /etc/knightwatcher/config.toml
@@ -67,10 +68,18 @@ services:
         source: ${KNIGHTWATCHER_VAR:-./var}
         target: /var/lib/knightwatcher
         bind: { create_host_path: false }
+      # The server's folder, read only: what is set on the admin page, in admin.json, laid over
+      # config.toml and taken up between polls.
+      - type: bind
+        source: ${KNIGHTWATCHER_SERVER_VAR:-./var/server}
+        target: /var/lib/knightwatcher-server
+        read_only: true
+        bind: { create_host_path: false }
 
-  # The page, state.json and the shared settings, over plain HTTP. It gets no credential and no
-  # variable from .env: compose reads only its address and port, to publish it. Open to the LAN by
-  # default; docs/server.md says how to put a login in front.
+  # The page, state.json, the shared settings and the admin page, over plain HTTP. It gets no
+  # credential: from .env it is given the admin password alone, and compose reads its address and
+  # port to publish it. The walls are open to the LAN by default; docs/server.md says how to put a
+  # login in front.
   server:
     build: .
     container_name: knightwatcher-server
@@ -86,18 +95,31 @@ services:
       timeout: 10s
       start_period: 10s
       retries: 2
+    # The admin page's password, and nothing else from .env. Left empty, or shorter than 12
+    # characters, the admin page stays off.
+    environment:
+      KNIGHTWATCHER_ADMIN_PASSWORD: ${KNIGHTWATCHER_ADMIN_PASSWORD:-}
     # Inside the container it listens on 8080; on the host, at the address and port in .env. With
     # no address it is published on all of the host's addresses.
     ports:
       - "${KNIGHTWATCHER_SERVER_ADDRESS:+${KNIGHTWATCHER_SERVER_ADDRESS:-}:}${KNIGHTWATCHER_SERVER_PORT:-8080}:8080"
     volumes:
-      # The collector's output: state.json and the packs it downloaded. Read only.
+      # The collector's output: state.json, the packs it downloaded, and the names of the
+      # credentials it holds (credentials.json, read and never served). Read only.
       - type: bind
         source: ${KNIGHTWATCHER_OUT:?set KNIGHTWATCHER_OUT in .env}
         target: /out
         read_only: true
         bind: { create_host_path: false }
-      # The server's own folder, where the shared settings are kept: the one place it writes.
+      # Settings, read only, so that the admin page checks a change as the collector will. It holds
+      # no secret.
+      - type: bind
+        source: ./config.toml
+        target: /etc/knightwatcher/config.toml
+        read_only: true
+        bind: { create_host_path: false }
+      # The server's own folder, where the shared settings and the admin page's are kept: the one
+      # place it writes.
       - type: bind
         source: ${KNIGHTWATCHER_SERVER_VAR:-./var/server}
         target: /var/lib/knightwatcher-server
