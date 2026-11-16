@@ -262,21 +262,21 @@
 
   /* What the engine takes from the settings (docs/page.md): the quiet scenes in turn and how long
      each lasts, ownMs while no level above the page's own sets the length (the demo's minute, or
-     live mode's ten), the monarch; the monarch's skin, hair and robe from the base pack's skin,
-     hair and tabard swatches, each null for the court's own while nothing sets it or there is no
-     base pack; and the scene chosen for each condition, holding only what a level above the
-     page's own sets. */
+     live mode's ten); the patron, the monarch, as { id, skin, hair, robe }, the skin, hair and robe
+     from the base pack's skin, hair and tabard swatches, each null for the court's own while
+     nothing sets it or there is no base pack; and the scene chosen for each condition, holding
+     only what a level above the page's own sets. */
   function engineInput(r, pack, ownMs) {
     const q = r.values.quiet, L = r.values.look;
     const swatch = (set, id) => { const sw = isObj(pack) && isObj(pack.swatches) && isObj(pack.swatches[set]) ? pack.swatches[set][id] : null; return isObj(sw) && isObj(sw.entries) ? sw.entries : null; };
     const set = k => r.from.look[k] !== 'built-in' && L[k] !== null;
     const sk = set('monarch_skin') ? swatch('skin', L.monarch_skin) : null, hr = set('monarch_hair') ? swatch('hair', L.monarch_hair) : null, rb = set('monarch_robe') ? swatch('tabard', L.monarch_robe) : null;
-    const monSkin = sk ? { id: L.monarch_skin, face: sk.face, cheek: sk.cheek } : null;
-    const monHair = hr ? { id: L.monarch_hair, bands: [hr['0'], hr['1'], hr['2']], brow: hr.brow } : null;
-    const monRobe = rb ? { id: L.monarch_robe, bands: [rb['0'], rb['1'], rb['2'], rb['3']] } : null;
+    const patron = { id: L.monarch, skin: sk ? { id: L.monarch_skin, face: sk.face, cheek: sk.cheek } : null,
+      hair: hr ? { id: L.monarch_hair, bands: [hr['0'], hr['1'], hr['2']], brow: hr.brow } : null,
+      robe: rb ? { id: L.monarch_robe, bands: [rb['0'], rb['1'], rb['2'], rb['3']] } : null };
     const scenes = {};
     for (const c of Object.keys(r.values.scenes || {})) if (r.from.scenes[c] !== 'built-in') scenes[c] = r.values.scenes[c];
-    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, mon: L.monarch, monSkin, monHair, monRobe, scenes };
+    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, patron, scenes };
   }
 
   /* The clock's words for a time: { time, half }. On the 24-hour clock '09:42' and no half; on the
@@ -598,8 +598,8 @@
       V.HL = 0; V.HR = V.HW; V.HT = 0; D.setCtx(ctx);
       try { fn(); } finally { D.setCtx(was); Object.assign(V, edges); }
     }
-    const sceneState = (sc, o2, mon, monSkin, monHair, monRobe) => ({ w: KW.state.IDLE, devices: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], places: sc.places || null, tv: false,
-      kx: sc.spot * U, o: o2, here: null, inBed: false, helmOff: o2.helmet === false, strike: false, mon, monSkin, monHair: monHair || null, monRobe: monRobe || null });
+    const sceneState = (sc, o2, patron) => ({ w: KW.state.IDLE, devices: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], places: sc.places || null, tv: false,
+      kx: sc.spot * U, o: o2, here: null, inBed: false, helmOff: o2.helmet === false, strike: false, patron });
     /* Pictures that do not move, kept until the look or the helmet changes: the quiet scenes with the
        knight at its arrival spot, and the monarchs cropped from the court's own drawing. */
     const pics = new Map();
@@ -612,18 +612,18 @@
       return picture('scene|' + name, () => {
         const sc = KW.scenes[name], o2 = K.pose('idle', 2300);
         o2.x = sc.spot * U; o2.floor = V.HFL; o2.helmet = helmetIndoors ? true : sc.helmet !== false; if (sc.sword === false) o2.sword = false;
-        const s = sceneState(sc, o2, 'a', null);
+        const s = sceneState(sc, o2, { id: 'a', skin: null, hair: null, robe: null });
         if (sc.paint) sc.paint(s); sc.draw(2300, s); K.draw(o2);
       });
     }
     const CROP = { x: 700, y: 160, w: 240, h: 372 };
     function monarchPicture(mon, e) {
-      const key = 'court|' + mon + '|' + [e.monSkin, e.monHair, e.monRobe].map(x => (x ? x.id : '')).join('|');
+      const p = e.patron, key = 'court|' + mon + '|' + [p.skin, p.hair, p.robe].map(x => (x ? x.id : '')).join('|');
       if (pics.has(key)) return pics.get(key);
       const big = document.createElement('canvas'); big.width = V.HW; big.height = V.HH;
       const sc = KW.scenes.court, o2 = K.pose('ssh_session', 100);
       o2.x = sc.spot * U; o2.floor = V.HFL;
-      onGrid(big.getContext('2d'), () => { const s = sceneState(sc, o2, mon, e.monSkin, e.monHair, e.monRobe); sc.paint(s); sc.draw(100, s); });
+      onGrid(big.getContext('2d'), () => { const s = sceneState(sc, o2, Object.assign({}, p, { id: mon })); sc.paint(s); sc.draw(100, s); });
       const out = document.createElement('canvas'); out.width = CROP.w; out.height = CROP.h;
       out.getContext('2d').drawImage(big, CROP.x, CROP.y, CROP.w, CROP.h, 0, 0, CROP.w, CROP.h);
       pics.set(key, out);
@@ -791,7 +791,7 @@
         const d = defaultsOf('look');
         list.appendChild(reset('look', 'look', lookWords(d.values, pack), d.fromConfig, hooked(r, 'look')));
         prev.appendChild(el('h2', '', 'At court'));
-        const cv = el('canvas', 'court'); cv.id = 'kws-court'; cv.dataset.skin = e.monSkin ? e.monSkin.id : ''; prev.appendChild(cv);
+        const cv = el('canvas', 'court'); cv.id = 'kws-court'; cv.dataset.skin = e.patron.skin ? e.patron.skin.id : ''; prev.appendChild(cv);
       } },
       display: { label: 'Display', build(list, prev, r) {
         const v = r.values.display;

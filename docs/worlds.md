@@ -5,10 +5,11 @@ drawings of the devices, the words and the overlay. Format 1.1 of the packs carr
 data ([packs.md](./packs.md#format-11) gives the format and its checks). This page describes what
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
 pack, `kw.medieval`, which holds six scenes, the battlement, the camp, the yard, the cellar, the
-smithy and the house, the devices, the prop set `props.medieval`, and of the cast the goblin and the
-fly. With the house, step W5 of the conversion is complete apart from the court, which waits for the
-patron (step W7), and with the devices step W6. Step W7 has begun with the fly and the goblin: the
-court, the monarchs, the words and the overlay are still drawn from code.
+smithy and the house, the devices, the prop set `props.medieval`, and the cast: the three monarchs,
+the goblin and the fly. With the house, step W5 of the conversion is complete apart from the court,
+which waits for the patron (step W7), and with the devices step W6. Step W7 has given the cast: the
+court is still a code scene, though it draws its monarch from the pack's patrons, and the words and
+the overlay are still drawn from code.
 
 ## The medieval world's pack
 
@@ -88,8 +89,11 @@ loads it after the base pack's. It holds:
   and its `screen` `{ "group": "tv" }`;
 - the prop set `props.medieval`, the devices of `props.js` written as data: the five kinds `pi`,
   `camera`, `machine`, `vm` and `box`, each up and gone, below ([The devices](#the-devices));
+- the cast members `patron.a`, `patron.b` and `patron.c`, the three monarchs of `court.js` written
+  as data: each seated on its anchors, its mouth shut and open, and the user's skin, hair and robe
+  laid over it as the court lays them, below ([The cast](#the-cast));
 - the cast member `foe.goblin`, the goblin of `props.js` written as data: its measures and its six
-  poses, built from ten parts they share, below ([The cast](#the-cast));
+  poses, built from ten parts they share, below;
 - the cast member `critter.fly`, the fly of `props.js` written as data: its two frames and the dead
   fly that falls once it is swatted, below;
 - three stamps, `sconce`, `barrel` and `peg`: the props `sconceHD` and `barrelHD` of `props.js`, the
@@ -132,7 +136,8 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 | `box` | 58 still | 101 still |
 
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
-own lamp counts toward none of them. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+own lamp counts toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
+5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each.
 
@@ -140,7 +145,7 @@ The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
 then version 0.2.0, and version 0.3.0, which adds the devices. Version 0.4.0, which adds the cast,
 ships unsigned until its signing run, so until then a `dev` page draws every scene but the court,
-every device, the goblin and the fly from it, and a deployed page draws them from code. A change to the pack
+every device and the cast from it, and a deployed page draws them from code. A change to the pack
 takes the signature's validity with it: until the next signing run a deployed page refuses it and
 draws every scene, every device and the cast from code, while a `dev` page still reads it.
 
@@ -221,6 +226,9 @@ compiled. A member that fails to compile is drawn from code, with a line of its 
 | `source` | `'pack'` when any member is drawn from the pack's cast, `'code'` otherwise |
 | `members` | for each member compiled or tried, by its id, `'pack'` or `'code'` |
 | `faults` | `{ member, reason }` for each member that failed to compile |
+
+The court is still a code scene, and draws its monarch from `KW.cast.patrons`, so on a page that
+reads the pack the monarchs come from the pack's patrons.
 
 `start` puts the code scenes, the code's devices and the code's cast back before it reads, so a
 second call starts afresh. Not done yet:
@@ -465,7 +473,7 @@ engine sets, so the screen gives no act of its own, and nor does the bed: the ho
 the shape kind `dith`, a `pix` colour chosen as it is drawn (a pick or a palette track's), the marks `patron`, `target` and `bubble`, `only` on a shape, `"g"`
 on an effect or a mark, of keyframes a clock in seconds, a triggered clock (`trigger`), any ease but
 `step` and any channel but `show`, `dx` and `dy`, a colour a palette track drives inside a band
-list, in an effect or through another entry, a mixed colour, a pick inside a band list or an
+list, in an effect or through another entry, a mix or a contrast outside a patron, a pick inside a band list or an
 effect, an effect inside a stamp, a triggered effect (`burst`) in a scene without a target or an
 anvil, a burst of sparks on a target's blow and of straw on the hammer's, a scene with both a target
 and an anvil, a scene that hosts the flies without the crate or the crate without the flies, and the
@@ -536,13 +544,14 @@ class box as drawn.
 
 ## The cast
 
-`KW.cast` holds the drawings of the engine's supporting cast, by role and then by name: `foes`, with
-the interface of `KW.props.FOES`, and `critters`, with that of `KW.props.CRITTERS`
-([page.md](./page.md#the-cast)). `world.js` fills it with the code's members when it loads, and
+`KW.cast` holds the drawings of the engine's supporting cast, by role and then by name: `patrons`,
+with the interface of `KW.props.PATRONS` (which `court.js` gives), `foes`, with that of
+`KW.props.FOES`, and `critters`, with that of `KW.props.CRITTERS` ([page.md](./page.md#the-cast)). `world.js` fills it with the code's members when it loads, and
 `start` puts the members the pack's cast gives in their place. The engine reads `KW.cast`, or the
-code's tables on a page without the compiler. The engine keeps the motion: where the flies hover,
-when they are swatted, the poof (`poofHD`) and the fall; the foe's entrance over the wall or out of
-the ground, the strike and the exit. A member gives only its drawings and its measures.
+code's tables on a page without the compiler; the court reads `KW.cast.patrons`. The engine keeps
+the motion: where the flies hover, when they are swatted, the poof (`poofHD`) and the fall; the foe's
+entrance over the wall or out of the ground, the strike and the exit; and the court keeps when the
+monarch talks. A member gives only its drawings and its measures.
 
 A member's shapes are compiled as a prop's and drawn moved to the point the engine gives, so the
 marks, the tiles and an effect placed on the screen by a field of its own are refused in the cast as
@@ -596,6 +605,68 @@ Three things needed more than writing the numbers out:
 - the shut eyes of `hit` are strips 2.2 either side, which is not an eighth; the pack gives 2.125,
   which fills the same pixels there.
 
+**A patron** compiles to the interface of `KW.props.PATRONS`: `draw(x, by, look)`, its still parts
+with the seat at `(x, by)`, `mouth(x, by, open, look)`, its state `open` or `shut`, and `drawn`, its
+own hair and robe colours for the settings' "As drawn". Each shape is drawn moved to the anchor its
+`at` names, or its part's (a state's: the seat). `look` is `{ skin, hair, robe }`, which the court
+takes from `s.patron` and checks as before (a face of three bands and a cheek, three hair bands, four
+robe bands), each `null` for the patron's own. A bound set takes the user's colours where the look
+gives the user's set it binds, and its `own` otherwise: `skin` the look's face and cheek, `hair` its
+three bands and its brow, `tabard` its four bands. A bound set needs an `own`, since the user may
+leave it unchosen; one without is refused by name. The patron's palettes resolve against those
+colours. Every colour is resolved once for each look, the first time the look is drawn, and the
+compiled shapes are kept (at most 16 looks), so a frame resolves nothing; the court's backdrop is
+painted again only when its key changes, and the mouth takes the look kept for it.
+
+Two colour forms of format 1.1 exist for the patrons ([packs.md](./packs.md#the-cast)):
+
+- **drawn and dressed**, `{ "drawn": "#1f1a2d", "dressed": { "mix": ["@hair.2", "#000000"], "k":
+  0.3 }, "set": "hair" }`, an entry of a patron's palettes: `drawn` while the look leaves the bound
+  set `set` names unchosen, `dressed` once it gives it. The court shades each monarch as drawn with
+  colours of its own, B's and C's darkest strands, B's sheen and every brow, which no mix of its own
+  hair gives (B's dark is `#1f1a2d`, its hair's darkest band darkened to 0.7 `#1d1929`); and with a
+  chosen hair it shades from that hair. The entry names its set rather than leaving it to be worked
+  out from the colours it refers to, since a brow refers to the hair and the skin and follows the
+  hair alone;
+- **contrast**, `{ "contrast": ["@hair.0", { "mix": ["@hair.2", "#000000"], "k": 0.15 }], "on":
+  "@skin.face", "band": 1 }`: whichever of the two stands out more from `on` by the WCAG ratio, the
+  second on a tie, `band` picking one band where `on` is a band list. It is the court's readable
+  brow, `browOn` in `court.js`: a chosen hair's brow is its darkest band darkened, and on a skin
+  where that would hardly show (light hair on a dark skin), its lightest band.
+
+A mix is worked out as `toward()` in `court.js` does it, each channel moved and rounded, and the
+contrast as `contrast()` there reckons it, so the colours are the court's to the bit.
+
+**The monarchs as data.** Each monarch is `monarch()` in `court.js`, drawn once with every colour of
+its own named as the pack names it, its numbers counted from the seat (820, 505 in the court): the
+shoes and the robe, the ermine, the front of the robe, the sleeves and hands, what it holds, the
+collar and what it wears on the chest, the hair behind, the face, the beard, the cheeks and eyes,
+the hair over the face, the brows and the crown. Its shapes run in that order through two still
+parts of at most 120, at the seat; the mouth's shapes are at the mouth's anchor, 193 above the seat.
+Its sets bind `skin`, `hair` and `robe` (the user's tabard); its `own` is the base pack's warm skin,
+which is the court's own, and the monarch's hair and robe as drawn, the hair's brow its own brow.
+Its palette `mon` gives what the court derives from the hair and the iris:
+
+| Monarch | `dark` | `brow` | `sheen` | `iris` |
+|---|---|---|---|---|
+| A | a mix of `@hair.2` to black by 0.3, which as drawn is A's own | drawn `#4a2a12`, dressed by contrast | | `#5a3a22` |
+| B | drawn `#1f1a2d`, dressed the mix | drawn `#29233b`, dressed by contrast | drawn `#7a7299`, dressed `@hair.0` to white by 0.25 | `#3a4a86` |
+| C | drawn `#946a28`, dressed the mix | drawn `#a87a30`, dressed by contrast | | `#2f6b55` |
+
+Three things needed more than that:
+
+- C's fringe, swept across the brow, is one polygon whose lower edge turns in where the sweep ends,
+  so it is not convex, and no convex polygon fills its rows alike. The effect `fringe` draws it, `{
+  "k": "fx", "fx": "fringe", "p": [0, -240], "colour": "@hair.1" }`; `hairC` in `court.js` keeps
+  its own polygon, and the records hold the two equal;
+- the links of C's chain of office hang at `26 * (i / 45) ** 2` below the collar, which is not an
+  eighth; each is given the nearest eighth that fills the same pixels with the seat where the court
+  puts it, such as `-144.625` for `-144.64`;
+- C's crown has a post of gold under its jewel that `court.js` drew with `Rh` and the gold's band
+  list, which a canvas takes for no colour, so it always showed in the outline's colour set just
+  before it. `court.js` now names that colour, and the pack draws the same; the court's stored
+  records were written again for it, in their `fillStyle` alone, and every picture is unchanged.
+
 **The fly as data.** Its frames are `flyHD` in `props.js` with its numbers counted from where the
 engine puts it: the wings 2 above the body in `flap0` and 6 above in `flap1`, the body and the red
 eye the same in both. What falls is the 6 by 5 rect the engine drew itself before the cast,
@@ -603,8 +674,9 @@ eye the same in both. What falls is the 6 by 5 rect the engine drew itself befor
 `CRITTERS.fly.dead`; the engine passes the fall, `y + a * a / 900`, as the point.
 
 What the compiler does not build in the cast, it refuses by name, and the member is drawn from code:
-the role `patron`, which a later step builds, and in a critter or a foe the marks, tiles and effects
-above.
+a role the engine does not have, a bound set without an `own`, and in any member the marks, tiles
+and effects above. A colour a patron's palette or set does not give is refused with the entry it
+lacks.
 
 ## Writing a scene as data
 
@@ -731,13 +803,18 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   once from code, comparing every call of every frame. It holds the goblin from the pack to the
   code's: its measures, each pose's canvas call for call, painted once, and the engine's frames every
   20 ms through the whole event at the battlement and at the camp, the goblin's canvases written out
-  call by call. It checks too where the cast is drawn from on a `dev` and a deployed page, a page
-  without the compiler, that the engine plays the foe `KW.cast` gives with the exit it names, a
-  member that fails to compile and one the engine does not know, and what the compiler refuses in
-  the cast. `tests/web/scenes.test.js` draws the pack's fly and the goblin's six poses against the
-  stored records of the code's, `cast.json`, and `tests/web/world-scenes.test.js` runs the goblin
-  checks of `foe.test.js` on the pack's goblin, the blade against the drawn pixels of its poses
-  among them.
+  call by call. It draws each monarch from the pack beside the code's, its still parts and its mouth
+  shut and open, in every skin with every hair (as drawn among them) and the robe turning through
+  every choice, and in every robe alone, 165 looks call for call; checks that the brows come out by
+  contrast both ways; and that the court draws the patron `KW.cast` gives and keys its backdrop on
+  where the patron comes from. It checks too where the cast is drawn from on a `dev` and a deployed
+  page, a page without the compiler, that the engine plays the foe `KW.cast` gives with the exit it
+  names, a member that fails to compile and one the engine does not know, and what the compiler
+  refuses in the cast. `tests/web/scenes.test.js` draws the pack's fly and the goblin's six poses
+  against the stored records of the code's, `cast.json`, and the court, still a code scene, with the
+  monarchs from the pack's patrons against its own, `court.json`, all 522 of them; and
+  `tests/web/world-scenes.test.js` runs the goblin checks of `foe.test.js` on the pack's goblin, the
+  blade against the drawn pixels of its poses among them.
 - `tests/web/world-props.test.js` draws every kind of device from the prop set beside the code's
   drawing of it, through the engine's `KW.devices`, in every place of every scene (the court's among
   them), up and gone, with and without its question mark, at seven moments, 13 720 drawings compared

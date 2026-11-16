@@ -1,6 +1,6 @@
 // Tests for the cast of the medieval world's pack, the cast section of web/packs/medieval.pack.json,
-// against the code's drawings of it in web/js/props.js: the fly and the goblin. Run with:
-// node --test tests/web/
+// against the code's drawings of it: the fly and the goblin in web/js/props.js, and the three
+// monarchs, the patrons, in web/js/scenes/court.js. Run with: node --test tests/web/
 //
 // The page's scripts run under Node in a sandbox, against a fake canvas context that writes one line
 // per call, as in tests/web/scenes.test.js. The engine draws the cast from KW.cast, which the
@@ -89,10 +89,45 @@ const POSES = ['stand', 'climb', 'taunt0', 'taunt1', 'brace', 'hit'];
 
 // ---- The cast --------------------------------------------------------------------------------------
 
-test('the cast of kw.medieval reads clean: the goblin and the fly', () => {
+test('the cast of kw.medieval reads clean: the three patrons, the goblin and the fly', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
-  assert.deepEqual(Object.keys(r.data.cast), ['foe.goblin', 'critter.fly']);
+  assert.deepEqual(Object.keys(r.data.cast), ['patron.a', 'patron.b', 'patron.c', 'foe.goblin', 'critter.fly']);
+});
+
+/* The base pack's swatches, as the settings hand them to the engine (settings.js, engineInput). */
+const BASE = JSON.parse(fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8')).pack.swatches;
+const SKINS = Object.keys(BASE.skin), HAIRS = Object.keys(BASE.hair), ROBES = Object.keys(BASE.tabard);
+const skinOf = id => (id ? { id, face: BASE.skin[id].entries.face, cheek: BASE.skin[id].entries.cheek } : null);
+const hairOf = id => { if (!id) return null; const h = BASE.hair[id].entries; return { id, bands: [h['0'], h['1'], h['2']], brow: h.brow }; };
+const robeOf = id => { if (!id) return null; const t = BASE.tabard[id].entries; return { id, bands: [t['0'], t['1'], t['2'], t['3']] }; };
+const MONARCHS = ['a', 'b', 'c'];
+
+test('the patrons as written: the user\'s skin, hair and robe bound, their own colours the court\'s, their shading drawn and dressed, and their costs', () => {
+  const r = PK.read(TEXT, { allowUnsigned: true }), court = CODE.KW.scenes.court;
+  for (const id of MONARCHS) {
+    const g = r.data.cast['patron.' + id];
+    assert.deepEqual([g.role, g.name, plain(g.box), plain(g.anchors)], ['patron', 'Monarch ' + id.toUpperCase(), [180, 300], { seat: [0, 0], eyes: [0, -208], mouth: [0, -193] }]);
+    assert.deepEqual(plain(g.sets), { skin: 'skin', hair: 'hair', robe: 'tabard' });
+    // as drawn: the court's own skin, the base pack's warm, and each monarch's own hair and robe
+    assert.deepEqual(plain(g.own.skin), plain(BASE.skin.warm.entries));
+    assert.deepEqual([g.own.hair[0], g.own.hair[1], g.own.hair[2]], plain(court.drawn(id).hair));
+    assert.deepEqual([0, 1, 2, 3].map(i => g.own.robe[i]), plain(court.drawn(id).robe));
+    assert.ok(g.still.every(pt => pt.at === 'seat' && pt.shapes.length <= 128));
+    assert.ok(['shut', 'open'].every(m => g.states[m].every(sh => sh.at === 'mouth')));
+  }
+  const mon = id => plain(r.data.cast['patron.' + id].palettes.mon), dim = { mix: ['@hair.2', '#000000'], k: 0.15 }, dark = { mix: ['@hair.2', '#000000'], k: 0.3 };
+  const brow = drawn => ({ drawn, dressed: { contrast: ['@hair.0', dim], on: '@skin.face', band: 1 }, set: 'hair' });
+  // A's darkest strands are its hair darkened to 0.7 as drawn, so a mix says them; B's and C's are
+  // not, nor B's sheen, nor any brow, so each is drawn and dressed
+  assert.deepEqual(mon('a'), { dark, brow: brow('#4a2a12'), iris: '#5a3a22' });
+  assert.deepEqual(mon('b'), { dark: { drawn: '#1f1a2d', dressed: dark, set: 'hair' }, brow: brow('#29233b'), sheen: { drawn: '#7a7299', dressed: { mix: ['@hair.0', '#ffffff'], k: 0.25 }, set: 'hair' }, iris: '#3a4a86' });
+  assert.deepEqual(mon('c'), { dark: { drawn: '#946a28', dressed: dark, set: 'hair' }, brow: brow('#a87a30'), iris: '#2f6b55' });
+  // C's fringe is the effect fringe, in its middle hair
+  assert.deepEqual(r.data.cast['patron.c'].still.flatMap(pt => pt.shapes).filter(sh => sh.k === 'fx').map(plain), [{ k: 'fx', fx: 'fringe', p: [0, -240], colour: '@hair.1' }]);
+  // the costs the counts step found, against 16 000 for the still parts and 400 for each mouth
+  assert.deepEqual(MONARCHS.map(id => plain(r.world.cast['patron.' + id])), [
+    { still: 5731, states: { shut: 1, open: 16 } }, { still: 5582, states: { shut: 1, open: 16 } }, { still: 5132, states: { shut: 1, open: 16 } }]);
 });
 
 test('the goblin as written: the code\'s measures, its parts shared between its six poses, and its costs', () => {
@@ -133,7 +168,9 @@ test('the fly as written: its wings in a group at an alpha of 0.85, and its cost
 });
 
 test('a dev page draws the goblin and the fly from the pack, a deployed page from code while the pack is unsigned, and KW.world.cast says so', () => {
-  assert.deepEqual(plain(PACK.KW.world.cast), { source: 'pack', members: { 'foe.goblin': 'pack', 'critter.fly': 'pack' }, faults: [] });
+  assert.deepEqual(plain(PACK.KW.world.cast), { source: 'pack', members: { 'patron.a': 'pack', 'patron.b': 'pack', 'patron.c': 'pack', 'foe.goblin': 'pack', 'critter.fly': 'pack' }, faults: [] });
+  for (const id of MONARCHS) { assert.notEqual(PACK.KW.cast.patrons[id], PACK.KW.props.PATRONS[id]); assert.equal(PACK.KW.cast.patrons[id].from.split('#')[0], 'kw.medieval'); }
+  assert.deepEqual(Object.keys(PACK.KW.props.PATRONS), MONARCHS);
   assert.notEqual(PACK.KW.cast.critters.fly, PACK.KW.props.CRITTERS.fly);
   assert.notEqual(PACK.KW.cast.foes.goblin, PACK.KW.props.FOES.goblin);
   for (const m of [PACK.KW.cast.critters.fly, PACK.KW.cast.foes.goblin]) assert.equal(m.from.split('#')[0], 'kw.medieval');
@@ -147,6 +184,7 @@ test('a dev page draws the goblin and the fly from the pack, a deployed page fro
   assert.deepEqual(plain(dep.KW.world.cast), { source: 'code', members: {}, faults: [] });
   assert.equal(dep.KW.cast.critters.fly, dep.KW.props.CRITTERS.fly);
   assert.equal(dep.KW.cast.foes.goblin, dep.KW.props.FOES.goblin);
+  for (const id of MONARCHS) assert.equal(dep.KW.cast.patrons[id], dep.KW.props.PATRONS[id]);
   // before start, the cast is the code's
   assert.equal(CODE.KW.cast.critters.fly, CODE.KW.props.CRITTERS.fly);
   assert.equal(CODE.KW.cast.foes.goblin, CODE.KW.props.FOES.goblin);
@@ -160,6 +198,7 @@ test('starting again puts the code\'s cast back first', () => {
   s.KW.world.start(['not json'], true);
   assert.equal(s.KW.cast.critters.fly, s.KW.props.CRITTERS.fly);
   assert.equal(s.KW.cast.foes.goblin, s.KW.props.FOES.goblin);
+  for (const id of MONARCHS) assert.equal(s.KW.cast.patrons[id], s.KW.props.PATRONS[id]);
   assert.equal(s.KW.world.cast.source, 'code');
 });
 
@@ -300,6 +339,58 @@ test('the engine plays the foe KW.cast gives, and leaves by the exit it names wh
   s.KW.cast.foes.goblin = G;
 });
 
+/* A patron's drawing in a look, as lines: its still parts and its mouth, shut and open. */
+const drawPatron = (KW, p, look) => record(KW, () => { p.draw(820, 505, look); p.mouth(820, 505, false, look); p.mouth(820, 505, true, look); });
+
+test('each patron from the pack draws the code\'s monarch call for call, in every skin with every hair, and in every robe, as drawn or chosen', () => {
+  let n = 0;
+  for (const id of MONARCHS) {
+    const A = PACK.KW.cast.patrons[id], B = CODE.KW.props.PATRONS[id];
+    const check = look => { const a = drawPatron(PACK.KW, A, look), b = drawPatron(CODE.KW, B, look); assert.ok(b.length > 5000); assert.deepEqual(a, b, id + ' ' + JSON.stringify([look.skin && look.skin.id, look.hair && look.hair.id, look.robe && look.robe.id])); n++; };
+    // every skin with every hair, the robe turning through every choice
+    [null, ...SKINS].forEach((sk, i) => [null, ...HAIRS].forEach((hr, j) => check({ skin: skinOf(sk), hair: hairOf(hr), robe: robeOf([null, ...ROBES][(i + j) % (ROBES.length + 1)]) })));
+    // every robe alone
+    for (const rb of ROBES) check({ skin: null, hair: null, robe: robeOf(rb) });
+    assert.deepEqual(plain(A.drawn), plain(B.drawn));
+  }
+  assert.equal(n, 3 * ((SKINS.length + 1) * (HAIRS.length + 1) + ROBES.length));
+});
+
+test('the brows are dressed by contrast: the lightest band of the hair where it stands out more from the skin than the darkened darkest, which the court chooses alike', () => {
+  const lightest = [], darkened = [];
+  for (const sk of SKINS) for (const hr of HAIRS) {
+    const look = { skin: skinOf(sk), hair: hairOf(hr), robe: null }, calls = drawPatron(PACK.KW, PACK.KW.cast.patrons.a, look).join('\n');
+    // the brows are the last two rects of 10 by 3 before the crown, at the eyes' height less 14
+    (calls.includes('s ' + hairOf(hr).bands[0] + '\nr ' + (820 - 20) + ' ' + (505 - 222)) ? lightest : darkened).push(sk + ' ' + hr);
+  }
+  assert.ok(lightest.length > 0 && darkened.length > 0, 'both ways are drawn: ' + lightest.join(', '));
+  assert.ok(lightest.every(l => !/^(fair|warm) /.test(l)), 'the lightest band only on darker skins');
+});
+
+test('the court draws the patron KW.cast gives, and its backdrop key says where the patron comes from', () => {
+  const sc = PACK.KW.scenes.court, key = id => sc.key({ patron: { id, skin: skinOf('deep'), hair: null, robe: robeOf('wine') } });
+  for (const id of MONARCHS) assert.equal(key(id), id + '@' + PACK.KW.cast.patrons[id].from + '|deep||wine');
+  assert.equal(CODE.KW.scenes.court.key({ patron: { id: 'b', skin: skinOf('deep'), hair: null, robe: robeOf('wine') } }), 'b|deep||wine');
+  // an unknown monarch is A, from the pack
+  assert.equal(sc.key({ patron: { id: 'z' } }), 'a@' + PACK.KW.cast.patrons.a.from + '|');
+  const s = page([TEXT], true), seen = [];
+  s.KW.cast.patrons.b = Object.assign({}, s.KW.cast.patrons.b, { draw: (x, by, look) => seen.push(['draw', x, by, look.hair && look.hair.id]), mouth: (x, by, open) => seen.push(['mouth', open]) });
+  const frame = { w: s.KW.state.IDLE, devices: [], places: null, tv: false, kx: 360, o: s.KW.knight.pose('ssh_session', 100), here: null, inBed: false, helmOff: false, strike: false,
+    patron: { id: 'b', skin: null, hair: hairOf('silver'), robe: null } };
+  record(s.KW, () => { s.KW.scenes.court.paint(frame); s.KW.scenes.court.draw(3300, frame); });
+  assert.deepEqual(seen, [['draw', 820, 505, 'silver'], ['mouth', false]]);
+  // drawn, for the settings' "As drawn", is the patron's
+  assert.deepEqual(plain(sc.drawn('c')), plain(PACK.KW.cast.patrons.c.drawn));
+});
+
+test('a patron compiles each look once, and keeps it', () => {
+  const s = page([TEXT], true), P = s.KW.cast.patrons.c, look = { skin: skinOf('tan'), hair: hairOf('blonde'), robe: null };
+  const first = drawPatron(s.KW, P, look);
+  // a second draw of the same look, and a copy of it, draws the same calls
+  assert.deepEqual(drawPatron(s.KW, P, JSON.parse(JSON.stringify(look))), first);
+  assert.notDeepEqual(drawPatron(s.KW, P, { skin: null, hair: null, robe: null }), first);
+});
+
 // ---- What the compiler refuses -------------------------------------------------------------------
 
 /* The pack, read, with its data changed by edit. */
@@ -310,7 +401,7 @@ function readEdited(edit) {
   edit(data);
   return Object.assign({}, r, { data });
 }
-const fly = d => d.cast['critter.fly'], gob = d => d.cast['foe.goblin'];
+const fly = d => d.cast['critter.fly'], gob = d => d.cast['foe.goblin'], pat = d => d.cast['patron.a'];
 
 test('what the compiler does not build in the cast is refused by name', () => {
   const W = PACK.KW.world, refused = (edit, id, want) => assert.throws(() => W.compileMember(readEdited(edit), id), { message: want });
@@ -325,8 +416,13 @@ test('what the compiler does not build in the cast is refused by name', () => {
   // the same in a foe's parts and poses
   refused(d => { gob(d).parts.head.push({ k: 'things' }); }, 'foe.goblin', 'cast.foe.goblin.parts.head[7].k: the mark "things" in the cast is not built in this engine yet');
   refused(d => { gob(d).poses.hit.shapes.push({ k: 'fx', fx: 'pebbles', y: 0 }); }, 'foe.goblin', 'cast.foe.goblin.poses.hit.shapes[25].fx: the effect "pebbles", placed on the screen by its field "y", in the cast is not built in this engine yet');
-  // a role the engine does not build yet
-  refused(d => { d.cast['patron.a'] = { role: 'patron', name: 'Monarch A' }; }, 'patron.a', 'cast.patron.a.role: the role "patron" is not built in this engine yet');
+  // the same in a patron, whose colours are resolved as its own look compiles
+  refused(d => { pat(d).still[0].shapes.push({ k: 'things' }); }, 'patron.a', 'cast.patron.a.still[0].shapes[120].k: the mark "things" in the cast is not built in this engine yet');
+  refused(d => { pat(d).states.open[0].fill = '@mon.pupil'; }, 'patron.a', 'cast.patron.a.states.open[0].fill: the palette "mon" gives no "pupil"');
+  // a bound set the user may leave unchosen needs colours of its own
+  refused(d => { delete pat(d).own.robe; }, 'patron.a', 'cast.patron.a.own.robe: a bound set without colours of its own is not built in this engine yet');
+  // a role the engine does not have
+  refused(d => { d.cast['companion.cat'] = { role: 'companion', name: 'Cat' }; }, 'companion.cat', 'cast.companion.cat.role: the role "companion" is not built in this engine yet');
 });
 
 test('a member that fails to compile is drawn from code, with its reason in KW.world.cast and a line of its own; a member the engine does not know is not compiled', () => {
@@ -334,7 +430,7 @@ test('a member that fails to compile is drawn from code, with its reason in KW.w
   s.KW.pack = Object.assign({}, lib, { read: () => broken });
   const st = s.KW.world.start([TEXT], true);
   assert.equal(st.source, 'pack');
-  assert.deepEqual(plain(s.KW.world.cast), { source: 'code', members: { 'foe.goblin': 'code', 'critter.fly': 'code' },
+  assert.deepEqual(plain(s.KW.world.cast), { source: 'pack', members: { 'patron.a': 'pack', 'patron.b': 'pack', 'patron.c': 'pack', 'foe.goblin': 'code', 'critter.fly': 'code' },
     faults: [{ member: 'foe.goblin', reason: 'cast.foe.goblin.parts.body[0].k: the shape kind "zz" is not built in this engine yet' },
       { member: 'critter.fly', reason: 'cast.critter.fly.frames.flap1[0].k: the shape kind "zz" is not built in this engine yet' }] });
   assert.equal(s.KW.cast.critters.fly, s.KW.props.CRITTERS.fly);

@@ -63,7 +63,7 @@ test('with nothing set, every value is the page\'s own and the knight\'s look is
     scenes: { attack: 'battlement', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house', cpu_hot: 'yard' } });
   for (const sec of Object.keys(r.from)) for (const k of Object.keys(r.from[sec])) assert.equal(r.from[sec][k], 'built-in', sec + '.' + k);
   assert.deepEqual(SET.knightLook(r), {});
-  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000)), { turns: ['battlement', 'camp', 'house', 'yard'], turnMs: 60000, mon: 'a', monSkin: null, monHair: null, monRobe: null, scenes: {} });
+  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000)), { turns: ['battlement', 'camp', 'house', 'yard'], turnMs: 60000, patron: { id: 'a', skin: null, hair: null, robe: null }, scenes: {} });
   assert.deepEqual(lines, []);
 });
 
@@ -314,9 +314,9 @@ test('the engine\'s input: the rotation\'s scenes, its length only when set, the
   s.choose('quiet', 'minutes', 5); s.choose('quiet', 'scenes', ['camp', 'house']);
   s.choose('look', 'monarch', 'c'); s.choose('look', 'monarch_skin', 'deep');
   const e = SET.engineInput(s.now(), PACK, 60000);
-  assert.deepEqual(plain(e), { turns: ['camp', 'house'], turnMs: 300000, mon: 'c',
-    monSkin: { id: 'deep', face: PACK.swatches.skin.deep.entries.face, cheek: PACK.swatches.skin.deep.entries.cheek }, monHair: null, monRobe: null, scenes: {} });
-  assert.equal(SET.engineInput(s.now(), null, 60000).monSkin, null, 'no base pack, the court\'s own skin');
+  assert.deepEqual(plain(e), { turns: ['camp', 'house'], turnMs: 300000, patron: { id: 'c',
+    skin: { id: 'deep', face: PACK.swatches.skin.deep.entries.face, cheek: PACK.swatches.skin.deep.entries.cheek }, hair: null, robe: null }, scenes: {} });
+  assert.equal(SET.engineInput(s.now(), null, 60000).patron.skin, null, 'no base pack, the court\'s own skin');
 });
 
 test('the 12-hour clock reads 9:42 PM, with midnight\'s hour 12 AM and noon\'s 12 PM; the 24-hour clock as before', () => {
@@ -381,12 +381,12 @@ test('the engine\'s input carries the monarch\'s hair and robe from the base pac
   const { s } = store();
   s.choose('look', 'monarch_hair', 'auburn'); s.choose('look', 'monarch_robe', 'violet');
   const H = PACK.swatches.hair.auburn.entries, R = PACK.swatches.tabard.violet.entries, e = plain(SET.engineInput(s.now(), PACK, 60000));
-  assert.deepEqual(e.monHair, { id: 'auburn', bands: [H['0'], H['1'], H['2']], brow: H.brow });
-  assert.deepEqual(e.monRobe, { id: 'violet', bands: [R['0'], R['1'], R['2'], R['3']] });
+  assert.deepEqual(e.patron.hair, { id: 'auburn', bands: [H['0'], H['1'], H['2']], brow: H.brow });
+  assert.deepEqual(e.patron.robe, { id: 'violet', bands: [R['0'], R['1'], R['2'], R['3']] });
   const none = SET.engineInput(s.now(), null, 60000);
-  assert.deepEqual([none.monHair, none.monRobe], [null, null]);
+  assert.deepEqual([none.patron.hair, none.patron.robe], [null, null]);
   s.clear('look', 'monarch_hair');
-  assert.equal(SET.engineInput(s.now(), PACK, 60000).monHair, null);
+  assert.equal(SET.engineInput(s.now(), PACK, 60000).patron.hair, null);
 });
 
 /* ---- The scene chosen for each condition --------------------------------------------------------- */
@@ -563,8 +563,8 @@ function court(m, mon, monSkin, monHair, monRobe, narrow) {
   o.x = sc.spot * m.V.U; o.floor = m.V.HFL;
   Object.assign(m.V, { HL: narrow ? 700 : 0, HR: 960, HT: narrow ? 180 : 0 });
   m.calls.length = 0;
-  sc.paint({ w: m.KW.state.IDLE, devices: [], places: sc.places, tv: false, kx: o.x, o, here: null, inBed: false, helmOff: false, strike: false, mon, monSkin,
-    monHair: monHair || null, monRobe: monRobe || null });
+  sc.paint({ w: m.KW.state.IDLE, devices: [], places: sc.places, tv: false, kx: o.x, o, here: null, inBed: false, helmOff: false, strike: false, patron: { id: mon, skin: monSkin,
+    hair: monHair || null, robe: monRobe || null } });
   return m.calls.slice();
 }
 const skinOf = id => ({ id, face: PACK.swatches.skin[id].entries.face, cheek: PACK.swatches.skin[id].entries.cheek });
@@ -574,11 +574,11 @@ test('the monarch\'s skin: the court\'s own by default, the same calls for the w
   const m = load();
   const sc = m.KW.scenes.court, own = court(m, 'a', null);
   assert.deepEqual(court(m, 'a', skinOf('warm')), own, 'the warm swatch is the court\'s own skin');
-  assert.equal(sc.key({ mon: 'a', monSkin: null }), 'a|');
-  assert.equal(sc.key({ mon: 'b', monSkin: skinOf('deep') }), 'b|deep');
+  assert.equal(sc.key({ patron: { id: 'a', skin: null } }), 'a|');
+  assert.equal(sc.key({ patron: { id: 'b', skin: skinOf('deep') } }), 'b|deep');
   // a skin that is not a face of three bands and a cheek is not drawn
   assert.deepEqual(court(m, 'a', { id: 'bad', face: [[1, 'red']], cheek: '#000000' }), own);
-  assert.equal(sc.key({ mon: 'a', monSkin: { id: 'bad' } }), 'a|');
+  assert.equal(sc.key({ patron: { id: 'a', skin: { id: 'bad' } } }), 'a|');
   const text = calls => calls.join('\n');
   for (const mon of ['a', 'b', 'c']) for (const id of Object.keys(PACK.swatches.skin)) {
     const got = text(court(m, mon, skinOf(id)));
@@ -613,10 +613,10 @@ test('the monarch\'s hair and robe: as drawn by default and for a shape the cour
   }
   // the banners and A's sceptre keep the court's red, whatever the robe
   assert.ok(text2(court(m, 'a', null, null, robeOf('teal'))).includes(m.KW.draw.C.R1));
-  assert.equal(sc.key({ mon: 'a', monSkin: null, monHair: null, monRobe: null }), 'a|');
-  assert.equal(sc.key({ mon: 'b', monSkin: skinOf('deep'), monHair: hairOf('silver'), monRobe: null }), 'b|deep|silver|');
-  assert.equal(sc.key({ mon: 'c', monSkin: null, monHair: null, monRobe: robeOf('wine') }), 'c|||wine');
-  assert.equal(sc.key({ mon: 'c', monSkin: null, monHair: { id: 'bad', bands: [] }, monRobe: null }), 'c|');
+  assert.equal(sc.key({ patron: { id: 'a', skin: null, hair: null, robe: null } }), 'a|');
+  assert.equal(sc.key({ patron: { id: 'b', skin: skinOf('deep'), hair: hairOf('silver'), robe: null } }), 'b|deep|silver|');
+  assert.equal(sc.key({ patron: { id: 'c', skin: null, hair: null, robe: robeOf('wine') } }), 'c|||wine');
+  assert.equal(sc.key({ patron: { id: 'c', skin: null, hair: { id: 'bad', bands: [] }, robe: null } }), 'c|');
 });
 const text2 = calls => calls.join('\n');
 
@@ -692,8 +692,8 @@ test('every monarch renders in every skin, hair and robe, as drawn among them, f
     if (monarch_hair) assert.equal(s.choose('look', 'monarch_hair', monarch_hair), true);
     if (monarch_robe) assert.equal(s.choose('look', 'monarch_robe', monarch_robe), true);
     const e = SET.engineInput(s.now(), m.K.basePack(), 600000), what = [monarch, monarch_skin, monarch_hair, monarch_robe].join(' ');
-    assert.equal(e.mon, monarch);
-    const got = court(m, e.mon, e.monSkin, e.monHair, e.monRobe, true).join('\n'), own = m.KW.scenes.court.drawn(monarch);
+    assert.equal(e.patron.id, monarch);
+    const got = court(m, e.patron.id, e.patron.skin, e.patron.hair, e.patron.robe, true).join('\n'), own = m.KW.scenes.court.drawn(monarch);
     assert.ok(got.length > 0);
     for (const c of faceColours(monarch_skin)) assert.ok(got.includes(c), what + ' skin ' + c);
     for (const c of monarch_hair ? hairOf(monarch_hair).bands : own.hair) assert.ok(got.includes(c), what + ' hair ' + c);

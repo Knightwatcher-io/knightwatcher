@@ -1076,7 +1076,7 @@
      and its drawing by the effects library, effects.js (KW.effects). The page loads that file before
      this one; under Node this file asks for it beside itself, the first time a pack names an
      effect. */
-  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'burst'];
+  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'burst'];
   /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
      for, the patron's anchors and the critter's frames. */
   const ROLES = ['patron', 'foe', 'critter'];
@@ -1168,22 +1168,40 @@
   const isColourName = c => typeof c === 'string' && (HEX.test(c) || REF.test(c) || LAMP_REF.test(c));
   /* One opaque colour: hex, or a reference. */
   function plainColour(v, path) { if (!isColourName(v)) fail(path, 'must be a hex colour or a reference such as "@base.k"'); }
-  /* A colour of a world section: as in 1.0, or a mix { mix: [a, b], k }, each channel of a moved
-     towards b's by k and rounded. */
+  /* A mix, { mix: [a, b], k }: each channel of a moved towards b's by k and rounded, a and b each a
+     hex colour or a single reference. */
+  function mixColour(v, path) {
+    obj(v, path, ['mix', 'k'], ['mix', 'k']);
+    const mp = key(path, 'mix');
+    if (!Array.isArray(v.mix) || v.mix.length !== 2) fail(mp, 'must be [colour, colour]');
+    v.mix.forEach((c, i) => plainColour(c, idx(mp, i)));
+    num(v.k, key(path, 'k'), 0, 1);
+  }
+  /* A contrast, { contrast: [a, b], on, band }: whichever of a and b stands out more from on by the
+     WCAG ratio, b on a tie. a and b are each a hex colour, a single reference or a mix; on is a hex
+     colour or a reference, and band, from 0, picks one band of on where on names a band list. No
+     contrast holds another. */
+  function contrastColour(v, path) {
+    obj(v, path, ['contrast', 'on', 'band'], ['contrast', 'on']);
+    const cp = key(path, 'contrast');
+    if (!Array.isArray(v.contrast) || v.contrast.length !== 2) fail(cp, 'must be [colour, colour]');
+    v.contrast.forEach((c, i) => {
+      const p = idx(cp, i);
+      if (isObj(c)) { if (!has(c, 'mix')) fail(p, 'must be a hex colour, a reference such as "@base.k" or a mix'); mixColour(c, p); } else plainColour(c, p);
+    });
+    plainColour(v.on, key(path, 'on'));
+    if (has(v, 'band')) int(v.band, key(path, 'band'), 0, LIMITS.bands - 1);
+  }
+  /* A colour of a world section: as in 1.0, a mix or a contrast. */
   function wcolour(v, path) {
     if (typeof v === 'string') {
       if (isColourName(v)) return;
-      fail(path, 'must be a hex colour, a reference such as "@base.k", a translucent colour or a mix');
+      fail(path, 'must be a hex colour, a reference such as "@base.k", a translucent colour, a mix or a contrast');
     }
     if (!isObj(v)) fail(path, 'must be a colour');
-    if (has(v, 'mix')) {
-      obj(v, path, ['mix', 'k'], ['mix', 'k']);
-      const mp = key(path, 'mix');
-      if (!Array.isArray(v.mix) || v.mix.length !== 2) fail(mp, 'must be [colour, colour]');
-      v.mix.forEach((c, i) => plainColour(c, idx(mp, i)));
-      num(v.k, key(path, 'k'), 0, 1);
-      return;
-    }
+    if (has(v, 'mix')) { mixColour(v, path); return; }
+    if (has(v, 'contrast')) { contrastColour(v, path); return; }
+    if (has(v, 'drawn')) fail(path, 'a colour drawn and dressed is allowed only as an entry of a patron\'s palettes');
     obj(v, path, ['rgb', 'a'], ['rgb', 'a']);
     if (typeof v.rgb !== 'string' || !HEX.test(v.rgb)) fail(key(path, 'rgb'), 'must be a hex colour');
     num(v.a, key(path, 'a'), 0.01, 1);
@@ -1497,6 +1515,17 @@
       else colour(v[e], key(path, e), true);
     }
   }
+  /* An entry of a patron's own palettes: a fill, or a colour drawn and dressed, { drawn, dressed,
+     set }: drawn while the user has chosen nothing for the bound set it names, dressed once they
+     have. drawn is a hex colour or a single reference; dressed a colour, a mix or a contrast, as a
+     world shape takes them. */
+  function patronEntry(x, path, sets) {
+    if (!(isObj(x) && has(x, 'drawn'))) { wfill(x, path); return; }
+    obj(x, path, ['drawn', 'dressed', 'set'], ['drawn', 'dressed', 'set']);
+    plainColour(x.drawn, key(path, 'drawn'));
+    wcolour(x.dressed, key(path, 'dressed'));
+    if (typeof x.set !== 'string' || !(isObj(sets) && has(sets, x.set))) fail(key(path, 'set'), 'must name a set this figure binds in sets');
+  }
   const CAST_KEYS = { patron: ['role', 'name', 'box', 'anchors', 'sets', 'own', 'palettes', 'still', 'states'],
     foe: ['role', 'name', 'sprite', 'h', 'w', 'mid', 'crown', 'exit', 'parts', 'poses'], critter: ['role', 'name', 'groups', 'alpha', 'frames', 'dead'] };
   const CAST_REQ = { patron: ['role', 'name', 'box', 'anchors', 'still', 'states'],
@@ -1525,7 +1554,7 @@
       if (has(v, 'palettes')) for (const s of table(v.palettes, f('palettes'), SET_NAME, 1, 8, 'sets')) {
         const sp = key(f('palettes'), s);
         if (s === 'base' || has(USER_SETS, s) || WORLD_SETS.includes(s) || (v.sets && has(v.sets, s))) fail(sp, 'is a reserved set name, or one this figure binds');
-        for (const e of table(v.palettes[s], sp, ENTRY_NAME, 1, LIMITS.setEntries, 'entries')) wfill(v.palettes[s][e], key(sp, e));
+        for (const e of table(v.palettes[s], sp, ENTRY_NAME, 1, LIMITS.setEntries, 'entries')) patronEntry(v.palettes[s][e], key(sp, e), v.sets);
       }
       arr(v.still, f('still'), 1, LIMITS.parts).forEach((pt, i) => {
         const p = idx(f('still'), i);
@@ -1772,8 +1801,26 @@
     }
     return refKind(pack, set, entry);
   }
+  /* The kind of colour a reference names where ctx is: 'colour', 'bands' or null. */
+  function wrefKind(pack, c, ctx) {
+    if (typeof c !== 'string' || c[0] !== '@' || LAMP_REF.test(c)) return 'colour';
+    const m = REF.exec(c), mem = ctx.member;
+    if (m[1] === 'pick') return 'colour';
+    if (mem && ((mem.sets && has(mem.sets, m[1])) || (mem.palettes && has(mem.palettes, m[1])))) return memberKind(pack, mem, m[1], m[2]);
+    return refKind(pack, m[1], m[2]);
+  }
+  /* A contrast's colour on: a single colour, or with band a band list. */
+  function contrastOn(pack, c, path, ctx, ref) {
+    ref(c.on, key(path, 'on'), !has(c, 'band'));
+    if (has(c, 'band') && wrefKind(pack, c.on, ctx) !== 'bands') fail(key(path, 'band'), 'picks a band of a band list, and ' + quote(c.on) + ' is a single colour');
+  }
   function wrefColour(pack, c, path, single, ctx) {
     if (isObj(c) && has(c, 'mix')) { c.mix.forEach((x, i) => wrefColour(pack, x, idx(key(path, 'mix'), i), true, ctx)); return; }
+    if (isObj(c) && has(c, 'contrast')) {
+      c.contrast.forEach((x, i) => wrefColour(pack, x, idx(key(path, 'contrast'), i), true, ctx));
+      contrastOn(pack, c, path, ctx, (x, p, one) => wrefColour(pack, x, p, one, ctx));
+      return;
+    }
     if (typeof c !== 'string' || c[0] !== '@') return;
     if (LAMP_REF.test(c)) { if (ctx.where !== 'stamp') fail(path, quote(c) + ' is the engine\'s down lamp, and may be named only in a stamp'); return; }
     const m = REF.exec(c), set = m[1];
@@ -1854,10 +1901,18 @@
           if (!m || !(m[1] === 'base' || (v.sets && has(v.sets, m[1])))) fail(p, 'a palette of the cast may refer only to @base and the sets the figure binds');
           wrefColour(pack, x, p, single, { member: v });
         };
-        if (v.palettes) for (const s of Object.keys(v.palettes)) for (const e of Object.keys(v.palettes[s]))
-          eachColour(v.palettes[s][e], (c, p, single) => {
-            if (isObj(c) && has(c, 'mix')) c.mix.forEach((x, i) => one(x, idx(key(p, 'mix'), i), true)); else one(c, p, single);
-          }, key(key(key(cp, 'palettes'), s), e));
+        const ctx = { member: v };
+        const ref = (c, p, single) => {
+          if (isObj(c) && has(c, 'drawn')) { one(c.drawn, key(p, 'drawn'), true); ref(c.dressed, key(p, 'dressed'), true); return; }
+          if (isObj(c) && has(c, 'mix')) { c.mix.forEach((x, i) => one(x, idx(key(p, 'mix'), i), true)); return; }
+          if (isObj(c) && has(c, 'contrast')) { c.contrast.forEach((x, i) => ref(x, idx(key(p, 'contrast'), i), true)); contrastOn(pack, c, p, ctx, one); return; }
+          one(c, p, single);
+        };
+        if (v.palettes) for (const s of Object.keys(v.palettes)) for (const e of Object.keys(v.palettes[s])) {
+          const x = v.palettes[s][e];
+          if (isObj(x) && has(x, 'drawn')) ref(x, key(key(key(cp, 'palettes'), s), e), true);
+          else eachColour(x, ref, key(key(key(cp, 'palettes'), s), e));
+        }
       }
       if (v.role === 'foe') for (const x of FOE_POSES) v.poses[x].parts.forEach((q, i) => { if (!has(v.parts, q)) fail(idx(key(key(key(cp, 'poses'), x), 'parts'), i), 'names a part, ' + quote(q) + ', that the foe does not have'); });
       if (v.role === 'critter' && v.alpha) for (const g of Object.keys(v.alpha)) if (!(v.groups && has(v.groups, g))) fail(key(key(cp, 'alpha'), g), 'names a group, ' + quote(g) + ', that the critter does not declare');

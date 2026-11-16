@@ -60,7 +60,9 @@ function sandbox() {
 function edited(edit) {
   const env = JSON.parse(TEXT);
   edit(env.pack);
-  return JSON.stringify(env, null, 2) + '\n';
+  // written without spaces: pretty-printed, the pack with its patrons passes the 512 KiB a pack may
+  // weigh
+  return JSON.stringify(env) + '\n';
 }
 /* The text signed with a key made for the run, under kid, and the keys option that knows it. */
 const KEY = crypto.generateKeyPairSync('ed25519');
