@@ -131,9 +131,8 @@ own lamp counts toward none of them.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
-and then version 0.2.0. Version 0.3.0, which adds the devices, ships unsigned until its signing run,
-so until then a `dev` page draws every scene but the court, and every device, from it, and a
-deployed page draws them from code. A change to the pack takes the signature's validity with it: until the next signing run a
+then version 0.2.0, and version 0.3.0, which adds the devices. Signed, it draws every scene but the
+court, and every device, on a deployed page and a `dev` page alike. A change to the pack takes the signature's validity with it: until the next signing run a
 deployed page refuses it and draws every scene and every device from code, while a `dev` page still reads it.
 
 ## Where the scenes are drawn from
