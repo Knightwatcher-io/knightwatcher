@@ -19,7 +19,7 @@
   const BASE_ID = 'kw.base';
   const LIMITS = Object.freeze({
     text: 512 * 1024, depth: 12, packs: 32, items: 256, parts: 16, partShapes: 128, itemShapes: 400,
-    polyPoints: 16, pixSide: 64, pixShape: 4096, pixPack: 16384, pixKeys: 16, sets: 16, setEntries: 32,
+    polyPoints: 16, pixSide: 64, pixShape: 4096, pixPack: 160000, pixKeys: 24, sets: 16, setEntries: 32,
     swatches: 32, bands: 8, builds: 4, decorations: 64, decorShapes: 64, groups: 8, tracks: 16, keys: 32,
     restShapes: 64, box: 240, lookShapes: 1200, itemCost: 8000, lookCost: 40000, decorCost: 8000, reason: 300, quote: 40 });
   /* The farthest apart two anchors of one frame may lie, which the cost of a shape spanning two
@@ -383,14 +383,22 @@
     }
     if (s.k === 'pix') pixFields(s, path, (v, p) => colour(v, p, false));
   }
-  /* A pix shape's rows and key; col checks each colour of the key. */
+  /* A pix shape's rows and key; col checks each colour of the key. A shape of a world section may
+     give runs: true, and its rows in runs, each character after an optional count of how many
+     times it repeats ("12a3b.c" is twelve a, three b, one "." and one c): a count of 1 or more,
+     with no leading zero, and its key maps no digit. Its rows are checked as they expand, and
+     expanded here, once, so that every later step and the drawing see plain rows. */
   function pixFields(s, path, col) {
-    const rp = key(path, 'rows');
+    const rp = key(path, 'rows'), runs = has(s, 'runs') && s.runs === true;
+    if (has(s, 'runs')) bool(s.runs, key(path, 'runs'));
     arr(s.rows, rp, 1, LIMITS.pixSide);
     s.rows.forEach((r, i) => {
       if (typeof r !== 'string' || !/^[\x21-\x7e]+$/.test(r)) fail(idx(rp, i), 'must be a string of printable characters');
-      if (r.length > LIMITS.pixSide) fail(idx(rp, i), 'must be at most ' + LIMITS.pixSide + ' characters');
-      if (r.length !== s.rows[0].length) fail(idx(rp, i), 'must be as long as the first row');
+    });
+    if (runs) s.rows = s.rows.map((r, i) => expandRuns(r, idx(rp, i)));
+    s.rows.forEach((r, i) => {
+      if (r.length > LIMITS.pixSide) fail(idx(rp, i), (runs ? 'must expand to at most ' : 'must be at most ') + LIMITS.pixSide + ' characters');
+      if (r.length !== s.rows[0].length) fail(idx(rp, i), runs ? 'must expand to as many characters as the first row' : 'must be as long as the first row');
     });
     if (s.rows.length * s.rows[0].length > LIMITS.pixShape) fail(rp, 'must hold at most ' + LIMITS.pixShape + ' pixels');
     const kp = key(path, 'key'), ks = isObj(s.key) ? Object.keys(s.key) : null;
@@ -398,8 +406,27 @@
     if (ks.length < 1 || ks.length > LIMITS.pixKeys) fail(kp, 'must map 1 to ' + LIMITS.pixKeys + ' characters, not ' + ks.length);
     for (const k of ks) {
       if (!/^[\x21-\x7e]$/.test(k) || k === '.') fail(key(kp, k), 'must be one printable character other than "."');
+      if (runs && /^[0-9]$/.test(k)) fail(key(kp, k), 'must not be a digit in a shape of runs, where a digit is a count');
       col(s.key[k], key(kp, k));
     }
+    delete s.runs;
+  }
+  /* A row of runs as a plain row, failing at path as soon as it passes LIMITS.pixSide pixels, on a
+     count of 0, a count with a leading zero, or a count with nothing after it. */
+  function expandRuns(r, path) {
+    let out = '', i = 0;
+    while (i < r.length) {
+      let j = i;
+      while (j < r.length && r[j] >= '0' && r[j] <= '9') j++;
+      if (j === r.length) fail(path, 'ends in a count, ' + quote(r.slice(i)) + ', with no character to repeat');
+      const digits = r.slice(i, j);
+      if (digits[0] === '0') fail(path, 'has a count, ' + quote(digits) + ', that is 0 or starts with 0');
+      const n = digits ? Number(digits) : 1;
+      if (out.length + n > LIMITS.pixSide) fail(path, 'must expand to at most ' + LIMITS.pixSide + ' characters');
+      out += r[j].repeat(n);
+      i = j + 1;
+    }
+    return out;
   }
   function parts(v, path) {
     arr(v, path, 1, LIMITS.parts);
@@ -1078,13 +1105,16 @@
      effect. */
   const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'flicker', 'burst'];
   /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
-     for, the patron's anchors and the critter's frames. */
-  const ROLES = ['patron', 'foe', 'critter'];
+     for, the patron's anchors, the critter's frames and the pet's poses. */
+  const ROLES = ['patron', 'foe', 'critter', 'pet'];
   const EXITS = ['poof'];
   const FOE_POSES = ['stand', 'climb', 'taunt0', 'taunt1', 'brace', 'hit'];
   const PATRON_ANCHORS = ['seat', 'eyes', 'mouth'];
   const MOUTHS = ['shut', 'open'];
   const FLAPS = ['flap0', 'flap1'];
+  /* The pet's poses, as the engine's catch asks for them (engine.js): resting, settling after a
+     catch, alert (two frames), stalking (two), the pounce, the landing, pleased, walking (two). */
+  const PET_POSES = ['rest', 'settle', 'alert0', 'alert1', 'stalk0', 'stalk1', 'pounce', 'land', 'pleased', 'walk0', 'walk1'];
   /* The fonts the engine ships. No font data travels in a pack. */
   const FONTS = ['vt323'];
   /* The kinds of device, the class the engine gives each, and each class's box: the most any kind
@@ -1095,7 +1125,7 @@
   const PLACE_CLASS = { pie: 'pie', h1: 'high', h2: 'high', h3: 'high', g1: 'ground', g2: 'ground', g3: 'ground' };
   /* Words: the settings screen's labels, and the placeholders each part of the quiet line and each
      caption may use. */
-  const LABELS = ['watcher', 'patron', 'build', 'tabard', 'plume', 'helmet', 'foe', 'critter'];
+  const LABELS = ['watcher', 'patron', 'build', 'tabard', 'plume', 'helmet', 'foe', 'critter', 'pet'];
   const QUIET_PARTS = { quiet: [], up: ['n'], backup: ['at'], ads: ['n', 'short'] };
   const CAPTIONS = { ip_banned: ['addr', 'jail'], import: ['title'], backup_done: ['at'] };
   /* The status colours' bands: hue from and to in degrees (crit's runs through 0), and the least
@@ -1124,10 +1154,10 @@
   const U = 5;
   const WORLD_LIMITS = freeze({ scenes: 16, cast: 16, props: 8, overlays: 8, words: 8, worlds: 8, stamps: 64, stampShapes: 64,
     layers: 32, tiles: 64, effects: 48, tileShapes: 32, stillShapes: 2000, frameShapes: 400, stillCost: 200000, frameCost: 16000,
-    glows: 24, patronStill: 16000, patronState: 400, poseCost: 8000, sprite: 256, critterFrame: 200, kindStill: 4000, kindMoving: 600,
+    glows: 24, patronStill: 16000, patronState: 400, poseCost: 8000, sprite: 256, critterFrame: 200, kindStill: 4000, kindMoving: 600, coats: 8, spots: 16, floors: 8,
     mark: 128, offset: 2048, length: 4096 });
   /* Where a shape of the world sections is, for the reasons. */
-  const WWHERE = { still: 'a still layer', moving: 'a moving layer', over: 'an over layer', pole: 'a pole', stamp: 'a stamp', patron: 'the cast', foe: 'the cast', critter: 'the cast', prop: 'a prop' };
+  const WWHERE = { still: 'a still layer', moving: 'a moving layer', over: 'an over layer', pole: 'a pole', stamp: 'a stamp', patron: 'the cast', foe: 'the cast', critter: 'the cast', pet: 'the cast', prop: 'a prop' };
   const LAYERED = ['still', 'moving', 'over'];
 
   /* ---- Step 5 for 1.1: fields ---- */
@@ -1231,7 +1261,7 @@
     }
   }
 
-  const WSHAPE_KEYS = Object.assign({}, SHAPE_KEYS, { glow: ['p', 'r', 'colour', 'a'], dith: ['p', 'w', 'h', 'colour'],
+  const WSHAPE_KEYS = Object.assign({}, SHAPE_KEYS, { pix: SHAPE_KEYS.pix.concat('runs'), glow: ['p', 'r', 'colour', 'a'], dith: ['p', 'w', 'h', 'colour'],
     tile: ['step', 'phase', 'from', 'to', 'pick', 'shapes'], use: ['stamp', 'p'] });
   const WSHAPE_REQ = Object.assign({}, SHAPE_REQ, { glow: ['p', 'r', 'colour', 'a'], dith: ['p', 'w', 'h', 'colour'],
     tile: ['step', 'phase', 'from', 'to', 'shapes'], use: ['stamp', 'p'] });
@@ -1527,9 +1557,30 @@
     if (typeof x.set !== 'string' || !(isObj(sets) && has(sets, x.set))) fail(key(path, 'set'), 'must name a set this figure binds in sets');
   }
   const CAST_KEYS = { patron: ['role', 'name', 'box', 'anchors', 'sets', 'own', 'palettes', 'still', 'states'],
-    foe: ['role', 'name', 'sprite', 'h', 'w', 'mid', 'crown', 'exit', 'parts', 'poses'], critter: ['role', 'name', 'groups', 'alpha', 'frames', 'dead'] };
+    foe: ['role', 'name', 'sprite', 'h', 'w', 'mid', 'crown', 'exit', 'parts', 'poses'], critter: ['role', 'name', 'groups', 'alpha', 'frames', 'dead'],
+    pet: ['role', 'name', 'sprite', 'coats', 'spots', 'paw', 'take', 'land', 'lift'] };
   const CAST_REQ = { patron: ['role', 'name', 'box', 'anchors', 'still', 'states'],
-    foe: ['role', 'name', 'sprite', 'h', 'w', 'mid', 'crown', 'exit', 'parts', 'poses'], critter: ['role', 'name', 'frames', 'dead'] };
+    foe: ['role', 'name', 'sprite', 'h', 'w', 'mid', 'crown', 'exit', 'parts', 'poses'], critter: ['role', 'name', 'frames', 'dead'],
+    pet: ['role', 'name', 'sprite', 'coats', 'spots', 'paw', 'take', 'land', 'lift'] };
+  /* A pet's spot in a scene: where it rests and faces, the floors it walks near its spot and the
+     lane elsewhere, and the point a fly comes down to for the catch; and in a scene with a bed, the
+     same while the watcher is in bed. Each on the 960 by 600 grid, in whole pixels. */
+  function petSpot(v, path, inner) {
+    const f = k => key(path, k);
+    obj(v, path, ['rest', 'face', 'floors', 'lane', 'fly'].concat(inner ? [] : ['bed']), ['rest', 'face', 'floors', 'lane', 'fly']);
+    for (const k of ['rest', 'fly']) {
+      if (!Array.isArray(v[k]) || v[k].length !== 2) fail(f(k), 'must be a pair [x, y]');
+      int(v[k][0], idx(f(k), 0), 0, 960); int(v[k][1], idx(f(k), 1), 0, 600);
+    }
+    if (v.face !== 1 && v.face !== -1) fail(f('face'), 'must be 1, facing right, or -1, facing left');
+    arr(v.floors, f('floors'), 0, WORLD_LIMITS.floors).forEach((x, i) => {
+      const p = idx(f('floors'), i);
+      if (!Array.isArray(x) || x.length !== 3) fail(p, 'must be [x0, x1, y]');
+      int(x[0], idx(p, 0), 0, 960); int(x[1], idx(p, 1), 0, 960); int(x[2], idx(p, 2), 0, 600);
+    });
+    int(v.lane, f('lane'), 0, 600);
+    if (has(v, 'bed')) petSpot(v.bed, f('bed'), true);
+  }
   function castMember(v, path) {
     if (!isObj(v)) fail(path, 'must be an object');
     if (!has(v, 'role')) fail(key(path, 'role'), 'is missing');
@@ -1581,6 +1632,22 @@
         arr(pose.parts, key(p, 'parts'), 0, 16).forEach((x, i) => { id(x, idx(key(p, 'parts'), i), LOCAL_ID); if (pose.parts.indexOf(x) !== i) fail(idx(key(p, 'parts'), i), 'appears twice'); });
         shapeList(pose.shapes, key(p, 'shapes'), 0, LIMITS.partShapes, where);
       }
+    } else if (v.role === 'pet') {
+      const sp = f('sprite');
+      obj(v.sprite, sp, ['size', 'feet'], ['size', 'feet']);
+      box(v.sprite.size, key(sp, 'size'), WORLD_LIMITS.sprite);
+      if (!Array.isArray(v.sprite.feet) || v.sprite.feet.length !== 2) fail(key(sp, 'feet'), 'must be a pair [x, y]');
+      int(v.sprite.feet[0], idx(key(sp, 'feet'), 0), 0, WORLD_LIMITS.sprite); int(v.sprite.feet[1], idx(key(sp, 'feet'), 1), 0, WORLD_LIMITS.sprite);
+      for (const c of table(v.coats, f('coats'), LOCAL_ID, 1, WORLD_LIMITS.coats, 'coats')) {
+        const cp = key(f('coats'), c);
+        obj(v.coats[c], cp, ['name', 'poses'], ['name', 'poses']);
+        text(v.coats[c].name, key(cp, 'name'), 1, 32);
+        obj(v.coats[c].poses, key(cp, 'poses'), PET_POSES, PET_POSES);
+        for (const n of PET_POSES) id(v.coats[c].poses[n], key(key(cp, 'poses'), n), LOCAL_ID);
+      }
+      for (const n of table(v.spots, f('spots'), LOCAL_ID, 1, WORLD_LIMITS.spots, 'spots')) petSpot(v.spots[n], key(f('spots'), n), false);
+      pair(v.paw, f('paw'), -WORLD_LIMITS.sprite, WORLD_LIMITS.sprite);
+      for (const k of ['take', 'land', 'lift']) eighth(v[k], f(k), 0, WORLD_LIMITS.sprite);
     } else {
       if (has(v, 'groups')) groupTable(v.groups, f('groups'), 512);
       if (has(v, 'alpha')) for (const g of table(v.alpha, f('alpha'), LOCAL_ID, 1, LIMITS.groups, 'groups')) num(v.alpha[g], key(f('alpha'), g), 0, 1);
@@ -1715,10 +1782,11 @@
       } else if (v.role === 'foe') {
         for (const x of Object.keys(v.parts)) list(v.parts[x], key(key(cp, 'parts'), x), c);
         for (const x of FOE_POSES) list(v.poses[x].shapes, key(key(key(cp, 'poses'), x), 'shapes'), c);
-      } else {
+      } else if (v.role === 'critter') {
         for (const x of FLAPS) list(v.frames[x], key(key(cp, 'frames'), x), Object.assign({ groups: v.groups || {} }, c));
         list(v.dead, key(cp, 'dead'), c);
       }
+      // a pet's poses are stamps, walked with the stamps
     }
     for (const n of Object.keys(pack.props || {})) for (const k of Object.keys(pack.props[n].kinds)) for (const st of ['up', 'gone']) {
       const v = pack.props[n].kinds[k][st], p = key(key(key(key(key(P, 'props'), n), 'kinds'), k), st);
@@ -1916,6 +1984,17 @@
       }
       if (v.role === 'foe') for (const x of FOE_POSES) v.poses[x].parts.forEach((q, i) => { if (!has(v.parts, q)) fail(idx(key(key(key(cp, 'poses'), x), 'parts'), i), 'names a part, ' + quote(q) + ', that the foe does not have'); });
       if (v.role === 'critter' && v.alpha) for (const g of Object.keys(v.alpha)) if (!(v.groups && has(v.groups, g))) fail(key(key(cp, 'alpha'), g), 'names a group, ' + quote(g) + ', that the critter does not declare');
+      if (v.role === 'pet') {
+        for (const c of Object.keys(v.coats)) for (const x of PET_POSES) {
+          const st = v.coats[c].poses[x];
+          if (!(pack.stamps && has(pack.stamps, st))) fail(key(key(key(key(cp, 'coats'), c), 'poses'), x), 'names a stamp, ' + quote(st) + ', that the pack does not have');
+        }
+        for (const n of Object.keys(v.spots)) {
+          const sp = key(key(cp, 'spots'), n);
+          if (!(pack.scenes && has(pack.scenes, n))) fail(sp, 'is a spot in a scene, ' + quote(n) + ', that the pack does not have');
+          if (has(v.spots[n], 'bed') && !pack.scenes[n].bed) fail(key(sp, 'bed'), 'is a spot by the bed, in a scene, ' + quote(n) + ', that has no bed');
+        }
+      }
     }
     for (const n of Object.keys(pack.props || {})) for (const k of Object.keys(pack.props[n].kinds)) for (const st of ['up', 'gone']) {
       const lamp = pack.props[n].kinds[k][st].lamp, lp = key(key(key(key(key(key(P, 'props'), n), 'kinds'), k), st), 'lamp');
@@ -2153,6 +2232,28 @@
     });
     for (const c of Object.keys(v.scenes.for)) { const sc = local(v.scenes.for[c]); if (sc && !sc.can.includes(c)) fail(key(fp, c), 'names ' + quote(v.scenes.for[c]) + ', a scene whose can does not list ' + quote(c)); }
   }
+  /* A pet's sprite holds its feet, and each pose is a stamp of pix shapes alone, each at a whole
+     point and inside the sprite from its feet, since the pose is painted once into the sprite's
+     canvas; and each floor of a spot runs from left to right. */
+  function petRules(pack, v, cp) {
+    const [w, h] = v.sprite.size, [fx, fy] = v.sprite.feet;
+    if (fx > w || fy > h) fail(key(key(cp, 'sprite'), 'feet'), 'must lie in the sprite');
+    for (const c of Object.keys(v.coats)) for (const x of PET_POSES) {
+      const st = v.coats[c].poses[x], pp = key(key(key(key(cp, 'coats'), c), 'poses'), x);
+      pack.stamps[st].forEach((s, i) => {
+        if (s.k !== 'pix') fail(pp, 'names a stamp, ' + quote(st) + ', whose shape ' + i + ' is not a pix shape, and a pose is drawn with pix shapes alone');
+        if (!Number.isInteger(s.p[0]) || !Number.isInteger(s.p[1])) fail(pp, 'names a stamp, ' + quote(st) + ', whose shape ' + i + ' is not at a whole point');
+        const x0 = s.p[0] + fx, y0 = s.p[1] + fy;
+        if (x0 < 0 || y0 < 0 || x0 + s.rows[0].length > w || y0 + s.rows.length > h) fail(pp, 'names a stamp, ' + quote(st) + ', whose shape ' + i + ' reaches outside the sprite from its feet');
+      });
+    }
+    const floors = (s, p) => s.floors.forEach((x, i) => { if (!(x[0] < x[1])) fail(idx(key(p, 'floors'), i), 'must run from left to right, x0 less than x1'); });
+    for (const n of Object.keys(v.spots)) {
+      const sp = key(key(cp, 'spots'), n);
+      floors(v.spots[n], sp);
+      if (v.spots[n].bed) floors(v.spots[n].bed, key(sp, 'bed'));
+    }
+  }
   function worldRules(pack) {
     const P = 'pack';
     eachWorldShape(pack, (s, p, ctx) => {
@@ -2166,6 +2267,7 @@
         const q = v.anchors[a];
         if (q[0] < -v.box[0] / 2 || q[0] > v.box[0] / 2 || q[1] < -v.box[1] || q[1] > 0) fail(key(key(cp, 'anchors'), a), 'must lie in the patron\'s box, x within half its width and y up to its height above the seat');
       }
+      if (v.role === 'pet') petRules(pack, v, cp);
       if (v.role === 'foe') {
         const [w, h] = v.sprite.size, [fx, fy] = v.sprite.feet;
         if (fx > w || fy > h) fail(key(key(cp, 'sprite'), 'feet'), 'must lie in the sprite');
@@ -2289,6 +2391,16 @@
           cap(key(key(cp, 'poses'), x), poses[x], L.poseCost, 'costs up to', 'fills');
         }
         out.cast[n] = { poses };
+      } else if (v.role === 'pet') {
+        const coats = {};
+        for (const k of Object.keys(v.coats)) {
+          coats[k] = {};
+          for (const x of PET_POSES) {
+            coats[k][x] = listCost(pack, pack.stamps[v.coats[k].poses[x]], { where: 'stamp' }).cost;
+            cap(key(key(key(key(cp, 'coats'), k), 'poses'), x), coats[k][x], L.poseCost, 'costs up to', 'fills');
+          }
+        }
+        out.cast[n] = { coats };
       } else {
         const frames = {};
         for (const x of FLAPS) { frames[x] = listCost(pack, v.frames[x], c).cost; cap(key(key(cp, 'frames'), x), frames[x], L.critterFrame, 'costs up to', 'fills'); }
@@ -2825,7 +2937,7 @@
 
   /* The closed lists format 1.1 names, which the engine takes over as it is built. */
   const WORLD_LISTS = freeze({ CONDITIONS: CONDITIONS.slice(), ROUND_ACTS: ROUND_ACTS.slice(), HOSTS: HOSTS.slice(), PREDICATES: PREDICATES.slice(), MARKS: MARKS.slice(),
-    TRIGGERS: TRIGGERS.slice(), EFFECTS: EFFECTS.slice(), ROLES: ROLES.slice(), EXITS: EXITS.slice(), FOE_POSES: FOE_POSES.slice(), FONTS: FONTS.slice(),
+    TRIGGERS: TRIGGERS.slice(), EFFECTS: EFFECTS.slice(), ROLES: ROLES.slice(), EXITS: EXITS.slice(), FOE_POSES: FOE_POSES.slice(), PET_POSES: PET_POSES.slice(), FONTS: FONTS.slice(),
     PROP_KINDS: PROP_KINDS.slice(), CLASS_OF: Object.assign({}, CLASS_OF), CLASS_BOX: JSON.parse(JSON.stringify(CLASS_BOX)), LABELS: LABELS.slice(),
     QUIET_PARTS: JSON.parse(JSON.stringify(QUIET_PARTS)), CAPTIONS: JSON.parse(JSON.stringify(CAPTIONS)), LEVELS: JSON.parse(JSON.stringify(LEVELS)) });
   const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, VALUES, VALUE, MEASURES, TORSO, BASE, KEYS, ORDERS,

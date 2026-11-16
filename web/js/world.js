@@ -3,7 +3,8 @@
    docs/page.md, and puts the scenes of kw.medieval in place of the code scenes of the same names;
    turns each kind of its prop set into a drawing of a device, which it puts in KW.kinds in place
    of the code's (KW.props.KINDS); and turns the members of its cast into the drawings the engine
-   asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS, FOES and PATRONS);
+   asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS, FOES, PATRONS and
+   PETS);
    and takes its words, which build the quiet line and the captions from the collector's parts, and
    its overlay's colours and font, which the page sets on the display.
 
@@ -41,7 +42,8 @@
    - the critters of the cast: their two frames and what falls, with a group's alpha; its foes:
      their poses, from parts shared between them, and their measures; and its patrons: their still
      parts and mouths at their anchors, in the user's skin, hair and robe, with the colours mixed,
-     chosen by contrast, and drawn and dressed.
+     chosen by contrast, and drawn and dressed; and its pets: each pose of each coat from a stamp of
+     pix shapes, painted once, with the pet's spots and the measures of its pounce.
    Each later step adds rows to these tables. */
 (function (KW) {
   'use strict';
@@ -795,7 +797,7 @@
      a name that is not a pose gives stand. A pose is its parts, each a list of shapes shared between
      poses and compiled once, in the order it lists them, then its own shapes. The measures and the
      crown are the pack's, and exit names one of the engine's exits, which the foe player keeps. */
-  const ROLE_SETS = { critter: 'critters', foe: 'foes', patron: 'patrons' };
+  const ROLE_SETS = { critter: 'critters', foe: 'foes', patron: 'patrons', pet: 'pets' };
   function compileCritter(pack, id, v) {
     const path = 'cast.' + id, env = Object.assign(placedEnv(pack, 'the cast'), { groups: v.groups || null });
     const alphaOf = g => (g !== null && isObj(v.alpha) && has(v.alpha, g) ? v.alpha[g] : 1);
@@ -928,7 +930,37 @@
       drawn: Object.freeze({ hair: Object.freeze(ownOf('hair', 3)), robe: Object.freeze(ownOf('tabard', 4)) }), from: MEDIEVAL + '#' + (++compiles)
     });
   }
-  const CAST_COMPILERS = { critter: compileCritter, foe: compileFoe, patron: compilePatron };
+  /* A pet compiles to { name, coats, poses, size, anchor, pose, spots, paw, take, land, lift, from }
+     with the interface of KW.props.PETS (cat.js): coats is each coat's name by its id, in the pack's
+     order; pose(coat, name) is a canvas of sprite.size with the pose painted once from its stamp,
+     the feet at sprite.feet (anchor), the first time it is asked for, as cat.js paints the code's,
+     one call per run of a colour in a row; a coat or a pose the pet lacks gives its first. The
+     stamps are pix shapes at whole points inside the sprite (pack.js checks), worked out into cells
+     here, at start, so that a colour this engine cannot draw is found then. spots and the measures
+     are the pack's, which the engine's catch reads. */
+  function compilePet(pack, id, v) {
+    const path = 'cast.' + id, env = Object.assign(placedEnv(pack, 'the cast'), { stamp: true }), POSES = KW.pack.WORLD_LISTS.PET_POSES;
+    const [w, h] = v.sprite.size, [ax, ay] = v.sprite.feet, coats = Object.keys(v.coats), cells = {}, cache = {};
+    for (const c of coats) for (const n of POSES) {
+      const st = v.coats[c].poses[n], out = new Array(w * h).fill(null);
+      pack.data.stamps[st].forEach((t, i) => {
+        const q = 'stamps.' + st + '[' + i + ']';
+        if (t.k !== 'pix') throw notBuilt(at(q, 'k'), 'a pose drawn with a shape other than pix');
+        const r = SHAPES.pix.compile(t, q, env), x0 = t.p[0] + ax, y0 = t.p[1] + ay;
+        for (let j = 0; j < r.h; j++) for (let k = 0; k < r.w; k++) { const ch = r.rows[j][k]; if (ch !== '.') out[(y0 + j) * w + x0 + k] = r.key[ch]; }
+      });
+      cells[c + '|' + n] = out;
+    }
+    function pose(coat, name) {
+      const c = has(v.coats, coat) ? coat : coats[0], n = POSES.includes(name) ? name : POSES[0], k = c + '|' + n;
+      return cache[k] || (cache[k] = paintCells(cells[k], w, h));
+    }
+    const names = {};
+    for (const c of coats) names[c] = v.coats[c].name;
+    return Object.freeze({ name: v.name, coats: freeze(names), poses: freeze(POSES.slice()), size: freeze([w, h]), anchor: freeze([ax, ay]), pose,
+      spots: freeze(JSON.parse(JSON.stringify(v.spots))), paw: freeze([v.paw[0], v.paw[1]]), take: v.take, land: v.land, lift: v.lift, from: MEDIEVAL + '#' + (++compiles) });
+  }
+  const CAST_COMPILERS = { critter: compileCritter, foe: compileFoe, patron: compilePatron, pet: compilePet };
   /* The member id of the loaded pack's cast, compiled. Throws when it names something this engine
      does not build. */
   function compileMember(pack, id) {
@@ -945,13 +977,13 @@
     return has(cast[set], name) ? [set, name] : null;
   }
   /* KW.cast: the engine's supporting cast, by role, as the code gives it (the critters of
-     KW.props.CRITTERS, the foes of KW.props.FOES and the patrons of KW.props.PATRONS, which court.js
-     gives): the members the pack's cast gives once start() has compiled them, and the code's for
-     the rest. */
-  const cast = KW.cast = { critters: {}, foes: {}, patrons: {} };
+     KW.props.CRITTERS, the foes of KW.props.FOES, the patrons of KW.props.PATRONS, which court.js
+     gives, and the pets of KW.props.PETS, which cat.js gives): the members the pack's cast gives
+     once start() has compiled them, and the code's for the rest. */
+  const cast = KW.cast = { critters: {}, foes: {}, patrons: {}, pets: {} };
   function restoreCast() {
     const P = KW.props || {};
-    for (const [set, code] of [['critters', P.CRITTERS], ['foes', P.FOES], ['patrons', P.PATRONS]]) {
+    for (const [set, code] of [['critters', P.CRITTERS], ['foes', P.FOES], ['patrons', P.PATRONS], ['pets', P.PETS]]) {
       for (const k of Object.keys(cast[set])) delete cast[set][k];
       Object.assign(cast[set], code || {});
     }
@@ -1134,9 +1166,9 @@
      describes): { names, worlds, sets, scenes }, and with kw.medieval's preset the base world's
      homes and quiet scenes. */
   function catalogue() {
-    const names = { world: {}, monarch: {}, foe: {}, critter: {}, props: {}, overlay: {}, words: {}, scene: {} };
+    const names = { world: {}, monarch: {}, foe: {}, critter: {}, pet: {}, props: {}, overlay: {}, words: {}, scene: {} };
     const out = { names, worlds: {}, sets: {}, scenes: {} };
-    const ROLE_KINDS = { patron: 'monarch', foe: 'foe', critter: 'critter' };
+    const ROLE_KINDS = { patron: 'monarch', foe: 'foe', critter: 'critter', pet: 'pet' };
     const labelsOf = (p, n) => (isObj(p.data.words) && isObj(p.data.words[n]) && isObj(p.data.words[n].labels) ? Object.assign({}, p.data.words[n].labels) : null);
     const local = (p, n) => (typeof n === 'string' && n.startsWith(p.id + '/') ? n.slice(p.id.length + 1) : n);
     for (const p of [medieval].concat(Array.from(others.values()))) {

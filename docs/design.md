@@ -35,8 +35,15 @@ Rules that follow from this, each decided by the owner:
   the knight's state and the headline. Small reactions to events (an advert blocked, an address
   banned, a download imported) play only while nothing at warning level or above is active.
 - Blocked adverts become flies. One fly stands for a few minutes of the household's usual
-  blocking, so a quiet network sends the odd fly and a burst sends a swarm. They gather, up to
-  eight, and the knight swats them all at most once every 30 seconds.
+  blocking, so a quiet network sends the odd fly and a burst sends a swarm. A fly belongs to
+  whoever can take it when it comes. Outdoors, while the knight is free, the knight's flies gather,
+  up to eight, and the knight swats them all at most once every 30 seconds. Indoors, and outdoors
+  while the knight is busy with an event, the fly is the mouser cat's (see [The cat](#the-cat)),
+  which catches its flies one at a time, three at most on screen; a blocked advert past that is
+  only counted, in the quiet line's count of adverts slain. The knight's swat passes over the
+  cat's flies, and the cat never takes the knight's. During a warning or worse a blocked advert
+  adds no fly, only the count, and the flies already on screen fly off; the cellar, which plays
+  only under a warning, never gets one. A new scene starts with no flies.
 
 ## The knight
 
@@ -130,6 +137,32 @@ dish is left, with a few crumbs and the last slice lying in it. The slice's fill
 and it blinks slowly from red to black like any other lamp of a down machine. A collector from
 before devices gives no judgement, and with it the dish empties at the first missed check, as it
 always did.
+
+## The cat
+
+A mouser cat lives in the knight's world, the first pet, by the owner's decision of 16 November
+2026 from a mock-up. It catches the flies the knight cannot, so that a blocked advert indoors is
+caught rather than left buzzing. It is always present, resting at a spot of its own in every
+scene: on the battlement's crenel by the torch, the camp's log by the fire, the yard's top bale of
+hay, the house's floor in front of the hearth (at the foot of the bed while the knight is in bed),
+the cellar's low stack of crates, the smithy's forge ledge and the court's lowest dais step. Each
+spot is clear of the knight's walk and swing and of every place for a device.
+
+A fly of the cat's buzzes round the knight for 10 to 20 seconds. In the last 2.5 seconds of its
+buzz the cat sits up, alert, and the fly comes down to a catch point near the cat's spot, so the
+cat never crosses the scene. The cat stalks low for at least 1.2 seconds at 60 pixels a second,
+hopping where the floor steps, wiggles for 0.6 seconds and pounces in a long leap of 0.38 seconds;
+its paw meets the fly at the top, where the fly goes in the sword's poof and falls, as a swatted
+fly does. The cat lands with a swipe, sits pleased for 1.8 seconds, walks back at 55 pixels a
+second and settles. A fly whose buzz ends while the cat is busy waits until it has settled. At
+night the cat catches at the foot of the bed, dimmed with the scene. Nothing is gory: the catch
+ends in the poof.
+
+The cat is drawn as the rest of the page is, in hard pixels lit from the left with a dark outline,
+at 1.3 times the size it was first drawn at, curled when resting and in a long leap when it
+pounces. It comes in two coats, both shipped and chosen by the owner on the settings screen:
+calico, the default, whose white coat and dark outline read across the room in every scene, and a
+ginger tabby. The cat cannot be turned off.
 
 ## Devices
 
@@ -257,7 +290,7 @@ the condition plays: the condition's level, its headline and the knight's state 
 Each display has a settings screen, opened by pressing and holding anywhere on it for two seconds;
 a tap still toggles full screen. It holds the knight's look (build, weapon, skin, hair colour and
 style, tabard, plume, and under Armour the shield, helmet, plume style, body, shoulders, arms,
-hands, legs, feet and back), the monarch and the monarch's skin, hair and robe, the display preferences
+hands, legs, feet and back), the monarch and the monarch's skin, hair and robe, the cat's coat, the display preferences
 (headline size, a 24-hour or 12-hour clock, whether the helmet stays on indoors), which quiet
 scenes take turns and for how long, the scene each offered condition plays in, and a read-only
 status page: the page's version, the state file's age, the sources and the packs. A side rail keeps every page one tap away. A choice applies at once, to the scene
@@ -291,8 +324,8 @@ describes the screen and the levels in full.
 
 ## Art
 
-All seven scenes (battlement, camp, house, training yard, cellar, smithy and court), the knight
-and the props are drawn by code on one grid of 960 by 600 with the ground at 530, in whole pixels,
+All seven scenes (battlement, camp, house, training yard, cellar, smithy and court), the knight,
+the cat and the props are drawn by code on one grid of 960 by 600 with the ground at 530, in whole pixels,
 scaled by a whole number of device pixels where the screen allows (three on the target tablet).
 The still part of a scene is painted once and kept. Only what moves is drawn each frame.
 

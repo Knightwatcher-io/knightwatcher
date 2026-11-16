@@ -50,6 +50,7 @@
 /* The court's preview keeps its shape where the room allows, and shrinks to the room left below
    its heading where it does not, the monarch drawn in the middle of it. */
 .kws-prev canvas.court { aspect-ratio: 240 / 372; flex: 0 1 auto; min-height: 0; }
+.kws-prev canvas.pethome { aspect-ratio: 260 / 200; }
 .kws-prev h2 + canvas, .kws-prev .caps + h2 { margin-top: 2px; }
 .kws-prev .caps { display: flex; justify-content: space-around; margin-bottom: 8px; font-size: var(--t-name); color: #aab6c6; line-height: 1; }
 .kws-line { margin: 10px 0 12px; max-width: 34em; font-size: var(--t-body); line-height: 1.1; color: #ffb000; }
@@ -129,6 +130,10 @@
 .kws-opt.device .chip { width: 110px; height: 88px; padding: 0; background: #0e0b13; overflow: hidden; }
 .kws-opt.device canvas { width: 110px; height: 88px; display: block; }
 .kws-opt.device .name { max-width: none; white-space: nowrap; }
+/* A pet in a coat, sitting up, as its drawing gives it. */
+.kws-opt.pet .chip { width: 162px; height: 150px; padding: 0; background: #0e0b13; overflow: hidden; }
+.kws-opt.pet canvas { width: 162px; height: 150px; display: block; image-rendering: pixelated; }
+.kws-opt.pet .name { max-width: none; white-space: nowrap; }
 /* A part that differs: the value in use and the world's own, each with a word under it. */
 .kws-diff .kws-opts { gap: 10px 34px; }
 /* A heading inside a page, and the quiet lines under it. */
@@ -153,7 +158,8 @@
 @media (max-width: 1200px), (max-height: 760px) {
   .kws { --t-title: 38px; --t-rail: 28px; --t-label: 26px; --t-body: 23px; --t-name: 20px; --chip: 52px; --rail: 190px; --prev: 290px; --inset: 10px; --gap: 12px; }
   .kws-head { padding: 8px 16px 8px; }
-  .kws-rail button { min-height: 52px; }
+  .kws-rail { gap: 6px; }
+  .kws-rail button { min-height: 48px; }
   .kws-done { min-height: 56px; min-width: 120px; }
   .kws-main { padding-left: 16px; gap: 16px; }
   .kws-list { padding-right: 12px; }
@@ -163,6 +169,7 @@
   .kws-note { grid-column: 1; }
   .kws-opts { gap: 8px 10px; }
   .kws-opt.pic .chip, .kws-opt.pic canvas { width: 96px; height: 143px; }
+  .kws-opt.pet .chip, .kws-opt.pet canvas { width: 108px; height: 100px; }
   .kws-opt.scene .chip, .kws-opt.scene canvas { width: 128px; height: 80px; }
   .kws-opt.text .chip { min-width: 96px; padding: 4px 12px 0; }
   .kws-opt.wide .chip { min-width: 120px; padding: 4px 12px 0; }

@@ -39,11 +39,13 @@ tests/
                      (world-1.1.json), the base pack's read, first stored from the library
                      before format 1.1 (base-read.json), and a state file with the settings'
                      defaults (state-defaults.json)
-  tools/             node tests for tools/deploy.sh, tools/pack-carrier.js, tools/sign-pack.js and
-                     tools/settings-schema.js
+  tools/             node tests for tools/deploy.sh, tools/pack-carrier.js, tools/sign-pack.js,
+                     tools/settings-schema.js and tools/cat-stamps.js
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version
   pack-carrier.js    writes the carrier of each pack in web/packs/
+  cat-stamps.js      writes the mouser cat's stamps and cast member into the medieval world's pack,
+                     from its drawing in web/js/cat.js
   sign-pack.js       signs pack files, or takes their signatures off, and writes their carriers
   settings-schema.js writes the page's copy of the settings schema and the reference in
                      docs/configuration.md
@@ -68,7 +70,10 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 - **A change to the medieval art is made in both copies, in the same commit.** A scene the medieval
   world's pack holds (today every scene) is drawn from the pack and, as the fallback, from its code in
   `web/js/scenes/`. Change both, write the carrier, and `node --test tests/web/` holds the two to the
-  same call records. See [worlds.md](./worlds.md#two-copies-held-equal).
+  same call records. See [worlds.md](./worlds.md#two-copies-held-equal). The mouser cat is written
+  into the pack by a tool: after a change to `web/js/cat.js`, run `node tools/cat-stamps.js` and
+  then `node tools/pack-carrier.js`, and `node --test tests/tools/` fails while the pack and the
+  code differ.
 - **A setting starts in the schema.** Every setting of `config.toml` and every variable of `.env`
   is described in `collector/settings-schema.json`. A new or changed one is written there first,
   then in `config.example.toml` or `.env.example`; then run `node tools/settings-schema.js`, which
@@ -172,7 +177,13 @@ took the raspberry off the pie and drew the other devices as an owl, a cauldron,
 chest, every shot that draws a pie or a device differs there: the pie in its place, the dimmed
 scene behind the settings screen, and the scenes' thumbnails and previews on the settings screen;
 and in the 22 shots that place devices with the address's `dv=`, the devices in their places, with
-the lights of their lamps reaching up to 24 pixels past a place's box. A headless browser has no saved choices, so every shot shows what its address asks for.
+the lights of their lamps reaching up to 24 pixels past a place's box. The 28 `cat-` shots that
+end the set show the mouser cat: in its ginger coat at each of its eight spots, through a catch in
+the house, leaping at night, in the smithy and at court, catching a fly that came with the goblin
+or the crate outdoors, three flies at most, none in the cellar, and the settings screen's Pet page
+([page.md](./page.md#checks)). Against a reference from before the cat every shot differs: the
+scenes where the cat rests, the `cat-` shots in what they show, and the settings shots in the rail
+too, where the pet's page was added. A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
@@ -192,7 +203,8 @@ and swing frame without a throw and within the look's cost; the hands on the gri
 through both swings, the attack and the goblin strike; and the arm check on Broad and Slim.
 `tests/web/foe.test.js` checks the goblin's plan and hit on every build with each weapon, and that
 the blade the engine measures is the one drawn. `node --test tests/tools/` also checks that every pack
-carrier matches its pack file, that the copy of the settings schema in `web/js/settings.js` and the
+carrier matches its pack file, that the mouser cat's stamps and member in the medieval world's pack
+are what `tools/cat-stamps.js` writes from `web/js/cat.js` and read back to the code's pixels, that the copy of the settings schema in `web/js/settings.js` and the
 reference in `docs/configuration.md` are what `tools/settings-schema.js` writes, tests the signing tool with keys generated for the run, and checks
 that every pack in `web/packs/` that carries a `sig` verifies against the key table in `pack.js`.
 `tests/web/format-1.1.test.js` checks the world sections of pack format 1.1, which the library reads
@@ -222,7 +234,14 @@ call for call: the fly's frames and what falls, the goblin's six pose canvases, 
 looks of skin, hair and robe, and the engine's frames while flies
 come, are swatted and fall and through the goblin's whole event, with the cast from the pack and
 from code; and checks where the cast is drawn from, a member that fails to compile and what the
-compiler refuses in the cast. `tests/web/world-props.test.js`
+compiler refuses in the cast. `tests/web/pet.test.js` holds the mouser cat from the pack to the
+cat from code, every pose in both coats call for call, and checks the engine's catch: who a fly
+belongs to (the cat indoors and while the knight is busy, the knight outdoors while free), the
+knight's swat passing over the cat's flies, one fly at a time with every step's time, the poses
+through a catch and the fly meeting the paw at the top of the leap, three of the cat's flies at
+most, no fly under a warning and the flies on screen leaving, the cellar without flies, a new scene
+starting clear, the spot by the bed at night under the dimming, the drawing order, the note, the
+coat, and a page without the cat giving every fly to the knight as before. `tests/web/world-props.test.js`
 draws every kind of device from the medieval world's prop set beside the code's drawing of it, call
 for call, in every place of every scene, up and gone, with and without its question mark, in both
 parts and through the lamps' loops, and checks where the devices are drawn from, a kind that fails
@@ -345,7 +364,9 @@ day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy 
 Version 0.3.0, which adds the devices, was signed the same way on 16 November, and version 0.4.0,
 which adds the cast, the same day, as was version 0.5.0, which adds the words and the overlay.
 Version 0.6.0, which lights the pie through its lattice in place of the raspberry and draws the
-other devices as an owl, a cauldron, a flask and a chest, was signed the same day. A signed version is drawn from by a deployed
+other devices as an owl, a cauldron, a flask and a chest, was signed the same day. Version 0.7.0,
+which adds the mouser cat, ships unsigned until its signing run, and a deployed page draws the cat
+from code meanwhile, with every scene, device and the rest of the cast. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature

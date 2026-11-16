@@ -26,7 +26,7 @@
      without one. pl=1 outlines the scene's places for devices. dv= sets the demo's
      devices: kinds separated by commas, each followed by - for down or ! for down and alerting; dv
      is the list in the contract's shape, or null without the hook. set= opens the settings screen
-     at load on a page (world, knight, monarch, display, quiet, scenes, status), or shows the hold's cue (hold). */
+     at load on a page (world, knight, monarch, pet, display, quiet, scenes, status), or shows the hold's cue (hold). */
   const tHook = hv('t') == null ? NaN : +hv('t');
   const dvHook = (H0.match(/[#&]dv=([^&]*)/) || [])[1];
   KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'),
@@ -66,7 +66,8 @@
      pm= the skin, hair, tabard and plume swatches; hy= the hair style; the gear: sh= the shield,
      hm= the helmet, ps= the plume's style, bo= the body, so= the shoulders, am= the arms, hn= the
      hands, lg= the legs, ft= the feet and bk= the back; mon= the monarch, ms= the monarch's skin,
-     mh= the monarch's hair (a hair swatch) and mr= the monarch's robe (a tabard swatch); hs= the
+     mh= the monarch's hair (a hair swatch) and mr= the monarch's robe (a tabard swatch); pc= the
+     pet's coat (calico or ginger); hs= the
      headline size (s, m, l), h= the helmet (on, or auto and off for the helmet off indoors; off
      also takes it off outdoors) and ck= the clock (12 or 24); and sc=<condition>:<scene>,
      separated by commas, the scene each condition plays in. A value a level does not know is ignored, with a line in the console. */
@@ -81,7 +82,7 @@
   } };
   if (hv('arm') !== undefined) HOOK.look.weapon = { one: 'sword_and_shield', two: 'greatsword' }[hv('arm')] || hv('arm');
   for (const [h, k] of [['bd', 'build'], ['sk', 'skin'], ['hc', 'hair'], ['hy', 'hair_style'], ['tb', 'tabard'], ['pm', 'plume'], ['mon', 'monarch'], ['ms', 'monarch_skin'],
-    ['mh', 'monarch_hair'], ['mr', 'monarch_robe'], ['sh', 'shield'], ['hm', 'helmet'], ['ps', 'plume_style'], ['bo', 'body'], ['so', 'shoulders'], ['am', 'arms'],
+    ['mh', 'monarch_hair'], ['mr', 'monarch_robe'], ['pc', 'pet_coat'], ['sh', 'shield'], ['hm', 'helmet'], ['ps', 'plume_style'], ['bo', 'body'], ['so', 'shoulders'], ['am', 'arms'],
     ['hn', 'hands'], ['lg', 'legs'], ['ft', 'feet'], ['bk', 'back']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
   const scHook = (H0.match(/[#&]sc=([^&]*)/) || [])[1];
   if (scHook !== undefined) for (const item of scHook.split(',').filter(Boolean)) { const [c, v] = item.split(':'); HOOK.scenes[c] = v === undefined ? '' : v; }

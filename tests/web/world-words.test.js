@@ -64,7 +64,7 @@ test('kw.medieval gives the word set words.medieval as the owner chose it', () =
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual(plain(r.data.words), { 'words.medieval': {
     name: 'Medieval', watcher: 'the knight',
-    labels: { watcher: 'The knight', patron: 'The monarch', build: 'Build', tabard: 'Tabard', plume: 'Plume', helmet: 'Helmet', foe: 'Foe', critter: 'Pest' },
+    labels: { watcher: 'The knight', patron: 'The monarch', build: 'Build', tabard: 'Tabard', plume: 'Plume', helmet: 'Helmet', foe: 'Foe', critter: 'Pest', pet: 'The cat' },
     quiet: { quiet: ['ALL QUIET'], up: ['{n} up'], backup: ['backup {at}'], ads: ['{n} ads slain', '{short} ads slain', '{short} slain'] },
     captions: { ip_banned: ['BANISHED {addr} · {jail}', 'BANISHED {addr}'], import: ['DELIVERED · {title}'], backup_done: ['STORES SAFE {at}'] } } });
   const s = started(), w = s.W.words;
@@ -281,7 +281,7 @@ test('compileOverlay takes only colours and a font the engine ships, and makes t
 test('a dev page takes the words and the overlay from kw.medieval unsigned, and adds no line for them', () => {
   const s = started();
   assert.deepEqual([s.W.words.source, s.W.overlay.source], ['pack', 'pack']);
-  assert.deepEqual(s.lines, [['info', 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.6.0, unsigned']]);
+  assert.deepEqual(s.lines, [['info', 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.7.0, unsigned']]);
 });
 
 test('a deployed page refuses kw.medieval unsigned: the collector\'s text and display.css\'s colours, until it is signed', () => {
@@ -314,7 +314,7 @@ test('words or an overlay that fail to compile are the code\'s, each with a line
   assert.deepEqual(s.lines, [
     ['warn', 'knightwatcher: the words are the collector\'s: the word set words.medieval could not be compiled: words.words.medieval.quiet.ads: is not a list of templates'],
     ['warn', 'knightwatcher: the overlay is drawn from code: the overlay overlay.phosphor could not be compiled: overlays.overlay.phosphor.font: the font "comic" is not built in this engine yet'],
-    ['info', 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.6.0, unsigned']]);
+    ['info', 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.7.0, unsigned']]);
   assert.equal(s.W.quietLine(quiet('4,812', '4,812'), 'OWN'), 'OWN');
 });
 

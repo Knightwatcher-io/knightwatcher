@@ -288,8 +288,9 @@ and `sources` the parts come from are shown:
     `legs` is `plate`, `mail` or `hose`; `feet` is `leather`, `sabatons` or `shoes`; `back` is
     `none`, `cloak` or `cape`. `monarch_hair` and `monarch_robe` left out mean each monarch
     keeps the colours the court draws them in; there is no value for that. The cast and the rest
-    of the world: `foe` is `goblin`, `critter` is `fly`, and `props`, `overlay` and `words` are
-    `medieval`, each or a long name. `items` is an object from a slot (`main`, `off`, `helmet`,
+    of the world: `pet` is `cat`, `foe` is `goblin`, `critter` is `fly`, and `props`, `overlay`
+    and `words` are `medieval`, each or a long name; `pet_coat` is `calico` or `ginger`. `items`
+    is an object from a slot (`main`, `off`, `helmet`,
     `plume`, `hair`, `torso`, `pauldrons`, `arms`, `gauntlets`, `legs`, `boots` or `back`) to an
     item's long name, and `devices` an object from a kind of device (`pi`, `camera`, `machine`,
     `vm` or `box`) to `medieval` or a prop set's long name; each holds only the keys the config
