@@ -6,14 +6,17 @@ data ([packs.md](./packs.md#format-11) gives the format and its checks). This pa
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
 pack, `kw.medieval`, which holds all seven scenes, the battlement, the camp, the yard, the cellar,
 the smithy, the house and the court, the devices, the prop set `props.medieval`, and the cast: the
-three monarchs, the goblin and the fly. Step W5 of the conversion gave the scenes but the court,
-step W6 the devices, and step W7, now complete, the cast and with it the court: every scene, device
-and member of the cast is drawn from `kw.medieval` 0.4.0, signed. The words and the overlay are still drawn from code.
+three monarchs, the goblin and the fly, and the words and the overlay. Step W5 of the conversion
+gave the scenes but the court, step W6 the devices, step W7 the cast and with it the court, and step
+W8 the words and the overlay: the page builds the quiet line and the events' captions from the
+parts the collector sends, in the world's words, and takes the colours and the font of the words
+over the scene from the world's overlay. Everything is drawn from `kw.medieval` 0.5.0, which ships
+unsigned until its signing run.
 
 ## The medieval world's pack
 
 `web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 1]`,
-version 0.4.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+version 0.5.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([packs.md](./packs.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
@@ -112,6 +115,14 @@ loads it after the base pack's. It holds:
   dish (`berry.up.dark`, `berry.up.lit`, `berry.down.dark`, `berry.down.lit`), and the virtual
   machine's dots, the dark squares and the lights in them, up (`vm.up.dots-1` and `-2`,
   `vm.up.lights-1` and `-2`) and gone (`vm.gone.dots`, `vm.gone.lights`);
+- the word set `words.medieval`: the quiet line's parts as `ALL QUIET`, `{n} up`, `backup {at}`
+  and `{n} ads slain`, `{short} ads slain` or `{short} slain`, and the captions `BANISHED {addr} ·
+  {jail}` or `BANISHED {addr}` for a ban, `DELIVERED · {title}` for an import and `STORES SAFE {at}`
+  for a finished backup, with its name, `Medieval`, its watcher, `the knight`, and the settings
+  screen's labels, below ([The words and the overlay](#the-words-and-the-overlay));
+- the overlay `overlay.phosphor`: the colours `display.css` has always given the words at each level,
+  their black outline, the scrim's black, the caption's background at 0.66 alpha, and the font
+  `vt323`, below;
 - one palette entry, `house.screen`, the television's first colour, which the house's palette track
   changes every 400 ms.
 
@@ -149,16 +160,17 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
 own lamp counts toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
 5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
-court counts none of them. The whole file weighs 233 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+court counts none of them. The whole file weighs 234 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
-then version 0.2.0, version 0.3.0, which adds the devices, and version 0.4.0, which adds the cast;
-a deployed page and a `dev` page alike draw every scene, every device and the cast from it. A change to the pack
-takes the signature's validity with it: until the next signing run a deployed page refuses it and
-draws every scene, every device and the cast from code, while a `dev` page still reads it.
+then version 0.2.0, version 0.3.0, which adds the devices, and version 0.4.0, which adds the cast.
+Version 0.5.0 adds the words and the overlay and ships unsigned until its signing run. Until then a
+deployed page refuses it: it draws every scene, every device and the cast from code, shows the
+collector's own quiet line and captions, and keeps `display.css`'s colours, while a `dev` page reads
+it all from the pack.
 
 ## Where the scenes are drawn from
 
@@ -184,7 +196,7 @@ A scene is drawn from code when:
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
 
 Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn
-from the pack kw.medieval 0.4.0, unsigned` (or `signed`), written with `console.info`; the others
+from the pack kw.medieval 0.5.0, unsigned` (or `signed`), written with `console.info`; the others
 are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
 cellar failing to compile it is `the scenes battlement, camp, yard, smithy, house and court are drawn ...`, after
 the cellar's own line. Of two copies of `kw.medieval` the higher
@@ -238,12 +250,35 @@ compiled. A member that fails to compile is drawn from code, with a line of its 
 | `members` | for each member compiled or tried, by its id, `'pack'` or `'code'` |
 | `faults` | `{ member, reason }` for each member that failed to compile |
 
+The words and the overlay are read in the same call, each by its name until worlds can be chosen:
+the word set `words.medieval` and the overlay `overlay.phosphor` ([The words and the
+overlay](#the-words-and-the-overlay)). With the pack refused, missing or giving neither, the page
+shows the collector's own quiet line and captions and keeps the colours and the font `display.css`
+writes out, which are the overlay's own; that adds no line of its own. One that fails to compile is
+left out the same way, with a line, `knightwatcher: the words are the collector's: the word set
+words.medieval could not be compiled: <reason>` or `knightwatcher: the overlay is drawn from code:
+the overlay overlay.phosphor could not be compiled: <reason>` (`console.warn`), written after the
+cast's lines and before the scenes' line. `KW.world.words` and `KW.world.overlay` hold what `start`
+found:
+
+| Field | Holds |
+|---|---|
+| `words.source` | `'pack'` when the word set is in use, `'code'` otherwise |
+| `words.set` | `'words.medieval'` when it is in use, or `null` |
+| `words.name`, `words.watcher`, `words.labels` | the set's name, its watcher and its labels as written, each `null` without it; the settings screen does not read them yet |
+| `words.quiet`, `words.captions` | its templates for each part of the quiet line and for each event type, or `null` |
+| `words.faults` | `{ set, reason }` when the set failed to compile |
+| `overlay.source` | `'pack'` when the overlay is in use, `'code'` otherwise |
+| `overlay.id`, `overlay.name`, `overlay.font` | `'overlay.phosphor'`, its name and its font's id, each `null` without it |
+| `overlay.props` | the CSS custom properties `main.js` sets on the display, `{}` without it |
+| `overlay.faults` | `{ overlay, reason }` when it failed to compile |
+
 The court draws its monarch from `KW.cast.patrons`, from the pack and from code alike, so on a page
 that reads the pack the monarchs come from the pack's patrons even where the court itself is drawn
 from code.
 
-`start` puts the code scenes, the code's devices and the code's cast back before it reads, so a
-second call starts afresh. Not done yet:
+`start` puts the code scenes, the code's devices and the code's cast back before it reads, and
+leaves the words and the overlay out, so a second call starts afresh. Not done yet:
 a `kw.medieval` the collector downloaded into `data/packs/` is read by the knight but not compiled,
 so the scenes come from the one that ships with the page; a scene from the pack that throws while
 drawing is not caught; and the admin page draws its previews of the scenes from code, since it
@@ -262,7 +297,12 @@ does not start the world.
 | `status` | what the last `start` found, or `null` before it |
 | `props` | what the last `start` found for the devices, or `null` before it |
 | `cast` | what the last `start` found for the cast, or `null` before it |
-| `MEDIEVAL`, `PROPS` | `'kw.medieval'`, `'props.medieval'` |
+| `compileWords(pack, id)`, `compileOverlay(pack, id)` | the word set or the overlay `id` of a loaded pack, compiled ([The words and the overlay](#the-words-and-the-overlay)); each throws when it names something the compiler does not build |
+| `join(parts, sets, limit)` | the line a list of parts makes in a set of templates, within `limit` characters, or `null` (below) |
+| `quietLine(parts, text)`, `caption(type, parts, text)` | the quiet line and an event's caption the page shows: built from the parts in the words in use, or `text` as it is |
+| `words`, `overlay` | what the last `start` found for the words and the overlay, or `null` before it |
+| `MEDIEVAL`, `PROPS`, `WORDS`, `OVERLAY` | `'kw.medieval'`, `'props.medieval'`, `'words.medieval'`, `'overlay.phosphor'` |
+| `QUIET_MAX`, `CAPTION_MAX` | 52 and 44, the longest quiet line and caption, as the collector's |
 
 It also defines `KW.kinds`, the drawing of each kind of device the engine draws, and `KW.cast`, the
 engine's supporting cast, both below.
@@ -708,6 +748,66 @@ a role the engine does not have, a bound set without an `own`, and in any member
 and effects above. A colour a patron's palette or set does not give is refused with the entry it
 lacks.
 
+## The words and the overlay
+
+The collector writes the quiet line and each event's caption whole, in plain words, and beside them
+sends the parts they were written from ([state.md](./state.md)): `quiet_parts` beside `quiet_line`,
+as `[{ "k": "quiet" }, { "k": "up", "n": "29" }, { "k": "backup", "at": "03:12" }, { "k": "ads",
+"n": "4,812", "short": "4,812" }]`, and `parts` beside an event's `text` for a ban (`addr`, and
+`jail` when it has one), an import (`title`) and a finished backup (`at`). Every value is a string
+the collector has formatted, in its time zone and with its separators, so the page only chooses
+words and joins. A part is sent whenever the collector had the reading, even when its own line had
+no room for it.
+
+**The words.** A word set gives each part a list of templates, longest first. `KW.world.join(parts,
+sets, limit)` builds a line from them:
+
+- each part takes the first of its templates whose placeholders it has values for; a template that
+  names a value the part lacks, or gives empty, is passed over for the next, and a part with none
+  left is passed over;
+- the parts are joined with ` · `, and while the line is longer than `limit` the last part takes its
+  next template, and with none left is dropped, then the part before it the same way. This is the
+  rule of the collector's `quiet_line()` and `text.join_fitting()`;
+- the first part is never dropped. Alone and still too long it is cut, as the collector's
+  `text.clip()` cuts a caption: to `limit - 1` characters, white space trimmed, and `…`;
+- runs of white space are made single, and characters are counted by code point, as Python counts
+  them.
+
+`join` gives `null` when the set has no templates for a kind of part that was sent, or no part can
+be written. The quiet line is joined within 52 characters (`quietLine`), and a caption, one part
+of the event's type, within 44 (`caption`). Either one shows the collector's text as it is when
+there are no parts (an older collector, or an event without them), no words in use, or `join`
+gives `null`. So the medieval words give `ALL QUIET · 29 up · backup 03:12 · 4,812 ads slain`
+where the collector wrote `... 4,812 ads blocked`, `BANISHED 203.0.113.77 · sshd` for `BANNED
+203.0.113.77 · sshd`, `DELIVERED · <title>` for `IMPORTED · <title>` and `STORES SAFE 03:12` for
+`BACKUP DONE 03:12`. A count too long for the line takes its short form, `1.2M ads slain` for
+1,234,567, before it is dropped. `main.js` writes the result with `textContent`, never as markup. The
+headline, the detail and the "+N MORE" badge are always the collector's.
+
+`labels` and `watcher` are carried in the compiled set for the settings screen, which does not read
+them yet.
+
+**The overlay.** `compileOverlay` turns the overlay into CSS custom properties, which `main.js`
+sets on `#surface` once at start-up and `display.css` reads:
+
+| Property | From | Read by |
+|---|---|---|
+| `--kw-ok` to `--kw-sleep`, `--kw-ok2` to `--kw-sleep2` | each level's two colours | each level's `--fg` and `--fg2`; `--kw-warn` and `--kw-crit` also colour the "+N MORE" badge |
+| `--kw-outline` | `outline` | the words' outline, `text-shadow` |
+| `--kw-scrim` | `scrim`, as `r,g,b` | the scrim's gradient stops, whose alphas stay in `display.css` |
+| `--kw-caption` | `caption` | the caption's background |
+| `--kw-font` | `font`, from the fonts the engine ships (today `vt323`) | the display's `font-family` |
+
+The library has checked the values and held each level's colours within the status's bands of hue
+and contrast ([packs.md](./packs.md#words-and-the-overlay)); `compileOverlay` checks their form again,
+so that nothing but a six-digit hex colour, an `rgba()` it writes itself or a font of its own list
+reaches the style. A pack never supplies CSS. `display.css` gives each property's value today as
+its fallback, `var(--kw-ok, #39ff6a)`, for a page without the overlay. The overlay
+`overlay.phosphor` holds the same values, so the screen is the same either way.
+
+What the compiler does not build in the words and the overlay, it refuses by name: a font the
+engine does not ship. Everything else the library has already refused.
+
 ## Writing a scene as data
 
 The cellar, the camp, the battlement, the yard and the smithy show how code becomes data:
@@ -874,8 +974,18 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   from code, the raspberry's canvases painted once with the lit drawing over the dark one, and what
   the compiler refuses in a prop. `tests/web/scenes.test.js` draws the scenes from the pack with the
   devices from it too, against the records stored from code.
+- The words and the overlay have no copy in code to hold equal: without them the page shows the
+  collector's text, and `display.css` writes out the overlay's colours as its fallback.
+  `tests/web/world-words.test.js` holds the two together, each property the overlay sets against
+  the fallback `display.css` gives it, and checks that `display.css` writes no colour of the overlay
+  but through them. It checks the joining rule (the first template with its values, the last part
+  shortened, then dropped, the first cut at the limit with the ellipsis, 52 and 44 at their edges,
+  code points and white space, a missing value or kind, no parts and no words), each caption and the
+  quiet line from the medieval words, that `main.js` writes them with `textContent`, where the words
+  and the overlay come from on a `dev` and a deployed page, one of them failing to compile, what
+  `compileOverlay` refuses, and the demo's parts, texts and lines.
 - The screenshots of the repository's own page, a `dev` page, draw every scene, device and member of
-  the cast from the pack. To shoot the code path, take a pair of sets from a copy of `web/` whose `kw-version` is not
+  the cast from the pack, and show the medieval words. To shoot the code path, take a pair of sets from a copy of `web/` whose `kw-version` is not
   `dev`, as for the knight ([page.md](./page.md#checks)).
 
 **A change to the medieval art is made in both copies, in the same commit.** Change the code scene

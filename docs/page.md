@@ -11,7 +11,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `index.html` | the markup: the page's version in the `kw-version` meta tag, the review bar, the display surface, the script tags in load order |
 | `favicon.svg`, `favicon.ico`, `apple-touch-icon.png` | the page's icons, linked from `index.html`. The SVG changes its outline with the browser's light or dark theme, and the ICO serves browsers that take no SVG |
 | `logo.svg`, `logo-dark.svg`, `logo-mono.svg`, `icon-192.png`, `icon-512.png` | the logo and the app icons. The page itself does not use them; see [development.md](./development.md#the-logo-and-the-icons) |
-| `css/display.css` | the display, the text colours by status, the review bar |
+| `css/display.css` | the display, the text colours by status, the review bar. The colours and the font of the words over the scene are read through CSS custom properties that the world's overlay sets, with today's values as their fallback; see [The words over the scene](#the-words-over-the-scene) |
 | `css/settings.css` | the settings screen and the cue of the hold that opens it |
 | `fonts/` | the VT323 typeface and its licence |
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
@@ -22,14 +22,14 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
-| `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names, its devices in `KW.kinds` and its cast in `KW.cast`, which the engine draws them from; see [worlds.md](./worlds.md) |
+| `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names, its devices in `KW.kinds` and its cast in `KW.cast`, which the engine draws them from, and compiles its words and its overlay (`KW.world.words`, `KW.world.overlay`) and builds the quiet line and the captions from the collector's parts; see [worlds.md](./worlds.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene, the devices and the cast as data; see [worlds.md](./worlds.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the devices in their places (`KW.devices`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
 | `js/settings.js` | `KW.settings`: the levels the display's settings come from, the saved settings (the server's, shared by every display, or this browser's own), keeping them in step with the server (`connect`), the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
-| `js/main.js` | start-up (starting the knight and then the scenes from the medieval world's pack, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
+| `js/main.js` | start-up (starting the knight and then the world from the medieval world's pack, setting the overlay's custom properties on the display, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 | `admin/index.html`, `admin/admin.js`, `admin/admin.css` | the admin page, served by the bundled server alone; see [The admin page](#the-admin-page) |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
@@ -571,8 +571,9 @@ hides the review bar and drives the display:
 - The "+N MORE" badge counts the other known conditions at warning or critical, and turns red
   when any of them is critical.
 - With no known condition the quiet scenes the settings choose take turns, ten minutes each
-  unless the settings set another length (`LIVE_TURN_MS` in `main.js` is the ten), and
-  `quiet_line` is the small line.
+  unless the settings set another length (`LIVE_TURN_MS` in `main.js` is the ten), and the small
+  line is the quiet line, built from `quiet_parts` in the world's words or `quiet_line` as it is
+  (see [The words over the scene](#the-words-over-the-scene)).
 - The file's `defaults` go to the settings (see [Settings](#settings)), which apply any change at
   once. With each fetch of the state file the page also asks `api/settings` for the shared
   settings (see [The shared settings](#the-shared-settings)).
@@ -582,7 +583,8 @@ hides the review bar and drives the display:
 - Events. The first valid file's events are adopted without playing. After that each event with
   a higher `seq`, oldest first: `ad_blocked` adds `count` flies (at most 100 for one event;
   eight on screen, the rest queued for the next swat), `ip_banned` plays the goblin, `import`
-  the crate and `backup_done` the feast, each with `text` as the caption. The goblin is a foe
+  the crate and `backup_done` the feast, each with a caption built from its `parts` in the world's
+  words, or its `text` as it is. The goblin is a foe
   as tall as the knight's shoulders: it climbs over the battlement's wall or digs up out of the
   camp's grass beside the knight, pulls a face, is bonked on the saucepan it wears, and vanishes
   in a puff of smoke. The knight's swing stops where the blade meets the pot, so the blade never
@@ -640,6 +642,30 @@ in the contract's shape, `takeEvents()` picks the events to play and `noSignal()
 knight's NO SIGNAL state. `versionOf(file)` reads the version out of a parsed `version.json`, and
 `reloadDue(own, fetched, last, nowMs)` decides whether to reload, given the page's own version, the
 fetched one, the record of the last reload and the time. `state.js` loads under Node for the tests.
+
+## The words over the scene
+
+The headline, the detail, the "+N MORE" badge, the quiet line, the caption and the clock are HTML
+text over the canvas, in VT323. `KW.ui.show` and `KW.ui.caption` in `main.js` write them with
+`textContent`, never as markup. The headline, the detail and the badge are the collector's words as
+they come. The quiet line and the captions are the world's: `KW.state.map` keeps the collector's
+`quiet_parts` and each event's `type` and `parts` beside its text, and `main.js` passes them to
+`KW.world.quietLine(parts, text)` and `KW.world.caption(type, parts, text)`, which build the line
+from the parts in the medieval world's words, `words.medieval`, within the collector's limits of 52
+and 44 characters. With no parts, or no words (a deployed page before `kw.medieval` is signed), they
+give the collector's text as it is. [worlds.md](./worlds.md#the-words-and-the-overlay) gives the
+rule. The demo goes through the same two calls, with parts and texts as the collector would send
+them.
+
+The colours come from the world's overlay, `overlay.phosphor`. At start-up `main.js` sets the
+custom properties in `KW.world.overlay.props` on `#surface`: `--kw-ok` to `--kw-sleep` and
+`--kw-ok2` to `--kw-sleep2` for each level's `--fg` and `--fg2` (`--kw-warn` and `--kw-crit` also
+colour the badge), `--kw-outline` for the words' outline, `--kw-scrim` for the scrim's colour as
+`r,g,b`, `--kw-caption` for the caption's background and `--kw-font` for the font. `display.css`
+reads each as `var(--kw-ok, #39ff6a)`, with today's value as the fallback, and a page with no
+overlay in use shows those. The scrim's stops and alphas, the sizes and the rest of the layout stay in
+`display.css`. The text colour is still the status: a world may move a level's colours only within
+the bands of hue and contrast the pack library checks ([design.md](./design.md)).
 
 ## Devices
 
@@ -1241,6 +1267,15 @@ both; with the rest of what the compiler does for the cast ([worlds.md](./worlds
 `tests/web/foe.test.js` loads no compiler, so it checks the code's goblin;
 `tests/web/world-scenes.test.js` runs its checks on the pack's.
 
+`tests/web/world-words.test.js` loads the page's scripts but the engine, the settings and `main.js`,
+and checks the quiet line and the captions built from the collector's parts in the medieval words,
+against the collector's own rule, with the collector's text when there are no parts or no words;
+the overlay's custom properties against the fallbacks `display.css` gives them; that `main.js`
+writes the words with `textContent` and sets the overlay after the world has started; where the
+words and the overlay come from on a `dev` and a deployed page; and the demo's parts, texts and
+lines ([worlds.md](./worlds.md#the-words-and-the-overlay)). `tests/web/state.test.js` checks that
+`quiet_parts` and an event's `parts` are read as strings, or not at all.
+
 `tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
 the entrance runs in order and the poof is over within the event's 3.4 seconds; that the goblin
@@ -1575,10 +1610,10 @@ one frame to the next, so every shot depends only on its address: two takes of t
 out byte for byte the same, on a busy machine too, apart from the clock when the minute turns.
 
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
-and every scene, device and member of the cast drawn from the medieval world's pack. A deployed
-copy draws from each pack while it ships signed, and from code otherwise: today the knight from the
-base pack and every scene, device and member of the cast from the medieval world's pack 0.4.0,
-both signed.
+and every scene, device and member of the cast drawn from the medieval world's pack, with its words
+and its overlay. A deployed copy draws from each pack while it ships signed, and from code
+otherwise: today the knight from the base pack, signed, and the rest from code with the collector's
+own words, since the medieval world's pack 0.5.0 ships unsigned until its signing run.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches
