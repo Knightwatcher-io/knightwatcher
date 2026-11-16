@@ -89,7 +89,14 @@ class BackupSource(Source):
         if found and (known is None or found > known):
             if known is not None:
                 local = found.astimezone(self.config.tz).strftime("%H:%M")
-                events.append({"type": "backup_done", "count": 1, "text": f"BACKUP DONE {local}"})
+                events.append(
+                    {
+                        "type": "backup_done",
+                        "count": 1,
+                        "text": f"BACKUP DONE {local}",
+                        "parts": {"at": local},
+                    }
+                )
             memory["last_ok"] = text.iso(found)
             known = found
         if known is not None:

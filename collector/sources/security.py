@@ -80,7 +80,8 @@ class SecuritySource(Source):
         previous = memory.get("last_ban")
         if key and previous is not None and key != previous:
             caption = f"BANNED {lb['ip']}" + (f"{text.SEP}{lb['jail']}" if lb["jail"] else "")
-            events.append({"type": "ip_banned", "count": 1, "text": caption})
+            parts = {"addr": lb["ip"], **({"jail": lb["jail"]} if lb["jail"] else {})}
+            events.append({"type": "ip_banned", "count": 1, "text": caption, "parts": parts})
         if key or previous is None:
             memory["last_ban"] = key
         return events

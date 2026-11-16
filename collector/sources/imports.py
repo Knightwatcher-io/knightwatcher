@@ -49,7 +49,13 @@ class _ArrSource(Source):
             return []
         fresh = sorted((r for r in records if r["id"] > marker), key=lambda r: r["id"])
         return [
-            {"type": "import", "count": 1, "text": f"IMPORTED{text.SEP}{r['title']}"} for r in fresh
+            {
+                "type": "import",
+                "count": 1,
+                "text": f"IMPORTED{text.SEP}{r['title']}",
+                "parts": {"title": r["title"]},
+            }
+            for r in fresh
         ]
 
 

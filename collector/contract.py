@@ -10,6 +10,14 @@ from collector.config import CONDITION_IDS, DEFAULT_TABLES, check_defaults
 
 LEVELS = {"critical", "warning", "work", "quiet", "sleep"}
 EVENT_TYPES = {"ad_blocked", "ip_banned", "import", "backup_done"}
+# The parts an event's caption is made of, by type: the names it always has, and those it may.
+EVENT_PARTS = {
+    "ip_banned": ({"addr"}, {"jail"}),
+    "import": ({"title"}, set()),
+    "backup_done": ({"at"}, set()),
+}
+# The parts of the quiet line, in the order they come, with the names of each one's values.
+QUIET_PARTS = {"quiet": (), "up": ("n",), "backup": ("at",), "ads": ("n", "short")}
 FACT_SECTIONS = (
     "host",
     "containers",
@@ -99,6 +107,45 @@ def _config(note: Any) -> list[str]:
     return p
 
 
+def _quiet_parts(parts: Any) -> list[str]:
+    """Check `quiet_parts`, the parts of the quiet line."""
+    if not isinstance(parts, list) or not parts:
+        return ["quiet_parts is not a list of parts"]
+    p: list[str] = []
+    kinds = []
+    for i, part in enumerate(parts):
+        w = f"quiet_parts[{i}]"
+        if not isinstance(part, dict) or part.get("k") not in QUIET_PARTS:
+            p.append(f"{w}.k is unknown")
+            continue
+        names = QUIET_PARTS[part["k"]]
+        if set(part) != {"k", *names}:
+            p.append(f"{w} does not have the values of its kind")
+        elif not all(
+            isinstance(part[n], str) and 0 < len(part[n]) <= text.QUIET_LINE_MAX for n in names
+        ):
+            p.append(f"{w} has a value that is not text of 1 to {text.QUIET_LINE_MAX}")
+        kinds.append(part["k"])
+    order = list(QUIET_PARTS)
+    if kinds and (kinds[0] != "quiet" or kinds != sorted(set(kinds), key=order.index)):
+        p.append("quiet_parts does not start with quiet and keep the order quiet, up, backup, ads")
+    return p
+
+
+def _event_parts(e: dict, w: str) -> list[str]:
+    """Check an event's `parts`, which only the types in EVENT_PARTS have."""
+    names = EVENT_PARTS.get(e.get("type"))
+    if names is None:
+        return [f"{w}.parts is on a type that has none"]
+    need, may = names
+    parts = e["parts"]
+    if not isinstance(parts, dict) or not need <= set(parts) <= need | may:
+        return [f"{w}.parts does not have the names of its type"]
+    if not all(isinstance(v, str) and 0 < len(v) <= text.EVENT_TEXT_MAX for v in parts.values()):
+        return [f"{w}.parts has a value that is not text of 1 to {text.EVENT_TEXT_MAX}"]
+    return []
+
+
 def validate(state: Any) -> list[str]:
     """Return every way the document breaks the contract; an empty list means it keeps it."""
     p: list[str] = []
@@ -139,6 +186,8 @@ def validate(state: Any) -> list[str]:
     q = state.get("quiet_line")
     if not isinstance(q, str) or len(q) > text.QUIET_LINE_MAX:
         p.append(f"quiet_line is not text of at most {text.QUIET_LINE_MAX}")
+    if "quiet_parts" in state:
+        p += _quiet_parts(state["quiet_parts"])
 
     events = state.get("events")
     if not isinstance(events, list) or len(events) > 20:
@@ -167,6 +216,8 @@ def validate(state: Any) -> list[str]:
             p.append(f"{w}.text is not text of at most {text.EVENT_TEXT_MAX}")
         elif e.get("type") == "ad_blocked" and t:
             p.append(f"{w}.text should be empty for ad_blocked")
+        if "parts" in e:
+            p += _event_parts(e, w)
 
     facts = state.get("facts")
     listed = 0
