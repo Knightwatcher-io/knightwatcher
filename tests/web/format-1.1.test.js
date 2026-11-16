@@ -201,7 +201,7 @@ test('a 1.0 pack reads as it did: no world section, builds only in the base pack
 
 test('the closed lists are the format\'s, by name', () => {
   const L = PK.WORLD_LISTS;
-  assert.deepEqual(L.EFFECTS, ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'burst']);
+  assert.deepEqual(L.EFFECTS, ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'flicker', 'burst']);
   assert.deepEqual(L.MARKS, ['things', 'rest', 'patron', 'sleeper', 'target', 'bubble']);
   assert.deepEqual(L.PREDICATES, ['tv', 'inBed', 'helmOff', 'strike', 'day', 'night']);
   assert.deepEqual(L.ROUND_ACTS, ['guard', 'look', 'sniff', 'yawn', 'train']);

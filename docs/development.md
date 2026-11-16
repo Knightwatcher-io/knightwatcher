@@ -65,7 +65,7 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
   `node tools/pack-carrier.js` and commit both; a test fails while they differ. See
   [packs.md](./packs.md#carriers).
 - **A change to the medieval art is made in both copies, in the same commit.** A scene the medieval
-  world's pack holds (today every scene but the court) is drawn from the pack and, as the fallback, from its code in
+  world's pack holds (today every scene) is drawn from the pack and, as the fallback, from its code in
   `web/js/scenes/`. Change both, write the carrier, and `node --test tests/web/` holds the two to the
   same call records. See [worlds.md](./worlds.md#two-copies-held-equal).
 - **A setting starts in the schema.** Every setting of `config.toml` and every variable of `.env`
@@ -231,12 +231,11 @@ on the knight (the sleeper's head, the gear at rest, the speech bubble, a swing)
 one line with the call and its arguments, since the knight test checks the knight. The goblin, the
 flies and the other props of the events are recorded apart. It compares 1 803 records with those in
 `tests/web/fixtures/scenes/`, one file per scene and one for those props (`cast.json`). Then it draws
-each scene the medieval world's pack holds (today every scene but the court, 1 260 records) a second time, compiled
-from the pack and with the devices from its prop set, against the same stored records, and the
-cast the pack gives against `cast.json`, and the court, still a code scene, with its monarchs from
-the pack's patrons against `court.json`; checks that the compiled scene's backdrop key tells
+each scene the medieval world's pack holds (today every scene, 1 782 records) a second time, compiled
+from the pack and with the devices from its prop set and the monarchs from its cast, against the
+same stored records, and the rest of the cast the pack gives against `cast.json`; checks that the compiled scene's backdrop key tells
 the recorded states apart exactly as the code scene's does; and checks that it gives the code scene's
-interface. All of it takes about 39 seconds. A failure names the scene, the state, the size, the record and the first call that
+interface. All of it takes about 80 seconds. A failure names the scene, the state, the size, the record and the first call that
 differs, with what `HEAD` draws there and what was drawn; without git, the block of 1 024 calls
 where the difference lies. Store the records again only when a scene is meant to change, from code
 whose drawing is known to be right:
@@ -250,13 +249,13 @@ SCENES_WEB=DIR node --test tests/web/scenes.test.js        # draws a copy of web
 [page.md](./page.md#checks) has the details.
 
 `tests/web/world.test.js` checks the scene compiler and the medieval world's pack: that the pack
-reads clean, where a `dev` and a deployed page draw every scene but the court from, a refused, missing or unreadable pack and a compile that throws, each leaving
+reads clean, where a `dev` and a deployed page draw every scene from, a refused, missing or unreadable pack and a compile that throws, each leaving
 the scenes concerned the code scenes with its console line, the predicates and the backdrop's key,
 `outdoors` and the foe's zone, the target's and the anvil's acts, the bed and the screen, the
 keyframes' tracks, the rests, the rest mark and the pegs, and
 that what the compiler does not build yet is refused by name.
 
-The repository's own page draws the knight from the base pack, and every scene but the court, every device and the cast from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
+The repository's own page draws the knight from the base pack, and every scene, every device and the cast from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
 and the scene test check both paths. A deployed copy draws from each pack while it ships signed, and
 from code otherwise; to shoot the code path as well, take a second pair of sets from a copy of
 `web/` whose `kw-version` is not `dev` and whose packs carry no signature; [page.md](./page.md#checks)
@@ -303,7 +302,7 @@ first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, 
 day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house.
 Version 0.3.0, which adds the devices, was signed the same way on 16 November. Version 0.4.0, which
 adds the cast, ships unsigned until its signing run. A signed version is drawn from by a deployed
-page and a `dev` page alike, every scene but the court, every device and the cast it gives; a
+page and a `dev` page alike, every scene, every device and the cast it gives; a
 version changed after signing ships unsigned until its next run, and meanwhile a deployed page draws
 every scene from code ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
 across changes no test.

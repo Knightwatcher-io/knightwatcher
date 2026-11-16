@@ -480,6 +480,18 @@
     draw(f) { const [x, y] = f.p; poly(FRINGE.map(([dx, dy]) => [x + dx, y + dy]), f.colour); }
   };
 
+  /* flicker: a soft light at p, r across, in colour, as strong as a + amp * sin(t / div + ph), so that
+     each light can flicker from a phase of its own, as the court's torches each take their pillar's
+     x. A glow's alpha in a pack takes a wave of a fixed phase alone. */
+  const flicker = {
+    clock: 'time',
+    fields: { p: { kind: 'point' }, r: { kind: 'num', lo: 1, hi: 512 }, colour: { kind: 'colour' }, a: { kind: 'num', lo: 0, hi: 1 }, amp: { kind: 'num', lo: 0, hi: 1 },
+      div: { kind: 'num', lo: 1, hi: 100000 }, ph: { kind: 'term', lo: -8192, hi: 8192, def: 0 } },
+    cost: () => B.glow,
+    glows: () => 1,
+    draw(f, t) { glow(f.p[0], f.p[1], f.r, f.colour, f.a + f.amp * Math.sin(t / f.div + f.ph)); }
+  };
+
   /* crust: a pie's top seen from the side and a little above, the middle of its rim at p: the rim
      a flat ellipse rim[0] across and rim[1] high either side of p, and behind its middle a dome
      dome[0] across and dome[1] high, outlined in colour. The crust shades from crust[0], lit from
@@ -548,7 +560,7 @@
   /* ---- The library ------------------------------------------------------------------------------ */
 
   /* The effects, in the order the world format lists them (pack.js names the same list). */
-  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, flutes, crust, fingers, fringe, burst };
+  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, flutes, crust, fingers, fringe, flicker, burst };
   const NAMES = Object.freeze(Object.keys(TABLE));
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const SCALAR = ['offset', 'length', 'term'];

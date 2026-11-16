@@ -76,12 +76,12 @@ const CODE = 'knightwatcher: the scenes of kw.medieval are drawn from code: ';
 
 // ---- The pack ---------------------------------------------------------------------------------------
 
-test('the medieval world\'s pack reads clean: kw.medieval 0.4.0, format 1.1, the battlement, the camp, the yard, the cellar, the smithy, the house and their stamps', () => {
+test('the medieval world\'s pack reads clean: kw.medieval 0.4.0, format 1.1, the battlement, the camp, the yard, the cellar, the smithy, the house, the court and their stamps', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual([r.id, r.version, plain(r.format), r.signed], ['kw.medieval', '0.4.0', [1, 1], false]);
   assert.deepEqual(plain(r.provides), ['palettes', 'scenes', 'cast', 'props', 'stamps']);
-  assert.deepEqual(Object.keys(r.data.scenes), ['battlement', 'camp', 'yard', 'cellar', 'smithy', 'house']);
+  assert.deepEqual(Object.keys(r.data.scenes), ['battlement', 'camp', 'yard', 'cellar', 'smithy', 'house', 'court']);
   assert.deepEqual(Object.keys(r.data.stamps), ['sconce', 'barrel', 'peg', 'berry.up.dark', 'berry.up.lit', 'berry.down.dark', 'berry.down.lit',
     'vm.up.dots-1', 'vm.up.dots-2', 'vm.up.lights-1', 'vm.up.lights-2', 'vm.gone.dots', 'vm.gone.lights']);
   assert.deepEqual(plain(r.data.palettes), { house: { screen: '#7fe9ff' } });
@@ -92,6 +92,9 @@ test('the medieval world\'s pack reads clean: kw.medieval 0.4.0, format 1.1, the
   assert.deepEqual(plain(r.world.scenes.cellar), { still: { n: 440, cost: 76803 }, frame: { n: 3, cost: 120, glows: 1 } });
   assert.deepEqual(plain(r.world.scenes.smithy), { still: { n: 339, cost: 15212 }, frame: { n: 9, cost: 508, glows: 2 } });
   assert.deepEqual(plain(r.world.scenes.house), { still: { n: 370, cost: 71245 }, frame: { n: 46, cost: 2128, glows: 3 } });
+  assert.deepEqual(plain(r.world.scenes.court), { still: { n: 408, cost: 50555 }, frame: { n: 19, cost: 904, glows: 8 } });
+  // the whole file, against the 512 KiB a pack may weigh
+  assert.ok(Buffer.byteLength(SHIPPED) < 512 * 1024 / 2, Buffer.byteLength(SHIPPED) + ' bytes');
   // a deployed page refuses it unsigned
   assert.deepEqual([PK.read(TEXT).ok, PK.read(TEXT).step, PK.read(TEXT).reason], [false, 'signature', MISSING]);
 });
@@ -100,7 +103,7 @@ test('the pack as it ships: signed, a deployed page draws its scenes from it; un
   const s = sandbox(), st = s.W.start([SHIPPED], false);
   if (Object.prototype.hasOwnProperty.call(JSON.parse(SHIPPED), 'sig')) {
     assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.4.0', signed: true }, st.note);
-    assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack', house: 'pack' });
+    assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack', house: 'pack', court: 'pack' });
   } else {
     assert.deepEqual([st.source, st.refused.step], ['code', 'signature']);
   }
@@ -121,27 +124,24 @@ test('the page loads the compiler after the pack library and the medieval carrie
 // ---- Where the scenes are drawn from ------------------------------------------------------------------
 
 /* The scenes kw.medieval gives, in the pack's order. */
-const GIVEN = ['battlement', 'camp', 'yard', 'cellar', 'smithy', 'house'];
+const GIVEN = ['battlement', 'camp', 'yard', 'cellar', 'smithy', 'house', 'court'];
 
-test('a dev page draws the battlement, the camp, the yard, the cellar, the smithy and the house from kw.medieval unsigned, under their short names and their long ones, and says so', () => {
+test('a dev page draws every scene, the court among them, from kw.medieval unsigned, under their short names and their long ones, and says so', () => {
   const s = sandbox(), before = Object.keys(s.KW.scenes);
   const st = s.W.start([TEXT], true);
   assert.equal(s.W.status, st);
   assert.deepEqual(plain(st), { source: 'pack', pack: { id: 'kw.medieval', version: '0.4.0', signed: false }, refused: null,
-    scenes: { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack', house: 'pack' }, faults: [],
-    note: 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy and house are drawn from the pack kw.medieval 0.4.0, unsigned' });
+    scenes: { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack', house: 'pack', court: 'pack' }, faults: [],
+    note: 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.4.0, unsigned' });
   assert.deepEqual(s.lines, [['info', st.note]]);
   for (const n of GIVEN) {
     const sc = s.KW.scenes[n];
     assert.notEqual(sc, s.code[n], n);
     assert.equal(s.KW.scenes['kw.medieval/' + n], sc, n);
   }
-  // the long names are not listed, so the engine and the settings see the same seven scenes, and
-  // the court, which waits for the patron, stays the code scene
+  // the long names are not listed, so the engine and the settings see the same seven scenes
   assert.deepEqual(Object.keys(s.KW.scenes), before);
-  assert.deepEqual(before.filter(n => !GIVEN.includes(n)), ['court']);
-  assert.equal(s.KW.scenes.court, s.code.court);
-  for (const n of before.filter(n => !GIVEN.includes(n))) assert.equal(s.KW.scenes[n], s.code[n], n);
+  assert.deepEqual(before.filter(n => !GIVEN.includes(n)), []);
 });
 
 test('a deployed page refuses kw.medieval unsigned and draws its scenes from code, with one line', () => {
@@ -155,11 +155,11 @@ test('a deployed page refuses kw.medieval unsigned and draws its scenes from cod
   }
 });
 
-test('a deployed page draws the battlement, the camp, the yard, the cellar, the smithy and the house from kw.medieval once it is signed with a key it knows', () => {
+test('a deployed page draws every scene from kw.medieval once it is signed with a key it knows', () => {
   const s = sandbox(), st = s.W.start([signedText(TEXT)], false, { keys: keysIn(s) });
   assert.equal(st.source, 'pack', st.note);
   assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.4.0', signed: true });
-  assert.equal(st.note, 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy and house are drawn from the pack kw.medieval 0.4.0, signed');
+  assert.equal(st.note, 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.4.0, signed');
   for (const n of GIVEN) assert.notEqual(s.KW.scenes[n], s.code[n], n);
   // a signature that does not verify is refused, as for any pack
   const bad = s.W.start([signedText(TEXT).replace('"Cellar"', '"Cellars"')], false, { keys: keysIn(s) });
@@ -175,12 +175,12 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   broken.scenes.cellar.still[0].shapes[3].k = 'zz';
   s.KW.pack = Object.assign({}, lib, { read: () => Object.assign({}, real, { data: broken }) });
   const st = s.W.start([TEXT], true);
-  assert.equal(st.source, 'pack', 'the battlement, the camp, the yard, the smithy and the house are still drawn from the pack');
+  assert.equal(st.source, 'pack', 'the other scenes are still drawn from the pack');
   assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.4.0', signed: false });
-  assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack', house: 'pack' });
+  assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack', house: 'pack', court: 'pack' });
   assert.deepEqual(plain(st.faults), [{ scene: 'cellar', reason: 'scenes.cellar.still[0].shapes[3].k: the shape kind "zz" is not built in this engine yet' }]);
   assert.deepEqual(s.lines, [['warn', 'knightwatcher: the scene cellar is drawn from code: it could not be compiled: ' + st.faults[0].reason],
-    ['info', 'knightwatcher: the scenes battlement, camp, yard, smithy and house are drawn from the pack kw.medieval 0.4.0, unsigned']]);
+    ['info', 'knightwatcher: the scenes battlement, camp, yard, smithy, house and court are drawn from the pack kw.medieval 0.4.0, unsigned']]);
   assert.equal(s.KW.scenes.cellar, s.code.cellar);
   assert.equal(s.KW.scenes['kw.medieval/cellar'], undefined);
   assert.notEqual(s.KW.scenes.camp, s.code.camp);
@@ -188,8 +188,8 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   for (const n of GIVEN) broken.scenes[n].still[0].shapes[3].k = 'zz';
   s.lines.length = 0;
   const all = s.W.start([TEXT], true);
-  assert.deepEqual([all.source, plain(all.scenes), all.faults.length], ['code', { battlement: 'code', camp: 'code', yard: 'code', cellar: 'code', smithy: 'code', house: 'code' }, 6]);
-  assert.deepEqual(s.lines.map(l => l[0]), ['warn', 'warn', 'warn', 'warn', 'warn', 'warn']);
+  assert.deepEqual([all.source, plain(all.scenes), all.faults.length], ['code', { battlement: 'code', camp: 'code', yard: 'code', cellar: 'code', smithy: 'code', house: 'code', court: 'code' }, 7]);
+  assert.deepEqual(s.lines.map(l => l[0]), ['warn', 'warn', 'warn', 'warn', 'warn', 'warn', 'warn']);
   for (const n of GIVEN) assert.equal(s.KW.scenes[n], s.code[n], n);
   // the same from a pack the library reads clean, naming a part of format 1.1 this engine does
   // not build yet (a dithered patch); this one changes when that part is built
@@ -197,7 +197,7 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   const dith = edited(p => { p.scenes.cellar.still[0].shapes.push({ k: 'dith', p: [0, 0], w: 8, h: 8, colour: '#000000' }); });
   assert.equal(lib.read(dith, { allowUnsigned: true }).ok, true);
   const d = s.W.start([dith], true);
-  assert.deepEqual(plain(d.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack', house: 'pack' });
+  assert.deepEqual(plain(d.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack', house: 'pack', court: 'pack' });
   assert.match(d.faults[0].reason, /^scenes\.cellar\.still\[0\]\.shapes\[\d+\]\.k: the shape kind "dith" is not built in this engine yet$/);
   assert.equal(s.KW.scenes.cellar, s.code.cellar);
 });
@@ -286,7 +286,7 @@ test('what the compiler does not build yet it refuses by name, and the reason na
     ['an ease but step', p => { sparks(p).anim.tracks[0] = { g: 'sparks', ch: 'dy', ease: 'linear', keys: [[0, 0], [150, -2]] }; }, 'scenes.battlement.moving[1].anim.tracks[0].ease: the ease "linear" is not built in this engine yet', 'battlement'],
     ['a channel but show, dx and dy', p => { sparks(p).anim.tracks[0] = { g: 'sparks', ch: 'alpha', ease: 'step', keys: [[0, 1], [150, 0.5]] }; }, 'scenes.battlement.moving[1].anim.tracks[0].ch: the channel "alpha" is not built in this engine yet', 'battlement'],
     ['"only" on a shape', p => { p.scenes.cellar.still[0].shapes[5].shapes[0].only = [31, 5]; }, 'scenes.cellar.still[0].shapes[5].shapes[0].only: "only" on a shape is not built in this engine yet'],
-    ['a seat', p => { p.scenes.cellar.seat = { x: 820, y: 505, bubble: [672, 180], turn: 3200, mouth: 230 }; }, 'scenes.cellar.seat: the scene\'s seat is not built in this engine yet'],
+    ['a pole', p => { p.scenes.cellar.pole = [{ k: 'rect', p: [0, 0], w: 4, h: 8, fill: '#000000' }]; }, 'scenes.cellar.pole: the scene\'s pole is not built in this engine yet'],
     // a triggered effect runs on the clock of the scene's one act
     ['straw on the hammer\'s blow', p => { p.scenes.smithy.moving[1].shapes[0].piece = 'straw'; }, 'scenes.smithy.moving[1].shapes[0].piece: a burst of straw on the hammer\'s blow is not built in this engine yet', 'smithy'],
     ['a target and an anvil', p => { p.scenes.smithy.target = { group: 'fire', hitAt: 420, every: 5600 }; p.scenes.smithy.moving[0].groups = { fire: { pivot: [840, 410] } }; },

@@ -422,8 +422,10 @@ if (MODE === 'write') {
       const DATA = ['spot', 'places', 'rests', 'rounds', 'can', 'outdoors', 'bed', 'helmet', 'sword', 'foeZone'];
       for (const k of DATA) assert.deepEqual(plain(pack[k]), plain(code[k]), `${name}.${k}`);
       // key may be given by either, since a scene without one keeps one backdrop
-      for (const k of ['paint', 'draw', 'act', 'over', 'wallAt']) assert.equal(typeof pack[k], typeof code[k], `${name}.${k}`);
-      const known = DATA.concat(['paint', 'draw', 'act', 'over', 'wallAt', 'key']);
+      // drawn, the court's colours of each patron for the settings' "As drawn", in the court alone
+      for (const k of ['paint', 'draw', 'act', 'over', 'wallAt', 'drawn']) assert.equal(typeof pack[k], typeof code[k], `${name}.${k}`);
+      if (code.drawn) for (const mon of ['a', 'b', 'c', 'z']) assert.deepEqual(plain(pack.drawn(mon)), plain(code.drawn(mon)), `${name}.drawn(${mon})`);
+      const known = DATA.concat(['paint', 'draw', 'act', 'over', 'wallAt', 'key', 'drawn']);
       assert.deepEqual(Object.keys(pack).filter(k => !known.includes(k)), [], 'the compiled scene has no field the interface lacks');
     });
 

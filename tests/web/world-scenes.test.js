@@ -364,7 +364,9 @@ test('the scenes from the pack: a camera\'s question mark is never higher than y
 // anvil's: every 10 ms for five of the hammer's 1.3 s blows, idle and while updating, the one
 // condition the smithy acts, at the spot and at x 300. The bed's and the screen's: every 10 ms for
 // 8.4 s, two of the television's figure's rounds, asleep at night and sick in bed, the television
-// on while streaming, and off while all is quiet.
+// on while streaming, and off while all is quiet. The seat's: every 10 ms for 12.8 s, two of the
+// court's rounds of talk, the patron's and the knight's turns, while a shell is open and while all
+// is quiet; and the knight's pose after the scene's draw too, since the seat sets who talks there.
 
 /* The page's scripts drawing into a context that writes one line per call, with the knight's swing
    written as one line, and the scenes the pack gives compiled from it (from 'pack') or from code. */
@@ -398,12 +400,13 @@ function frameAt(KW, name, id, t, kx) {
     helmOff: inBed || o.helmet === false, strike: false };
 }
 /* The scenes with an act, and the runs each is compared in: [condition, every ms, until ms, kx]. */
-const PART = sc => (sc.target ? 'target' : sc.anvil ? 'anvil' : sc.bed || sc.screen ? 'bed' : null);
+const PART = sc => (sc.target ? 'target' : sc.anvil ? 'anvil' : sc.bed || sc.screen ? 'bed' : sc.seat ? 'seat' : null);
 const ACTED = GIVEN.filter(n => PART(READ.data.scenes[n]));
 const RUNS = {
   target: [['idle', 10, 11200], ['cpu_hot', 10, 11200], ['attack', 50, 6000], ['memory_tight', 50, 6000]],
   anvil: [['idle', 10, 6500], ['updating', 10, 6500], ['updating', 10, 6500, 300]],
-  bed: [['night', 10, 8400], ['container_unhealthy', 10, 8400], ['streaming', 10, 8400], ['idle', 10, 8400]]
+  bed: [['night', 10, 8400], ['container_unhealthy', 10, 8400], ['streaming', 10, 8400], ['idle', 10, 8400]],
+  seat: [['ssh_session', 10, 12800], ['idle', 10, 12800]]
 };
 
 for (const name of ACTED) {
@@ -419,6 +422,7 @@ for (const name of ACTED) {
           if (m.KW.scenes[name].act) m.KW.scenes[name].act(t, s);
           m.log.push('o ' + (JSON.stringify(s.o) === before ? 'unchanged' : JSON.stringify(s.o)), 'strike ' + s.strike);
           m.KW.scenes[name].draw(t, s);
+          m.log.push('o after draw ' + JSON.stringify(s.o));
           if (m.KW.scenes[name].over) { m.log.push('over'); m.KW.scenes[name].over(t, s); }
           return m.log.join('\n');
         };
