@@ -1,6 +1,8 @@
 /* Knightwatcher: the scene compiler (docs/worlds.md). Turns a scene of a world pack, as the pack
    library (pack.js) has read and checked it, into an object with the scene interface of
-   docs/page.md, and puts the scenes of kw.medieval in place of the code scenes of the same names.
+   docs/page.md, and puts the scenes of kw.medieval in place of the code scenes of the same names;
+   and turns each kind of its prop set into a drawing of a device, which it puts in KW.kinds in place
+   of the code's (KW.props.KINDS).
 
    Nothing in a pack runs. A scene compiles into frozen records: each shape a kind from SHAPES, each
    mark one of MARKS, each predicate one the engine evaluates in holds(), each effect a name in
@@ -16,8 +18,8 @@
      that a term gives the same bits as the code it replaces;
    - colours: hex, @base and the pack's own palettes, translucent colours spelt as the code spells
      them ('rgba(0,0,0,.3)'), and band lists of these;
-   - shapes: rect, ell, rrect, poly and strip without clip, glow, fx, use and tile without pick or
-     only;
+   - shapes: rect, ell, rrect, poly and strip without clip, glow, fx, pix, use and tile without pick
+     or only;
    - layers: still (painted into the cached backdrop), moving (in draw) and over (in over), each with
      its when; a moving or over layer's groups, and keyframes on a clock in ms with show tracks;
    - the things mark, where the devices behind the watcher are drawn, and the rest mark, where the
@@ -27,7 +29,9 @@
    - hosts, as outdoors when a scene hosts both the flies and the crate, and from foe the foe's
      zone, foeZone, and with a wall the line it climbs over, wallAt;
    - the acts of the target (the yard's training) and of the anvil (the smithy's hammer, with the
-     hot tip of the blade on the anvil).
+     hot tip of the blade on the anvil);
+   - the kinds of a prop set: their still and moving shapes in both states, the engine's lamp at a
+     point, and a lamp of the kind's own from two stamps of pix shapes, as the raspberry is.
    Each later step adds rows to these tables. */
 (function (KW) {
   'use strict';
@@ -87,6 +91,7 @@
      palettes that a palette track of the layer drives compiles to { pal: "set.entry" }, which hue()
      reads from the layer's keyframes of the moment. */
   const REF = /^@([a-z][a-z0-9-]{0,31})\.([a-z0-9][a-z0-9-]{0,31})$/;
+  const LAMP_RED = /^@lamp\.(down|downLo|downHi)$/;
   /* A translucent colour as the scenes spell it, 'rgba(0,0,0,.3)': the alpha without its 0. */
   const rgba = c => 'rgba(' + parseInt(c.rgb.slice(1, 3), 16) + ',' + parseInt(c.rgb.slice(3, 5), 16) + ',' + parseInt(c.rgb.slice(5, 7), 16) + ',' + String(c.a).replace(/^0\./, '.') + ')';
   function colour(v, path, env, depth) {
@@ -94,6 +99,9 @@
       if (v[0] === '#') return v;
       const m = REF.exec(v);
       if (m && m[1] === 'base' && has(KW.pack.BASE, m[2])) return KW.pack.BASE[m[2]];
+      // the down lamp's reds, which a stamp may name, as the engine spells them
+      const lamp = LAMP_RED.exec(v);
+      if (lamp && env.stamp && KW.props && has(KW.props.LAMP_REDS, lamp[1])) return KW.props.LAMP_REDS[lamp[1]];
       if (m && m[1] === 'pick' && env.picks && has(env.picks, m[2])) {
         if (env.inBand || env.inEffect) throw notBuilt(path, env.inBand ? 'a pick inside a band list' : 'a pick in an effect');
         return { pick: m[2] };
@@ -168,6 +176,9 @@
           if (env.anvil && s.piece === 'straw') throw notBuilt(at(path, 'piece'), 'a burst of straw on the hammer\'s blow');
         }
         const F = lib.fields, fields = [], inner = Object.assign({}, env, { inEffect: true });
+        // a prop is drawn at its place's base, which moves an effect's points; a field placed on the
+        // screen alone, as a row of pebbles' y, would not move with it
+        if (env.prop) for (const k of Object.keys(F)) if (F[k].kind === 'offset') throw notBuilt(at(path, 'fx'), 'the effect ' + quote(s.fx) + ', placed on the screen by its field ' + quote(k) + ', in a prop');
         for (const k of Object.keys(s)) {
           if (k === 'k' || k === 'fx') continue;
           const p = at(path, k), kind = has(F, k) ? F[k].kind : null;
@@ -178,12 +189,28 @@
         }
         return { fx: s.fx, clock: lib.clock, fields };
       },
-      draw(r, E) {
-        const f = {};
-        for (const [k, how, v] of r.fields) f[k] = how === 'point' ? [val(v[0], E), val(v[1], E)] : how === 'term' ? val(v, E) : v;
+      draw(r, E, ox, oy) {
+        const f = {}, mx = ox || 0, my = oy || 0;
+        for (const [k, how, v] of r.fields) f[k] = how === 'point' ? [mx ? mx + val(v[0], E) : val(v[0], E), my ? my + val(v[1], E) : val(v[1], E)] : how === 'term' ? val(v, E) : v;
         if (r.clock === 'time') KW.effects[r.fx].draw(f, E.t);
         else if (r.clock === 'trigger') { if (E.since !== null) KW.effects[r.fx].draw(f, E.since); }
         else KW.effects[r.fx].draw(f);
+      }
+    },
+    /* A shape given pixel by pixel: its rows, each character a colour of its key and "." clear,
+       painted in one pass from p, as the raspberry is. */
+    pix: {
+      compile(s, path, env) {
+        const key = {};
+        for (const c of Object.keys(s.key)) {
+          const v = colour(s.key[c], at(at(path, 'key'), c), env);
+          if (typeof v !== 'string') throw notBuilt(at(at(path, 'key'), c), 'a pix colour chosen as it is drawn');
+          key[c] = v;
+        }
+        return { p: point(s.p, at(path, 'p')), rows: s.rows.slice(), w: s.rows[0].length, h: s.rows.length, key };
+      },
+      draw(r, E, ox, oy) {
+        D.pix(ox + val(r.p[0], E), oy + val(r.p[1], E), r.w, r.h, (i, j) => { const c = r.rows[j][i]; return c === '.' ? null : r.key[c]; });
       }
     },
     /* A stamp of the pack, its shapes drawn moved to p. */
@@ -287,6 +314,7 @@
   function shape(s, path, env) {
     const kind = has(SHAPES, s.k) ? SHAPES[s.k] : has(MARKS, s.k) ? MARKS[s.k] : null;
     if (!kind) throw notBuilt(at(path, 'k'), (env.marks.includes(s.k) ? 'the mark ' : 'the shape kind ') + quote(s.k));
+    if (env.prop && (has(MARKS, s.k) || s.k === 'tile')) throw notBuilt(at(path, 'k'), (s.k === 'tile' ? 'a tile' : 'the mark ' + quote(s.k)) + ' in a prop');
     if (has(s, 'only')) throw notBuilt(at(path, 'only'), '"only" on a shape');
     if (has(s, 'g') && !(env.groups && has(env.groups, s.g))) throw notBuilt(at(path, 'g'), '"g" outside its layer\'s groups');
     if (has(s, 'g') && (s.k === 'fx' || has(MARKS, s.k) || env.marks.includes(s.k))) throw notBuilt(at(path, 'g'), '"g" on ' + (s.k === 'fx' ? 'an effect' : 'a mark'));
@@ -579,6 +607,107 @@
     return sc;
   }
 
+  /* ---- Props ----------------------------------------------------------------------------------
+     The prop set props.medieval gives the drawing of each kind of device (docs/worlds.md, Props and
+     devices). A kind compiles to { draw, mark, from } with the interface of KW.props.KINDS:
+     draw(x, y, t, ok, part) draws it standing on the base (x, y), up (ok) or gone, its still part
+     (part 'still'), its moving part ('moving') or both, and mark is the height above the base of the
+     top of the question mark the engine draws over it. Its shapes are drawn moved to the base. The
+     lamp is the engine's: a pair is where the engine's own lamp stands, its rim painted with the
+     still part and its light (KW.props.lampHD) in the moving part, after the kind's own shapes. A
+     lamp of the kind's own, { at, box, lit, dark, light }, is two stamps of pix shapes, each painted
+     once into a canvas of its own the size of the two together, the lit drawing laid over the dark
+     one, so that where the lit drawing is clear the dark one shows in both; each frame it is drawn
+     as the raspberry is (raspberryHD in props.js): a soft light of radius LAMP_GLOW at at, in light
+     while up (the engine's green when it gives none) and the down lamp's red while gone, as
+     strongly as the loop is bright, the dark canvas, and the lit canvas over it at the loop's
+     level. Its drawings must lie inside its box, each pix shape at a whole point. */
+  const PROPS = 'props.medieval', LAMP_GLOW = 24;
+  let compiles = 0;
+  /* A canvas of w by h painted once from cells, a colour or null for each pixel, row by row. */
+  function paintCells(cells, w, h) {
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const was = D.getCtx();
+    D.setCtx(cv.getContext('2d')); D.pix(0, 0, w, h, (i, j) => cells[j * w + i]); D.setCtx(was);
+    return cv;
+  }
+  /* A state's lamp: { at, own }, own null for the engine's lamp, or the kind's own lamp compiled. */
+  function lampOf(L, path, env, ok) {
+    if (Array.isArray(L)) return { at: [L[0], L[1]], own: null };
+    const inner = Object.assign({}, env, { stamp: true, using: [] }), layers = {};
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const f of ['dark', 'lit']) {
+      const sp = 'stamps.' + L[f];
+      layers[f] = env.pack.data.stamps[L[f]].map((t, i) => {
+        const q = idx(sp, i);
+        if (t.k !== 'pix') throw notBuilt(at(q, 'k'), 'a lamp drawn with a shape other than pix');
+        if (!Number.isInteger(t.p[0]) || !Number.isInteger(t.p[1])) throw notBuilt(at(q, 'p'), 'a lamp\'s pix shape at a point that is not a whole pixel');
+        const r = SHAPES.pix.compile(t, q, inner);
+        x0 = Math.min(x0, t.p[0]); y0 = Math.min(y0, t.p[1]); x1 = Math.max(x1, t.p[0] + r.w); y1 = Math.max(y1, t.p[1] + r.h);
+        return r;
+      });
+    }
+    const bx = L.box[0] / 2, by = L.box[1] / 2;
+    if (x0 < -bx || y0 < -by || x1 > bx || y1 > by) throw new Error(at(path, 'box') + ': the lamp\'s drawings reach ' + [x0, y0, x1, y1].join(' ') + ' from its middle, outside its box, ' + [-bx, -by, bx, by].join(' '));
+    const w = x1 - x0, h = y1 - y0;
+    const cells = f => {
+      const out = new Array(w * h).fill(null);
+      for (const r of layers[f]) for (let j = 0; j < r.h; j++) for (let i = 0; i < r.w; i++) { const c = r.rows[j][i]; if (c !== '.') out[(r.p[1] - y0 + j) * w + (r.p[0] - x0 + i)] = r.key[c]; }
+      return out;
+    };
+    const dark = cells('dark'), lit = cells('lit').map((c, i) => (c !== null ? c : dark[i])), P = KW.props;
+    const glow = ok ? (has(L, 'light') ? L.light : 'rgb(' + P.LAMP.up.rgb.join(',') + ')') : P.LAMP_REDS.down;
+    // painted the first time it is drawn, and kept
+    const sprites = {}, sprite = f => sprites[f] || (sprites[f] = paintCells(f === 'lit' ? lit : dark, w, h));
+    return { at: [L.at[0], L.at[1]], own: { x0, y0, glow, sprite } };
+  }
+  /* The lamp of one's own at time t, for a device standing on (x, y). */
+  function ownLamp(L, x, y, t, ok) {
+    const o = L.own, a = KW.props.lampLevel(t, ok), ctx = D.getCtx(), lx = x + L.at[0], ly = y + L.at[1], px = Math.round(lx) + o.x0, py = Math.round(ly) + o.y0;
+    D.glow(lx, ly, LAMP_GLOW, o.glow, .3 * a);
+    ctx.drawImage(o.sprite('dark'), px, py);
+    D.alpha(a); ctx.drawImage(o.sprite('lit'), px, py); D.alpha(1);
+  }
+  /* The kind of device kind of the loaded pack's prop set, compiled. Throws when it names something
+     this engine does not build. */
+  function compileKind(pack, set, kind) {
+    const sets = pack.data.props, path = 'props.' + set + '.kinds.' + kind;
+    const v = isObj(sets) && isObj(sets[set]) && isObj(sets[set].kinds) ? sets[set].kinds[kind] : null;
+    if (!isObj(v)) throw new Error(path + ': the pack has no such kind');
+    const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: false, anvil: null, rests: {}, restStamps: {}, bed: null, screen: null, picks: null, prop: true };
+    const states = {};
+    for (const st of ['up', 'gone']) {
+      const x = v[st], p = at(path, st);
+      states[st] = {
+        still: freeze(x.still.map((t, i) => shape(t, idx(at(p, 'still'), i), env))),
+        moving: freeze((x.moving || []).map((t, i) => shape(t, idx(at(p, 'moving'), i), env))),
+        lamp: lampOf(x.lamp, at(p, 'lamp'), env, st === 'up')
+      };
+    }
+    const P = KW.props;
+    function draw(x, y, t, ok, part) {
+      const S = ok ? states.up : states.gone, L = S.lamp, E = named(t, null);
+      if (part !== 'moving') {
+        for (const c of S.still) drawShape(c, E, x, y);
+        if (!L.own) P.lampRim(x + L.at[0], y + L.at[1]);
+      }
+      if (part !== 'still') {
+        for (const c of S.moving) drawShape(c, E, x, y);
+        if (L.own) ownLamp(L, x, y, t, ok); else P.lampHD(x + L.at[0], y + L.at[1], t, ok);
+      }
+    }
+    return Object.freeze({ draw, mark: v.mark, from: MEDIEVAL + '#' + (++compiles) });
+  }
+  /* KW.kinds: the drawing of each kind of device the engine draws, by the contract's kind, as
+     KW.props.KINDS gives them in code: those the prop set gives once start() has compiled them, and
+     the code's for the rest. */
+  const kinds = KW.kinds = {};
+  function restoreKinds() {
+    for (const k of Object.keys(kinds)) delete kinds[k];
+    Object.assign(kinds, (KW.props && KW.props.KINDS) || {});
+  }
+  restoreKinds();
+
   /* ---- Loading ---------------------------------------------------------------------------------
      start() reads kw.medieval from the texts of the packs that ship with the page (the page passes
      KW.packText, as it does to the knight) with the knight's rule: a 'dev' page accepts it
@@ -615,8 +744,9 @@
      the last line written to the console. */
   function start(texts, allowUnsigned, opts) {
     const o = isObj(opts) ? opts : {}, lib = KW.pack && typeof KW.pack.read === 'function' ? KW.pack : null;
-    restore();
+    restore(); restoreKinds();
     const status = api.status = { source: 'code', pack: null, refused: null, scenes: {}, faults: [], note: '' };
+    const props = api.props = { source: 'code', set: null, kinds: {}, faults: [] };
     const lines = [];
     const line = (level, text) => { lines.push([level, text]); status.note = text; };
     let pack = null;
@@ -641,6 +771,20 @@
     }
     if (pack) {
       status.pack = { id: pack.id, version: pack.version, signed: pack.signed };
+      // the devices, from the prop set: each kind it gives that the engine draws, and the code's
+      // drawing for a kind that fails to compile, with a line of its own
+      const sets = pack.data && isObj(pack.data.props) ? pack.data.props : {};
+      if (has(sets, PROPS) && isObj(sets[PROPS].kinds)) {
+        props.set = PROPS;
+        for (const k of Object.keys(sets[PROPS].kinds)) {
+          if (!has(kinds, k)) continue;
+          try { kinds[k] = compileKind(pack, PROPS, k); props.kinds[k] = 'pack'; props.source = 'pack'; } catch (e) {
+            const reason = message(e);
+            props.kinds[k] = 'code'; props.faults.push({ kind: k, reason });
+            line('warn', 'knightwatcher: the device kind ' + k + ' is drawn from code: it could not be compiled: ' + cutTo(reason, 120));
+          }
+        }
+      }
       const drawn = [], data = pack.data && isObj(pack.data.scenes) ? pack.data.scenes : {};
       for (const id of Object.keys(data)) {
         if (!(has(KW.scenes, id) || has(CODE, id))) continue;
@@ -664,5 +808,5 @@
     return status;
   }
 
-  const api = KW.world = { MEDIEVAL, compile, start, status: null };
+  const api = KW.world = { MEDIEVAL, PROPS, compile, compileKind, start, status: null, props: null };
 })(window.KW);

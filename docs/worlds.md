@@ -5,14 +5,14 @@ drawings of the devices, the words and the overlay. Format 1.1 of the packs carr
 data ([packs.md](./packs.md#format-11) gives the format and its checks). This page describes what
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
 pack, `kw.medieval`, which holds six scenes, the battlement, the camp, the yard, the cellar, the
-smithy and the house. With the house, step W5 of the conversion is complete apart from the court,
-which waits for the patron (step W7): the court, the cast, the devices, the words and the overlay
-are still drawn from code.
+smithy and the house, and the devices, the prop set `props.medieval`. With the house, step W5 of the
+conversion is complete apart from the court, which waits for the patron (step W7), and with the
+devices step W6: the court, the cast, the words and the overlay are still drawn from code.
 
 ## The medieval world's pack
 
 `web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 1]`,
-version 0.2.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+version 0.3.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([packs.md](./packs.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
@@ -85,9 +85,15 @@ loads it after the base pack's. It holds:
   844, "y": 164, "w": 100, "h": 140 }`. It takes the helmet off, keeps the weapon away, is quiet and
   hosts the feast. Its `bed` is `{ "head": [-15, 262], "blanket": "blanket", "zeds": [150, 270] }`
   and its `screen` `{ "group": "tv" }`;
+- the prop set `props.medieval`, the devices of `props.js` written as data: the five kinds `pi`,
+  `camera`, `machine`, `vm` and `box`, each up and gone, below ([The devices](#the-devices));
 - three stamps, `sconce`, `barrel` and `peg`: the props `sconceHD` and `barrelHD` of `props.js`, the
   barrel at the 84 by 72 the cellar and the yard draw it, and one of the house's pegs, counted from
   where the weapon's frame puts it;
+- ten stamps for the devices: the raspberry's dark and lit drawings, up on the pie and down in its
+  dish (`berry.up.dark`, `berry.up.lit`, `berry.down.dark`, `berry.down.lit`), and the virtual
+  machine's dots, the dark squares and the lights in them, up (`vm.up.dots-1` and `-2`,
+  `vm.up.lights-1` and `-2`) and gone (`vm.gone.dots`, `vm.gone.lights`);
 - one palette entry, `house.screen`, the television's first colour, which the house's palette track
   changes every 400 ms.
 
@@ -110,11 +116,25 @@ two never show at once: a frame is costed with every layer drawn. The gear at re
 sleeper and the Zs are the engine's drawing, as the devices are, and count toward no scene's cost;
 the stamp a weapon's rest names counts twice, once for each peg.
 
-The pack ships signed with `kw1`, by a signing run as the base pack is
+The devices cost, still and moving (the moving part with a lamp of the kind's own):
+
+| Kind | Up | Gone |
+|---|---|---|
+| `pi` | 3 308 fills still, 424 moving | 545 still, 291 moving |
+| `camera` | 695 still | 615 still |
+| `machine` | 105 still | 251 still |
+| `vm` | 176 still | 96 still |
+| `box` | 58 still | 101 still |
+
+against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
+own lamp counts toward none of them.
+
+The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
-and then version 0.2.0. A deployed page and a `dev` page alike draw every scene but the court from
-it. A change to the pack takes the signature's validity with it: until the next signing run a
-deployed page refuses it and draws every scene from code, while a `dev` page still reads it.
+and then version 0.2.0. Version 0.3.0, which adds the devices, ships unsigned until its signing run,
+so until then a `dev` page draws every scene but the court, and every device, from it, and a
+deployed page draws them from code. A change to the pack takes the signature's validity with it: until the next signing run a
+deployed page refuses it and draws every scene and every device from code, while a `dev` page still reads it.
 
 ## Where the scenes are drawn from
 
@@ -140,7 +160,7 @@ A scene is drawn from code when:
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
 
 Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy and house are drawn
-from the pack kw.medieval 0.2.0, unsigned` (or `signed`), written with `console.info`; the others
+from the pack kw.medieval 0.3.0, unsigned` (or `signed`), written with `console.info`; the others
 are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
 cellar failing to compile it is `the scenes battlement, camp, yard, smithy and house are drawn ...`, after
 the cellar's own line. Of two copies of `kw.medieval` the higher
@@ -164,7 +184,24 @@ that line and the scenes' line above it, which is the pair the base pack gives.
 | `faults` | `{ scene, reason }` for each scene that failed to compile |
 | `note` | the last line written to the console |
 
-`start` puts the code scenes back before it reads, so a second call starts afresh. Not done yet:
+The devices are read in the same call, from the same pack: each kind of the prop set
+`props.medieval` that the engine draws is compiled ([The devices](#the-devices)) and takes the
+code's drawing's place in `KW.kinds`. A kind the set does not give, and every kind when the pack is
+refused, missing or not loaded, keeps the code's drawing from `KW.props.KINDS`; a kind nobody gives
+is drawn as `box`, as before. A kind that fails to compile is drawn from code, with a line of its
+own, `knightwatcher: the device kind camera is drawn from code: it could not be compiled: <reason>`
+(`console.warn`), written before the scenes' line, which stays the last. A pack whose kinds all
+compile adds no line. `KW.world.props` holds what `start` found for them:
+
+| Field | Holds |
+|---|---|
+| `source` | `'pack'` when any kind is drawn from the prop set, `'code'` otherwise |
+| `set` | `'props.medieval'` when the pack in use gives it, or `null` |
+| `kinds` | for each kind the set gives, `'pack'` or `'code'` |
+| `faults` | `{ kind, reason }` for each kind that failed to compile |
+
+`start` puts the code scenes and the code's devices back before it reads, so a second call starts
+afresh. Not done yet:
 a `kw.medieval` the collector downloaded into `data/packs/` is read by the knight but not compiled,
 so the scenes come from the one that ships with the page; a scene from the pack that throws while
 drawing is not caught; and the admin page draws its previews of the scenes from code, since it
@@ -178,8 +215,12 @@ does not start the world.
 |---|---|
 | `compile(pack, id)` | the scene `id` of a loaded pack (a `read()` result of format 1.1) as an object with the scene interface; throws when the scene names something the compiler does not build |
 | `start(texts, allowUnsigned, opts)` | reads `kw.medieval` from `texts` and puts its scenes in place, as above; `opts.keys` replaces `KEYS` in `read()`, for the tests only |
+| `compileKind(pack, set, kind)` | the kind of device `kind` of the prop set `set` of a loaded pack, as an entry of `KW.kinds` ([The devices](#the-devices)); throws when it names something the compiler does not build |
 | `status` | what the last `start` found, or `null` before it |
-| `MEDIEVAL` | `'kw.medieval'` |
+| `props` | what the last `start` found for the devices, or `null` before it |
+| `MEDIEVAL`, `PROPS` | `'kw.medieval'`, `'props.medieval'` |
+
+It also defines `KW.kinds`, the drawing of each kind of device the engine draws, below.
 
 **Nothing in a pack runs.** A scene compiles into frozen records: each shape is a kind from the
 compiler's own table, each mark one of its marks, each predicate one it evaluates, each effect a name
@@ -227,7 +268,9 @@ is what makes the floating-point bits come out as the code's.
 
 **Colours** resolve once, when the scene compiles: hex as written, `@base.<entry>` from the base
 palette (a band list where the entry is one, such as `@base.steel3`), the pack's own palettes, and
-band lists of these. A translucent colour is spelt as the scenes spell it, the alpha without its
+band lists of these. In a stamp, `@lamp.down`, `@lamp.downLo` and `@lamp.downHi` are the down lamp's
+reds as the engine spells them, `rgb(255,74,61)`, `rgb(168,49,40)` and `#ffd0c8` (`LAMP_REDS` in
+`props.js`). A translucent colour is spelt as the scenes spell it, the alpha without its
 leading zero: `{ "rgb": "#000000", "a": 0.3 }` is `rgba(0,0,0,.3)`. An entry of the pack's own
 palettes that a palette track of the layer drives is chosen as the layer is drawn, below. A canvas reads both spellings
 alike, and this one keeps the call records equal. (The knight's lists, compiled by `pack.js`, spell
@@ -239,7 +282,8 @@ of `KW.effects` it names, its scalars evaluated as terms and its colours resolve
 time when it moves, and a triggered one, `burst`, with the clock of the scene's act: the ms since
 the target was last struck, or the progress of the hammer's blow, and not at all while the hammer
 is not striking.
-`use` draws a stamp's shapes moved to its point. A `tile` draws its shapes at each `x` from
+A `pix` shape paints its rows from its point in one pass through `D.pix`, each character the
+colour its key gives and `.` clear. `use` draws a stamp's shapes moved to its point. A `tile` draws its shapes at each `x` from
 `Math.floor(from / step) * step + phase` while `x` is below `to`, as the scenes' loops run; each of
 its picks gives `@pick.<name>` one of its colours at each `x`, `of[hsh(x, seed) % of.length]`. An
 `ell` or an `rrect` with a `clip`, `[top, bottom]`, draws only its rows between the two ys, counted
@@ -393,7 +437,7 @@ engine sets, so the screen gives no act of its own, and nor does the bed: the ho
 
 **What it does not build yet,** it refuses by name: the scene does not compile, the reason says
 `<field>: <what> is not built in this engine yet`, and the scene is drawn from code. That covers
-the shape kinds `dith` and `pix`, the marks `patron`, `target` and `bubble`, `only` on a shape, `"g"`
+the shape kind `dith`, a `pix` colour chosen as it is drawn (a pick or a palette track's), the marks `patron`, `target` and `bubble`, `only` on a shape, `"g"`
 on an effect or a mark, of keyframes a clock in seconds, a triggered clock (`trigger`), any ease but
 `step` and any channel but `show`, `dx` and `dy`, a colour a palette track drives inside a band
 list, in an effect or through another entry, a mixed colour, a pick inside a band list or an
@@ -403,6 +447,67 @@ and an anvil, a scene that hosts the flies without the crate or the crate withou
 fields `seat` and `pole`, which the court and its patron need. Each later scene adds the rows it
 needs to the compiler's tables: a shape kind to `SHAPES`, a mark to `MARKS`, an act beside the
 target's and the anvil's, a part of the key beside the predicates and the gear.
+
+## The devices
+
+`KW.kinds` holds the drawing of each kind of device the engine draws, by the contract's kind, with
+the interface of `KW.props.KINDS` ([page.md](./page.md#devices)): `draw(x, y, t, ok, part)` draws the
+kind standing on the base `(x, y)`, up (`ok`) or gone, its still part (`part` `'still'`), its moving
+part (`'moving'`) or both, and `mark` is the height above the base of the top of the question mark.
+`world.js` fills it with `KW.props.KINDS`'s entries when it loads, and `start` puts the prop set's
+compiled kinds in their place. The engine's `placeHD` and `kindName` read `KW.kinds`, or
+`KW.props.KINDS` on a page without the compiler. The question mark, the pole of a high place, the
+drawing order, the still part's canvas and the lamp's phase in each place stay the engine's, and a
+kind's class (where it may stand) is the engine's too.
+
+A kind compiles each of its states, `up` and `gone`, into the still and moving shapes, compiled as
+a scene's are and drawn moved to the base, and its lamp:
+
+- **The engine's lamp**, a pair `[x, y]`: its dark rim is drawn after the still shapes
+  (`KW.props.lampRim`) and its light after the moving ones (`KW.props.lampHD`), at the base plus
+  the pair, on the loops of `LAMP` and `lampLevel`: green to black over 3.6 seconds while up, red to
+  black over 2 while down.
+- **A lamp of the kind's own**, `{ at, box, lit, dark, light }`, as the pie's raspberry is: two
+  stamps of pix shapes, each pix shape at a whole point. Each is painted once, the first time it is
+  drawn, into a canvas the size of the two drawings together, the lit drawing laid over the dark one,
+  so that where the lit drawing is clear the lit canvas shows the dark drawing: the raspberry's lit
+  drawing holds only its drupelets, and its calyx and outline come from the dark one. Each frame, as
+  `raspberryHD` does, it draws a soft light of radius 24 round `at`, in `light` while up (the
+  engine's green if a kind gives none) and in the down lamp's red while gone, at 0.3 of the loop's
+  level, then the dark canvas, then the lit canvas at the loop's level. The two drawings must lie
+  inside `box` around `at`, or the kind is refused; the pie's box is 28 by 36, since its 27 by 34
+  berry sits 13 and 14 pixels either side of its middle and 18 above and 16 below.
+
+What the compiler does not build in a prop is refused with a reason, and that kind is drawn from
+code: a mark or a tile, an effect placed on the screen by a field of its own (a field of kind
+`offset`, as the pebbles' `y`, which would not move with the device), and the parts of a scene
+that a prop cannot name. An effect's points are moved to the base like the other shapes.
+
+**The devices as data.** Each drawing of `props.js` is written out shape by shape, its coordinates
+counted from the base, in the order the code draws. Five things needed more than that:
+
+- the pie's dish has thirteen flutes at `i * 5.3` across its rim, which fall between the eighths a
+  pack's points keep to; the strip passes them to `fillRect` as they are, so no eighth draws the same
+  fills. The effect `flutes` draws them, with the dish's numbers as its defaults;
+- the pie's top is one pix of 83 by 33 painted in one pass, wider than the 64 a pix row may hold,
+  and two pix shapes side by side would paint its rows in another order. The effect `crust` draws
+  it, the lattice, the dome and the crimping, and `pieTop` in `props.js` now calls the same effect;
+  `pieDish` calls `flutes`;
+- the virtual machine's 88 dots are 176 squares, all the dark ones and then all the lights, past the
+  128 shapes a part may hold. They sit in stamps of at most 64 shapes, drawn in the code's order:
+  `vm.up.dots-1`, `vm.up.dots-2`, `vm.up.lights-1` and `vm.up.lights-2`, and gone, with 48 dots,
+  `vm.gone.dots` and `vm.gone.lights`. The dots' places from the base, which `vmHD` rounds from the
+  absolute x, are the same at every whole base;
+- the gone camera's lens glint is a strip 0.6 either side, which is not an eighth; the pack gives
+  0.625, which fills the same pixels for every whole base, so the records are the code's;
+- the gone raspberry's drupelets have a shaded side, the down red at two thirds. The format reserves
+  it as `@lamp.downLo`, beside `@lamp.down` and `@lamp.downHi`, so that the gone lamp's lit drawing
+  still uses only the engine's reds ([packs.md](./packs.md#format-11)).
+
+The camera's sunshade reaches x -34.78 at its far corner, outside the high class box's -34, though
+its pixels start at -34, where the box was measured. The pack library measures a strip whose
+values are all fixed by the pixels it fills ([packs.md](./packs.md#props)), so the camera keeps to its
+class box as drawn.
 
 ## Writing a scene as data
 
@@ -522,12 +627,21 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   grid and clear of each other. It also holds the foe's whole plan in a scene from the pack, for
   every weapon and build, to the plan in the code scene, and each scene's `quiet` and `hosts` to the
   engine's and the settings' lists. The two older files draw the code scenes and stay as they are.
-- The screenshots of the repository's own page, a `dev` page, draw the converted scenes from the
-  pack. To shoot the code path, take a pair of sets from a copy of `web/` whose `kw-version` is not
+- `tests/web/world-props.test.js` draws every kind of device from the prop set beside the code's
+  drawing of it, through the engine's `KW.devices`, in every place of every scene (the court's among
+  them), up and gone, with and without its question mark, at seven moments, 13 720 drawings compared
+  call for call; each kind's still and moving parts drawn alone in every place; and the moving parts
+  every 25 ms through two of the up loop and three of the down one. It checks too where the devices
+  are drawn from on a `dev` and a deployed page, a kind that fails to compile, a page started again
+  from code, the raspberry's canvases painted once with the lit drawing over the dark one, and what
+  the compiler refuses in a prop. `tests/web/scenes.test.js` draws the scenes from the pack with the
+  devices from it too, against the records stored from code.
+- The screenshots of the repository's own page, a `dev` page, draw the converted scenes and the
+  devices from the pack. To shoot the code path, take a pair of sets from a copy of `web/` whose `kw-version` is not
   `dev`, as for the knight ([page.md](./page.md#checks)).
 
 **A change to the medieval art is made in both copies, in the same commit.** Change the code scene
-and the pack together, write the carrier again with `node tools/pack-carrier.js`, store the records
+(or the device in `props.js`) and the pack together, write the carrier again with `node tools/pack-carrier.js`, store the records
 again from the code if the scene is meant to look different (`SCENES_LOG=write`, see
 [page.md](./page.md#checks)), and the pack's copy must then draw the new records. A pack edited after
 it is signed needs a signing run again ([development.md](./development.md#signing-the-packs)).

@@ -62,30 +62,17 @@
      engine draws the question mark of a device itself (see KINDS). */
   const CRUST = ['#ffd98a', '#f2ac4e', '#cc7f32', '#93521d'], FILLING = ['#d2325f', '#9a1640', '#5c0a24'];
   const DISH = [[.1, C.W], [.42, C.S0], [.74, C.S1], [1, C.S2]];
+  /* The dish's flutes, from the left: thirteen grooves, the effect flutes (effects.js) with its
+     own spacing, 5.3 across at the rim and 4.5 at the foot. */
+  const FLUTES = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6].map(i => (i < -2 ? C.S1 : i < 3 ? C.S2 : C.S3));
   /* The pie's top, in the dish's frame: u across from the middle, v down from the rim's middle. The
-     rim is a flat ellipse, and behind its middle the crust rises in a dome. */
+     rim is a flat ellipse, and behind its middle the crust rises in a dome, crimped along its near
+     edge CRIMP either side of the middle: the effect crust (effects.js) draws it. */
   const RIM = [38, 9], DOME = [32, 21], CRIMP = 35;
-  const rimAt = (u, v) => (u / RIM[0]) ** 2 + (v / RIM[1]) ** 2;
-  const onTop = (u, v) => rimAt(u, v) <= 1 || (v <= 0 && (u / DOME[0]) ** 2 + (v / DOME[1]) ** 2 <= 1);
-  function crustAt(u, v) {
-    if (!onTop(u, v)) return null;
-    if (!onTop(u - 2, v) || !onTop(u + 2, v) || !onTop(u, v - 2) || !onTop(u, v + 2)) return C.K;
-    const lit = -u / RIM[0] * .7 - v / DOME[1] * .5, tone = lit > .3 ? 0 : lit > -.2 ? 1 : lit > -.55 ? 2 : 3;
-    // the band of crust round the rim, in front of the dome
-    const r = rimAt(u, v), inDome = v < 0 && (u / DOME[0]) ** 2 + (v / DOME[1]) ** 2 <= .78;
-    if (r > .55 && !inDome) return CRUST[Math.max(0, tone - (r < .75 ? 1 : 0))];
-    // the lattice: two sets of strips on the diagonal, woven over and under, the filling between
-    const P = 16, W = 6, a = u + v * 1.6 + 320, b = u - v * 1.6 + 320, pa = a % P, pb = b % P;
-    if (pa < W || pb < W) {
-      const over = pa < W && pb < W ? ((Math.floor(a / P) + Math.floor(b / P)) % 2 ? pa : pb) : pa < W ? pa : pb;
-      return CRUST[Math.max(0, Math.min(3, tone + (over < 1 ? -1 : over >= W - 1 ? 1 : 0)))];
-    }
-    return FILLING[pa < W + 2 || pb < W + 2 ? 2 : tone < 2 ? 0 : 1];
-  }
   function pieDish(cx, y) {
     poly([[cx - 38, y + 6], [cx + 38, y + 6], [cx + 33, y + 31], [cx - 33, y + 31]], C.K);
     poly([[cx - 35, y + 6], [cx + 35, y + 6], [cx + 30, y + 28], [cx - 30, y + 28]], DISH);
-    for (let i = -6; i <= 6; i++) strip(cx + i * 5.3, y + 9, cx + i * 4.5, y + 27, .6, .6, i < -2 ? C.S1 : i < 3 ? C.S2 : C.S3);
+    KW.effects.flutes.draw({ p: [cx, y + 9], of: FLUTES });
   }
   /* Where the raspberry's middle sits, from the pie's middle and the rim's middle: on the top of
      the dome, sunk a little into the lattice, and, in the empty dish, low on its right, clear of
@@ -111,14 +98,7 @@
     raspberryHD(cx + BERRY_ON_PIE[0], ry + BERRY_ON_PIE[1], t, true);
   }
   /* The whole pie's crust and crimping, over the dish. */
-  function pieTop(cx, ry) {
-    D.pix(cx - RIM[0] - 3, ry - DOME[1] - 1, 2 * RIM[0] + 7, DOME[1] + RIM[1] + 3, (i, j) => crustAt(i - RIM[0] - 3, j - DOME[1] - 1));
-    // the crimping along the near edge
-    for (let u = -CRIMP; u <= CRIMP; u += 7) {
-      const px = cx + u, py = ry + RIM[1] * Math.sqrt(1 - (u / RIM[0]) ** 2) - 1, tone = u < -12 ? 1 : u < 14 ? 2 : 3;
-      ell(px, py, 5, 4, C.K); ell(px, py, 3, 2, CRUST[tone]); Rh(px - 2, py - 2, 2, 1, CRUST[tone - 1]);
-    }
-  }
+  function pieTop(cx, ry) { KW.effects.crust.draw({ p: [cx, ry], rim: RIM, dome: DOME, crimp: CRIMP, crust: CRUST, filling: FILLING }); }
 
   /* ---- The raspberry, the pie's lamp -------------------------------------------------------------
      A raspberry of round drupelets, each with a dark outline and a highlight, under a green calyx
@@ -166,9 +146,12 @@
   /* The berry's colours, lit and dark, up on the pie and down in the dish; the outline and the
      calyx are the same in all. While down the drupelets go to black, as a lamp does. */
   const rgb = (c, k) => 'rgb(' + c.map(v => Math.round(v * k)).join(',') + ')';
+  /* The down lamp's reds, as a world pack names them in a lamp of its own: the red, the red at two
+     thirds and the highlight (@lamp.down, @lamp.downLo and @lamp.downHi). */
+  const LAMP_REDS = Object.freeze({ down: rgb(LAMP.down.rgb, 1), downLo: rgb(LAMP.down.rgb, .66), downHi: LAMP.down.hi });
   const BERRY_COLS = {
     up: { lit: { a: '#ff5c80', b: '#d8285a', h: '#ffd6e0' }, dark: { a: '#6a0f2e', b: '#430a1e', h: '#8a2244' }, glow: '#ff7a6a' },
-    down: { lit: { a: rgb(LAMP.down.rgb, 1), b: rgb(LAMP.down.rgb, .66), h: LAMP.down.hi }, dark: { a: '#000000', b: '#000000', h: '#000000' }, glow: rgb(LAMP.down.rgb, 1) }
+    down: { lit: { a: LAMP_REDS.down, b: LAMP_REDS.downLo, h: LAMP_REDS.downHi }, dark: { a: '#000000', b: '#000000', h: '#000000' }, glow: LAMP_REDS.down }
   };
   const CALYX_COLS = { k: C.K, g: '#4f9a45', G: '#8fe07a' };
   /* The berry painted once in each of its colourings, in a small canvas of its own: up on the
@@ -559,6 +542,7 @@
     }
   }
 
-  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, pieHD, raspberryHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf, crateHD, flyHD, poofHD, chuteHD,
+  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, pieHD, raspberryHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf,
+    LAMP, LAMP_REDS, lampLevel, lampRim, lampHD, crateHD, flyHD, poofHD, chuteHD,
     FOES, starHD, cloudHD, CLOUD_MS, sparklesHD, SPARKLE_MS, holeHD, clodsHD };
 })(window.KW);

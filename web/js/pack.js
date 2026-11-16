@@ -1076,7 +1076,7 @@
      and its drawing by the effects library, effects.js (KW.effects). The page loads that file before
      this one; under Node this file asks for it beside itself, the first time a pack names an
      effect. */
-  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst'];
+  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'burst'];
   /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
      for, the patron's anchors and the critter's frames. */
   const ROLES = ['patron', 'foe', 'critter'];
@@ -1101,9 +1101,10 @@
   /* The status colours' bands: hue from and to in degrees (crit's runs through 0), and the least
      and greatest contrast on black. sleep must also be darker than ok. */
   const LEVELS = { ok: [110, 160, 6, 21], warn: [28, 55, 6, 21], crit: [345, 15, 6, 21], info: [180, 215, 6, 21], sleep: [110, 160, 3, 6] };
-  /* The set names a 1.1 pack's own palettes may not take: a tile's picks and the down lamp's red. */
+  /* The set names a 1.1 pack's own palettes may not take: a tile's picks and the down lamp's reds,
+     its red, the red at two thirds and its highlight (@lamp.down, @lamp.downLo, @lamp.downHi). */
   const WORLD_SETS = ['pick', 'lamp'];
-  const LAMP_REF = /^@lamp\.(down|downHi)$/;
+  const LAMP_REF = /^@lamp\.(down|downLo|downHi)$/;
   const PLACEHOLDER = /\{([a-z]{1,16})\}/g;
   const TEMPLATE = /^[\x20-\x7e·]+$/;
   /* The named values of a scene, the range the checks assume for each (the screen at most three
@@ -1950,8 +1951,25 @@
       case 'rect': case 'rrect': case 'dith': return box4(sp(s.p[0]), sp(s.p[1]), sp(s.w), sp(s.h));
       case 'ell': { const x = sp(s.p[0]), y = sp(s.p[1]), rx = sp(s.rx)[1], ry = sp(s.ry)[1]; return [x[0] - rx, y[0] - ry, x[1] + rx, y[1] + ry]; }
       case 'poly': return s.pts.map(q => [sp(q[0]), sp(q[1])]).reduce((b, q) => [Math.min(b[0], q[0][0]), Math.min(b[1], q[1][0]), Math.max(b[2], q[0][1]), Math.max(b[3], q[1][1])], [Infinity, Infinity, -Infinity, -Infinity]);
-      case 'strip': { const g = Math.max(sp(s.hw0)[1], sp(s.hw1)[1]), a = [sp(s.p0[0]), sp(s.p0[1])], b = [sp(s.p1[0]), sp(s.p1[1])];
-        return [Math.min(a[0][0], b[0][0]) - g, Math.min(a[1][0], b[1][0]) - g, Math.max(a[0][1], b[0][1]) + g, Math.max(a[1][1], b[1][1]) + g]; }
+      case 'strip': {
+        const g = Math.max(sp(s.hw0)[1], sp(s.hw1)[1]), a = [sp(s.p0[0]), sp(s.p0[1])], b = [sp(s.p1[0]), sp(s.p1[1])], h0 = sp(s.hw0), h1 = sp(s.hw1);
+        // a strip whose ends and widths are fixed is the polygon of its four corners, filled as
+        // draw.js fills it: in whole columns from the first to the last its corners span when it
+        // runs more across than down (whole rows otherwise), each from and to the nearest pixel; so,
+        // from a base on a whole pixel, it paints from its first pixel to its last as a polygon of
+        // whole points is measured, and as the class boxes were measured on the drawings. A strip
+        // with a value that can vary (none in a prop, whose values are all fixed) reaches its widest
+        // either way round both ends.
+        if ([a[0], a[1], b[0], b[1], h0, h1].every(q => q[0] === q[1])) {
+          const x0 = a[0][0], y0 = a[1][0], x1 = b[0][0], y1 = b[1][0], dx = x1 - x0, dy = y1 - y0, n = Math.hypot(dx, dy) || 1, px = -dy / n, py = dx / n;
+          const cs = [[x0 - px * h0[0], y0 - py * h0[0]], [x1 - px * h1[0], y1 - py * h1[0]], [x1 + px * h1[0], y1 + py * h1[0]], [x0 + px * h0[0], y0 + py * h0[0]]];
+          const xs = cs.map(c => c[0]), ys = cs.map(c => c[1]), cols = Math.abs(dx) > Math.abs(dy);
+          const along = v => [Math.ceil(Math.min(...v)), Math.floor(Math.max(...v))], across = v => [Math.round(Math.min(...v)), Math.round(Math.max(...v))];
+          const ex = cols ? along(xs) : across(xs), ey = cols ? across(ys) : along(ys);
+          return [ex[0], ey[0], ex[1], ey[1]];
+        }
+        return [Math.min(a[0][0], b[0][0]) - g, Math.min(a[1][0], b[1][0]) - g, Math.max(a[0][1], b[0][1]) + g, Math.max(a[1][1], b[1][1]) + g];
+      }
       case 'pix': { const x = sp(s.p[0]), y = sp(s.p[1]); return [x[0], y[0], x[1] + s.rows[0].length, y[1] + s.rows.length]; }
       case 'fx': return Array.isArray(s.p) && s.p.length === 2 && s.p.every(v => typeof v === 'number' || isObj(v)) ? [sp(s.p[0])[0], sp(s.p[1])[0], sp(s.p[0])[1], sp(s.p[1])[1]] : null;
       case 'use': {
@@ -2014,7 +2032,8 @@
     if (sc.foe && sc.foe.wall && !(sc.foe.wall.high[0] < sc.foe.wall.period)) fail(key(key(key(sp, 'foe'), 'wall'), 'high'), 'the width must be less than the period');
     if (sc.target && !(sc.target.hitAt < sc.target.every)) fail(key(key(sp, 'target'), 'hitAt'), 'must be less than every');
   }
-  /* Whether every colour a list of shapes uses is the down lamp's red, @lamp.down or @lamp.downHi. */
+  /* Whether every colour a list of shapes uses is one of the down lamp's reds, @lamp.down,
+     @lamp.downLo or @lamp.downHi. */
   function downRedOnly(list) {
     let ok = true;
     for (const s of list) eachWColour(s, c => { if (!(typeof c === 'string' && LAMP_REF.test(c))) ok = false; }, '');
@@ -2030,7 +2049,7 @@
       else {
         check([L.at[0] - L.box[0] / 2, L.at[1] - L.box[1] / 2, L.at[0] + L.box[0] / 2, L.at[1] + L.box[1] / 2], lp);
         for (const f of ['lit', 'dark']) if (!pack.stamps[L[f]].every(s => s.k === 'pix')) fail(key(lp, f), 'a lamp\'s ' + f + ' drawing is a stamp of pix shapes only');
-        if (st === 'gone' && !downRedOnly(pack.stamps[L.lit])) fail(key(lp, 'lit'), 'a gone lamp\'s lit drawing uses only the down lamp\'s red, @lamp.down and @lamp.downHi, so a device that is down blinks red in every world');
+        if (st === 'gone' && !downRedOnly(pack.stamps[L.lit])) fail(key(lp, 'lit'), 'a gone lamp\'s lit drawing uses only the down lamp\'s reds, @lamp.down, @lamp.downLo and @lamp.downHi, so a device that is down blinks red in every world');
       }
     }
   }

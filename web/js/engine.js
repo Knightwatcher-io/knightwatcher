@@ -312,7 +312,10 @@
      engine after the knight, and a place with flip shows its device the other way round. */
   const ORDER = ['pie', 'h1', 'h2', 'h3', 'g1', 'g2', 'g3'], PHASE_MS = 523;
   const SPRITES = new Map(), SPRITE_MAX = 64;
-  const kindName = k => (typeof k === 'string' && Object.prototype.hasOwnProperty.call(P.KINDS, k) ? k : 'box');
+  /* The kinds of device: KW.kinds, which the world's prop set fills (world.js), or the code's own,
+     KW.props.KINDS, on a page without the compiler. A kind neither knows is drawn as box. */
+  const kindsNow = () => KW.kinds || P.KINDS;
+  const kindName = k => (typeof k === 'string' && Object.prototype.hasOwnProperty.call(kindsNow(), k) ? k : 'box');
 
   /* A wooden pole from the foot of a camera's wall plate down to foot, for a high place with
      nothing to mount on. */
@@ -338,9 +341,10 @@
   }
 
   function placeHD(name, pl, dv, t) {
-    const kind = kindName(dv.kind), k = P.KINDS[kind], ctx = D.getCtx(), foot = pl.pole || 0;
+    const kind = kindName(dv.kind), k = kindsNow()[kind], ctx = D.getCtx(), foot = pl.pole || 0;
     const ox = pl.x - 64, oy = pl.y - 136, h = Math.max(168, foot - oy + 8);
-    const sp = cached([pl.x, pl.y, pl.flip ? 'flip' : '', foot, kind, dv.ok ? 'up' : 'gone'].join('|'), ox, oy, 128, h, pl.flip, pl.x, () => {
+    // a kind from a pack is kept apart from the code's drawing of it, and from another compile's
+    const sp = cached([pl.x, pl.y, pl.flip ? 'flip' : '', foot, k.from ? kind + '@' + k.from : kind, dv.ok ? 'up' : 'gone'].join('|'), ox, oy, 128, h, pl.flip, pl.x, () => {
       if (foot) poleHD(pl.x, pl.y, foot);
       k.draw(pl.x, pl.y, 0, dv.ok, 'still');
     });

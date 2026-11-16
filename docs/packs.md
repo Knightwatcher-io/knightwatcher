@@ -540,8 +540,10 @@ layers of a scene:
   only inside a tile; `at` only in the patron, naming one of its anchors.
 - A colour may also be a mix, `{ "mix": [colour, colour], "k": 0.3 }`: each channel of the first
   moved towards the second's by `k`, from 0 to 1. The two are hex colours or single references.
-- `@pick.<name>` names a pick of the tile around the shape, and `@lamp.down` and `@lamp.downHi`
-  name the engine's down lamp; both are single colours, and `@lamp` may be named only in a stamp.
+- `@pick.<name>` names a pick of the tile around the shape, and `@lamp.down`, `@lamp.downLo` and
+  `@lamp.downHi` name the engine's down lamp: its red, the red at two thirds and its highlight,
+  which the engine spells `rgb(255,74,61)`, `rgb(168,49,40)` and `#ffd0c8`. All are single colours,
+  and `@lamp` may be named only in a stamp.
 - A pix shape's rows count toward the pack's 16 384 pixels with every other pix shape.
 
 **Terms.** A scalar of a scene may lean on the screen's edges, the scene values below, and inside a
@@ -566,7 +568,7 @@ Nothing else may lean on a named value: stamps, the cast and props are drawn at 
 knight's names (`drop`, `dShoulder` and the rest) are refused in every 1.1 section.
 
 **Effects.** `fx` is one of `sky`, `stars`, `ridge`, `bricks`, `pines`, `tree`, `arch`, `shelf`,
-`stacks`, `tufts`, `pebbles`, `planks`, `rafters`, `horseshoe`, `hood`, `flame`, `candle`, `twinkle`, `drift`, `wander`, `coals`, `steam` and `burst`, and the other
+`stacks`, `tufts`, `pebbles`, `planks`, `rafters`, `horseshoe`, `hood`, `flame`, `candle`, `twinkle`, `drift`, `wander`, `coals`, `steam`, `flutes`, `crust` and `burst`, and the other
 fields of an `fx` shape are the fields of that effect's table in `effects.js`
 ([page.md](./page.md#the-effects) lists them): a field the table lacks is refused, one without a
 default is required, and each holds a value of its kind in its range. A point, an offset or a length
@@ -711,13 +713,19 @@ A prop set is `{ name, kinds }`, `kinds` giving one or more of `pi`, `camera`, `
 moving, lamp }` with `still` and `lamp` required. A lamp is a pair, where the engine draws its own
 lamp, or a lamp of the kind's own `{ at, box, lit, dark, light }`: `box` 1 to 64 each way around `at`,
 `lit` and `dark` stamps of pix shapes only, `light` a hex colour, which a gone lamp may not give. A
-gone lamp's `lit` drawing uses only `@lamp.down` and `@lamp.downHi`, so a device that is down blinks
-red in every world.
+gone lamp's `lit` drawing uses only `@lamp.down`, `@lamp.downLo` and `@lamp.downHi`, so a device that
+is down blinks red in every world.
 
 At `rules` every drawing of a kind, in both states and both parts, lies inside its class box (the
 pie's for `pi`, the high one for `camera`, the ground one for the rest), worked out from each shape's
 extent at the ends of its values: a stamp by its shapes, a lamp by its box (12 by 12 for the
-engine's), an effect by its point alone, and a glow not at all, as the class boxes were measured.
+engine's), an effect by its point alone, and a glow not at all, as the class boxes were measured. A
+strip whose ends and widths are all fixed, as every value of a prop is, is measured by the pixels
+`draw.js` fills for it from a base on a whole pixel: the polygon of its four corners filled in whole
+columns when it runs more across than down (whole rows otherwise), from the first column its
+corners span to the last, each column from and to the nearest pixel. So the camera's sunshade,
+whose far corner lies at x -34.78, is measured from -34, the column it starts at. A strip with a
+value that can vary reaches its widest either way round both ends.
 
 ### Words and the overlay
 
@@ -1320,9 +1328,12 @@ base pack's items falls back on any build.
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.2.0, signed with `kw1` (as 0.1.0, the cellar alone, was before it). It holds every scene but the court as data, the three stamps they use (the sconce, the
-barrel and the house's peg) and one palette entry, `house.screen`, the television's colour, and the
-page draws those scenes from it on a `dev` page, and on a deployed page once it is signed.
+`[1, 1]`, version 0.3.0, unsigned until its signing run (0.1.0, the cellar alone, and 0.2.0 were
+signed with `kw1`). It holds every scene but the court as data, the devices as the prop set
+`props.medieval`, the stamps they use (the sconce, the barrel, the house's peg, the raspberry's
+drawings and the virtual machine's dots) and one palette entry, `house.screen`, the television's
+colour, and the page draws those scenes and devices from it on a `dev` page, and on a deployed page
+once it is signed.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 
@@ -1552,7 +1563,7 @@ is a world pack made of the world format's own worked examples (the cellar, the 
 the blanket's breath, the act parts, the places, the patron, the goblin, the fly, the camera and the
 pie with its own lamp, the words, the overlay and the preset) and of today's seven scenes' places,
 spots, rounds and `can` lists; it reads clean, signed and unsigned, at the deepest nesting allowed.
-The test refuses one signed copy of it for each rule above, 523 of them, each with the step and the
+The test refuses one signed copy of it for each rule above, 525 of them, each with the step and the
 exact reason it expects; accepts each limit at its edge; checks the costs the counts step reports
 against figures worked by hand; signs a 1.1 pack with a key made for the run and checks that the
 signature holds over a pretty-printed, minified or reordered copy and breaks at a changed value in
@@ -1570,7 +1581,8 @@ that throws all leave the scenes concerned the code scenes, each with its consol
 status. That each scene from the pack draws what the code draws, call for call, is
 `tests/web/scenes.test.js`'s ([page.md](./page.md#checks)); that its `quiet` and `hosts` agree with
 the engine's own lists, and that the foe's and the places' checks hold on it, is
-`tests/web/world-scenes.test.js`'s.
+`tests/web/world-scenes.test.js`'s. `tests/web/world-props.test.js` checks the devices from its prop
+set ([worlds.md](./worlds.md#the-devices)).
 
 `tests/web/effects.test.js` checks that `pack.js` holds an effect to its table in `effects.js`, every
 field of every effect refused out of its kind or range, and costs it with its own cost function; and
