@@ -37,12 +37,24 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
 3. **The household defaults** in the `[look]`, `[display]`, `[quiet]` and `[scenes]` tables of
    `config.toml`, which the collector copies into `state.json`. The settings screen's "Use the
    config default" goes back to these.
-4. **The page's own**, the "page's own" in the reference: the base pack's defaults for the knight,
-   monarch A with each monarch's own colours, a medium headline, a 24-hour clock, the helmet off
-   indoors, all four quiet scenes for ten minutes each, and each condition in its own scene.
+4. **The page's own**, the "page's own" in the reference: the medieval world, which is the base
+   pack's defaults for the knight, monarch A with each monarch's own colours, the goblin, the fly,
+   the medieval devices, words and overlay, all four quiet scenes, and each condition in its own
+   scene; with a medium headline, a 24-hour clock, the helmet off indoors and ten minutes for each
+   quiet scene.
 
 A value a level holds that the page does not know is ignored at that level, and the next one down
-is used. [page.md](./page.md#settings) has the details.
+is used. So is a long name, `"<pack>/<id>"`, of something the display has not loaded.
+[page.md](./page.md#settings) has the details.
+
+**A world** (`world` in `[look]`) sets every part at once: the look's other keys, the quiet scenes
+and the scene of each condition. It counts as setting each of them at the level it was chosen at.
+A part set at the same level or above keeps its own value; a part set only at a level below gives
+way to the world. So `world` and `tabard` side by side in `config.toml` give that world in that
+tabard, while a display that chooses a world on its settings screen takes it whole, whatever
+`config.toml` says about single parts. The display's preferences (`[display]`) and the quiet scenes'
+length are not parts, and no world changes them. With no level choosing a world, the medieval
+world is the page's own, and every part set anywhere wins over it, as before there were worlds.
 
 The admin page sets the same household defaults through the same store, so a choice made there
 is a saved setting like any display's, and a choice made on a display shows on the admin page as
@@ -436,10 +448,11 @@ Machines on the network to watch, each a [[device]] table at the top level of co
 
 ### [look]
 
-The knight and the monarch at court, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The colours, tones, hair styles and gear are those of the base pack.
+The world, and the parts it sets: the knight, the monarch at court, the cast, the devices and the words, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The colours, tones, hair styles and gear are those of the base pack. A long name, "<pack>/<id>", is checked here only for its form; a display that has not loaded it uses the next level down.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
+| `world` | `"medieval"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"medieval"` | display | The world the display shows, which sets every part below at once: medieval, the world the page ships with, or a world of a loaded pack by its long name, "<pack>/<world>". A part set beside the world in this table, or chosen on a display, is kept over the world's; a display that chooses a world takes it whole, over the parts this table sets. |
 | `build` | `"a"`, `"b"` or `"c"` | none | display | The knight's build, by the base pack's names: Classic (a), the present knight, Broad (b) and Slim (c). The page's own is the base pack's default build, and only a build the packs in use declare is shown. |
 | `weapon` | `"greatsword"`, `"sword_and_shield"`, `"longsword"` or `"mace_and_shield"` | none; the page's own is `"greatsword"` | display | What the knight carries: the greatsword or the longsword in both hands, or the arming sword (sword_and_shield) or the flanged mace (mace_and_shield) in one hand with the shield in the other. |
 | `skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"` | none; the page's own is `"warm"` | display | The knight's skin tone. |
@@ -457,10 +470,17 @@ The knight and the monarch at court, for every display. A choice made on a wall'
 | `legs` | `"plate"`, `"mail"` or `"hose"` | none; the page's own is `"plate"` | display | The legs: plate greaves, mail chausses or padded hose. |
 | `feet` | `"leather"`, `"sabatons"` or `"shoes"` | none; the page's own is `"leather"` | display | The feet: riding boots (leather), sabatons or turnshoes. |
 | `back` | `"none"`, `"cloak"` or `"cape"` | none; the page's own is `"none"` | display | What hangs from the shoulders: nothing, a long cloak in the plume's colour or a short cape in the tabard's. |
-| `monarch` | `"a"`, `"b"` or `"c"` | none; the page's own is `"a"` | display | Which of the three monarchs sits in the court. |
+| `monarch` | `"a"`, `"b"` or `"c"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"a"` | display | Which of the three monarchs sits in the court, or a patron of a loaded pack by its long name, "<pack>/<patron>". |
 | `monarch_skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"` | none; the page's own is `"warm"` | display | The monarch's skin tone. The page's own is the court's own skin. |
 | `monarch_hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"` or `"silver"` | none | display | The monarch's hair colour. Left out, each monarch keeps the hair the court draws them with ("As drawn"). |
 | `monarch_robe` | `"blue"`, `"forest"`, `"violet"`, `"wine"`, `"teal"` or `"sable"` | none | display | The colour of the monarch's robe. Left out, each monarch keeps their own robe (A red, B violet, C green). |
+| `foe` | `"goblin"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"goblin"` | display | Who comes for the knight when an address is banned: the goblin, or a foe of a loaded pack by its long name, "<pack>/<foe>". |
+| `critter` | `"fly"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"fly"` | display | What a blocked advert turns into: the fly, or a critter of a loaded pack by its long name, "<pack>/<critter>". |
+| `props` | `"medieval"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"medieval"` | display | The drawings of the devices, every kind at once: medieval, or a prop set of a loaded pack by its long name, "<pack>/<prop set>". A kind the set does not draw takes the medieval drawing. |
+| `overlay` | `"medieval"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"medieval"` | display | The colours and the font of the words over the scene: medieval, or an overlay of a loaded pack by its long name, "<pack>/<overlay>". |
+| `words` | `"medieval"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"medieval"` | display | The words of the quiet line and the captions: medieval, or a word set of a loaded pack by its long name, "<pack>/<word set>". |
+| `items` | a table whose keys are `main`, `off`, `helmet`, `plume`, `hair`, `torso`, `pauldrons`, `arms`, `gauntlets`, `legs`, `boots` or `back`, each a long name, `"<pack>/<id>"` | none | display | Any slot's item named directly by its long name, "<pack>/<item>", over the key above that chooses the item for that slot: in config.toml a table [look.items], such as main = "kw.base/main.arming". |
+| `devices` | a table whose keys are `pi`, `camera`, `machine`, `vm` or `box`, each `"medieval"` or a long name, `"<pack>/<id>"` | none | display | The drawing of one kind of device, over props for that kind: in config.toml a table [look.devices] whose keys are the kinds, each medieval or a prop set of a loaded pack by its long name, "<pack>/<prop set>". |
 
 ### [display]
 
@@ -478,20 +498,20 @@ The scenes that take turns while all is quiet, for every display. A choice made 
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `scenes` | one or more quiet scenes, each once: `"battlement"`, `"camp"`, `"house"` or `"yard"` | none; the page's own is `["battlement", "camp", "house", "yard"]` | display | The quiet scenes, in the order they take turns. |
+| `scenes` | one or more quiet scenes, each once: `"battlement"`, `"camp"`, `"house"` or `"yard"`, or long names, `"<pack>/<id>"` | none; the page's own is `["battlement", "camp", "house", "yard"]` | display | The quiet scenes, in the order they take turns: the four the page ships with, or quiet scenes of a loaded pack by their long names, "<pack>/<scene>". |
 | `minutes` | a whole number of minutes, from 1 to 240 | none; the page's own is `10` | display | How long each quiet scene shows. The demo shows each for a minute while nothing sets it. |
 
 ### [scenes]
 
-Where the knight acts out each condition that more than one scene can play, for every display. A condition left out plays in its own scene. In config.toml each key is a condition and each value a scene; a scene that cannot act its condition is ignored, and the condition plays in its own.
+Where the knight acts out each condition that more than one scene can play, for every display. A condition left out plays in its own scene. In config.toml each key is a condition and each value a scene, by its short name or a scene of a loaded pack by its long name, "<pack>/<scene>"; a scene that cannot act its condition is ignored, and the condition plays in its own.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `attack` | any scene; the page acts it in `"battlement"`, `"camp"` or `"yard"` | none; the page's own is `"battlement"` | display | Where the knight acts out an attack. |
-| `disk_full` | any scene; the page acts it in `"yard"` or `"cellar"` | none; the page's own is `"cellar"` | display | Where the knight acts out a full disk. |
-| `backup_overdue` | any scene; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"` or `"cellar"` | none; the page's own is `"house"` | display | Where the knight acts out an overdue backup. |
-| `pi_silent` | any scene; the page acts it in `"battlement"`, `"camp"` or `"house"` | none; the page's own is `"house"` | display | Where the knight acts out a silent Pi. |
-| `cpu_hot` | any scene; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"` or `"cellar"` | none; the page's own is `"yard"` | display | Where the knight acts out a hot CPU. |
+| `attack` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"` or `"yard"` | none; the page's own is `"battlement"` | display | Where the knight acts out an attack. |
+| `disk_full` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"yard"` or `"cellar"` | none; the page's own is `"cellar"` | display | Where the knight acts out a full disk. |
+| `backup_overdue` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"` or `"cellar"` | none; the page's own is `"house"` | display | Where the knight acts out an overdue backup. |
+| `pi_silent` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"` or `"house"` | none; the page's own is `"house"` | display | Where the knight acts out a silent Pi. |
+| `cpu_hot` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"` or `"cellar"` | none; the page's own is `"yard"` | display | Where the knight acts out a hot CPU. |
 
 ### .env
 
@@ -662,6 +682,28 @@ values beside it. The colours, tones, hair styles and gear are those of the base
 (`web/packs/base.pack.json`). The monarch's hair and robe have no value for "as drawn": leaving the
 setting out is how a display keeps the monarch's own colours.
 
+`world`, `monarch`, `foe`, `critter`, `props`, `overlay` and `words` take a short name, the medieval
+world's, or the long name of something in a world pack, `"<pack>/<id>"`. Two tables inside
+`[look]` name parts directly: `[look.items]` gives a slot's item by its long name, over the key that
+would choose the item for that slot, and `[look.devices]` gives the prop set one kind of device
+(`pi`, `camera`, `machine`, `vm` or `box`) is drawn from, over `props` for that kind:
+
+```toml
+[look]
+world = "medieval"
+tabard = "forest"
+
+[look.items]
+main = "kw.base/main.arming"
+
+[look.devices]
+camera = "medieval"
+```
+
+The page ships one world, `medieval`, whose pack is `kw.medieval`, so today the long names it
+loads are that pack's own (`kw.medieval/patron.b` is monarch `b`) and the base pack's items. A kind
+the chosen prop set does not draw takes the medieval drawing.
+
 `[scenes]` maps a condition id to one of the page's scenes. Each scene can act only some
 conditions (see [design.md](./design.md#scenes-chosen-per-condition)), and the page offers a
 choice for five; the reference above lists the scenes that can act each. The other conditions
@@ -669,7 +711,7 @@ are not offered: `wan_down` (only the battlement has the bell rope), `container_
 `night` (the bed is in the house), `streaming` (so is the television), `ssh_session` (the court),
 `updating` (the smithy), and `device_down` and `memory_tight`, which play in whichever quiet scene
 is showing. The collector checks each key against its own condition ids and each value against
-the page's scenes, but it cannot know which scene can act what. A known condition paired with a
+the page's scenes, or a long name by its form, but it cannot know which scene can act what. A known condition paired with a
 known scene that cannot act it, such as `night = "camp"`, is therefore accepted and written, and
 the page ignores it, with a line in the browser's console, and plays the condition in its own
 scene.
@@ -677,10 +719,15 @@ scene.
 The check is strict, as it is everywhere else in the file. A value outside these lists, a value
 of the wrong type (`"false"` in quotes for `helmet_indoors`, `"12"` for `clock`, `2.5` for
 `minutes`) and an unknown setting in any of the four tables each stop the collector from
-starting, and `check-config` names the table, the setting and what it allows:
+starting, and `check-config` names the table, the setting and what it allows. The collector
+knows nothing of packs, so it checks a long name only for its form,
+`^[a-z][a-z0-9-]{1,31}(\.[a-z0-9-]{1,31}){0,3}/[a-z][a-z0-9.-]{0,47}$` (the schema's `long_name`); a
+display that has not loaded it ignores it and uses the next level down:
 
 ```
 config: look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep
+config: look.world: unknown value "neon"; use medieval, or a long name, "<pack>/<id>"
+config: look.devices.tv: unknown key; use pi, camera, machine, vm or box
 config: quiet.scenes: "camp" listed twice
 config: quiet.minutes: must be a whole number from 1 to 240
 config: scenes.cpu: unknown condition

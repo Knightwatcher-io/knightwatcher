@@ -232,8 +232,24 @@ class DefaultsContractTest(unittest.TestCase):
                 "teal or sable",
                 "defaults.scenes.cpu: unknown condition",
                 'defaults.scenes.attack: unknown value "moon"; use battlement, camp, house, yard, '
-                "cellar, smithy or court",
+                'cellar, smithy or court, or a long name, "<pack>/<id>"',
             ],
+        )
+        # the world, the parts and their tables, by long names checked for their form alone
+        self.assertEqual(
+            broken(
+                given(
+                    look={
+                        "world": "kw.cyber/world.neon",
+                        "foe": "kw.cyber/foe.drone",
+                        "items": {"main": "kw.base/main.arming"},
+                        "devices": {"camera": "medieval", "pi": "kw.cyber/props.neon"},
+                    },
+                    quiet={"scenes": ["kw.cyber/scene.roof", "camp"]},
+                    scenes={"cpu_hot": "kw.cyber/scene.lab"},
+                )
+            ),
+            [],
         )
         self.assertEqual(
             broken(given(look={"skin": "pale"}, quiet={"minutes": 0, "pace": 3})),

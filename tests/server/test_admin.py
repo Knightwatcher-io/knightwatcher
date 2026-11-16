@@ -607,7 +607,18 @@ class SettingsTest(AdminCase):
                 }
             }
         )
-        self.s.put({"v": 1, "look": {"tabard": "teal"}, "display": {"clock": 12}})
+        self.s.put(
+            {
+                "v": 1,
+                "look": {
+                    "tabard": "teal",
+                    "world": "kw.cyber/world.neon",
+                    "items": {"main": "kw.base/main.arming"},
+                    "devices": {"camera": "medieval"},
+                },
+                "display": {"clock": 12},
+            }
+        )
         status, r, data = self.s.json_call("GET", "/api/admin/export", cookie=self.cookie)
         self.assertEqual(status, 200)
         self.assertEqual(r.getheader("Content-Type"), "text/plain; charset=utf-8")
@@ -620,7 +631,18 @@ class SettingsTest(AdminCase):
         self.assertEqual(exported.conditions, layered.conditions)
         self.assertEqual(exported.sources, layered.sources)
         self.assertEqual(exported.devices, layered.devices)
-        self.assertEqual(exported.defaults["look"], {"skin": "tan", "tabard": "teal"})
+        self.assertEqual(
+            exported.defaults["look"],
+            {
+                "world": "kw.cyber/world.neon",
+                "skin": "tan",
+                "tabard": "teal",
+                "items": {"main": "kw.base/main.arming"},
+                "devices": {"camera": "medieval"},
+            },
+        )
+        self.assertIn('items = { main = "kw.base/main.arming" }', text)
+        self.assertIn('# foe = "goblin"   # left out: the page\'s own', text)
         self.assertEqual(exported.defaults["display"], {"clock": 12})
         self.assertIn("# Not set up.", text)
         self.assertIn("# [sources.radarr]", text)

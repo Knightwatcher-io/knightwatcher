@@ -48,6 +48,9 @@ function store(opts) {
   return { s, lines, st };
 }
 const saved = obj => JSON.stringify(Object.assign({ v: 1 }, obj));
+/* Each condition's own scene, in the medieval world. */
+const HOMES = { attack: 'battlement', wan_down: 'battlement', container_unhealthy: 'house', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house',
+  cpu_hot: 'yard', ssh_session: 'court', updating: 'smithy', streaming: 'house', night: 'house' };
 
 /* ---- The levels ------------------------------------------------------------------------------- */
 
@@ -55,22 +58,26 @@ test('with nothing set, every value is the page\'s own and the knight\'s look is
   const { s, lines } = store();
   const r = s.now();
   assert.deepEqual(r.values, {
-    look: { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red',
+    look: { world: 'medieval', build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red',
       shield: 'heater', helmet: 'open', plume_style: 'crest', body: 'tabard', shoulders: 'plate', arms: 'plate', hands: 'plate', legs: 'plate', feet: 'leather', back: 'none',
-      monarch: 'a', monarch_skin: 'warm', monarch_hair: null, monarch_robe: null },
+      monarch: 'a', monarch_skin: 'warm', monarch_hair: null, monarch_robe: null, foe: 'goblin', critter: 'fly', props: 'medieval', overlay: 'medieval', words: 'medieval', items: {}, devices: {} },
     display: { headline: 'medium', clock: 24, helmet_indoors: false },
     quiet: { scenes: ['battlement', 'camp', 'house', 'yard'], minutes: 10 },
     scenes: { attack: 'battlement', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house', cpu_hot: 'yard' } });
-  for (const sec of Object.keys(r.from)) for (const k of Object.keys(r.from[sec])) assert.equal(r.from[sec][k], 'built-in', sec + '.' + k);
+  for (const sec of Object.keys(r.from)) for (const k of Object.keys(r.from[sec])) if (!SET.TABLES[k]) assert.equal(r.from[sec][k], 'built-in', sec + '.' + k);
+  assert.deepEqual([r.from.look.items, r.from.look.devices], [{}, {}]);
+  assert.deepEqual(plain(r.world), { id: 'medieval', from: 'built-in', homes: HOMES });
+  assert.deepEqual([r.masked, r.faults, r.ignored], [[], [], []]);
   assert.deepEqual(SET.knightLook(r), {});
-  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000)), { turns: ['battlement', 'camp', 'house', 'yard'], turnMs: 60000, patron: { id: 'a', skin: null, hair: null, robe: null }, scenes: {} });
+  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000)), { turns: ['battlement', 'camp', 'house', 'yard'], turnMs: 60000, patron: { id: 'a', skin: null, hair: null, robe: null }, scenes: {},
+    homes: HOMES, kinds: { pi: 'medieval', camera: 'medieval', machine: 'medieval', vm: 'medieval', box: 'medieval' } });
   assert.deepEqual(lines, []);
 });
 
 test('the page\'s own look is the base pack\'s defaults, read from the pack', () => {
-  assert.deepEqual(SET.builtIn(PACK).look, { build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red',
+  assert.deepEqual(SET.builtIn(PACK).look, { world: 'medieval', build: 'a', weapon: 'greatsword', skin: 'warm', hair: 'brown', hair_style: 'short', tabard: 'blue', plume: 'red',
     shield: 'heater', helmet: 'open', plume_style: 'crest', body: 'tabard', shoulders: 'plate', arms: 'plate', hands: 'plate', legs: 'plate', feet: 'leather', back: 'none',
-    monarch: 'a', monarch_skin: 'warm', monarch_hair: null, monarch_robe: null });
+    monarch: 'a', monarch_skin: 'warm', monarch_hair: null, monarch_robe: null, foe: 'goblin', critter: 'fly', props: 'medieval', overlay: 'medieval', words: 'medieval', items: {}, devices: {} });
   const other = JSON.parse(JSON.stringify(PACK));
   Object.assign(other.defaults.swatches, { skin: 'deep', plume: 'gold' }); other.defaults.items.main = 'main.arming'; other.defaults.items.hair = 'hair.curls';
   const L = SET.builtIn(other).look;
@@ -288,9 +295,9 @@ test('the state file\'s defaults reach the store through KW.state.map, with its 
   s.defaults(v.defaults);
   const r = s.now();
   // a state file from before the gear keys sets none of them, so they are the page's own
-  assert.deepEqual(r.values.look, { build: 'a', weapon: 'sword_and_shield', skin: 'deep', hair: 'black', hair_style: 'curls', tabard: 'sable', plume: 'gold',
+  assert.deepEqual(r.values.look, { world: 'medieval', build: 'a', weapon: 'sword_and_shield', skin: 'deep', hair: 'black', hair_style: 'curls', tabard: 'sable', plume: 'gold',
     shield: 'heater', helmet: 'open', plume_style: 'crest', body: 'tabard', shoulders: 'plate', arms: 'plate', hands: 'plate', legs: 'plate', feet: 'leather', back: 'none',
-    monarch: 'b', monarch_skin: 'brown', monarch_hair: 'silver', monarch_robe: 'teal' });
+    monarch: 'b', monarch_skin: 'brown', monarch_hair: 'silver', monarch_robe: 'teal', foe: 'goblin', critter: 'fly', props: 'medieval', overlay: 'medieval', words: 'medieval', items: {}, devices: {} });
   for (const k of ['shield', 'helmet', 'plume_style', 'body', 'shoulders', 'arms', 'hands', 'legs', 'feet', 'back']) assert.equal(r.from.look[k], 'built-in', k);
   assert.deepEqual([r.values.scenes.cpu_hot, r.from.scenes.cpu_hot, r.values.scenes.pi_silent, r.from.scenes.pi_silent], ['camp', 'defaults', 'battlement', 'defaults']);
   assert.deepEqual(r.values.display, { headline: 'large', clock: 12, helmet_indoors: true });
@@ -315,7 +322,8 @@ test('the engine\'s input: the rotation\'s scenes, its length only when set, the
   s.choose('look', 'monarch', 'c'); s.choose('look', 'monarch_skin', 'deep');
   const e = SET.engineInput(s.now(), PACK, 60000);
   assert.deepEqual(plain(e), { turns: ['camp', 'house'], turnMs: 300000, patron: { id: 'c',
-    skin: { id: 'deep', face: PACK.swatches.skin.deep.entries.face, cheek: PACK.swatches.skin.deep.entries.cheek }, hair: null, robe: null }, scenes: {} });
+    skin: { id: 'deep', face: PACK.swatches.skin.deep.entries.face, cheek: PACK.swatches.skin.deep.entries.cheek }, hair: null, robe: null }, scenes: {}, homes: HOMES,
+    kinds: { pi: 'medieval', camera: 'medieval', machine: 'medieval', vm: 'medieval', box: 'medieval' } });
   assert.equal(SET.engineInput(s.now(), null, 60000).patron.skin, null, 'no base pack, the court\'s own skin');
 });
 

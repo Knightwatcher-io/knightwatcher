@@ -759,15 +759,19 @@
         if (L.own) ownLamp(L, x, y, t, ok); else P.lampHD(x + L.at[0], y + L.at[1], t, ok);
       }
     }
-    return Object.freeze({ draw, mark: v.mark, from: MEDIEVAL + '#' + (++compiles) });
+    return Object.freeze({ draw, mark: v.mark, from: pack.id + '#' + (++compiles) });
   }
   /* KW.kinds: the drawing of each kind of device the engine draws, by the contract's kind, as
-     KW.props.KINDS gives them in code: those the prop set gives once start() has compiled them, and
-     the code's for the rest. */
-  const kinds = KW.kinds = {};
+     KW.props.KINDS gives them in code. baseKinds holds the base world's: those the medieval prop set
+     gives once start() has compiled them, and the code's for the rest. useKinds() puts in KW.kinds
+     the drawing of each kind from the prop set chosen for it, and the base world's where that set
+     cannot give it. */
+  const kinds = KW.kinds = {}, baseKinds = {};
   function restoreKinds() {
-    for (const k of Object.keys(kinds)) delete kinds[k];
-    Object.assign(kinds, (KW.props && KW.props.KINDS) || {});
+    for (const o of [kinds, baseKinds]) {
+      for (const k of Object.keys(o)) delete o[k];
+      Object.assign(o, (KW.props && KW.props.KINDS) || {});
+    }
   }
   restoreKinds();
 
@@ -1072,10 +1076,106 @@
     return freeze({ name: v.name, font: v.font, props });
   }
 
+  /* ---- Worlds as presets, and the devices by kind ----------------------------------------------
+     A world pack's worlds section holds presets: a world's every part at once (docs/worlds.md,
+     Worlds as presets). kw.medieval's world.medieval is the base world, which the settings call 'medieval';
+     the preset of another pack is called by its long name, <pack>/<id>. catalogue() lists for the
+     settings what the page has loaded: the presets, the prop sets, the scenes under their long
+     names, and each long name of kw.medieval with the short name it stands for. The settings
+     resolve which world and which parts are in use (KW.settings); the scenes and the cast of a
+     world other than the base world are not drawn yet, so a preset naming them gives way to the
+     base world's.
+
+     The devices mix per kind: the settings choose a prop set for each kind, and useKinds() puts
+     that set's drawing of the kind in KW.kinds, compiled the first time it is asked for. A kind
+     whose set is not loaded, does not draw it or fails to compile takes the base world's drawing,
+     and KW.world.devices lists it with the reason. A kind no set draws at all is drawn as box by
+     the engine. */
+  const BASE_PACK = 'kw.base', BASE = 'medieval', BASE_WORLD = 'world.medieval';
+  const KIND_NAMES = ['pi', 'camera', 'machine', 'vm', 'box'];
+  let medieval = null;
+  const others = new Map(), built = new Map();
+  /* The prop set a name chooses: { pack, set }, or null when no pack read gives it. */
+  function setOf(name) {
+    if (name === BASE) return medieval && isObj(medieval.data.props) && has(medieval.data.props, PROPS) ? { pack: medieval, set: PROPS } : null;
+    const i = typeof name === 'string' ? name.indexOf('/') : -1, id = i > 0 ? name.slice(0, i) : '', local = i > 0 ? name.slice(i + 1) : '';
+    const p = id === MEDIEVAL ? medieval : others.get(id);
+    return p && isObj(p.data.props) && has(p.data.props, local) && isObj(p.data.props[local].kinds) ? { pack: p, set: local } : null;
+  }
+  /* Puts in KW.kinds the drawing of each kind from the prop set choice names for it ({ pi: name,
+     ... }, a kind left out taking the base world's), and keeps what it did in KW.world.devices:
+     { choice, kinds, faults }, kinds naming the set each kind is drawn from and faults listing
+     { kind, set, reason } for each kind that took the base world's instead. */
+  function useKinds(choice) {
+    const st = api.devices = { choice: {}, kinds: {}, faults: [] };
+    for (const k of Object.keys(baseKinds)) {
+      const want = isObj(choice) && typeof choice[k] === 'string' ? choice[k] : BASE;
+      st.choice[k] = want;
+      let got = null, why = '';
+      if (want !== BASE) {
+        const s = setOf(want);
+        if (!s) why = 'the prop set ' + want + ' is not loaded';
+        else if (!has(s.pack.data.props[s.set].kinds, k)) why = 'the prop set ' + want + ' does not draw it';
+        else {
+          const key = s.pack.id + '/' + s.set + '|' + k;
+          if (!built.has(key)) { try { built.set(key, compileKind(s.pack, s.set, k)); } catch (e) { built.set(key, new Error(message(e))); } }
+          got = built.get(key);
+          if (got instanceof Error) { why = 'it could not be compiled: ' + cutTo(got.message, 120); got = null; }
+        }
+      }
+      kinds[k] = got || baseKinds[k];
+      st.kinds[k] = got ? want : BASE;
+      if (why) st.faults.push({ kind: k, set: want, reason: why });
+    }
+    return st;
+  }
+  /* What the page has loaded, for the settings (KW.settings.pageWorld, which worldOf there
+     describes): { names, worlds, sets, scenes }, and with kw.medieval's preset the base world's
+     homes and quiet scenes. */
+  function catalogue() {
+    const names = { world: {}, monarch: {}, foe: {}, critter: {}, props: {}, overlay: {}, words: {}, scene: {} };
+    const out = { names, worlds: {}, sets: {}, scenes: {} };
+    const ROLE_KINDS = { patron: 'monarch', foe: 'foe', critter: 'critter' };
+    const labelsOf = (p, n) => (isObj(p.data.words) && isObj(p.data.words[n]) && isObj(p.data.words[n].labels) ? Object.assign({}, p.data.words[n].labels) : null);
+    const local = (p, n) => (typeof n === 'string' && n.startsWith(p.id + '/') ? n.slice(p.id.length + 1) : n);
+    for (const p of [medieval].concat(Array.from(others.values()))) {
+      if (!p) continue;
+      const base = p === medieval, d = p.data;
+      for (const n of Object.keys(isObj(d.worlds) ? d.worlds : {})) {
+        const v = d.worlds[n], name = base && n === BASE_WORLD ? BASE : p.id + '/' + n;
+        if (base && n === BASE_WORLD) names.world[p.id + '/' + n] = BASE;
+        const words = typeof v.words === 'string' ? labelsOf(p, local(p, v.words)) : null;
+        out.worlds[name] = { name: v.name, pack: p.id, picture: base ? local(p, v.picture) : (v.picture.indexOf('/') < 0 ? p.id + '/' + v.picture : v.picture), preset: v, words };
+      }
+      for (const n of Object.keys(isObj(d.props) ? d.props : {})) {
+        const v = d.props[n], name = base && n === PROPS ? BASE : p.id + '/' + n;
+        if (base && n === PROPS) names.props[p.id + '/' + n] = BASE;
+        out.sets[name] = { name: v.name, kinds: Object.keys(isObj(v.kinds) ? v.kinds : {}).filter(k => KIND_NAMES.includes(k)) };
+      }
+    }
+    if (medieval) {
+      const d = medieval.data, id = medieval.id;
+      // the long names of kw.medieval's parts, each standing for the short name the page draws it by
+      for (const n of Object.keys(isObj(d.cast) ? d.cast : {})) { const s = slotOf(n, d.cast[n]); if (s) names[ROLE_KINDS[d.cast[n].role]][id + '/' + n] = s[1]; }
+      if (isObj(d.words) && has(d.words, WORDS)) names.words[id + '/' + WORDS] = BASE;
+      if (isObj(d.overlays) && has(d.overlays, OVERLAY)) names.overlay[id + '/' + OVERLAY] = BASE;
+      for (const n of LONG) { const short = n.slice(id.length + 1); names.scene[n] = short; out.scenes[n] = { can: KW.scenes[n].can.slice(), quiet: d.scenes[short].quiet === true }; }
+      // the base world's own scenes, from its preset
+      const pre = isObj(d.worlds) ? d.worlds[BASE_WORLD] : null;
+      if (isObj(pre) && isObj(pre.scenes)) {
+        const cond = KW.state && isObj(KW.state.CONDITIONS) ? KW.state.CONDITIONS : {}, f = isObj(pre.scenes.for) ? pre.scenes.for : {};
+        out.homes = {};
+        for (const c of Object.keys(cond)) out.homes[c] = typeof f[c] === 'string' ? local(medieval, f[c]) : null;
+        if (Array.isArray(pre.scenes.quiet)) out.quiet = pre.scenes.quiet.map(n => local(medieval, n));
+      }
+    }
+    return out;
+  }
   /* ---- Loading ---------------------------------------------------------------------------------
-     start() reads kw.medieval from the texts of the packs that ship with the page (the page passes
-     KW.packText, as it does to the knight) with the knight's rule: a 'dev' page accepts it
-     unsigned, a deployed page only signed. Each of its scenes whose id names a code scene is
+     start() reads kw.medieval, and every other pack but the base pack, from the texts of the packs
+     that ship with the page (the page passes KW.packText, as it does to the knight) with the
+     knight's rule: a 'dev' page accepts a pack unsigned, a deployed page only signed. Another pack
+     read cleanly is kept for its presets and prop sets (see catalogue and useKinds). Each of its scenes whose id names a code scene is
      compiled and takes that scene's place in KW.scenes, and is also put under its long name,
      kw.medieval/<id>, which is not enumerable, so that the engine and the settings, which list the
      scenes by their short names, see no more of them than before. A scene that fails to compile,
@@ -1109,7 +1209,7 @@
      the overlay it keeps in KW.world.props, KW.world.cast, KW.world.words and KW.world.overlay. */
   function start(texts, allowUnsigned, opts) {
     const o = isObj(opts) ? opts : {}, lib = KW.pack && typeof KW.pack.read === 'function' ? KW.pack : null;
-    restore(); restoreKinds(); restoreCast();
+    restore(); restoreKinds(); restoreCast(); medieval = null; others.clear(); built.clear();
     const status = api.status = { source: 'code', pack: null, refused: null, scenes: {}, faults: [], note: '' };
     const props = api.props = { source: 'code', set: null, kinds: {}, faults: [] };
     const castStatus = api.cast = { source: 'code', members: {}, faults: [] };
@@ -1123,16 +1223,20 @@
       const readOpts = { allowUnsigned: allowUnsigned === true };
       if (isObj(o.keys)) readOpts.keys = o.keys;
       const results = [];
+      // every pack but the base pack, which the knight reads: kw.medieval, and any other pack
+      // whose presets and prop sets may be chosen
       for (const t of Array.isArray(texts) ? texts : []) {
-        if (idOf(t) !== MEDIEVAL) continue;
+        const id = idOf(t);
+        if (id === null || id === BASE_PACK) continue;
         let r;
-        try { r = lib.read(t, readOpts); } catch (e) { r = { ok: false, id: MEDIEVAL, step: 'size', reason: 'the pack could not be read: ' + message(e) }; }
+        try { r = lib.read(t, readOpts); } catch (e) { r = { ok: false, id, step: 'size', reason: 'the pack could not be read: ' + message(e) }; }
         results.push(r);
       }
       const g = lib.gather(results);
       pack = g.packs.get(MEDIEVAL) || null;
+      for (const [id, p] of g.packs) if (id !== MEDIEVAL && isObj(p.data) && (isObj(p.data.worlds) || isObj(p.data.props))) others.set(id, p);
       if (!pack) {
-        const no = results.filter(r => !(r && r.ok === true)).pop();
+        const no = results.filter(r => !(r && r.ok === true) && (!r || r.id === MEDIEVAL)).pop();
         if (no) status.refused = { id: MEDIEVAL, step: String(no.step || 'size'), reason: String(no.reason || '') };
         line('warn', 'knightwatcher: the scenes of ' + MEDIEVAL + ' are drawn from code: ' + (no ? 'the pack ' + MEDIEVAL + ' was refused at the ' + status.refused.step + ' step' : 'no pack ' + MEDIEVAL + ' is loaded'));
       }
@@ -1145,8 +1249,8 @@
       if (has(sets, PROPS) && isObj(sets[PROPS].kinds)) {
         props.set = PROPS;
         for (const k of Object.keys(sets[PROPS].kinds)) {
-          if (!has(kinds, k)) continue;
-          try { kinds[k] = compileKind(pack, PROPS, k); props.kinds[k] = 'pack'; props.source = 'pack'; } catch (e) {
+          if (!has(baseKinds, k)) continue;
+          try { baseKinds[k] = compileKind(pack, PROPS, k); props.kinds[k] = 'pack'; props.source = 'pack'; } catch (e) {
             const reason = message(e);
             props.kinds[k] = 'code'; props.faults.push({ kind: k, reason });
             line('warn', 'knightwatcher: the device kind ' + k + ' is drawn from code: it could not be compiled: ' + cutTo(reason, 120));
@@ -1200,10 +1304,12 @@
       if (drawn.length) { status.source = 'pack'; line('info', 'knightwatcher: ' + listed(drawn) + ' drawn from the pack ' + pack.id + ' ' + pack.version + (pack.signed ? ', signed' : ', unsigned')); }
       else if (!status.faults.length) line('warn', 'knightwatcher: the scenes of ' + MEDIEVAL + ' are drawn from code: the pack ' + MEDIEVAL + ' gives none of them');
     }
+    medieval = pack;
+    useKinds(null);
     for (const [level, text] of lines) say(level, text);
     return status;
   }
 
   const api = KW.world = { MEDIEVAL, PROPS, WORDS, OVERLAY, QUIET_MAX, CAPTION_MAX, compile, compileKind, compileMember, compileWords, compileOverlay, join, quietLine, caption,
-    start, status: null, props: null, cast: null, words: null, overlay: null };
+    start, catalogue, useKinds, status: null, props: null, cast: null, words: null, overlay: null, devices: null };
 })(window.KW);

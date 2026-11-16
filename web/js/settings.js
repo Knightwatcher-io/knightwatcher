@@ -19,6 +19,7 @@
      run the tool, never these lines. */
   const SCHEMA = {
     look: {
+      world: { values: ['medieval'], long: true, page: 'medieval' },
       build: { values: ['a', 'b', 'c'], page: null },
       weapon: { values: ['greatsword', 'sword_and_shield', 'longsword', 'mace_and_shield'], page: 'greatsword' },
       skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], page: 'warm' },
@@ -36,10 +37,17 @@
       legs: { values: ['plate', 'mail', 'hose'], page: 'plate' },
       feet: { values: ['leather', 'sabatons', 'shoes'], page: 'leather' },
       back: { values: ['none', 'cloak', 'cape'], page: 'none' },
-      monarch: { values: ['a', 'b', 'c'], page: 'a' },
+      monarch: { values: ['a', 'b', 'c'], long: true, page: 'a' },
       monarch_skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], page: 'warm' },
       monarch_hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], page: null },
-      monarch_robe: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], page: null }
+      monarch_robe: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], page: null },
+      foe: { values: ['goblin'], long: true, page: 'goblin' },
+      critter: { values: ['fly'], long: true, page: 'fly' },
+      props: { values: ['medieval'], long: true, page: 'medieval' },
+      overlay: { values: ['medieval'], long: true, page: 'medieval' },
+      words: { values: ['medieval'], long: true, page: 'medieval' },
+      items: { values: [], long: true, keys: ['main', 'off', 'helmet', 'plume', 'hair', 'torso', 'pauldrons', 'arms', 'gauntlets', 'legs', 'boots', 'back'], page: {} },
+      devices: { values: ['medieval'], long: true, keys: ['pi', 'camera', 'machine', 'vm', 'box'], page: {} }
     },
     display: {
       headline: { values: ['small', 'medium', 'large'], page: 'medium' },
@@ -47,7 +55,7 @@
       helmet_indoors: { values: [true, false], page: false }
     },
     quiet: {
-      scenes: { values: ['battlement', 'camp', 'house', 'yard'], page: ['battlement', 'camp', 'house', 'yard'] },
+      scenes: { values: ['battlement', 'camp', 'house', 'yard'], long: true, page: ['battlement', 'camp', 'house', 'yard'] },
       minutes: { min: 1, max: 240, page: 10 }
     },
     scenes: ['battlement', 'camp', 'house', 'yard', 'cellar', 'smithy', 'court']
@@ -69,8 +77,29 @@
   const KEYS = { look: Object.keys(ONE_OF.look), display: Object.keys(ONE_OF.display), quiet: Object.keys(SCHEMA.quiet), scenes: [] };
   const SECTIONS = Object.keys(KEYS);
   const MINUTES = { least: SCHEMA.quiet.minutes.min, most: SCHEMA.quiet.minutes.max };
-  /* The levels above the page's own, highest first, and how the console names each. */
+  /* A long name, "<pack>/<id>", which a key marked long takes besides its short names: the
+     schema's long_name, which tests/web/settings-schema.test.js holds this equal to. The look's two
+     tables, items and devices, and the keys each may hold. */
+  const LONG = /^[a-z][a-z0-9-]{1,31}(\.[a-z0-9-]{1,31}){0,3}\/[a-z][a-z0-9.-]{0,47}$/;
+  const isLong = v => typeof v === 'string' && LONG.test(v);
+  const TABLES = {};
+  for (const k of KEYS.look) if (SCHEMA.look[k].keys) TABLES[k] = SCHEMA.look[k].keys;
+  /* The parts a world sets (docs/page.md, Worlds): every key of the look but the world itself, the
+     quiet scenes and every key of the scenes section. The display's preferences and the quiet
+     scenes' length are not parts. */
+  const isPart = (sec, k) => (sec === 'look' ? k !== 'world' : sec === 'quiet' ? k === 'scenes' : sec === 'scenes');
+  /* The base world: the medieval world the page ships with, whose names are the schema's short
+     names, and the page's own level. Its name and its card's scene when kw.medieval gives no
+     preset. */
+  const BASE_WORLD = 'medieval', BASE_PICTURE = 'camp', BASE_NAME = 'Medieval';
+  /* The kinds of device a prop set draws, as the contract names them. */
+  const KINDS = SCHEMA.look.devices.keys;
+  /* The keys of the look that name a part of a world by name, short or long. */
+  const PART_KINDS = ['world', 'monarch', 'foe', 'critter', 'props', 'overlay', 'words'];
+  /* The levels above the page's own, highest first, their rank with the page's own below them, and
+     how the console names each. */
   const LEVELS = ['hook', 'saved', 'defaults'];
+  const RANK = { hook: 0, saved: 1, defaults: 2, 'built-in': 3 };
   const WHERE = { hook: 'the address', saved: 'this display\'s saved choices', shared: 'the settings saved on the server', defaults: 'the defaults in state.json' };
 
   /* The page's own defaults, below every other level, from the schema: the base pack's defaults for
@@ -103,15 +132,68 @@
       : { id, chip: name(id).toUpperCase(), name: 'Coming', kind: 'wide', off: true, offNote: name(id) + ' is not drawn yet.' + (cur ? ' The knight stays as ' + name(cur) + '.' : '') }));
   }
 
-  /* The world the scenes section is checked against: { can, homes }, can each scene's list of the
-     conditions it can act (its can field, web/js/scenes/), homes each condition's own scene, or
-     null for one that plays in the quiet scene of the moment (KW.state.CONDITIONS). In the page
-     both come from what the scripts loaded; under Node a test gives its own. */
+  /* The world the settings are checked against and resolved in: what the page has loaded. In the
+     page it comes from the loaded scenes, KW.state and KW.world (see pageWorld); under Node a test
+     gives its own. Every field may be left out:
+       can     each scene's list of the conditions it can act, by its short name (its can field)
+       homes   each condition's own scene in the base world, or null for one that plays in the quiet
+               scene of the moment: the medieval preset's scenes.for, or KW.state.CONDITIONS
+               without it
+       quiet   the base world's quiet scenes, in the order they take turns: the medieval preset's,
+               or SCENES without it
+       scenes  each scene of a loaded pack by its long name, { can, quiet }
+       names   for each kind of part (PART_KINDS, and scene), the long names the page has loaded and
+               the name each stands for: kw.medieval/props.medieval stands for 'medieval'. The
+               schema's short names are always loaded, and so is every long name in scenes, worlds
+               and sets, standing for itself.
+       worlds  each loaded world by its name, { name, pack, picture, preset, words }: pack the
+               pack's id, preset the pack's preset as it reads, words its word set's labels. The
+               base world, 'medieval', is always there, drawn from code while its pack gives no
+               preset (preset null).
+       sets    each loaded prop set by its name, { name, kinds }; the base world's, 'medieval',
+               draws every kind
+       items   each item the knight can wear by its long name, and the slot it fills: the base
+               pack's, see itemsOf */
   function worldOf(w) {
-    const out = { can: {}, homes: {} };
-    if (!isObj(w)) return out;
-    if (isObj(w.can)) for (const k of ALL_SCENES) if (Array.isArray(w.can[k])) out.can[k] = w.can[k].filter(c => typeof c === 'string');
-    if (isObj(w.homes)) for (const c of Object.keys(w.homes)) out.homes[c] = typeof w.homes[c] === 'string' ? w.homes[c] : null;
+    const src = isObj(w) ? w : {};
+    if (src.normal === true) return src;
+    const out = { normal: true, can: {}, homes: {}, quiet: SCENES.slice(), scenes: {}, names: {}, worlds: {}, sets: {}, items: {} };
+    if (isObj(src.can)) for (const k of ALL_SCENES) if (Array.isArray(src.can[k])) out.can[k] = src.can[k].filter(c => typeof c === 'string');
+    if (isObj(src.homes)) for (const c of Object.keys(src.homes)) out.homes[c] = typeof src.homes[c] === 'string' ? src.homes[c] : null;
+    if (Array.isArray(src.quiet) && src.quiet.some(s => typeof s === 'string')) out.quiet = src.quiet.filter(s => typeof s === 'string');
+    if (isObj(src.scenes)) for (const n of Object.keys(src.scenes)) {
+      const s = src.scenes[n];
+      if (isLong(n) && isObj(s) && Array.isArray(s.can)) out.scenes[n] = { can: s.can.filter(c => typeof c === 'string'), quiet: s.quiet === true };
+    }
+    for (const kind of PART_KINDS.concat('scene')) {
+      const m = out.names[kind] = {};
+      for (const v of kind === 'scene' ? ALL_SCENES : SCHEMA.look[kind].values) m[v] = v;
+      const given = isObj(src.names) && isObj(src.names[kind]) ? src.names[kind] : {};
+      for (const n of Object.keys(given)) if (isLong(n) && typeof given[n] === 'string') m[n] = given[n];
+    }
+    for (const n of Object.keys(out.scenes)) if (!has(out.names.scene, n)) out.names.scene[n] = n;
+    out.worlds[BASE_WORLD] = { name: BASE_NAME, pack: null, picture: BASE_PICTURE, preset: null, words: null };
+    if (isObj(src.worlds)) for (const n of Object.keys(src.worlds)) {
+      const x = src.worlds[n];
+      if (!((n === BASE_WORLD || isLong(n)) && isObj(x))) continue;
+      out.worlds[n] = { name: typeof x.name === 'string' ? x.name : n, pack: typeof x.pack === 'string' ? x.pack : null, picture: typeof x.picture === 'string' ? x.picture : BASE_PICTURE,
+        preset: isObj(x.preset) ? x.preset : null, words: isObj(x.words) ? x.words : null };
+      out.names.world[n] = n;
+    }
+    out.sets[BASE_WORLD] = { name: 'Medieval devices', kinds: KINDS.slice() };
+    if (isObj(src.sets)) for (const n of Object.keys(src.sets)) {
+      const x = src.sets[n];
+      if (!((n === BASE_WORLD || isLong(n)) && isObj(x))) continue;
+      out.sets[n] = { name: typeof x.name === 'string' ? x.name : n, kinds: Array.isArray(x.kinds) ? x.kinds.filter(k => KINDS.includes(k)) : [] };
+      out.names.props[n] = n;
+    }
+    if (isObj(src.items)) for (const n of Object.keys(src.items)) if (isLong(n) && TABLES.items.includes(src.items[n])) out.items[n] = src.items[n];
+    return out;
+  }
+  /* The items of a base pack, by their long names, and the slot each fills. */
+  function itemsOf(pack) {
+    const out = {}, items = isObj(pack) && isObj(pack.items) ? pack.items : {};
+    for (const id of Object.keys(items)) if (isObj(items[id]) && TABLES.items.includes(items[id].slot)) out['kw.base/' + id] = items[id].slot;
     return out;
   }
   /* The conditions whose scene may be chosen, in the order of homes (the conditions' priority),
@@ -141,15 +223,12 @@
     shoulders: ['pauldrons', 'pauldrons'], arms: ['arms', 'arms'], hands: ['gauntlets', 'gauntlets'], legs: ['legs', 'legs'], feet: ['boots', 'boots'], back: ['back', 'back'] };
   const itemId = (k, v) => ITEMS[k][1] + '.' + v;
 
-  /* The page's own look, from the base pack's defaults where there is one: its default build,
-     weapon, gear and swatches, each as the contract names it; and each condition that takes part in
-     its own scene. */
-  function builtIn(pack, world) {
-    const out = JSON.parse(JSON.stringify(BUILT_IN)), d = isObj(pack) && isObj(pack.defaults) ? pack.defaults : null;
-    const W = worldOf(world);
-    for (const c of Object.keys(offered(W))) out.scenes[c] = W.homes[c];
-    if (!d) return out;
-    const L = out.look, items = isObj(d.items) ? d.items : {}, sw = isObj(d.swatches) ? d.swatches : {};
+  /* The look keys for a knight given as a base pack's defaults give it, { build, items, swatches },
+     in the base pack's own ids ('build.a', 'main.greatsword', 'warm'): the build, null for one the
+     contract has no letter for, and each other key whose value the contract knows; back is 'none'
+     where nothing fills the back. */
+  function lookOf(d) {
+    const L = {}, items = isObj(d.items) ? d.items : {}, sw = isObj(d.swatches) ? d.swatches : {};
     const b = /^build\.([abc])$/.exec(d.build || '');
     L.build = b ? b[1] : null;
     for (const w of ONE_OF.look.weapon) if (items.main === WEAPONS[w]) L.weapon = w;
@@ -160,27 +239,109 @@
       else if (k === 'back' && !id) L.back = 'none';
     }
     for (const k of ['skin', 'hair', 'tabard', 'plume']) if (ONE_OF.look[k].includes(sw[k])) L[k] = sw[k];
+    return L;
+  }
+
+  /* The page's own level, the base world: the knight from the base pack's defaults where there is
+     one (its default build, weapon, gear and swatches, each as the contract names it), the base
+     world's quiet scenes, and each condition that takes part in its own scene. */
+  function builtIn(pack, world) {
+    const out = JSON.parse(JSON.stringify(BUILT_IN)), d = isObj(pack) && isObj(pack.defaults) ? pack.defaults : null;
+    const W = worldOf(world);
+    for (const c of Object.keys(offered(W))) out.scenes[c] = W.homes[c];
+    out.quiet.scenes = W.quiet.slice();
+    if (d) Object.assign(out.look, lookOf(d));
     return out;
   }
 
-  /* One section of one level, with only the keys and values the page knows. say(line) is told of
-     each thing left out. ready is the list of builds the packs make ready: a build outside it is
-     left out as well. world is what the scenes section is checked against (see worldOf): a scene
-     that cannot act the condition it is given is left out too. */
+  /* The slot each of the look's item keys fills, the weapon's included: main is the weapon's. */
+  const SLOT_KEY = { main: 'weapon' };
+  for (const k of Object.keys(ITEMS)) SLOT_KEY[ITEMS[k][0]] = k;
+  /* A name of the pack packId, local or long, as a long name. */
+  const longOf = (packId, n) => (typeof n !== 'string' ? '' : n.indexOf('/') < 0 ? packId + '/' + n : n);
+  const sceneCan = (W, s) => (has(W.can, s) ? W.can[s] : has(W.scenes, s) ? W.scenes[s].can : []);
+  const sceneQuiet = (W, s) => W.quiet.includes(s) || (has(W.scenes, s) && W.scenes[s].quiet);
+
+  /* What the world id sets, in the contract's names: { look, quiet, scenes, homes, faults }. The base
+     world sets base, the page's own. Another world's preset is read part by part: its outfit as the
+     look's keys, with each item no key can name in items; its patron, foe and critter, props,
+     overlay and words by the names the page has loaded; its quiet scenes; and its scene for each
+     condition. A part the page has not loaded, or cannot draw, keeps the base world's and is listed
+     in faults as { part, value, why }. homes holds the world's scene for every condition with one,
+     the base world's where the world's cannot be used. */
+  function worldParts(world, id, base) {
+    const W = worldOf(world), x = W.worlds[id], out = { look: {}, quiet: { scenes: base.quiet.scenes.slice() }, scenes: Object.assign({}, base.scenes), homes: {}, faults: [] };
+    for (const k of KEYS.look) if (k !== 'world') out.look[k] = isObj(base.look[k]) ? Object.assign({}, base.look[k]) : base.look[k];
+    for (const c of Object.keys(W.homes)) if (W.homes[c]) out.homes[c] = W.homes[c];
+    if (id === BASE_WORLD || !x || !x.preset) return out;
+    const p = x.preset, pack = x.pack, fault = (part, value, why) => out.faults.push({ part, value, why });
+    const name = (kind, n) => { const l = longOf(pack, n); return has(W.names[kind], l) ? W.names[kind][l] : null; };
+    // the knight: the base pack's build, items and swatches by the contract's keys, other items by name
+    const o = isObj(p.outfit) ? p.outfit : {}, d = { items: {}, swatches: {} }, B = 'kw.base/';
+    if (typeof p.body === 'string') { if (p.body.startsWith(B)) d.build = p.body.slice(B.length); else fault('look.build', p.body, 'only the base pack\'s builds are drawn'); }
+    const items = isObj(o.items) ? o.items : {}, sw = isObj(o.swatches) ? o.swatches : {};
+    for (const s of Object.keys(items)) { const l = longOf(pack, items[s]); if (l.startsWith(B)) d.items[s] = l.slice(B.length); }
+    for (const s of Object.keys(sw)) { const l = longOf(pack, sw[s]); if (l.startsWith(B)) d.swatches[s] = l.slice(B.length); else fault('look.' + s, l, 'only the base pack\'s swatches are drawn'); }
+    if (!has(d, 'build')) d.build = 'build.' + base.look.build;
+    const L = lookOf(d);
+    for (const k of Object.keys(L)) if (L[k] !== null) out.look[k] = L[k];
+    // an item no key names: the base pack's with a value the contract lacks, or another pack's
+    for (const s of Object.keys(items)) {
+      const k = SLOT_KEY[s], l = longOf(pack, items[s]);
+      if (!(k && has(L, k) && l.startsWith(B))) out.look.items[s] = l;
+    }
+    // the cast, the devices, the overlay and the words
+    const parts = [['monarch', isObj(p.cast) ? p.cast.patron : undefined], ['foe', isObj(p.cast) ? p.cast.foe : undefined], ['critter', isObj(p.cast) ? p.cast.critter : undefined],
+      ['props', p.props], ['overlay', p.overlay], ['words', p.words]];
+    for (const [k, n] of parts) {
+      if (n === undefined) continue;
+      const c = name(k, n);
+      if (c === null) fault('look.' + k, longOf(pack, n), 'not loaded'); else out.look[k] = c;
+    }
+    // the scenes: the quiet scenes in turn, and the scene of each condition
+    const sc = isObj(p.scenes) ? p.scenes : {};
+    if (Array.isArray(sc.quiet)) {
+      const list = [];
+      for (const n of sc.quiet) {
+        const c = name('scene', n);
+        if (c === null) fault('quiet.scenes', longOf(pack, n), 'not loaded');
+        else if (!sceneQuiet(W, c)) fault('quiet.scenes', longOf(pack, n), 'not a quiet scene');
+        else if (!list.includes(c)) list.push(c);
+      }
+      if (list.length) out.quiet.scenes = list;
+    }
+    if (isObj(sc.for)) for (const cond of Object.keys(sc.for)) {
+      if (!has(W.homes, cond) || !W.homes[cond]) continue;
+      const c = name('scene', sc.for[cond]);
+      if (c === null) fault('scenes.' + cond, longOf(pack, sc.for[cond]), 'not loaded');
+      else if (!sceneCan(W, c).includes(cond)) fault('scenes.' + cond, longOf(pack, sc.for[cond]), 'that scene cannot act it');
+      else { out.homes[cond] = c; if (has(out.scenes, cond)) out.scenes[cond] = c; }
+    }
+    return out;
+  }
+
+  /* One section of one level, with only the keys and values the page knows. say(line, fault) is
+     told of each thing left out, fault being { section, key, value, where, why }. ready is the list
+     of builds the packs make ready: a build outside it is left out as well. world is what the page
+     has loaded (see worldOf): a long name it has not loaded is left out, and so is a scene that
+     cannot act the condition it is given. A long name the page has loaded is kept as the name it
+     stands for, kw.medieval/props.medieval as 'medieval'. */
   function clean(section, raw, where, ready, say, world) {
     const out = {};
     if (raw === undefined || raw === null) return out;
-    if (!isObj(raw)) { say('knightwatcher: settings: ' + section + ' in ' + WHERE[where] + ' is not an object, so it is ignored'); return out; }
-    const no = (k, v, why) => say('knightwatcher: settings: ' + section + '.' + k + ' ' + show(v) + ' in ' + WHERE[where] + ' is ignored: ' + why);
+    if (!isObj(raw)) { say('knightwatcher: settings: ' + section + ' in ' + WHERE[where] + ' is not an object, so it is ignored', { section, key: null, value: raw, where, why: 'not an object' }); return out; }
+    const no = (k, v, why) => say('knightwatcher: settings: ' + section + '.' + k + ' ' + show(v) + ' in ' + WHERE[where] + ' is ignored: ' + why, { section, key: k, value: v, where, why });
+    const W = worldOf(world), named = (kind, v) => (typeof v === 'string' && has(W.names[kind], v) ? W.names[kind][v] : null);
+    const unknown = (v, what) => (isLong(v) ? 'no pack the page has loaded gives ' + what : 'not ' + (what === 'it' ? 'a value' : what.replace(/^that/, 'a')) + ' the page knows');
     if (section === 'scenes') {
-      const W = worldOf(world), offer = offered(W);
+      const offer = offered(W);
       for (const k of Object.keys(raw)) {
-        const v = raw[k];
+        const v = raw[k], s = named('scene', v);
         if (!has(W.homes, k)) no(k, v, 'not a condition the page knows');
         else if (!has(offer, k)) no(k, v, 'the page offers no choice of scene for it');
-        else if (!ALL_SCENES.includes(v)) no(k, v, 'not a scene the page knows');
-        else if (!offer[k].includes(v)) no(k, v, 'that scene cannot act it');
-        else out[k] = v;
+        else if (s === null) no(k, v, unknown(v, 'that scene'));
+        else if (!(offer[k].includes(s) || (has(W.scenes, s) && W.scenes[s].can.includes(k)))) no(k, v, 'that scene cannot act it');
+        else out[k] = s;
       }
       return out;
     }
@@ -189,14 +350,36 @@
       if (!KEYS[section].includes(k)) { no(k, v, 'not a setting the page knows'); continue; }
       if (section === 'quiet' && k === 'scenes') {
         if (!Array.isArray(v)) { no(k, v, 'not a list of scenes'); continue; }
-        for (const x of v) if (!SCENES.includes(x)) no(k, x, 'not a quiet scene');
-        // in the order given, the first of any repeat kept
-        const list = v.filter((x, i) => SCENES.includes(x) && v.indexOf(x) === i);
+        const list = [];
+        for (const x of v) {
+          const s = named('scene', x);
+          if (s === null && isLong(x)) no(k, x, unknown(x, 'that scene'));
+          else if (s === null || !sceneQuiet(W, s)) no(k, x, 'not a quiet scene');
+          // in the order given, the first of any repeat kept
+          else if (!list.includes(s)) list.push(s);
+        }
         if (!list.length) { no(k, v, 'it names no quiet scene'); continue; }
         out.scenes = list;
       } else if (section === 'quiet') {
         if (typeof v !== 'number' || !Number.isFinite(v) || v < MINUTES.least || v > MINUTES.most) { no(k, v, 'not a number of minutes from 1 to 240'); continue; }
         out.minutes = v;
+      } else if (section === 'look' && has(TABLES, k)) {
+        if (!isObj(v)) { no(k, v, 'not a table'); continue; }
+        const o = {};
+        for (const sub of Object.keys(v)) {
+          const x = v[sub], kk = k + '.' + sub;
+          if (!TABLES[k].includes(sub)) no(kk, x, k === 'items' ? 'not a slot' : 'not a kind of device');
+          else if (k === 'devices') { const c = named('props', x); if (c === null) no(kk, x, unknown(x, 'that prop set')); else o[sub] = c; }
+          else if (!isLong(x)) no(kk, x, 'not an item\'s long name, "<pack>/<item>"');
+          else if (!has(W.items, x)) no(kk, x, 'no pack the page has loaded gives that item');
+          else if (W.items[x] !== sub) no(kk, x, 'the item is for the ' + W.items[x] + ' slot');
+          else o[sub] = x;
+        }
+        if (Object.keys(o).length) out[k] = o;
+      } else if (section === 'look' && PART_KINDS.includes(k)) {
+        const c = named(k, v);
+        if (c === null) no(k, v, unknown(v, 'it'));
+        else out[k] = c;
       } else if (!ONE_OF[section][k].includes(v)) no(k, v, 'not a value the page knows');
       else if (section === 'look' && k === 'build' && !(ready || []).includes(v)) no(k, v, 'no pack draws that build');
       else out[k] = v;
@@ -204,28 +387,59 @@
     return out;
   }
 
-  /* What the display shows: { values, from }, each with the four sections. values holds every key;
-     from says which level each came from, 'hook', 'saved', 'defaults' or 'built-in'. levels holds
-     the cleaned sections of each level, { hook, saved, defaults }, and base the page's own. */
-  function resolve(levels, base) {
-    const values = {}, from = {};
+  /* What the display shows: { values, from, world, masked, faults }, values and from each with the
+     four sections. values holds every key, and items and devices each sub-key that is set; from
+     says where each came from: 'hook', 'saved', 'defaults', 'built-in', or 'world' for a part the
+     world in use gave. levels holds the cleaned sections of each level, { hook, saved, defaults },
+     and base the page's own. world is what the page has loaded (see worldOf).
+
+     The world counts as setting every part at the level it was chosen at (docs/page.md, Worlds): a
+     part a level at or above the world's sets is that level's, one only a level below sets gives
+     way to the world's, and is listed in masked as { section, key, level, value }. With no level
+     choosing a world, the base world is the page's own, and every part is as before. world says
+     { id, from, homes }: the world in use, the level it was chosen at, and its scene for each
+     condition. faults lists the world's parts the page could not use (see worldParts). */
+  function resolve(levels, base, world) {
+    const values = {}, from = {}, masked = [];
+    const at = (sec, k, sub) => LEVELS.find(l => levels[l] && isObj(levels[l][sec]) && has(levels[l][sec], k) && (sub === undefined || (isObj(levels[l][sec][k]) && has(levels[l][sec][k], sub))));
+    const wl = at('look', 'world') || null, id = wl ? levels[wl].look.world : base.look.world;
+    const parts = worldParts(world, id, base), wr = wl ? RANK[wl] : RANK['built-in'];
+    // the world gives a part a level below it leaves to it; a part set by such a level is masked
+    const pick = (sec, k, sub, own, given) => {
+      const lv = at(sec, k, sub), value = lv ? (sub === undefined ? levels[lv][sec][k] : levels[lv][sec][k][sub]) : undefined;
+      if (lv && RANK[lv] <= wr) return [value, lv];
+      if (lv) masked.push({ section: sec, key: sub === undefined ? k : k + '.' + sub, level: lv, value });
+      return wl ? [given, 'world'] : [own, 'built-in'];
+    };
     for (const sec of SECTIONS) {
       values[sec] = {}; from[sec] = {};
       // the scenes section has a key for each condition that takes part, which the page's own holds
       for (const k of sec === 'scenes' ? Object.keys(base.scenes || {}) : KEYS[sec]) {
-        const lv = LEVELS.find(l => levels[l] && isObj(levels[l][sec]) && has(levels[l][sec], k));
-        values[sec][k] = lv ? levels[lv][sec][k] : base[sec][k];
-        from[sec][k] = lv || 'built-in';
+        if (sec === 'look' && has(TABLES, k)) {
+          values.look[k] = {}; from.look[k] = {};
+          for (const sub of TABLES[k]) {
+            const [v, f] = pick('look', k, sub, undefined, parts.look[k][sub]);
+            if (v !== undefined) { values.look[k][sub] = v; from.look[k][sub] = f; }
+          }
+        } else if (isPart(sec, k)) [values[sec][k], from[sec][k]] = pick(sec, k, undefined, base[sec][k], parts[sec][k]);
+        else {
+          const lv = at(sec, k);
+          values[sec][k] = lv ? levels[lv][sec][k] : base[sec][k];
+          from[sec][k] = lv || 'built-in';
+        }
       }
     }
-    return { values, from };
+    return { values, from, world: { id, from: wl || 'built-in', homes: parts.homes }, masked, faults: parts.faults };
   }
 
   /* The look for KW.knight.look(), in the shape the pack library resolves: only what a level above
      the page's own sets, so that with nothing set the knight is the base pack's defaults exactly
-     as before there were settings. */
+     as before there were settings. A part another world gives counts as set, and so its outfit is
+     drawn; the base world's is the page's own. An item named in items is drawn in its slot over
+     the key that would choose it. */
   function knightLook(r) {
-    const v = r.values.look, set = k => r.from.look[k] !== 'built-in', B = 'kw.base/', look = {};
+    const v = r.values.look, F = r.from.look, other = isObj(r.world) && r.world.id !== BASE_WORLD;
+    const set = k => F[k] !== 'built-in' && (F[k] !== 'world' || other), B = 'kw.base/', look = {};
     const item = (slot, id) => { (look.items = look.items || {})[slot] = B + id; };
     if (set('build') && v.build) look.build = B + 'build.' + v.build;
     // a weapon set carries its shield, the one the shield key gives, when it is one-handed; a shield
@@ -235,6 +449,8 @@
     else if (set('shield') && one) item('off', itemId('shield', v.shield));
     for (const k of ['skin', 'hair', 'tabard', 'plume']) if (set(k)) (look.swatches = look.swatches || {})[k] = B + v[k];
     for (const k of Object.keys(ITEMS)) if (k !== 'shield' && set(k) && v[k] !== 'none') item(ITEMS[k][0], itemId(k, v[k]));
+    const named = isObj(v.items) ? v.items : {};
+    for (const slot of Object.keys(named)) if (F.items[slot] !== 'world' || other) (look.items = look.items || {})[slot] = named[slot];
     return look;
   }
   /* What the settings screen greys, from what the look shows: the shield with a two-handed weapon,
@@ -264,19 +480,23 @@
      each lasts, ownMs while no level above the page's own sets the length (the demo's minute, or
      live mode's ten); the patron, the monarch, as { id, skin, hair, robe }, the skin, hair and robe
      from the base pack's skin, hair and tabard swatches, each null for the court's own while
-     nothing sets it or there is no base pack; and the scene chosen for each condition, holding
-     only what a level above the page's own sets. */
+     nothing sets it or there is no base pack; the scene chosen for each condition, holding only
+     what a level above the page's own sets; homes, the world's own scene for each condition; and
+     kinds, the prop set each kind of device is drawn from. */
   function engineInput(r, pack, ownMs) {
     const q = r.values.quiet, L = r.values.look;
     const swatch = (set, id) => { const sw = isObj(pack) && isObj(pack.swatches) && isObj(pack.swatches[set]) ? pack.swatches[set][id] : null; return isObj(sw) && isObj(sw.entries) ? sw.entries : null; };
-    const set = k => r.from.look[k] !== 'built-in' && L[k] !== null;
+    const set = k => r.from.look[k] !== 'built-in' && r.from.look[k] !== 'world' && L[k] !== null;
     const sk = set('monarch_skin') ? swatch('skin', L.monarch_skin) : null, hr = set('monarch_hair') ? swatch('hair', L.monarch_hair) : null, rb = set('monarch_robe') ? swatch('tabard', L.monarch_robe) : null;
     const patron = { id: L.monarch, skin: sk ? { id: L.monarch_skin, face: sk.face, cheek: sk.cheek } : null,
       hair: hr ? { id: L.monarch_hair, bands: [hr['0'], hr['1'], hr['2']], brow: hr.brow } : null,
       robe: rb ? { id: L.monarch_robe, bands: [rb['0'], rb['1'], rb['2'], rb['3']] } : null };
     const scenes = {};
-    for (const c of Object.keys(r.values.scenes || {})) if (r.from.scenes[c] !== 'built-in') scenes[c] = r.values.scenes[c];
-    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, patron, scenes };
+    for (const c of Object.keys(r.values.scenes || {})) if (LEVELS.includes(r.from.scenes[c])) scenes[c] = r.values.scenes[c];
+    const kinds = {}, by = isObj(L.devices) ? L.devices : {};
+    for (const k of KINDS) kinds[k] = typeof by[k] === 'string' ? by[k] : typeof L.props === 'string' ? L.props : BASE_WORLD;
+    const homes = isObj(r.world) && isObj(r.world.homes) ? Object.assign({}, r.world.homes) : {};
+    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, patron, scenes, homes, kinds };
   }
 
   /* The clock's words for a time: { time, half }. On the 24-hour clock '09:42' and no half; on the
@@ -355,29 +575,37 @@
     /* A choice made on this display: kept in the browser with no server, sent to the server
        (through the function sending() was given) with one, naming the sections it changed. */
     const commit = secs => { if (src === 'local') save(storage, saved, say); else if (sender) sender(secs); };
-    const levelOf = (raw, where, ready) => {
-      const out = {}, w = world();
-      for (const sec of SECTIONS) out[sec] = clean(sec, isObj(raw) ? raw[sec] : undefined, where, ready, say, w);
+    /* What the page has loaded (see worldOf), with the base pack's items. */
+    const loaded = () => { const w = worldOf(world()); return Object.assign({}, w, { items: Object.assign(itemsOf(pack()), w.items) }); };
+    const levelOf = (raw, where, ready, w, note) => {
+      const out = {};
+      for (const sec of SECTIONS) out[sec] = clean(sec, isObj(raw) ? raw[sec] : undefined, where, ready, note, w);
       return out;
     };
-    const cleanSaved = (sec, raw, quiet) => clean(sec, raw, 'saved', buildsOf(pack()), quiet ? () => {} : say, world());
-    function now() {
-      const p = pack(), ready = buildsOf(p);
-      return resolve({ hook: levelOf(hooks, 'hook', ready), saved: levelOf(saved, src === 'local' ? 'saved' : 'shared', ready), defaults: levelOf(defaults, 'defaults', ready) }, builtIn(p, world()));
+    const cleanSaved = (sec, raw, quiet) => clean(sec, raw, 'saved', buildsOf(pack()), quiet ? () => {} : say, loaded());
+    /* The levels resolved (see resolve), with ignored, what the levels set that the page left out:
+       each { section, key, value, where, why }, as the console was told. */
+    function resolved(own) {
+      const p = pack(), ready = buildsOf(p), w = loaded(), ignored = [];
+      const note = (line, f) => { say(line); if (f) ignored.push(f); };
+      const levels = { defaults: levelOf(defaults, 'defaults', ready, w, note) };
+      if (own) Object.assign(levels, { hook: levelOf(hooks, 'hook', ready, w, note), saved: levelOf(saved, src === 'local' ? 'saved' : 'shared', ready, w, note) });
+      return Object.assign(resolve(levels, builtIn(p, w), w), { ignored });
     }
+    const now = () => resolved(true);
+    /* What the display shows, as text to compare: what was ignored, and where, changes nothing on
+       screen. */
+    const shownKey = () => { const r = now(); delete r.ignored; return JSON.stringify(r); };
     /* What the display would show with no hooks and no saved choices: the defaults over the page's
        own. */
-    function fallback() {
-      const p = pack();
-      return resolve({ defaults: levelOf(defaults, 'defaults', buildsOf(p)) }, builtIn(p, world()));
-    }
+    const fallback = () => resolved(false);
     function changed() {
-      const key = JSON.stringify(now());
+      const key = shownKey();
       if (key === last) return;
       last = key;
       for (const fn of listeners) fn();
     }
-    last = JSON.stringify(now());
+    last = shownKey();
     return {
       now, fallback,
       /* Saves value for section.key on this display. A value the page does not know is refused
@@ -389,6 +617,22 @@
         saved = Object.assign({}, saved, { [section]: Object.assign(cleanSaved(section, saved[section], true), one) });
         commit([section]); changed();
         return true;
+      },
+      /* Saves the world id on this display and clears every part this display has chosen (docs/page.md,
+         Worlds): the look's other keys, the quiet scenes and the scene of each condition, in one
+         write. The display's preferences and the quiet scenes' length stay. Returns what was
+         cleared, each as 'section.key', or null, saving nothing, for a world the page has not
+         loaded. */
+      chooseWorld(id) {
+        const one = cleanSaved('look', { world: id });
+        if (!has(one, 'world')) return null;
+        const look = isObj(saved.look) ? saved.look : {}, quiet = isObj(saved.quiet) ? Object.assign({}, saved.quiet) : {}, sc = isObj(saved.scenes) ? saved.scenes : {};
+        const cleared = Object.keys(look).filter(k => k !== 'world').map(k => 'look.' + k);
+        if (has(quiet, 'scenes')) { cleared.push('quiet.scenes'); delete quiet.scenes; }
+        for (const k of Object.keys(sc)) cleared.push('scenes.' + k);
+        saved = Object.assign({}, saved, { look: { world: one.world }, quiet, scenes: {} });
+        commit(['look', 'quiet', 'scenes']); changed();
+        return cleared;
       },
       /* Clears this display's choice for one key, which then falls back to the defaults: the
          monarch's hair and robe "As drawn". */
@@ -407,7 +651,9 @@
       /* Whether this display has choices of its own in a section. */
       own: section => isObj(saved[section]) && Object.keys(cleanSaved(section, saved[section], true)).length > 0,
       /* The conditions whose scene may be chosen, each with the scenes that can act it. */
-      offered: () => offered(world()),
+      offered: () => offered(loaded()),
+      /* What the page has loaded: the worlds, the prop sets, the scenes and the names (see worldOf). */
+      catalogue: loaded,
       /* The defaults section of the latest valid state file, raw, or null. */
       defaults(raw) {
         const next = isObj(raw) ? raw : null;
@@ -425,11 +671,11 @@
       /* Takes the shared settings (as sharedOf gives them) as the saved level, from now on
          choices are sent to the server, and returns whether what the display shows changed. */
       shared(j) {
-        const before = JSON.stringify(now());
+        const before = shownKey();
         src = 'server'; saved = {};
         for (const sec of SECTIONS) saved[sec] = JSON.parse(JSON.stringify(j[sec]));
         changed();
-        return JSON.stringify(now()) !== before;
+        return shownKey() !== before;
       },
       /* Back to this browser's own choices, when no server keeps them after all. */
       local() {
@@ -541,16 +787,21 @@
     return { poll, state: () => ({ answered: st.answered, stopped: st.stopped, mode: store.mode() }) };
   }
 
-  /* The page's own world: each loaded scene's can and each condition's own scene, from
-     KW.state.CONDITIONS. Empty under Node, where KW holds neither. */
+  /* What the page has loaded (see worldOf): each loaded scene's can, and each condition's own scene
+     from KW.state.CONDITIONS; over them what KW.world has loaded (KW.world.catalogue), the base
+     world's homes and quiet scenes among it when kw.medieval gives its preset. Empty under Node,
+     where KW holds none of them. */
   function pageWorld() {
     const can = {}, homes = {}, sc = isObj(KW.scenes) ? KW.scenes : {}, cond = isObj(KW.state) && isObj(KW.state.CONDITIONS) ? KW.state.CONDITIONS : {};
     for (const k of Object.keys(sc)) if (isObj(sc[k]) && Array.isArray(sc[k].can)) can[k] = sc[k].can;
     for (const c of Object.keys(cond)) homes[c] = cond[c].scene;
-    return { can, homes };
+    const cat = isObj(KW.world) && typeof KW.world.catalogue === 'function' ? KW.world.catalogue() : {};
+    return Object.assign({ can, homes }, cat);
   }
 
-  const api = { SCHEMA, KEY, SHARED_KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, WEAPONS, ONE_HANDED, WEAPON_CHIPS, ITEMS, itemId, itemChoices, buildsOf, buildName, buildChoices, builtIn, worldOf, offered, clean, resolve, knightLook, greyed, engineInput, clock, load, save, sharedOf, create, connect, pageWorld };
+  const api = { SCHEMA, KEY, SHARED_KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, WEAPONS, ONE_HANDED, WEAPON_CHIPS, ITEMS, TABLES, KINDS, BASE_WORLD, LONG,
+    isLong, isPart, itemId, itemChoices, itemsOf, buildsOf, buildName, buildChoices, lookOf, builtIn, worldOf, worldParts, offered, clean, resolve, knightLook, greyed, engineInput, clock,
+    load, save, sharedOf, create, connect, pageWorld };
   KW.settings = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;

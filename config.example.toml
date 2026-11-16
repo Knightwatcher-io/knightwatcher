@@ -145,9 +145,11 @@ secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 # The household defaults for the display's settings screen. Every display starts from these; a
 # choice made on a wall's settings screen or the admin page is saved over them, for the whole
 # deployment. A setting left out takes the page's own default. Remove the "# " before a table and
-# its settings to use them.
+# its settings to use them. world sets every part of the look, the quiet scenes and the scene of
+# each condition at once; a part set beside it here is kept over the world's.
 
 # [look]
+# world = "medieval"          # medieval, or a world of a loaded pack, "<pack>/<world>"
 # build = "a"                 # a Classic, b Broad, c Slim
 # weapon = "greatsword"       # greatsword, sword_and_shield, longsword or mace_and_shield
 # skin = "warm"               # fair, warm, golden, tan, brown or deep
@@ -165,10 +167,23 @@ secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 # legs = "plate"              # plate, mail or hose
 # feet = "leather"            # leather (riding boots), sabatons or shoes
 # back = "none"               # none, cloak (in the plume's colour) or cape (in the tabard's)
-# monarch = "a"               # a, b or c
+# monarch = "a"               # a, b or c, or a patron of a loaded pack, "<pack>/<patron>"
 # monarch_skin = "warm"       # the same six as skin
 # monarch_hair = "brown"      # the six of hair; left out, each monarch keeps their own colours
 # monarch_robe = "wine"       # the six of tabard; left out, each monarch keeps their own robe
+# foe = "goblin"              # goblin, or "<pack>/<foe>"
+# critter = "fly"             # fly, or "<pack>/<critter>"
+# props = "medieval"          # the devices' drawings: medieval, or "<pack>/<prop set>"
+# overlay = "medieval"        # the words' colours and font: medieval, or "<pack>/<overlay>"
+# words = "medieval"          # the quiet line's and the captions' words: medieval, or "<pack>/<word set>"
+
+# Any slot's item by its long name, over the key above that chooses it.
+# [look.items]
+# main = "kw.base/main.arming"
+
+# The drawing of one kind of device, over props for that kind: pi, camera, machine, vm or box.
+# [look.devices]
+# camera = "medieval"
 
 # [display]
 # headline = "medium"         # small, medium or large

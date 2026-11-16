@@ -67,8 +67,12 @@ ETag: "4f1c2a9e0b7d3c6a5e81"
 
 The four sections are always there, holding only the keys that have been saved. Keys and values
 are the contract's, those of the `[look]`, `[display]`, `[quiet]` and `[scenes]` tables of
-`config.toml` ([configuration.md](./configuration.md#the-settings-screens-defaults)). A store with
-nothing saved gives four empty sections.
+`config.toml` ([configuration.md](./configuration.md#the-settings-screens-defaults)): the world and
+the part keys among them, the `items` and `devices` tables as objects inside `look`, and a long name,
+`"<pack>/<id>"`, wherever the table takes one, checked for its form alone. A store with
+nothing saved gives four empty sections. A display that chooses a world sends `look`, `quiet` and
+`scenes` in one write, the world alone in `look` and the parts it cleared left out
+([page.md](./page.md#worlds)).
 
 ### PUT /api/settings
 
@@ -431,7 +435,8 @@ python3 -m unittest discover -s tests/server -v
 folder, and checks the types, the caching, the conditional requests, that no folder is listed, a
 list of attempts to reach outside the served files (`/../`, encoded dots and slashes, a link, the
 collector's memory, the settings file itself), every refusal of a write above, that a refused
-value gets the same words `config.toml` gets, the atomic write and the store read again at start.
+value gets the same words `config.toml` gets, the world, its parts and long names taken, the
+atomic write and the store read again at start.
 `tests/server/test_admin.py` checks the admin page's side with a password made for the run: the
 page off without a password and with one of 11 characters, the cookie's flags, the wait after a
 wrong password and the pause after five, doubling to fifteen minutes, the constant-time compare,
@@ -440,7 +445,8 @@ across a restart, ended by a new password, never stored as a usable token, the s
 address needs,
 cross-origin writes refused, a change kept and written, a refused one with the collector's words
 and nothing kept, a credential refused by its variable's name, the devices replaced whole,
-the reset, the export read back and built by the collector, `credentials.json` never served, the
+the reset, the export read back and built by the collector (the world and the `items` and
+`devices` tables among it, written as inline tables), `credentials.json` never served, the
 admin page stamped and served at `/admin/`, and that the password never reaches a log, an answer
 or the environment once read.
 `tests/server/test_stamp.py` stamps a copy of `web/` and checks it is byte for byte what

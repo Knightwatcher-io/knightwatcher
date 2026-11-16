@@ -193,9 +193,10 @@ test('with no parts, or no words for them, the collector\'s own text is shown as
   noCaptions.W.start([edited(p => { delete p.words['words.medieval'].captions; })], true);
   assert.equal(noCaptions.W.caption('backup_done', { at: '03:12' }, 'BACKUP DONE 03:12'), 'BACKUP DONE 03:12');
   assert.equal(noCaptions.W.quietLine(quiet('4,812', '4,812'), 'OWN'), 'ALL QUIET · 29 up · backup 03:12 · 4,812 ads slain');
-  // a pack without words: the collector's text, and no line in the console of its own
+  // a pack without words, and so without the preset that names them: the collector's text, and no
+  // line in the console of its own
   const none = sandbox();
-  none.W.start([edited(p => { delete p.words; p.provides = p.provides.filter(x => x !== 'words'); })], true);
+  none.W.start([edited(p => { delete p.words; delete p.worlds; p.provides = p.provides.filter(x => x !== 'words' && x !== 'worlds'); })], true);
   assert.deepEqual(plain(none.W.words), { source: 'code', set: null, name: null, watcher: null, labels: null, quiet: null, captions: null, faults: [] });
   assert.equal(none.W.quietLine(quiet('4,812', '4,812'), 'OWN'), 'OWN');
   assert.equal(none.W.caption('backup_done', { at: '03:12' }, 'BACKUP DONE 03:12'), 'BACKUP DONE 03:12');

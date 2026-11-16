@@ -841,25 +841,30 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
    in its storage (see [This browser's own choices](#this-browsers-own-choices)).
 3. **The `defaults` of the state file**, which the collector takes from `config.toml` (see
    [state.md](./state.md)). A file from an older collector has none.
-4. **The page's own**: the base pack's defaults for the knight (Classic, the greatsword, warm skin,
+4. **The page's own**: the medieval world, the base world (see [Worlds](#worlds)): the base pack's
+   defaults for the knight (Classic, the greatsword, warm skin,
    brown hair cut short, a blue tabard and a red plume, the open helm with its crest, plate and
    riding boots, nothing on the back, and the heater shield should a one-handed weapon be chosen),
    monarch A in the court's own skin with
-   each monarch's own hair and robe ("As drawn", `null` in what `now()` gives), a medium headline,
-   a 24-hour clock, the helmet off indoors, all four quiet scenes, ten minutes each in live mode
-   and one in the demo, and each condition in its own scene.
+   each monarch's own hair and robe ("As drawn", `null` in what `now()` gives), the goblin, the fly,
+   the medieval devices, overlay and words, all four quiet scenes, and each condition in its own
+   scene; with a medium headline, a 24-hour clock, the helmet off indoors, and ten minutes for each
+   quiet scene in live mode and one in the demo.
 
 The keys, the values each may take and the page's own defaults come from the settings schema,
 `collector/settings-schema.json`, through the copy `tools/settings-schema.js` writes between the
 `settings-schema` markers of `settings.js` (`KW.settings.SCHEMA`); `ONE_OF`, `SCENES`,
-`ALL_SCENES`, `MINUTES` and `BUILT_IN` are made from it. They are the contract's: `look` holds `build`, `weapon`, `skin`, `hair`,
+`ALL_SCENES`, `MINUTES`, `BUILT_IN`, `TABLES` and `KINDS` are made from it, and `LONG`, the form of
+a long name, is held to its `long_name` by `tests/web/settings-schema.test.js`. They are the contract's: `look` holds `world`, `build`, `weapon`, `skin`, `hair`,
 `hair_style`, `tabard`, `plume`, the gear (`shield`, `helmet`, `plume_style`, `body`, `shoulders`,
-`arms`, `hands`, `legs`, `feet` and `back`), `monarch`, `monarch_skin`, `monarch_hair` and
-`monarch_robe`;
+`arms`, `hands`, `legs`, `feet` and `back`), `monarch`, `monarch_skin`, `monarch_hair`,
+`monarch_robe`, `foe`, `critter`, `props`, `overlay` and `words`, and two tables, `items` (a slot to
+an item's long name) and `devices` (a kind of device to a prop set);
 `display` holds `headline`, `clock` and `helmet_indoors`; `quiet` holds `scenes` and `minutes`;
 `scenes` holds a scene id for each condition offered, by its condition id. Which conditions are
 offered, and which scenes each may take, the store works out from the world it is given: each
-scene's `can` and each condition's own scene in `KW.state.CONDITIONS` (`KW.settings.pageWorld()`).
+scene's `can` and each condition's own scene in the base world, from the medieval preset or, without
+it, `KW.state.CONDITIONS` (`KW.settings.pageWorld()`, see [Worlds](#worlds)).
 A condition is offered when it has a scene of its own and more than one scene can act it, `night`
 never (`KW.settings.offered`); today that is `attack`, `disk_full`, `backup_overdue`, `pi_silent`
 and `cpu_hot`. In the scenes section a level's entry is ignored, with a console line, when its key
@@ -875,22 +880,82 @@ dropped, and a list that names no quiet scene is ignored whole; `minutes` is a n
 240. A section of the defaults the page does not know is left alone without a word, so a later
 collector can add one.
 
+A key marked long in the schema (`world`, `monarch`, `foe`, `critter`, `props`, `overlay`, `words`,
+the values of `items` and `devices`, the quiet scenes and the scenes section's values) also takes a
+long name, `"<pack>/<id>"`. The page keeps one it has loaded as the name it stands for
+(`kw.medieval/patron.b` is the monarch `b`, `kw.medieval/props.medieval` the props `medieval`), and
+ignores one it has not loaded, as any value it does not know: `look.foe "kw.other/foe.troll" in
+the defaults in state.json is ignored: no pack the page has loaded gives it`. An item in `items`
+must be one the base pack in use holds, for that slot. Besides the console, `now()` lists what each
+level set and the page left out in `ignored`, each `{ section, key, value, where, why }`, for the
+status page.
+
 **What the levels drive.** `KW.settings.knightLook(r)` turns what the levels give into the look for
-`KW.knight.look()`, holding only what a level above the page's own sets: with nothing set it is
+`KW.knight.look()`, holding only what a level above the page's own sets, and what a world other
+than the base world gives: with nothing set it is
 `{}`, and the knight is exactly as before there were settings. A weapon set brings its item and,
 when it is one-handed (`sword_and_shield`, `mace_and_shield`), the shield `shield` names; a shield
 set beside a two-handed weapon is kept and carried nowhere. Each other gear key brings the base
 pack's item of its slot (`KW.settings.ITEMS`: `helmet` "kettle" is `kw.base/helm.kettle`, `feet`
-"shoes" `kw.base/boots.shoes`), and `back` "none" brings nothing. `engineInput(r, pack, ownMs)` gives
-the engine's `turns`, `turnMs`, `patron` (`{ id, skin, hair, robe }`) and `scenes` (see
+"shoes" `kw.base/boots.shoes`), `back` "none" brings nothing, and an item `items` names is drawn
+in its slot over the key for it. `engineInput(r, pack, ownMs)` gives
+the engine's `turns`, `turnMs`, `patron` (`{ id, skin, hair, robe }`), `scenes`, `homes` and `kinds` (see
 [The engine's input](#the-engines-input)); `turnMs` is `ownMs`, the demo's minute or live mode's
-ten, while no level sets `minutes`, the monarch's colours are `null` while no level sets them, and
+ten, while no level sets `minutes`, the monarch's colours are `null` while no level sets them,
 `scenes` holds only the conditions a level above the page's own sets, so with nothing set it is
-`{}` and every condition plays where it always did. The
+`{}` and every condition plays where it always did, `homes` is the world's own scene for each
+condition, and `kinds` the prop set each kind of device is drawn from: the one `devices` names for
+it, or `props`. `main.js` hands `kinds` to `KW.world.useKinds()` ([worlds.md](./worlds.md#worlds-as-presets)). The
 headline size becomes the display option `hs`, the helmet indoors `h` (`on` for true, `auto` for
 false), and the clock reads `21:42` or `9:42` with a small `PM` after it. `clock(h, m, hours)` gives
 the words: on the 12-hour clock the hour after midnight is `12:05 AM` and the half hour after noon
 `12:30 PM`.
+
+### Worlds
+
+A world is a preset, every part of the look, the quiet scenes and the scene of each condition at
+once, held in a world pack's `worlds` section ([worlds.md](./worlds.md#worlds-as-presets)). The page
+ships one, the medieval world, `world.medieval` of `kw.medieval`, which the settings call
+`medieval`: the base world, and the page's own level. Its preset gives the knight the base pack's
+defaults, and the scene of each condition and the quiet scenes the code gives them, so with nothing
+set the display is exactly as before there were worlds. Without the pack the code's own values
+stand in for it: `KW.state.CONDITIONS` for each condition's scene, `SCENES` for the quiet scenes.
+
+The parts (`KW.settings.isPart`) are every key of `look` but `world` itself, `quiet.scenes` and
+every key of `scenes`; the display's preferences and `quiet.minutes` are not parts. **A world counts
+as setting every part at the level it was chosen at.** For each part, `resolve()` takes the highest
+level that sets it, as for any key, and the highest level that sets `world`. When the part's level
+is the same as the world's or above, the part keeps its value; when it is below, or no level sets
+the part, the world gives it, and `from` says `'world'`. With no level choosing a world, the base
+world is the page's own and every part is resolved as before. The tables `items` and `devices` are
+resolved key by key the same way. What `now()` gives besides `values` and `from`:
+
+- `world`: `{ id, from, homes }`, the world in use, the level it was chosen at (`'built-in'` when
+  none chose it), and its scene for each condition.
+- `masked`: each part a level set that gave way to the world, `{ section, key, level, value }`: in
+  `config.toml` the tabard `forest`, under a world chosen on the display, is `{ section: 'look',
+  key: 'tabard', level: 'defaults', value: 'forest' }`.
+- `faults`: each part of the world that the page could not use and so gave the base world's,
+  `{ part, value, why }`: a patron, prop set or scene it has not loaded, a quiet scene that is not
+  quiet, a scene that cannot act its condition, a body or a swatch from a pack other than the base
+  pack.
+- `ignored`: see above.
+
+The page lists what it has loaded in `KW.settings.pageWorld()`, from the loaded scenes, `KW.state`
+and `KW.world.catalogue()`: the worlds by name, with each preset; the prop sets by name, with the
+kinds each draws; the scenes of a pack by their long names; and the long names of kw.medieval's
+parts with the short name each stands for. A world of another pack, called by its long name
+(`kw.example/world.neon`), is read part by part (`KW.settings.worldParts`): its outfit as the
+look's keys, an item no key can name in `items`; its patron, foe, critter, props, overlay and words
+by the names the page has loaded; its quiet scenes and its scene for each condition. Today the page
+draws only kw.medieval's scenes and cast, so another world's own scenes and cast fall back to the
+base world's, listed in `faults`; its prop set is drawn.
+
+The store's `chooseWorld(id)` saves a world on this display and clears every part this display has
+chosen, the look's other keys, the quiet scenes and the scene of each condition, in one write
+naming `look`, `quiet` and `scenes`; the display's preferences and the quiet scenes' length stay.
+It returns what it cleared, each as `'section.key'`, for the line the screen shows, or `null`,
+saving nothing, for a world the page has not loaded. `catalogue()` gives what the page has loaded.
 
 ### The shared settings
 
@@ -1081,10 +1146,13 @@ the page looks exactly as before there were settings.
 `KW.engine.input` (see the head of `engine.js`) takes from the settings `turns`, the quiet scenes
 that take turns, in order (all four, `TURNS`, when it is left out or empty), `turnMs`, how long
 each lasts, `patron`, the monarch as `{ id, skin, hair, robe }`, its id and its skin, hair and
-robe, which the engine passes to the scenes in `s.patron`, and `scenes`, the scene chosen for a condition
-by its id. `KW.engine.sceneOf(w, t)` gives the scene the winning condition `w` plays in: the one
-`scenes` names for it when that scene lists the condition in its `can`, else the condition's own,
-else the quiet scene of the moment. The frame and the events both ask it. The demo's `apply()` and `main.js` add them with `KW.ui.extras(ownMs)` whenever they
+robe, which the engine passes to the scenes in `s.patron`, `scenes`, the scene chosen for a condition
+by its id, and `homes`, the world's own scene for each condition. `KW.engine.sceneOf(w, t)` gives the scene the winning condition `w` plays in: the one
+`scenes` names for it when that scene lists the condition in its `can`, else the one `homes` names
+under the same rule, else the condition's own in code (`w.scene`, from `KW.state.CONDITIONS`), else
+the quiet scene of the moment. A condition with no scene of its own follows the quiet scenes
+whatever `scenes` and `homes` say. A `turns` list that names a scene the page has not loaded is
+passed over for `TURNS`. The frame and the events both ask it. The demo's `apply()` and `main.js` add them with `KW.ui.extras(ownMs)` whenever they
 build the input.
 
 ## The address

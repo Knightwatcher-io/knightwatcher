@@ -274,7 +274,8 @@ and `sources` the parts come from are shown:
   objects, `look`, `display`, `quiet` and `scenes`, and each holds only the settings the config
   sets, so a table the config leaves out is `{}`. The collector fills in nothing: for a setting
   that is absent the page uses its own default.
-  - `look`: `build` and `monarch` are `a`, `b` or `c`; `weapon` is `greatsword`,
+  - `look`: `world` is `medieval` or a long name; `build` and `monarch` are `a`, `b` or `c`,
+    `monarch` also a long name; `weapon` is `greatsword`,
     `sword_and_shield`, `longsword` or `mace_and_shield`; `skin` and `monarch_skin` are `fair`,
     `warm`, `golden`, `tan`, `brown` or `deep`; `hair` and `monarch_hair` are `black`, `dark`,
     `brown`, `auburn`, `blonde` or `silver`; `hair_style` is `short`, `tied`, `curls`, `long` or
@@ -286,15 +287,25 @@ and `sources` the parts come from are shown:
     `leather`; `arms` is `plate`, `mail` or `padded`; `hands` is `plate`, `leather` or `mail`;
     `legs` is `plate`, `mail` or `hose`; `feet` is `leather`, `sabatons` or `shoes`; `back` is
     `none`, `cloak` or `cape`. `monarch_hair` and `monarch_robe` left out mean each monarch
-    keeps the colours the court draws them in; there is no value for that.
+    keeps the colours the court draws them in; there is no value for that. The cast and the rest
+    of the world: `foe` is `goblin`, `critter` is `fly`, and `props`, `overlay` and `words` are
+    `medieval`, each or a long name. `items` is an object from a slot (`main`, `off`, `helmet`,
+    `plume`, `hair`, `torso`, `pauldrons`, `arms`, `gauntlets`, `legs`, `boots` or `back`) to an
+    item's long name, and `devices` an object from a kind of device (`pi`, `camera`, `machine`,
+    `vm` or `box`) to `medieval` or a prop set's long name; each holds only the keys the config
+    sets. A long name is `"<pack>/<id>"`, which the collector checks only for its form
+    ([configuration.md](./configuration.md#the-settings-screens-defaults)); the page ignores one it
+    has not loaded. A `world` counts as setting every other key of `look`, the quiet `scenes` and
+    every key of `scenes` at the level it is set at ([page.md](./page.md#worlds)), so beside it in
+    `defaults` a key set here keeps its value.
   - `display`: `headline` is `small`, `medium` or `large`; `clock` is the number `24` or `12`;
     `helmet_indoors` is `true` or `false`.
-  - `quiet`: `scenes` is a list of one or more of `battlement`, `camp`, `house` and `yard`, with
-    no repeats, in the order they take turns; `minutes` is a whole number from 1 to 240, how long
+  - `quiet`: `scenes` is a list of one or more of `battlement`, `camp`, `house` and `yard`, or
+    long names of quiet scenes, with no repeats, in the order they take turns; `minutes` is a whole number from 1 to 240, how long
     each quiet scene shows.
   - `scenes`: the scene a condition plays in, by condition id, such as `{ "cpu_hot": "camp" }`.
     Each key is one of the condition ids above, and each value one of the page's scenes:
-    `battlement`, `camp`, `house`, `yard`, `cellar`, `smithy` or `court`. Which scene can act
+    `battlement`, `camp`, `house`, `yard`, `cellar`, `smithy` or `court`, or a scene's long name. Which scene can act
     which condition is the page's to decide (see [design.md](./design.md#scenes-chosen-per-condition)):
     the collector writes any condition with any of these scenes, and the page ignores a pair it
     cannot act, a condition it offers no choice for (such as `night`) among them.
@@ -303,7 +314,9 @@ and `sources` the parts come from are shown:
   uses its own default in its place, so a later collector can offer more. A page from before
   `scenes` leaves that object alone. A file from a collector older than this section has no
   `defaults`, and the page then uses its own defaults throughout; one from a collector older than
-  `scenes` has the other three, and the page plays each condition in its own scene.
+  `scenes` has the other three, and the page plays each condition in its own scene. A page from
+  before worlds ignores `world`, the part keys, `items` and `devices` as keys it does not know,
+  and a long name in `quiet.scenes` or `scenes` as a value it does not know.
 
 - **`config`** says which settings the collector is using, for the bundled server's admin page:
   - `admin`: the version of the admin page's `admin.json` laid over `config.toml` (20 hex

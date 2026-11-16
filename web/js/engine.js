@@ -17,7 +17,11 @@
              is { id, bands } from one of its tabard swatches, or null for the robe each monarch
              is drawn with
      scenes  the scene chosen for a condition, by its id: { cpu_hot: 'camp' }. A condition left out,
-             or given a scene that does not list it in its can, plays in its own scene */
+             or given a scene that does not list it in its can, plays in its own scene
+     homes   each condition's own scene in the world in use, by its id, as the settings resolve it
+             from the world's preset (KW.settings.engineInput). A condition left out, or given a
+             scene the page has not loaded or that cannot act it, plays in the scene KW.state gives
+             it, the code's own */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, K = KW.knight, P = KW.props, SP = KW.sprites, C = D.C, U = V.U;
@@ -30,8 +34,8 @@
   /* Whether the address's t= hook freezes time; KW.hooks.t is then the frozen time. */
   const frozen = () => KW.hooks.frozen;
 
-  /* The quiet scenes take turns, each for the input's turnMs: those the input's turns lists, or all
-     four. */
+  /* The quiet scenes take turns, each for the input's turnMs: those the input's turns lists, which
+     the settings fill from the world's preset, or these four, the medieval world's in code. */
   const TURNS = ['battlement', 'camp', 'house', 'yard'];
   /* Each event lasts dur ms and plays only in the scenes listed. An event with a foe names it (in
      KW.cast.foes, below) and the exit it leaves by (in FOE.exits, below) when the foe names none of
@@ -47,14 +51,18 @@
   const bgCache = { key: '', cv: document.createElement('canvas') };
 
   /* The scene the winning condition w plays in at t: the one the input's scenes chose for it,
-     when that scene can act it, else the condition's own, else the quiet scene of the moment. */
+     when that scene can act it, else the condition's own in the world in use (the input's homes),
+     else its own in code (w.scene), else the quiet scene of the moment. */
+  const own = (o, k) => (o && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : null);
+  const acts = (name, id) => !!(name && KW.scenes[name] && (KW.scenes[name].can || []).includes(id));
   function sceneOf(w, t) {
-    const pick = E.input.scenes && Object.prototype.hasOwnProperty.call(E.input.scenes, w.id) ? E.input.scenes[w.id] : null;
-    if (pick && w.scene && KW.scenes[pick] && (KW.scenes[pick].can || []).includes(w.id)) return pick;
+    const pick = own(E.input.scenes, w.id), home = own(E.input.homes, w.id);
+    if (pick && w.scene && acts(pick, w.id)) return pick;
+    if (home && w.scene && acts(home, w.id)) return home;
     return w.scene || idleScene(t);
   }
   function idleScene(t) {
-    const { is, turnMs, turns } = E.input, list = Array.isArray(turns) && turns.length ? turns : TURNS;
+    const { is, turnMs, turns } = E.input, list = Array.isArray(turns) && turns.length && turns.every(n => KW.scenes[n]) ? turns : TURNS;
     return is === 'auto' ? list[Math.floor((t - sceneT0) / turnMs) % list.length] : is;
   }
 

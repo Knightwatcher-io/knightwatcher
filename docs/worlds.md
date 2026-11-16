@@ -10,7 +10,9 @@ three monarchs, the goblin and the fly, and the words and the overlay. Step W5 o
 gave the scenes but the court, step W6 the devices, step W7 the cast and with it the court, and step
 W8 the words and the overlay: the page builds the quiet line and the events' captions from the
 parts the collector sends, in the world's words, and takes the colours and the font of the words
-over the scene from the world's overlay. Everything is drawn from `kw.medieval` 0.5.0, signed.
+over the scene from the world's overlay. Step W9 added the world itself as a preset, `world.medieval`,
+which the settings resolve against the parts set beside it, and the devices chosen per kind
+([Worlds as presets](#worlds-as-presets)). Everything is drawn from `kw.medieval` 0.5.0.
 
 ## The medieval world's pack
 
@@ -123,7 +125,11 @@ loads it after the base pack's. It holds:
   their black outline, the scrim's black, the caption's background at 0.66 alpha, and the font
   `vt323`, below;
 - one palette entry, `house.screen`, the television's first colour, which the house's palette track
-  changes every 400 ms.
+  changes every 400 ms;
+- the preset `world.medieval`, the medieval world whole: the base pack's Classic build and its
+  default outfit, the quiet scenes `battlement`, `camp`, `house` and `yard`, the scene of each
+  condition, `patron.a`, `foe.goblin` and `critter.fly`, `props.medieval`, `overlay.phosphor`,
+  `words.medieval`, and the camp as its picture, below ([Worlds as presets](#worlds-as-presets)).
 
 At the widest screen they assume, the checks find:
 
@@ -159,14 +165,15 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
 own lamp counts toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
 5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
-court counts none of them. The whole file weighs 234 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+court counts none of them. The whole file weighs 235 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
 then version 0.2.0, version 0.3.0, which adds the devices, and version 0.4.0, which adds the cast.
-Version 0.5.0, which adds the words and the overlay, is signed too. A copy changed after signing is
+Version 0.5.0, which adds the words and the overlay, was signed too, before the preset was added
+to it; it ships unsigned until the next signing run. A copy changed after signing is
 refused by a deployed page until its next run: that page draws every scene, every device and the
 cast from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.
@@ -557,7 +564,9 @@ the interface of `KW.props.KINDS` ([page.md](./page.md#devices)): `draw(x, y, t,
 kind standing on the base `(x, y)`, up (`ok`) or gone, its still part (`part` `'still'`), its moving
 part (`'moving'`) or both, and `mark` is the height above the base of the top of the question mark.
 `world.js` fills it with `KW.props.KINDS`'s entries when it loads, and `start` puts the prop set's
-compiled kinds in their place. The engine's `placeHD` and `kindName` read `KW.kinds`, or
+compiled kinds in their place: these are the base world's drawings. The settings then choose a prop
+set for each kind ([Worlds as presets](#worlds-as-presets)), and `KW.world.useKinds()` puts each
+kind's drawing from its set in `KW.kinds`. The engine's `placeHD` and `kindName` read `KW.kinds`, or
 `KW.props.KINDS` on a page without the compiler. The question mark, the pole of a high place, the
 drawing order, the still part's canvas and the lamp's phase in each place stay the engine's, and a
 kind's class (where it may stand) is the engine's too.
@@ -806,6 +815,61 @@ its fallback, `var(--kw-ok, #39ff6a)`, for a page without the overlay. The overl
 
 What the compiler does not build in the words and the overlay, it refuses by name: a font the
 engine does not ship. Everything else the library has already refused.
+
+## Worlds as presets
+
+A world pack's `worlds` section holds presets, each a world's every part at once
+([packs.md](./packs.md#format-11) gives the fields and the checks): the body and the outfit, the
+quiet scenes and the scene of each condition, the patron, the foe and the critter, the prop set,
+the overlay, the words, and the scene its card is drawn from. A name in a preset is local to its
+pack, or `<pack>/<id>`. The pack library refuses a preset that leaves a part out, names a quiet
+scene that is not quiet, or gives a condition a scene whose `can` does not list it.
+
+`kw.medieval`'s preset, `world.medieval`, is the medieval world, which the settings call
+`medieval`: the base world, and the page's own level ([page.md](./page.md#worlds)). Its outfit is
+the base pack's `defaults`, its quiet scenes the four the code turns between (`TURNS` in
+`engine.js`, `SCENES` in `settings.js`), and its scene for each condition the one
+`KW.state.CONDITIONS` gives; `tests/web/worlds.test.js` holds the three equal. While the pack gives
+the preset, `KW.settings.pageWorld()` takes the base world's scenes from it; without the pack, from
+the code, so with nothing set the display is the same either way.
+
+`start()` reads every pack among the texts but the base pack, which the knight reads, with the same
+rule for signatures. Besides kw.medieval, it keeps each pack read cleanly that holds presets or prop
+sets; a refusal of one of them is the knight's to report, as it reads the same texts. Today the page
+ships no other world pack, and `data/packs/` brings none to `KW.world` yet. `catalogue()` lists for
+the settings what is loaded:
+
+- `worlds`: each preset by the name the settings use, `medieval` for `world.medieval` and
+  `<pack>/<id>` for any other, with its display name, its pack, its card's scene, the preset as the
+  library read it, and the labels of its word set (`The knight`, `The monarch` for the settings
+  screen's pages);
+- `sets`: each prop set by name, `medieval` for `props.medieval` and `<pack>/<id>` otherwise, with its
+  display name and the kinds it draws;
+- `scenes`: kw.medieval's scenes by their long names, `kw.medieval/camp`, each with its `can` and
+  whether it is quiet;
+- `names`: each long name of kw.medieval's parts and the short name it stands for:
+  `kw.medieval/world.medieval` for `medieval`, `kw.medieval/patron.b` for `b`,
+  `kw.medieval/foe.goblin`, `kw.medieval/critter.fly`, `kw.medieval/props.medieval`,
+  `kw.medieval/overlay.phosphor`, `kw.medieval/words.medieval` and each scene's long name;
+- `homes` and `quiet`: the base world's scene for each condition and its quiet scenes, from
+  `world.medieval`.
+
+Only kw.medieval's scenes, cast, words and overlay are drawn. Another world's own scenes and cast
+are listed in what the settings resolve as parts the page cannot use, and the base world's are
+drawn in their place, as for a part not loaded at all.
+
+**The devices per kind.** The prop set `props` names draws every kind; `[look.devices]` names a set
+for one kind over it. `useKinds(choice)`, given `{ pi: name, camera: name, ... }` as the settings
+resolve it, puts in `KW.kinds` each kind's drawing from its set, compiled the first time it is asked
+for and kept. A kind left out, or named `medieval`, takes the base world's drawing: the medieval
+set's, or the code's where that kind failed to compile. A kind whose set is not loaded, does not draw
+that kind, or fails to compile takes the base world's too, and `KW.world.devices`, `{ choice, kinds,
+faults }`, says where each kind is drawn from and lists each fault as `{ kind, set, reason }`: `the
+prop set kw.example/props.neon does not draw it`. A kind no set draws at all, which only a kind the
+contract does not know can be, is drawn as `box` by the engine. `start()` ends with every kind from
+the base world, and `main.js` calls `useKinds()` whenever the settings change the choice. A compiled
+kind's `from` names its pack and the compile, so the engine's still-part canvases keep one set's
+drawing apart from another's.
 
 ## Writing a scene as data
 

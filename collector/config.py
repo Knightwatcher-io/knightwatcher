@@ -7,7 +7,8 @@ A source runs when its table is present in config.toml and its `enabled` is not 
 Devices are the `[[device]]` tables, checked here and turned into one list with the Pi of
 `[sources.pi]` first. The `[look]`, `[display]`, `[quiet]` and `[scenes]` tables are the settings
 screen's household defaults; they have no defaults here, and only what they set is written to
-state.json. Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>,
+state.json. Where they take the long name of a part from a pack, "<pack>/<id>", only its form is
+checked here. Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>,
 where SECRET is the source's `secret` setting; no message ever carries a credential's value.
 """
 
@@ -93,20 +94,29 @@ PI_NAME = "Pi"
 # its hair.* items; the page would ignore a value the base pack lacks, so the lists follow the pack.
 DEFAULT_TABLES = tuple(t["table"] for t in schema.SCHEMA["tables"] if t.get("defaults_for"))
 LOOK_CHOICES: dict[str, tuple[str, ...]] = {
-    s["key"]: tuple(s["values"]) for s in schema.settings("look")
+    s["key"]: tuple(s["values"]) for s in schema.settings("look") if s["type"] == "string"
 }
+# The tables of [look], [look.items] and [look.devices]: the keys each may hold.
+LOOK_TABLES: dict[str, tuple[str, ...]] = {
+    s["key"]: tuple(s["keys"]) for s in schema.settings("look") if s["type"] == "table"
+}
+# A long name, "<pack>/<id>", which a setting marked long takes besides its short names. The
+# collector knows nothing of packs, so a long name is checked for its form alone; the page ignores
+# one it has not loaded.
+LONG_NAME = re.compile(schema.SCHEMA["long_name"])
+LONG_FORM = '"<pack>/<id>"'
 HEADLINE_SIZES = tuple(schema.setting("display", "headline")["values"])
 CLOCKS = tuple(schema.setting("display", "clock")["values"])
-# The quiet scenes the page turns between, as TURNS in web/js/engine.js names them.
+# The quiet scenes the page ships with, which the medieval world's preset turns between.
 QUIET_SCENES = tuple(schema.scene_ids(quiet_only=True))
 _MINUTES = schema.setting("quiet", "minutes")
 QUIET_MINUTES = (_MINUTES["min"], _MINUTES["max"])
 DISPLAY_SETTINGS = tuple(s["key"] for s in schema.settings("display"))
 QUIET_SETTINGS = tuple(s["key"] for s in schema.settings("quiet"))
 # Every scene the page draws, as ALL_SCENES in web/js/settings.js names them (the files of
-# web/js/scenes/). [scenes] maps a condition id to one of them. Which scene can act which
-# condition is the page's to know: a known scene that cannot act a condition is accepted here
-# and ignored by the page, with a line in its console.
+# web/js/scenes/). [scenes] maps a condition id to one of them, or to a long name. Which scene can
+# act which condition is the page's to know: a known scene that cannot act a condition is accepted
+# here and ignored by the page, with a line in its console.
 PAGE_SCENES = tuple(schema.scene_ids())
 
 
@@ -503,14 +513,28 @@ def _devices(raw: Any, sources: dict, conditions: dict, problems: list[str]) -> 
 def _say_or(values: tuple) -> str:
     """a, b or c."""
     words = [str(v) for v in values]
+    if len(words) == 1:
+        return words[0]
     return f"{', '.join(words[:-1])} or {words[-1]}"
 
 
-def _choice(w: str, value: Any, allowed: tuple[str, ...], problems: list[str]) -> None:
-    if isinstance(value, str) and value in allowed:
+def _use(allowed: tuple[str, ...], long: bool) -> str:
+    """What a setting takes, as its problems say it."""
+    if not long:
+        return f"use {_say_or(allowed)}"
+    if not allowed:
+        return f"use a long name, {LONG_FORM}"
+    return f"use {_say_or(allowed)}, or a long name, {LONG_FORM}"
+
+
+def _choice(
+    w: str, value: Any, allowed: tuple[str, ...], problems: list[str], long: bool = False
+) -> None:
+    """A short name from allowed, or, where long, a long name of the right form."""
+    if isinstance(value, str) and (value in allowed or (long and LONG_NAME.match(value))):
         return
     given = f'unknown value "{value}"' if isinstance(value, str) else "expected text"
-    problems.append(f"{w}: {given}; use {_say_or(allowed)}")
+    problems.append(f"{w}: {given}; {_use(allowed, long)}")
 
 
 def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
@@ -520,7 +544,7 @@ def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
     default for it.
     """
     known = {
-        "look": tuple(LOOK_CHOICES),
+        "look": tuple(s["key"] for s in schema.settings("look")),
         "display": DISPLAY_SETTINGS,
         "quiet": QUIET_SETTINGS,
         "scenes": tuple(CONDITION_IDS),
@@ -540,11 +564,11 @@ def _defaults(raw: dict, problems: list[str]) -> dict[str, dict[str, Any]]:
                 continue
             value, w, before = given[key], f"{table}.{key}", len(problems)
             if table == "scenes":
-                _choice(w, value, PAGE_SCENES, problems)
+                _choice(w, value, PAGE_SCENES, problems, long=True)
             else:
                 _check_default(w, schema.setting(table, key), value, problems)
             if len(problems) == before:
-                out[table][key] = list(value) if isinstance(value, list) else value
+                out[table][key] = copy.deepcopy(value)
     return out
 
 
@@ -552,7 +576,17 @@ def _check_default(w: str, spec: dict, value: Any, problems: list[str]) -> None:
     """One setting of [look], [display] or [quiet], by its type in the schema."""
     kind = spec["type"]
     if kind == "string":
-        _choice(w, value, tuple(spec["values"]), problems)
+        _choice(w, value, tuple(spec["values"]), problems, spec.get("long", False))
+    elif kind == "table":  # look.items and look.devices
+        if not isinstance(value, dict):
+            problems.append(f"{w}: expected a table")
+            return
+        for key in value:
+            if key not in spec["keys"]:
+                problems.append(f"{w}.{key}: unknown key; use {_say_or(tuple(spec['keys']))}")
+        for key in spec["keys"]:
+            if key in value:
+                _choice(f"{w}.{key}", value[key], tuple(spec["values"]), problems, long=True)
     elif kind == "boolean":
         if not isinstance(value, bool):
             problems.append(f"{w}: expected true or false")
@@ -575,14 +609,15 @@ def check_defaults(tables: dict) -> list[str]:
 
 
 def _quiet_scenes(w: str, value: Any, problems: list[str]) -> None:
+    """A list of quiet scenes, each a short name or a long name, each once."""
     if not isinstance(value, list) or not value:
-        problems.append(f"{w}: list one or more of {_say_or(QUIET_SCENES)}")
+        problems.append(f"{w}: list one or more of {_say_or(QUIET_SCENES)}, or long names")
         return
     seen = set()
     for scene in value:
-        if not isinstance(scene, str) or scene not in QUIET_SCENES:
+        if not isinstance(scene, str) or not (scene in QUIET_SCENES or LONG_NAME.match(scene)):
             shown = f'"{scene}"' if isinstance(scene, str) else repr(scene)
-            problems.append(f"{w}: unknown scene {shown}; use {_say_or(QUIET_SCENES)}")
+            problems.append(f"{w}: unknown scene {shown}; {_use(QUIET_SCENES, True)}")
         elif scene in seen:
             problems.append(f'{w}: "{scene}" listed twice')
         seen.add(scene)

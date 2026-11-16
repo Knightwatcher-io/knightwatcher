@@ -506,6 +506,8 @@ def toml_value(value: Any, kind: str | None = None) -> str:
     if isinstance(value, list):
         return "[" + ", ".join(toml_value(v) for v in value) + "]"
     if isinstance(value, dict):
+        if not value:
+            return "{}"
         return "{ " + ", ".join(f"{k} = {toml_value(v)}" for k, v in value.items()) + " }"
     return '""'
 
