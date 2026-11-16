@@ -15,7 +15,8 @@
 // Each scene the world pack kw.medieval gives (web/packs/medieval.pack.json) is drawn a second time,
 // compiled from the pack by web/js/world.js, in the same states and against the same stored
 // records: the two copies of a scene, its code and its data, must draw the same calls. So is each
-// member of the cast the pack gives, against fixtures/scenes/cast.json. The backdrop's
+// member of the cast the pack gives, against fixtures/scenes/cast.json, and the court, still a code
+// scene, with the monarchs the pack's patrons, against fixtures/scenes/court.json. The backdrop's
 // key is not in the records, so a check of its own requires the compiled scene's key to tell the
 // recorded states apart exactly as the code scene's does.
 //
@@ -72,6 +73,8 @@ function sources(read) {
 /* The scenes kw.medieval gives that are code scenes too, by name, and whether it gives a cast. */
 const fromPack = src => (src.medieval ? Object.keys(JSON.parse(src.medieval).pack.scenes || {}) : []);
 const castFromPack = src => !!(src.medieval && JSON.parse(src.medieval).pack.cast);
+/* Whether it gives the court's patrons, which the court, a code scene still, then draws. */
+const patronsFromPack = src => castFromPack(src) && ['a', 'b', 'c'].every(id => !!JSON.parse(src.medieval).pack.cast['patron.' + id]);
 
 /* ---- The recording context -------------------------------------------------------------------
    Writes one line per call into log: "s" for a fillStyle, "a" for a globalAlpha, "r" for a
@@ -130,6 +133,7 @@ function load(src, size, from) {
   if (from === 'pack') {
     const st = KW.world.start([src.medieval], true);
     for (const n of fromPack(src)) assert.equal(st.scenes[n], 'pack', `${n} is compiled from kw.medieval: ${st.note}`);
+    for (const id of Object.keys(JSON.parse(src.medieval).pack.cast || {})) assert.equal(KW.world.cast.members[id], 'pack', `${id} is compiled from kw.medieval`);
   }
   fit(KW.view, SIZES[size] || SIZES['960x600']);
   const line = (name, a) => log.push(['knight.' + name, ...a].join(' '));
@@ -239,7 +243,8 @@ function frame(KW, name, st, t) {
   const kx = st.kx === undefined ? sc.spot * V.U : st.kx;
   o.x = kx;
   return { w, devices: ST.arrange(list).devices, places: sc.places || null, tv: st.tv === undefined ? id === 'streaming' : st.tv, kx, o, here, inBed,
-    helmOff: inBed || o.helmet === false, strike: false, mon: st.mon || 'a', monSkin: st.skin || null, monHair: st.hair || null, monRobe: st.robe || null };
+    helmOff: inBed || o.helmet === false, strike: false,
+    patron: { id: st.mon || 'a', skin: st.skin || null, hair: st.hair || null, robe: st.robe || null } };
 }
 
 /* What a scene's act and draw changed in the frame: one line for each field of the knight's pose
@@ -319,7 +324,8 @@ function blocks(lines) {
 function groups(src) {
   const { KW } = load(src);
   return [...Object.keys(KW.scenes).map(n => [n, () => sceneRecords(src, n), 'code']), ['cast', () => castRecords(src), 'code'],
-    ...fromPack(src).map(n => [n, () => sceneRecords(src, n, 'pack'), 'pack']), ...(castFromPack(src) ? [['cast', () => castRecords(src, 'pack'), 'pack']] : [])];
+    ...fromPack(src).map(n => [n, () => sceneRecords(src, n, 'pack'), 'pack']), ...(castFromPack(src) ? [['cast', () => castRecords(src, 'pack'), 'pack']] : []),
+    ...(patronsFromPack(src) && !fromPack(src).includes('court') ? [['court', () => sceneRecords(src, 'court', 'pack'), 'pack']] : [])];
 }
 /* A group's file: each distinct record once, by the first 16 characters of its hash, with its
    number of calls and the hashes of its blocks; and each record's name with the hash of its calls. */

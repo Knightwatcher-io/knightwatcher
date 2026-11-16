@@ -10,13 +10,12 @@
              { place, kind, ok, alert }, place naming one of the scene's places
      tv      whether the television in the house is on
      helmet  'auto' (off indoors), 'on' or 'off'
-     mon     the monarch at court, 'a', 'b' or 'c'; 'a' when it is left out
-     monSkin the monarch's skin: { id, face, cheek } from one of the base pack's skin swatches, or
-             null for the skin the court draws by default
-     monHair the monarch's hair: { id, bands, brow } from one of the base pack's hair swatches, or
-             null for the hair each monarch is drawn with
-     monRobe the monarch's robe: { id, bands } from one of the base pack's tabard swatches, or null
-             for the robe each monarch is drawn with
+     patron  the patron at court, the monarch: { id, skin, hair, robe }. id is 'a', 'b' or 'c',
+             'a' when it is left out; skin is { id, face, cheek } from one of the base pack's skin
+             swatches, or null for the skin the court draws by default; hair is { id, bands, brow }
+             from one of its hair swatches, or null for the hair each monarch is drawn with; robe
+             is { id, bands } from one of its tabard swatches, or null for the robe each monarch
+             is drawn with
      scenes  the scene chosen for a condition, by its id: { cpu_hot: 'camp' }. A condition left out,
              or given a scene that does not list it in its can, plays in its own scene */
 (function (KW) {
@@ -462,8 +461,9 @@
         if (here.act === 'yawn') { const c = el % 6500; if (c > 3800 && c < 5600) { o.eyes = 'closed'; o.mouth = 'o'; } }
       }
     }
+    const pt = inp.patron || {};
     const s = { w, devices, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false,
-      mon: inp.mon || 'a', monSkin: inp.monSkin || null, monHair: inp.monHair || null, monRobe: inp.monRobe || null };
+      patron: { id: pt.id || 'a', skin: pt.skin || null, hair: pt.hair || null, robe: pt.robe || null } };
     // a device down: the knight stays put and looks towards its place, or straight ahead
     // when it is not drawn
     if (w.id === 'device_down') { const px = KW.devices.placeX(s, w.place); o.look = px === null ? 0 : Math.sign(px - kx); }

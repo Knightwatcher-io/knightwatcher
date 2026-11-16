@@ -751,7 +751,7 @@
   const K = KW.knight, D = KW.draw, V = KW.view, P = KW.props, U = V.U;
   function onGrid(ctx, fn) { const was = D.getCtx(), edges = { HL: V.HL, HR: V.HR, HT: V.HT }; V.HL = 0; V.HR = V.HW; V.HT = 0; D.setCtx(ctx); try { fn(); } finally { D.setCtx(was); Object.assign(V, edges); } }
   const sceneState = (sc, o2, mon, e) => ({ w: KW.state.IDLE, devices: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], places: sc.places || null, tv: false,
-    kx: sc.spot * U, o: o2, here: null, inBed: false, helmOff: o2.helmet === false, strike: false, mon, monSkin: e.monSkin || null, monHair: e.monHair || null, monRobe: e.monRobe || null });
+    kx: sc.spot * U, o: o2, here: null, inBed: false, helmOff: o2.helmet === false, strike: false, patron: Object.assign({}, e.patron, { id: mon }) });
   const pics = new Map(); let lookKey = '';
   function picture(key, paint, w, h) { if (!pics.has(key)) { const cv = document.createElement('canvas'); cv.width = w || V.HW; cv.height = h || V.HH; paint(cv); pics.set(key, cv); } return pics.get(key); }
   function scenePicture(name, helmetIndoors) {
@@ -763,7 +763,7 @@
   }
   const CROP = { x: 700, y: 160, w: 240, h: 372 };
   function monarchPicture(mon, e) {
-    const key = 'court|' + mon + '|' + [e.monSkin, e.monHair, e.monRobe].map(x => (x ? x.id : '')).join('|');
+    const key = 'court|' + mon + '|' + [e.patron.skin, e.patron.hair, e.patron.robe].map(x => (x ? x.id : '')).join('|');
     return picture(key, out => {
       const big = document.createElement('canvas'); big.width = V.HW; big.height = V.HH;
       const sc = KW.scenes.court, o2 = K.pose('ssh_session', 100); o2.x = sc.spot * U; o2.floor = V.HFL;
@@ -797,7 +797,7 @@
   }
   function paintStill() {
     if (!A || !W) return;
-    const r = resolved(), e = KW.settings.engineInput(r, PACK, 600000), key = JSON.stringify(KW.settings.knightLook(r)) + '|' + JSON.stringify([e.monSkin, e.monHair, e.monRobe]) + '|' + r.values.display.helmet_indoors;
+    const r = resolved(), e = KW.settings.engineInput(r, PACK, 600000), key = JSON.stringify(KW.settings.knightLook(r)) + '|' + JSON.stringify([e.patron.skin, e.patron.hair, e.patron.robe]) + '|' + r.values.display.helmet_indoors;
     if (key !== lookKey) { lookKey = key; pics.clear(); K.look(KW.settings.knightLook(r)); }
     root.querySelectorAll('canvas[data-mon]').forEach(cv => blit(cv, monarchPicture(cv.dataset.mon, e)));
     root.querySelectorAll('canvas[data-scene]').forEach(cv => blit(cv, scenePicture(cv.dataset.scene, r.values.display.helmet_indoors)));

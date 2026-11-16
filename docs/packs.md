@@ -488,7 +488,7 @@ steps as the rest, in the same order, and keeps it as data in the loaded pack's 
 **`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
 compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
 page draws every scene but the court from the medieval world's pack that way, with its devices
-from its prop set and its goblin and fly from its cast ([worlds.md](./worlds.md)). The other engine parts that
+from its prop set and its monarchs, goblin and fly from its cast ([worlds.md](./worlds.md)). The other engine parts that
 will read the sections (the acts, the rest of the cast, the words and the overlay) come in later
 steps. The closed lists those parts own are fixed in `pack.js` under the names below and exported
 as `WORLD_LISTS`. The effects library is built: `effects.js` gives each effect's table of fields and
@@ -547,6 +547,13 @@ layers of a scene:
   only inside a tile; `at` only in the patron, naming one of its anchors.
 - A colour may also be a mix, `{ "mix": [colour, colour], "k": 0.3 }`: each channel of the first
   moved towards the second's by `k`, from 0 to 1. The two are hex colours or single references.
+- Or a contrast, `{ "contrast": [colour, colour], "on": colour, "band": 1 }`: whichever of the two
+  stands out more from `on` by the WCAG contrast ratio, the second on a tie. Each of the two is a hex
+  colour, a single reference or a mix, never another contrast; `on` is a hex colour or a reference,
+  and `band`, a whole number from 0 to 7, picks one band of `on` where `on` names a band list. `band`
+  is required when `on` is a band list and refused when it is a single colour. A contrast goes
+  wherever a mix may, and nests no deeper than a mix inside it. The medieval world's monarchs choose
+  a readable brow with it ([worlds.md](./worlds.md#the-cast)).
 - `@pick.<name>` names a pick of the tile around the shape, and `@lamp.down`, `@lamp.downLo` and
   `@lamp.downHi` name the engine's down lamp: its red, the red at two thirds and its highlight,
   which the engine spells `rgb(255,74,61)`, `rgb(168,49,40)` and `#ffd0c8`. All are single colours,
@@ -575,7 +582,7 @@ Nothing else may lean on a named value: stamps, the cast and props are drawn at 
 knight's names (`drop`, `dShoulder` and the rest) are refused in every 1.1 section.
 
 **Effects.** `fx` is one of `sky`, `stars`, `ridge`, `bricks`, `pines`, `tree`, `arch`, `shelf`,
-`stacks`, `tufts`, `pebbles`, `planks`, `rafters`, `horseshoe`, `hood`, `flame`, `candle`, `twinkle`, `drift`, `wander`, `coals`, `steam`, `flutes`, `crust`, `fingers` and `burst`, and the other
+`stacks`, `tufts`, `pebbles`, `planks`, `rafters`, `horseshoe`, `hood`, `flame`, `candle`, `twinkle`, `drift`, `wander`, `coals`, `steam`, `flutes`, `crust`, `fingers`, `fringe` and `burst`, and the other
 fields of an `fx` shape are the fields of that effect's table in `effects.js`
 ([page.md](./page.md#the-effects) lists them): a field the table lacks is refused, one without a
 default is required, and each holds a value of its kind in its range. A point, an offset or a length
@@ -701,7 +708,7 @@ Each member has a `role` and a `name` (1 to 48 characters).
   `tabard`, `plume`; a name that is a user set's binds that set); `own`, for a bound set, every
   entry of it in literal colours, as a swatch gives them; and `palettes`, up to 8 sets of its own,
   whose names are not reserved, bound or a user set's, and whose entries refer only to `@base` and
-  the bound sets.
+  the bound sets. An entry of a patron's palettes may also be drawn and dressed, below.
 - **A foe** has `sprite` (`size` at most 256 by 256, `feet` inside it), `h`, `w`, `mid` (whole, to
   256), `crown` (1 to 32 points, each inside the sprite from its feet), `exit` (`poof`, the engine's
   only exit), `parts` (up to 16 named lists of shapes) and `poses`, exactly `stand`, `climb`,
@@ -712,6 +719,17 @@ Each member has a `role` and a `name` (1 to 48 characters).
 
 Inside a member, the user's sets may be named only through its `sets`: a foe or a critter names
 none.
+
+**Drawn and dressed.** An entry of a patron's palettes may be `{ "drawn": colour, "dressed": colour,
+"set": name }`: the colour `drawn` while the user has chosen nothing for the bound set `set` names,
+and `dressed` once they have. `drawn` is a hex colour or a single reference; `dressed` a hex colour,
+a reference, a translucent colour, a mix or a contrast; `set` must name a set the patron binds in
+`sets`. All three are required and nothing else is taken. Anywhere but as an entry of a patron's
+palettes, `dressed` included, it is refused with `a colour drawn and dressed is allowed only as an
+entry of a patron's palettes`. Its colours refer, as the palette's do, only to `@base` and the bound
+sets. A figure can so be drawn in shades of its own while the user chooses nothing, and in shades
+worked out from the user's colours once they do, as the medieval world's monarchs shade their hair
+([worlds.md](./worlds.md#the-cast)).
 
 ### Props
 
@@ -792,7 +810,7 @@ shapes; a tile its shapes times the most repeats its range allows; a mark nothin
 counts its own drawing, but a `rest` mark for the weapon at a frame that names a stamp, which costs
 the stamp's shapes twice, for the two the engine draws; an effect what its own cost function in `effects.js` gives for its fields
 at the ends of their ranges, 3 for each glow among it, which also count toward the glows. A band
-list of the user's skin counts as 8 bands, here as in 1.0, a pick, a mix and the down lamp as one
+list of the user's skin counts as 8 bands, here as in 1.0, a pick, a mix, a contrast, a colour drawn and dressed and the down lamp as one
 colour.
 
 | What | Limit |
@@ -1338,11 +1356,11 @@ base pack's items falls back on any build.
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
 `[1, 1]`, version 0.4.0, unsigned until its signing run (0.1.0, the cellar alone, 0.2.0 and 0.3.0
-were signed with `kw1`). It holds every scene but the court as data, the goblin and the fly as its cast, the devices as the prop set
+were signed with `kw1`). It holds every scene but the court as data, the three monarchs, the goblin and the fly as its cast, the devices as the prop set
 `props.medieval`, the stamps they use (the sconce, the barrel, the house's peg, the raspberry's
 drawings and the virtual machine's dots) and one palette entry, `house.screen`, the television's
-colour, and the page draws those scenes, devices, the goblin and the fly from it on a `dev` page,
-and on a deployed page once it is signed.
+colour, and the page draws those scenes, devices and the cast from it on a `dev` page, and on a
+deployed page once it is signed. It weighs 218 KB of the 512 KiB a pack may.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 
@@ -1572,7 +1590,7 @@ is a world pack made of the world format's own worked examples (the cellar, the 
 the blanket's breath, the act parts, the places, the patron, the goblin, the fly, the camera and the
 pie with its own lamp, the words, the overlay and the preset) and of today's seven scenes' places,
 spots, rounds and `can` lists; it reads clean, signed and unsigned, at the deepest nesting allowed.
-The test refuses one signed copy of it for each rule above, 525 of them, each with the step and the
+The test refuses one signed copy of it for each rule above, 548 of them, each with the step and the
 exact reason it expects; accepts each limit at its edge; checks the costs the counts step reports
 against figures worked by hand; signs a 1.1 pack with a key made for the run and checks that the
 signature holds over a pretty-printed, minified or reordered copy and breaks at a changed value in

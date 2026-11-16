@@ -197,8 +197,9 @@ house and the smithy on the two compiled from the pack: their paint and draw aga
 stored records with the knight from code and from the base pack, the same calls as the code scenes
 in the base pack's other looks, their backdrop keys and rests, the pegs, the hot tip of a weapon
 without a blade, and a shield that does not fit the house's wall. `tests/web/world-cast.test.js`
-draws the fly and the goblin from the medieval world's cast beside the code's, call for call: the
-fly's frames and what falls, the goblin's six pose canvases, and the engine's frames while flies
+draws the fly, the goblin and the three monarchs from the medieval world's cast beside the code's,
+call for call: the fly's frames and what falls, the goblin's six pose canvases, each monarch in 55
+looks of skin, hair and robe, and the engine's frames while flies
 come, are swatted and fall and through the goblin's whole event, with the cast from the pack and
 from code; and checks where the cast is drawn from, a member that fails to compile and what the
 compiler refuses in the cast. `tests/web/world-props.test.js`
@@ -232,7 +233,8 @@ flies and the other props of the events are recorded apart. It compares 1 803 re
 `tests/web/fixtures/scenes/`, one file per scene and one for those props (`cast.json`). Then it draws
 each scene the medieval world's pack holds (today every scene but the court, 1 260 records) a second time, compiled
 from the pack and with the devices from its prop set, against the same stored records, and the
-cast the pack gives against `cast.json`; checks that the compiled scene's backdrop key tells
+cast the pack gives against `cast.json`, and the court, still a code scene, with its monarchs from
+the pack's patrons against `court.json`; checks that the compiled scene's backdrop key tells
 the recorded states apart exactly as the code scene's does; and checks that it gives the code scene's
 interface. All of it takes about 39 seconds. A failure names the scene, the state, the size, the record and the first call that
 differs, with what `HEAD` draws there and what was drawn; without git, the block of 1 024 calls
@@ -254,7 +256,7 @@ the scenes concerned the code scenes with its console line, the predicates and t
 keyframes' tracks, the rests, the rest mark and the pegs, and
 that what the compiler does not build yet is refused by name.
 
-The repository's own page draws the knight from the base pack, and every scene but the court, every device, the goblin and the fly from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
+The repository's own page draws the knight from the base pack, and every scene but the court, every device and the cast from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
 and the scene test check both paths. A deployed copy draws from each pack while it ships signed, and
 from code otherwise; to shoot the code path as well, take a second pair of sets from a copy of
 `web/` whose `kw-version` is not `dev` and whose packs carry no signature; [page.md](./page.md#checks)

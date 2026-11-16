@@ -470,6 +470,16 @@
     }
   };
 
+  /* fringe: a fringe of hair swept across the brow from the left, one polygon from p filled by rows
+     in colour, as the court's monarch C wears it. Its lower edge turns in where the sweep ends, so
+     it is not convex, which a pack's polygon must be. */
+  const FRINGE = [[-37, 4], [14, 0], [4, 12], [-20, 18], [-37, 24]];
+  const fringe = {
+    fields: { p: { kind: 'point' }, colour: { kind: 'colour' } },
+    cost: () => B.poly(24),
+    draw(f) { const [x, y] = f.p; poly(FRINGE.map(([dx, dy]) => [x + dx, y + dy]), f.colour); }
+  };
+
   /* crust: a pie's top seen from the side and a little above, the middle of its rim at p: the rim
      a flat ellipse rim[0] across and rim[1] high either side of p, and behind its middle a dome
      dome[0] across and dome[1] high, outlined in colour. The crust shades from crust[0], lit from
@@ -538,7 +548,7 @@
   /* ---- The library ------------------------------------------------------------------------------ */
 
   /* The effects, in the order the world format lists them (pack.js names the same list). */
-  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, flutes, crust, fingers, burst };
+  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, flutes, crust, fingers, fringe, burst };
   const NAMES = Object.freeze(Object.keys(TABLE));
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const SCALAR = ['offset', 'length', 'term'];

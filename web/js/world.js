@@ -3,7 +3,7 @@
    docs/page.md, and puts the scenes of kw.medieval in place of the code scenes of the same names;
    turns each kind of its prop set into a drawing of a device, which it puts in KW.kinds in place
    of the code's (KW.props.KINDS); and turns the members of its cast into the drawings the engine
-   asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS and FOES).
+   asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS, FOES and PATRONS).
 
    Nothing in a pack runs. A scene compiles into frozen records: each shape a kind from SHAPES, each
    mark one of MARKS, each predicate one the engine evaluates in holds(), each effect a name in
@@ -33,8 +33,10 @@
      hot tip of the blade on the anvil);
    - the kinds of a prop set: their still and moving shapes in both states, the engine's lamp at a
      point, and a lamp of the kind's own from two stamps of pix shapes, as the raspberry is;
-   - the critters of the cast: their two frames and what falls, with a group's alpha; and its foes:
-     their poses, from parts shared between them, and their measures.
+   - the critters of the cast: their two frames and what falls, with a group's alpha; its foes:
+     their poses, from parts shared between them, and their measures; and its patrons: their still
+     parts and mouths at their anchors, in the user's skin, hair and robe, with the colours mixed,
+     chosen by contrast, and drawn and dressed.
    Each later step adds rows to these tables. */
 (function (KW) {
   'use strict';
@@ -105,6 +107,8 @@
       // the down lamp's reds, which a stamp may name, as the engine spells them
       const lamp = LAMP_RED.exec(v);
       if (lamp && env.stamp && KW.props && has(KW.props.LAMP_REDS, lamp[1])) return KW.props.LAMP_REDS[lamp[1]];
+      // a set a patron binds, or a palette of its own, in the look it is compiled for
+      if (m && env.member && env.member.names(m[1])) return env.member.ref(m[1], m[2], path);
       if (m && m[1] === 'pick' && env.picks && has(env.picks, m[2])) {
         if (env.inBand || env.inEffect) throw notBuilt(path, env.inBand ? 'a pick inside a band list' : 'a pick in an effect');
         return { pick: m[2] };
@@ -119,7 +123,8 @@
       throw notBuilt(path, 'the colour ' + quote(v));
     }
     if (isObj(v) && has(v, 'rgb')) return rgba(v);
-    throw notBuilt(path, 'a mixed colour');
+    if (env.member && isObj(v) && (has(v, 'mix') || has(v, 'contrast'))) return env.member.colour(v, path);
+    throw notBuilt(path, isObj(v) && has(v, 'contrast') ? 'a contrast colour' : 'a mixed colour');
   }
   function fill(v, path, env, depth) {
     if (!Array.isArray(v)) return colour(v, path, env, depth);
@@ -735,7 +740,7 @@
      a name that is not a pose gives stand. A pose is its parts, each a list of shapes shared between
      poses and compiled once, in the order it lists them, then its own shapes. The measures and the
      crown are the pack's, and exit names one of the engine's exits, which the foe player keeps. */
-  const ROLE_SETS = { critter: 'critters', foe: 'foes' };
+  const ROLE_SETS = { critter: 'critters', foe: 'foes', patron: 'patrons' };
   function compileCritter(pack, id, v) {
     const path = 'cast.' + id, env = Object.assign(placedEnv(pack, 'the cast'), { groups: v.groups || null });
     const alphaOf = g => (g !== null && isObj(v.alpha) && has(v.alpha, g) ? v.alpha[g] : 1);
@@ -774,7 +779,101 @@
     return Object.freeze({ pose, poses: Object.freeze(FOE_POSES.slice()), anchor: Object.freeze([ax, ay]), size: Object.freeze([w, h]), h: v.h, w: v.w, mid: v.mid,
       crown: freeze(v.crown.map(q => [q[0], q[1]])), exit: v.exit, from: MEDIEVAL + '#' + (++compiles) });
   }
-  const CAST_COMPILERS = { critter: compileCritter, foe: compileFoe };
+  /* A patron compiles to { draw, mouth, drawn, from } with the interface of KW.props.PATRONS, which
+     court.js gives: draw(x, by, look) draws its still parts with the seat at (x, by), mouth(x, by,
+     open, look) its state open or shut, and drawn is its own hair and robe colours, from its own of
+     the sets bound to the user's hair and tabard. Each shape is drawn moved to the anchor its at
+     names, or its part's (a state's: the seat). look is { skin, hair, robe }, as the court has
+     checked them from s.patron, each null for the patron's own. A look is compiled once, the first
+     time it is drawn, and kept: each bound set takes the user's colours where the look gives the
+     user's set, its own otherwise, and the patron's palettes resolve against them, a colour drawn
+     and dressed to its dressed colour while the look gives the set it names and to its drawn one
+     otherwise, a mix as toward() in court.js mixes, a contrast as browOn() chooses. */
+  const LOOKS_MAX = 16;
+  /* The user's colours a look gives a set of each kind, by entry, or null. */
+  const USER_PICK = {
+    skin: L => (L.skin ? { face: L.skin.face, cheek: L.skin.cheek } : null),
+    hair: L => (L.hair ? { 0: L.hair.bands[0], 1: L.hair.bands[1], 2: L.hair.bands[2], brow: L.hair.brow } : null),
+    tabard: L => (L.robe ? { 0: L.robe.bands[0], 1: L.robe.bands[1], 2: L.robe.bands[2], 3: L.robe.bands[3] } : null),
+    plume: () => null
+  };
+  const hexOf = n => '#' + n.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  const rgbOf = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+  const mixHex = (a, b, k) => { const to = rgbOf(b); return hexOf(rgbOf(a).map((v, i) => v + (to[i] - v) * k)); };
+  /* The contrast of two colours, as WCAG reckons it, from 1 to 21, as court.js reckons it. */
+  const lum = c => { const [r, g, b] = rgbOf(c).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+  const wcag = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+  /* What colour() asks of a patron in the look L: the names of its bound sets and palettes, a
+     reference to one of them, and a mix or a contrast. */
+  function memberOf(v, L) {
+    const sets = isObj(v.sets) ? v.sets : {}, pal = isObj(v.palettes) ? v.palettes : {}, vals = {}, chosen = {};
+    for (const n of Object.keys(sets)) {
+      const pick = has(USER_PICK, sets[n]) ? USER_PICK[sets[n]](L) : null, own = Object.assign({}, v.own[n]);
+      chosen[n] = !!pick;
+      if (pick) for (const e of Object.keys(pick)) if (pick[e] !== undefined) own[e] = pick[e];
+      vals[n] = own;
+    }
+    const copy = x => (Array.isArray(x) ? x.map(b => [b[0], b[1]]) : x);
+    function ref(set, entry, path) {
+      if (has(vals, set)) {
+        if (!has(vals[set], entry)) throw new Error(path + ': the bound set ' + quote(set) + ' gives no ' + quote(entry));
+        return copy(vals[set][entry]);
+      }
+      if (!has(pal[set], entry)) throw new Error(path + ': the palette ' + quote(set) + ' gives no ' + quote(entry));
+      const x = pal[set][entry];
+      if (isObj(x) && has(x, 'drawn')) return chosen[x.set] ? one(x.dressed, at(path, 'dressed')) : one(x.drawn, at(path, 'drawn'));
+      if (Array.isArray(x)) return x.map((b, i) => [b[0], one(b[1], idx(path, i))]);
+      return one(x, path);
+    }
+    /* One colour: hex, a reference to @base or a bound set, a mix or a contrast. */
+    function one(c, path) {
+      if (typeof c === 'string') {
+        if (c[0] === '#') return c;
+        const m = REF.exec(c);
+        if (m && m[1] === 'base' && has(KW.pack.BASE, m[2])) return KW.pack.BASE[m[2]];
+        if (m && (has(vals, m[1]) || has(pal, m[1]))) return ref(m[1], m[2], path);
+        throw notBuilt(path, 'the colour ' + quote(c));
+      }
+      if (isObj(c) && has(c, 'rgb')) return rgba(c);
+      if (isObj(c) && has(c, 'mix')) return mixHex(one(c.mix[0], path), one(c.mix[1], path), c.k);
+      if (isObj(c) && has(c, 'contrast')) {
+        const a = one(c.contrast[0], path), b = one(c.contrast[1], path), o = one(c.on, path);
+        const on = Array.isArray(o) ? o[Math.min(has(c, 'band') ? c.band : 0, o.length - 1)][1] : o;
+        return wcag(a, on) > wcag(b, on) ? a : b;
+      }
+      throw notBuilt(path, 'the colour ' + JSON.stringify(c));
+    }
+    return { names: n => has(vals, n) || has(pal, n), ref, colour: one };
+  }
+  const lookKey = L => JSON.stringify([L.skin ? [L.skin.face, L.skin.cheek] : null, L.hair ? [L.hair.bands, L.hair.brow] : null, L.robe ? L.robe.bands : null]);
+  function compilePatron(pack, id, v) {
+    const path = 'cast.' + id, sets = isObj(v.sets) ? v.sets : {}, A = v.anchors;
+    for (const n of Object.keys(sets)) if (!(isObj(v.own) && has(v.own, n))) throw notBuilt(at(at(path, 'own'), n), 'a bound set without colours of its own');
+    const looks = new Map();
+    function compiled(look) {
+      const L = isObj(look) ? look : {}, k = lookKey(L);
+      let c = looks.get(k);
+      if (!c) {
+        const env = Object.assign(placedEnv(pack, 'the cast'), { member: memberOf(v, L) });
+        const list = (shapes, p, part) => freeze(shapes.map((s, i) => ({ c: shape(s, idx(p, i), env), at: A[has(s, 'at') ? s.at : part] })));
+        c = { still: v.still.map((pt, i) => list(pt.shapes, at(idx(at(path, 'still'), i), 'shapes'), pt.at)),
+          shut: list(v.states.shut, at(at(path, 'states'), 'shut'), 'seat'), open: list(v.states.open, at(at(path, 'states'), 'open'), 'seat') };
+        if (looks.size >= LOOKS_MAX) looks.clear();
+        looks.set(k, c);
+      }
+      return c;
+    }
+    // the patron's own look, compiled now, so that what this engine does not build is found at start
+    compiled({ skin: null, hair: null, robe: null });
+    const drawList = (list, x, by) => { const E = named(0, null); for (const r of list) drawShape(r.c, E, x + r.at[0], by + r.at[1]); };
+    const ownOf = (kind, n) => { const s = Object.keys(sets).find(k => sets[k] === kind); return s ? Array.from({ length: n }, (_, i) => v.own[s][i]) : []; };
+    return Object.freeze({
+      draw(x, by, look) { for (const l of compiled(look).still) drawList(l, x, by); },
+      mouth(x, by, open, look) { drawList(compiled(look)[open ? 'open' : 'shut'], x, by); },
+      drawn: Object.freeze({ hair: Object.freeze(ownOf('hair', 3)), robe: Object.freeze(ownOf('tabard', 4)) }), from: MEDIEVAL + '#' + (++compiles)
+    });
+  }
+  const CAST_COMPILERS = { critter: compileCritter, foe: compileFoe, patron: compilePatron };
   /* The member id of the loaded pack's cast, compiled. Throws when it names something this engine
      does not build. */
   function compileMember(pack, id) {
@@ -791,12 +890,13 @@
     return has(cast[set], name) ? [set, name] : null;
   }
   /* KW.cast: the engine's supporting cast, by role, as the code gives it (the critters of
-     KW.props.CRITTERS and the foes of KW.props.FOES): the members the pack's cast gives once start()
-     has compiled them, and the code's for the rest. */
-  const cast = KW.cast = { critters: {}, foes: {} };
+     KW.props.CRITTERS, the foes of KW.props.FOES and the patrons of KW.props.PATRONS, which court.js
+     gives): the members the pack's cast gives once start() has compiled them, and the code's for
+     the rest. */
+  const cast = KW.cast = { critters: {}, foes: {}, patrons: {} };
   function restoreCast() {
     const P = KW.props || {};
-    for (const [set, code] of [['critters', P.CRITTERS], ['foes', P.FOES]]) {
+    for (const [set, code] of [['critters', P.CRITTERS], ['foes', P.FOES], ['patrons', P.PATRONS]]) {
       for (const k of Object.keys(cast[set])) delete cast[set][k];
       Object.assign(cast[set], code || {});
     }

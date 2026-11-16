@@ -10,13 +10,13 @@
   const ROBE = [[.12, C.R0], [.5, C.R1], [.85, C.R2], [1, C.R3]];
   const FUR = [[.3, C.W], [.8, C.S1], [1, C.S2]];
   /* The monarch's skin as drawn by default, the face bands and the cheek: the same colours as the
-     base pack's warm skin. s.monSkin replaces them with another of its skin swatches. */
+     base pack's warm skin. s.patron.skin replaces them with another of its skin swatches. */
   const SKIN = { face: [[.14, C.F0], [.72, C.F1], [1, C.F2]], cheek: '#f3a892' };
   const KX = 820, KB = 505;
   /* The monarch's eye line and mouth, in grid pixels above the seat. */
   const EY = 208, MY = 193;
 
-  /* The three monarchs, chosen by the settings (s.mon): A a young king, B a young queen
+  /* The three monarchs, chosen by the settings (s.patron.id): A a young king, B a young queen
      and C a young monarch who is neither. All three sit the same way on the same throne, with the
      same hands, face and mouth. Each has its own robe, hair, crown and what it holds:
      robe and shade colour the robe and the far sleeve, hair the hair across its width, dark and
@@ -137,7 +137,9 @@
   function crownC(x, by) {
     const b = by - 258;
     ell(x, b + 4, 38, 30, C.K, null, b + 4); ell(x, b + 4, 35, 27, GOLD, null, b + 4); ell(x, b + 5, 30, 22, [[.3, C.R1], [.7, C.R2], [1, C.R3]], null, b + 4);
-    Rh(x - 5, b - 25, 10, 30, C.K); Rh(x - 3, b - 23, 6, 28, GOLD);
+    // the post of the arch, in the outline's colour: it was given the gold's band list, which a canvas
+    // takes for no colour, so it has always shown in the colour set before it
+    Rh(x - 5, b - 25, 10, 30, C.K); Rh(x - 3, b - 23, 6, 28, C.K);
     for (const [dx, dy] of [[-22, -12], [22, -12], [0, -14]]) { ell(x + dx, b + dy, 3, 3, C.K); ell(x + dx, b + dy, 2, 2, C.W); }
     ell(x, b - 30, 7, 7, C.K); ell(x, b - 30, 5, 5, '#7fe9ff'); Rh(x - 2, b - 33, 2, 2, C.W);
     band(x, b);
@@ -225,7 +227,7 @@
     rrect(640, 512, HR - 640 + 8, 20, 2, C.K); Rv(643, 514, HR - 643, 16, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
     rrect(664, 497, HR - 664 + 8, 18, 2, C.K); Rv(667, 499, HR - 667, 13, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
     Rv(700, 499, 240, 13, [[.3, C.R1], [1, C.R2]]); Rv(690, 514, 260, 16, [[.3, C.R1], [1, C.R2]]);
-    throne(KX, KB); monarch(KX, KB, dressed(s), skinOf(s));
+    throne(KX, KB); patronOf(s).draw(KX, KB, lookOf(s));
     // the small table with the pie
     P.tableHD(110, 470, 90, 60);
   }
@@ -236,21 +238,24 @@
     for (let x = Math.floor((HL - 50) / 480) * 480 + 50; x < HR; x += 480) { glow(x + 25, 260, 100, '#ffb000', .09 + .025 * Math.sin(t / 140 + x)); E.flame.draw({ p: [x + 25, 280], size: .58, dt: x }, t); }
     KW.devices.draw(t, s);
     const monarchTalks = Math.floor(t / 3200) % 2 === 1;
-    mouth(KX, KB, monarchTalks && Math.floor(t / 230) % 2 === 1);
+    patronOf(s).mouth(KX, KB, monarchTalks && Math.floor(t / 230) % 2 === 1, lookOf(s));
     if (monarchTalks) K.speech(672, 180, t, true);
     s.o.mouth = monarchTalks ? 'flat' : 'talk'; s.o.speak = !monarchTalks;
   }
 
-  /* The skin the monarch is drawn in: s.monSkin when it holds a face of three bands and a cheek,
-     as each of the base pack's skin swatches does, and the court's own otherwise. */
+  /* The look the patron is drawn in, from the frame's s.patron: { skin, hair, robe }, each what
+     s.patron gives where it can be read, as below, and null for the monarch's own otherwise. */
   const isColour = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
-  function skinOf(s) {
-    const k = s.monSkin;
-    if (!k || !Array.isArray(k.face) || k.face.length !== 3 || !isColour(k.cheek)) return SKIN;
-    if (!k.face.every(b => Array.isArray(b) && typeof b[0] === 'number' && isColour(b[1]))) return SKIN;
-    return k;
+  const stateOf = s => (s && s.patron) || {};
+  function lookOf(s) {
+    const p = stateOf(s), sk = p.skin;
+    const skinOk = !!sk && Array.isArray(sk.face) && sk.face.length === 3 && isColour(sk.cheek) && sk.face.every(b => Array.isArray(b) && typeof b[0] === 'number' && isColour(b[1]));
+    return { skin: skinOk ? sk : null, hair: p.hair && bandsOk(p.hair.bands, 3) ? p.hair : null, robe: p.robe && bandsOk(p.robe.bands, 4) ? p.robe : null };
   }
-  /* The monarch's hair and robe: s.monHair and s.monRobe, from the base pack's hair and tabard
+  /* The skin the monarch is drawn in: the look's skin when it holds a face of three bands and a
+     cheek, as each of the base pack's skin swatches does, and the court's own otherwise. */
+  const skinOf = look => look.skin || SKIN;
+  /* The monarch's hair and robe: the look's hair and robe, from the base pack's hair and tabard
      swatches, laid over the court's own ramps. A hair swatch's three bands become the hair's three,
      and its darkest band, darkened, the darkest strands (to 0.7) and the brows (to 0.85), which is
      how the court's own hair is shaded; where those brows would hardly show on the skin they are
@@ -262,9 +267,9 @@
   const rgb = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
   const toward = (c, to, k) => hexOf(rgb(c).map((v, i) => v + (to[i] - v) * k));
   const bandsOk = (b, n) => Array.isArray(b) && b.length === n && b.every(isColour);
-  function hairOf(s) {
-    const k = s.monHair;
-    if (!k || !bandsOk(k.bands, 3)) return null;
+  function hairOf(look) {
+    const k = look.hair;
+    if (!k) return null;
     const [c0, c1, c2] = k.bands, dim = toward(c2, [0, 0, 0], .15);
     const browOn = sk => (contrast(c0, sk.face[1][1]) > contrast(dim, sk.face[1][1]) ? c0 : dim);
     return { hair: [[.25, c0], [.7, c1], [1, c2]], dark: toward(c2, [0, 0, 0], .3), brow: dim, browOn, sheen: toward(c0, [255, 255, 255], .25) };
@@ -272,19 +277,39 @@
   /* The contrast of two colours, as WCAG reckons it, from 1 to 21. */
   const lum = c => { const [r, g, b] = rgb(c).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
   const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
-  function robeOf(s) {
-    const k = s.monRobe;
-    if (!k || !bandsOk(k.bands, 4)) return null;
+  function robeOf(look) {
+    const k = look.robe;
+    if (!k) return null;
     const [c0, c1, c2, c3] = k.bands;
     return { robe: [[.12, c0], [.5, c1], [.85, c2], [1, c3]], shade: [[.3, c1], [1, c3]] };
   }
-  /* The monarch s.mon names, in the hair and robe s gives, or exactly as drawn when it gives none. */
-  function dressed(s) {
-    const m = MONARCHS[s.mon] || MONARCHS.a, h = hairOf(s), r = robeOf(s);
+  /* The monarch m in the hair and robe the look gives, or exactly as drawn when it gives none. */
+  function dressed(m, look) {
+    const h = hairOf(look), r = robeOf(look);
     return h || r ? Object.assign({}, m, h, r) : m;
   }
+
+  /* ---- The patrons --------------------------------------------------------------------------
+     The three monarchs as the engine's cast has them (docs/page.md, The cast), by id:
+       draw(x, by, look)  the monarch on the throne, x its middle and by the seat of the dais, in
+                          the look { skin, hair, robe } (each null for its own), all but the mouth
+       mouth(x, by, open, look)  the mouth, open or shut, drawn each frame as the monarch talks
+       drawn              the colours it is drawn in, { hair, robe }, for the settings' "As drawn"
+     The court draws the patron KW.cast.patrons gives (world.js), the code's own on a page without
+     the compiler, and these are the fallback. */
+  const PATRONS = {};
+  for (const id of Object.keys(MONARCHS)) {
+    const m = MONARCHS[id];
+    PATRONS[id] = Object.freeze({ draw: (x, by, look) => monarch(x, by, dressed(m, look), skinOf(look)), mouth, drawn: Object.freeze({ hair: m.hair.map(b => b[1]), robe: m.robe.map(b => b[1]) }) });
+  }
+  P.PATRONS = Object.freeze(PATRONS);
+  /* The patron s.patron names, 'a' when it names none of the monarchs: from KW.cast where the world
+     gives it, from the code's own otherwise. */
+  const idOf = s => (Object.prototype.hasOwnProperty.call(PATRONS, stateOf(s).id) ? stateOf(s).id : 'a');
+  const patronFor = id => { const set = KW.cast && KW.cast.patrons; return (set && set[id]) || PATRONS[id]; };
+  const patronOf = s => patronFor(idOf(s));
   /* The colours each monarch is drawn in, for the settings screen's "As drawn" choices. */
-  const drawn = mon => { const m = MONARCHS[mon] || MONARCHS.a; return { hair: m.hair.map(b => b[1]), robe: m.robe.map(b => b[1]) }; };
+  const drawn = mon => { const p = patronFor(Object.prototype.hasOwnProperty.call(PATRONS, mon) ? mon : 'a'); return { hair: p.drawn.hair.slice(), robe: p.drawn.robe.slice() }; };
   /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
@@ -298,10 +323,12 @@
   };
 
   /* The monarch, the skin, the hair and the robe are painted into the backdrop, so every choice is
-     part of its key. */
+     part of its key, and so is where the patron is drawn from: a patron from a pack carries from,
+     which keeps it apart from the code's drawing of it and from another compile's. */
   const keyOf = s => {
-    const k = (MONARCHS[s.mon] ? s.mon : 'a') + '|' + (skinOf(s) === SKIN ? '' : s.monSkin.id);
-    const h = hairOf(s) ? s.monHair.id : '', r = robeOf(s) ? s.monRobe.id : '';
+    const id = idOf(s), p = patronFor(id), look = lookOf(s);
+    const k = (p.from ? id + '@' + p.from : id) + '|' + (look.skin ? look.skin.id : '');
+    const h = look.hair ? look.hair.id : '', r = look.robe ? look.robe.id : '';
     return h || r ? k + '|' + h + '|' + r : k;
   };
 

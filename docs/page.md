@@ -446,19 +446,20 @@ pack's `hosts`, and `foeZone` and, where the foe has a wall, `wallAt` from its `
 | `here` | where the knight stands in the scene's `rounds`, `{ act, el }` with `el` the ms spent there, or `null` |
 | `inBed`, `helmOff` | whether the knight is in bed, and whether the helmet is off |
 | `strike` | free for a scene's `act` to pass to its `draw` (the smithy's hammer blow) |
-| `mon` | the monarch at court, from the engine's input (the settings): `a`, `b` or `c` |
-| `monSkin` | the monarch's skin, `{ id, face, cheek }` from one of the base pack's skin swatches, or `null` for the court's own, which is the warm swatch's colours |
-| `monHair` | the monarch's hair, `{ id, bands, brow }` from one of the base pack's hair swatches (its three bands and its brow), or `null` for each monarch's own |
-| `monRobe` | the monarch's robe, `{ id, bands }` from one of the base pack's tabard swatches (its four bands), or `null` for each monarch's own |
+| `patron` | the patron at court, the monarch, from the engine's input (the settings): `{ id, skin, hair, robe }` |
+| `patron.id` | `a`, `b` or `c` |
+| `patron.skin` | the monarch's skin, `{ id, face, cheek }` from one of the base pack's skin swatches, or `null` for the court's own, which is the warm swatch's colours |
+| `patron.hair` | the monarch's hair, `{ id, bands, brow }` from one of the base pack's hair swatches (its three bands and its brow), or `null` for each monarch's own |
+| `patron.robe` | the monarch's robe, `{ id, bands }` from one of the base pack's tabard swatches (its four bands), or `null` for each monarch's own |
 
 Some scenes reach further. The house draws the sleeper's head with `KW.knight.head`, the helmet on
 the stool and the weapon on the pegs with `KW.knight.rest`, and its Zs at night in `over`. The
-court paints the monarch that `s.mon` names, in the skin `s.monSkin` gives and the hair and robe
-`s.monHair` and `s.monRobe` give, into its backdrop, keyed on all four (`b|deep`, `a|` for the
+court paints the patron that `s.patron.id` names, in the skin `s.patron.skin` gives and the hair
+and robe `s.patron.hair` and `s.patron.robe` give, into its backdrop, keyed on all four (`b|deep`, `a|` for the
 court's own skin, and `b|deep|silver|teal` or `c|||wine` once a hair or a robe is given), sets the
 knight talking in `draw` and draws the monarch's speech bubble with `KW.knight.speech`. It also
-gives `drawn(mon)`, each monarch's own hair and robe colours, for the settings screen's "As drawn"
-choices. How a swatch's bands become the monarch's is in the comment above `hairOf` in `court.js`. The smithy's `act`
+gives `drawn(mon)`, each monarch's own hair and robe colours, from its patron, for the settings
+screen's "As drawn" choices. The monarch itself is the patron's drawing ([The cast](#the-cast)). How a swatch's bands become the monarch's is in the comment above `hairOf` in `court.js`. The smithy's `act`
 sets the hammer and `strike`, its `paint` lays the weapon across the anvil with `KW.knight.rest`,
 and its `draw` puts the hot tip on the blade. The yard keeps
 the time the dummy was last struck and swings the knight's sword in `act`.
@@ -522,6 +523,7 @@ beside itself the first time a pack names an effect.
 | `steam` | `p`, `n` (3), `gap` (14), `period` (1800), `sway` ([7, 5]), `rise` (46), `r` ([4, 7]), `a` (0.8), `colour` | an ell a puff | the pie, while up |
 | `flutes` | `p`, `n` (6), `top` (5.3), `bottom` (4.5), `h` (18), `hw` (0.6), `of` (1 to 33, one a groove from the left) | a strip a groove | the pie's dish, up and down: the grooves stand at fractions of a pixel a pack's eighths cannot give |
 | `crust` | `p`, `rim` ([38, 9]), `dome` ([32, 21]), `crimp` (35), `crust` (four colours), `filling` (three), `colour` (K) | a fill a pixel of its top, painted in one pass, and three a crimp | the pie's top, while up: 83 pixels across, wider than a pix shape may be |
+| `fringe` | `p`, `colour` | a fill a row, 25 rows | monarch C's fringe in the medieval world's cast: its lower edge turns in, so no convex polygon fills its rows alike; `court.js` keeps its own polygon |
 | `fingers` | `p`, `a` (the angle, 0 up), `reach` (9), `spread` (0.65), `r`, `colour` | an ell a finger | the goblin's hands in the medieval world's cast: the fingers stand at fractions of a pixel a pack's eighths cannot give; `props.js` keeps its own loop |
 | `burst` | `p`, `n` (7), `piece` (`spark` or `straw`), `of` | sparks: a glow and 4 a spark; straw: a strip a piece | smithy (sparks), yard (straw) |
 
@@ -779,8 +781,22 @@ The fly's are `flyHD` and `deadFlyHD`. `KW.props.FOES` holds the code's foes by 
 The engine draws from `KW.cast.critters` and `KW.cast.foes`, which have the same interfaces: the
 compiler (`world.js`) fills them with the members the medieval world's cast gives, and keeps the
 code's for the rest ([worlds.md](./worlds.md#the-cast)). On a page without the compiler the engine
-reads `KW.props.CRITTERS` and `KW.props.FOES` itself. The monarchs are still drawn by the court's own
-code.
+reads `KW.props.CRITTERS` and `KW.props.FOES` itself.
+
+The monarchs are patrons. `court.js` gives the code's, `KW.props.PATRONS`, by id (`a`, `b`, `c`),
+each with
+
+| Field | Is |
+|---|---|
+| `draw(x, by, look)` | the monarch on the throne, `x` its middle and `by` the seat of the dais, in the look `{ skin, hair, robe }` (each `null` for its own), all but the mouth |
+| `mouth(x, by, open, look)` | the mouth, open or shut, drawn each frame as the monarch talks |
+| `drawn` | its own hair and robe colours, `{ hair, robe }`, for the settings' "As drawn" |
+
+The court draws the patron `KW.cast.patrons` gives: the medieval world's cast's, compiled by
+`world.js`, and the code's own on a page without the compiler or when the pack is not read. It
+checks `s.patron`'s colours before it hands them on, as it always has, and puts where the patron
+comes from into its backdrop's key (`b@kw.medieval#3|deep` for a patron from the pack, `b|deep` for
+the code's).
 
 ## Settings
 
@@ -838,7 +854,7 @@ when it is one-handed (`sword_and_shield`, `mace_and_shield`), the shield `shiel
 set beside a two-handed weapon is kept and carried nowhere. Each other gear key brings the base
 pack's item of its slot (`KW.settings.ITEMS`: `helmet` "kettle" is `kw.base/helm.kettle`, `feet`
 "shoes" `kw.base/boots.shoes`), and `back` "none" brings nothing. `engineInput(r, pack, ownMs)` gives
-the engine's `turns`, `turnMs`, `mon`, `monSkin`, `monHair`, `monRobe` and `scenes` (see
+the engine's `turns`, `turnMs`, `patron` (`{ id, skin, hair, robe }`) and `scenes` (see
 [The engine's input](#the-engines-input)); `turnMs` is `ownMs`, the demo's minute or live mode's
 ten, while no level sets `minutes`, the monarch's colours are `null` while no level sets them, and
 `scenes` holds only the conditions a level above the page's own sets, so with nothing set it is
@@ -1036,8 +1052,8 @@ the page looks exactly as before there were settings.
 
 `KW.engine.input` (see the head of `engine.js`) takes from the settings `turns`, the quiet scenes
 that take turns, in order (all four, `TURNS`, when it is left out or empty), `turnMs`, how long
-each lasts, `mon`, the monarch, `monSkin`, `monHair` and `monRobe`, the monarch's skin, hair and
-robe, which the engine passes to the scenes in `s`, and `scenes`, the scene chosen for a condition
+each lasts, `patron`, the monarch as `{ id, skin, hair, robe }`, its id and its skin, hair and
+robe, which the engine passes to the scenes in `s.patron`, and `scenes`, the scene chosen for a condition
 by its id. `KW.engine.sceneOf(w, t)` gives the scene the winning condition `w` plays in: the one
 `scenes` names for it when that scene lists the condition in its `can`, else the condition's own,
 else the quiet scene of the moment. The frame and the events both ask it. The demo's `apply()` and `main.js` add them with `KW.ui.extras(ownMs)` whenever they
@@ -1216,7 +1232,8 @@ the devices ([worlds.md](./worlds.md#the-devices)).
 `tests/web/world-cast.test.js` draws the fly from the medieval world's cast beside the code's, both
 frames and what falls, at whole and fractional points, and runs the engine's frames every 20 ms
 while six flies fly in, hover, are swatted and fall, with the cast from the pack and from code, every
-call of every frame compared. It holds the goblin's six pose canvases from the pack to the code's,
+call of every frame compared. It draws each monarch from the pack beside the code's in 55 looks
+each, call for call, every skin with every hair among them. It holds the goblin's six pose canvases from the pack to the code's,
 call for call, and runs the goblin's whole event every 20 ms at the battlement and at the camp from
 both; with the rest of what the compiler does for the cast ([worlds.md](./worlds.md#the-cast)).
 `tests/web/foe.test.js` loads no compiler, so it checks the code's goblin;
@@ -1376,7 +1393,8 @@ and 4700 ms, which catch the hammer striking and raised, the monarch talking wit
 shut, the question marks shown and hidden, the WAN's sparks and the sleeper's breathing, or at the
 moments of the dummy's wobble. The goblin's six poses, the flies, the hole, the clods, the smoke, the
 sparkles, the crate and its parachute are recorded once, apart (`cast`). The fly and the goblin of
-the medieval world's cast are drawn again from the pack against the same records.
+the medieval world's cast are drawn again from the pack against the same records, and the court,
+still a code scene, is drawn again with its monarchs from the pack's patrons against its own.
 
 Each scene the medieval world's pack gives (today every scene but the court) is then drawn again, compiled from the
 pack by `world.js` as a `dev` page compiles it, in the same states, at the same sizes and moments,
