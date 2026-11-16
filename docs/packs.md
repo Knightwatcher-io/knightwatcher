@@ -1360,8 +1360,7 @@ base pack's items falls back on any build.
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.6.0. Versions 0.1.0 (the cellar alone) to 0.5.0 were signed with `kw1`; 0.6.0
-ships unsigned until its signing run. It holds every scene as data, the three monarchs, the goblin
+`[1, 1]`, version 0.6.0. Versions 0.1.0 (the cellar alone) to 0.6.0 are signed with `kw1`. It holds every scene as data, the three monarchs, the goblin
 and the fly as its cast, the devices as the prop set `props.medieval`, the word set
 `words.medieval`, the overlay `overlay.phosphor`, the preset `world.medieval`, the stamps the scenes and devices use (the sconce,
 the barrel, the house's peg and the lamps of the pie, the owl, the cauldron and the flask) and one

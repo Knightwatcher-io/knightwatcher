@@ -12,8 +12,7 @@ W8 the words and the overlay: the page builds the quiet line and the events' cap
 parts the collector sends, in the world's words, and takes the colours and the font of the words
 over the scene from the world's overlay. Step W9 added the world itself as a preset, `world.medieval`,
 which the settings resolve against the parts set beside it, and the devices chosen per kind
-([Worlds as presets](#worlds-as-presets)). Everything is drawn from `kw.medieval` 0.6.0, which
-ships unsigned until its signing run.
+([Worlds as presets](#worlds-as-presets)). Everything is drawn from `kw.medieval` 0.6.0, signed.
 
 ## The medieval world's pack
 
@@ -179,7 +178,7 @@ then version 0.2.0, version 0.3.0, which adds the devices, and version 0.4.0, wh
 Version 0.5.0, which adds the words and the overlay, is signed too. Version 0.6.0 takes the
 raspberry off the pie and lights the pie through its lattice, with the last slice left in the dish
 when the Pi is down, draws the other devices as medieval things, the owl, the cauldron, the flask
-and the chest, and adds the preset `world.medieval`; it ships unsigned until its signing run. A copy changed after signing is
+and the chest, and adds the preset `world.medieval`, and is signed too. A copy changed after signing is
 refused by a deployed page until its next run: that page draws every scene, every device and the
 cast from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.
@@ -208,7 +207,7 @@ A scene is drawn from code when:
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
 
 Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn
-from the pack kw.medieval 0.6.0, unsigned` (or `signed`), written with `console.info`; the others
+from the pack kw.medieval 0.6.0, signed` (or `unsigned`), written with `console.info`; the others
 are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
 cellar failing to compile it is `the scenes battlement, camp, yard, smithy, house and court are drawn ...`, after
 the cellar's own line. Of two copies of `kw.medieval` the higher
