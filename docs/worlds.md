@@ -10,12 +10,13 @@ three monarchs, the goblin and the fly, and the words and the overlay. Step W5 o
 gave the scenes but the court, step W6 the devices, step W7 the cast and with it the court, and step
 W8 the words and the overlay: the page builds the quiet line and the events' captions from the
 parts the collector sends, in the world's words, and takes the colours and the font of the words
-over the scene from the world's overlay. Everything is drawn from `kw.medieval` 0.5.0, signed.
+over the scene from the world's overlay. Everything is drawn from `kw.medieval` 0.6.0, which ships
+unsigned until its signing run.
 
 ## The medieval world's pack
 
 `web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 1]`,
-version 0.5.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+version 0.6.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([packs.md](./packs.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
@@ -110,8 +111,9 @@ loads it after the base pack's. It holds:
 - three stamps, `sconce`, `barrel` and `peg`: the props `sconceHD` and `barrelHD` of `props.js`, the
   barrel at the 84 by 72 the cellar and the yard draw it, and one of the house's pegs, counted from
   where the weapon's frame puts it;
-- ten stamps for the devices: the raspberry's dark and lit drawings, up on the pie and down in its
-  dish (`berry.up.dark`, `berry.up.lit`, `berry.down.dark`, `berry.down.lit`), and the virtual
+- ten stamps for the devices: the pie's lamp's dark and lit drawings, up the filling in the gaps
+  of the lattice and down the filling of the last slice (`pie.up.dark`, `pie.up.lit`,
+  `pie.down.dark`, `pie.down.lit`), and the virtual
   machine's dots, the dark squares and the lights in them, up (`vm.up.dots-1` and `-2`,
   `vm.up.lights-1` and `-2`) and gone (`vm.gone.dots`, `vm.gone.lights`);
 - the word set `words.medieval`: the quiet line's parts as `ALL QUIET`, `{n} up`, `backup {at}`
@@ -150,7 +152,7 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 
 | Kind | Up | Gone |
 |---|---|---|
-| `pi` | 3 308 fills still, 424 moving | 545 still, 291 moving |
+| `pi` | 3 308 fills still, 411 moving | 633 still, 34 moving |
 | `camera` | 695 still | 615 still |
 | `machine` | 105 still | 251 still |
 | `vm` | 176 still | 96 still |
@@ -159,14 +161,16 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
 own lamp counts toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
 5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
-court counts none of them. The whole file weighs 234 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+court counts none of them. The whole file weighs 233 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
 then version 0.2.0, version 0.3.0, which adds the devices, and version 0.4.0, which adds the cast.
-Version 0.5.0, which adds the words and the overlay, is signed too. A copy changed after signing is
+Version 0.5.0, which adds the words and the overlay, is signed too. Version 0.6.0 takes the
+raspberry off the pie and lights the pie through its lattice, with the last slice left in the dish
+when the Pi is down, and ships unsigned until its signing run. A copy changed after signing is
 refused by a deployed page until its next run: that page draws every scene, every device and the
 cast from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.
@@ -195,7 +199,7 @@ A scene is drawn from code when:
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
 
 Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn
-from the pack kw.medieval 0.5.0, unsigned` (or `signed`), written with `console.info`; the others
+from the pack kw.medieval 0.6.0, unsigned` (or `signed`), written with `console.info`; the others
 are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
 cellar failing to compile it is `the scenes battlement, camp, yard, smithy, house and court are drawn ...`, after
 the cellar's own line. Of two copies of `kw.medieval` the higher
@@ -569,16 +573,18 @@ a scene's are and drawn moved to the base, and its lamp:
   (`KW.props.lampRim`) and its light after the moving ones (`KW.props.lampHD`), at the base plus
   the pair, on the loops of `LAMP` and `lampLevel`: green to black over 3.6 seconds while up, red to
   black over 2 while down.
-- **A lamp of the kind's own**, `{ at, box, lit, dark, light }`, as the pie's raspberry is: two
-  stamps of pix shapes, each pix shape at a whole point. Each is painted once, the first time it is
-  drawn, into a canvas the size of the two drawings together, the lit drawing laid over the dark one,
-  so that where the lit drawing is clear the lit canvas shows the dark drawing: the raspberry's lit
-  drawing holds only its drupelets, and its calyx and outline come from the dark one. Each frame, as
-  `raspberryHD` does, it draws a soft light of radius 24 round `at`, in `light` while up (the
-  engine's green if a kind gives none) and in the down lamp's red while gone, at 0.3 of the loop's
-  level, then the dark canvas, then the lit canvas at the loop's level. The two drawings must lie
-  inside `box` around `at`, or the kind is refused; the pie's box is 28 by 36, since its 27 by 34
-  berry sits 13 and 14 pixels either side of its middle and 18 above and 16 below.
+- **A lamp of the kind's own**, `{ at, box, lit, dark, light }`, as the pie's is: two stamps of
+  pix shapes, each pix shape at a whole point. Each is painted once, the first time it is drawn,
+  into a canvas the size of the two drawings together, the lit drawing laid over the dark one, so
+  that where the lit drawing is clear the lit canvas shows the dark drawing. Each frame, as
+  `pieLampHD` in `props.js` does, it draws a soft light of radius 24 round `at`, in `light` while up
+  (the engine's green if a kind gives none) and in the down lamp's red while gone, at 0.3 of the
+  loop's level, then the dark canvas, then the lit canvas at the loop's level. The two drawings must
+  lie inside `box` around `at`, or the kind is refused. The pie's lamp up is the filling in the gaps
+  of its lattice, 398 pixels over 56 by 23, at `[1, -30]` in a box of 56 by 26, in the engine's green
+  with no `light` of its own; its lamp gone is the filling of the last slice, 108 pixels over 30 by
+  10, at `[4, -24]` in a box of 30 by 10. Both drawings of each cover the same pixels, so the lit
+  canvas is the lit drawing alone.
 
 What the compiler does not build in a prop is refused with a reason, and that kind is drawn from
 code: a mark or a tile, an effect placed on the screen by a field of its own (a field of kind
@@ -602,9 +608,11 @@ counted from the base, in the order the code draws. Five things needed more than
   absolute x, are the same at every whole base;
 - the gone camera's lens glint is a strip 0.6 either side, which is not an eighth; the pack gives
   0.625, which fills the same pixels for every whole base, so the records are the code's;
-- the gone raspberry's drupelets have a shaded side, the down red at two thirds. The format reserves
-  it as `@lamp.downLo`, beside `@lamp.down` and `@lamp.downHi`, so that the gone lamp's lit drawing
-  still uses only the engine's reds ([packs.md](./packs.md#format-11)).
+- the gone pie's lamp has a shaded side, the down red at two thirds. The format reserves it as
+  `@lamp.downLo`, beside `@lamp.down` and `@lamp.downHi`, so that the gone lamp's lit drawing still
+  uses only the engine's reds ([packs.md](./packs.md#format-11)). The pie's lamp stamps and the last
+  slice, a pix shape of 34 by 16 in the gone still part, are written from the maps `pieShapes` in
+  `props.js` works out, the lamp's from the filling the `crust` effect paints.
 
 The camera's sunshade reaches x -34.78 at its far corner, outside the high class box's -34, though
 its pixels start at -34, where the box was measured. The pack library measures a strip whose
@@ -970,7 +978,7 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   call for call; each kind's still and moving parts drawn alone in every place; and the moving parts
   every 25 ms through two of the up loop and three of the down one. It checks too where the devices
   are drawn from on a `dev` and a deployed page, a kind that fails to compile, a page started again
-  from code, the raspberry's canvases painted once with the lit drawing over the dark one, and what
+  from code, the pie's lamp's canvases painted once with the lit drawing over the dark one, and what
   the compiler refuses in a prop. `tests/web/scenes.test.js` draws the scenes from the pack with the
   devices from it too, against the records stored from code.
 - The words and the overlay have no copy in code to hold equal: without them the page shows the
