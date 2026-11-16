@@ -488,7 +488,7 @@ steps as the rest, in the same order, and keeps it as data in the loaded pack's 
 **`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
 compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
 page draws every scene but the court from the medieval world's pack that way, with its devices
-from its prop set and its fly from its cast ([worlds.md](./worlds.md)). The other engine parts that
+from its prop set and its goblin and fly from its cast ([worlds.md](./worlds.md)). The other engine parts that
 will read the sections (the acts, the rest of the cast, the words and the overlay) come in later
 steps. The closed lists those parts own are fixed in `pack.js` under the names below and exported
 as `WORLD_LISTS`. The effects library is built: `effects.js` gives each effect's table of fields and
@@ -575,7 +575,7 @@ Nothing else may lean on a named value: stamps, the cast and props are drawn at 
 knight's names (`drop`, `dShoulder` and the rest) are refused in every 1.1 section.
 
 **Effects.** `fx` is one of `sky`, `stars`, `ridge`, `bricks`, `pines`, `tree`, `arch`, `shelf`,
-`stacks`, `tufts`, `pebbles`, `planks`, `rafters`, `horseshoe`, `hood`, `flame`, `candle`, `twinkle`, `drift`, `wander`, `coals`, `steam`, `flutes`, `crust` and `burst`, and the other
+`stacks`, `tufts`, `pebbles`, `planks`, `rafters`, `horseshoe`, `hood`, `flame`, `candle`, `twinkle`, `drift`, `wander`, `coals`, `steam`, `flutes`, `crust`, `fingers` and `burst`, and the other
 fields of an `fx` shape are the fields of that effect's table in `effects.js`
 ([page.md](./page.md#the-effects) lists them): a field the table lacks is refused, one without a
 default is required, and each holds a value of its kind in its range. A point, an offset or a length
@@ -1338,11 +1338,11 @@ base pack's items falls back on any build.
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
 `[1, 1]`, version 0.4.0, unsigned until its signing run (0.1.0, the cellar alone, 0.2.0 and 0.3.0
-were signed with `kw1`). It holds every scene but the court as data, the fly as its cast, the devices as the prop set
+were signed with `kw1`). It holds every scene but the court as data, the goblin and the fly as its cast, the devices as the prop set
 `props.medieval`, the stamps they use (the sconce, the barrel, the house's peg, the raspberry's
 drawings and the virtual machine's dots) and one palette entry, `house.screen`, the television's
-colour, and the page draws those scenes, devices and the fly from it on a `dev` page, and on a
-deployed page once it is signed.
+colour, and the page draws those scenes, devices, the goblin and the fly from it on a `dev` page,
+and on a deployed page once it is signed.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 

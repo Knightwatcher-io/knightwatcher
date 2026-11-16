@@ -1,5 +1,6 @@
 // Tests for the cast of the medieval world's pack, the cast section of web/packs/medieval.pack.json,
-// against the code's drawings of it in web/js/props.js. Run with: node --test tests/web/
+// against the code's drawings of it in web/js/props.js: the fly and the goblin. Run with:
+// node --test tests/web/
 //
 // The page's scripts run under Node in a sandbox, against a fake canvas context that writes one line
 // per call, as in tests/web/scenes.test.js. The engine draws the cast from KW.cast, which the
@@ -7,7 +8,8 @@
 // members otherwise. Each member is drawn from the pack and from code, and the two records must be
 // the same call for call; the engine's own frames are compared too, with the cast drawn from the
 // pack on one page and from code on the other. tests/web/scenes.test.js holds the pack's cast to the
-// stored records of the code's, fixtures/scenes/cast.json.
+// stored records of the code's, fixtures/scenes/cast.json, and tests/web/world-scenes.test.js runs
+// the checks of tests/web/foe.test.js on the pack's goblin.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,7 +33,8 @@ const plain = v => JSON.parse(JSON.stringify(v));
 /* ---- The recording context ------------------------------------------------------------------- */
 const LOG = Symbol('log');
 /* A context that writes one line per call into log. A canvas drawn with drawImage is written as its
-   size alone, or, with deep, followed by its calls, each after a "| ". */
+   size alone, or, where deep is true or holds for the canvas, followed by its calls, each after a
+   "| ". */
 function context(log, deep) {
   return new Proxy({}, {
     set(_, k, v) { log.push((k === 'fillStyle' ? 's' : k === 'globalAlpha' ? 'a' : String(k)) + ' ' + v); return true; },
@@ -40,13 +43,15 @@ function context(log, deep) {
       if (k === 'drawImage') return (img, ...a) => {
         if (!img || !img[LOG]) { log.push(['drawImage', String(img), ...a].join(' ')); return; }
         log.push(['drawImage', `canvas ${img.width}x${img.height}`, ...a].join(' '));
-        if (deep) for (const l of img[LOG]) log.push('| ' + l);
+        if (deep === true || (typeof deep === 'function' && deep(img))) for (const l of img[LOG]) log.push('| ' + l);
       };
       return (...a) => { log.push([String(k), ...a].join(' ')); };
     },
   });
 }
+let canvases = 0;
 function canvas() {
+  canvases++;
   const log = [];
   let w = 300, h = 150;
   const cv = { [LOG]: log, get width() { return w; }, set width(v) { w = v; log.length = 0; }, get height() { return h; }, set height(v) { h = v; log.length = 0; } };
@@ -80,13 +85,40 @@ function record(KW, f) {
 }
 
 const PACK = page([TEXT], true), CODE = page();
+const POSES = ['stand', 'climb', 'taunt0', 'taunt1', 'brace', 'hit'];
 
 // ---- The cast --------------------------------------------------------------------------------------
 
-test('the cast of kw.medieval reads clean: the fly, its wings in a group at an alpha of 0.85, and its costs', () => {
+test('the cast of kw.medieval reads clean: the goblin and the fly', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
-  assert.deepEqual(Object.keys(r.data.cast), ['critter.fly']);
+  assert.deepEqual(Object.keys(r.data.cast), ['foe.goblin', 'critter.fly']);
+});
+
+test('the goblin as written: the code\'s measures, its parts shared between its six poses, and its costs', () => {
+  const r = PK.read(TEXT, { allowUnsigned: true }), g = r.data.cast['foe.goblin'], G = CODE.KW.props.FOES.goblin;
+  assert.deepEqual([g.role, g.name, g.exit], ['foe', 'Goblin', 'poof']);
+  // the measures are the code's, the crown point for point
+  assert.deepEqual(plain(g.sprite), { size: plain(G.size), feet: plain(G.anchor) });
+  assert.deepEqual([g.h, g.w, g.mid], [G.h, G.w, G.mid]);
+  assert.deepEqual(plain(g.crown), plain(G.crown));
+  assert.deepEqual(Object.keys(g.poses), POSES);
+  assert.deepEqual(Object.keys(g.parts), ['arms.hips', 'arms.up', 'arms.ears0', 'arms.ears1', 'arms.flung', 'body', 'ears', 'ears.droop', 'ears.limp', 'head']);
+  // the arms behind the body, the legs and the tunic, the ears, the head; then the pose's face, its
+  // pot, its nose and, for the brace alone, the arms clutched in front
+  assert.deepEqual(POSES.map(n => plain(g.poses[n].parts)), [['arms.hips', 'body', 'ears', 'head'], ['arms.up', 'body', 'ears', 'head'], ['arms.ears0', 'body', 'ears', 'head'],
+    ['arms.ears1', 'body', 'ears', 'head'], ['body', 'ears.droop', 'head'], ['arms.flung', 'body', 'ears.limp', 'head']]);
+  // each hand's fingers are the effect fingers, outline and fill, at the hand's angle
+  const hands = Object.keys(g.parts).filter(n => n.startsWith('arms.')).map(n => g.parts[n].filter(s => s.k === 'fx').map(s => [s.fx, s.a, s.r]));
+  assert.deepEqual(hands[0], [['fingers', 2.6, 4.5], ['fingers', 2.6, 2.5], ['fingers', -2.6, 4.5], ['fingers', -2.6, 2.5]]);
+  assert.deepEqual(g.poses.brace.shapes.filter(s => s.k === 'fx').map(s => s.a), [1.2, 1.2, -1.2, -1.2]);
+  // the costs the counts step found, against a limit of 8 000 for each pose, its parts included
+  assert.deepEqual(plain(r.world.cast['foe.goblin']), { poses: { stand: 2778, climb: 2894, taunt0: 2811, taunt1: 2929, brace: 2743, hit: 2682 } });
+});
+
+test('the fly as written: its wings in a group at an alpha of 0.85, and its costs', () => {
+  const r = PK.read(TEXT, { allowUnsigned: true });
+  assert.equal(r.ok, true, r.reason);
   const fly = r.data.cast['critter.fly'];
   assert.deepEqual([fly.role, fly.name], ['critter', 'Fly']);
   assert.deepEqual(plain(fly.groups), { wings: { pivot: [0, 0] } });
@@ -100,28 +132,34 @@ test('the cast of kw.medieval reads clean: the fly, its wings in a group at an a
   assert.deepEqual(plain(r.world.cast['critter.fly']), { frames: { flap0: 24, flap1: 24, dead: 1 } });
 });
 
-test('a dev page draws the fly from the pack, a deployed page from code while the pack is unsigned, and KW.world.cast says so', () => {
-  assert.deepEqual(plain(PACK.KW.world.cast), { source: 'pack', members: { 'critter.fly': 'pack' }, faults: [] });
+test('a dev page draws the goblin and the fly from the pack, a deployed page from code while the pack is unsigned, and KW.world.cast says so', () => {
+  assert.deepEqual(plain(PACK.KW.world.cast), { source: 'pack', members: { 'foe.goblin': 'pack', 'critter.fly': 'pack' }, faults: [] });
   assert.notEqual(PACK.KW.cast.critters.fly, PACK.KW.props.CRITTERS.fly);
-  assert.equal(PACK.KW.cast.critters.fly.from.split('#')[0], 'kw.medieval');
-  // the code's fly is still there, as the fallback
+  assert.notEqual(PACK.KW.cast.foes.goblin, PACK.KW.props.FOES.goblin);
+  for (const m of [PACK.KW.cast.critters.fly, PACK.KW.cast.foes.goblin]) assert.equal(m.from.split('#')[0], 'kw.medieval');
+  // the code's fly and goblin are still there, as the fallback
   assert.equal(PACK.KW.props.CRITTERS.fly.draw, PACK.KW.props.flyHD);
+  assert.deepEqual(Object.keys(PACK.KW.props.FOES), ['goblin']);
   // all compiled: of the world's lines, the console has the scenes' alone (the knight, started from
   // code here, writes its own)
   assert.deepEqual(PACK.lines.filter(l => !l[1].includes('the knight')), [['info', PACK.st.note]]);
   const dep = page([TEXT], false);
   assert.deepEqual(plain(dep.KW.world.cast), { source: 'code', members: {}, faults: [] });
   assert.equal(dep.KW.cast.critters.fly, dep.KW.props.CRITTERS.fly);
+  assert.equal(dep.KW.cast.foes.goblin, dep.KW.props.FOES.goblin);
   // before start, the cast is the code's
   assert.equal(CODE.KW.cast.critters.fly, CODE.KW.props.CRITTERS.fly);
+  assert.equal(CODE.KW.cast.foes.goblin, CODE.KW.props.FOES.goblin);
   assert.equal(CODE.KW.world.cast, null);
 });
 
 test('starting again puts the code\'s cast back first', () => {
   const s = page([TEXT], true);
   assert.notEqual(s.KW.cast.critters.fly, s.KW.props.CRITTERS.fly);
+  assert.notEqual(s.KW.cast.foes.goblin, s.KW.props.FOES.goblin);
   s.KW.world.start(['not json'], true);
   assert.equal(s.KW.cast.critters.fly, s.KW.props.CRITTERS.fly);
+  assert.equal(s.KW.cast.foes.goblin, s.KW.props.FOES.goblin);
   assert.equal(s.KW.world.cast.source, 'code');
 });
 
@@ -196,6 +234,72 @@ test('the engine draws the fly KW.cast gives, and the code\'s on a page without 
   for (let i = 0; i < a.length; i++) assert.deepEqual(a[i][1], b[i][1], 'the frame at ' + a[i][0]);
 });
 
+test('the goblin from the pack gives the code\'s interface and measures, and each pose painted once into a canvas of its size, call for call the code\'s', () => {
+  const s = page([TEXT], true), G = s.KW.cast.foes.goblin, C = CODE.KW.props.FOES.goblin;
+  for (const k of ['poses', 'anchor', 'size', 'h', 'w', 'mid', 'crown', 'exit']) assert.deepEqual(plain(G[k]), plain(C[k]), k);
+  assert.deepEqual(Object.keys(G).sort(), ['anchor', 'crown', 'exit', 'from', 'h', 'mid', 'pose', 'poses', 'size', 'w']);
+  for (const n of POSES) C.pose(n);
+  const before = canvases;
+  for (const n of POSES) {
+    const a = G.pose(n), b = C.pose(n);
+    assert.deepEqual([a.width, a.height], [220, 230]);
+    assert.ok(b[LOG].length > 500, n + ' draws something');
+    assert.deepEqual(a[LOG], b[LOG], n);
+    assert.equal(G.pose(n), a, n + ' is painted once');
+  }
+  assert.equal(canvases - before, 6, 'one canvas a pose');
+  assert.equal(G.pose('no-such-pose'), G.pose('stand'), 'an unknown pose gives stand');
+  // a compile of its own, on the same page, paints canvases of its own
+  s.KW.world.start([TEXT], true);
+  const t = s.KW.cast.foes.goblin;
+  assert.notEqual(t.from, G.from);
+  assert.notEqual(t.pose('stand'), G.pose('stand'));
+});
+
+/* The engine's frames of the goblin's event, from 0 to its end every step ms, on the page s, in the
+   scene with the knight at its spot and the pie alone, time frozen as the address's t= freezes it.
+   The goblin's canvases are written with their calls, the other canvases by size. */
+function goblin(s, scene, step) {
+  const KW = s.KW, E = KW.engine, out = [], log = [];
+  KW.hooks = { frozen: true, t: 0 };
+  E.init(context(log, img => img.width === 220 && img.height === 230));
+  E.reset();
+  E.input = { w: KW.state.IDLE, is: scene, turnMs: 60000, devices: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: 'auto' };
+  E.draw(0);
+  E.fireEvent('goblin');
+  for (let t = 0; t <= E.EVENTS.goblin.dur; t += step) {
+    log.length = 0;
+    E.draw(t);
+    out.push([t, log.slice()]);
+  }
+  return out;
+}
+
+test('the engine\'s goblin, coming in, taunting, bonked and gone in its poof, draws the code\'s calls from the pack, frame by frame, over the wall and out of the ground', () => {
+  for (const scene of ['battlement', 'camp']) {
+    const a = goblin(page([TEXT], true), scene, 20), b = goblin(page(), scene, 20);
+    assert.equal(a.length, b.length);
+    for (let i = 0; i < a.length; i++) assert.deepEqual(a[i][1], b[i][1], scene + ': the frame at ' + a[i][0]);
+    // every pose is drawn
+    const all = b.map(f => f[1].join('\n')).join('\n'), C = page().KW.props.FOES.goblin;
+    assert.ok(all.includes('drawImage canvas 220x230'), scene + ': the goblin is drawn');
+    for (const n of POSES) assert.ok(all.includes(C.pose(n)[LOG].slice(0, 40).map(l => '| ' + l).join('\n')), scene + ': ' + n);
+  }
+});
+
+test('the engine plays the foe KW.cast gives, and leaves by the exit it names when the engine has it', () => {
+  const s = page([TEXT], true), G = s.KW.cast.foes.goblin, seen = new Set(), F = s.KW.engine.foe, sc = s.KW.scenes.battlement;
+  s.KW.cast.foes.goblin = Object.assign({}, G, { pose: n => { seen.add(n); return G.pose(n); } });
+  goblin(s, 'battlement', 10);
+  assert.deepEqual([...seen].sort(), [...POSES].sort());
+  const o = s.KW.knight.pose('idle', 20000); o.floor = s.KW.view.HFL; o.x = 480; o.helmet = true; o.bob = 0;
+  const plan = g => { s.KW.cast.foes.goblin = g; return F.plan('goblin', sc, { devices: [], places: sc.places }, Object.assign({}, o)); };
+  assert.equal(plan(G).exit, F.FOE.exits.poof);
+  // an exit the engine does not have is the event's
+  assert.equal(plan(Object.assign({}, G, { exit: 'zap' })).exit, F.FOE.exits.poof);
+  s.KW.cast.foes.goblin = G;
+});
+
 // ---- What the compiler refuses -------------------------------------------------------------------
 
 /* The pack, read, with its data changed by edit. */
@@ -206,7 +310,7 @@ function readEdited(edit) {
   edit(data);
   return Object.assign({}, r, { data });
 }
-const fly = d => d.cast['critter.fly'];
+const fly = d => d.cast['critter.fly'], gob = d => d.cast['foe.goblin'];
 
 test('what the compiler does not build in the cast is refused by name', () => {
   const W = PACK.KW.world, refused = (edit, id, want) => assert.throws(() => W.compileMember(readEdited(edit), id), { message: want });
@@ -218,18 +322,26 @@ test('what the compiler does not build in the cast is refused by name', () => {
   // a group the critter does not declare
   refused(d => { fly(d).frames.flap0[2].g = 'legs'; }, 'critter.fly', 'cast.critter.fly.frames.flap0[2].g: "g" outside its layer\'s groups is not built in this engine yet');
   refused(d => { delete d.cast['critter.fly']; }, 'critter.fly', 'cast.critter.fly: the pack has no such cast member');
+  // the same in a foe's parts and poses
+  refused(d => { gob(d).parts.head.push({ k: 'things' }); }, 'foe.goblin', 'cast.foe.goblin.parts.head[7].k: the mark "things" in the cast is not built in this engine yet');
+  refused(d => { gob(d).poses.hit.shapes.push({ k: 'fx', fx: 'pebbles', y: 0 }); }, 'foe.goblin', 'cast.foe.goblin.poses.hit.shapes[25].fx: the effect "pebbles", placed on the screen by its field "y", in the cast is not built in this engine yet');
+  // a role the engine does not build yet
+  refused(d => { d.cast['patron.a'] = { role: 'patron', name: 'Monarch A' }; }, 'patron.a', 'cast.patron.a.role: the role "patron" is not built in this engine yet');
 });
 
 test('a member that fails to compile is drawn from code, with its reason in KW.world.cast and a line of its own; a member the engine does not know is not compiled', () => {
-  const s = page(), lib = s.KW.pack, broken = readEdited(d => { fly(d).frames.flap1[0].k = 'zz'; d.cast['critter.gnat'] = JSON.parse(JSON.stringify(fly(d))); });
+  const s = page(), lib = s.KW.pack, broken = readEdited(d => { fly(d).frames.flap1[0].k = 'zz'; d.cast['critter.gnat'] = JSON.parse(JSON.stringify(fly(d))); gob(d).parts.body[0].k = 'zz'; });
   s.KW.pack = Object.assign({}, lib, { read: () => broken });
   const st = s.KW.world.start([TEXT], true);
   assert.equal(st.source, 'pack');
-  assert.deepEqual(plain(s.KW.world.cast), { source: 'code', members: { 'critter.fly': 'code' },
-    faults: [{ member: 'critter.fly', reason: 'cast.critter.fly.frames.flap1[0].k: the shape kind "zz" is not built in this engine yet' }] });
+  assert.deepEqual(plain(s.KW.world.cast), { source: 'code', members: { 'foe.goblin': 'code', 'critter.fly': 'code' },
+    faults: [{ member: 'foe.goblin', reason: 'cast.foe.goblin.parts.body[0].k: the shape kind "zz" is not built in this engine yet' },
+      { member: 'critter.fly', reason: 'cast.critter.fly.frames.flap1[0].k: the shape kind "zz" is not built in this engine yet' }] });
   assert.equal(s.KW.cast.critters.fly, s.KW.props.CRITTERS.fly);
+  assert.equal(s.KW.cast.foes.goblin, s.KW.props.FOES.goblin);
   assert.deepEqual(Object.keys(s.KW.cast.critters), ['fly']);
-  assert.deepEqual(s.lines.filter(l => !l[1].includes('the knight')), [['warn', 'knightwatcher: the cast member critter.fly is drawn from code: it could not be compiled: ' + s.KW.world.cast.faults[0].reason],
-    ['info', st.note]]);
+  const faults = s.KW.world.cast.faults;
+  assert.deepEqual(s.lines.filter(l => !l[1].includes('the knight')), [['warn', 'knightwatcher: the cast member foe.goblin is drawn from code: it could not be compiled: ' + faults[0].reason],
+    ['warn', 'knightwatcher: the cast member critter.fly is drawn from code: it could not be compiled: ' + faults[1].reason], ['info', st.note]]);
   assert.match(st.note, /^knightwatcher: the scenes .* are drawn from the pack kw\.medieval /);
 });

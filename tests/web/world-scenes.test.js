@@ -10,8 +10,9 @@
 //
 // tests/web/foe.test.js and tests/web/places.test.js check the goblin's zone and way in, and the
 // places of the devices, on the code scenes, and stay as they are. The rest of this file runs the
-// same checks on each scene the pack gives, compiled from it as a 'dev' page compiles it, and holds
-// the foe's plan in a scene from the pack to the plan in the code scene, for every weapon and build.
+// same checks on each scene the pack gives, compiled from it as a 'dev' page compiles it, with the
+// goblin from the pack's cast, and holds the foe's plan there to the plan in the code scene with the
+// code's goblin, for every weapon and build.
 // The page's scripts run under Node in a sandbox, as in those two files.
 'use strict';
 const test = require('node:test');
@@ -105,7 +106,7 @@ for (const [b, name] of Object.entries(BUILDS)) {
 }
 
 /* The page's scripts with the knight from the base pack (pack true) or from code, in the look opts
-   asks for, and the scenes the pack gives compiled from it (from 'pack') or the code scenes. */
+   asks for, and the scenes and the cast the pack gives compiled from it (from 'pack') or the code's. */
 function load(from, pack, opts) {
   const box = vm.createContext({ window: {}, document: { createElement: () => fakeCanvas() }, console: { info() {}, warn() {} } });
   for (const f of PAGE) {
@@ -119,6 +120,7 @@ function load(from, pack, opts) {
   if (from === 'pack') {
     const st = KW.world.start([MEDIEVAL], true);
     for (const n of GIVEN) assert.equal(st.scenes[n], 'pack', `${n} is compiled from kw.medieval: ${st.note}`);
+    assert.equal(KW.world.cast.members['foe.goblin'], 'pack', 'the goblin is compiled from kw.medieval');
   }
   KW.draw.setCtx(fakeCanvas().getContext('2d'));
   return { KW, E: KW.engine, F: KW.engine.foe, P: KW.props, K: KW.knight, V: KW.view };
@@ -172,7 +174,8 @@ const SPOTS = {
     [[PIE, device('g2'), device('g3')], 400, null]] };
 
 test('the scenes from the pack that host a foe: the goblin stands in its zone, clear of the knight, the pie and every device on the ground', () => {
-  const m = load('pack', true), [gMin, , gMax] = m.F.FOE.gap, G = m.P.FOES.goblin;
+  const m = load('pack', true), [gMin, , gMax] = m.F.FOE.gap, G = m.KW.cast.foes.goblin;
+  assert.ok(G.from, 'the goblin is the pack\'s');
   for (const scene of FOES) {
     const sc = m.KW.scenes[scene], seen = new Set();
     for (const devices of SETS) for (const kx of spots(m, scene)) {

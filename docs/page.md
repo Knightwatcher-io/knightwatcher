@@ -17,7 +17,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/effects.js` | `KW.effects`: the effects, drawings the engine owns that a scene names with numbers (sky, stars, bricks, flame and the rest), each with its table of fields, its cost and its drawing; see [The effects](#the-effects) |
-| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), the fly (`flyHD`, `deadFlyHD` and `CRITTERS`, the code's critters and the fallback for the pack's; see [The cast](#the-cast)), the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
+| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), the fly (`flyHD`, `deadFlyHD` and `CRITTERS`, the code's critters and the fallback for the pack's; see [The cast](#the-cast)), the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures, its crown and its exit, the code's foes and the fallback for the pack's) with the smoke, the sparkles and the hole they come and go by |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `ownReturn()` says whether a swing comes back by a return of its own (see [The knight's rig](#the-knights-rig)), `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
@@ -522,6 +522,7 @@ beside itself the first time a pack names an effect.
 | `steam` | `p`, `n` (3), `gap` (14), `period` (1800), `sway` ([7, 5]), `rise` (46), `r` ([4, 7]), `a` (0.8), `colour` | an ell a puff | the pie, while up |
 | `flutes` | `p`, `n` (6), `top` (5.3), `bottom` (4.5), `h` (18), `hw` (0.6), `of` (1 to 33, one a groove from the left) | a strip a groove | the pie's dish, up and down: the grooves stand at fractions of a pixel a pack's eighths cannot give |
 | `crust` | `p`, `rim` ([38, 9]), `dome` ([32, 21]), `crimp` (35), `crust` (four colours), `filling` (three), `colour` (K) | a fill a pixel of its top, painted in one pass, and three a crimp | the pie's top, while up: 83 pixels across, wider than a pix shape may be |
+| `fingers` | `p`, `a` (the angle, 0 up), `reach` (9), `spread` (0.65), `r`, `colour` | an ell a finger | the goblin's hands in the medieval world's cast: the fingers stand at fractions of a pixel a pack's eighths cannot give; `props.js` keeps its own loop |
 | `burst` | `p`, `n` (7), `piece` (`spark` or `straw`), `of` | sparks: a glow and 4 a spark; straw: a strip a piece | smithy (sparks), yard (straw) |
 
 `tests/web/effects.test.js` checks that each cost bounds the fills drawn, and the call records of
@@ -589,9 +590,9 @@ hides the review bar and drives the display:
   reaches it, the greatsword, the longsword, the arming sword or the mace alike, on whichever build
   is drawn, and does not come where none can (the mace by its drawn head: see
   [The knight's rig](#the-knights-rig)); the
-  burst on the pot lasts the 80 ms the blade bounces off it. A foe is described in `KW.props.FOES` and played by
-  the engine's foe player from its tables (`KW.engine.foe.FOE`), so a later foe reuses the
-  entrance, the strike and the exit. A `seq` lower than the
+  burst on the pot lasts the 80 ms the blade bounces off it. A foe is described in `KW.cast.foes`
+  ([The cast](#the-cast)) and played by the engine's foe player from its tables
+  (`KW.engine.foe.FOE`), so a later foe reuses the entrance, the strike and the exit. A `seq` lower than the
   highest played means the collector started again, and its events are adopted unplayed. Events
   act out only while nothing at warning or above is up and in the scenes that suit them; the
   caption shows regardless.
@@ -754,20 +755,32 @@ knight.
 
 ## The cast
 
-The engine plays a supporting cast whose drawings are not its own: today the fly. Where a fly
-hovers, the swat, the poof and the fall are the engine's; the critter gives its drawings.
-`KW.props.CRITTERS` holds the code's critters by name, each with
+The engine plays a supporting cast whose drawings are not its own: the fly and the goblin. Where a
+fly hovers, the swat, the poof and the fall are the engine's, and so are the foe's entrance, the
+strike and the exit; a member gives its drawings and its measures. `KW.props.CRITTERS` holds the
+code's critters by name, each with
 
 | Field | Is |
 |---|---|
 | `draw(x, y, flap)` | the critter hovering at `(x, y)`, in its first frame (`flap` 0) or its second |
 | `dead(x, y)` | what falls once it is swatted, from `(x, y)` |
 
-The fly's are `flyHD` and `deadFlyHD`. The engine draws from `KW.cast.critters`, which has the
-same interface: the compiler (`world.js`) fills it with the members the medieval world's cast
-gives, and keeps the code's for the rest ([worlds.md](./worlds.md#the-cast)). On a page without the
-compiler the engine reads `KW.props.CRITTERS` itself. The goblin and the monarchs are still drawn
-from `KW.props.FOES` and the court's own code.
+The fly's are `flyHD` and `deadFlyHD`. `KW.props.FOES` holds the code's foes by name, each with
+
+| Field | Is |
+|---|---|
+| `pose(name)` | a canvas with the pose painted once, the feet at `anchor`; an unknown name gives `stand` |
+| `poses` | the names of its poses: `stand`, `climb`, `taunt0`, `taunt1`, `brace`, `hit` |
+| `anchor`, `size` | the feet in the canvas, and the canvas's size |
+| `h`, `w`, `mid` | its height, half its width across the body, and the middle of its body above the feet |
+| `crown` | the points of its top from the feet, as drawn facing left, where the blade stops |
+| `exit` | the engine's exit it leaves by, `poof` |
+
+The engine draws from `KW.cast.critters` and `KW.cast.foes`, which have the same interfaces: the
+compiler (`world.js`) fills them with the members the medieval world's cast gives, and keeps the
+code's for the rest ([worlds.md](./worlds.md#the-cast)). On a page without the compiler the engine
+reads `KW.props.CRITTERS` and `KW.props.FOES` itself. The monarchs are still drawn by the court's own
+code.
 
 ## Settings
 
@@ -1203,8 +1216,11 @@ the devices ([worlds.md](./worlds.md#the-devices)).
 `tests/web/world-cast.test.js` draws the fly from the medieval world's cast beside the code's, both
 frames and what falls, at whole and fractional points, and runs the engine's frames every 20 ms
 while six flies fly in, hover, are swatted and fall, with the cast from the pack and from code, every
-call of every frame compared; with the rest of what the compiler does for the cast
-([worlds.md](./worlds.md#the-cast)).
+call of every frame compared. It holds the goblin's six pose canvases from the pack to the code's,
+call for call, and runs the goblin's whole event every 20 ms at the battlement and at the camp from
+both; with the rest of what the compiler does for the cast ([worlds.md](./worlds.md#the-cast)).
+`tests/web/foe.test.js` loads no compiler, so it checks the code's goblin;
+`tests/web/world-scenes.test.js` runs its checks on the pack's.
 
 `tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
@@ -1359,8 +1375,8 @@ outside the grid, and at 960 by 720 (4:3), where `HT` lies 122 above it; and at 
 and 4700 ms, which catch the hammer striking and raised, the monarch talking with the mouth open and
 shut, the question marks shown and hidden, the WAN's sparks and the sleeper's breathing, or at the
 moments of the dummy's wobble. The goblin's six poses, the flies, the hole, the clods, the smoke, the
-sparkles, the crate and its parachute are recorded once, apart (`cast`). The fly of the medieval
-world's cast is drawn again from the pack against the same records.
+sparkles, the crate and its parachute are recorded once, apart (`cast`). The fly and the goblin of
+the medieval world's cast are drawn again from the pack against the same records.
 
 Each scene the medieval world's pack gives (today every scene but the court) is then drawn again, compiled from the
 pack by `world.js` as a `dev` page compiles it, in the same states, at the same sizes and moments,

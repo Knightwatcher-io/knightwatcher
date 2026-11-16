@@ -189,16 +189,18 @@ when no base pack can be used; its signed packs use keys generated for the run. 
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
 and that no two places draw over each other. `tests/web/world-scenes.test.js` runs those checks of
 `foe.test.js` and `places.test.js` that depend on a scene on each scene of the medieval world's pack,
-compiled from it, holds the goblin's plan there to the code scene's for every weapon and build, runs
+compiled from it with the goblin from its cast, holds the goblin's plan there to the code scene's
+with the code's goblin for every weapon and build, runs
 each scene of the pack with an act frame by frame beside its code scene, and checks each scene's `quiet` and `hosts` against the engine's and the settings' own lists of the quiet
 scenes and the events. `tests/web/world-knight.test.js` runs the checks `knight.test.js` makes of the
 house and the smithy on the two compiled from the pack: their paint and draw against the knight's
 stored records with the knight from code and from the base pack, the same calls as the code scenes
 in the base pack's other looks, their backdrop keys and rests, the pegs, the hot tip of a weapon
 without a blade, and a shield that does not fit the house's wall. `tests/web/world-cast.test.js`
-draws the fly from the medieval world's cast beside the code's, call for call, both frames and what
-falls, and the engine's frames while flies come, are swatted and fall, with the cast from the pack
-and from code; and checks where the cast is drawn from, a member that fails to compile and what the
+draws the fly and the goblin from the medieval world's cast beside the code's, call for call: the
+fly's frames and what falls, the goblin's six pose canvases, and the engine's frames while flies
+come, are swatted and fall and through the goblin's whole event, with the cast from the pack and
+from code; and checks where the cast is drawn from, a member that fails to compile and what the
 compiler refuses in the cast. `tests/web/world-props.test.js`
 draws every kind of device from the medieval world's prop set beside the code's drawing of it, call
 for call, in every place of every scene, up and gone, with and without its question mark, in both
@@ -252,7 +254,7 @@ the scenes concerned the code scenes with its console line, the predicates and t
 keyframes' tracks, the rests, the rest mark and the pegs, and
 that what the compiler does not build yet is refused by name.
 
-The repository's own page draws the knight from the base pack, and every scene but the court, every device and the fly from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
+The repository's own page draws the knight from the base pack, and every scene but the court, every device, the goblin and the fly from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
 and the scene test check both paths. A deployed copy draws from each pack while it ships signed, and
 from code otherwise; to shoot the code path as well, take a second pair of sets from a copy of
 `web/` whose `kw-version` is not `dev` and whose packs carry no signature; [page.md](./page.md#checks)

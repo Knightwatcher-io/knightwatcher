@@ -3,7 +3,7 @@
    docs/page.md, and puts the scenes of kw.medieval in place of the code scenes of the same names;
    turns each kind of its prop set into a drawing of a device, which it puts in KW.kinds in place
    of the code's (KW.props.KINDS); and turns the members of its cast into the drawings the engine
-   asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS).
+   asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS and FOES).
 
    Nothing in a pack runs. A scene compiles into frozen records: each shape a kind from SHAPES, each
    mark one of MARKS, each predicate one the engine evaluates in holds(), each effect a name in
@@ -33,7 +33,8 @@
      hot tip of the blade on the anvil);
    - the kinds of a prop set: their still and moving shapes in both states, the engine's lamp at a
      point, and a lamp of the kind's own from two stamps of pix shapes, as the raspberry is;
-   - the critters of the cast: their two frames and what falls, with a group's alpha.
+   - the critters of the cast: their two frames and what falls, with a group's alpha; and its foes:
+     their poses, from parts shared between them, and their measures.
    Each later step adds rows to these tables. */
 (function (KW) {
   'use strict';
@@ -726,8 +727,15 @@
      flap) draws its frame flap0 (flap 0) or flap1 at (x, y), and dead(x, y) what falls. A shape in a
      group the critter gives an alpha is drawn at that alpha: the canvas's alpha is set as the first
      of a run of such shapes is drawn, and set back to 1 at the first shape after it, which gives the
-     calls the code makes (alpha(.85) before the fly's wings, alpha(1) after them). */
-  const ROLE_SETS = { critter: 'critters' };
+     calls the code makes (alpha(.85) before the fly's wings, alpha(1) after them).
+
+     A foe compiles to { pose, poses, anchor, size, h, w, mid, crown, exit, from } with the interface
+     of KW.props.FOES: pose(name) is a canvas of sprite.size with the pose painted once, its feet at
+     sprite.feet (anchor), the first time it is asked for, as foeSprites() in props.js paints them;
+     a name that is not a pose gives stand. A pose is its parts, each a list of shapes shared between
+     poses and compiled once, in the order it lists them, then its own shapes. The measures and the
+     crown are the pack's, and exit names one of the engine's exits, which the foe player keeps. */
+  const ROLE_SETS = { critter: 'critters', foe: 'foes' };
   function compileCritter(pack, id, v) {
     const path = 'cast.' + id, env = Object.assign(placedEnv(pack, 'the cast'), { groups: v.groups || null });
     const alphaOf = g => (g !== null && isObj(v.alpha) && has(v.alpha, g) ? v.alpha[g] : 1);
@@ -741,7 +749,32 @@
     }
     return Object.freeze({ draw(x, y, flap) { drawList(frames[flap ? 1 : 0], x, y); }, dead(x, y) { drawList(dead, x, y); }, from: MEDIEVAL + '#' + (++compiles) });
   }
-  const CAST_COMPILERS = { critter: compileCritter };
+  function compileFoe(pack, id, v) {
+    const path = 'cast.' + id, env = placedEnv(pack, 'the cast'), FOE_POSES = KW.pack.WORLD_LISTS.FOE_POSES;
+    const parts = {};
+    for (const n of Object.keys(v.parts)) parts[n] = freeze(v.parts[n].map((s, i) => shape(s, idx(at(at(path, 'parts'), n), i), env)));
+    const lists = {};
+    for (const n of FOE_POSES) {
+      const pp = at(at(path, 'poses'), n), own = v.poses[n].shapes.map((s, i) => shape(s, idx(at(pp, 'shapes'), i), env));
+      lists[n] = freeze(v.poses[n].parts.map(q => parts[q]).reduce((a, l) => a.concat(l), []).concat(own));
+    }
+    const [w, h] = v.sprite.size, [ax, ay] = v.sprite.feet, cache = {};
+    function pose(name) {
+      const n = has(lists, name) ? name : 'stand';
+      if (!cache[n]) {
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        const was = D.getCtx(), E = named(0, null);
+        D.setCtx(cv.getContext('2d'));
+        for (const c of lists[n]) drawShape(c, E, ax, ay);
+        D.setCtx(was);
+        cache[n] = cv;
+      }
+      return cache[n];
+    }
+    return Object.freeze({ pose, poses: Object.freeze(FOE_POSES.slice()), anchor: Object.freeze([ax, ay]), size: Object.freeze([w, h]), h: v.h, w: v.w, mid: v.mid,
+      crown: freeze(v.crown.map(q => [q[0], q[1]])), exit: v.exit, from: MEDIEVAL + '#' + (++compiles) });
+  }
+  const CAST_COMPILERS = { critter: compileCritter, foe: compileFoe };
   /* The member id of the loaded pack's cast, compiled. Throws when it names something this engine
      does not build. */
   function compileMember(pack, id) {
@@ -758,12 +791,12 @@
     return has(cast[set], name) ? [set, name] : null;
   }
   /* KW.cast: the engine's supporting cast, by role, as the code gives it (the critters of
-     KW.props.CRITTERS): the members the pack's cast gives once start() has compiled them, and the
-     code's for the rest. */
-  const cast = KW.cast = { critters: {} };
+     KW.props.CRITTERS and the foes of KW.props.FOES): the members the pack's cast gives once start()
+     has compiled them, and the code's for the rest. */
+  const cast = KW.cast = { critters: {}, foes: {} };
   function restoreCast() {
     const P = KW.props || {};
-    for (const [set, code] of [['critters', P.CRITTERS]]) {
+    for (const [set, code] of [['critters', P.CRITTERS], ['foes', P.FOES]]) {
       for (const k of Object.keys(cast[set])) delete cast[set][k];
       Object.assign(cast[set], code || {});
     }

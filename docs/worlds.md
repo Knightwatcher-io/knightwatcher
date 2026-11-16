@@ -5,10 +5,10 @@ drawings of the devices, the words and the overlay. Format 1.1 of the packs carr
 data ([packs.md](./packs.md#format-11) gives the format and its checks). This page describes what
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
 pack, `kw.medieval`, which holds six scenes, the battlement, the camp, the yard, the cellar, the
-smithy and the house, the devices, the prop set `props.medieval`, and the first of the cast, the
+smithy and the house, the devices, the prop set `props.medieval`, and of the cast the goblin and the
 fly. With the house, step W5 of the conversion is complete apart from the court, which waits for the
-patron (step W7), and with the devices step W6. Step W7 has begun with the fly: the court, the
-goblin, the monarchs, the words and the overlay are still drawn from code.
+patron (step W7), and with the devices step W6. Step W7 has begun with the fly and the goblin: the
+court, the monarchs, the words and the overlay are still drawn from code.
 
 ## The medieval world's pack
 
@@ -88,8 +88,10 @@ loads it after the base pack's. It holds:
   and its `screen` `{ "group": "tv" }`;
 - the prop set `props.medieval`, the devices of `props.js` written as data: the five kinds `pi`,
   `camera`, `machine`, `vm` and `box`, each up and gone, below ([The devices](#the-devices));
+- the cast member `foe.goblin`, the goblin of `props.js` written as data: its measures and its six
+  poses, built from ten parts they share, below ([The cast](#the-cast));
 - the cast member `critter.fly`, the fly of `props.js` written as data: its two frames and the dead
-  fly that falls once it is swatted, below ([The cast](#the-cast));
+  fly that falls once it is swatted, below;
 - three stamps, `sconce`, `barrel` and `peg`: the props `sconceHD` and `barrelHD` of `props.js`, the
   barrel at the 84 by 72 the cellar and the yard draw it, and one of the house's pegs, counted from
   where the weapon's frame puts it;
@@ -130,14 +132,15 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 | `box` | 58 still | 101 still |
 
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
-own lamp counts toward none of them. The fly costs 24 fills in each frame and 1 for what falls,
-against a limit of 200 for each.
+own lamp counts toward none of them. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+(`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
+frame and 1 for what falls, against a limit of 200 for each.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
 then version 0.2.0, and version 0.3.0, which adds the devices. Version 0.4.0, which adds the cast,
 ships unsigned until its signing run, so until then a `dev` page draws every scene but the court,
-every device and the fly from it, and a deployed page draws them from code. A change to the pack
+every device, the goblin and the fly from it, and a deployed page draws them from code. A change to the pack
 takes the signature's validity with it: until the next signing run a deployed page refuses it and
 draws every scene, every device and the cast from code, while a `dev` page still reads it.
 
@@ -533,12 +536,13 @@ class box as drawn.
 
 ## The cast
 
-`KW.cast` holds the drawings of the engine's supporting cast, by role: `critters`, by name, with the
-interface of `KW.props.CRITTERS` ([page.md](./page.md#the-cast)). `world.js` fills it with the code's
-members when it loads, and `start` puts the members the pack's cast gives in their place. The engine
-reads `KW.cast`, or `KW.props.CRITTERS` on a page without the compiler. The engine keeps the
-motion: where the flies hover, when they are swatted, the poof (`poofHD`) and the fall. A critter
-gives only its drawings.
+`KW.cast` holds the drawings of the engine's supporting cast, by role and then by name: `foes`, with
+the interface of `KW.props.FOES`, and `critters`, with that of `KW.props.CRITTERS`
+([page.md](./page.md#the-cast)). `world.js` fills it with the code's members when it loads, and
+`start` puts the members the pack's cast gives in their place. The engine reads `KW.cast`, or the
+code's tables on a page without the compiler. The engine keeps the motion: where the flies hover,
+when they are swatted, the poof (`poofHD`) and the fall; the foe's entrance over the wall or out of
+the ground, the strike and the exit. A member gives only its drawings and its measures.
 
 A member's shapes are compiled as a prop's and drawn moved to the point the engine gives, so the
 marks, the tiles and an effect placed on the screen by a field of its own are refused in the cast as
@@ -552,6 +556,46 @@ the calls `flyHD` makes, `globalAlpha` 0.85, the two wings, `globalAlpha` 1, the
 where a translucent colour would have set no alpha at all. A group's `pivot` is not read, since
 nothing turns a critter.
 
+**A foe** compiles to the interface of `KW.props.FOES`: `pose(name)`, `poses` (the six the foe
+player asks for), `anchor` (the sprite's `feet`), `size` (its `size`), `h`, `w`, `mid`, `crown` and
+`exit`. A pose is drawn as its parts, in the order it lists them, then its own shapes, each part
+compiled once and shared by the poses that list it. `pose(name)` paints the pose the first time it is
+asked for into a canvas of `sprite.size`, the shapes moved to the feet, and keeps it, as `foeSprites()`
+in `props.js` does; a name that is not a pose gives `stand`. Each compile paints canvases of its own,
+so the code's goblin and the pack's never share one. `exit` names one of the engine's exits
+(`FOE.exits` in `engine.js`, today `poof` alone): the foe player leaves by the foe's exit when the
+engine has it and by the event's otherwise, so a world chooses an exit and never describes one.
+The code's goblin gives `exit: 'poof'` too.
+
+**The goblin as data.** The measures and the 24 points of the crown are `FOES.goblin`'s as they
+stand. The drawing is `goblinHD` in `props.js` with its numbers counted from the feet, cut into ten
+parts in the order `goblinHD` draws:
+
+| Part | Is | Poses |
+|---|---|---|
+| `arms.hips`, `arms.up`, `arms.ears0`, `arms.ears1`, `arms.flung` | the arms behind the body, as `gArms` draws them: the limbs as strips then discs (`SP.stroke`), the hands | `stand`, `climb`, `taunt0`, `taunt1`, `hit` |
+| `body` | the legs and feet, the tunic, its patch and the rope belt | all |
+| `ears`, `ears.droop`, `ears.limp` | the two ears, lowered by 0, 14 and 16 | `ears` the first four, `ears.droop` `brace`, `ears.limp` `hit` |
+| `head` | the head and its jaw, a spot on the far cheek and the two blushes | all |
+
+Each pose's own shapes are what changes from one to the next and comes after the head: the eyes,
+the brows, the mouth, the saucepan (6 lower in `hit`), the nose, and in `brace` alone the arms
+clutched in front. The nose is the same in every pose and is written in each, since a pose draws its
+parts before its shapes.
+
+Three things needed more than writing the numbers out:
+
+- each hand's three fingers stand at `Math.sin(a + d) * 9` from the hand, between the eighths a
+  pack's points keep to, and six of their outlines fill pixels no eighth gives. The effect
+  `fingers` draws them, `{ "k": "fx", "fx": "fingers", "p": [-36, -56], "a": 2.6, "r": 4.5, "colour":
+  "@base.k" }` for the outlines and `r` 2.5 in the finger's colour for the fills, around the palm's
+  own two ellipses. `gHand` in `props.js` keeps its own loop, and the records hold the two equal;
+- the inner triangle of each ear has its tip 0.62 of the way to the ear's tip, which is not an
+  eighth. The pack gives the nearest eighths that fill the same pixels with the goblin at its feet,
+  where it is always painted, such as `[-62.25, -123.125]` for `[-62.28, -123.16]`;
+- the shut eyes of `hit` are strips 2.2 either side, which is not an eighth; the pack gives 2.125,
+  which fills the same pixels there.
+
 **The fly as data.** Its frames are `flyHD` in `props.js` with its numbers counted from where the
 engine puts it: the wings 2 above the body in `flap0` and 6 above in `flap1`, the body and the red
 eye the same in both. What falls is the 6 by 5 rect the engine drew itself before the cast,
@@ -559,8 +603,8 @@ eye the same in both. What falls is the 6 by 5 rect the engine drew itself befor
 `CRITTERS.fly.dead`; the engine passes the fall, `y + a * a / 900`, as the point.
 
 What the compiler does not build in the cast, it refuses by name, and the member is drawn from code:
-the roles `foe` and `patron`, which later steps build, and in a critter the marks, tiles and
-effects above.
+the role `patron`, which a later step builds, and in a critter or a foe the marks, tiles and effects
+above.
 
 ## Writing a scene as data
 
@@ -675,18 +719,25 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   edges of the blink, against the code's `Math.floor(t / 150) % 3 === 0`, and compares `wallAt`
   with the code scene's at every whole x from -1 200 to 2 400.
 - `tests/web/world-scenes.test.js` runs the checks of `foe.test.js` and `places.test.js` that depend
-  on a scene on each scene the pack gives, compiled from it: the goblin's way in, where it stands, its
-  hit and the blade against it in every scene that hosts a foe, and the places of the devices on the
-  grid and clear of each other. It also holds the foe's whole plan in a scene from the pack, for
-  every weapon and build, to the plan in the code scene, and each scene's `quiet` and `hosts` to the
+  on a scene on each scene the pack gives, compiled from it, with the goblin from the pack's cast:
+  the goblin's way in, where it stands, its hit and the blade against it in every scene that hosts a
+  foe, and the places of the devices on the grid and clear of each other. It also holds the foe's
+  whole plan in a scene from the pack, for every weapon and build, to the plan in the code scene with
+  the code's goblin, and each scene's `quiet` and `hosts` to the
   engine's and the settings' lists. The two older files draw the code scenes and stay as they are.
 - `tests/web/world-cast.test.js` draws the fly from the pack's cast beside the code's, both frames
   and what falls, at whole and fractional points, and runs the engine's frames every 20 ms for 4.6
   seconds while six flies fly in, hover, are swatted and fall, once with the cast from the pack and
-  once from code, comparing every call of every frame. It checks too where the cast is drawn from on
-  a `dev` and a deployed page, a page without the compiler, a member that fails to compile and one
-  the engine does not know, and what the compiler refuses in the cast. `tests/web/scenes.test.js`
-  draws the pack's fly against the stored records of the code's, `cast.json`.
+  once from code, comparing every call of every frame. It holds the goblin from the pack to the
+  code's: its measures, each pose's canvas call for call, painted once, and the engine's frames every
+  20 ms through the whole event at the battlement and at the camp, the goblin's canvases written out
+  call by call. It checks too where the cast is drawn from on a `dev` and a deployed page, a page
+  without the compiler, that the engine plays the foe `KW.cast` gives with the exit it names, a
+  member that fails to compile and one the engine does not know, and what the compiler refuses in
+  the cast. `tests/web/scenes.test.js` draws the pack's fly and the goblin's six poses against the
+  stored records of the code's, `cast.json`, and `tests/web/world-scenes.test.js` runs the goblin
+  checks of `foe.test.js` on the pack's goblin, the blade against the drawn pixels of its poses
+  among them.
 - `tests/web/world-props.test.js` draws every kind of device from the prop set beside the code's
   drawing of it, through the engine's `KW.devices`, in every place of every scene (the court's among
   them), up and gone, with and without its question mark, at seven moments, 13 720 drawings compared

@@ -473,6 +473,7 @@
        mid         the middle of its body above the feet, where the smoke of its exit gathers
        crown       the points of its top, [x, y] from the feet as drawn facing left: the knight's
                    blade stops at the first of them it meets, so no blade passes through it
+       exit        which of the engine's exits it leaves by (FOE.exits in engine.js)
      A later foe gives the same, at its own size, and the entrance and the exit work unchanged. */
   const SPR = { w: 220, h: 230, ax: 110, ay: 214 };
   function foeSprites(paint, poses) {
@@ -488,7 +489,7 @@
     };
   }
   const FOES = {
-    goblin: { pose: foeSprites(goblinHD, GOB_POSES), poses: Object.keys(GOB_POSES), anchor: [SPR.ax, SPR.ay], size: [SPR.w, SPR.h], h: 160, w: 40, mid: 78,
+    goblin: { pose: foeSprites(goblinHD, GOB_POSES), poses: Object.keys(GOB_POSES), anchor: [SPR.ax, SPR.ay], size: [SPR.w, SPR.h], h: 160, w: 40, mid: 78, exit: 'poof',
       // the outline of its top as it flinches: the near ear's upper edge and tip, the pot's rim,
       // its rounded corners and top, its handle, and the far ear's tip
       crown: [[-83, -119], [-80, -112], [-70, -121], [-58, -123], [-45, -125], [-36, -133], [-36, -141], [-31, -150], [-30, -155], [-27, -159], [-23, -160],

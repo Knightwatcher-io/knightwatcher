@@ -35,7 +35,8 @@
      four. */
   const TURNS = ['battlement', 'camp', 'house', 'yard'];
   /* Each event lasts dur ms and plays only in the scenes listed. An event with a foe names it (in
-     KW.props.FOES) and the exit it leaves by (in FOE.exits, below). */
+     KW.cast.foes, below) and the exit it leaves by (in FOE.exits, below) when the foe names none of
+     them. */
   const OUTDOORS = Object.keys(KW.scenes).filter(k => KW.scenes[k].outdoors);
   const EVENTS = {
     goblin: { dur: 3400, where: ['battlement', 'camp'], foe: 'goblin', exit: 'poof' },
@@ -102,8 +103,10 @@
 
   /* ---- Foes -------------------------------------------------------------------------------------
      An event with a foe (the goblin of ip_banned) plays in three parts, each read from a table so
-     that a later foe reuses them with only its own description (KW.props.FOES, which gives its
-     poses, height, half width, middle and crown):
+     that a later foe reuses them with only its own description, which gives its poses, height,
+     half width, middle and crown, and may name one of the exits: KW.cast.foes, which the world's
+     cast fills (world.js), or the code's own, KW.props.FOES, on a page without the compiler. A world
+     gives only the drawings and the measures; the motion is the engine's, and so is every exit:
        the entrance  up from behind the scene's wall (wallAt) or out of a hole in the ground, a
                      peek, a hop to the ground, a face pulled at the knight, a flinch;
        the strike    the knight's own swing (KW.knight.swing), stopped where the blade first meets
@@ -135,6 +138,7 @@
     }
   };
   const segQ = (el, a, b) => clamp01((el - a) / (b - a));
+  const foesNow = () => (KW.cast ? KW.cast.foes : P.FOES);
 
   /* Where the foe F stands with the knight at kx in scene sc, as { x, side }, or null when there is
      no room. The scene's foeZone gives the side tried first and the spans of ground clear of its
@@ -239,7 +243,7 @@
      line it comes over, and when the blade meets it. null when it has no room within the weapon's
      reach, so a foe never plays a hit the blade did not give. */
   function foePlan(type, sc, s, o) {
-    const e = EVENTS[type], F = P.FOES[e.foe]; if (!F) return null;
+    const e = EVENTS[type], F = foesNow()[e.foe]; if (!F) return null;
     const gaps = { 1: foeGaps(F, o, 1), '-1': foeGaps(F, o, -1) }, spot = foeSpot(F, sc, s.devices, s.places, o.x, gaps);
     if (!spot) return null;
     const q = contactQ(F, spot.x, spot.side, o), S = FOE.strike; if (q >= 1) return null;
@@ -247,7 +251,8 @@
     // where the blade touches, for the burst
     const p = Object.assign({}, o, { bob: 0 }); K.swing(p, q, spot.side);
     const touch = crownNear(bladeOf(p), F, spot.x, spot.side, o.floor);
-    return { F, x: spot.x, side: spot.side, burrow, lineAt, q, hit: Math.round(S.at + q * S.dur), touch: [Math.round(touch.x), Math.round(touch.y)], exit: FOE.exits[e.exit] };
+    return { F, x: spot.x, side: spot.side, burrow, lineAt, q, hit: Math.round(S.at + q * S.dur), touch: [Math.round(touch.x), Math.round(touch.y)],
+      exit: FOE.exits[typeof F.exit === 'string' && Object.prototype.hasOwnProperty.call(FOE.exits, F.exit) ? F.exit : e.exit] };
   }
 
   /* The strike on the knight's pose o at el: the swing until the hit, then the bounce back and the
