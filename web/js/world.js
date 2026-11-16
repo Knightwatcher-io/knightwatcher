@@ -3,7 +3,9 @@
    docs/page.md, and puts the scenes of kw.medieval in place of the code scenes of the same names;
    turns each kind of its prop set into a drawing of a device, which it puts in KW.kinds in place
    of the code's (KW.props.KINDS); and turns the members of its cast into the drawings the engine
-   asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS, FOES and PATRONS).
+   asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS, FOES and PATRONS);
+   and takes its words, which build the quiet line and the captions from the collector's parts, and
+   its overlay's colours and font, which the page sets on the display.
 
    Nothing in a pack runs. A scene compiles into frozen records: each shape a kind from SHAPES, each
    mark one of MARKS, each predicate one the engine evaluates in holds(), each effect a name in
@@ -952,6 +954,124 @@
   }
   restoreCast();
 
+  /* ---- The words and the overlay -------------------------------------------------------------
+     The word set words.medieval gives the templates the page builds the quiet line and the events'
+     captions from, out of the parts the collector sends beside its own text; the overlay
+     overlay.phosphor gives the colours of the words over the scene and their font, which main.js
+     sets as CSS custom properties on the display (docs/worlds.md, The words and the overlay).
+     Without them the page shows the collector's text as it comes, and display.css's own colours,
+     which are the same as the overlay's. Until worlds can be chosen the page reads these two by
+     name, as it reads the prop set. */
+  const WORDS = 'words.medieval', OVERLAY = 'overlay.phosphor';
+  /* The collector's separator, its ellipsis, and the longest quiet line and caption it writes. */
+  const SEP = ' · ', ELLIPSIS = '…', QUIET_MAX = 52, CAPTION_MAX = 44;
+  const HOLE = /\{([a-z]{1,16})\}/g;
+  /* The characters of a text, counted by code point, as the collector counts them. */
+  const chars = s => Array.from(s);
+  const single = s => s.trim().split(/\s+/).join(' ');
+  /* The collector's text.clip(): the text with its runs of white space made single, cut to at most
+     limit characters, and ending in an ellipsis when cut. */
+  function clip(text, limit) {
+    const t = single(String(text)), c = chars(t);
+    return c.length <= limit ? t : c.slice(0, limit - 1).join('').trimEnd() + ELLIPSIS;
+  }
+  /* A template with its placeholders filled from a part's values, or null when it names a value
+     the part lacks or gives empty. */
+  function fillIn(t, part) {
+    let lacks = false;
+    const s = t.replace(HOLE, (m, k) => {
+      const v = k !== 'k' && has(part, k) ? part[k] : null;
+      if (typeof v !== 'string' || !v.trim()) { lacks = true; return ''; }
+      return v;
+    });
+    return lacks ? null : single(s);
+  }
+  /* The line a list of parts makes, [{ k, ...values }], in the templates sets gives for each kind
+     k, within limit characters; null when sets gives no templates for a kind sent, or no part can
+     be written. Each part takes the first of its templates, the longest, whose values it has, and
+     a part with none is passed over. The parts are joined with " · ", and while the line is too
+     long the last part takes its next template, and with none left is dropped, then the part
+     before it the same way: the rule of the collector's quiet_line() and text.join_fitting(). The
+     first part is never dropped, and alone and too long it is cut with an ellipsis, as the
+     collector cuts a caption. */
+  function join(parts, sets, limit) {
+    if (!Array.isArray(parts) || !parts.length || !isObj(sets)) return null;
+    const forms = [];
+    for (const p of parts) {
+      if (!isObj(p) || typeof p.k !== 'string' || !has(sets, p.k) || !Array.isArray(sets[p.k])) return null;
+      const f = sets[p.k].map(t => (typeof t === 'string' ? fillIn(t, p) : null)).filter(s => s);
+      if (f.length) forms.push(f);
+    }
+    if (!forms.length) return null;
+    const pick = forms.map(() => 0), line = () => forms.map((f, i) => f[pick[i]]).join(SEP);
+    for (let n = forms.length - 1; chars(line()).length > limit;) {
+      if (pick[n] < forms[n].length - 1) pick[n]++;
+      else if (n > 0) { forms.pop(); pick.pop(); n--; }
+      else break;
+    }
+    return clip(line(), limit);
+  }
+  const text = v => (typeof v === 'string' ? v : '');
+  /* The quiet line the page shows: built from the collector's quiet_parts in the words in use, or
+     the collector's quiet_line as it is. */
+  function quietLine(parts, own) {
+    const sets = api.words && api.words.quiet, s = sets ? join(parts, sets, QUIET_MAX) : null;
+    return s === null ? text(own) : s;
+  }
+  /* An event's caption: built from its parts in the words in use for its type, or its text as it
+     is. */
+  function caption(type, parts, own) {
+    const sets = api.words && api.words.captions;
+    const s = sets && typeof type === 'string' && isObj(parts) ? join([Object.assign({}, parts, { k: type })], sets, CAPTION_MAX) : null;
+    return s === null ? text(own) : s;
+  }
+  /* The word set id of the loaded pack, compiled: its name, watcher and labels as written, and its
+     templates for the quiet line's parts and for the captions, each null when the set gives none. */
+  function compileWords(pack, id) {
+    const sec = pack.data.words, v = isObj(sec) && isObj(sec[id]) ? sec[id] : null, path = 'words.' + id;
+    if (!v) throw new Error(path + ': the pack has no such word set');
+    const sets = k => {
+      if (!has(v, k)) return null;
+      const o = {};
+      for (const p of Object.keys(v[k])) {
+        if (!Array.isArray(v[k][p]) || !v[k][p].every(t => typeof t === 'string')) throw new Error(at(at(path, k), p) + ': is not a list of templates');
+        o[p] = v[k][p].slice();
+      }
+      return o;
+    };
+    return freeze({ name: v.name, watcher: v.watcher, labels: isObj(v.labels) ? Object.assign({}, v.labels) : {}, quiet: sets('quiet'), captions: sets('captions') });
+  }
+  /* The fonts the engine ships, by the id an overlay names, as the display's font-family. */
+  const FONTS = { vt323: '"VT323", "DejaVu Sans Mono", monospace' };
+  const LEVEL_IDS = ['ok', 'warn', 'crit', 'info', 'sleep'];
+  const HEX = /^#[0-9a-f]{6}$/i;
+  /* The overlay id of the loaded pack, compiled to the CSS custom properties main.js sets on the
+     display: --kw-<level> and --kw-<level>2, the colours of the words and of the smaller line at
+     each level; --kw-outline, the outline of the words; --kw-scrim, the scrim's colour as "r,g,b",
+     since its alphas stay in display.css; --kw-caption, the caption's background; and --kw-font. The
+     library has checked the values and their bands; they are checked again for their form, so that
+     nothing but a colour or a font of FONTS reaches the style. */
+  function compileOverlay(pack, id) {
+    const sec = pack.data.overlays, v = isObj(sec) && isObj(sec[id]) ? sec[id] : null, path = 'overlays.' + id;
+    if (!v) throw new Error(path + ': the pack has no such overlay');
+    const hex = (c, p) => { if (typeof c !== 'string' || !HEX.test(c)) throw new Error(p + ': is not a hex colour'); return c; };
+    if (!has(FONTS, v.font)) throw notBuilt(at(path, 'font'), 'the font ' + quote(v.font));
+    const props = {};
+    for (const l of LEVEL_IDS) {
+      const c = isObj(v.levels) ? v.levels[l] : null, p = at(at(path, 'levels'), l);
+      if (!Array.isArray(c) || c.length !== 2) throw new Error(p + ': is not two colours');
+      props['--kw-' + l] = hex(c[0], idx(p, 0)); props['--kw-' + l + '2'] = hex(c[1], idx(p, 1));
+    }
+    props['--kw-outline'] = hex(v.outline, at(path, 'outline'));
+    props['--kw-scrim'] = rgbOf(hex(v.scrim, at(path, 'scrim'))).join(',');
+    const cap = v.caption, cp = at(path, 'caption');
+    if (typeof cap === 'string') props['--kw-caption'] = hex(cap, cp);
+    else if (isObj(cap) && typeof cap.a === 'number' && cap.a > 0 && cap.a <= 1) props['--kw-caption'] = rgba({ rgb: hex(cap.rgb, at(cp, 'rgb')), a: cap.a });
+    else throw new Error(cp + ': is not a colour');
+    props['--kw-font'] = FONTS[v.font];
+    return freeze({ name: v.name, font: v.font, props });
+  }
+
   /* ---- Loading ---------------------------------------------------------------------------------
      start() reads kw.medieval from the texts of the packs that ship with the page (the page passes
      KW.packText, as it does to the knight) with the knight's rule: a 'dev' page accepts it
@@ -962,7 +1082,7 @@
      and every scene when the pack is refused, missing or the library is not loaded, stays the code
      scene. The refusal itself is the knight's to report, since the knight reads the same texts;
      start() writes one line about where the scenes are drawn from, and one for each scene, kind of
-     device or member of the cast that failed to compile. */
+     device, member of the cast, word set or overlay that failed to compile. */
   const CODE = {}, LONG = [];
   const cutTo = (s, n) => (s.length > n ? s.slice(0, n - 3) + '...' : s);
   const say = (level, line) => { const c = typeof console !== 'undefined' ? console : null; if (c && typeof c[level] === 'function') c[level](line); };
@@ -985,14 +1105,16 @@
      { id, version, signed } of the pack in use or null, refused { id, step, reason } when it was
      turned away, scenes says for each scene the pack gives whether it is drawn from the 'pack' or
      from 'code', faults lists { scene, reason } for each scene that failed to compile, and note is
-     the last line written to the console. What it found for the devices and the cast it keeps in
-     KW.world.props and KW.world.cast. */
+     the last line written to the console. What it found for the devices, the cast, the words and
+     the overlay it keeps in KW.world.props, KW.world.cast, KW.world.words and KW.world.overlay. */
   function start(texts, allowUnsigned, opts) {
     const o = isObj(opts) ? opts : {}, lib = KW.pack && typeof KW.pack.read === 'function' ? KW.pack : null;
     restore(); restoreKinds(); restoreCast();
     const status = api.status = { source: 'code', pack: null, refused: null, scenes: {}, faults: [], note: '' };
     const props = api.props = { source: 'code', set: null, kinds: {}, faults: [] };
     const castStatus = api.cast = { source: 'code', members: {}, faults: [] };
+    const words = api.words = { source: 'code', set: null, name: null, watcher: null, labels: null, quiet: null, captions: null, faults: [] };
+    const over = api.overlay = { source: 'code', id: null, name: null, font: null, props: {}, faults: [] };
     const lines = [];
     const line = (level, text) => { lines.push([level, text]); status.note = text; };
     let pack = null;
@@ -1043,6 +1165,22 @@
           line('warn', 'knightwatcher: the cast member ' + id + ' is drawn from code: it could not be compiled: ' + cutTo(reason, 120));
         }
       }
+      // the words and the overlay, each by its name: the collector's text and display.css's colours
+      // when the pack gives none, and when one fails to compile, with a line of its own
+      if (isObj(pack.data && pack.data.words) && has(pack.data.words, WORDS)) {
+        try { Object.assign(words, compileWords(pack, WORDS), { source: 'pack', set: WORDS }); } catch (e) {
+          const reason = message(e);
+          words.faults.push({ set: WORDS, reason });
+          line('warn', 'knightwatcher: the words are the collector\'s: the word set ' + WORDS + ' could not be compiled: ' + cutTo(reason, 120));
+        }
+      }
+      if (isObj(pack.data && pack.data.overlays) && has(pack.data.overlays, OVERLAY)) {
+        try { Object.assign(over, compileOverlay(pack, OVERLAY), { source: 'pack', id: OVERLAY }); } catch (e) {
+          const reason = message(e);
+          over.faults.push({ overlay: OVERLAY, reason });
+          line('warn', 'knightwatcher: the overlay is drawn from code: the overlay ' + OVERLAY + ' could not be compiled: ' + cutTo(reason, 120));
+        }
+      }
       const drawn = [], data = pack.data && isObj(pack.data.scenes) ? pack.data.scenes : {};
       for (const id of Object.keys(data)) {
         if (!(has(KW.scenes, id) || has(CODE, id))) continue;
@@ -1066,5 +1204,6 @@
     return status;
   }
 
-  const api = KW.world = { MEDIEVAL, PROPS, compile, compileKind, compileMember, start, status: null, props: null, cast: null };
+  const api = KW.world = { MEDIEVAL, PROPS, WORDS, OVERLAY, QUIET_MAX, CAPTION_MAX, compile, compileKind, compileMember, compileWords, compileOverlay, join, quietLine, caption,
+    start, status: null, props: null, cast: null, words: null, overlay: null };
 })(window.KW);

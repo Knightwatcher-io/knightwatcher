@@ -33,9 +33,13 @@ test('the example in docs/state.md maps to the unhealthy container in the house'
     { place: 'h1', kind: 'camera', ok: true, alert: true }, { place: 'g2', kind: 'machine', ok: false, alert: false }]);
   assert.equal(v.tv, true);
   assert.equal(v.maxSeq, 4411);
+  // the ban's text and parts as the docs give them, the parts null while the example has none
+  const ban = EXAMPLE.events.find(e => e.seq === 4411);
   assert.deepEqual(v.events, [
-    { seq: 4410, act: 'flies', count: 3, text: '' },
-    { seq: 4411, act: 'goblin', count: 1, text: 'BANNED 203.0.113.77 · 6 probes for /.env' }]);
+    { seq: 4410, type: 'ad_blocked', act: 'flies', count: 3, text: '', parts: null },
+    { seq: 4411, type: 'ip_banned', act: 'goblin', count: 1, text: ban.text, parts: ban.parts || null }]);
+  assert.match(ban.text, /^BANNED 203\.0\.113\.77 · /);
+  assert.deepEqual(v.quietParts, EXAMPLE.quiet_parts || null);
 });
 
 test('every id maps to the scene and rank docs/design.md gives it', () => {
@@ -279,6 +283,24 @@ test('a seq that goes backwards is adopted without playing, as a restarted colle
   assert.deepEqual(ST.takeEvents(v, 4411), { play: [], lastSeq: 3 });
   const none = ST.map(file({ events: [] }), at(0));
   assert.deepEqual(ST.takeEvents(none, 4411), { play: [], lastSeq: 4411 });
+});
+
+test('the quiet line\'s parts and an event\'s parts are read beside the text, as strings, or not at all', () => {
+  const parts = [{ k: 'quiet' }, { k: 'up', n: '29' }, { k: 'backup', at: '03:12' }, { k: 'ads', n: '4,812', short: '4,812' }];
+  assert.deepEqual(ST.map(file({ quiet_parts: parts }), at(0)).quietParts, parts);
+  // a value of another kind, or too long, is left out of its part
+  assert.deepEqual(ST.map(file({ quiet_parts: [{ k: 'up', n: 29 }, { k: 'backup', at: 'x'.repeat(201) }] }), at(0)).quietParts, [{ k: 'up' }, { k: 'backup' }]);
+  // no parts, or a list the page cannot read: the quiet line as it is
+  for (const bad of [undefined, null, 'ALL QUIET', {}, [], [{ n: '29' }], [{ k: '' }], [null], [{ k: 7 }], Array(17).fill({ k: 'quiet' })]) {
+    assert.equal(ST.map(file({ quiet_parts: bad }), at(0)).quietParts, null, JSON.stringify(bad));
+  }
+  const v = ST.map(file({ events: [
+    { seq: 1, type: 'ip_banned', at: EXAMPLE.generated_at, count: 1, text: 'BANNED 203.0.113.77 · sshd', parts: { addr: '203.0.113.77', jail: 'sshd' } },
+    { seq: 2, type: 'import', at: EXAMPLE.generated_at, count: 1, text: 'IMPORTED · A Film', parts: { title: 'A Film', n: 3 } },
+    { seq: 3, type: 'backup_done', at: EXAMPLE.generated_at, count: 1, text: 'BACKUP DONE 03:12', parts: 'at 03:12' },
+    { seq: 4, type: 'ip_banned', at: EXAMPLE.generated_at, count: 1, text: 'BANNED 198.51.100.4' }] }), at(0));
+  assert.deepEqual(v.events.map(e => [e.type, e.act, e.parts]), [
+    ['ip_banned', 'goblin', { addr: '203.0.113.77', jail: 'sshd' }], ['import', 'crate', { title: 'A Film' }], ['backup_done', 'feast', null], ['ip_banned', 'goblin', null]]);
 });
 
 test('no signal keeps the knight\'s state under a red headline', () => {

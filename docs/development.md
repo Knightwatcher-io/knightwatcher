@@ -216,7 +216,14 @@ compiler refuses in the cast. `tests/web/world-props.test.js`
 draws every kind of device from the medieval world's prop set beside the code's drawing of it, call
 for call, in every place of every scene, up and gone, with and without its question mark, in both
 parts and through the lamps' loops, and checks where the devices are drawn from, a kind that fails
-to compile, the lamp of a kind's own and what the compiler refuses in a prop. `tests/web/settings-schema.test.js` checks the page's lists of
+to compile, the lamp of a kind's own and what the compiler refuses in a prop. `tests/web/world-words.test.js`
+checks the quiet line and the captions the page builds from the collector's parts in the medieval
+world's words, held to the collector's own rule at the limits of 52 and 44, with the collector's text
+when there are no parts or no words; the overlay's CSS custom properties against the fallbacks
+`display.css` gives them; that `main.js` writes the words with `textContent`; where the words and the
+overlay come from on a `dev` and a deployed page; and the demo's parts, texts and lines.
+`tests/web/state.test.js` also checks that `quiet_parts` and an event's `parts` are read as strings,
+or not at all. `tests/web/settings-schema.test.js` checks the page's lists of
 settings, scenes and conditions against the settings schema. `tests/web/shared-settings.test.js` checks the shared settings against a fake server: the first
 answer, the carry-over of a browser's own choices, no server, a choice sent and a write refused,
 and two displays sharing one server. `tests/web/settings.test.js` checks the settings in
@@ -265,7 +272,7 @@ the scenes concerned the code scenes with its console line, the predicates and t
 keyframes' tracks, the rests, the rest mark and the pegs, and
 that what the compiler does not build yet is refused by name.
 
-The repository's own page draws the knight from the base pack, and every scene, every device and the cast from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
+The repository's own page draws the knight from the base pack, and every scene, every device, the cast, the words and the overlay from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
 and the scene test check both paths. A deployed copy draws from each pack while it ships signed, and
 from code otherwise; to shoot the code path as well, take a second pair of sets from a copy of
 `web/` whose `kw-version` is not `dev` and whose packs carry no signature; [page.md](./page.md#checks)
@@ -311,10 +318,11 @@ Whether the base pack ships signed today, and what a deployed page draws in each
 first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, and again the same
 day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house.
 Version 0.3.0, which adds the devices, was signed the same way on 16 November, and version 0.4.0,
-which adds the cast, the same day. A signed version is drawn from by a deployed
-page and a `dev` page alike, every scene, every device and the cast it gives; a
-version changed after signing ships unsigned until its next run, and meanwhile a deployed page draws
-every scene from code ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
+which adds the cast, the same day. Version 0.5.0, which adds the words and the overlay, ships
+unsigned until its run. A signed version is drawn from by a deployed
+page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
+overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
+page draws every scene from code and shows the collector's own words ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
 across changes no test.
 
 ## Deploying

@@ -23,10 +23,15 @@
     { id: 'night',               alias: 'night',  name: 'Night',       hl: 'NIGHT WATCH',    sub: 'nothing to report since 23:40' }
   ].map(c => { const k = ST.CONDITIONS[c.id]; return Object.assign(c, { lv: k.lv, level: k.level, st: ST.LEVELS[k.level], scene: k.scene }); });
   const ALIAS = {}; for (const c of CONDS) ALIAS[c.alias] = c.id;
+  /* The events, each with its type in the contract and the text and parts the collector would
+     send for it; the caption shown is built from the parts in the world's words. */
   const EVENTS = {
-    goblin: { name: 'IP banned',   cap: 'BANNED 203.0.113.77 · 6 probes for /.env' },
-    crate:  { name: 'Import',      cap: 'IMPORTED · The Night Shift S02E04' },
-    feast:  { name: 'Backup done', cap: 'BACKUP DONE · 2.1 GB added, 0 errors' } };
+    goblin: { name: 'IP banned',   type: 'ip_banned',   text: 'BANNED 203.0.113.77 · sshd',          parts: { addr: '203.0.113.77', jail: 'sshd' } },
+    crate:  { name: 'Import',      type: 'import',      text: 'IMPORTED · The Night Shift S02E04',   parts: { title: 'The Night Shift S02E04' } },
+    feast:  { name: 'Backup done', type: 'backup_done', text: 'BACKUP DONE 03:12',                   parts: { at: '03:12' } } };
+  /* The collector's own words for the quiet line (quiet_line() in collector/runner.py), which write
+     the demo's quiet_line, the text shown without a world's words. */
+  const COLLECTOR_QUIET = { quiet: ['ALL QUIET'], up: ['{n} up'], backup: ['backup {at}'], ads: ['{n} ads blocked', '{short} ads blocked', '{short} blocked'] };
   const DEMO = [
     { on: '', is: 'battlement', dur: 9000, flies: 4, swat: 3200 }, { on: '', is: 'battlement', dur: 6000, ev: 'goblin' },
     { on: '', is: 'camp', dur: 9000, ev: 'crate' }, { on: '', is: 'yard', dur: 8000 }, { on: 'ssh_session', dur: 9000 }, { on: 'cpu_hot', dur: 7000 },
@@ -41,14 +46,26 @@
 
   let S = null, E = null, running = false, built = false, flyTimer = 0, demoAt = 0, demoI = -1, swatNote = null, stepDevices = null;
   let ads = 4812;
-  const idleLine = () => 'ALL QUIET · 29 up · backup 03:12 · ' + ads.toLocaleString('en-GB') + ' ads slain';
+  /* A count of adverts as the collector writes it, whole (text.count()) and short (short_count()):
+     4,812, then 11.3k, 240k, 1.4M. */
+  const count = n => n.toLocaleString('en-GB');
+  const shortCount = n => (n < 1e4 ? count(n) : n < 1e5 ? (n / 1e3).toFixed(1) + 'k' : n < 1e6 ? Math.floor(n / 1e3) + 'k' : (n / 1e6).toFixed(1) + 'M');
+  /* The quiet line for n adverts blocked, as the collector sends it: its parts, and the quiet_line
+     it writes from them. */
+  function quietFor(n) {
+    const parts = [{ k: 'quiet' }, { k: 'up', n: '29' }, { k: 'backup', at: '03:12' }, { k: 'ads', n: count(n), short: shortCount(n) }];
+    return { parts, text: KW.world.join(parts, COLLECTOR_QUIET, KW.world.QUIET_MAX) };
+  }
+  /* The quiet line and an event's caption, shown as live mode shows them. */
+  const idleLine = () => { const q = quietFor(ads); return KW.world.quietLine(q.parts, q.text); };
+  const captionOf = type => { const e = EVENTS[type]; return KW.world.caption(e.type, e.parts, e.text); };
   const active = () => { const on = S.on.split(',').filter(Boolean); return CONDS.filter(c => on.includes(c.id)); };
   const isOn = id => S.on.split(',').includes(id);
   const IDLE = Object.assign({}, ST.IDLE);
 
   function addFly(t) { if (!running) return; ads++; E.addFly(t); }
   function refreshSub() { if (!active().length) KW.ui.quietText(idleLine()); }
-  function fire(type) { E.fireEvent(type, EVENTS[type].cap); }
+  function fire(type) { E.fireEvent(type, captionOf(type)); }
 
   function set(k, v) { S[k] = String(v); apply(); }
   function toggle(id) { const on = S.on.split(',').filter(Boolean), i = on.indexOf(id); if (i < 0) on.push(id); else on.splice(i, 1); set('on', on.join(',')); }
@@ -143,6 +160,8 @@
     /* Applies the demo's settings again, after the settings screen changed something. */
     refresh() { if (running) apply(); },
     tick,
+    /* The quiet line and the events, for the tests. */
+    quietFor, captionOf, EVENTS,
     note(text) { if (swatNote) swatNote.textContent = text; }
   };
 })(window.KW);

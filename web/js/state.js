@@ -46,6 +46,25 @@
   const str = v => (typeof v === 'string' ? v : '');
   const has = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
+  /* The parts the collector sends beside its finished text, which the page may build the text
+     again from in a world's words (docs/state.md): an object of strings, the keys a value of
+     another kind has left out, or null when there is none. MAX_PARTS is the most parts of the quiet
+     line the page reads, and MAX_VALUE the longest value. */
+  const MAX_PARTS = 16, MAX_VALUE = 200;
+  function values(o) {
+    if (!isObj(o)) return null;
+    const v = {};
+    for (const k of Object.keys(o)) if (typeof o[k] === 'string' && o[k].length <= MAX_VALUE) v[k] = o[k];
+    return v;
+  }
+  /* The quiet line's parts, [{ k, ...values }], or null when the file has none, or any one of them
+     cannot be read: then the page shows quiet_line as it is. */
+  function quietParts(list) {
+    if (!Array.isArray(list) || !list.length || list.length > MAX_PARTS) return null;
+    const out = list.map(values);
+    return out.every(p => p && typeof p.k === 'string' && p.k) ? out : null;
+  }
+
   /* The engine's record of one condition: its id, lv and scene from the table above, its colour
      from the file's level (or the design's when the file has none), and the file's words. */
   function condition(c) {
@@ -115,10 +134,13 @@
                   towards, or null (see lookPlace)
        more       { n, crit }: the other known conditions at warning or critical, and whether any
                   of them is critical
-       quietLine  the line shown when w is null
+       quietLine  the collector's line shown when w is null
+       quietParts the parts it was written from, [{ k, ...values }], each value a string, or null
+                  when the file has none or one cannot be read
        devices     the devices the scene draws, in their places (see arrange())
        tv         whether the television is on
-       events     the events of a known type, oldest first: { seq, act, count, text }
+       events     the events of a known type, oldest first: { seq, type, act, count, text, parts },
+                  parts the values the caption was written from, each a string, or null
        maxSeq     the highest seq in the file, or null when it has no events
        intervalS  how often the collector says it writes the file, in seconds
        defaults   the file's defaults section as it stands, for KW.settings to check, or null when
@@ -151,14 +173,14 @@
       maxSeq = maxSeq === null ? e.seq : Math.max(maxSeq, e.seq);
       if (!has(EVENTS, e.type)) continue;
       const n = typeof e.count === 'number' && e.count >= 1 ? Math.floor(e.count) : 1;
-      events.push({ seq: e.seq, act: EVENTS[e.type], count: Math.min(n, MAX_FLIES), text: str(e.text) });
+      events.push({ seq: e.seq, type: e.type, act: EVENTS[e.type], count: Math.min(n, MAX_FLIES), text: str(e.text), parts: values(e.parts) });
     }
     events.sort((a, b) => a.seq - b.seq);
 
     return {
       ok: true, problem: '', generatedAt, ageS, w,
       more: { n: rest.length, crit: rest.some(c => c.level === 'critical') },
-      quietLine: str(file.quiet_line),
+      quietLine: str(file.quiet_line), quietParts: quietParts(file.quiet_parts),
       devices: drawn.devices,
       tv: (typeof streams === 'number' && streams > 0) || known.some(c => c.id === 'streaming'),
       events, maxSeq, intervalS: interval,

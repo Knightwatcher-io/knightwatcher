@@ -786,6 +786,10 @@ contrast on black (WCAG's), and `sleep`'s are darker than `ok`'s:
 | `info` | 180 to 215 | 6 or more |
 | `sleep` | 110 to 160 | 3 to 6 |
 
+The page builds the quiet line and the captions from the collector's parts in a word set, and sets
+an overlay's values as CSS custom properties; [worlds.md](./worlds.md#the-words-and-the-overlay)
+describes both.
+
 ### Presets
 
 A preset, in `worlds`, is `{ name, body, outfit, scenes, cast, props, overlay, words, picture }`,
@@ -1354,11 +1358,16 @@ base pack's items falls back on any build.
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.4.0, signed with `kw1`, as 0.1.0 (the cellar alone), 0.2.0 and 0.3.0 were. It holds every scene as data, the three monarchs, the goblin and the fly as its cast, the devices as the prop set
-`props.medieval`, the stamps they use (the sconce, the barrel, the house's peg, the raspberry's
-drawings and the virtual machine's dots) and one palette entry, `house.screen`, the television's
-colour, and the page draws those scenes, devices and the cast from it on a `dev` page, and on a
-deployed page once it is signed. It weighs 233 KB of the 512 KiB a pack may.
+`[1, 1]`, version 0.5.0. Versions 0.1.0 (the cellar alone) to 0.4.0 were signed with `kw1`; 0.5.0
+ships unsigned until its signing run. It holds every scene as data, the three monarchs, the goblin
+and the fly as its cast, the devices as the prop set `props.medieval`, the word set
+`words.medieval`, the overlay `overlay.phosphor`, the stamps the scenes and devices use (the sconce,
+the barrel, the house's peg, the raspberry's drawings and the virtual machine's dots) and one
+palette entry, `house.screen`, the television's colour. The page draws those scenes, devices and
+the cast from it, builds the quiet line and the captions in its words and takes the colours of the
+words over the scene from its overlay, on a `dev` page, and on a deployed page once it is signed;
+until then a deployed page refuses it and shows the collector's own words in `display.css`'s
+colours. It weighs 234 KB of the 512 KiB a pack may.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 

@@ -25,7 +25,9 @@ Rules that follow from this, each decided by the owner:
 - The scene fills the screen. Text lies over it: a headline and one line when something needs
   saying, and only the clock and one small line when all is quiet.
 - Text colour is the status: green when quiet, amber for a warning, red when critical, blue while
-  something is at work.
+  something is at work. A world's overlay may give its own shade of each, within a band of hue and
+  contrast on black that keeps the meaning ([packs.md](./packs.md#words-and-the-overlay)); the
+  medieval world's overlay gives the colours above.
 - Movement is kept small. A fire flickers, the knight strolls to another spot every 12 to 22
   seconds in the quiet scenes. There is enough movement to spare an OLED panel and not enough to
   keep catching the eye. The whole picture and the text also drift a few pixels over minutes.

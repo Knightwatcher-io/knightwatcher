@@ -46,12 +46,14 @@
      in the base pack's defaults, and the settings then choose its look. */
   KW.knight.start(KW.packText, ownVersion === 'dev', { look: {} });
 
-  /* ---- The scenes: from the medieval world's pack, or from code -------------------------------
-     The scenes kw.medieval gives (today the cellar) are compiled from it and take the place of the
-     code scenes of the same names, under the knight's rule: a 'dev' page accepts the pack unsigned,
-     a deployed page only signed. Refused, missing or failing to compile, a scene stays the code
-     scene in js/scenes/. KW.world writes one line to the console about where they are drawn from
-     (docs/worlds.md). */
+  /* ---- The world: from the medieval world's pack, or from code -------------------------------
+     The scenes, devices and cast kw.medieval gives are compiled from it and take the place of the
+     code's, under the knight's rule: a 'dev' page accepts the pack unsigned, a deployed page only
+     signed. Refused, missing or failing to compile, each stays the code's. Its words build the quiet
+     line and the captions from the collector's parts, and its overlay gives the colours and the
+     font of the words over the scene, set below; without them the page shows the collector's text
+     and display.css's colours. KW.world writes one line to the console about where the scenes are
+     drawn from (docs/worlds.md). */
   if (KW.world) KW.world.start(KW.packText, ownVersion === 'dev');
 
   /* ---- The settings ------------------------------------------------------------------------------
@@ -105,6 +107,14 @@
   const $ = id => document.getElementById(id);
   const cv = $('cv'), surface = $('surface'), hl = $('hl'), sub = $('sub'), more = $('more'), quiet = $('quiet'), cap = $('cap'), ov = $('ov'), clock = $('clock');
   E.init(cv.getContext('2d'));
+  /* The overlay's colours and font, as CSS custom properties that display.css reads, each a value
+     KW.world has checked. With no overlay none is set, and display.css's own values stand. */
+  const ovProps = KW.world && KW.world.overlay ? KW.world.overlay.props : {};
+  for (const k of Object.keys(ovProps)) surface.style.setProperty(k, ovProps[k]);
+  /* The quiet line and an event's caption: built from the collector's parts in the world's words,
+     or the collector's own text (KW.world.quietLine and caption). */
+  const quietOf = v => (KW.world ? KW.world.quietLine(v.quietParts, v.quietLine) : v.quietLine);
+  const captionOf = e => (KW.world ? KW.world.caption(e.type, e.parts, e.text) : e.text);
   let capTimer = 0, lastShow = null; if (freeze) cap.style.transition = 'none';
   KW.ui = {
     /* t: { st, hl, sub, quiet, more: { n, crit } }. With no headline the screen is quiet and shows
@@ -178,7 +188,7 @@
   /* Shows a valid view's state; its events are played separately. */
   function showLive(v) {
     E.input = Object.assign({ w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, devices: v.devices, tv: v.tv, helmet: S.h }, KW.ui.extras(LIVE_TURN_MS));
-    showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more } : { st: 'ok', hl: '', sub: '', quiet: v.quietLine, more: { n: 0, crit: false } });
+    showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more } : { st: 'ok', hl: '', sub: '', quiet: quietOf(v), more: { n: 0, crit: false } });
   }
   function onView(v) {
     if (sync) sync.poll();
@@ -190,7 +200,7 @@
       const r = ST.takeEvents(v, lastSeq); lastSeq = r.lastSeq;
       for (const e of r.play) {
         if (e.act === 'flies') { const t = performance.now(); for (let i = 0; i < e.count; i++) E.addFly(t + i * 40); }
-        else E.fireEvent(e.act, e.text);
+        else E.fireEvent(e.act, captionOf(e));
       }
     } else if (j.kind === 'demo') {
       if (mode !== 'demo') startDemo();
