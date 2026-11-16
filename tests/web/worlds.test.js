@@ -59,7 +59,7 @@ function testPack(edit) {
       outfit: { items: Object.assign({}, ...Object.entries(BASE.defaults.items).map(([s, i]) => ({ [s]: 'kw.base/' + i })), { main: 'kw.base/main.arming', off: 'kw.base/off.round' }),
         swatches: { skin: 'kw.base/tan', hair: 'kw.base/black', tabard: 'kw.base/forest', plume: 'kw.base/gold' } },
       scenes: { quiet: [M + 'camp', M + 'yard'], for: Object.assign({}, ...Object.entries(HOMES).map(([c, s]) => ({ [c]: M + s })), { cpu_hot: M + 'camp' }) },
-      cast: { patron: M + 'patron.b', foe: M + 'foe.goblin', critter: M + 'critter.fly' },
+      cast: { patron: M + 'patron.b', foe: M + 'foe.goblin', critter: M + 'critter.fly', pet: M + 'pet.cat' },
       props: 'props.neon', overlay: M + 'overlay.phosphor', words: M + 'words.medieval', picture: M + 'yard' } } };
   if (edit) edit(p);
   return JSON.stringify({ kwpack: 1, pack: p });
@@ -103,7 +103,7 @@ test('kw.medieval holds the medieval preset, complete, and it is what the page d
   const w = r.data.worlds['world.medieval'];
   assert.deepEqual(Object.keys(r.data.worlds), ['world.medieval']);
   assert.deepEqual([w.name, w.body, w.picture, w.props, w.overlay, w.words], ['Medieval', 'kw.base/build.a', 'camp', 'props.medieval', 'overlay.phosphor', 'words.medieval']);
-  assert.deepEqual(plain(w.cast), { patron: 'patron.a', foe: 'foe.goblin', critter: 'critter.fly' });
+  assert.deepEqual(plain(w.cast), { patron: 'patron.a', foe: 'foe.goblin', critter: 'critter.fly', pet: 'pet.cat' });
   // its outfit is the base pack's defaults
   const own = id => 'kw.base/' + id;
   assert.equal(w.body, own(BASE.defaults.build));
@@ -114,7 +114,7 @@ test('kw.medieval holds the medieval preset, complete, and it is what the page d
   assert.deepEqual(plain(w.scenes.quiet), SET.SCENES);
   assert.deepEqual(plain(w.scenes.quiet), plain(CODE.KW.engine.TURNS));
   // the rail's labels come from its words
-  assert.deepEqual([MED.words['words.medieval'].labels.watcher, MED.words['words.medieval'].labels.patron], ['The knight', 'The monarch']);
+  assert.deepEqual([MED.words['words.medieval'].labels.watcher, MED.words['words.medieval'].labels.patron, MED.words['words.medieval'].labels.pet], ['The knight', 'The monarch', 'The cat']);
 });
 
 test('the pack library refuses a preset that leaves out a part, a scene that is not quiet, or a scene that cannot act its condition', () => {
@@ -139,8 +139,8 @@ test('a page that reads kw.medieval lists its world, the other packs\' worlds an
   assert.deepEqual(CAT.names.world, { 'kw.medieval/world.medieval': 'medieval' });
   assert.deepEqual(CAT.names.props, { 'kw.medieval/props.medieval': 'medieval' });
   assert.deepEqual(CAT.names.monarch, { 'kw.medieval/patron.a': 'a', 'kw.medieval/patron.b': 'b', 'kw.medieval/patron.c': 'c' });
-  assert.deepEqual([CAT.names.foe, CAT.names.critter, CAT.names.words, CAT.names.overlay],
-    [{ 'kw.medieval/foe.goblin': 'goblin' }, { 'kw.medieval/critter.fly': 'fly' }, { 'kw.medieval/words.medieval': 'medieval' }, { 'kw.medieval/overlay.phosphor': 'medieval' }]);
+  assert.deepEqual([CAT.names.foe, CAT.names.critter, CAT.names.pet, CAT.names.words, CAT.names.overlay],
+    [{ 'kw.medieval/foe.goblin': 'goblin' }, { 'kw.medieval/critter.fly': 'fly' }, { 'kw.medieval/pet.cat': 'cat' }, { 'kw.medieval/words.medieval': 'medieval' }, { 'kw.medieval/overlay.phosphor': 'medieval' }]);
   assert.equal(CAT.names.scene['kw.medieval/cellar'], 'cellar');
   assert.deepEqual(CAT.scenes['kw.medieval/camp'], { can: MED.scenes.camp.can, quiet: true });
   // the base world's scenes come from its preset
@@ -148,7 +148,7 @@ test('a page that reads kw.medieval lists its world, the other packs\' worlds an
   assert.deepEqual(Object.fromEntries(Object.entries(CAT.homes).filter(([, s]) => s)), HOMES);
   // drawn from code, the base world is the code's, and nothing else is listed
   const code = plain(CODE.KW.settings.pageWorld());
-  assert.deepEqual([code.worlds, code.sets, code.names, code.scenes, code.quiet], [{}, {}, { world: {}, monarch: {}, foe: {}, critter: {}, props: {}, overlay: {}, words: {}, scene: {} }, {}, undefined]);
+  assert.deepEqual([code.worlds, code.sets, code.names, code.scenes, code.quiet], [{}, {}, { world: {}, monarch: {}, foe: {}, critter: {}, pet: {}, props: {}, overlay: {}, words: {}, scene: {} }, {}, undefined]);
   assert.deepEqual(Object.fromEntries(Object.entries(code.homes).filter(([, s]) => s)), HOMES);
 });
 
@@ -472,5 +472,10 @@ test('the pages take the world\'s labels; World is first in the rail, and the sc
   assert.ok(pages, 'World first, the knight\'s label from the words');
   assert.match(SETTINGS_JS, /const st = \{ open: false, page: 'knight',/);
   assert.match(SETTINGS_JS, /hold\.done = true; swallow = true; open\('knight'\);/);
-  assert.match(SETTINGS_JS, /const pageLabel = k => labelOf\(wordLabels\(\), k === 'knight' \? 'watcher' : 'patron', k === 'knight' \? 'The knight' : 'The monarch'\);/);
+  assert.match(SETTINGS_JS, /const PAGE_LABELS = \{ knight: \['watcher', 'The knight'\], monarch: \['patron', 'The monarch'\], pet: \['pet', 'The pet'\] \};/);
+  assert.match(SETTINGS_JS, /const pageLabel = k => labelOf\(wordLabels\(\), PAGE_LABELS\[k\]\[0\], PAGE_LABELS\[k\]\[1\]\);/);
+  // the pet's page comes right after the monarch's
+  assert.match(SETTINGS_JS, /\n      monarch: \{ label: \(\) => pageLabel\('monarch'\)[\s\S]*?\n      \} \},\n      pet: \{ label: \(\) => pageLabel\('pet'\)/);
+  assert.equal(SCR.partLabel('look', 'pet_coat', MED.words['words.medieval'].labels), 'Cat\'s coat');
+  assert.equal(SCR.partLabel('look', 'pet', null), 'Pet');
 });

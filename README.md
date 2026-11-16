@@ -7,8 +7,9 @@
 
 A wall display for a homelab. A pixel-art knight fills a tablet's screen and mirrors the state of
 the machines being watched: the knight sweats when the CPU is pinned, takes to bed when a
-container is unhealthy, and swats the flies that blocked adverts turn into. A headline says why,
-beside a wall clock.
+container is unhealthy, and swats the flies that blocked adverts turn into. A mouser cat lives in
+every scene and catches the flies the knight cannot: indoors, and outdoors while the knight is
+busy. A headline says why, beside a wall clock.
 
 The scene is a night in the knight's world. When all is quiet the knight stands on the
 battlement, by the camp fire, in the house or in the training yard, and strolls to another spot
@@ -67,7 +68,8 @@ and shows a bar of controls for every scene and state.
 Press and hold anywhere on the display for two seconds to open the settings: the world, which
 sets every part at once and is medieval for now, the knight's build
 (Classic, Broad or Slim), weapon, skin, hair, tabard and plume, the shield and armour from helmet
-to boots and a cloak or cape, the monarch and the monarch's skin, hair and robe, the headline size,
+to boots and a cloak or cape, the monarch and the monarch's skin, hair and robe, the cat's coat
+(calico or a ginger tabby), the headline size,
 a 12-hour clock, the helmet indoors, which quiet scenes take turns, and the scene some conditions
 play in (running hot at the camp rather than the training yard, say). Served by Knightwatcher's own
 server, what is chosen there is saved for every display; opened from disk, it is kept in that

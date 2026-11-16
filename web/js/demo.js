@@ -147,14 +147,17 @@
       flyTimer = setInterval(() => { if (Math.random() < .6) { addFly(performance.now()); refreshSub(); } }, 5200);
       apply();
     },
-    /* The address's test hooks: f=<flies>, e=<event>, sw=1 to start a swat. The event and the swat
-       wait 300 ms, except with time frozen by t=, when they start before the first frame. A frozen
-       picture must not depend on how many frames the browser paints before the timer fires. */
+    /* The address's test hooks: f=<flies>, which come at -5000 ms, or at fa=<ms>, e=<event>, sw=1
+       to start a swat. The event and the swat wait 300 ms, except with time frozen by t=, when
+       they start before the first frame, the event before the flies, so that a fly that comes
+       with it is the cat's, as it would be live. A frozen picture must not depend on how many
+       frames the browser paints before the timer fires. */
     hooks() {
-      const hv = KW.hooks.hv, freeze = KW.hooks.frozen;
-      if (hv('f')) for (let i = 0; i < +hv('f'); i++) E.addFly(-5000 + i);
-      const go = () => { if (!running) return; if (hv('e') && EVENTS[hv('e')]) fire(hv('e')); if (hv('sw')) E.startSwat(freeze ? KW.hooks.t : performance.now()); };
-      if (freeze) go(); else setTimeout(go, 300);
+      const hv = KW.hooks.hv, freeze = KW.hooks.frozen, at = hv('fa') !== undefined && Number.isFinite(+hv('fa')) ? +hv('fa') : -5000;
+      const flies = () => { if (hv('f')) for (let i = 0; i < +hv('f'); i++) E.addFly(at + i); };
+      const event = () => { if (running && hv('e') && EVENTS[hv('e')]) fire(hv('e')); };
+      const swat = () => { if (running && hv('sw')) E.startSwat(freeze ? KW.hooks.t : performance.now()); };
+      if (freeze) { event(); flies(); swat(); } else { flies(); setTimeout(() => { event(); swat(); }, 300); }
     },
     stop() { running = false; clearInterval(flyTimer); S.demo = '0'; stepDevices = null; },
     /* Applies the demo's settings again, after the settings screen changed something. */

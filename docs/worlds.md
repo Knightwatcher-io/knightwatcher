@@ -6,18 +6,20 @@ data ([packs.md](./packs.md#format-11) gives the format and its checks). This pa
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
 pack, `kw.medieval`, which holds all seven scenes, the battlement, the camp, the yard, the cellar,
 the smithy, the house and the court, the devices, the prop set `props.medieval`, and the cast: the
-three monarchs, the goblin and the fly, and the words and the overlay. Step W5 of the conversion
+three monarchs, the goblin, the fly and the mouser cat, and the words and the overlay. Step W5 of the conversion
 gave the scenes but the court, step W6 the devices, step W7 the cast and with it the court, and step
 W8 the words and the overlay: the page builds the quiet line and the events' captions from the
 parts the collector sends, in the world's words, and takes the colours and the font of the words
 over the scene from the world's overlay. Step W9 added the world itself as a preset, `world.medieval`,
 which the settings resolve against the parts set beside it, and the devices chosen per kind
-([Worlds as presets](#worlds-as-presets)). Everything is drawn from `kw.medieval` 0.6.0, signed.
+([Worlds as presets](#worlds-as-presets)). Version 0.7.0 adds the mouser cat, the first pet. It
+ships unsigned until its signing run: a `dev` page draws everything from it, and a deployed page
+draws every scene, the devices and the cast, the cat among them, from code meanwhile.
 
 ## The medieval world's pack
 
 `web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 1]`,
-version 0.6.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+version 0.7.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([packs.md](./packs.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
@@ -110,6 +112,10 @@ loads it after the base pack's. It holds:
   poses, built from ten parts they share, below;
 - the cast member `critter.fly`, the fly of `props.js` written as data: its two frames and the dead
   fly that falls once it is swatted, below;
+- the cast member `pet.cat`, the mouser cat of `cat.js`: its two coats, `calico` and `ginger`, each
+  pose of each naming a stamp, its spot in each scene, and the measures of its pounce, below;
+- twenty-two stamps for the cat, `cat.<coat>.<pose>`, each pose of each coat as pix shapes in runs,
+  written by `tools/cat-stamps.js` from the code's drawing, below ([The cast](#the-cast));
 - three stamps, `sconce`, `barrel` and `peg`: the props `sconceHD` and `barrelHD` of `props.js`, the
   barrel at the 84 by 72 the cellar and the yard draw it, and one of the house's pegs, counted from
   where the weapon's frame puts it;
@@ -131,7 +137,7 @@ loads it after the base pack's. It holds:
   changes every 400 ms;
 - the preset `world.medieval`, the medieval world whole: the base pack's Classic build and its
   default outfit, the quiet scenes `battlement`, `camp`, `house` and `yard`, the scene of each
-  condition, `patron.a`, `foe.goblin` and `critter.fly`, `props.medieval`, `overlay.phosphor`,
+  condition, `patron.a`, `foe.goblin`, `critter.fly` and `pet.cat`, `props.medieval`, `overlay.phosphor`,
   `words.medieval`, and the camp as its picture, below ([Worlds as presets](#worlds-as-presets)).
 
 At the widest screen they assume, the checks find:
@@ -168,9 +174,12 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
 own lamp counts toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
 5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
-court counts none of them. The whole file weighs 226 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+court counts none of them. The whole file weighs 334 646 bytes, against the 512 KiB a pack may;
+the cat's stamps are 106 KB of it. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
-frame and 1 for what falls, against a limit of 200 for each.
+frame and 1 for what falls, against a limit of 200 for each. The cat's poses cost from 621 fills
+(calico, resting) to 1 263 (ginger, the pounce), against a limit of 8 000 for each, and its stamps
+hold 132 902 of the pack's 139 200 pixels in pix shapes, against a limit of 160 000.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
@@ -178,9 +187,10 @@ then version 0.2.0, version 0.3.0, which adds the devices, and version 0.4.0, wh
 Version 0.5.0, which adds the words and the overlay, is signed too. Version 0.6.0 takes the
 raspberry off the pie and lights the pie through its lattice, with the last slice left in the dish
 when the Pi is down, draws the other devices as medieval things, the owl, the cauldron, the flask
-and the chest, and adds the preset `world.medieval`, and is signed too. A copy changed after signing is
-refused by a deployed page until its next run: that page draws every scene, every device and the
-cast from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
+and the chest, and adds the preset `world.medieval`, and is signed too. Version 0.7.0, which adds
+the mouser cat, ships unsigned until its signing run. A copy changed after signing is refused by a
+deployed page until its next run: that page draws every scene, every device and the cast, the cat
+included, from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.
 
 ## Where the scenes are drawn from
@@ -207,7 +217,7 @@ A scene is drawn from code when:
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
 
 Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn
-from the pack kw.medieval 0.6.0, signed` (or `unsigned`), written with `console.info`; the others
+from the pack kw.medieval 0.7.0, signed` (or `unsigned`), written with `console.info`; the others
 are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
 cellar failing to compile it is `the scenes battlement, camp, yard, smithy, house and court are drawn ...`, after
 the cellar's own line. Of two copies of `kw.medieval` the higher
@@ -632,12 +642,14 @@ hold), and a grey box. The owner chose the medieval things in their place.
 
 `KW.cast` holds the drawings of the engine's supporting cast, by role and then by name: `patrons`,
 with the interface of `KW.props.PATRONS` (which `court.js` gives), `foes`, with that of
-`KW.props.FOES`, and `critters`, with that of `KW.props.CRITTERS` ([page.md](./page.md#the-cast)). `world.js` fills it with the code's members when it loads, and
+`KW.props.FOES`, `critters`, with that of `KW.props.CRITTERS`, and `pets`, with that of
+`KW.props.PETS` (which `cat.js` gives) ([page.md](./page.md#the-cast)). `world.js` fills it with the code's members when it loads, and
 `start` puts the members the pack's cast gives in their place. The engine reads `KW.cast`, or the
 code's tables on a page without the compiler; the court reads `KW.cast.patrons`. The engine keeps
 the motion: where the flies hover, when they are swatted, the poof (`poofHD`) and the fall; the foe's
-entrance over the wall or out of the ground, the strike and the exit; and the court keeps when the
-monarch talks. A member gives only its drawings and its measures.
+entrance over the wall or out of the ground, the strike and the exit; the pet's catch, from the
+look up at a fly to the settle; and the court keeps when the monarch talks. A member gives only its
+drawings and its measures.
 
 A member's shapes are compiled as a prop's and drawn moved to the point the engine gives, so the
 marks, the tiles and an effect placed on the screen by a field of its own are refused in the cast as
@@ -759,9 +771,48 @@ eye the same in both. What falls is the 6 by 5 rect the engine drew itself befor
 `Rh(x - 3, y + a * a / 900, 6, 5, '#3a3344')`, which is now `deadFlyHD` in `props.js` and
 `CRITTERS.fly.dead`; the engine passes the fall, `y + a * a / 900`, as the point.
 
+**A pet** compiles to the interface of `KW.props.PETS`: `name`; `coats`, each coat's name by its id
+in the pack's order (`{ calico: 'Calico', ginger: 'Ginger tabby' }`); `poses`, the eleven the
+engine's catch asks for; `size` and `anchor`, its sprite's `size` and `feet`; `pose(coat, name)`, a
+canvas of the sprite's size with the pose painted once from its stamp, the first time it is asked
+for, a coat or a pose the pet lacks giving its first; `spots`, its spot in each scene; and the
+measures of its pounce, `paw`, `take`, `land` and `lift`. A pose's stamp is pix shapes alone, at
+whole points inside the sprite (the reader checks this), so the compiler works each pose out into
+cells, a colour or nothing for each pixel of the sprite, at start, and paints the canvas from them
+with one call per run of a colour in a row, as `cat.js` paints the code's. So the cat from the pack
+and the cat from code make the same calls. The engine draws the canvas at the pet's feet, mirrored
+when the pet faces left, as it draws the goblin's poses.
+
+**The cat as data.** The cat's curves and the patches clipped to them cannot be written with the
+format's shapes, so the pack carries each pose of each coat drawn out, as stamps of pix shapes:
+`cat.calico.rest` and the other ten poses, then the ginger coat's. `tools/cat-stamps.js` writes them
+from the code's drawing, `KW.props.PETS.cat.cells`: each pose trimmed to the pixels it paints, cut
+into tiles of at most 64 by 64, each tile trimmed again and written at its place from the feet in
+runs (`"runs": true`, [packs.md](./packs.md#shapes-coordinates-and-terms)), its key the tile's
+colours in the order they first appear, `a` to `z` and then `A` to `Z`. A pose takes two to six
+tiles. The tool also writes the member `pet.cat`:
+
+| Field | Is |
+|---|---|
+| `sprite` | `{ size: [200, 150], feet: [100, 132] }` |
+| `coats` | `calico` and `ginger`, each `{ name, poses }`, `poses` naming the stamp of each pose |
+| `spots` | by scene: `rest` and `face`, where the cat rests and the way it faces; `floors`, the surfaces it walks near its spot, `[x0, x1, y]`, and `lane`, the floor elsewhere; `fly`, the catch point; and in the house `bed`, the same while the knight is in bed |
+| `paw` | `[57.25, -67.625]`, where the paw that meets the fly is at the top of the leap, from the ground under the cat's middle, facing right |
+| `take`, `land`, `lift` | 52, 46.75 and 39: how far behind the top of the leap the cat takes off, how far past it the cat comes down, and the least height of the leap |
+
+The eleven poses are `rest` (curled up asleep), `settle` (a loaf with the eyes half shut, after a
+catch), `alert0` and `alert1` (sitting up, the tail's tip flicking), `stalk0` and `stalk1` (the two
+halves of one slow step), `pounce` (the long leap, also the hop where a floor steps), `land` (the
+swipe), `pleased`, and `walk0` and `walk1`. `tests/tools/cat-stamps.test.js` works the stamps and
+the member out again and requires the pack to hold exactly that, and the stamps read back to give
+the code's cells pixel for pixel; `tests/web/pet.test.js` holds the compiled cat to the code's call
+for call.
+
 What the compiler does not build in the cast, it refuses by name, and the member is drawn from code:
-a role the engine does not have, a bound set without an `own`, and in any member the marks, tiles
-and effects above. A colour a patron's palette or set does not give is refused with the entry it
+a role the engine does not have, a bound set without an `own`, a pet's pose drawn with a shape other
+than pix, and in any member the marks, tiles and effects above. A member is compiled only where the
+engine has a member of that role and name to put it in place of: a page without `cat.js` compiles
+no pet. A colour a patron's palette or set does not give is refused with the entry it
 lacks.
 
 ## The words and the overlay
@@ -828,7 +879,7 @@ engine does not ship. Everything else the library has already refused.
 
 A world pack's `worlds` section holds presets, each a world's every part at once
 ([packs.md](./packs.md#format-11) gives the fields and the checks): the body and the outfit, the
-quiet scenes and the scene of each condition, the patron, the foe and the critter, the prop set,
+quiet scenes and the scene of each condition, the patron, the foe, the critter and the pet, the prop set,
 the overlay, the words, and the scene its card is drawn from. A name in a preset is local to its
 pack, or `<pack>/<id>`. The pack library refuses a preset that leaves a part out, names a quiet
 scene that is not quiet, or gives a condition a scene whose `can` does not list it.
@@ -849,15 +900,15 @@ the settings what is loaded:
 
 - `worlds`: each preset by the name the settings use, `medieval` for `world.medieval` and
   `<pack>/<id>` for any other, with its display name, its pack, its card's scene, the preset as the
-  library read it, and the labels of its word set (`The knight`, `The monarch` for the settings
-  screen's pages);
+  library read it, and the labels of its word set (`The knight`, `The monarch`, `The cat` for the
+  settings screen's pages);
 - `sets`: each prop set by name, `medieval` for `props.medieval` and `<pack>/<id>` otherwise, with its
   display name and the kinds it draws;
 - `scenes`: kw.medieval's scenes by their long names, `kw.medieval/camp`, each with its `can` and
   whether it is quiet;
 - `names`: each long name of kw.medieval's parts and the short name it stands for:
   `kw.medieval/world.medieval` for `medieval`, `kw.medieval/patron.b` for `b`,
-  `kw.medieval/foe.goblin`, `kw.medieval/critter.fly`, `kw.medieval/props.medieval`,
+  `kw.medieval/foe.goblin`, `kw.medieval/critter.fly`, `kw.medieval/pet.cat` for `cat`, `kw.medieval/props.medieval`,
   `kw.medieval/overlay.phosphor`, `kw.medieval/words.medieval` and each scene's long name;
 - `homes` and `quiet`: the base world's scene for each condition and its quiet scenes, from
   `world.medieval`.

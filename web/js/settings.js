@@ -41,6 +41,8 @@
       monarch_skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], page: 'warm' },
       monarch_hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], page: null },
       monarch_robe: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], page: null },
+      pet: { values: ['cat'], long: true, page: 'cat' },
+      pet_coat: { values: ['calico', 'ginger'], page: 'calico' },
       foe: { values: ['goblin'], long: true, page: 'goblin' },
       critter: { values: ['fly'], long: true, page: 'fly' },
       props: { values: ['medieval'], long: true, page: 'medieval' },
@@ -95,7 +97,7 @@
   /* The kinds of device a prop set draws, as the contract names them. */
   const KINDS = SCHEMA.look.devices.keys;
   /* The keys of the look that name a part of a world by name, short or long. */
-  const PART_KINDS = ['world', 'monarch', 'foe', 'critter', 'props', 'overlay', 'words'];
+  const PART_KINDS = ['world', 'monarch', 'pet', 'foe', 'critter', 'props', 'overlay', 'words'];
   /* The levels above the page's own, highest first, their rank with the page's own below them, and
      how the console names each. */
   const LEVELS = ['hook', 'saved', 'defaults'];
@@ -265,7 +267,7 @@
 
   /* What the world id sets, in the contract's names: { look, quiet, scenes, homes, faults }. The base
      world sets base, the page's own. Another world's preset is read part by part: its outfit as the
-     look's keys, with each item no key can name in items; its patron, foe and critter, props,
+     look's keys, with each item no key can name in items; its patron, pet, foe and critter, props,
      overlay and words by the names the page has loaded; its quiet scenes; and its scene for each
      condition. A part the page has not loaded, or cannot draw, keeps the base world's and is listed
      in faults as { part, value, why }. homes holds the world's scene for every condition with one,
@@ -292,7 +294,8 @@
       if (!(k && has(L, k) && l.startsWith(B))) out.look.items[s] = l;
     }
     // the cast, the devices, the overlay and the words
-    const parts = [['monarch', isObj(p.cast) ? p.cast.patron : undefined], ['foe', isObj(p.cast) ? p.cast.foe : undefined], ['critter', isObj(p.cast) ? p.cast.critter : undefined],
+    const parts = [['monarch', isObj(p.cast) ? p.cast.patron : undefined], ['pet', isObj(p.cast) ? p.cast.pet : undefined], ['foe', isObj(p.cast) ? p.cast.foe : undefined],
+      ['critter', isObj(p.cast) ? p.cast.critter : undefined],
       ['props', p.props], ['overlay', p.overlay], ['words', p.words]];
     for (const [k, n] of parts) {
       if (n === undefined) continue;
@@ -481,9 +484,9 @@
      each lasts, ownMs while no level above the page's own sets the length (the demo's minute, or
      live mode's ten); the patron, the monarch, as { id, skin, hair, robe }, the skin, hair and robe
      from the base pack's skin, hair and tabard swatches, each null for the court's own while
-     nothing sets it or there is no base pack; the scene chosen for each condition, holding only
-     what a level above the page's own sets; homes, the world's own scene for each condition; and
-     kinds, the prop set each kind of device is drawn from. */
+     nothing sets it or there is no base pack; the pet, as { id, coat }; the scene chosen for each
+     condition, holding only what a level above the page's own sets; homes, the world's own scene
+     for each condition; and kinds, the prop set each kind of device is drawn from. */
   function engineInput(r, pack, ownMs) {
     const q = r.values.quiet, L = r.values.look;
     const swatch = (set, id) => { const sw = isObj(pack) && isObj(pack.swatches) && isObj(pack.swatches[set]) ? pack.swatches[set][id] : null; return isObj(sw) && isObj(sw.entries) ? sw.entries : null; };
@@ -497,7 +500,7 @@
     const kinds = {}, by = isObj(L.devices) ? L.devices : {};
     for (const k of KINDS) kinds[k] = typeof by[k] === 'string' ? by[k] : typeof L.props === 'string' ? L.props : BASE_WORLD;
     const homes = isObj(r.world) && isObj(r.world.homes) ? Object.assign({}, r.world.homes) : {};
-    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, patron, scenes, homes, kinds };
+    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, patron, pet: { id: L.pet, coat: L.pet_coat }, scenes, homes, kinds };
   }
 
   /* The clock's words for a time: { time, half }. On the 24-hour clock '09:42' and no half; on the
@@ -836,6 +839,8 @@
     ['hands', 'Hands'], ['legs', 'Legs'], ['feet', 'Feet'], ['back', 'Back']];
   const SETS = { skin: 'skin', hair: 'hair', tabard: 'tabard', plume: 'plume', monarch_skin: 'skin', monarch_hair: 'hair', monarch_robe: 'tabard' };
   const HEADLINES = [['small', 'Small', 20], ['medium', 'Medium', 27], ['large', 'Large', 36]];
+  /* The pets and their coats by name, as the code's cat gives them (cat.js). */
+  const PET_NAMES = { cat: 'Mouser cat' }, COAT_NAMES = { calico: 'Calico', ginger: 'Ginger tabby' };
   /* The line under the title on the pages that save: where choices are kept. */
   const SCOPE = { server: 'Saved on the Knightwatcher server, for every display.', local: 'Kept in this browser only: no Knightwatcher server.' };
 
@@ -887,6 +892,8 @@
     const own = { world: 'World', build: 'Build', weapon: 'Weapon', skin: 'Skin tone', hair: 'Hair colour', hair_style: 'Hair style', tabard: 'Tabard', plume: 'Plume',
       monarch: patron, monarch_skin: patron + '\'s skin', monarch_hair: patron + '\'s hair', monarch_robe: patron + '\'s robe', foe: labelOf(labels, 'foe', 'Foe'),
       critter: labelOf(labels, 'critter', 'Pest'), props: 'Devices', overlay: 'Overlay', words: 'Words', items: 'Items', devices: 'Devices by kind' };
+    const pet = labelOf(labels, 'pet', 'The pet').replace(/^The (.)/, (m, c) => c.toUpperCase());
+    own.pet = pet; own.pet_coat = pet + '\'s coat';
     for (const [a, b] of ARMOUR) own[a] = b;
     return own[k] || k;
   }
@@ -900,6 +907,8 @@
     if (k === 'build') return isObj(pack) ? buildName(pack, v) : 'Build ' + v.toUpperCase();
     if (k === 'weapon') return WEAPON_CHIPS[v] ? WEAPON_CHIPS[v][0] : v;
     if (k === 'monarch') return /^[abc]$/.test(v) ? 'Monarch ' + v.toUpperCase() : v;
+    if (k === 'pet') return has(PET_NAMES, v) ? PET_NAMES[v] : v;
+    if (k === 'pet_coat') return has(COAT_NAMES, v) ? COAT_NAMES[v] : name(v);
     if (k === 'world') return isObj(cat) && isObj(cat.worlds[v]) ? cat.worlds[v].name : v;
     if (k === 'props') return isObj(cat) && isObj(cat.sets[v]) ? cat.sets[v].name : v;
     if (k === 'items') return Object.keys(v).length ? listed(Object.keys(v).map(s => v[s])) : 'Nothing named';
@@ -1026,6 +1035,47 @@
       pics.set(key, out);
       return out;
     }
+    /* The pet the settings name, from the cast (KW.cast.pets, which the world's cast fills) or the
+       code's (KW.props.PETS), the first where it names none; null on a page with none. */
+    function petOf(id) {
+      const all = (KW.cast && KW.cast.pets) || P.PETS || {}, ids = Object.keys(all);
+      return has(all, id) ? all[id] : ids.length ? all[ids[0]] : null;
+    }
+    /* A pet sitting up, alert, in a coat, cropped about its drawing from the feet, for a card. */
+    const PET_CROP = { x: -54, y: -94, w: 108, h: 100 };
+    function petPicture(id, coat) {
+      const key = 'pet|' + id + '|' + coat;
+      if (!pics.has(key)) {
+        const pet = petOf(id), cv = document.createElement('canvas'); cv.width = PET_CROP.w; cv.height = PET_CROP.h;
+        if (pet) { const [ax, ay] = pet.anchor; cv.getContext('2d').drawImage(pet.pose(coat, 'alert0'), ax + PET_CROP.x, ay + PET_CROP.y, PET_CROP.w, PET_CROP.h, 0, 0, PET_CROP.w, PET_CROP.h); }
+        pics.set(key, cv);
+      }
+      return pics.get(key);
+    }
+    /* The pet resting at its spot in the house, beside the hearth, cropped from the scene drawn with
+       the knight at its arrival spot. */
+    const HOME_CROP = { x: 700, y: 400, w: 260, h: 200 };
+    function petHome(id, coat, helmetIndoors) {
+      const key = 'pethome|' + id + '|' + coat + '|' + helmetIndoors;
+      if (!pics.has(key)) {
+        const big = document.createElement('canvas'); big.width = V.HW; big.height = V.HH;
+        const pet = petOf(id), sc = KW.scenes.house, o2 = K.pose('idle', 2300);
+        o2.x = sc.spot * U; o2.floor = V.HFL; o2.helmet = helmetIndoors ? true : sc.helmet !== false; if (sc.sword === false) o2.sword = false;
+        onGrid(big.getContext('2d'), () => {
+          const s = sceneState(sc, o2, { id: 'a', skin: null, hair: null, robe: null });
+          if (sc.paint) sc.paint(s); sc.draw(2300, s); K.draw(o2);
+          const sp = pet && pet.spots && has(pet.spots, 'house') ? pet.spots.house : null;
+          if (sp) {
+            const c = D.getCtx(), [ax, ay] = pet.anchor;
+            c.save(); c.translate(sp.rest[0], sp.rest[1]); if (sp.face < 0) c.scale(-1, 1); c.drawImage(pet.pose(coat, 'rest'), -ax, -ay); c.restore();
+          }
+        });
+        const out = document.createElement('canvas'); out.width = HOME_CROP.w; out.height = HOME_CROP.h;
+        out.getContext('2d').drawImage(big, HOME_CROP.x, HOME_CROP.y, HOME_CROP.w, HOME_CROP.h, 0, 0, HOME_CROP.w, HOME_CROP.h);
+        pics.set(key, out);
+      }
+      return pics.get(key);
+    }
     /* Draws src into the canvas dst at its size on screen, by whole steps where it is twice as big
        or more, the bottom edges together. */
     function blit(dst, src, smooth) {
@@ -1131,7 +1181,8 @@
       const dress = mh && mr ? mh + ', ' + mr : mh ? mh + ', the robe as drawn' : mr ? 'the hair as drawn, ' + mr : 'hair and robe as drawn';
       return (v.build ? 'the ' + buildName(pack, v.build) + ' build, ' : '') + 'the ' + arm + ', ' + sw('skin', v.skin) + ' skin, ' +
         sw('hair', v.hair) + ' hair (' + style + '), a ' + sw('tabard', v.tabard) + ' tabard, a ' + sw('plume', v.plume) + ' plume' + (gear.length ? ', with ' + gear.join(', ') : '') +
-        '; monarch ' + v.monarch.toUpperCase() + ', ' + sw('skin', v.monarch_skin) + ' skin, ' + dress;
+        '; monarch ' + v.monarch.toUpperCase() + ', ' + sw('skin', v.monarch_skin) + ' skin, ' + dress +
+        '; the ' + lower(PET_NAMES[v.pet] || v.pet) + ', ' + lower(COAT_NAMES[v.pet_coat] || v.pet_coat);
     }
     /* What a section falls back to when this display's choices are cleared, the defaults in the
        state file over the page's own, and whether any of it comes from config.toml. */
@@ -1148,11 +1199,13 @@
        world saves it and clears every part chosen on this display (the store's chooseWorld), and
        the line under the cards names what was cleared. */
     const wordLabels = () => { const w = KW.world && KW.world.words; return w && w.source === 'pack' ? w.labels : null; };
-    const pageLabel = k => labelOf(wordLabels(), k === 'knight' ? 'watcher' : 'patron', k === 'knight' ? 'The knight' : 'The monarch');
+    const PAGE_LABELS = { knight: ['watcher', 'The knight'], monarch: ['patron', 'The monarch'], pet: ['pet', 'The pet'] };
+    const pageLabel = k => labelOf(wordLabels(), PAGE_LABELS[k][0], PAGE_LABELS[k][1]);
     const worldNamed = id => valueName('look', 'world', id, null, store.catalogue());
     const named = (sec, k, v) => valueName(sec, k, v, K.basePack(), store.catalogue());
     /* The page a part is chosen on, as the line under a changed part names it. */
-    const pageOf = (sec, k) => (sec === 'quiet' ? 'quiet scenes' : sec === 'scenes' ? 'scenes' : /^monarch/.test(k) ? lower(pageLabel('monarch').replace(/^The /, '')) : sec === 'look' && ['foe', 'critter', 'props', 'overlay', 'words'].includes(k) ? 'world' : lower(pageLabel('knight').replace(/^The /, '')));
+    const pageOf = (sec, k) => (sec === 'quiet' ? 'quiet scenes' : sec === 'scenes' ? 'scenes' : /^monarch/.test(k) ? lower(pageLabel('monarch').replace(/^The /, ''))
+      : /^pet/.test(k) ? lower(pageLabel('pet').replace(/^The /, '')) : sec === 'look' && ['foe', 'critter', 'props', 'overlay', 'words'].includes(k) ? 'world' : lower(pageLabel('knight').replace(/^The /, '')));
     function worldTap(id) {
       const before = store.sections(), cat = store.catalogue(), shared = store.mode() === 'server';
       const cleared = store.chooseWorld(id);
@@ -1306,6 +1359,23 @@
         prev.appendChild(el('h2', '', 'At court'));
         const cv = el('canvas', 'court'); cv.id = 'kws-court'; cv.dataset.skin = e.patron.skin ? e.patron.skin.id : ''; prev.appendChild(cv);
       } },
+      pet: { label: () => pageLabel('pet'), build(list, prev, r) {
+        const v = r.values.look, pet = petOf(v.pet), name = lower(pageLabel('pet').replace(/^The /, ''));
+        list.appendChild(el('p', 'kws-intro', 'The ' + name + ' catches the flies the knight cannot: indoors, and outdoors while the knight is busy.'));
+        list.appendChild(row('pet', pageLabel('pet').replace(/^The (.)/, (m, c) => c.toUpperCase()), ONE_OF.look.pet.map(id => {
+          const cv = el('canvas'); cv.dataset.pet = id + '|' + v.pet_coat;
+          return { id, node: cv, name: valueName('look', 'pet', id), kind: 'pet' };
+        }), v.pet, choose('look', 'pet'), hookNote(r, 'look', 'pet')));
+        const coats = pet ? ONE_OF.look.pet_coat.filter(c => has(pet.coats, c)) : [];
+        list.appendChild(row('pet_coat', 'Coat', coats.map(c => {
+          const cv = el('canvas'); cv.dataset.pet = v.pet + '|' + c;
+          return { id: c, node: cv, name: pet.coats[c], sub: c === store.fallback().values.look.pet_coat ? 'Default' : '', kind: 'pet' };
+        }), v.pet_coat, choose('look', 'pet_coat'), hookNote(r, 'look', 'pet_coat')));
+        const d = defaultsOf('look');
+        list.appendChild(reset('look', 'look', lookWords(d.values, K.basePack()), d.fromConfig, hooked(r, 'look')));
+        prev.appendChild(el('h2', '', 'At home'));
+        const cv = el('canvas', 'pethome'); cv.id = 'kws-pethome'; prev.appendChild(cv);
+      } },
       display: { label: 'Display', build(list, prev, r) {
         const v = r.values.display;
         list.appendChild(row('headline', 'Headline size', HEADLINES.map(([id, name, px]) => {
@@ -1405,7 +1475,7 @@
           const changed = ds => (ds.length ? '; ' + listed(ds.map(d => partWords(d, pack, cat, labels) + (d.from === 'defaults' ? ' from config.toml' : d.from === 'hook' ? ' from the address' : ' chosen here'))) : '') + '.';
           const kb = s.base;
           if (!kb) line(dd, 'warn', pageLabel('knight') + ' is drawn from code: ' + (String(s.note).split('drawn from code: ')[1] || 'the base pack could not be used') + '.');
-          part(pageLabel('knight'), kb ? kb.id + ' ' + kb.version : 'code', ', as the world has it' + changed(mine(d => d.sec === 'look' && !/^monarch/.test(d.k) && !['foe', 'critter', 'props', 'overlay', 'words'].includes(d.k))));
+          part(pageLabel('knight'), kb ? kb.id + ' ' + kb.version : 'code', ', as the world has it' + changed(mine(d => d.sec === 'look' && !/^(monarch|pet)/.test(d.k) && !['foe', 'critter', 'props', 'overlay', 'words'].includes(d.k))));
           const masked = r.masked.filter(m => m.key.indexOf('.') < 0 && m.level === 'defaults');
           if (masked.length) line(dd, 'quiet kws-sub', listed(masked.map(m => partWords({ sec: m.section, k: m.key, v: m.value }, pack, cat, labels))).replace(/^the/, 'The') +
             ' in config.toml ' + (masked.length === 1 ? 'gives' : 'give') + ' way to the world chosen ' + (r.world.from === 'hook' ? 'by the address.' : 'here.'));
@@ -1415,7 +1485,8 @@
           const NUM = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
           part('Scenes', WK.status && WK.status.source === 'pack' ? packTxt(med) : 'code', (fromCode.length ? ', ' + listed(fromCode.map(k => 'the ' + lower(SCENE_NAMES[k] || k))) + ' from code' : ', all ' + (NUM[n] || n)) +
             changed(mine(d => d.sec === 'quiet' || d.sec === 'scenes')));
-          part('Cast', cast, ', the ' + lower(named('look', 'foe', r.values.look.foe)) + ' and the ' + lower(named('look', 'critter', r.values.look.critter)) + changed(mine(d => d.k === 'foe' || d.k === 'critter')));
+          part('Cast', cast, ', the ' + lower(named('look', 'foe', r.values.look.foe)) + ', the ' + lower(named('look', 'critter', r.values.look.critter)) + ' and the ' +
+            lower(named('look', 'pet', r.values.look.pet)) + ', ' + lower(named('look', 'pet_coat', r.values.look.pet_coat)) + changed(mine(d => d.k === 'foe' || d.k === 'critter' || /^pet/.test(d.k))));
           const dv = WK.devices || { kinds: {} }, setName = id => named('look', 'props', id), props = r.values.look.props, others = Object.keys(dv.kinds).filter(k => dv.kinds[k] !== props);
           const KIND_WORDS = { pi: 'the Pi', camera: 'the cameras', machine: 'the hosts', vm: 'the VMs', box: 'the other devices' };
           const src = props === BASE_WORLD ? (WK.props && WK.props.source === 'pack' ? packTxt(med) : 'code') : props.split('/')[0];
@@ -1468,7 +1539,7 @@
       main.textContent = ''; main.dataset.page = st.page;
       const list = el('div', 'kws-list'); main.appendChild(list);
       let prev = null;
-      if (st.page === 'knight' || st.page === 'monarch') { prev = el('div', 'kws-prev'); main.appendChild(prev); }
+      if (st.page === 'knight' || st.page === 'monarch' || st.page === 'pet') { prev = el('div', 'kws-prev'); main.appendChild(prev); }
       page.build(list, prev, r);
       if (same) list.scrollTop = top;
       // a failed save says so until the next one succeeds; otherwise where choices are kept
@@ -1482,7 +1553,7 @@
       if (focus) { const f = main.querySelector('[data-focus="' + focus + '"]'); if (f) f.focus({ preventScroll: true }); }
       paintStill(r); idleTick();
     }
-    /* What does not move: the monarchs and the scenes. */
+    /* What does not move: the monarchs, the pets and the scenes. */
     function paintStill(r) {
       const e = monOf(r);
       main.querySelectorAll('canvas[data-mon]').forEach(cv => blit(cv, monarchPicture(cv.dataset.mon, e), true));
@@ -1490,6 +1561,8 @@
       main.querySelectorAll('canvas[data-world]').forEach(cv => blit(cv, worldPicture(cv.dataset.world, r.values.display.helmet_indoors), true));
       main.querySelectorAll('canvas[data-device]').forEach(cv => { const [set, kind] = cv.dataset.device.split('|'); blit(cv, devicePicture(set, kind), false); });
       const ct = $('kws-court'); if (ct) blit(ct, monarchPicture(r.values.look.monarch, e), false);
+      main.querySelectorAll('canvas[data-pet]').forEach(cv => { const [id, coat] = cv.dataset.pet.split('|'); blit(cv, petPicture(id, coat), false); });
+      const ph = $('kws-pethome'); if (ph) blit(ph, petHome(r.values.look.pet, r.values.look.pet_coat, r.values.display.helmet_indoors), false);
     }
     /* What moves: the knights, every frame while the screen is open. */
     function loop() {

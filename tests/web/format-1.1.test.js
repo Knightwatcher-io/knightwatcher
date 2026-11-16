@@ -77,7 +77,8 @@ const moving = p => cellar(p).moving[0].shapes;          // the cellar's moving 
 const tile = p => still(p)[4];                           // the cellar's tile of shelf brackets
 const planks = p => house(p).still[0].shapes[1];         // the house's planks, with a pick and an only
 const glow = p => moving(p)[0];
-const patron = p => p.cast['patron.a'], goblin = p => p.cast['foe.goblin'], fly = p => p.cast['critter.fly'];
+const patron = p => p.cast['patron.a'], goblin = p => p.cast['foe.goblin'], fly = p => p.cast['critter.fly'], pet = p => p.cast['pet.cat'];
+const sit = p => p.stamps['pet.sit'][0];                 // the pet's one pose: a pix shape in runs
 const kinds = p => p.props['props.medieval'].kinds;
 const words = p => p.words['words.medieval'], overlay = p => p.overlays['overlay.phosphor'], preset = p => p.worlds['world.medieval'];
 const rect = (x = 0) => ({ k: 'rect', p: [x, 0], w: 1, h: 1, fill: '@base.k' });
@@ -85,6 +86,7 @@ const rect = (x = 0) => ({ k: 'rect', p: [x, 0], w: 1, h: 1, fill: '@base.k' });
 const big = (h, fill) => ({ k: 'rrect', p: [-2, -h], w: 4, h, r: 0, fill: fill || '@base.k' });
 const CS = 'pack.scenes["scene.cellar"]', HS = 'pack.scenes["scene.house"]', YS = 'pack.scenes["scene.yard"]', SS = 'pack.scenes["scene.smithy"]';
 const CT = 'pack.scenes["scene.court"]', BS = 'pack.scenes["scene.battlement"]', PA = 'pack.cast["patron.a"]', GO = 'pack.cast["foe.goblin"]', FL = 'pack.cast["critter.fly"]';
+const PE = 'pack.cast["pet.cat"]', ST = 'pack.stamps["pet.sit"][0]';
 const KI = 'pack.props["props.medieval"].kinds', WO = 'pack.words["words.medieval"]', OV = 'pack.overlays["overlay.phosphor"]', PR = 'pack.worlds["world.medieval"]';
 
 // ---- The fixture ---------------------------------------------------------------------------------------
@@ -110,7 +112,11 @@ test('the world fixture nests as deep as the format allows, 12, and no deeper', 
 
 test('the world sections are kept as data and nothing is compiled from them', () => {
   const r = load(WORLD()), w = WORLD();
-  for (const s of ['scenes', 'cast', 'props', 'words', 'overlays', 'worlds', 'stamps', 'sounds']) assert.deepEqual(clone(r.data[s]), w[s], s);
+  // a pix shape in runs is kept with its rows expanded and without runs: the only change the read makes
+  const runs = row => row.replace(/([0-9]*)(.)/g, (m, n, ch) => ch.repeat(n ? +n : 1));
+  for (const n of Object.keys(w.stamps)) w.stamps[n] = w.stamps[n].map(x => (x.runs ? Object.assign({}, x, { rows: x.rows.map(runs), runs: undefined }) : x));
+  for (const s of ['scenes', 'cast', 'props', 'words', 'overlays', 'worlds', 'stamps', 'sounds']) assert.deepEqual(clone(r.data[s]), clone(w[s]), s);
+  assert.deepEqual(clone(r.data.stamps['pet.sit'][0].rows), ['abba', 'aaaa', 'a..a']);
   // what the counts step found, and nothing else
   assert.deepEqual(Object.keys(r.world), ['scenes', 'cast', 'props', 'stamps']);
   assert.deepEqual(r.decorations, {});
@@ -206,7 +212,8 @@ test('the closed lists are the format\'s, by name', () => {
   assert.deepEqual(L.PREDICATES, ['tv', 'inBed', 'helmOff', 'strike', 'day', 'night']);
   assert.deepEqual(L.ROUND_ACTS, ['guard', 'look', 'sniff', 'yawn', 'train']);
   assert.deepEqual(L.HOSTS, ['flies', 'crate', 'feast', 'foe']);
-  assert.deepEqual(L.ROLES, ['patron', 'foe', 'critter']);
+  assert.deepEqual(L.ROLES, ['patron', 'foe', 'critter', 'pet']);
+  assert.deepEqual(L.PET_POSES, ['rest', 'settle', 'alert0', 'alert1', 'stalk0', 'stalk1', 'pounce', 'land', 'pleased', 'walk0', 'walk1']);
   assert.deepEqual(L.EXITS, ['poof']);
   assert.deepEqual(L.FONTS, ['vt323']);
   assert.deepEqual(L.FOE_POSES, ['stand', 'climb', 'taunt0', 'taunt1', 'brace', 'hit']);
@@ -236,7 +243,7 @@ const RULES = [
   ['stamps: no tile in a stamp', 'fields', p => { p.stamps.barrel.push(clone(tile(p))); }, "pack.stamps.barrel[2].k: \"tile\" is allowed only in a layer of a scene, outside tiles"],
   ['stamps: no mark in a stamp', 'fields', p => { p.stamps.barrel.push({ k: 'things' }); }, "pack.stamps.barrel[2].k: \"things\" is allowed only in a layer of a scene, outside tiles"],
   ['stamps: a use names a stamp the pack has', 'references', p => { still(p)[5].stamp = 'torch'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[5].stamp: names a stamp, \"torch\", that the pack does not have"],
-  ['stamps: 65 stamps', 'counts', p => { for (const i of range(60)) p.stamps['s' + i] = [rect()]; }, "pack.stamps: holds 65 stamps, more than 64"],
+  ['stamps: 65 stamps', 'counts', p => { for (const i of range(59)) p.stamps['s' + i] = [rect()]; }, "pack.stamps: holds 65 stamps, more than 64"],
   ['stamps: no offset past 512', 'fields', p => { p.stamps.barrel[0].p = [512.125, 0]; }, "pack.stamps.barrel[0].p[0]: must be a multiple of 1/8 from -512 to 512"],
   // shapes of the world sections
   ['shapes: an unknown kind in a layer', 'fields', p => { still(p)[2].k = 'circle'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[2].k: must be one of \"rect\", \"ell\", \"rrect\", \"poly\", \"strip\", \"pix\", \"glow\", \"dith\", \"fx\", \"use\", \"tile\", \"things\", \"rest\", \"patron\", \"sleeper\", \"target\", \"bubble\""],
@@ -525,7 +532,7 @@ const RULES = [
   // the cast
   ['cast: a member is an object', 'fields', p => { p.cast['foe.goblin'] = 'goblin'; }, "pack.cast[\"foe.goblin\"]: must be an object"],
   ['cast: role is required', 'fields', p => { delete goblin(p).role; }, "pack.cast[\"foe.goblin\"].role: is missing"],
-  ['cast: a role of the list', 'fields', p => { goblin(p).role = 'pet'; }, "pack.cast[\"foe.goblin\"].role: must be one of \"patron\", \"foe\", \"critter\""],
+  ['cast: a role of the list', 'fields', p => { goblin(p).role = 'dog'; }, "pack.cast[\"foe.goblin\"].role: must be one of \"patron\", \"foe\", \"critter\", \"pet\""],
   ['cast: name of 49 characters', 'fields', p => { goblin(p).name = 'g'.repeat(49); }, "pack.cast[\"foe.goblin\"].name: must be 1 to 48 characters, not 49"],
   ['cast: a field the role does not take', 'fields', p => { goblin(p).box = [10, 10]; }, "pack.cast[\"foe.goblin\"].box: is not a field here"],
   ['patron: box is [w, h]', 'fields', p => { patron(p).box = [180]; }, "pack.cast[\"patron.a\"].box: must be [w, h]"],
@@ -597,7 +604,7 @@ const RULES = [
   ['cast: a foe\'s feet lie in its sprite', 'rules', p => { goblin(p).sprite.feet = [221, 214]; }, "pack.cast[\"foe.goblin\"].sprite.feet: must lie in the sprite"],
   ['cast: a crown point lies in the sprite', 'rules', p => { goblin(p).crown[0] = [-111, -119]; }, "pack.cast[\"foe.goblin\"].crown[0]: must lie in the sprite, from its feet"],
   ['cast: a crown point lies above the sprite\'s foot', 'rules', p => { goblin(p).crown[0] = [0, 17]; }, "pack.cast[\"foe.goblin\"].crown[0]: must lie in the sprite, from its feet"],
-  ['cast: 17 members', 'counts', p => { for (const i of range(14)) p.cast['fly' + i] = clone(fly(p)); }, "pack.cast: holds 17 cast members, more than 16"],
+  ['cast: 17 members', 'counts', p => { for (const i of range(13)) p.cast['fly' + i] = clone(fly(p)); }, "pack.cast: holds 17 cast members, more than 16"],
   ['cast: the patron\'s still parts over 16000', 'counts', p => { patron(p).still.push(...range(5).map(() => ({ at: 'seat', shapes: range(13).map(() => big(256, '@skin.face')) }))); }, "pack.cast[\"patron.a\"].still: costs up to 134485 fills, more than 16000"],
   ['cast: a mouth over 400', 'counts', p => { patron(p).states.open.push(big(390)); }, "pack.cast[\"patron.a\"].states.open: costs up to 406 fills, more than 400"],
   ['cast: a pose over 8000', 'counts', p => { goblin(p).poses.hit.shapes = range(31).map(() => big(256)); }, "pack.cast[\"foe.goblin\"].poses.hit: costs up to 8037 fills, more than 8000"],
@@ -686,7 +693,9 @@ const RULES = [
   ['presets: at least one quiet scene', 'fields', p => { preset(p).scenes.quiet = []; }, "pack.worlds[\"world.medieval\"].scenes.quiet: must hold 1 to 16 entries, not 0"],
   ['presets: a quiet scene once', 'fields', p => { preset(p).scenes.quiet.push('scene.camp'); }, "pack.worlds[\"world.medieval\"].scenes.quiet[4]: appears twice"],
   ['presets: for names conditions', 'fields', p => { preset(p).scenes.for.thing_down = 'scene.camp'; }, "pack.worlds[\"world.medieval\"].scenes.for.thing_down: is not a field here"],
-  ['presets: cast by role', 'fields', p => { preset(p).cast.pet = 'critter.fly'; }, "pack.worlds[\"world.medieval\"].cast.pet: is not a field here"],
+  ['presets: cast by role', 'fields', p => { preset(p).cast.dog = 'critter.fly'; }, "pack.worlds[\"world.medieval\"].cast.dog: is not a field here"],
+  ['presets: the pet is a pet', 'references', p => { preset(p).cast.pet = 'critter.fly'; }, "pack.worlds[\"world.medieval\"].cast.pet: names \"critter.fly\", whose role is critter, not pet"],
+  ['presets: complete, a pet', 'rules', p => { delete preset(p).cast.pet; }, "pack.worlds[\"world.medieval\"].cast.pet: is missing, and a preset must be complete"],
   ['presets: sound is an object', 'fields', p => { preset(p).sound = 'lute'; }, "pack.worlds[\"world.medieval\"].sound: must be an object"],
   ['presets: companion is an object', 'fields', p => { preset(p).companion = 'cat'; }, "pack.worlds[\"world.medieval\"].companion: must be an object"],
   ['presets: a local body exists', 'references', p => { preset(p).body = 'body.none'; }, "pack.worlds[\"world.medieval\"].body: names a build, \"body.none\", that the pack does not have"],
@@ -729,7 +738,8 @@ const RULES = [
   // 5520 fills, under 16000 once and over it three times
   ['counts: the pole counted under each high place', 'counts', p => { cellar(p).pole = range(5).map(() => big(256, '@base.steel')).concat([big(100, '@base.steel')]); }, "pack.scenes[\"scene.cellar\"]: costs up to 16680 fills in one frame of its moving and over layers, more than 16000"],
   ['counts: 25 glows in one frame', 'counts', p => { cellar(p).moving[0].shapes.push(...range(24).map(() => clone(glow(p)))); }, "pack.scenes[\"scene.cellar\"]: draws 25 glows in one frame, more than 24"],
-  ['counts: more than 16 384 pixels in a pack, the world\'s pix counted', 'counts', p => { const px = () => ({ k: 'pix', p: [0, 0], rows: range(64).map(() => 'a'.repeat(64)), key: { a: '#000000' } }); p.stamps.big = [px(), px(), px(), px()]; }, "pack: holds 16411 pixels in pix shapes, more than 16384"],
+  // the fixture holds 39 pixels of pix; forty shapes of 64 by 64, written in runs, are counted as they expand
+  ['counts: more than 160 000 pixels in a pack, the world\'s pix counted as it expands', 'counts', p => { const px = () => ({ k: 'pix', p: [0, 0], runs: true, rows: range(64).map(() => '64a'), key: { a: '#000000' } }); p.stamps.big = range(40).map(px); }, "pack: holds 163879 pixels in pix shapes, more than 160000"],
   // each field check by itself, as the mutation run of the library asked for
   ['scenes: can is an array', 'fields', p => { cellar(p).can = 'cpu_hot'; }, "pack.scenes[\"scene.cellar\"].can: must be an array"],
   ['points: a coordinate is a number or a term', 'fields', p => { still(p)[2].p = ['left', 380]; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[2].p[0]: must be a number or a term object"],
@@ -788,6 +798,45 @@ const RULES = [
   ['presets: a cast member\'s name is checked', 'fields', p => { preset(p).cast.patron = '/patron.a'; }, "pack.worlds[\"world.medieval\"].cast.patron: must be a local id or \"<pack id>/<id>\""],
   ['ranges: a polygon\'s point on R stays within 2048', 'rules', p => { cellar(p).moving[0].shapes.push({ k: 'poly', pts: [[0, 0], [{ R: 1, c: 200 }, 0], [0, 10]], fill: '@base.k', dir: 'rows' }); }, "pack.scenes[\"scene.cellar\"].moving[0].shapes[3].pts[1][0]: the offset reaches 2136 at its greatest, above 2048"],
   ['ranges: a tile\'s to stays within 2048', 'rules', p => { tile(p).to = { R: 1.5 }; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[4].to: the offset reaches 2904 at its greatest, above 2048"],
+  // pix rows in runs, in a world shape: a count of 1 or more before a key or ".", none meaning 1
+  ['runs: a count of 0', 'fields', p => { sit(p).rows[0] = '0a2ba'; }, `${ST}.rows[0]: has a count, "0", that is 0 or starts with 0`],
+  ['runs: a count with a leading zero', 'fields', p => { sit(p).rows[0] = '01a2ba'; }, `${ST}.rows[0]: has a count, "01", that is 0 or starts with 0`],
+  ['runs: a count with nothing after it', 'fields', p => { sit(p).rows[0] = 'a2ba3'; }, `${ST}.rows[0]: ends in a count, "3", with no character to repeat`],
+  ['runs: a row past 64 as it expands', 'fields', p => { sit(p).rows[0] = '62a2b1a'; }, `${ST}.rows[0]: must expand to at most 64 characters`],
+  ['runs: rows that expand to unequal lengths', 'fields', p => { sit(p).rows[1] = '5a'; }, `${ST}.rows[1]: must expand to as many characters as the first row`],
+  ['runs: at most 64 rows', 'fields', p => { sit(p).rows = range(64).map(() => '64a'); sit(p).rows.push('64a'); }, `${ST}.rows: must hold 1 to 64 entries, not 65`],
+  ['runs: a character the key does not map', 'references', p => { sit(p).rows[2] = '1c2.a'; }, `${ST}.rows[2]: uses "c", which the key does not map`],
+  ['runs: no digit in the key of a shape in runs', 'fields', p => { sit(p).key['7'] = '#000000'; }, `${ST}.key["7"]: must not be a digit in a shape of runs, where a digit is a count`],
+  ['runs: true or false', 'fields', p => { sit(p).runs = 1; }, `${ST}.runs: must be true or false`],
+  ['runs: not in a 1.0 shape', 'fields', p => { p.items[Object.keys(p.items)[0]].parts[0].shapes[0] = { k: 'pix', p: [0, 0], runs: true, rows: ['2a'], key: { a: '#000000' } }; },
+    `pack.items["${Object.keys(WORLD().items)[0]}"].parts[0].shapes[0].runs: is not a field here`],
+  ['runs: false reads the rows plainly, a digit a key', 'references', p => { sit(p).runs = false; sit(p).rows = ['a2ba', 'abba', 'a..a']; }, `${ST}.rows[0]: uses "2", which the key does not map`],
+  // the pet
+  ['pet: its fields', 'fields', p => { delete pet(p).lift; }, `${PE}.lift: is missing`],
+  ['pet: a sprite of at most 256', 'fields', p => { pet(p).sprite.size = [257, 30]; }, `${PE}.sprite.size[0]: must be a whole number from 1 to 256`],
+  ['pet: at least one coat', 'fields', p => { pet(p).coats = {}; }, `${PE}.coats: must hold 1 to 8 coats, not 0`],
+  ['pet: at most 8 coats', 'fields', p => { for (const i of range(8)) pet(p).coats['c' + i] = clone(pet(p).coats.calico); }, `${PE}.coats: must hold 1 to 8 coats, not 9`],
+  ['pet: a coat has a name', 'fields', p => { pet(p).coats.calico.name = ''; }, `${PE}.coats.calico.name: must be 1 to 32 characters, not 0`],
+  ['pet: every pose', 'fields', p => { delete pet(p).coats.calico.poses.walk1; }, `${PE}.coats.calico.poses.walk1: is missing`],
+  ['pet: no other pose', 'fields', p => { pet(p).coats.calico.poses.roll = 'pet.sit'; }, `${PE}.coats.calico.poses.roll: is not a field here`],
+  ['pet: a pose is a stamp\'s id', 'fields', p => { pet(p).coats.calico.poses.rest = 'Pet Sit'; }, `${PE}.coats.calico.poses.rest: must be an id matching ^[a-z][a-z0-9.-]{0,47}$`],
+  ['pet: a spot is a whole point on the grid', 'fields', p => { pet(p).spots['scene.house'].rest = [961, 590]; }, `${PE}.spots["scene.house"].rest[0]: must be a whole number from 0 to 960`],
+  ['pet: a spot faces right or left', 'fields', p => { pet(p).spots['scene.house'].face = 0; }, `${PE}.spots["scene.house"].face: must be 1, facing right, or -1, facing left`],
+  ['pet: a floor is [x0, x1, y]', 'fields', p => { pet(p).spots['scene.cellar'].floors[0] = [292, 354]; }, `${PE}.spots["scene.cellar"].floors[0]: must be [x0, x1, y]`],
+  ['pet: at most 8 floors', 'fields', p => { pet(p).spots['scene.cellar'].floors = range(9).map(i => [i, i + 1, 430]); }, `${PE}.spots["scene.cellar"].floors: must hold 0 to 8 entries, not 9`],
+  ['pet: no spot by the bed inside one', 'fields', p => { pet(p).spots['scene.house'].bed.bed = clone(pet(p).spots['scene.house'].bed); }, `${PE}.spots["scene.house"].bed.bed: is not a field here`],
+  ['pet: the paw is a pair of eighths', 'fields', p => { pet(p).paw = [8.1, -10]; }, `${PE}.paw[0]: must be a multiple of 1/8 from -256 to 256`],
+  ['pet: take from 0 to 256', 'fields', p => { pet(p).take = -1; }, `${PE}.take: must be a multiple of 1/8 from 0 to 256`],
+  ['pet: a pose names a stamp of the pack', 'references', p => { pet(p).coats.calico.poses.land = 'pet.gone'; }, `${PE}.coats.calico.poses.land: names a stamp, "pet.gone", that the pack does not have`],
+  ['pet: a spot names a scene of the pack', 'references', p => { pet(p).spots['scene.attic'] = clone(pet(p).spots['scene.cellar']); }, `${PE}.spots["scene.attic"]: is a spot in a scene, "scene.attic", that the pack does not have`],
+  ['pet: a spot by the bed in a scene with a bed', 'references', p => { pet(p).spots['scene.cellar'].bed = clone(pet(p).spots['scene.house'].bed); }, `${PE}.spots["scene.cellar"].bed: is a spot by the bed, in a scene, "scene.cellar", that has no bed`],
+  ['pet: its feet in the sprite', 'rules', p => { pet(p).sprite.feet = [41, 25]; }, `${PE}.sprite.feet: must lie in the sprite`],
+  ['pet: a pose of pix shapes alone', 'rules', p => { p.stamps['pet.sit'].push(rect()); }, `${PE}.coats.calico.poses.rest: names a stamp, "pet.sit", whose shape 1 is not a pix shape, and a pose is drawn with pix shapes alone`],
+  ['pet: a pose at whole points', 'rules', p => { sit(p).p = [-2.5, -4]; }, `${PE}.coats.calico.poses.rest: names a stamp, "pet.sit", whose shape 0 is not at a whole point`],
+  ['pet: a pose inside the sprite', 'rules', p => { sit(p).p = [-21, -4]; }, `${PE}.coats.calico.poses.rest: names a stamp, "pet.sit", whose shape 0 reaches outside the sprite from its feet`],
+  ['pet: a floor runs left to right', 'rules', p => { pet(p).spots['scene.house'].bed.floors[0] = [386, 165, 405]; }, `${PE}.spots["scene.house"].bed.floors[0]: must run from left to right, x0 less than x1`],
+  ['pet: a pose over 8000', 'counts', p => { pet(p).sprite = { size: [256, 256], feet: [100, 100] }; sit(p).rows = range(64).map(() => 'ab'.repeat(32)); p.stamps['pet.sit'].push(clone(sit(p))); },
+    `${PE}.coats.calico.poses.rest: costs up to 8192 fills, more than 8000`],
 ];
 for (const [rule, step, edit, want] of RULES) test('refused at ' + step + ': ' + rule, () => { rejected(edit, step, want); });
 
@@ -796,9 +845,9 @@ for (const [rule, step, edit, want] of RULES) test('refused at ' + step + ': ' +
 const EDGES = [
   ['16 scenes, 16 cast members, 8 of each set, 64 stamps', p => {
     for (const i of range(9)) p.scenes['scene.c' + i] = clone(cellar(p));
-    for (const i of range(13)) p.cast['fly' + i] = clone(fly(p));
+    for (const i of range(12)) p.cast['fly' + i] = clone(fly(p));
     for (const i of range(7)) { p.props['props.' + i] = clone(p.props['props.medieval']); p.words['words.' + i] = clone(words(p)); p.overlays['overlay.' + i] = clone(overlay(p)); p.worlds['world.' + i] = clone(preset(p)); }
-    for (const i of range(59)) p.stamps['s' + i] = [rect()];
+    for (const i of range(58)) p.stamps['s' + i] = [rect()];
   }],
   ['32 layers in a scene', p => { cellar(p).over = range(30).map(() => ({ shapes: [rect()] })); }],
   ['24 glows in one frame', p => { cellar(p).moving[0].shapes.push(...range(23).map(() => clone(glow(p)))); }],

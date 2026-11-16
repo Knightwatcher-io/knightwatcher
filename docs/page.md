@@ -18,6 +18,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/effects.js` | `KW.effects`: the effects, drawings the engine owns that a scene names with numbers (sky, stars, bricks, flame and the rest), each with its table of fields, its cost and its drawing; see [The effects](#the-effects) |
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's, and `pieShapes`, the maps of the pie's lamp and its last slice), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), the fly (`flyHD`, `deadFlyHD` and `CRITTERS`, the code's critters and the fallback for the pack's; see [The cast](#the-cast)), the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures, its crown and its exit, the code's foes and the fallback for the pack's) with the smoke, the sparkles and the hole they come and go by |
+| `js/cat.js` | the mouser cat, the first pet: its drawing in code, each pose worked out into cells and painted once from them, in two coats, its spot in each scene and the measures of its pounce (`PETS`, the code's pets and the fallback for the pack's; see [The cast](#the-cast)) |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `ownReturn()` says whether a swing comes back by a return of its own (see [The knight's rig](#the-knights-rig)), `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
@@ -26,7 +27,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene, the devices and the cast as data; see [worlds.md](./worlds.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
-| `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the devices in their places (`KW.devices`) |
+| `js/engine.js` | the frame: scene choice, strolling, the swat, the pet's catch (`KW.engine.pet`), events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the devices in their places (`KW.devices`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
 | `js/settings.js` | `KW.settings`: the levels the display's settings come from, the saved settings (the server's, shared by every display, or this browser's own), keeping them in step with the server (`connect`), the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
 | `js/main.js` | start-up (starting the knight and then the world from the medieval world's pack, setting the overlay's custom properties on the display, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
@@ -35,7 +36,8 @@ share one global object, `KW`. ES modules would fail from `file://`.
 The load order is the order of that table, scenes in the order listed. A file may use what an
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
 `KW.packText`, so it comes after `knight.js`; `ed25519.js` comes before `pack.js`, and `effects.js`
-comes before `props.js`, the scenes and `pack.js`, which use it. `world.js` comes after the scenes
+comes before `props.js`, the scenes and `pack.js`, which use it; `cat.js` comes after `props.js`,
+which makes `KW.props`. `world.js` comes after the scenes
 and `pack.js`, and does nothing at load but define `KW.world`, and `KW.kinds` and `KW.cast` filled
 with the code's devices and cast.
 
@@ -794,9 +796,10 @@ knight.
 
 ## The cast
 
-The engine plays a supporting cast whose drawings are not its own: the fly and the goblin. Where a
-fly hovers, the swat, the poof and the fall are the engine's, and so are the foe's entrance, the
-strike and the exit; a member gives its drawings and its measures. `KW.props.CRITTERS` holds the
+The engine plays a supporting cast whose drawings are not its own: the fly, the goblin and the
+mouser cat. Where a fly hovers, the swat, the poof and the fall are the engine's, and so are the
+foe's entrance, the strike and the exit, and the cat's catch; a member gives its drawings and its
+measures. `KW.props.CRITTERS` holds the
 code's critters by name, each with
 
 | Field | Is |
@@ -815,10 +818,69 @@ The fly's are `flyHD` and `deadFlyHD`. `KW.props.FOES` holds the code's foes by 
 | `crown` | the points of its top from the feet, as drawn facing left, where the blade stops |
 | `exit` | the engine's exit it leaves by, `poof` |
 
-The engine draws from `KW.cast.critters` and `KW.cast.foes`, which have the same interfaces: the
-compiler (`world.js`) fills them with the members the medieval world's cast gives, and keeps the
-code's for the rest ([worlds.md](./worlds.md#the-cast)). On a page without the compiler the engine
-reads `KW.props.CRITTERS` and `KW.props.FOES` itself.
+`KW.props.PETS` (`cat.js`) holds the code's pets by name, today `cat`, each with
+
+| Field | Is |
+|---|---|
+| `name` | its name, `Mouser cat` |
+| `coats` | each coat's name by its id, the default first: `calico` (Calico) and `ginger` (Ginger tabby) |
+| `poses` | the names of its poses: `rest`, `settle`, `alert0`, `alert1`, `stalk0`, `stalk1`, `pounce`, `land`, `pleased`, `walk0`, `walk1` |
+| `pose(coat, name)` | a canvas with the pose painted once in the coat, the feet at `anchor`; a coat or a pose it lacks gives its first |
+| `anchor`, `size` | the feet in the canvas, `[100, 132]`, and the canvas's size, 200 by 150 |
+| `spots` | its spot in each scene by the scene's name (see below) |
+| `paw`, `take`, `land`, `lift` | the measures of its pounce, as [worlds.md](./worlds.md#the-cast) gives them |
+
+The cat's drawing is the approved one, each part an outline of many points (a closed curve through
+a few control points, or a limb round a centre line whose width changes along it), filled into a
+mask of whole pixels with a dark outline of two pixels round it and bands lit from the left, the
+lowest part of each a band darker; the patches and stripes of a coat lie only on the part they are
+on, and a near leg joins the body with no seam. Each pose is worked out at 1.3 times the size it is
+written at into cells, a colour or nothing for each pixel of the sprite (`cells(coat, name)`), and
+painted from them with one call per run of a colour in a row, as the compiler paints the pack's
+stamps, so the two make the same calls.
+
+The engine draws from `KW.cast.critters`, `KW.cast.foes` and `KW.cast.pets`, which have the same
+interfaces: the compiler (`world.js`) fills them with the members the medieval world's cast gives,
+and keeps the code's for the rest ([worlds.md](./worlds.md#the-cast)). On a page without the
+compiler the engine reads `KW.props.CRITTERS`, `KW.props.FOES` and `KW.props.PETS` itself.
+
+**The flies and the cat.** A blocked advert (`E.addFly(t)`) becomes a fly of whoever can take it
+then, in the scene on screen: the knight's outdoors while the knight is free; the cat's indoors and
+outdoors while an event plays. The knight's flies gather, eight at most, the rest waiting for the
+next swat, which comes at most every 30 seconds and passes over the cat's flies. The cat takes its
+flies one at a time, three at most on screen; a fly past that is not drawn. Under a warning or
+worse no fly is added, and the flies on screen, the knight's and those of the cat's it has not
+leapt for, fly off to the side they came from over 1.3 seconds. A new scene clears the flies, the
+catches, the flies leaving and the knight's waiting flies. A page without a pet, or a scene where
+the pet has no spot, gives every fly to the knight, who leaves them waiting indoors as before.
+
+Each of the cat's flies is given its catch when it comes (`KW.engine.pet.plan`), so that with time
+frozen the picture depends on the time alone: its buzz, 10 to 20 seconds from a hash of the fly;
+the moment the catch starts, the end of the buzz or 0.4 seconds after the cat settled from the
+catch before, whichever is later; and from it the top of the leap, where the paw meets the fly at
+the scene's catch point, raised to the pet's `lift` above the floor at the least, the take-off
+`take` behind it and the landing `land` past it, and the times of each step. The cat looks up for
+1.6 seconds at a fly as it comes, sits up 2.5 seconds before the catch starts while the fly comes
+down to the catch point, stalks at 60 pixels a second for 1.2 seconds at the least (hopping, in the
+`pounce` pose, where a floor steps up or down, and walking back first where the take-off lies
+behind it), wiggles 0.6 seconds, leaps 0.38 seconds, falls 0.32 seconds to the landing with the
+fly gone in `poofHD` and falling as a swatted fly does, holds the swipe 0.45 seconds, is pleased
+1.8 seconds, walks back at 55 pixels a second and settles 0.7 seconds before it curls up again.
+While the knight is in bed the cat is at its spot by the bed; a catch planned from the other spot
+in the same scene is planned again from there. The cat is drawn after the knight and before the
+devices in front of the knight, mirrored when it faces left, in the coat `E.input.pet` names; its
+flies after the knight's; and at night the dimming covers both.
+
+The spots, by scene, each where the cat rests: the battlement's crenel by the torch (48, 464), the
+camp's log by the fire (800, 493), the yard's top bale (904, 425), the house's floor in front of the
+hearth (892, 590) and the foot of the bed (332, 405) while the knight is in bed, the cellar's low
+stack of crates (322, 430), the smithy's forge ledge (884, 318) and the court's lowest dais step
+(668, 512). On the battlement and in the cellar the cat faces right, elsewhere left.
+
+The review bar's note on the flies says `the cat is hunting` while one of the cat's flies is up,
+the pet named by the label the world's words give it (`pet`, "The cat"), after the knight's note
+when the knight has flies too (`next swat in 12 s; the cat is hunting`), and `flies leave: a
+warning is up` while flies fly off.
 
 The monarchs are patrons. `court.js` gives the code's, `KW.props.PATRONS`, by id (`a`, `b`, `c`),
 each with
@@ -844,7 +906,7 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
 
 1. **The address's hooks**: `bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
    `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`,
-   `hs=`, `h=`, `ck=` and `sc=` (see [The address](#the-address)). They keep screenshots the
+   `pc=`, `hs=`, `h=`, `ck=` and `sc=` (see [The address](#the-address)). They keep screenshots the
    same whatever is saved.
 2. **The saved settings**, made on the settings screen. Served by the bundled server they are the
    deployment's, kept by the server and the same on every display (see
@@ -857,7 +919,8 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
    brown hair cut short, a blue tabard and a red plume, the open helm with its crest, plate and
    riding boots, nothing on the back, and the heater shield should a one-handed weapon be chosen),
    monarch A in the court's own skin with
-   each monarch's own hair and robe ("As drawn", `null` in what `now()` gives), the goblin, the fly,
+   each monarch's own hair and robe ("As drawn", `null` in what `now()` gives), the mouser cat in
+   its calico coat, the goblin, the fly,
    the medieval devices, overlay and words, all four quiet scenes, and each condition in its own
    scene; with a medium headline, a 24-hour clock, the helmet off indoors, and ten minutes for each
    quiet scene in live mode and one in the demo.
@@ -869,7 +932,7 @@ The keys, the values each may take and the page's own defaults come from the set
 a long name, is held to its `long_name` by `tests/web/settings-schema.test.js`. They are the contract's: `look` holds `world`, `build`, `weapon`, `skin`, `hair`,
 `hair_style`, `tabard`, `plume`, the gear (`shield`, `helmet`, `plume_style`, `body`, `shoulders`,
 `arms`, `hands`, `legs`, `feet` and `back`), `monarch`, `monarch_skin`, `monarch_hair`,
-`monarch_robe`, `foe`, `critter`, `props`, `overlay` and `words`, and two tables, `items` (a slot to
+`monarch_robe`, `pet`, `pet_coat`, `foe`, `critter`, `props`, `overlay` and `words`, and two tables, `items` (a slot to
 an item's long name) and `devices` (a kind of device to a prop set);
 `display` holds `headline`, `clock` and `helmet_indoors`; `quiet` holds `scenes` and `minutes`;
 `scenes` holds a scene id for each condition offered, by its condition id. Which conditions are
@@ -891,7 +954,7 @@ dropped, and a list that names no quiet scene is ignored whole; `minutes` is a n
 240. A section of the defaults the page does not know is left alone without a word, so a later
 collector can add one.
 
-A key marked long in the schema (`world`, `monarch`, `foe`, `critter`, `props`, `overlay`, `words`,
+A key marked long in the schema (`world`, `monarch`, `pet`, `foe`, `critter`, `props`, `overlay`, `words`,
 the values of `items` and `devices`, the quiet scenes and the scenes section's values) also takes a
 long name, `"<pack>/<id>"`. The page keeps one it has loaded as the name it stands for
 (`kw.medieval/patron.b` is the monarch `b`, `kw.medieval/props.medieval` the props `medieval`), and
@@ -910,7 +973,7 @@ set beside a two-handed weapon is kept and carried nowhere. Each other gear key 
 pack's item of its slot (`KW.settings.ITEMS`: `helmet` "kettle" is `kw.base/helm.kettle`, `feet`
 "shoes" `kw.base/boots.shoes`), `back` "none" brings nothing, and an item `items` names is drawn
 in its slot over the key for it. `engineInput(r, pack, ownMs)` gives
-the engine's `turns`, `turnMs`, `patron` (`{ id, skin, hair, robe }`), `scenes`, `homes` and `kinds` (see
+the engine's `turns`, `turnMs`, `patron` (`{ id, skin, hair, robe }`), `pet` (`{ id, coat }`), `scenes`, `homes` and `kinds` (see
 [The engine's input](#the-engines-input)); `turnMs` is `ownMs`, the demo's minute or live mode's
 ten, while no level sets `minutes`, the monarch's colours are `null` while no level sets them,
 `scenes` holds only the conditions a level above the page's own sets, so with nothing set it is
@@ -1059,15 +1122,16 @@ back. The click of any other press is swallowed, the one whose hold opened the s
 so the screen that has just opened under the finger is not tapped by the release. The display asks
 for no menu, no selection and no scrolling on a long press (`touch-action: none` on `#surface`).
 
-**Layout.** A side rail of seven pages, World, the knight, the monarch, display, quiet scenes,
-scenes and status, with DONE at the top right. The screen opens on the knight's page; World is
-first in the rail. The knight's and the monarch's pages take their names from the labels of the
-world's words in use, `watcher` and `patron` ("The knight" and "The monarch" in `words.medieval`),
-and keep those words where there are none. The screen covers the whole window, review bar included; the scene
+**Layout.** A side rail of eight pages, World, the knight, the monarch, the pet, display, quiet
+scenes, scenes and status, with DONE at the top right. The screen opens on the knight's page; World
+is first in the rail. The knight's, the monarch's and the pet's pages take their names from the
+labels of the world's words in use, `watcher`, `patron` and `pet` ("The knight", "The monarch" and
+"The cat" in `words.medieval`), and keep "The knight", "The monarch" and "The pet" where there are
+none. The screen covers the whole window, review bar included; the scene
 keeps running behind, dimmed, and shows each choice as it is made. Every choice applies at once,
 with no Save button. On a window up to 1200 wide or 760 tall the screen is drawn a little tighter,
-with labels above their choices and the house's preview left out; every touch target stays at
-least 48 pixels tall.
+with labels above their choices, the rail's entries 48 pixels tall and 6 apart so that all eight
+fit, and the house's preview left out; every touch target stays at least 48 pixels tall.
 
 **World.** A line saying what a world is ("A world sets every part at once: the knight, the
 monarch, the scenes, the cast, the devices and the words. A part changed on a later page is kept
@@ -1130,6 +1194,15 @@ none; a row whose value comes from `config.toml` therefore shows that colour cho
 drawn". Beside the rows, the chosen monarch at court; on a full-size screen that picture is a
 little narrower than on the knight's page, so that a row of seven stays on one line.
 
+**The pet.** A line saying what the cat does ("The cat catches the flies the knight cannot:
+indoors, and outdoors while the knight is busy."), then a row of the pets, today the mouser cat
+alone, and a Coat row, Calico and Ginger tabby, the one the page falls back to on a reset marked
+Default. Each choice is a card with the cat drawn sitting up in that coat, from the pet in use
+(`KW.cast.pets`, so from the pack where it is drawn from the pack). Beside the rows, under "At
+home", the cat curled on the house's floor in front of the hearth in the chosen coat, cropped from
+the house drawn by its own code. The page ends with the reset of the look, whose words name the cat
+and its coat ("the mouser cat, calico"). The cat cannot be turned off.
+
 **Display.** The headline size (small, medium, large), the clock (24 hour, 12 hour) and the helmet
 indoors (off in the house and the smithy, or kept on everywhere).
 
@@ -1154,7 +1227,8 @@ refused, each with its step and reason. The world's entries:
   is chosen ("Nothing chooses a world, so the page uses its own.", "Set in config.toml.", "Chosen on
   this screen, for every display.", or by the address).
 - **Parts**: where each part comes from, a line each: the knight with the base pack's id and
-  version (or why it is drawn from code), the monarch, the scenes, the cast, the devices (with any
+  version (or why it is drawn from code), the monarch, the scenes, the cast (the goblin, the fly and
+  the cat in its coat), the devices (with any
   kind drawn from another set) and the words with the overlay. Each line names the parts that
   differ from the world's and where they were set ("; the tabard (forest) chosen here."), and under
   the knight a line names the parts `config.toml` sets that give way to a world chosen above it.
@@ -1207,7 +1281,8 @@ the page looks exactly as before there were settings.
 `KW.engine.input` (see the head of `engine.js`) takes from the settings `turns`, the quiet scenes
 that take turns, in order (all four, `TURNS`, when it is left out or empty), `turnMs`, how long
 each lasts, `patron`, the monarch as `{ id, skin, hair, robe }`, its id and its skin, hair and
-robe, which the engine passes to the scenes in `s.patron`, `scenes`, the scene chosen for a condition
+robe, which the engine passes to the scenes in `s.patron`, `pet`, the pet and its coat as
+`{ id, coat }`, `scenes`, the scene chosen for a condition
 by its id, and `homes`, the world's own scene for each condition. `KW.engine.sceneOf(w, t)` gives the scene the winning condition `w` plays in: the one
 `scenes` names for it when that scene lists the condition in its `can`, else the one `homes` names
 under the same rule, else the condition's own in code (`w.scene`, from `KW.state.CONDITIONS`), else
@@ -1220,8 +1295,8 @@ build the input.
 
 The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `pl=`,
 `set=` and the settings hooks (`bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
-`hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`,
-`ck=`, `sc=`) also work in live mode. `f=`, `e=`, `sw=` and `dv=` act in the demo and do nothing elsewhere. The
+`hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`, `pc=`,
+`ck=`, `sc=`) also work in live mode. `f=`, `fa=`, `e=`, `sw=` and `dv=` act in the demo and do nothing elsewhere. The
 settings hooks, `h=` and `hs=` are the highest of the settings' levels (see [Settings](#settings)):
 each outranks this display's saved choices and the state file's defaults while the address holds
 it, and a value it does not know is ignored, with a line in the console, so that the next level
@@ -1237,7 +1312,9 @@ down is used.
 | `demo=1` | runs the demo loop |
 | `t=` | freezes time at that many ms, `t=0` included, for screenshots |
 | `e=` | plays an event: `goblin`, `crate`, `feast` |
-| `f=` | starts with that many flies |
+| `f=` | starts with that many flies, which come at -5000 ms, or at `fa=` |
+| `fa=` | when the flies of `f=` come, in ms, such as `fa=600`: with `e=` and time frozen, a fly that comes during the event is the cat's |
+| `pc=` | the pet's coat: `calico` or `ginger` |
 | `sw=1` | starts a swat |
 | `kx=` | places the knight, in units of `U` |
 | `mon=` | the monarch at court: `a` the king, `b` the queen, `c` the monarch who is neither |
@@ -1245,7 +1322,7 @@ down is used.
 | `mh=`, `mr=` | the monarch's hair and robe: the id of one of the base pack's hair swatches and of one of its tabard swatches, such as `mh=silver&mr=teal`. Without them, each monarch's own colours |
 | `sc=` | the scene a condition plays in: `<condition>:<scene>`, by the contract's ids, separated by commas, such as `sc=cpu_hot:camp,pi_silent:battlement`. A pair the page cannot act is ignored, with a line in the console |
 | `ck=` | the clock: `24`, or `12` for 9:42 with a small PM |
-| `set=` | opens the settings screen at load on a page: `world`, `knight`, `monarch`, `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
+| `set=` | opens the settings screen at load on a page: `world`, `knight`, `monarch`, `pet`, `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
 | `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `device_down` on, the knight looks towards the first device that is down and alerts |
 | `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`. A page that cannot draw from the base pack draws Classic whatever the hook says |
 | `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its shield in the other, `two` the greatsword, or any weapon by its contract name: `longsword`, `mace_and_shield`. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
@@ -1254,7 +1331,8 @@ down is used.
 | `hy=` | the knight's hair style: `short`, `tied`, `curls`, `long` or `close`, the base pack's `hair.<value>` |
 | `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box, the 80 by 64 a device may fill inside it, and the base. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
 
-`e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time.
+`e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time,
+the event then before the flies of `f=`, so that a fly that comes with it is the cat's.
 With time frozen the knight never starts a swat alone, so the flies of `f=` hover until `sw=1`
 starts one, and a knight placed away from their spot by `kx=` stays exactly there, in mid-stride,
 rather than walking a step in each frame.
@@ -1266,7 +1344,7 @@ the code path they do nothing. A value outside the contract's is ignored, as at 
 The demo rewrites the hash as its settings change, with the contract's ids in `on=`. It writes
 `h=` and `hs=` only when the address named them or the review bar's buttons set them
 (`KW.hooks.fixed`), so that a reload keeps the bar's choice and otherwise leaves the settings' in
-force. The test hooks (`t=`, `kx=`, `dv=`, `pl=`, `set=`, the settings hooks, `f=`, `e=` and `sw=`)
+force. The test hooks (`t=`, `kx=`, `dv=`, `pl=`, `set=`, the settings hooks, `f=`, `fa=`, `e=` and `sw=`)
 are read once when the page loads, and the rewritten hash leaves them out, so they last until the
 page is opened again.
 
@@ -1401,6 +1479,14 @@ call for call, and runs the goblin's whole event every 20 ms at the battlement a
 both; with the rest of what the compiler does for the cast ([worlds.md](./worlds.md#the-cast)).
 `tests/web/foe.test.js` loads no compiler, so it checks the code's goblin;
 `tests/web/world-scenes.test.js` runs its checks on the pack's.
+
+`tests/web/pet.test.js` holds the mouser cat from the pack to the cat from code, every pose in both
+coats call for call, and plays the engine's catch with time frozen: who a fly belongs to, the swat
+passing over the cat's flies, one fly at a time with the time of every step, the poses through a
+catch and the fly meeting the paw at the top of the leap, three of the cat's flies at most, no fly
+under a warning and the flies on screen leaving, none in the cellar, a new scene starting clear, the
+spot by the bed at night under the dimming, the drawing order, the note and the coat, and on a page
+without `cat.js` every fly the knight's, waiting indoors as before ([The cast](#the-cast)).
 
 `tests/web/world-words.test.js` loads the page's scripts but the engine, the settings and `main.js`,
 and checks the quiet line and the captions built from the collector's parts in the medieval words,
@@ -1738,7 +1824,7 @@ they are missing. Against a reference from base pack 1.3.0 the six settings shot
 page and of the status differ too: the weapon and hair style rows gained choices, and the status
 names the base pack's version and whether it is signed.
 
-The four shots that end the set show the worlds. `settings-world` opens the World page over the
+The four shots after them show the worlds. `settings-world` opens the World page over the
 battlement with nothing set, and `settings-world-tablet` the same over the camp at the tablet's
 size; `settings-world-changed` has the weapon and the tabard the address changes from the world
 (`arm=one`, `tb=forest`), each beside the world's own, under a card that still shows the world as it
@@ -1747,6 +1833,26 @@ Fallbacks entries show that tabard and a full disk asked for in the camp, which 
 (`sc=disk_full:camp`). Against a reference from before worlds these four are missing, and every
 settings shot that shows the rail differs in it, where World was added first; `settings-status`
 differs in its entries too, where the Knight entry gave way to World, Parts and Fallbacks.
+
+The 28 `cat-` shots that end the set show the mouser cat. Every shot above shows it resting at its
+spot in its calico coat; these show it in the ginger coat (`pc=ginger`) at each of its eight spots
+(`cat-ginger-`), and catching. One fly (`f=1`) in the house while streaming comes at -5000 ms and
+buzzes until 13 730: the cat looks up at a fly that comes at 0 (`cat-house-notice`, `fa=0`), sits
+up alert as the fly comes down (`cat-house-alert`, 12 500), stalks (`cat-house-stalk`, 14 500), is
+at the top of the leap 40 ms before its paw meets the fly at 15 910 (`cat-house-pounce`, in ginger
+too), lands with the fly in the poof (`cat-house-poof`), is pleased (`cat-house-pleased`) and walks
+back (`cat-house-walk`). The same leap is shot at the foot of the bed at night, dimmed
+(`cat-night-pounce`), on the smithy's forge ledge and on the court's dais step. A fly that comes
+with the goblin at 600 ms (`e=goblin&f=1&fa=600`) is the cat's, since the knight is busy: the cat
+looks up at it with the goblin on the wall (`cat-goblin-notice`), and leaps for it at 22 406, long
+after the goblin has gone, on the battlement, at the camp and, with the crate, in the yard. Five
+flies in the house leave three on screen (`cat-house-three`), and the cellar, a warning, has none
+(`cat-cellar-none`). The settings screen's Pet page shows at 960 by 600 and at the tablet's size,
+in calico and in ginger (`cat-settings-`). A copy of the page from before the cat ignores `pc=`
+and `fa=` and draws no cat, so against it every shot differs: a scene by the cat's 2 756 pixels at
+the most where it rests (the curl), the `cat-` shots more, and the settings shots in the rail too,
+where the pet's page was added, which on a small window now has its entries 48 pixels tall and 6
+apart, so that eight fit.
 
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
 Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade

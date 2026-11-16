@@ -344,7 +344,7 @@
     conditions: 'When each condition is raised, and which wins when several are. A condition left out of the priority is never raised.',
     sources: 'What the collector reads. Each source is on or off, with its address, its pace and its own options. Credentials are never typed here: each source that needs one says whether .env holds it.',
     devices: 'Machines on the network to watch, each checked at its own pace and drawn as a prop in the scene. The first Pi, the first three cameras and the first three others are drawn, in this order.',
-    look: 'The knight and the monarch at court, for every display. These are the same settings as each wall\'s settings screen: a change here shows on every wall within about five seconds, and a choice made on a wall shows here as Set here.',
+    look: 'The knight, the monarch at court and the cat\'s coat, for every display. These are the same settings as each wall\'s settings screen: a change here shows on every wall within about five seconds, and a choice made on a wall shows here as Set here.',
     display: 'How every display shows the words. The same settings as each wall\'s settings screen.',
     quiet: 'The scenes that take turns while all is quiet, for every display. The same settings as each wall\'s settings screen.',
     scenes: 'Where the knight acts out the conditions that more than one scene can play. The same settings as each wall\'s settings screen.',
@@ -659,6 +659,9 @@
     const own = KW.scenes.court.drawn(val(L + 'monarch'));
     c.appendChild(row(L + 'monarch_hair', optRow(L + 'monarch_hair', [{ id: null, name: 'As drawn', fill: bandsCss(Object.assign({}, own.hair)) }].concat(swatchesOf('monarch_hair')))));
     c.appendChild(row(L + 'monarch_robe', optRow(L + 'monarch_robe', [{ id: null, name: 'As drawn', fill: bandsCss(Object.assign({}, own.robe)) }].concat(swatchesOf('monarch_robe')))));
+    // the pet's coat, by the names the walls' settings screen gives them
+    const COATS = { calico: 'Calico', ginger: 'Ginger tabby' };
+    c.appendChild(row(L + 'pet_coat', optRow(L + 'pet_coat', SPEC[L + 'pet_coat'].values.map(id => ({ id, chip: COATS[id] || cap(id), kind: 'txt' })))));
     left.appendChild(c); grid.appendChild(left);
     const pv = el('aside', 'prev');
     pv.appendChild(el('h3', '', 'As every wall will show it'));

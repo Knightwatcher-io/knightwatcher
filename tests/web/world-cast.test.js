@@ -89,10 +89,10 @@ const POSES = ['stand', 'climb', 'taunt0', 'taunt1', 'brace', 'hit'];
 
 // ---- The cast --------------------------------------------------------------------------------------
 
-test('the cast of kw.medieval reads clean: the three patrons, the goblin and the fly', () => {
+test('the cast of kw.medieval reads clean: the three patrons, the goblin, the fly and the cat', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
-  assert.deepEqual(Object.keys(r.data.cast), ['patron.a', 'patron.b', 'patron.c', 'foe.goblin', 'critter.fly']);
+  assert.deepEqual(Object.keys(r.data.cast), ['patron.a', 'patron.b', 'patron.c', 'foe.goblin', 'critter.fly', 'pet.cat']);
 });
 
 /* The base pack's swatches, as the settings hand them to the engine (settings.js, engineInput). */
@@ -167,8 +167,10 @@ test('the fly as written: its wings in a group at an alpha of 0.85, and its cost
   assert.deepEqual(plain(r.world.cast['critter.fly']), { frames: { flap0: 24, flap1: 24, dead: 1 } });
 });
 
-test('a dev page draws the goblin and the fly from the pack, a deployed page from code while the pack is unsigned, and KW.world.cast says so', () => {
-  assert.deepEqual(plain(PACK.KW.world.cast), { source: 'pack', members: { 'patron.a': 'pack', 'patron.b': 'pack', 'patron.c': 'pack', 'foe.goblin': 'pack', 'critter.fly': 'pack' }, faults: [] });
+test('a dev page draws the goblin, the fly and the cat from the pack, a deployed page from code while the pack is unsigned, and KW.world.cast says so', () => {
+  assert.deepEqual(plain(PACK.KW.world.cast), { source: 'pack', members: { 'patron.a': 'pack', 'patron.b': 'pack', 'patron.c': 'pack', 'foe.goblin': 'pack', 'critter.fly': 'pack', 'pet.cat': 'pack' }, faults: [] });
+  assert.notEqual(PACK.KW.cast.pets.cat, PACK.KW.props.PETS.cat);
+  assert.equal(PACK.KW.cast.pets.cat.from.split('#')[0], 'kw.medieval');
   for (const id of MONARCHS) { assert.notEqual(PACK.KW.cast.patrons[id], PACK.KW.props.PATRONS[id]); assert.equal(PACK.KW.cast.patrons[id].from.split('#')[0], 'kw.medieval'); }
   assert.deepEqual(Object.keys(PACK.KW.props.PATRONS), MONARCHS);
   assert.notEqual(PACK.KW.cast.critters.fly, PACK.KW.props.CRITTERS.fly);
@@ -185,6 +187,7 @@ test('a dev page draws the goblin and the fly from the pack, a deployed page fro
   assert.equal(dep.KW.cast.critters.fly, dep.KW.props.CRITTERS.fly);
   assert.equal(dep.KW.cast.foes.goblin, dep.KW.props.FOES.goblin);
   for (const id of MONARCHS) assert.equal(dep.KW.cast.patrons[id], dep.KW.props.PATRONS[id]);
+  assert.equal(dep.KW.cast.pets.cat, dep.KW.props.PETS.cat);
   // before start, the cast is the code's
   assert.equal(CODE.KW.cast.critters.fly, CODE.KW.props.CRITTERS.fly);
   assert.equal(CODE.KW.cast.foes.goblin, CODE.KW.props.FOES.goblin);
@@ -438,7 +441,7 @@ test('a member that fails to compile is drawn from code, with its reason in KW.w
   s.KW.pack = Object.assign({}, lib, { read: () => broken });
   const st = s.KW.world.start([TEXT], true);
   assert.equal(st.source, 'pack');
-  assert.deepEqual(plain(s.KW.world.cast), { source: 'pack', members: { 'patron.a': 'pack', 'patron.b': 'pack', 'patron.c': 'pack', 'foe.goblin': 'code', 'critter.fly': 'code' },
+  assert.deepEqual(plain(s.KW.world.cast), { source: 'pack', members: { 'patron.a': 'pack', 'patron.b': 'pack', 'patron.c': 'pack', 'foe.goblin': 'code', 'critter.fly': 'code', 'pet.cat': 'pack' },
     faults: [{ member: 'foe.goblin', reason: 'cast.foe.goblin.parts.body[0].k: the shape kind "zz" is not built in this engine yet' },
       { member: 'critter.fly', reason: 'cast.critter.fly.frames.flap1[0].k: the shape kind "zz" is not built in this engine yet' }] });
   assert.equal(s.KW.cast.critters.fly, s.KW.props.CRITTERS.fly);

@@ -291,6 +291,41 @@ SHOTS=(
   "settings-world-tablet|bar=0&t=2300&is=camp&set=world|1480,924"
   "settings-world-changed|bar=0&t=2300&is=camp&set=world&tb=forest&arm=one|1480,924"
   "settings-status-world|bar=0&t=2300&is=camp&set=status&tb=forest&sc=disk_full:camp|1480,924"
+  # the mouser cat. Every shot above shows it resting at its spot, calico; these show it in the
+  # ginger coat (pc=) at each of its eight spots, and catching. A fly of f= comes at -5000 ms, or
+  # at fa=; one fly in the house while streaming buzzes until 13730, and the cat sits up alert from
+  # 11230, stalks from 13730, leaps at 15530 and meets the fly at 15910, lands, is pleased from
+  # 16680 and walks back from 18480. A fly that comes at 600 with the goblin is the cat's, since the
+  # knight is busy: the cat looks up at once, and meets it at 22446, long after the goblin has gone.
+  # Five flies indoors leave three on screen, and the cellar, a warning, has none
+  "cat-ginger-battlement|bar=0&t=2300&is=battlement&pc=ginger"
+  "cat-ginger-camp|bar=0&t=2300&is=camp&pc=ginger"
+  "cat-ginger-yard|bar=0&t=2300&is=yard&pc=ginger"
+  "cat-ginger-house|bar=0&t=2300&is=house&pc=ginger"
+  "cat-ginger-night|bar=0&t=2300&on=night&pc=ginger"
+  "cat-ginger-cellar|bar=0&t=2300&on=disk&pc=ginger"
+  "cat-ginger-smithy|bar=0&t=1250&on=update&pc=ginger"
+  "cat-ginger-court|bar=0&t=3450&on=ssh&pc=ginger"
+  "cat-house-notice|bar=0&t=800&on=plex&f=1&fa=0"
+  "cat-house-alert|bar=0&t=12500&on=plex&f=1"
+  "cat-house-stalk|bar=0&t=14500&on=plex&f=1"
+  "cat-house-pounce|bar=0&t=15870&on=plex&f=1"
+  "cat-house-poof|bar=0&t=15990&on=plex&f=1"
+  "cat-house-pleased|bar=0&t=17200&on=plex&f=1"
+  "cat-house-walk|bar=0&t=19500&on=plex&f=1"
+  "cat-house-pounce-ginger|bar=0&t=15870&on=plex&f=1&pc=ginger"
+  "cat-night-pounce|bar=0&t=15870&on=night&f=1"
+  "cat-smithy-pounce|bar=0&t=15870&on=update&f=1"
+  "cat-court-pounce|bar=0&t=15870&on=ssh&f=1"
+  "cat-goblin-notice|bar=0&t=1500&is=battlement&e=goblin&f=1&fa=600"
+  "cat-goblin-pounce|bar=0&t=22406&is=battlement&e=goblin&f=1&fa=600"
+  "cat-camp-goblin-pounce|bar=0&t=22406&is=camp&e=goblin&f=1&fa=600"
+  "cat-yard-crate-pounce|bar=0&t=22406&is=yard&e=crate&f=1&fa=600"
+  "cat-house-three|bar=0&t=2300&is=house&f=5"
+  "cat-cellar-none|bar=0&t=2300&on=disk&f=3"
+  "cat-settings-pet|bar=0&t=2300&is=house&set=pet"
+  "cat-settings-pet-tablet|bar=0&t=2300&is=house&set=pet|1480,924"
+  "cat-settings-pet-ginger|bar=0&t=2300&is=house&set=pet&pc=ginger|1480,924"
 )
 
 take() {

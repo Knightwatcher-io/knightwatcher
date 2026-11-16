@@ -40,7 +40,8 @@
       ],
       "berry.lit": [{"k":"pix","p":[-3,-3],"rows":[".r.","rRr",".r."],"key":{"r":"#ff4a3d","R":"#ff8676"}}],
       "berry.dark": [{"k":"pix","p":[-3,-3],"rows":[".d.","ddd",".d."],"key":{"d":"#5a1a2a"}}],
-      "berry.down": [{"k":"pix","p":[-3,-3],"rows":[".r.","rRr",".r."],"key":{"r":"@lamp.down","R":"@lamp.downHi"}}]
+      "berry.down": [{"k":"pix","p":[-3,-3],"rows":[".r.","rRr",".r."],"key":{"r":"@lamp.down","R":"@lamp.downHi"}}],
+      "pet.sit": [{"k":"pix","p":[-2,-4],"runs":true,"key":{"a":"#1a1524","b":"#ffffff"},"rows":["a2ba","4a","1a2.a"]}]
     },
     "scenes": {
       "scene.battlement": {
@@ -516,6 +517,17 @@
           ]
         },
         "dead": [{"k":"rect","p":[-3,0],"w":6,"h":5,"fill":"#3a3344"}]
+      },
+      "pet.cat": {
+        "role": "pet",
+        "name": "Mouser cat",
+        "sprite": {"size":[40,30],"feet":[20,25]},
+        "coats": {"calico":{"name":"Calico","poses":{"rest":"pet.sit","settle":"pet.sit","alert0":"pet.sit","alert1":"pet.sit","stalk0":"pet.sit","stalk1":"pet.sit","pounce":"pet.sit","land":"pet.sit","pleased":"pet.sit","walk0":"pet.sit","walk1":"pet.sit"}}},
+        "spots": {
+          "scene.house": {"rest":[892,590],"face":-1,"floors":[],"lane":590,"fly":[770,456],"bed":{"rest":[332,405],"face":-1,"floors":[[165,386,405]],"lane":578,"fly":[214,330]}},
+          "scene.cellar": {"rest":[322,430],"face":1,"floors":[[292,354,430]],"lane":530,"fly":[432,366]}
+        },
+        "paw": [8,-10], "take": 6, "land": 5.5, "lift": 4
       }
     },
     "props": {
@@ -634,7 +646,7 @@
             "night": "scene.house"
           }
         },
-        "cast": {"patron":"patron.a","foe":"foe.goblin","critter":"critter.fly"},
+        "cast": {"patron":"patron.a","foe":"foe.goblin","critter":"critter.fly","pet":"pet.cat"},
         "props": "props.medieval",
         "overlay": "overlay.phosphor",
         "words": "words.medieval",

@@ -1009,6 +1009,8 @@ class LoadTest(unittest.TestCase):
                     "monarch_skin": "warm",
                     "monarch_hair": "brown",
                     "monarch_robe": "wine",
+                    "pet": "cat",
+                    "pet_coat": "calico",
                     "foe": "goblin",
                     "critter": "fly",
                     "props": "medieval",

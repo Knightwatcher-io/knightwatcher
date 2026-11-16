@@ -46,11 +46,12 @@ const BLOCK = 1024;
 const MODE = process.env.SCENES_LOG || '';
 
 /* The scripts index.html loads that the scenes need, in its order: the drawing primitives, the
-   sprites, the effects, the props, the knight, the scenes, the state library (for the places of the devices)
-   and the engine (for KW.devices). Not the pack library: the knight is drawn from code, and the
-   scenes read from it only where its gear rests (KW.knight.rest.blade), which is the same on both
-   paths (knight.test.js). */
-const NEEDED = ['js/draw.js', 'js/sprites.js', 'js/effects.js', 'js/props.js', 'js/knight.js', 'js/state.js', 'js/engine.js'];
+   sprites, the effects, the props, the cat (so that the pack's pet has the code's to take the place
+   of), the knight, the scenes, the state library (for the places of the devices) and the engine
+   (for KW.devices). Not the pack library: the knight is drawn from code, and the scenes read from it
+   only where its gear rests (KW.knight.rest.blade), which is the same on both paths
+   (knight.test.js). */
+const NEEDED = ['js/draw.js', 'js/sprites.js', 'js/effects.js', 'js/props.js', 'js/cat.js', 'js/knight.js', 'js/state.js', 'js/engine.js'];
 /* And for the scenes drawn from kw.medieval: the verifier, the pack library and the scene compiler. */
 const FOR_PACK = ['js/ed25519.js', 'js/pack.js', 'js/world.js'];
 

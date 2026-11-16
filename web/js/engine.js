@@ -21,7 +21,9 @@
      homes   each condition's own scene in the world in use, by its id, as the settings resolve it
              from the world's preset (KW.settings.engineInput). A condition left out, or given a
              scene the page has not loaded or that cannot act it, plays in the scene KW.state gives
-             it, the code's own */
+             it, the code's own
+     pet     the pet, the mouser cat: { id, coat }. id names a pet of KW.cast.pets, the first when
+             it is left out or names none; coat one of its coats, its first when it names none */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, K = KW.knight, P = KW.props, SP = KW.sprites, C = D.C, U = V.U;
@@ -48,6 +50,9 @@
 
   let main = null, kx = 96 * U, ev = null, curScene = '', fadeAt = -1e9, sceneT0 = 0, round = { i: 0, arr: 0 };
   const flies = []; let swat = null, lastSwat = -1e9, pendingFlies = 0;
+  // the pet's catches, in the order its flies came, the time it is free again after the last, and
+  // the flies leaving the scene under a warning
+  const catches = [], leaving = []; let petFree = -1e9;
   const bgCache = { key: '', cv: document.createElement('canvas') };
 
   /* The scene the winning condition w plays in at t: the one the input's scenes chose for it,
@@ -66,21 +71,172 @@
     return is === 'auto' ? list[Math.floor((t - sceneT0) / turnMs) % list.length] : is;
   }
 
-  /* A blocked advert becomes a fly. Eight at most are on screen; the rest wait for the next swat.
-     The engine keeps where the flies hover, the swat, the poof and the fall; the fly's drawing is
-     the critter's, from KW.cast, which the world's cast fills (world.js), or from the code's own,
-     KW.props.CRITTERS, on a page without the compiler. */
+  /* A blocked advert becomes a fly, which belongs to whoever can take it when it comes: the knight
+     outdoors while free, the pet (the mouser cat) indoors and while the knight is busy with an
+     event. The knight's flies gather, eight at most on screen, the rest waiting for the next swat;
+     the pet takes its flies one at a time, three at most on screen, and a fly past that is only
+     counted, in the quiet line's count of adverts the collector writes. Under a warning or worse a
+     blocked advert adds no fly at all, and the flies on screen leave (see draw). A page without a
+     pet, or a scene where it has no spot, gives every fly to the knight, to wait indoors as before
+     there was a pet. The engine keeps where the flies hover, the swat, the catch, the poof and the
+     fall; the fly's drawing is the critter's, from KW.cast, which the world's cast fills
+     (world.js), or from the code's own, KW.props.CRITTERS, on a page without the compiler. */
   const critters = () => (KW.cast ? KW.cast.critters : P.CRITTERS);
+  const flyOf = (list, t, salt) => {
+    const live = list.filter(f => !f.dead), side = live.filter(f => f.side > 0).length <= live.filter(f => f.side < 0).length ? 1 : -1, h = hash(list.length * 13 + salt + Math.floor(t));
+    return { side, r: 130 + (h % 110), th: .35 + ((h >> 5) % 100) / 100 * 1.1, ph: (h >> 9) % 7, born: t, dead: 0, h };
+  };
   function addFly(t) {
+    const w = E.input.w;
+    if (w.lv >= 3) return;
+    // the scene on screen, or before the first frame the one the input gives
+    const name = curScene || sceneOf(w, frozen() ? KW.hooks.t : t), sc = KW.scenes[name], pet = petNow(), spot = pet && sc ? spotOf(pet, name, sc, w) : null;
+    if (spot && (!sc.outdoors || ev)) {
+      const live = catches.filter(k => k.hitAt > t).map(k => k.f);
+      if (live.length >= PET.most) return;
+      const f = flyOf(live, t, 7);
+      f.buzz = PET.buzz[0] + (f.h >>> 3) % (PET.buzz[1] - PET.buzz[0] + 1);
+      catches.push(catchPlan(f, pet, spot, name, petFree));
+      petFree = catches[catches.length - 1].end;
+      return;
+    }
     const live = flies.filter(f => !f.dead);
     if (live.length >= 8) { pendingFlies++; return; }
-    const side = live.filter(f => f.side > 0).length <= live.filter(f => f.side < 0).length ? 1 : -1, h = hash(flies.length * 13 + 5 + Math.floor(t));
-    flies.push({ side, r: 130 + (h % 110), th: .35 + ((h >> 5) % 100) / 100 * 1.1, ph: (h >> 9) % 7, born: t, dead: 0 });
+    const f = flyOf(flies, t, 5); delete f.h;
+    flies.push(f);
   }
   function flyPos(f, t) {
     const hx = kx + f.side * (50 + f.r * Math.sin(f.th)) + Math.sin(t / 420 + f.ph) * 20, hy = V.HFL - 80 - f.r * Math.cos(f.th) + Math.cos(t / 330 + f.ph * 2) * 15;
     const q = ease(clamp01((t - f.born) / 1300));
     return [lerp(f.side > 0 ? V.HR + 30 : V.HL - 30, hx, q), lerp(hy - 70, hy, q)];
+  }
+  /* ---- The pet's catch ------------------------------------------------------------------------
+     The pet is KW.cast.pets, which the world's cast fills (world.js), or the code's own,
+     KW.props.PETS (cat.js), on a page without the compiler. It rests at its spot in each scene the
+     whole time; a fly of its own buzzes round the knight for PET.buzz, then the pet sits up alert
+     while the fly comes down to the scene's catch point, stalks to where it takes off, wiggles,
+     pounces, and its paw meets the fly at the top of the leap, where the fly goes in the sword's
+     poof and falls; the pet lands with a swipe, is pleased, walks back and settles. A fly whose buzz
+     ends while the pet is busy waits until it has settled. Each catch is worked out when its fly
+     comes (catchPlan), so that with time frozen the picture depends on the time alone. Times in ms,
+     speeds in pixels a ms: notice, the look up at a fly as it comes; alert, how long before the
+     end of the buzz it sits up; creep, the least time it stalks; then wiggle, rise (the leap up),
+     fall, land (the swipe), pleased, settle. */
+  const PET = { buzz: [10000, 20000], most: 3, notice: 1600, alert: 2500, creep: 1200, stalk: 60 / 1000, wiggle: 600, rise: 380, fall: 320, land: 450,
+    pleased: 1800, walk: 55 / 1000, settle: 700, after: 400, poof: 260, drop: 900, leave: 1300 };
+  const pets = () => (KW.cast ? KW.cast.pets : P.PETS) || {};
+  /* The pet the input names, or the first; null on a page with none. */
+  function petNow() {
+    const all = pets(), want = E.input.pet && E.input.pet.id, ids = Object.keys(all);
+    return want && Object.prototype.hasOwnProperty.call(all, want) ? all[want] : ids.length ? all[ids[0]] : null;
+  }
+  const owns = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+  /* The pet's spot in the scene name, its spot by the bed while the knight is in bed, or null. */
+  function spotOf(pet, name, sc, w) {
+    const sp = owns(pet.spots, name) ? pet.spots[name] : null;
+    if (!sp) return null;
+    return !!sc.bed && (w.id === 'night' || w.id === 'container_unhealthy') && sp.bed ? sp.bed : sp;
+  }
+  function floorAt(sp, x) { for (const [a, b, y] of sp.floors) if (x >= a && x <= b) return y; return sp.lane; }
+  /* The pet's y at x on its way from x0 along the floors, with a hop where the floor steps up or
+     down. */
+  function yAlong(sp, x0, x) {
+    const H = 16, dir = Math.sign(x - x0) || 1;
+    for (let b = Math.round(x0); dir > 0 ? b <= x : b >= x; b += dir) {
+      const y1 = floorAt(sp, b), y2 = floorAt(sp, b + dir);
+      if (y1 !== y2 && Math.abs(x - (b + dir / 2)) < H) {
+        const q = clamp01((x - (b + dir / 2 - dir * H)) * dir / (2 * H));
+        return { y: lerp(y1, y2, q) - (12 + Math.abs(y1 - y2) * .35) * Math.sin(q * Math.PI), hop: true };
+      }
+    }
+    return { y: floorAt(sp, x), hop: false };
+  }
+  /* The catch of the fly f by the pet at its spot sp in the scene name, the pet free from free: the
+     top of the leap puts the paw on the catch point, a leap lower than the pet's lift is raised to
+     it, and the fly comes down to where the paw will be. */
+  function catchPlan(f, pet, sp, name, free) {
+    const go = Math.max(f.born + f.buzz, free + PET.after), [fx, fy] = sp.fly, face = Math.sign(fx - sp.rest[0]) || sp.face, paw = pet.paw;
+    const apex = [fx - paw[0] * face, fy - paw[1]], take = apex[0] - pet.take * face, landX = apex[0] + pet.land * face;
+    apex[1] = Math.min(apex[1], floorAt(sp, take) - pet.lift);
+    const k = { f, sp, name, face, go, alertAt: Math.max(go - PET.alert, free), take, apex, landX, hit: [apex[0] + paw[0] * face, apex[1] + paw[1]] };
+    k.stalkEnd = go + Math.max(PET.creep, Math.abs(take - sp.rest[0]) / PET.stalk);
+    k.jump = k.stalkEnd + PET.wiggle; k.hitAt = k.jump + PET.rise; k.down = k.hitAt + PET.fall; k.pleased = k.down + PET.land;
+    k.walk = k.pleased + PET.pleased; k.home = k.walk + Math.abs(sp.rest[0] - landX) / PET.walk; k.end = k.home + PET.settle;
+    return k;
+  }
+  /* What the pet does at t: { pose, x, y, face }. */
+  function petAt(sp, t) {
+    const rx = sp.rest[0], ry = sp.rest[1], at = (pose, x, y, face) => ({ pose, x, y, face });
+    for (const k of catches) {
+      if (t < k.alertAt) {
+        // a fly has just come: the pet looks up at it for a moment
+        for (const j of catches) if (t >= j.f.born && t < j.f.born + PET.notice && j.f.born < k.alertAt) return at('alert' + (Math.floor(t / 400) % 2), rx, ry, Math.sign(flyPos(j.f, t)[0] - rx) || sp.face);
+        return at('rest', rx, ry, sp.face);
+      }
+      if (t >= k.end) continue;
+      const face = k.face;
+      if (t < k.go) return at('alert' + (Math.floor(t / 400) % 2), rx, ry, face);
+      if (t < k.stalkEnd) {
+        const x = lerp(rx, k.take, (t - k.go) / Math.max(1, k.stalkEnd - k.go)), a = yAlong(sp, rx, x), back = Math.sign(k.take - rx) === -face, f = Math.floor(t / 250) % 2;
+        // a take-off point behind the pet: it walks there first, then turns
+        return at(a.hop ? 'pounce' : back ? 'walk' + f : 'stalk' + f, x, a.y, back ? -face : face);
+      }
+      if (t < k.jump) { const f = Math.floor(t / 110) % 2; return at('stalk' + f, k.take + (f ? 1 : -1), floorAt(sp, k.take), face); }
+      const y0 = floorAt(sp, k.take), yl = floorAt(sp, k.landX);
+      if (t < k.hitAt) { const q = (t - k.jump) / PET.rise; return at('pounce', lerp(k.take, k.apex[0], q), lerp(y0, k.apex[1], ease(q)), face); }
+      if (t < k.down) { const q = (t - k.hitAt) / PET.fall; return at(q < .5 ? 'pounce' : 'land', lerp(k.apex[0], k.landX, q), lerp(k.apex[1], yl, q * q), face); }
+      if (t < k.pleased) return at('land', k.landX, yl, face);
+      if (t < k.walk) return at('pleased', k.landX, yl, face);
+      if (t < k.home) {
+        const x = lerp(k.landX, rx, (t - k.walk) / Math.max(1, k.home - k.walk)), a = yAlong(sp, k.landX, x);
+        return at(a.hop ? 'pounce' : 'walk' + (Math.floor(t / 260) % 2), x, a.y, Math.sign(rx - k.landX) || -face);
+      }
+      return at('settle', rx, ry, sp.face);
+    }
+    return at('rest', rx, ry, sp.face);
+  }
+  /* The pet as the world's words name it, lower case: the label the word set gives the pet (the
+     cat), or the cat without one. */
+  function petWord() {
+    const w = KW.world && KW.world.words, l = w && w.labels && typeof w.labels.pet === 'string' && w.labels.pet ? w.labels.pet : 'The cat';
+    return l.charAt(0).toLowerCase() + l.slice(1);
+  }
+  const wob = (f, t) => [Math.sin(t / 260 + f.ph) * 5, Math.cos(t / 210 + f.ph) * 4];
+  /* Where the pet's fly of the catch k is at t: [x, y], or { dead, x, y } once caught, or null once
+     it has fallen. It hovers round the knight, comes down to the catch point and wobbles there, and
+     from the jump drifts the last few pixels to where the paw meets it. */
+  function preyAt(k, t) {
+    const f = k.f;
+    if (t >= k.hitAt) { const a = t - k.hitAt; return a < PET.drop + 100 ? { dead: a, x: k.hit[0], y: k.hit[1] } : null; }
+    const hover = tt => { const [wx, wy] = wob(f, tt); return [k.hit[0] + wx, k.hit[1] + wy]; };
+    if (t < k.alertAt) return flyPos(f, t);
+    if (t >= k.jump) { const a = hover(k.jump), q = (t - k.jump) / PET.rise; return [lerp(a[0], k.hit[0], q), lerp(a[1], k.hit[1], q)]; }
+    const q = ease(clamp01((t - k.alertAt) / (k.go - k.alertAt || 1))), dip = hover(t), o = flyPos(f, Math.min(t, k.alertAt));
+    return [lerp(o[0], dip[0], q), lerp(o[1], dip[1], q)];
+  }
+  /* The pet at its spot, after the knight and before the devices in front of it: its pose's canvas,
+     painted once, mirrored when it faces left. */
+  function petHD(pet, coat, c) {
+    const cv = pet.pose(coat, c.pose), [ax, ay] = pet.anchor;
+    main.save(); main.translate(Math.round(c.x), Math.round(c.y)); if (c.face < 0) main.scale(-1, 1); main.drawImage(cv, -ax, -ay); main.restore();
+  }
+  /* Under a warning the flies on screen leave: the knight's, and the pet's that it has not leapt
+     for yet, each from where it is out to the side it came from. */
+  function leaveAll(t) {
+    for (const f of flies) if (!f.dead) leaving.push({ from: flyPos(f, t), side: f.side, ph: f.ph, t0: t });
+    for (let i = flies.length - 1; i >= 0; i--) if (!flies[i].dead) flies.splice(i, 1);
+    pendingFlies = 0;
+    for (let i = catches.length - 1; i >= 0; i--) {
+      const k = catches[i];
+      if (t >= k.jump) continue;
+      leaving.push({ from: preyAt(k, t), side: k.f.side, ph: k.f.ph, t0: t });
+      catches.splice(i, 1);
+    }
+    petFree = catches.length ? catches[catches.length - 1].end : t;
+  }
+  function leavingPos(l, t) {
+    const q = ease(clamp01((t - l.t0) / PET.leave));
+    return [lerp(l.from[0], l.side > 0 ? V.HR + 30 : V.HL - 30, q), lerp(l.from[1], l.from[1] - 70, q)];
   }
   function startSwat(t) {
     const live = flies.filter(f => !f.dead && t - f.born > 1300); if (!live.length) return;
@@ -449,8 +605,24 @@
   function draw(t) {
     const { HL, HR, HT, HH, HFL } = V, freeze = frozen();
     const inp = E.input, w = inp.w, scene = sceneOf(w, t), sc = KW.scenes[scene], devices = inp.devices || [];
-    if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
+    // a new scene starts with no flies, no catch and nothing waiting, so nothing spills into it
+    if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; catches.length = 0; leaving.length = 0; pendingFlies = 0; petFree = -1e9; } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
     const serious = w.lv >= 3, inBed = !!sc.bed && (w.id === 'night' || w.id === 'container_unhealthy');
+    if (serious) leaveAll(t);
+    // the pet's spot: a catch worked out from another spot in this scene (by the bed, or not) is
+    // worked out again from here, from now
+    const pet = petNow(), spot = pet ? spotOf(pet, scene, sc, w) : null;
+    if (catches.some(k => k.sp !== spot)) {
+      let free = t;
+      for (let i = 0; i < catches.length; i++) {
+        const k = catches[i];
+        if (!spot) { catches.splice(i--, 1); continue; }
+        if (k.sp === spot) { free = Math.max(free, k.end); continue; }
+        if (t >= k.hitAt) { k.end = Math.min(k.end, t); k.sp = spot; continue; }
+        catches[i] = catchPlan(k.f, pet, spot, scene, free); free = catches[i].end;
+      }
+      petFree = catches.length ? Math.max(t, catches[catches.length - 1].end) : petFree;
+    }
     const funOK = !serious && !!sc.outdoors;
     const o = K.pose(w.id, t); o.floor = HFL;
     o.helmet = inp.helmet === 'on' ? true : inp.helmet === 'off' ? false : sc.helmet !== false;
@@ -518,6 +690,7 @@
       if (p < .9 || Math.floor(t / 110) % 2) { if (q < 1) P.chuteHD(x + 30, y); P.crateHD(x, y); }
     }
     if (!inBed) K.draw(o);
+    if (spot) petHD(pet, E.input.pet && E.input.pet.coat, petAt(spot, t));
     placesHD(t, s, true);
     const fly = critters().fly;
     for (const f of flies) {
@@ -525,14 +698,30 @@
       else { const a = t - f.dead; if (a < 260) P.poofHD(f.at[0], f.at[1]); if (a < 900) fly.dead(f.at[0], f.at[1] + a * a / 900); }
     }
     for (let i = flies.length - 1; i >= 0; i--) if (flies[i].dead && t - flies[i].dead > 1000) flies.splice(i, 1);
+    // the pet's flies after the knight's, and the flies leaving under a warning
+    for (const k of catches) {
+      const p = preyAt(k, t);
+      if (!p) continue;
+      if (Array.isArray(p)) { fly.draw(p[0], p[1], Math.floor(t / 90 + k.f.ph) % 2); continue; }
+      if (p.dead < PET.poof) P.poofHD(p.x, p.y);
+      if (p.dead < PET.drop) fly.dead(p.x, p.y + p.dead * p.dead / 900);
+    }
+    for (let i = catches.length - 1; i >= 0; i--) if (t >= catches[i].end && t >= catches[i].hitAt + PET.drop + 100) catches.splice(i, 1);
+    for (const l of leaving) { const [x, y] = leavingPos(l, t); fly.draw(x, y, Math.floor(t / 90 + l.ph) % 2); }
+    for (let i = leaving.length - 1; i >= 0; i--) if (t - leaving[i].t0 > PET.leave) leaving.splice(i, 1);
     if (foe) foeFxHD(plan, foe);
     if (w.id === 'attack') { alpha(.08 + .07 * Math.sin(t / 220)); Rh(HL, HT, HR - HL, HH - HT + 20, D.C.R1); alpha(1); }
     if (w.id === 'night' && inBed) { alpha(.5); Rh(HL, HT, HR - HL, HH - HT + 20, '#000'); alpha(1); }
     if (sc.over) { fine(); sc.over(t, s); fine(); }
     if (KW.hooks.pl) outlineHD(s);
     const fd = 1 - (t - fadeAt) / 420; if (fd > 0 && !freeze) { alpha(fd); Rh(HL, HT, HR - HL, HH - HT + 20, '#000'); alpha(1); }
-    E.note = !flies.some(f => !f.dead) ? 'no flies' : !funOK ? 'flies wait: ' + (serious ? 'a warning is up' : 'indoors')
+    // the review bar's note on the flies: the knight's swat, and the pet's hunt, the pet named as
+    // the world's words name it (the cat), lower case
+    const hunting = catches.some(k => t < k.hitAt), knights = flies.some(f => !f.dead);
+    const knightNote = !knights ? '' : !funOK ? 'flies wait: ' + (serious ? 'a warning is up' : 'indoors')
       : swat ? 'swatting' : 'next swat in ' + Math.max(0, Math.ceil((30000 - (t - lastSwat)) / 1000)) + ' s';
+    const hunt = hunting ? petWord() + ' is hunting' : '';
+    E.note = [knightNote, hunt].filter(Boolean).join('; ') || (leaving.length ? 'flies leave: a warning is up' : 'no flies');
   }
 
   Object.assign(E, {
@@ -550,6 +739,8 @@
     invalidate() { bgCache.key = ''; },
     /* Clears the flies, the swat, any event and the scene, when the page turns to live data, so
        the first live scene comes in without a fade. */
-    reset() { flies.length = 0; swat = null; ev = null; pendingFlies = 0; curScene = ''; }
+    reset() { flies.length = 0; swat = null; ev = null; pendingFlies = 0; curScene = ''; catches.length = 0; leaving.length = 0; petFree = -1e9; },
+    /* The pet's catches and the flies leaving, for the tests. */
+    pet: { PET, catches: () => catches.slice(), leaving: () => leaving.slice(), pending: () => pendingFlies, flies: () => flies.slice(), at: petAt, prey: preyAt, plan: catchPlan, now: petNow }
   });
 })(window.KW);

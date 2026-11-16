@@ -521,7 +521,7 @@ const RULES = [
   ['pix: rows of one length', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].rows[1] = 'kb'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].rows[1]: must be as long as the first row"],
   ['pix: printable characters only', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].rows[0] = 'k k.'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].rows[0]: must be a string of printable characters"],
   ['pix: every character in the key', 'references', p => { p.items['back.pennant'].parts[0].shapes[0].rows[0] = 'kkz.'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].rows[0]: uses \"z\", which the key does not map"],
-  ['pix: 17 keys', 'fields', p => { const s = p.items['back.pennant'].parts[0].shapes[0]; for (const c of 'CDEFGHIJLMNOPQR') s.key[c] = '@base.k'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].key: must map 1 to 16 characters, not 17"],
+  ['pix: 25 keys', 'fields', p => { const s = p.items['back.pennant'].parts[0].shapes[0]; for (const c of 'CDEFGHIJLMNOPQRSTUVWXYZ') s.key[c] = '@base.k'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].key: must map 1 to 24 characters, not 25"],
   ['pix: a key is one character', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].key.kk = '@base.k'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].key.kk: must be one printable character other than \".\""],
   ['pix: "." is not a key', 'fields', p => { p.items['back.pennant'].parts[0].shapes[0].key['.'] = '@base.k'; }, "pack.items[\"back.pennant\"].parts[0].shapes[0].key[\".\"]: must be one printable character other than \".\""],
   // 3.7 rest views
@@ -577,7 +577,7 @@ const RULES = [
   ['counts: 257 items', 'counts', p => { const n = 257 - Object.keys(p.items).length; for (const i of range(n)) p.items['back.f' + i] = backItem(1, 1); }, "pack.items: holds 257 items, more than 256"],
   ['counts: 401 shapes in one item', 'counts', p => { p.items['back.x'] = backItem(4, 100); p.items['back.x'].parts[0].shapes.push(rect()); }, "pack.items[\"back.x\"]: holds 401 shapes in its parts and views, more than 400"],
   ['counts: 401 shapes counting views and rest', 'counts', p => { p.items['hair.long'].views.helmeted.push(...[100, 100, 100, 91].map(n => ({ at: 'head', shapes: range(n).map(() => rect()) }))); }, "pack.items[\"hair.long\"]: holds 401 shapes in its parts and views, more than 400"],
-  ['counts: 16 385 pixels in one pack', 'counts', p => { delete p.items['back.pennant']; p.items['back.x'] = { slot: 'back', name: 'Big', parts: [{ at: 'neck', shapes: [pix(64, 64), pix(64, 64), pix(64, 64), pix(64, 64), pix(1, 1)] }] }; }, "pack: holds 16385 pixels in pix shapes, more than 16384"],
+  ['counts: 160 001 pixels in one pack', 'counts', p => { delete p.items['back.pennant']; p.items['back.x'] = { slot: 'back', name: 'Big', parts: [{ at: 'neck', shapes: Array.from({ length: 39 }, () => pix(64, 64)).concat([pix(64, 4), pix(1, 1)]) }] }; }, "pack: holds 160001 pixels in pix shapes, more than 160000"],
   ['counts: 65 decorations', 'counts', p => { for (const i of range(64)) p.decorations['d' + i] = lantern(p); }, "pack.decorations: holds 65 decorations, more than 64"],
   ['counts: the default look over 1200 shapes', 'counts', p => {
     for (const s of ['legs', 'boots', 'torso']) { p.items[s + '.big'] = backItem(4, 100); p.items[s + '.big'].slot = s; p.items[s + '.big'].parts.forEach(pt => { pt.at = s === 'legs' ? 'hipL' : s === 'boots' ? 'footL' : 'neck'; }); p.defaults.items[s] = s + '.big'; }
@@ -610,7 +610,7 @@ const EDGES = [
   ['frame values at 400 and -400', p => { sword(p).parts[0].shapes[2].p0.s = 400; sword(p).parts[0].shapes[2].p1.s = -400; }],
   ['a convex polygon of 16 points', p => { tab(p)[0] = { k: 'poly', dir: 'rows', pts: ngon(16, 200), fill: '@base.k' }; }],
   ['a pix of 64 by 64 with 16 keys', p => { const s = pix(64, 64); for (const c of 'bcdefghijklmnop') s.key[c] = '@base.w'; p.items['back.pennant'].parts[0].shapes[0] = s; }],
-  ['16 384 pixels in a pack', p => { delete p.items['back.pennant']; p.items['back.x'] = { slot: 'back', name: 'Big', parts: [{ at: 'neck', shapes: [pix(64, 64), pix(64, 64), pix(64, 64), pix(64, 64)] }] }; }],
+  ['160 000 pixels in a pack', p => { delete p.items['back.pennant']; p.items['back.x'] = { slot: 'back', name: 'Big', parts: [{ at: 'neck', shapes: Array.from({ length: 39 }, () => pix(64, 64)).concat([pix(64, 4)]) }] }; }],
   ['a rest box of 240 and 64 rest shapes', p => { helm(p).rest.box = [240, 240]; helm(p).rest.shapes = range(64).map(() => rect()); }],
   ['a decoration box of 240 by 240, 64 shapes, 8 groups', p => { lantern(p).box = [240, 240]; lantern(p).shapes = range(64).map(() => rect()); for (const i of range(7)) lantern(p).groups['g' + i] = { pivot: [0, 0] }; }],
   ['64 decorations', p => { for (const i of range(63)) p.decorations['d' + i] = lantern(p); }],

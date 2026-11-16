@@ -167,7 +167,8 @@ class CollectorAgreesTest(unittest.TestCase):
         scenes = {f"scenes.{s['key']}" for s in schema.settings("scenes")}
         self.assertEqual(
             longs,
-            {"look.world", "look.monarch", "look.foe", "look.critter", "look.props", "look.overlay"}
+            {"look.world", "look.monarch", "look.pet", "look.foe", "look.critter", "look.props"}
+            | {"look.overlay"}
             | {"look.words", "look.items", "look.devices", "quiet.scenes"}
             | scenes,
         )

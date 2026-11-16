@@ -385,8 +385,9 @@ part's for that shape alone.
   rest view or a decoration.
 - `pix` gives the shape row by row: 1 to 64 rows of equal length, each 1 to 64 characters from `!`
   to `~` (printable ASCII without the space), `.` for clear and any other character a key of
-  `key`. `key` maps 1 to 16 single characters, each from `!` to `~` and not `.`, to single
-  colours.
+  `key`. `key` maps 1 to 24 single characters, each from `!` to `~` and not `.`, to single
+  colours. A shape of a world section may give its rows in runs instead
+  ([Format 1.1](#shapes-coordinates-and-terms)).
 
 ### The face
 
@@ -514,7 +515,7 @@ What 1.1 changes for the sections 1.0 has:
 |---|---|---|
 | `stamps` | named lists of shapes, drawn where a `use` shape puts them | 64 per pack, 64 shapes each |
 | `scenes` | backdrops, moving parts, places, what each scene can act | 16 per pack |
-| `cast` | patrons, foes and critters | 16 per pack |
+| `cast` | patrons, foes, critters and pets | 16 per pack |
 | `props` | prop sets: a drawing for each kind of device | 8 per pack |
 | `words` | flavour lines and the settings screen's labels | 8 per pack |
 | `overlays` | the overlay's colours and font | 8 per pack |
@@ -559,7 +560,19 @@ layers of a scene:
   `@lamp.downHi` name the engine's down lamp: its red, the red at two thirds and its highlight,
   which the engine spells `rgb(255,74,61)`, `rgb(168,49,40)` and `#ffd0c8`. All are single colours,
   and `@lamp` may be named only in a stamp.
-- A pix shape's rows count toward the pack's 16 384 pixels with every other pix shape.
+- A pix shape may give `"runs": true`, and its rows in runs: each character after an optional count
+  of how many times it repeats, so `"12a3b.c"` is twelve `a`, three `b`, one `.` and one `c`, and a
+  row with no count is a plain row. A count is 1 or more, in digits with no leading zero, and is
+  followed by a key or `.`; the shape's key may map no digit, since a digit is a count. Each row is
+  checked as it expands, as a plain row is: every row expands to the same length, of 1 to 64, a
+  count of 0, a count with a leading zero and a count with nothing after it are refused, and every
+  character must be in `key`. The rows are expanded once, at `fields`, so every later step, the
+  costs and the pixel count among them, and every drawing see plain rows, and the read keeps the
+  shape without `runs`. `runs: false` reads the rows as plain rows. A shape of 1.0, in an item, a
+  rest view or a decoration, takes no `runs`. The mouser cat's stamps are written so
+  ([worlds.md](./worlds.md#the-cast)).
+- A pix shape's rows count toward the pack's 160 000 pixels with every other pix shape, counted as
+  they expand.
 
 **Terms.** A scalar of a scene may lean on the screen's edges, the scene values below, and inside a
 tile on its x. Two more term forms are allowed: `"h": [seed, mod]` adds the engine's hash of the
@@ -717,9 +730,24 @@ Each member has a `role` and a `name` (1 to 48 characters).
   foe's `fires` and its pose `aim` are format 1.2 and refused here.
 - **A critter** has `frames` (exactly `flap0` and `flap1`) and `dead`, and optional `groups` and
   `alpha` (a group's alpha, 0 to 1, for a declared group).
+- **A pet** has `sprite` (`size` at most 256 by 256, `feet` inside it), `coats`, `spots`, `paw`,
+  `take`, `land` and `lift`, all required. `coats` holds 1 to 8 coats by id, each `{ name, poses }`:
+  `name` 1 to 32 characters, and `poses` exactly the eleven poses the engine's catch asks for,
+  `rest`, `settle`, `alert0`, `alert1`, `stalk0`, `stalk1`, `pounce`, `land`, `pleased`, `walk0`
+  and `walk1`, each naming a stamp of the pack. A pose's stamp holds pix shapes alone, each at a
+  whole point and inside the sprite from its feet (at `rules`), since the pose is painted once into
+  the sprite's canvas. `spots` holds 1 to 16 spots by the id of a scene of the pack, each `{ rest,
+  face, floors, lane, fly }`: `rest` and `fly` whole points on the 960 by 600 grid, where the pet
+  rests and the point a fly comes down to for the catch; `face` 1 (right) or -1 (left); `floors` 0
+  to 8 surfaces `[x0, x1, y]`, whole, `x0` less than `x1` (at `rules`); and `lane`, the floor's y
+  elsewhere, 0 to 600. A spot in a scene with a `bed` may give `bed`, a spot of the same fields
+  used while the watcher is in bed. `paw` is a pair from -256 to 256, where the paw that meets the
+  fly is at the top of the leap, from the feet, facing right; `take`, `land` and `lift`, from 0 to
+  256, how far behind that the pet takes off, how far past it the pet lands, and the least height of
+  the leap. Every number is a multiple of 1/8.
 
-Inside a member, the user's sets may be named only through its `sets`: a foe or a critter names
-none.
+Inside a member, the user's sets may be named only through its `sets`: a foe, a critter or a pet
+names none.
 
 **Drawn and dressed.** An entry of a patron's palettes may be `{ "drawn": colour, "dressed": colour,
 "set": name }`: the colour `drawn` while the user has chosen nothing for the bound set `set` names,
@@ -757,7 +785,7 @@ value that can vary reaches its widest either way round both ends.
 
 A word set is `{ name, watcher, labels, quiet, captions }`, `name` and `watcher` (1 to 32
 characters) required. `labels` names any of `watcher`, `patron`, `build`, `tabard`, `plume`,
-`helmet`, `foe` and `critter`, each 1 to 32 characters. `quiet` gives templates for the parts of the
+`helmet`, `foe`, `critter` and `pet`, each 1 to 32 characters. `quiet` gives templates for the parts of the
 quiet line, `captions` for the events, each 1 to 8 templates:
 
 | Part | Placeholders |
@@ -803,7 +831,7 @@ A preset must be complete, at `rules`: every field above; `outfit.items` for eve
 `off` and `head`, which may name `back` and `off`; `outfit.swatches` for the four sets;
 `scenes.quiet`, 1 to 16 scenes, each once; `scenes.for` naming a scene for every condition except
 `device_down` and `memory_tight`, which have none and play in the quiet scene of the moment; and a
-patron, a foe and a critter. Each of this pack's scenes it names must be able to do what it is named
+patron, a foe, a critter and a pet. Each of this pack's scenes it names must be able to do what it is named
 for: a quiet scene is `quiet` and lists `device_down` and `memory_tight` in `can`, and a condition's
 scene lists the condition.
 
@@ -826,6 +854,7 @@ colour.
 | a patron | 16 000 for its still parts, 400 for each mouth |
 | a foe | 8 000 for each pose, its parts included |
 | a critter | 200 for each frame and for what falls |
+| a pet | 8 000 for each pose of each coat, its stamp's shapes |
 | a kind | 4 000 for each state's still part, 600 for its moving part and its own lamp |
 
 `WORLD_LIMITS` in `pack.js` holds these. A loaded 1.1 pack carries `world`, the costs the counts
@@ -876,8 +905,8 @@ text, and a page must show it as text, never as markup.
 | shapes per part | 128 |
 | shapes per item, its parts, view and rest view together | 400 |
 | points per `poly` | 16 |
-| `pix` | 64 by 64, 4096 pixels per shape, 16 384 per pack (counted as width times height) |
-| `pix` keys | 16 |
+| `pix` | 64 by 64, 4096 pixels per shape, 160 000 per pack (counted as width times height, rows in runs as they expand) |
+| `pix` keys | 24 |
 | the pack's own palette sets | 16, of 32 entries each |
 | swatches | 32 per set per pack |
 | bands per fill | 8 |
@@ -1360,16 +1389,18 @@ base pack's items falls back on any build.
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.6.0. Versions 0.1.0 (the cellar alone) to 0.6.0 are signed with `kw1`. It holds every scene as data, the three monarchs, the goblin
-and the fly as its cast, the devices as the prop set `props.medieval`, the word set
+`[1, 1]`, version 0.7.0. Versions 0.1.0 (the cellar alone) to 0.6.0 are signed with `kw1`; 0.7.0,
+which adds the mouser cat, ships unsigned until its signing run. It holds every scene as data, the three monarchs, the goblin,
+the fly and the mouser cat as its cast, the devices as the prop set `props.medieval`, the word set
 `words.medieval`, the overlay `overlay.phosphor`, the preset `world.medieval`, the stamps the scenes and devices use (the sconce,
-the barrel, the house's peg and the lamps of the pie, the owl, the cauldron and the flask) and one
+the barrel, the house's peg and the lamps of the pie, the owl, the cauldron and the flask), the
+cat's twenty-two poses as stamps of pix shapes in runs, and one
 palette entry, `house.screen`, the television's colour. The page draws those scenes, devices and
 the cast from it, builds the quiet line and the captions in its words and takes the colours of the
 words over the scene from its overlay, on a `dev` page, and on a deployed page once it is signed;
 until then a deployed page refuses it and shows the collector's own words in `display.css`'s
 colours. Its preset is the page's own level of the settings ([page.md](./page.md#worlds)). It
-weighs 226 KB of the 512 KiB a pack may.
+weighs 335 KB of the 512 KiB a pack may, 106 KB of it the cat's stamps.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 
@@ -1596,10 +1627,11 @@ from outside, and a pack signed by any other key under `kw1` is refused against 
 
 `tests/web/format-1.1.test.js` checks format 1.1. Its fixture, `tests/web/fixtures/world-1.1.json`,
 is a world pack made of the world format's own worked examples (the cellar, the house's planks and
-the blanket's breath, the act parts, the places, the patron, the goblin, the fly, the camera and the
-pie with its own lamp, the words, the overlay and the preset) and of today's seven scenes' places,
+the blanket's breath, the act parts, the places, the patron, the goblin, the fly, a pet whose one
+pose is a stamp in runs, the camera and the pie with its own lamp, the words, the overlay and the
+preset) and of today's seven scenes' places,
 spots, rounds and `can` lists; it reads clean, signed and unsigned, at the deepest nesting allowed.
-The test refuses one signed copy of it for each rule above, 548 of them, each with the step and the
+The test refuses one signed copy of it for each rule above, 585 of them, rows in runs and the pet among them, each with the step and the
 exact reason it expects; accepts each limit at its edge; checks the costs the counts step reports
 against figures worked by hand; signs a 1.1 pack with a key made for the run and checks that the
 signature holds over a pretty-printed, minified or reordered copy and breaks at a changed value in
