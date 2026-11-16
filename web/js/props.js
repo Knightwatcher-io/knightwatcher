@@ -317,6 +317,14 @@
     rrect(x + 22, y + 18, 16, 14, 3, C.G2); rrect(x + 24, y + 20, 12, 10, 2, C.G1);
   }
   function flyHD(x, y, flap) { alpha(.85); ell(x - 6, y - (flap ? 6 : 2), 6, 3, C.W); ell(x + 6, y - (flap ? 6 : 2), 6, 3, C.W); alpha(1); ell(x, y, 5, 4, '#3a3344'); Rh(x - 3, y - 2, 2, 2, C.R1); }
+  /* A swatted fly as it falls, its body's top at y. */
+  function deadFlyHD(x, y) { Rh(x - 3, y, 6, 5, '#3a3344'); }
+  /* ---- Critters ---------------------------------------------------------------------------------
+     What the engine (engine.js) needs of a critter, and nothing about where it hovers or when it is
+     swatted, which are the engine's:
+       draw(x, y, flap)  the critter hovering at (x, y), in its first frame (flap 0) or its second
+       dead(x, y)        what falls once it is swatted, from (x, y) */
+  const CRITTERS = { fly: { draw: flyHD, dead: deadFlyHD } };
   function poofHD(x, y) { for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; strip(x + Math.sin(a) * 6, y - Math.cos(a) * 6, x + Math.sin(a) * 17, y - Math.cos(a) * 17, 1.5, 1.5, '#fff3a0'); } ell(x, y, 4, 4, C.W); }
   function chuteHD(cx, y) {
     ell(cx, y - 44, 52, 34, C.K, null, y - 44); ell(cx, y - 44, 49, 31, [[.2, C.R1], [.4, C.W], [.6, C.R1], [.8, C.W], [1, C.R1]], null, y - 45);
@@ -543,6 +551,6 @@
   }
 
   KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, pieHD, raspberryHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf,
-    LAMP, LAMP_REDS, lampLevel, lampRim, lampHD, crateHD, flyHD, poofHD, chuteHD,
+    LAMP, LAMP_REDS, lampLevel, lampRim, lampHD, crateHD, flyHD, deadFlyHD, CRITTERS, poofHD, chuteHD,
     FOES, starHD, cloudHD, CLOUD_MS, sparklesHD, SPARKLE_MS, holeHD, clodsHD };
 })(window.KW);

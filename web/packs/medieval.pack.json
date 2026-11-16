@@ -3,10 +3,10 @@
   "pack": {
     "id": "kw.medieval",
     "name": "Knightwatcher medieval world",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "format": [1, 1],
     "licence": "Part of Knightwatcher, on the same terms as the rest of the project.",
-    "provides": ["palettes", "scenes", "props", "stamps"],
+    "provides": ["palettes", "scenes", "cast", "props", "stamps"],
     "palettes": { "house": { "screen": "#7fe9ff" } },
     "stamps": {
       "sconce": [
@@ -664,6 +664,29 @@
             }
           }
         }
+      }
+    },
+    "cast": {
+      "critter.fly": {
+        "role": "critter",
+        "name": "Fly",
+        "groups": { "wings": { "pivot": [0, 0] } },
+        "alpha": { "wings": 0.85 },
+        "frames": {
+          "flap0": [
+            { "k": "ell", "g": "wings", "p": [-6, -2], "rx": 6, "ry": 3, "fill": "@base.w" },
+            { "k": "ell", "g": "wings", "p": [6, -2], "rx": 6, "ry": 3, "fill": "@base.w" },
+            { "k": "ell", "p": [0, 0], "rx": 5, "ry": 4, "fill": "#3a3344" },
+            { "k": "rect", "p": [-3, -2], "w": 2, "h": 2, "fill": "@base.r1" }
+          ],
+          "flap1": [
+            { "k": "ell", "g": "wings", "p": [-6, -6], "rx": 6, "ry": 3, "fill": "@base.w" },
+            { "k": "ell", "g": "wings", "p": [6, -6], "rx": 6, "ry": 3, "fill": "@base.w" },
+            { "k": "ell", "p": [0, 0], "rx": 5, "ry": 4, "fill": "#3a3344" },
+            { "k": "rect", "p": [-3, -2], "w": 2, "h": 2, "fill": "@base.r1" }
+          ]
+        },
+        "dead": [ { "k": "rect", "p": [-3, 0], "w": 6, "h": 5, "fill": "#3a3344" } ]
       }
     },
     "scenes": {
@@ -1645,6 +1668,5 @@
         "screen": { "group": "tv" }
       }
     }
-  },
-  "sig": { "alg": "ed25519", "kid": "kw1", "value": "y3IHyNA7MKdp4yWUY8J3VLbDYxVihk/utH/sqG1zRPjwGP+i+xAdBOwsf3yfCCFpCOWcyyc9V1vXy0RGvQ7tAQ==" }
+  }
 }

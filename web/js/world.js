@@ -1,8 +1,9 @@
 /* Knightwatcher: the scene compiler (docs/worlds.md). Turns a scene of a world pack, as the pack
    library (pack.js) has read and checked it, into an object with the scene interface of
    docs/page.md, and puts the scenes of kw.medieval in place of the code scenes of the same names;
-   and turns each kind of its prop set into a drawing of a device, which it puts in KW.kinds in place
-   of the code's (KW.props.KINDS).
+   turns each kind of its prop set into a drawing of a device, which it puts in KW.kinds in place
+   of the code's (KW.props.KINDS); and turns the members of its cast into the drawings the engine
+   asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS).
 
    Nothing in a pack runs. A scene compiles into frozen records: each shape a kind from SHAPES, each
    mark one of MARKS, each predicate one the engine evaluates in holds(), each effect a name in
@@ -31,7 +32,8 @@
    - the acts of the target (the yard's training) and of the anvil (the smithy's hammer, with the
      hot tip of the blade on the anvil);
    - the kinds of a prop set: their still and moving shapes in both states, the engine's lamp at a
-     point, and a lamp of the kind's own from two stamps of pix shapes, as the raspberry is.
+     point, and a lamp of the kind's own from two stamps of pix shapes, as the raspberry is;
+   - the critters of the cast: their two frames and what falls, with a group's alpha.
    Each later step adds rows to these tables. */
 (function (KW) {
   'use strict';
@@ -176,9 +178,10 @@
           if (env.anvil && s.piece === 'straw') throw notBuilt(at(path, 'piece'), 'a burst of straw on the hammer\'s blow');
         }
         const F = lib.fields, fields = [], inner = Object.assign({}, env, { inEffect: true });
-        // a prop is drawn at its place's base, which moves an effect's points; a field placed on the
-        // screen alone, as a row of pebbles' y, would not move with it
-        if (env.prop) for (const k of Object.keys(F)) if (F[k].kind === 'offset') throw notBuilt(at(path, 'fx'), 'the effect ' + quote(s.fx) + ', placed on the screen by its field ' + quote(k) + ', in a prop');
+        // a prop is drawn at its place's base and a cast member where the engine puts it, which
+        // moves an effect's points; a field placed on the screen alone, as a row of pebbles' y,
+        // would not move with it
+        if (env.placed) for (const k of Object.keys(F)) if (F[k].kind === 'offset') throw notBuilt(at(path, 'fx'), 'the effect ' + quote(s.fx) + ', placed on the screen by its field ' + quote(k) + ', in ' + env.placed);
         for (const k of Object.keys(s)) {
           if (k === 'k' || k === 'fx') continue;
           const p = at(path, k), kind = has(F, k) ? F[k].kind : null;
@@ -314,7 +317,7 @@
   function shape(s, path, env) {
     const kind = has(SHAPES, s.k) ? SHAPES[s.k] : has(MARKS, s.k) ? MARKS[s.k] : null;
     if (!kind) throw notBuilt(at(path, 'k'), (env.marks.includes(s.k) ? 'the mark ' : 'the shape kind ') + quote(s.k));
-    if (env.prop && (has(MARKS, s.k) || s.k === 'tile')) throw notBuilt(at(path, 'k'), (s.k === 'tile' ? 'a tile' : 'the mark ' + quote(s.k)) + ' in a prop');
+    if (env.placed && (has(MARKS, s.k) || s.k === 'tile')) throw notBuilt(at(path, 'k'), (s.k === 'tile' ? 'a tile' : 'the mark ' + quote(s.k)) + ' in ' + env.placed);
     if (has(s, 'only')) throw notBuilt(at(path, 'only'), '"only" on a shape');
     if (has(s, 'g') && !(env.groups && has(env.groups, s.g))) throw notBuilt(at(path, 'g'), '"g" outside its layer\'s groups');
     if (has(s, 'g') && (s.k === 'fx' || has(MARKS, s.k) || env.marks.includes(s.k))) throw notBuilt(at(path, 'g'), '"g" on ' + (s.k === 'fx' ? 'an effect' : 'a mark'));
@@ -624,6 +627,10 @@
      level. Its drawings must lie inside its box, each pix shape at a whole point. */
   const PROPS = 'props.medieval', LAMP_GLOW = 24;
   let compiles = 0;
+  /* The compiling of shapes that are drawn where the engine puts them, a prop's or a cast member's:
+     placed says which, for the reasons, and refuses the marks, the tiles and an effect placed on the
+     screen by a field of its own. */
+  const placedEnv = (pack, placed) => ({ pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: false, anvil: null, rests: {}, restStamps: {}, bed: null, screen: null, picks: null, placed });
   /* A canvas of w by h painted once from cells, a colour or null for each pixel, row by row. */
   function paintCells(cells, w, h) {
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
@@ -674,8 +681,7 @@
     const sets = pack.data.props, path = 'props.' + set + '.kinds.' + kind;
     const v = isObj(sets) && isObj(sets[set]) && isObj(sets[set].kinds) ? sets[set].kinds[kind] : null;
     if (!isObj(v)) throw new Error(path + ': the pack has no such kind');
-    const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: false, anvil: null, rests: {}, restStamps: {}, bed: null, screen: null, picks: null, prop: true };
-    const states = {};
+    const env = placedEnv(pack, 'a prop'), states = {};
     for (const st of ['up', 'gone']) {
       const x = v[st], p = at(path, st);
       states[st] = {
@@ -708,6 +714,62 @@
   }
   restoreKinds();
 
+  /* ---- The cast --------------------------------------------------------------------------------
+     The cast of kw.medieval gives the drawings of the engine's supporting cast (docs/worlds.md, The
+     cast). A member whose id is its role, a dot and a name, as critter.fly, takes the place of the
+     code's member of that name in its role's set of KW.cast, critters.fly; a member of a name the
+     engine does not know is not compiled. Its shapes are compiled as a prop's and drawn moved to
+     where the engine puts it. The engine keeps the motion: where a critter hovers, the swat, the
+     poof and the fall.
+
+     A critter compiles to { draw, dead, from } with the interface of KW.props.CRITTERS: draw(x, y,
+     flap) draws its frame flap0 (flap 0) or flap1 at (x, y), and dead(x, y) what falls. A shape in a
+     group the critter gives an alpha is drawn at that alpha: the canvas's alpha is set as the first
+     of a run of such shapes is drawn, and set back to 1 at the first shape after it, which gives the
+     calls the code makes (alpha(.85) before the fly's wings, alpha(1) after them). */
+  const ROLE_SETS = { critter: 'critters' };
+  function compileCritter(pack, id, v) {
+    const path = 'cast.' + id, env = Object.assign(placedEnv(pack, 'the cast'), { groups: v.groups || null });
+    const alphaOf = g => (g !== null && isObj(v.alpha) && has(v.alpha, g) ? v.alpha[g] : 1);
+    const list = (shapes, p) => freeze(shapes.map((s, i) => { const c = shape(s, idx(p, i), env); c.a = alphaOf(c.g); return c; }));
+    const frames = [list(v.frames.flap0, at(at(path, 'frames'), 'flap0')), list(v.frames.flap1, at(at(path, 'frames'), 'flap1'))], dead = list(v.dead, at(path, 'dead'));
+    function drawList(cs, x, y) {
+      const E = named(0, null);
+      let a = 1;
+      for (const c of cs) { if (c.a !== a) { D.alpha(c.a); a = c.a; } drawShape(c, E, x, y); }
+      if (a !== 1) D.alpha(1);
+    }
+    return Object.freeze({ draw(x, y, flap) { drawList(frames[flap ? 1 : 0], x, y); }, dead(x, y) { drawList(dead, x, y); }, from: MEDIEVAL + '#' + (++compiles) });
+  }
+  const CAST_COMPILERS = { critter: compileCritter };
+  /* The member id of the loaded pack's cast, compiled. Throws when it names something this engine
+     does not build. */
+  function compileMember(pack, id) {
+    const sec = pack.data.cast, v = isObj(sec) && isObj(sec[id]) ? sec[id] : null, path = 'cast.' + id;
+    if (!v) throw new Error(path + ': the pack has no such cast member');
+    if (!has(CAST_COMPILERS, v.role)) throw notBuilt(at(path, 'role'), 'the role ' + quote(v.role));
+    return CAST_COMPILERS[v.role](pack, id, v);
+  }
+  /* Where a member of the cast goes in KW.cast, [set, name], or null when the engine has no member
+     there: the id's role and name. */
+  function slotOf(id, v) {
+    if (!isObj(v) || !has(ROLE_SETS, v.role) || !id.startsWith(v.role + '.')) return null;
+    const set = ROLE_SETS[v.role], name = id.slice(v.role.length + 1);
+    return has(cast[set], name) ? [set, name] : null;
+  }
+  /* KW.cast: the engine's supporting cast, by role, as the code gives it (the critters of
+     KW.props.CRITTERS): the members the pack's cast gives once start() has compiled them, and the
+     code's for the rest. */
+  const cast = KW.cast = { critters: {} };
+  function restoreCast() {
+    const P = KW.props || {};
+    for (const [set, code] of [['critters', P.CRITTERS]]) {
+      for (const k of Object.keys(cast[set])) delete cast[set][k];
+      Object.assign(cast[set], code || {});
+    }
+  }
+  restoreCast();
+
   /* ---- Loading ---------------------------------------------------------------------------------
      start() reads kw.medieval from the texts of the packs that ship with the page (the page passes
      KW.packText, as it does to the knight) with the knight's rule: a 'dev' page accepts it
@@ -717,8 +779,8 @@
      scenes by their short names, see no more of them than before. A scene that fails to compile,
      and every scene when the pack is refused, missing or the library is not loaded, stays the code
      scene. The refusal itself is the knight's to report, since the knight reads the same texts;
-     start() writes one line about where the scenes are drawn from, and one for each scene that
-     failed to compile. */
+     start() writes one line about where the scenes are drawn from, and one for each scene, kind of
+     device or member of the cast that failed to compile. */
   const CODE = {}, LONG = [];
   const cutTo = (s, n) => (s.length > n ? s.slice(0, n - 3) + '...' : s);
   const say = (level, line) => { const c = typeof console !== 'undefined' ? console : null; if (c && typeof c[level] === 'function') c[level](line); };
@@ -741,12 +803,14 @@
      { id, version, signed } of the pack in use or null, refused { id, step, reason } when it was
      turned away, scenes says for each scene the pack gives whether it is drawn from the 'pack' or
      from 'code', faults lists { scene, reason } for each scene that failed to compile, and note is
-     the last line written to the console. */
+     the last line written to the console. What it found for the devices and the cast it keeps in
+     KW.world.props and KW.world.cast. */
   function start(texts, allowUnsigned, opts) {
     const o = isObj(opts) ? opts : {}, lib = KW.pack && typeof KW.pack.read === 'function' ? KW.pack : null;
-    restore(); restoreKinds();
+    restore(); restoreKinds(); restoreCast();
     const status = api.status = { source: 'code', pack: null, refused: null, scenes: {}, faults: [], note: '' };
     const props = api.props = { source: 'code', set: null, kinds: {}, faults: [] };
+    const castStatus = api.cast = { source: 'code', members: {}, faults: [] };
     const lines = [];
     const line = (level, text) => { lines.push([level, text]); status.note = text; };
     let pack = null;
@@ -785,6 +849,18 @@
           }
         }
       }
+      // the cast: each member that takes the place of one the engine has, and the code's for a
+      // member that fails to compile, with a line of its own
+      const members = pack.data && isObj(pack.data.cast) ? pack.data.cast : {};
+      for (const id of Object.keys(members)) {
+        const slot = slotOf(id, members[id]);
+        if (!slot) continue;
+        try { cast[slot[0]][slot[1]] = compileMember(pack, id); castStatus.members[id] = 'pack'; castStatus.source = 'pack'; } catch (e) {
+          const reason = message(e);
+          castStatus.members[id] = 'code'; castStatus.faults.push({ member: id, reason });
+          line('warn', 'knightwatcher: the cast member ' + id + ' is drawn from code: it could not be compiled: ' + cutTo(reason, 120));
+        }
+      }
       const drawn = [], data = pack.data && isObj(pack.data.scenes) ? pack.data.scenes : {};
       for (const id of Object.keys(data)) {
         if (!(has(KW.scenes, id) || has(CODE, id))) continue;
@@ -808,5 +884,5 @@
     return status;
   }
 
-  const api = KW.world = { MEDIEVAL, PROPS, compile, compileKind, start, status: null, props: null };
+  const api = KW.world = { MEDIEVAL, PROPS, compile, compileKind, compileMember, start, status: null, props: null, cast: null };
 })(window.KW);

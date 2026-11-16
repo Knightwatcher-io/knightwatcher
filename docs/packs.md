@@ -21,9 +21,10 @@ decoration. A decoration's fields and shapes are
 checked and its cost counted, but only its keyframes are compiled; its shapes are not.
 
 This page describes format 1.0 as the library implements it, and the world sections that format 1.1
-adds, as the library reads and refuses them, under [Format 1.1](#format-11). **Nothing draws from the
-1.1 sections yet:** a 1.1 pack's scenes, cast, props, stamps, words, overlays and presets are checked
-and kept as data, and no scene, prop or cast member on the page comes from them.
+adds, as the library reads and refuses them, under [Format 1.1](#format-11). **The library draws
+nothing from the 1.1 sections:** a 1.1 pack's scenes, cast, props, stamps, words, overlays and presets
+are checked and kept as data. The scene compiler, `web/js/world.js`, draws the medieval world's
+scenes, devices and cast from them ([worlds.md](./worlds.md)).
 
 ## The file
 
@@ -486,8 +487,9 @@ steps as the rest, in the same order, and keeps it as data in the loaded pack's 
 
 **`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
 compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
-page draws every scene but the court from the medieval world's pack that way ([worlds.md](./worlds.md)). The other
-engine parts that will read the sections (the acts, the cast and the props from data) come in later
+page draws every scene but the court from the medieval world's pack that way, with its devices
+from its prop set and its fly from its cast ([worlds.md](./worlds.md)). The other engine parts that
+will read the sections (the acts, the rest of the cast, the words and the overlay) come in later
 steps. The closed lists those parts own are fixed in `pack.js` under the names below and exported
 as `WORLD_LISTS`. The effects library is built: `effects.js` gives each effect's table of fields and
 cost, which `pack.js` checks and costs a pack's effects by, and draws them for the scenes
@@ -1335,11 +1337,12 @@ base pack's items falls back on any build.
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.3.0, signed with `kw1`, as 0.1.0 (the cellar alone) and 0.2.0 were. It holds every scene but the court as data, the devices as the prop set
+`[1, 1]`, version 0.4.0, unsigned until its signing run (0.1.0, the cellar alone, 0.2.0 and 0.3.0
+were signed with `kw1`). It holds every scene but the court as data, the fly as its cast, the devices as the prop set
 `props.medieval`, the stamps they use (the sconce, the barrel, the house's peg, the raspberry's
 drawings and the virtual machine's dots) and one palette entry, `house.screen`, the television's
-colour, and the page draws those scenes and devices from it on a `dev` page, and on a deployed page
-once it is signed.
+colour, and the page draws those scenes, devices and the fly from it on a `dev` page, and on a
+deployed page once it is signed.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 
@@ -1588,7 +1591,8 @@ status. That each scene from the pack draws what the code draws, call for call, 
 `tests/web/scenes.test.js`'s ([page.md](./page.md#checks)); that its `quiet` and `hosts` agree with
 the engine's own lists, and that the foe's and the places' checks hold on it, is
 `tests/web/world-scenes.test.js`'s. `tests/web/world-props.test.js` checks the devices from its prop
-set ([worlds.md](./worlds.md#the-devices)).
+set ([worlds.md](./worlds.md#the-devices)), and `tests/web/world-cast.test.js` its cast
+([worlds.md](./worlds.md#the-cast)).
 
 `tests/web/effects.test.js` checks that `pack.js` holds an effect to its table in `effects.js`, every
 field of every effect refused out of its kind or range, and costs it with its own cost function; and

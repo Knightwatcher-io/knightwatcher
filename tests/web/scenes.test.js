@@ -14,7 +14,8 @@
 //
 // Each scene the world pack kw.medieval gives (web/packs/medieval.pack.json) is drawn a second time,
 // compiled from the pack by web/js/world.js, in the same states and against the same stored
-// records: the two copies of a scene, its code and its data, must draw the same calls. The backdrop's
+// records: the two copies of a scene, its code and its data, must draw the same calls. So is each
+// member of the cast the pack gives, against fixtures/scenes/cast.json. The backdrop's
 // key is not in the records, so a check of its own requires the compiled scene's key to tell the
 // recorded states apart exactly as the code scene's does.
 //
@@ -68,8 +69,9 @@ function sources(read) {
   try { medieval = read('packs/medieval.pack.json'); } catch (e) { medieval = null; }
   return { scripts: compile(code), packScripts: medieval ? compile(pack) : null, pack: JSON.parse(read('packs/base.pack.json')).pack, medieval };
 }
-/* The scenes kw.medieval gives that are code scenes too, by name. */
+/* The scenes kw.medieval gives that are code scenes too, by name, and whether it gives a cast. */
 const fromPack = src => (src.medieval ? Object.keys(JSON.parse(src.medieval).pack.scenes || {}) : []);
+const castFromPack = src => !!(src.medieval && JSON.parse(src.medieval).pack.cast);
 
 /* ---- The recording context -------------------------------------------------------------------
    Writes one line per call into log: "s" for a fillStyle, "a" for a globalAlpha, "r" for a
@@ -283,11 +285,14 @@ function sceneRecords(src, name, from) {
 }
 
 /* The goblin, the flies and the other props the engine draws over a scene, on their own: they draw
-   alike at every size. */
-function castRecords(src) {
-  const { KW, log } = load(src), P = KW.props, ctx = KW.draw.getCtx(), out = [];
+   alike at every size. With from 'pack', the members of the cast kw.medieval gives are drawn from
+   KW.cast, compiled from the pack as a 'dev' page compiles them, in place of the code's. */
+function castRecords(src, from) {
+  const { KW, log } = load(src, undefined, from), P = KW.props, ctx = KW.draw.getCtx(), out = [];
   const rec = (name, f) => { f(); out.push([name, log.slice()]); log.length = 0; };
-  for (const flap of [0, 1]) rec(`fly flap ${flap}`, () => P.flyHD(300, 200, flap));
+  const fly = from === 'pack' ? KW.cast.critters.fly : { draw: P.flyHD };
+  if (from === 'pack') assert.ok(fly.from, 'the fly is compiled from kw.medieval: ' + JSON.stringify(KW.world.cast));
+  for (const flap of [0, 1]) rec(`fly flap ${flap}`, () => fly.draw(300, 200, flap));
   rec('fly struck', () => P.poofHD(300, 200));
   for (const pose of P.FOES.goblin.poses) rec(`goblin ${pose}`, () => ctx.drawImage(P.FOES.goblin.pose(pose), 0, 0));
   for (const k of [0.4, 1]) rec(`hole open ${k}`, () => P.holeHD(400, 530, k));
@@ -309,12 +314,12 @@ function blocks(lines) {
   return out.join(' ');
 }
 /* The groups of records, each stored in a file of its own: one per scene, and the cast, each as
-   [file, make, from]. The scenes kw.medieval gives come again after them, drawn from the pack and
-   held to the same files. */
+   [file, make, from]. The scenes kw.medieval gives, and the cast when it gives one, come again after
+   them, drawn from the pack and held to the same files. */
 function groups(src) {
   const { KW } = load(src);
   return [...Object.keys(KW.scenes).map(n => [n, () => sceneRecords(src, n), 'code']), ['cast', () => castRecords(src), 'code'],
-    ...fromPack(src).map(n => [n, () => sceneRecords(src, n, 'pack'), 'pack'])];
+    ...fromPack(src).map(n => [n, () => sceneRecords(src, n, 'pack'), 'pack']), ...(castFromPack(src) ? [['cast', () => castRecords(src, 'pack'), 'pack']] : [])];
 }
 /* A group's file: each distinct record once, by the first 16 characters of its hash, with its
    number of calls and the hashes of its blocks; and each record's name with the hash of its calls. */

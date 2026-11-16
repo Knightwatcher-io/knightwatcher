@@ -5,14 +5,15 @@ drawings of the devices, the words and the overlay. Format 1.1 of the packs carr
 data ([packs.md](./packs.md#format-11) gives the format and its checks). This page describes what
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
 pack, `kw.medieval`, which holds six scenes, the battlement, the camp, the yard, the cellar, the
-smithy and the house, and the devices, the prop set `props.medieval`. With the house, step W5 of the
-conversion is complete apart from the court, which waits for the patron (step W7), and with the
-devices step W6: the court, the cast, the words and the overlay are still drawn from code.
+smithy and the house, the devices, the prop set `props.medieval`, and the first of the cast, the
+fly. With the house, step W5 of the conversion is complete apart from the court, which waits for the
+patron (step W7), and with the devices step W6. Step W7 has begun with the fly: the court, the
+goblin, the monarchs, the words and the overlay are still drawn from code.
 
 ## The medieval world's pack
 
 `web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 1]`,
-version 0.3.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+version 0.4.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([packs.md](./packs.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
@@ -87,6 +88,8 @@ loads it after the base pack's. It holds:
   and its `screen` `{ "group": "tv" }`;
 - the prop set `props.medieval`, the devices of `props.js` written as data: the five kinds `pi`,
   `camera`, `machine`, `vm` and `box`, each up and gone, below ([The devices](#the-devices));
+- the cast member `critter.fly`, the fly of `props.js` written as data: its two frames and the dead
+  fly that falls once it is swatted, below ([The cast](#the-cast));
 - three stamps, `sconce`, `barrel` and `peg`: the props `sconceHD` and `barrelHD` of `props.js`, the
   barrel at the 84 by 72 the cellar and the yard draw it, and one of the house's pegs, counted from
   where the weapon's frame puts it;
@@ -127,13 +130,16 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 | `box` | 58 still | 101 still |
 
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
-own lamp counts toward none of them.
+own lamp counts toward none of them. The fly costs 24 fills in each frame and 1 for what falls,
+against a limit of 200 for each.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
-then version 0.2.0, and version 0.3.0, which adds the devices. Signed, it draws every scene but the
-court, and every device, on a deployed page and a `dev` page alike. A change to the pack takes the signature's validity with it: until the next signing run a
-deployed page refuses it and draws every scene and every device from code, while a `dev` page still reads it.
+then version 0.2.0, and version 0.3.0, which adds the devices. Version 0.4.0, which adds the cast,
+ships unsigned until its signing run, so until then a `dev` page draws every scene but the court,
+every device and the fly from it, and a deployed page draws them from code. A change to the pack
+takes the signature's validity with it: until the next signing run a deployed page refuses it and
+draws every scene, every device and the cast from code, while a `dev` page still reads it.
 
 ## Where the scenes are drawn from
 
@@ -199,8 +205,22 @@ compile adds no line. `KW.world.props` holds what `start` found for them:
 | `kinds` | for each kind the set gives, `'pack'` or `'code'` |
 | `faults` | `{ kind, reason }` for each kind that failed to compile |
 
-`start` puts the code scenes and the code's devices back before it reads, so a second call starts
-afresh. Not done yet:
+The cast is read in the same call too. Each member of the pack's cast whose id is its role, a dot
+and the name of a member the engine has, as `critter.fly`, is compiled ([The cast](#the-cast)) and
+takes the code's member's place in `KW.cast`; a member of a name the engine does not know is not
+compiled. A member that fails to compile is drawn from code, with a line of its own,
+`knightwatcher: the cast member critter.fly is drawn from code: it could not be compiled:
+<reason>` (`console.warn`), written after the devices' lines and before the scenes' line.
+`KW.world.cast` holds what `start` found:
+
+| Field | Holds |
+|---|---|
+| `source` | `'pack'` when any member is drawn from the pack's cast, `'code'` otherwise |
+| `members` | for each member compiled or tried, by its id, `'pack'` or `'code'` |
+| `faults` | `{ member, reason }` for each member that failed to compile |
+
+`start` puts the code scenes, the code's devices and the code's cast back before it reads, so a
+second call starts afresh. Not done yet:
 a `kw.medieval` the collector downloaded into `data/packs/` is read by the knight but not compiled,
 so the scenes come from the one that ships with the page; a scene from the pack that throws while
 drawing is not caught; and the admin page draws its previews of the scenes from code, since it
@@ -215,11 +235,14 @@ does not start the world.
 | `compile(pack, id)` | the scene `id` of a loaded pack (a `read()` result of format 1.1) as an object with the scene interface; throws when the scene names something the compiler does not build |
 | `start(texts, allowUnsigned, opts)` | reads `kw.medieval` from `texts` and puts its scenes in place, as above; `opts.keys` replaces `KEYS` in `read()`, for the tests only |
 | `compileKind(pack, set, kind)` | the kind of device `kind` of the prop set `set` of a loaded pack, as an entry of `KW.kinds` ([The devices](#the-devices)); throws when it names something the compiler does not build |
+| `compileMember(pack, id)` | the cast member `id` of a loaded pack, as an entry of `KW.cast` ([The cast](#the-cast)); throws when it names something the compiler does not build |
 | `status` | what the last `start` found, or `null` before it |
 | `props` | what the last `start` found for the devices, or `null` before it |
+| `cast` | what the last `start` found for the cast, or `null` before it |
 | `MEDIEVAL`, `PROPS` | `'kw.medieval'`, `'props.medieval'` |
 
-It also defines `KW.kinds`, the drawing of each kind of device the engine draws, below.
+It also defines `KW.kinds`, the drawing of each kind of device the engine draws, and `KW.cast`, the
+engine's supporting cast, both below.
 
 **Nothing in a pack runs.** A scene compiles into frozen records: each shape is a kind from the
 compiler's own table, each mark one of its marks, each predicate one it evaluates, each effect a name
@@ -508,6 +531,37 @@ its pixels start at -34, where the box was measured. The pack library measures a
 values are all fixed by the pixels it fills ([packs.md](./packs.md#props)), so the camera keeps to its
 class box as drawn.
 
+## The cast
+
+`KW.cast` holds the drawings of the engine's supporting cast, by role: `critters`, by name, with the
+interface of `KW.props.CRITTERS` ([page.md](./page.md#the-cast)). `world.js` fills it with the code's
+members when it loads, and `start` puts the members the pack's cast gives in their place. The engine
+reads `KW.cast`, or `KW.props.CRITTERS` on a page without the compiler. The engine keeps the
+motion: where the flies hover, when they are swatted, the poof (`poofHD`) and the fall. A critter
+gives only its drawings.
+
+A member's shapes are compiled as a prop's and drawn moved to the point the engine gives, so the
+marks, the tiles and an effect placed on the screen by a field of its own are refused in the cast as
+in a prop.
+
+**A critter** compiles to `draw(x, y, flap)`, which draws its frame `flap0` (`flap` 0) or `flap1` at
+`(x, y)`, and `dead(x, y)`, which draws what falls. A shape in a group the critter gives an `alpha`
+is drawn at that alpha: the canvas's alpha is set before the first of a run of such shapes and set
+back to 1 before the first shape after it. So the fly's wings, in the group `wings` at 0.85, give
+the calls `flyHD` makes, `globalAlpha` 0.85, the two wings, `globalAlpha` 1, the body and the eye,
+where a translucent colour would have set no alpha at all. A group's `pivot` is not read, since
+nothing turns a critter.
+
+**The fly as data.** Its frames are `flyHD` in `props.js` with its numbers counted from where the
+engine puts it: the wings 2 above the body in `flap0` and 6 above in `flap1`, the body and the red
+eye the same in both. What falls is the 6 by 5 rect the engine drew itself before the cast,
+`Rh(x - 3, y + a * a / 900, 6, 5, '#3a3344')`, which is now `deadFlyHD` in `props.js` and
+`CRITTERS.fly.dead`; the engine passes the fall, `y + a * a / 900`, as the point.
+
+What the compiler does not build in the cast, it refuses by name, and the member is drawn from code:
+the roles `foe` and `patron`, which later steps build, and in a critter the marks, tiles and
+effects above.
+
 ## Writing a scene as data
 
 The cellar, the camp, the battlement, the yard and the smithy show how code becomes data:
@@ -626,6 +680,13 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   grid and clear of each other. It also holds the foe's whole plan in a scene from the pack, for
   every weapon and build, to the plan in the code scene, and each scene's `quiet` and `hosts` to the
   engine's and the settings' lists. The two older files draw the code scenes and stay as they are.
+- `tests/web/world-cast.test.js` draws the fly from the pack's cast beside the code's, both frames
+  and what falls, at whole and fractional points, and runs the engine's frames every 20 ms for 4.6
+  seconds while six flies fly in, hover, are swatted and fall, once with the cast from the pack and
+  once from code, comparing every call of every frame. It checks too where the cast is drawn from on
+  a `dev` and a deployed page, a page without the compiler, a member that fails to compile and one
+  the engine does not know, and what the compiler refuses in the cast. `tests/web/scenes.test.js`
+  draws the pack's fly against the stored records of the code's, `cast.json`.
 - `tests/web/world-props.test.js` draws every kind of device from the prop set beside the code's
   drawing of it, through the engine's `KW.devices`, in every place of every scene (the court's among
   them), up and gone, with and without its question mark, at seven moments, 13 720 drawings compared
@@ -640,7 +701,7 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   `dev`, as for the knight ([page.md](./page.md#checks)).
 
 **A change to the medieval art is made in both copies, in the same commit.** Change the code scene
-(or the device in `props.js`) and the pack together, write the carrier again with `node tools/pack-carrier.js`, store the records
+(or the device or the cast member in `props.js`) and the pack together, write the carrier again with `node tools/pack-carrier.js`, store the records
 again from the code if the scene is meant to look different (`SCENES_LOG=write`, see
 [page.md](./page.md#checks)), and the pack's copy must then draw the new records. A pack edited after
 it is signed needs a signing run again ([development.md](./development.md#signing-the-packs)).
