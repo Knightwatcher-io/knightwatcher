@@ -121,10 +121,53 @@ says where the two are in `facts.devices.list`. The laptop, which does not alert
 }
 ```
 
+The same file the next evening, all quiet again. `quiet_parts` lists what `quiet_line` is made
+of, with the blocked count both written out and short, although the line had room only for the
+short one. The events that have a caption carry its parts beside it. Only the sections of `facts`
+and `sources` the parts come from are shown:
+
+```json
+{
+  "schema": 1,
+  "generated_at": "2026-01-16T20:15:10Z",
+  "interval_s": 10,
+  "conditions": [],
+  "quiet_line": "ALL QUIET · 29 up · backup 03:12 · 11.3k ads blocked",
+  "quiet_parts": [
+    { "k": "quiet" },
+    { "k": "up", "n": "29" },
+    { "k": "backup", "at": "03:12" },
+    { "k": "ads", "n": "11,283", "short": "11.3k" }
+  ],
+  "events": [
+    { "seq": 4502, "type": "backup_done", "at": "2026-01-16T03:12:40Z", "count": 1,
+      "text": "BACKUP DONE 03:12", "parts": { "at": "03:12" } },
+    { "seq": 4503, "type": "import", "at": "2026-01-16T19:02:10Z", "count": 1,
+      "text": "IMPORTED · The Night Shift S02E05", "parts": { "title": "The Night Shift S02E05" } },
+    { "seq": 4504, "type": "ip_banned", "at": "2026-01-16T20:14:50Z", "count": 1,
+      "text": "BANNED 203.0.113.77 · sshd", "parts": { "addr": "203.0.113.77", "jail": "sshd" } },
+    { "seq": 4505, "type": "ad_blocked", "at": "2026-01-16T20:15:00Z", "count": 1, "text": "" }
+  ],
+  "facts": {
+    "containers": { "total": 29, "running": 29, "unhealthy": [], "restarting": [], "failed": [] },
+    "backup": { "last_ok": "2026-01-16T03:12:00Z", "age_h": 17.1 },
+    "adblock": { "blocked_today": 11283 }
+  },
+  "sources": {
+    "containers": { "ok": true, "at": "2026-01-16T20:15:10Z", "error": "" },
+    "backup": { "ok": true, "at": "2026-01-16T20:14:40Z", "error": "" },
+    "adblock": { "ok": true, "at": "2026-01-16T20:14:50Z", "error": "" }
+  },
+  "defaults": { "look": {}, "display": {}, "quiet": {}, "scenes": {} }
+}
+```
+
 ## Fields
 
 - **`schema`** is `1`. A page that meets a number it does not know shows NO SIGNAL once it has had
-  a valid file; see [page.md](./page.md).
+  a valid file; see [page.md](./page.md). Fields added later without changing it, such as
+  `quiet_parts` and an event's `parts`, are optional: a page from before them ignores them, and a
+  file from a collector before them lacks them.
 - **`generated_at`** and **`interval_s`**: when the file was written and how often it should be,
   the collector's real interval (10 seconds by default). The page treats the file as stale once
   it is older than three intervals, and says so on screen.
@@ -150,6 +193,22 @@ says where the two are in `facts.devices.list`. The laptop, which does not alert
 - **`quiet_line`** is shown when `conditions` is empty. At most 52 characters. The collector
   shortens the blocked count to fit (`11.3k ads blocked`, then `11.3k blocked`) before it drops
   a part from the end.
+- **`quiet_parts`** lists the parts `quiet_line` is made of, in its order, for a page that words
+  the line in a world's terms. Each part is an object whose `k` says what it is, with its values
+  beside it:
+  - `{ "k": "quiet" }`, always first: all is quiet.
+  - `{ "k": "up", "n": "29" }`: how many containers are running.
+  - `{ "k": "backup", "at": "03:12" }`: when the last backup finished, in the collector's time
+    zone.
+  - `{ "k": "ads", "n": "11,283", "short": "11.3k" }`: the queries blocked today, written out and
+    in few characters.
+
+  `k` is one of those four, and each comes at most once, in that order. A part is there whenever
+  the collector has the reading behind it (the backup only once a completion is known), whether
+  or not `quiet_line` had room for it, so fitting the line is the page's job. Every value is a
+  string, formatted by the collector exactly as `quiet_line` has it: the page chooses the words
+  and joins them, and does not format a number or a time. A page with no words for a part, or a
+  file with no `quiet_parts`, shows `quiet_line`.
 - **`events`** are things that happened, for the page to act out once. `seq` only ever rises, and
   the page remembers the highest it has played. The collector keeps the last 20. `type` is one of
   `ad_blocked`, `ip_banned`, `import`, `backup_done`. `text` is a caption of at most 44
@@ -157,6 +216,19 @@ says where the two are in `facts.devices.list`. The laptop, which does not alert
   `ad_blocked` that is a number of flies, not of blocked queries: a fly stands for the blocking
   the household normally sees in a few minutes, and one event carries at most eight unless the
   collector's `fly_every_s` is 0 (see [collector.md](./collector.md#events)).
+  `parts`, on `ip_banned`, `import` and `backup_done` alone, is an object of the values the
+  caption is made of, for a page that words the event in a world's terms:
+  - `ip_banned`: `addr`, the address banned, and `jail`, the jail that banned it, when the
+    caption names one.
+  - `import`: `title`, what was imported, as the caption has it.
+  - `backup_done`: `at`, when the backup finished, in the collector's time zone (`03:12`).
+
+  Those are the only names. Each value is a string of 1 to 44 characters, cleaned as `text` is:
+  runs of spaces, tabs and line breaks become one space, and a value longer than 44 characters is
+  cut to 43 and an ellipsis. A value that is empty once cleaned is left out, and so is `parts`
+  when that leaves out `addr`, `title` or `at`. As with `quiet_parts`, the page chooses the words
+  and joins the values, and shows `text` when an event has no `parts` or the page has no words
+  for its type. `text` is the same whether or not `parts` is there.
 - **`facts`** are the figures behind the conditions, for a page that wants to show them. Any
   section is `null` when its source is unavailable or not enabled. A source read less often than
   the file is written keeps its section from its last read until the next. `host.cpu_pct` is the
@@ -255,3 +327,7 @@ it counts, and writes the words. The page decides which scene and which state of
 condition maps to, and nothing else; `defaults.scenes` only asks it for another scene, and the page
 grants that where the scene can act the condition. Thresholds and durations are the collector's
 configuration.
+
+The quiet line and the captions are the one place the page may choose words of its own, from
+`quiet_parts` and an event's `parts`. Even then the collector formats every number and time, in its
+own time zone, and the page only picks the words around them and joins them.

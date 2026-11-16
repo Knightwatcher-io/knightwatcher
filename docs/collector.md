@@ -251,6 +251,13 @@ rather than the memory file, and starts again when the collector restarts.
 | `import` | a new import record appears in Sonarr's or Radarr's history | 1 each | `IMPORTED · The Night Shift S02E04` |
 | `backup_done` | the backup log shows a completion newer than the last one seen | 1 | `BACKUP DONE 03:12` |
 
+Every caption is cut to 44 characters, with runs of spaces, tabs and line breaks made one space,
+and gives a time in the collector's time zone. Beside it, `ip_banned`, `import` and `backup_done`
+carry `parts`: the address and the jail, the title, and the time, each as the caption has it and
+cleaned and cut by the same rule. A source returns the raw values with its event and the runner
+cleans them, so a caption and its parts never follow different rules. The page can then word the event
+in a world's terms without formatting anything itself; see [state.md](./state.md#fields).
+
 Events come only from fresh reads, so a source's pace sets how often it can raise them. When a
 source has no markers yet, it records what is already there and raises nothing. The markers, the event sequence number `seq` and the last 20 events are kept in `memory.json` in
 the state folder, so `seq` keeps rising across restarts and anything that happened while the
@@ -281,6 +288,20 @@ hourly statistics the hours since local midnight.
 The backup log is rotated by truncation, which leaves it without a completion line for a few
 hours each week. The last completion seen is kept in memory and reported until a newer one
 appears.
+
+## The quiet line
+
+The line the page shows while all is quiet is made of up to four parts, in this order:
+`ALL QUIET`; the running containers (`29 up`), when the containers source has a reading; the last
+backup (`backup 03:12`, in the collector's time zone), once a completion is known; and the queries
+blocked today (`4,812 ads blocked`), when the adblock source has a reading. The line is at most 52
+characters, so a large blocked count is shortened (`11.3k ads blocked`, then `11.3k blocked`), and
+a part that still does not fit is dropped from the end.
+
+The file carries the line whole as `quiet_line` and its parts as `quiet_parts`, every value
+formatted as the line has it. Each part the collector has a reading for is in `quiet_parts`,
+including one the line had no room for, so a page that words the line in a world's terms does
+its own fitting. The line is built from the same parts, so the two always agree.
 
 ## Sources
 
@@ -335,7 +356,8 @@ Then:
    `SOURCE_DEFAULTS`, `REQUIRED` and `SECRET_FIELDS` from the schema. Register the class in
    `build_sources` in `collector/sources/__init__.py`.
 2. If it brings a new `facts` section or event type, change [state.md](./state.md) and the
-   lists in `collector/contract.py` in the same commit.
+   lists in `collector/contract.py` in the same commit. An event type whose caption the page may
+   word for itself lists its part names in `EVENT_PARTS` there, and its events carry `parts`.
 3. If a condition depends on it, write the cause and the words in `collector/conditions.py`.
 4. Test it in `tests/collector/` against invented data. `kw_helpers.py` has a fake `/proc` and
    a local HTTP server.
