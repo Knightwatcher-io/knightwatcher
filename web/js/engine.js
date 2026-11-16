@@ -161,23 +161,48 @@
      outline is 4 pixels wide along the edges and, at the point, longer as the blade is broader: 7
      on the greatsword, 5 on the arming sword. The frame is the rig's on the build being drawn
      (KW.knight.rig takes the look's build), so foeGaps, contactQ and the foe's plan measure the blade
-     as it is drawn on every build. */
+     as it is drawn on every build. A weapon with a head the outline does not describe (the mace's,
+     KW.knight.rest.head) is measured by its drawing instead: head is the drawing's pieces and the
+     circle around them, and to and half are as far as they reach along the frame and across it. */
   function bladeOf(o) {
-    const b = K.rest.blade() || { from: 34, to: 263, half: 15 }, m = K.rig(o).anchors.main;
+    const b = K.rest.blade() || { from: 34, to: 263, half: 15 }, m = K.rig(o).anchors.main, h = K.rest.head ? K.rest.head() : null;
+    if (h) return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: h.to, half: h.half, head: h };
     return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: b.to + Math.round(b.half * 7 / 15), half: b.half + 4 };
   }
+  /* How far the point s along the weapon's frame and p across it lies from the head's drawing, in
+     pixels, 0 or below once it is within: the least over the head's pieces, each a circle or a convex
+     polygon counter-clockwise, whose nearest edge gives the distance inside it and out. A piece
+     whose circle (bc, br) lies further off than the least so far cannot give less, and is passed by. */
+  function headGap(head, s, p) {
+    let gap = Infinity;
+    for (const pc of head.pieces) {
+      if (Math.hypot(s - pc.bc[0], p - pc.bc[1]) - pc.br >= gap) continue;
+      if (pc.c) { gap = Math.min(gap, Math.hypot(s - pc.c[0], p - pc.c[1]) - pc.r); continue; }
+      const q = pc.pts;
+      let inside = true, d = Infinity;
+      for (let i = 0; i < q.length; i++) {
+        const [us, up] = q[i], [vs, vp] = q[(i + 1) % q.length], es = vs - us, ep = vp - up, t = clamp01(((s - us) * es + (p - up) * ep) / (es * es + ep * ep));
+        if (es * (p - up) - ep * (s - us) < 0) inside = false;
+        d = Math.min(d, Math.hypot(s - us - t * es, p - up - t * ep));
+      }
+      gap = Math.min(gap, inside ? -d : d);
+    }
+    return gap;
+  }
   /* The nearest point of the foe's crown that lies beside the blade, as { gap, x, y }: gap is how
-     far the blade's outline is from it in pixels, 0 or below once it is within, and x and y where
-     it is on the grid. A point beyond either end of the blade is not beside it. The crown is given
-     as drawn, facing left: a foe right of the knight (side 1) faces left, one left of it is drawn
-     the other way round. */
+     far the blade's outline (or the head's drawing) is from it in pixels, 0 or below once it is
+     within, and x and y where it is on the grid. A point beyond either end of the blade is not
+     beside it. The crown is given as drawn, facing left: a foe right of the knight (side 1) faces
+     left, one left of it is drawn the other way round. */
   function crownNear(bl, F, fx, side, floor) {
     const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), nx = Math.cos(bl.a), ny = Math.sin(bl.a);
     let near = { gap: Infinity, x: fx, y: floor };
     for (const [cx, cy] of F.crown) {
       const x = fx + side * cx, y = floor + cy, px = x - bl.x, py = y - bl.y, along = px * sx + py * sy;
       if (along < bl.from || along > bl.to) continue;
-      const gap = Math.abs(px * nx + py * ny) - bl.half;
+      // a point further from the whole head than the nearest so far is passed by
+      if (bl.head && Math.hypot(along - bl.head.bc[0], px * nx + py * ny - bl.head.bc[1]) - bl.head.br >= near.gap) continue;
+      const gap = bl.head ? headGap(bl.head, along, px * nx + py * ny) : Math.abs(px * nx + py * ny) - bl.half;
       if (gap < near.gap) near = { gap, x, y };
     }
     return near;

@@ -463,6 +463,79 @@
   /* The equipped weapon's blade, { from, to, half } in frame units, for a scene that draws on it
      (the smithy's hot tip), or null when the weapon gives none. */
   const restBlade = () => (PK.look ? PK.look.blade : SWORD_BLADE);
+  /* The equipped weapon's head, as drawn, for the engine's reach (bladeOf in engine.js): null for a
+     weapon whose blade's outline holds its drawing beyond the blade's middle (the swords, whose
+     blades are as wide there as their outline, half and 4 more), for one with no blade, and on the
+     code path. A weapon whose drawing is wider there by a pixel or more has a head that the outline
+     does not describe (the mace's flanges, on a haft narrower than its blade's half), and the engine
+     measures the drawing instead: { pieces, to, half, bc, br }, the pieces of the weapon's list that
+     reach past the hand (from 3 short of the blade's start), in frame units, each a circle
+     { c: [s, p], r } or a convex polygon { pts: [[s, p], ...] } counter-clockwise, to the furthest any
+     reaches along the frame, half the furthest across it, and bc and br the circle around them all. An ellipse that is not a circle, a rounded rectangle
+     and a pixel shape count as the box around them. Worked out once for each look, by drawing the
+     weapon's list on a frame of its own, upright with its grip at 0, 0. */
+  let headLook = null, headOf = null;
+  function restHead() {
+    if (!PK.look) return null;
+    if (PK.look !== headLook) {
+      headLook = PK.look; headOf = null;
+      try { headOf = drawnHead(PK.look); } catch (e) { headOf = null; }
+    }
+    return headOf;
+  }
+  function drawnHead(look) {
+    const b = look.blade, lib = PK.lib;
+    if (!b || !look.lists.main) return null;
+    // upright, the frame's s runs up the screen and p to the right: a point drawn at (x, y) is [-y, x]
+    const pieces = [], A = lib.newAnchors(), at = (x, y) => [-y, x];
+    A[lib.FRAME_SX] = 0; A[lib.FRAME_SY] = -1;
+    const poly = pts => {
+      const q = pts.map(([x, y]) => at(x, y));
+      let area = 0;
+      for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u[0] * v[1] - v[0] * u[1]; }
+      if (Math.abs(area) > 1e-9) pieces.push({ pts: area > 0 ? q : q.reverse() });
+    };
+    const box = (x, y, w, h) => poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]]);
+    const rec = {
+      Rh: box, Rv: box, rrect: box, pix: box, poly,
+      ell: (cx, cy, rx, ry) => (rx === ry ? pieces.push({ c: at(cx, cy), r: rx }) : box(cx - rx, cy - ry, 2 * rx, 2 * ry)),
+      // as draw.js draws a strip: the four corners of the band from (x0, y0) to (x1, y1)
+      strip: (x0, y0, x1, y1, hw0, hw1) => {
+        const dx = x1 - x0, dy = y1 - y0, n = Math.hypot(dx, dy) || 1, px = -dy / n, py = dx / n;
+        poly([[x0 - px * hw0, y0 - py * hw0], [x1 - px * hw1, y1 - py * hw1], [x1 + px * hw1, y1 + py * hw1], [x0 + px * hw0, y0 + py * hw0]]);
+      }
+    };
+    lib.draw(look.lists.main, A, PK.rV, rec);
+    const sOf = pc => (pc.c ? [pc.c[0] - pc.r, pc.c[0] + pc.r] : [Math.min(...pc.pts.map(q => q[0])), Math.max(...pc.pts.map(q => q[0]))]);
+    // how far across the frame a piece reaches beyond s0 along it
+    const across = (pc, s0) => {
+      if (pc.c) { const [cs, cp] = pc.c, r = pc.r; return cs + r <= s0 ? 0 : Math.abs(cp) + (cs >= s0 ? r : Math.sqrt(r * r - (s0 - cs) * (s0 - cs))); }
+      let w = 0;
+      for (let i = 0; i < pc.pts.length; i++) {
+        const u = pc.pts[i], v = pc.pts[(i + 1) % pc.pts.length];
+        if (u[0] >= s0) w = Math.max(w, Math.abs(u[1]));
+        if ((u[0] - s0) * (v[0] - s0) < 0) w = Math.max(w, Math.abs(u[1] + (v[1] - u[1]) * (s0 - u[0]) / (v[0] - u[0])));
+      }
+      return w;
+    };
+    const mid = (b.from + b.to) / 2, wide = Math.max(0, ...pieces.map(pc => across(pc, mid)));
+    if (wide - (b.half + 4) < 1) return null;
+    // a piece wholly inside another (an inner fill inside its outline) adds nothing to the reach;
+    // each kept piece carries the circle around it, bc and br, so the engine can pass it by quickly
+    const within = (pc, s, p, r) => (pc.c ? Math.hypot(s - pc.c[0], p - pc.c[1]) + r <= pc.r + 1e-9
+      : pc.pts.every((u, i) => { const v = pc.pts[(i + 1) % pc.pts.length], es = v[0] - u[0], ep = v[1] - u[1]; return (es * (p - u[1]) - ep * (s - u[0])) / Math.hypot(es, ep) >= r - 1e-9; }));
+    const holds = (big, pc) => big !== pc && (pc.c ? within(big, pc.c[0], pc.c[1], pc.r) : pc.pts.every(q => within(big, q[0], q[1], 0)));
+    const past = pieces.filter(pc => sOf(pc)[1] >= b.from - 3), kept = past.filter((pc, i) => !past.some((big, j) => holds(big, pc) && !(j > i && holds(pc, big))));
+    for (const pc of kept) {
+      if (pc.c) { pc.bc = pc.c; pc.br = pc.r; continue; }
+      const n = pc.pts.length, c = [pc.pts.reduce((a, q) => a + q[0], 0) / n, pc.pts.reduce((a, q) => a + q[1], 0) / n];
+      pc.bc = c; pc.br = Math.max(...pc.pts.map(q => Math.hypot(q[0] - c[0], q[1] - c[1])));
+    }
+    // and the circle around the whole head, from the middle of the pieces' circles
+    const lo = Math.min(...kept.map(pc => pc.bc[0] - pc.br)), hi = Math.max(...kept.map(pc => pc.bc[0] + pc.br)), bc = [(lo + hi) / 2, 0];
+    return Object.freeze({ pieces: kept, to: Math.max(...kept.map(pc => sOf(pc)[1])), half: Math.max(...kept.map(pc => across(pc, -Infinity))),
+      bc, br: Math.max(...kept.map(pc => Math.hypot(pc.bc[0] - bc[0], pc.bc[1] - bc[1]) + pc.br)) });
+  }
   /* What a scene adds to its backdrop key for an item it paints at rest: the equipped item's name,
      '<pack>/<item>', or '' when none is equipped; 'code' on the code path. */
   const restKey = slot => (PK.look ? PK.look.look.items[slot] || '' : 'code');
@@ -775,7 +848,7 @@
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
      knight is. speech draws a speech bubble. rest holds what a scene calls for the gear at rest
-     (described above): draw(slot, x, y, a), blade(), key(slot) and fits(slot, place). rig, start, add, look,
+     (described above): draw(slot, x, y, a), blade(), head(), key(slot) and fits(slot, place). rig, start, add, look,
      basePack, fetchPacks and packIndex are described above, except that rig from outside takes the
      look's build when b is left out (below), build is the present knight's measurements, source is
      'pack' or 'code' and status what start() found. */
@@ -786,5 +859,5 @@
      drawn. */
   const rigOf = (o, b) => rig(o, b || (PK.look ? PK.look.m : BUILD));
   KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, ownReturn, head: headAtCorner, speech: speechHD,
-    rest: { draw: restHD, blade: restBlade, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
+    rest: { draw: restHD, blade: restBlade, head: restHead, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);

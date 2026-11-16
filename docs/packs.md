@@ -422,7 +422,12 @@ hung on the `rest` anchor that the scene places.
 A plume's rest view has `shapes` only, and is drawn at the helmet's rest mount, before the helmet's
 rest view and so behind it, as the worn plume is drawn behind the worn helmet. A weapon needs no
 rest view: a scene draws its worn shapes on a frame of its own. Its `blade` tells a scene where the
-blade lies along that frame, for the smithy's hot tip.
+blade lies along that frame, for the smithy's hot tip. The engine also plans the goblin's strike
+from it: the blade's outline, 4 pixels along each edge beyond `half` and a little more at the point,
+is how far the weapon reaches. A weapon whose drawing is wider than that outline beyond the
+blade's middle, by a pixel or more, has a head the outline does not describe, and the engine
+measures its drawing instead, the shapes of its `main` list past the hand
+([page.md](./page.md#the-knights-rig)). No field asks for it: the drawing decides.
 
 The page shows three rest views (the helmet, its plume and the shield) and one weapon at rest; see
 [Gear at rest](#gear-at-rest). `fits` and `box` are checked, and a scene from a world pack draws the
@@ -1261,7 +1266,9 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   `@plume`. The mail coif has no `mounts`, so no plume is drawn with it (`plumeShown` is false) and
   the settings screen greys the plume while it is worn ([page.md](./page.md#the-settings-screen)).
   The mace's `blade` names its haft and head, so the smithy heats the head as it heats a blade and
-  the house's pegs sit under it. The longsword's two stations are the greatsword's and the mace's
+  the house's pegs sit under it. Its flanges are wider than that blade's outline, so the goblin is
+  met by the mace's drawing rather than by its `blade`: the flanges, the ball and the knob, on a
+  haft 7 across ([page.md](./page.md#the-knights-rig)). The longsword's two stations are the greatsword's and the mace's
   one is the arming sword's, so each is held exactly where those are;
 - one palette set of its own, new in 1.4.0, `cloth`, with the grey-violet wool of the padded hose
   and the turnshoes: `wool0` `#8a7f95`, `wool1` `#625a70`, `wool2` `#423c50`. `provides` lists
