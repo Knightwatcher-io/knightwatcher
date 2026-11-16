@@ -1,4 +1,4 @@
-"""The contract check against docs/state.md: facts.devices, device_down and defaults."""
+"""The contract check against docs/state.md: facts.devices, device_down, defaults and the parts."""
 
 import copy
 import json
@@ -184,6 +184,9 @@ class DevicesContractTest(unittest.TestCase):
         self.assertTrue(any(d["facts"].get("devices") for d in documents))
         self.assertTrue(any(c["id"] == "device_down" for d in documents for c in d["conditions"]))
         self.assertTrue(any(any(d["defaults"].values()) for d in documents))
+        self.assertTrue(any("quiet_parts" in d for d in documents))
+        typed = {e["type"] for d in documents for e in d["events"] if "parts" in e}
+        self.assertEqual(typed, set(contract.EVENT_PARTS))
 
 
 class DefaultsContractTest(unittest.TestCase):
@@ -245,3 +248,77 @@ class DefaultsContractTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+QUIET_PARTS = [
+    {"k": "quiet"},
+    {"k": "up", "n": "29"},
+    {"k": "backup", "at": "03:12"},
+    {"k": "ads", "n": "4,812", "short": "4.8k"},
+]
+
+
+def event(type_, parts, text="CAPTION"):
+    e = {"seq": 1, "type": type_, "at": "2026-01-15T21:42:07Z", "count": 1, "text": text}
+    if parts is not None:
+        e["parts"] = parts
+    return e
+
+
+class PartsContractTest(unittest.TestCase):
+    def test_quiet_parts_are_optional_and_keep_their_shape(self):
+        self.assertEqual(broken(lambda s: s.update(quiet_parts=copy.deepcopy(QUIET_PARTS))), [])
+        self.assertEqual(broken(lambda s: s.update(quiet_parts=[{"k": "quiet"}])), [])
+        self.assertEqual(
+            broken(lambda s: s.update(quiet_parts=[QUIET_PARTS[0], QUIET_PARTS[3]])), []
+        )
+        self.assertEqual(
+            broken(lambda s: s.update(quiet_parts=[])), ["quiet_parts is not a list of parts"]
+        )
+        self.assertEqual(
+            broken(lambda s: s.update(quiet_parts=[{"k": "quiet"}, {"k": "moon"}])),
+            ["quiet_parts[1].k is unknown"],
+        )
+        self.assertEqual(
+            broken(lambda s: s.update(quiet_parts=[{"k": "quiet"}, {"k": "up", "n": 29}])),
+            ["quiet_parts[1] has a value that is not text of 1 to 52"],
+        )
+        self.assertEqual(
+            broken(lambda s: s.update(quiet_parts=[{"k": "quiet"}, {"k": "ads", "n": "4,812"}])),
+            ["quiet_parts[1] does not have the values of its kind"],
+        )
+        order = "quiet_parts does not start with quiet and keep the order quiet, up, backup, ads"
+        for parts in (
+            [QUIET_PARTS[1]],
+            [QUIET_PARTS[0], QUIET_PARTS[2], QUIET_PARTS[1]],
+            [QUIET_PARTS[0], QUIET_PARTS[1], QUIET_PARTS[1]],
+        ):
+            self.assertEqual(broken(lambda s, p=parts: s.update(quiet_parts=p)), [order])
+
+    def test_event_parts_are_optional_and_named_by_type(self):
+        def events(*given):
+            return lambda s: s.update(events=[{**e, "seq": i} for i, e in enumerate(given)])
+
+        good = [
+            event("ip_banned", {"addr": "203.0.113.77", "jail": "sshd"}),
+            event("ip_banned", {"addr": "203.0.113.77"}),
+            event("ip_banned", None),
+            event("import", {"title": "A Film (2024)"}),
+            event("backup_done", {"at": "03:12"}),
+            event("ad_blocked", None, text=""),
+        ]
+        self.assertEqual(broken(events(*good)), [])
+        self.assertEqual(
+            broken(events(event("ad_blocked", {"n": "3"}, text=""))),
+            ["events[0].parts is on a type that has none"],
+        )
+        names = "events[0].parts does not have the names of its type"
+        for type_, parts in (
+            ("ip_banned", {"jail": "sshd"}),
+            ("import", {"title": "A Film", "year": "2024"}),
+            ("backup_done", ["03:12"]),
+        ):
+            self.assertEqual(broken(events(event(type_, parts))), [names])
+        value = "events[0].parts has a value that is not text of 1 to 44"
+        for parts in ({"title": ""}, {"title": "x" * 45}, {"title": 7}):
+            self.assertEqual(broken(events(event("import", parts))), [value])

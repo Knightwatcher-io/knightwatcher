@@ -56,6 +56,10 @@ class Source:
 
         memory is this source's persisted dictionary. It is empty on the first start, when the
         source records what is already there and returns no events.
+
+        Each event is a dictionary with `type`, `count` and `text`, and, for a type listed in
+        contract.EVENT_PARTS, `parts`: the raw values its caption is made of, by name. The runner
+        cleans and caps both as it writes them.
         """
         return []
 

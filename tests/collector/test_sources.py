@@ -404,9 +404,32 @@ class BackupTest(unittest.TestCase):
             "Backup completed: Thu 15 Jan 03:12:00 UTC 2026\n"
         )
         events = s.observe(s.fetch(T0), memory, T0)
-        self.assertEqual(events, [{"type": "backup_done", "count": 1, "text": "BACKUP DONE 03:12"}])
+        self.assertEqual(
+            events,
+            [
+                {
+                    "type": "backup_done",
+                    "count": 1,
+                    "text": "BACKUP DONE 03:12",
+                    "parts": {"at": "03:12"},
+                }
+            ],
+        )
         self.assertEqual(memory["last_ok"], "2026-01-15T03:12:00Z")
         self.assertEqual(s.observe(s.fetch(T0), memory, T0), [])
+
+    def test_the_time_in_the_parts_is_in_the_collectors_time_zone(self):
+        s = source(
+            BackupSource,
+            "backup",
+            {"log": self.log, "pattern": r"Backup completed: (.+)$"},
+            {"collector": {"timezone": "Asia/Kolkata"}},
+        )
+        memory = {"last_ok": "2026-01-14T03:00:00Z"}
+        self.write("Backup completed: Thu 15 Jan 03:12:00 UTC 2026\n")
+        [event] = s.observe(s.fetch(T0), memory, T0)
+        self.assertEqual(event["text"], "BACKUP DONE 08:42")
+        self.assertEqual(event["parts"], {"at": "08:42"})
 
     def test_truncated_log_falls_back_to_memory(self):
         self.write("")
@@ -650,10 +673,26 @@ class SecurityTest(unittest.TestCase):
         self.soc["organic_bans_24h"] = 15
         r, events = self.poll(memory, at(30))
         self.assertEqual(
-            events, [{"type": "ip_banned", "count": 1, "text": "BANNED 198.51.100.9 · sshd"}]
+            events,
+            [
+                {
+                    "type": "ip_banned",
+                    "count": 1,
+                    "text": "BANNED 198.51.100.9 · sshd",
+                    "parts": {"addr": "198.51.100.9", "jail": "sshd"},
+                }
+            ],
         )
         self.assertTrue(r.data["jail_ban"])
         self.assertEqual(r.data["bans_in_window"], 1)
+
+    def test_a_ban_with_no_jail_has_no_jail_part(self):
+        memory = {}
+        self.poll(memory, T0)
+        self.soc["last_ban"] = {"ip": "198.51.100.9", "jail": "", "time": "2026-01-15T21:00:10Z"}
+        _, [event] = self.poll(memory, at(30))
+        self.assertEqual(event["text"], "BANNED 198.51.100.9")
+        self.assertEqual(event["parts"], {"addr": "198.51.100.9"})
 
     def test_old_jail_ban_is_not_an_attack(self):
         self.soc["last_ban"]["jail"] = "sshd"
@@ -708,6 +747,10 @@ class ImportsTest(unittest.TestCase):
             [e["text"] for e in events],
             ["IMPORTED · The.Night.Shift.S02E04.1080p", "IMPORTED · The Night Shift S02E05"],
         )
+        self.assertEqual(
+            [e["parts"] for e in events],
+            [{"title": "The.Night.Shift.S02E04.1080p"}, {"title": "The Night Shift S02E05"}],
+        )
         self.assertEqual(memory["last_id"], 12)
         path, headers = self.http.requests[-1]
         self.assertIn("eventType=3", path)
@@ -721,6 +764,7 @@ class ImportsTest(unittest.TestCase):
         self.records = [{"id": 1, "sourceTitle": "x", "movie": {"title": "A Film", "year": 2024}}]
         events = s.observe(s.fetch(T0), memory, T0)
         self.assertEqual([e["text"] for e in events], ["IMPORTED · A Film (2024)"])
+        self.assertEqual([e["parts"] for e in events], [{"title": "A Film (2024)"}])
 
     def test_refused_key_is_an_auth_error(self):
         self.http.routes["/api/v3/history"] = (401, {"message": "Unauthorized"})

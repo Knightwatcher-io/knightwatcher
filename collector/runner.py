@@ -275,43 +275,88 @@ class Runner:
         events = self.memory.data["events"]
         for e in found:
             self.memory.data["seq"] += 1
-            events.append(
-                {
-                    "seq": self.memory.data["seq"],
-                    "type": e["type"],
-                    "at": text.iso(now),
-                    "count": max(1, int(e.get("count", 1))),
-                    "text": "" if e["type"] == "ad_blocked" else text.event_text(e.get("text", "")),
-                }
-            )
+            event = {
+                "seq": self.memory.data["seq"],
+                "type": e["type"],
+                "at": text.iso(now),
+                "count": max(1, int(e.get("count", 1))),
+                "text": "" if e["type"] == "ad_blocked" else text.event_text(e.get("text", "")),
+            }
+            parts = self._event_parts(e)
+            if parts:
+                event["parts"] = parts
+            events.append(event)
         del events[:-EVENTS_KEPT]
         return found
 
+    @staticmethod
+    def _event_parts(e: dict) -> dict | None:
+        """The parts of an event's caption, cleaned and capped as the caption is.
+
+        A part that is empty once cleaned is left out, and so are all of them when one the type
+        always has is missing; the page then words the event from `text`.
+        """
+        names = contract.EVENT_PARTS.get(e["type"])
+        given = e.get("parts")
+        if names is None or not isinstance(given, dict):
+            return None
+        need, may = names
+        parts = {}
+        for name in sorted(need | may):
+            value = text.event_text(given[name]) if given.get(name) is not None else ""
+            if value:
+                parts[name] = value
+        return parts if need <= set(parts) else None
+
     # The file ----------------------------------------------------------------------------------
 
-    def quiet_line(self, readings) -> str:
-        parts = ["ALL QUIET"]
+    def quiet_parts(self, readings) -> list[dict]:
+        """The parts the quiet line is made of, in order, each value formatted as the line has it.
+
+        A part is here whenever its reading is, whether or not the line had room for it: a page
+        that words the parts itself does its own fitting.
+        """
+        parts: list[dict] = [{"k": "quiet"}]
         containers = readings.get("containers")
         if containers is not None:
-            parts.append(f"{containers.facts['running']} up")
+            parts.append({"k": "up", "n": f"{containers.facts['running']}"})
         backup = readings.get("backup")
         if backup is not None and backup.facts["last_ok"]:
             when = text.parse_iso(backup.facts["last_ok"]).astimezone(self.config.tz)
-            parts.append(f"backup {when:%H:%M}")
+            parts.append({"k": "backup", "at": f"{when:%H:%M}"})
         adblock = readings.get("adblock")
         if adblock is not None:
-            # The longest wording that fits; a busy network's count is shortened before it is
-            # dropped.
             n = adblock.facts["blocked_today"]
-            for part in (
-                f"{text.count(n)} ads blocked",
-                f"{text.short_count(n)} ads blocked",
-                f"{text.short_count(n)} blocked",
-            ):
-                if len(text.SEP.join([*parts, part])) <= text.QUIET_LINE_MAX:
-                    parts.append(part)
-                    break
-        return text.join_fitting(parts, text.QUIET_LINE_MAX)
+            parts.append({"k": "ads", "n": text.count(n), "short": text.short_count(n)})
+        return parts
+
+    def quiet_line(self, readings) -> str:
+        return self.quiet_line_of(self.quiet_parts(readings))
+
+    @staticmethod
+    def quiet_line_of(parts: list[dict]) -> str:
+        """The quiet line in the collector's own words, from its parts."""
+        words: list[str] = []
+        for part in parts:
+            k = part["k"]
+            if k == "quiet":
+                words.append("ALL QUIET")
+            elif k == "up":
+                words.append(f"{part['n']} up")
+            elif k == "backup":
+                words.append(f"backup {part['at']}")
+            elif k == "ads":
+                # The longest wording that fits; a busy network's count is shortened before it
+                # is dropped.
+                for word in (
+                    f"{part['n']} ads blocked",
+                    f"{part['short']} ads blocked",
+                    f"{part['short']} blocked",
+                ):
+                    if len(text.SEP.join([*words, word])) <= text.QUIET_LINE_MAX:
+                        words.append(word)
+                        break
+        return text.join_fitting(words, text.QUIET_LINE_MAX)
 
     def cycle(self) -> dict:
         now = self.clock()
@@ -331,13 +376,16 @@ class Runner:
             facts[section] = reading.facts if reading is not None else None
         # Judged by the conditions from each device's source, as security.attack is.
         facts["devices"] = self.conditions.devices()
+        quiet_parts = self.quiet_parts(readings)
 
         state = {
             "schema": SCHEMA,
             "generated_at": text.iso(now),
             "interval_s": int(self.config.interval_s),
             "conditions": conditions,
-            "quiet_line": self.quiet_line(readings),
+            "quiet_line": self.quiet_line_of(quiet_parts),
+            # What the quiet line is made of, for a page that words it in a world's terms.
+            "quiet_parts": quiet_parts,
             "events": list(self.memory.data["events"]),
             "facts": facts,
             "sources": {s.name: status[s.name] for s in self.sources},
