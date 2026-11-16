@@ -6,7 +6,8 @@
 // (KW.world.useKinds). Run with: node --test tests/web/
 //
 // A second world pack, kw.test, is made here: a prop set that draws two kinds, copied from
-// props.medieval, and a preset built from the base pack's gear and kw.medieval's scenes and cast.
+// props.medieval with the stamps their lamps are drawn from, and a preset built from the base pack's
+// gear and kw.medieval's scenes and cast.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,12 +34,27 @@ const ALL = { pi: 'medieval', camera: 'medieval', machine: 'medieval', vm: 'medi
 const HOMES = { attack: 'battlement', wan_down: 'battlement', container_unhealthy: 'house', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house',
   cpu_hot: 'yard', ssh_session: 'court', updating: 'smithy', streaming: 'house', night: 'house' };
 
-/* A second world pack: kw.test, with the prop set props.neon (the medieval camera and machine) and
-   the preset world.neon. edit(pack) changes it before it is written. */
+/* The stamps of kw.medieval a part names (a lamp's lit and dark drawings, a use shape), by name, so
+   that a copy of the part in another pack carries them. */
+function stampsOf(part) {
+  const out = {}, walk = v => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) {
+      if ((k === 'lit' || k === 'dark' || k === 'use') && typeof x === 'string' && MED.stamps[x]) out[x] = clone(MED.stamps[x]);
+      else walk(x);
+    }
+  };
+  walk(part);
+  return out;
+}
+/* A second world pack: kw.test, with the prop set props.neon (the medieval camera and machine, with
+   the stamps their lamps are drawn from) and the preset world.neon. edit(pack) changes it before it
+   is written. */
 function testPack(edit) {
-  const kinds = MED.props['props.medieval'].kinds, M = 'kw.medieval/';
-  const p = { id: 'kw.test', name: 'Test world', version: '1.0.0', format: [1, 1], licence: 'For the tests.', provides: ['props', 'worlds'],
-    props: { 'props.neon': { name: 'Neon devices', kinds: { camera: clone(kinds.camera), machine: clone(kinds.machine) } } },
+  const kinds = MED.props['props.medieval'].kinds, M = 'kw.medieval/', copied = { camera: clone(kinds.camera), machine: clone(kinds.machine) };
+  const p = { id: 'kw.test', name: 'Test world', version: '1.0.0', format: [1, 1], licence: 'For the tests.', provides: ['props', 'worlds', 'stamps'],
+    stamps: stampsOf(copied),
+    props: { 'props.neon': { name: 'Neon devices', kinds: copied } },
     worlds: { 'world.neon': { name: 'Neon', body: 'kw.base/build.b',
       outfit: { items: Object.assign({}, ...Object.entries(BASE.defaults.items).map(([s, i]) => ({ [s]: 'kw.base/' + i })), { main: 'kw.base/main.arming', off: 'kw.base/off.round' }),
         swatches: { skin: 'kw.base/tan', hair: 'kw.base/black', tabard: 'kw.base/forest', plume: 'kw.base/gold' } },

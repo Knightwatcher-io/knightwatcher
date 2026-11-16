@@ -1370,7 +1370,7 @@ the cast from it, builds the quiet line and the captions in its words and takes 
 words over the scene from its overlay, on a `dev` page, and on a deployed page once it is signed;
 until then a deployed page refuses it and shows the collector's own words in `display.css`'s
 colours. Its preset is the page's own level of the settings ([page.md](./page.md#worlds)). It
-weighs 235 KB of the 512 KiB a pack may.
+weighs 226 KB of the 512 KiB a pack may.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 
