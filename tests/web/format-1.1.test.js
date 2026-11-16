@@ -201,7 +201,7 @@ test('a 1.0 pack reads as it did: no world section, builds only in the base pack
 
 test('the closed lists are the format\'s, by name', () => {
   const L = PK.WORLD_LISTS;
-  assert.deepEqual(L.EFFECTS, ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'burst']);
+  assert.deepEqual(L.EFFECTS, ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'burst']);
   assert.deepEqual(L.MARKS, ['things', 'rest', 'patron', 'sleeper', 'target', 'bubble']);
   assert.deepEqual(L.PREDICATES, ['tv', 'inBed', 'helmOff', 'strike', 'day', 'night']);
   assert.deepEqual(L.ROUND_ACTS, ['guard', 'look', 'sniff', 'yawn', 'train']);
@@ -300,7 +300,7 @@ const RULES = [
   ['tiles: 9 picks', 'fields', p => { for (const i of range(8)) planks(p).pick['p' + i] = { seed: 1, of: ['#000000', '#ffffff'] }; }, "pack.scenes[\"scene.house\"].still[0].shapes[1].pick: must hold 1 to 8 picks, not 9"],
   ['tiles: only is [seed, mod]', 'fields', p => { planks(p).shapes[2].only = [31]; }, "pack.scenes[\"scene.house\"].still[0].shapes[1].shapes[2].only: must be [seed, mod]"],
   ['effects: fx is required', 'fields', p => { delete still(p)[0].fx; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].fx: is missing"],
-  ['effects: fx names an effect of the engine', 'fields', p => { still(p)[0].fx = 'lightning'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].fx: must be one of \"sky\", \"stars\", \"ridge\", \"bricks\", \"pines\", \"tree\", \"arch\", \"shelf\", \"stacks\", \"tufts\", \"pebbles\", \"planks\", \"rafters\", \"horseshoe\", \"hood\", \"flame\", \"candle\", \"twinkle\", \"drift\", \"wander\", \"coals\", \"steam\", \"burst\""],
+  ['effects: fx names an effect of the engine', 'fields', p => { still(p)[0].fx = 'lightning'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].fx: must be one of \"sky\", \"stars\", \"ridge\", \"bricks\", \"pines\", \"tree\", \"arch\", \"shelf\", \"stacks\", \"tufts\", \"pebbles\", \"planks\", \"rafters\", \"horseshoe\", \"hood\", \"flame\", \"candle\", \"twinkle\", \"drift\", \"wander\", \"coals\", \"steam\", \"flutes\", \"crust\", \"burst\""],
   ['effects: only the fields of its table', 'fields', p => { for (const i of range(10)) still(p)[0]['f' + i] = 1; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].f0: is not a field of the effect \"bricks\""],
   ['effects: a field without a default is required', 'fields', p => { delete still(p)[0].mortar; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].mortar: is missing"],
   ['effects: a colour field holds no text but a colour', 'fields', p => { still(p)[0].mortar = 'bricks.png'; }, "pack.scenes[\"scene.cellar\"].still[0].shapes[0].mortar: must be a hex colour or a reference such as \"@base.k\""],
@@ -603,7 +603,9 @@ const RULES = [
   ['props: the engine\'s lamp within the class box', 'rules', p => { kinds(p).camera.up.lamp = [30, -40]; }, "pack.props[\"props.medieval\"].kinds.camera.up.lamp: paints 24 -46 36 -34, outside the high class box, -34 -64 32 0, from the base"],
   ['props: a lamp of its own within the class box', 'rules', p => { kinds(p).pi.up.lamp.at = [40, -54]; }, "pack.props[\"props.medieval\"].kinds.pi.up.lamp: paints 26.5 -71 53.5 -37, outside the pie class box, -46 -107 45 33, from the base"],
   ['props: a lamp\'s drawings are pix only', 'rules', p => { kinds(p).pi.up.lamp.dark = 'sconce'; }, "pack.props[\"props.medieval\"].kinds.pi.up.lamp.dark: a lamp's dark drawing is a stamp of pix shapes only"],
-  ['props: a gone lamp\'s lit drawing uses only the down red', 'rules', p => { kinds(p).pi.gone.lamp.lit = 'berry.lit'; }, "pack.props[\"props.medieval\"].kinds.pi.gone.lamp.lit: a gone lamp's lit drawing uses only the down lamp's red, @lamp.down and @lamp.downHi, so a device that is down blinks red in every world"],
+  ['props: a gone lamp\'s lit drawing uses only the down red', 'rules', p => { kinds(p).pi.gone.lamp.lit = 'berry.lit'; }, "pack.props[\"props.medieval\"].kinds.pi.gone.lamp.lit: a gone lamp's lit drawing uses only the down lamp's reds, @lamp.down, @lamp.downLo and @lamp.downHi, so a device that is down blinks red in every world"],
+  ['props: a gone lamp\'s lit drawing uses no red but the reserved ones', 'rules', p => { p.stamps['berry.down'][0].key.R = '#a83128'; }, "pack.props[\"props.medieval\"].kinds.pi.gone.lamp.lit: a gone lamp's lit drawing uses only the down lamp's reds, @lamp.down, @lamp.downLo and @lamp.downHi, so a device that is down blinks red in every world"],
+  ['props: a strip within its class box, by the pixels it fills', 'rules', p => { kinds(p).camera.up.still.push({ k: 'strip', p0: [0, -40], p1: [40, -38], hw0: 2, hw1: 2, fill: '@base.k' }); }, "pack.props[\"props.medieval\"].kinds.camera.up.still[2]: paints 0 -42 40 -36, outside the high class box, -34 -64 32 0, from the base"],
   ['props: 9 prop sets', 'counts', p => { for (const i of range(8)) p.props['props.' + i] = clone(p.props['props.medieval']); }, "pack.props: holds 9 prop sets, more than 8"],
   ['props: a still part over 4000', 'counts', p => { kinds(p).camera.up.still.push(...range(66).map(() => big(60))); }, "pack.props[\"props.medieval\"].kinds.camera.up.still: costs up to 4060 fills, more than 4000"],
   ['props: a moving part and its lamp over 600', 'counts', p => { kinds(p).pi.up.moving.push(...range(10).map(() => big(60))); }, "pack.props[\"props.medieval\"].kinds.pi.up: costs up to 653 fills in its moving part and its own lamp, more than 600"],
@@ -806,7 +808,11 @@ const EDGES = [
   ['a scene with a reserved companion', p => { camp(p).companion = { where: [1, 2] }; }],
   ['a mix of a bound set in the patron', p => { patron(p).states.shut[0].fill = { mix: ['@robe.2', '@base.k'], k: 0.25 }; }],
   ['a band list of the user\'s skin in a scene', p => { still(p)[2].fill = '@skin.face'; }],
-  ['the engine\'s lamp at the edge of its class box', p => { kinds(p).camera.up.lamp = [26, -40]; }]
+  ['the engine\'s lamp at the edge of its class box', p => { kinds(p).camera.up.lamp = [26, -40]; }],
+  ['a gone lamp\'s lit drawing in the down red at two thirds', p => { p.stamps['berry.down'][0].key.R = '@lamp.downLo'; }],
+  // a strip whose ends and widths are fixed is measured by the pixels it fills: the camera's
+  // sunshade, whose far corner lies at -34.78, fills no column left of -34
+  ['a strip at the edge of its class box, by the pixels it fills', p => { kinds(p).camera.up.still.push({ k: 'strip', p0: [16, -57], p1: [-34, -47], hw0: 4, hw1: 4, fill: '@base.k' }); }]
 ];
 for (const [name, edit] of EDGES) test('accepted at the edge: ' + name, () => { accepted(edit); });
 

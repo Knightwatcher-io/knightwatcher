@@ -195,7 +195,11 @@ scenes and the events. `tests/web/world-knight.test.js` runs the checks `knight.
 house and the smithy on the two compiled from the pack: their paint and draw against the knight's
 stored records with the knight from code and from the base pack, the same calls as the code scenes
 in the base pack's other looks, their backdrop keys and rests, the pegs, the hot tip of a weapon
-without a blade, and a shield that does not fit the house's wall. `tests/web/settings-schema.test.js` checks the page's lists of
+without a blade, and a shield that does not fit the house's wall. `tests/web/world-props.test.js`
+draws every kind of device from the medieval world's prop set beside the code's drawing of it, call
+for call, in every place of every scene, up and gone, with and without its question mark, in both
+parts and through the lamps' loops, and checks where the devices are drawn from, a kind that fails
+to compile, the lamp of a kind's own and what the compiler refuses in a prop. `tests/web/settings-schema.test.js` checks the page's lists of
 settings, scenes and conditions against the settings schema. `tests/web/shared-settings.test.js` checks the shared settings against a fake server: the first
 answer, the carry-over of a browser's own choices, no server, a choice sent and a write refused,
 and two displays sharing one server. `tests/web/settings.test.js` checks the settings in
@@ -221,7 +225,7 @@ one line with the call and its arguments, since the knight test checks the knigh
 flies and the other props of the events are recorded apart. It compares 1 803 records with those in
 `tests/web/fixtures/scenes/`, one file per scene and one for those props (`cast.json`). Then it draws
 each scene the medieval world's pack holds (today every scene but the court, 1 260 records) a second time, compiled
-from the pack, against the same stored records; checks that the compiled scene's backdrop key tells
+from the pack and with the devices from its prop set, against the same stored records; checks that the compiled scene's backdrop key tells
 the recorded states apart exactly as the code scene's does; and checks that it gives the code scene's
 interface. All of it takes about 39 seconds. A failure names the scene, the state, the size, the record and the first call that
 differs, with what `HEAD` draws there and what was drawn; without git, the block of 1 024 calls
@@ -243,7 +247,7 @@ the scenes concerned the code scenes with its console line, the predicates and t
 keyframes' tracks, the rests, the rest mark and the pegs, and
 that what the compiler does not build yet is refused by name.
 
-The repository's own page draws the knight from the base pack and every scene but the court from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
+The repository's own page draws the knight from the base pack, and every scene but the court and every device from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
 and the scene test check both paths. A deployed copy draws from each pack while it ships signed, and
 from code otherwise; to shoot the code path as well, take a second pair of sets from a copy of
 `web/` whose `kw-version` is not `dev` and whose packs carry no signature; [page.md](./page.md#checks)
@@ -287,8 +291,9 @@ describes the tool, and how a fork signs with a key of its own.
 Whether the base pack ships signed today, and what a deployed page draws in each case, is in
 [packs.md](./packs.md#where-the-knight-is-drawn-from). The medieval world's pack, `kw.medieval`, was
 first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, and again the same
-day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house. It
-ships signed, so a deployed page and a `dev` page alike draw every scene but the court from it; a
+day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house.
+Version 0.3.0, which adds the devices, ships unsigned until its signing run. A signed version is
+drawn from by a deployed page and a `dev` page alike, every scene but the court and every device; a
 version changed after signing ships unsigned until its next run, and meanwhile a deployed page draws
 every scene from code ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
 across changes no test.

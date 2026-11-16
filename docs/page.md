@@ -17,12 +17,12 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/effects.js` | `KW.effects`: the effects, drawings the engine owns that a scene names with numbers (sky, stars, bricks, flame and the rest), each with its table of fields, its cost and its drawing; see [The effects](#the-effects) |
-| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`), flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
+| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `ownReturn()` says whether a swing comes back by a return of its own (see [The knight's rig](#the-knights-rig)), `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
-| `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names; see [worlds.md](./worlds.md) |
+| `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names, and its devices in `KW.kinds`, which the engine draws them from; see [worlds.md](./worlds.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene but the court as data; see [worlds.md](./worlds.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
@@ -507,6 +507,8 @@ beside itself the first time a pack names an effect.
 | `wander` | `p`, `w`, `h`, `n` (7), `seed` (31), `ms` (900), `gap` (1.3), `cycle` (4), `lit` (1.4), `sway`, `bob`, `glow` ([9, 0.18]), `size` (3), `colour` | a glow and a fill a light, one glow each | camp, the fireflies |
 | `coals` | `p`, `n` (9), `gap` (14), `seed` (61), `ms` (170), `part` (`bed` or `sparks`), `of` | an ell of 15 rows a coal, or 1 a spark | smithy, the bed and the sparks over its flames |
 | `steam` | `p`, `n` (3), `gap` (14), `period` (1800), `sway` ([7, 5]), `rise` (46), `r` ([4, 7]), `a` (0.8), `colour` | an ell a puff | the pie, while up |
+| `flutes` | `p`, `n` (6), `top` (5.3), `bottom` (4.5), `h` (18), `hw` (0.6), `of` (1 to 33, one a groove from the left) | a strip a groove | the pie's dish, up and down: the grooves stand at fractions of a pixel a pack's eighths cannot give |
+| `crust` | `p`, `rim` ([38, 9]), `dome` ([32, 21]), `crimp` (35), `crust` (four colours), `filling` (three), `colour` (K) | a fill a pixel of its top, painted in one pass, and three a crimp | the pie's top, while up: 83 pixels across, wider than a pix shape may be |
 | `burst` | `p`, `n` (7), `piece` (`spark` or `straw`), `of` | sparks: a glow and 4 a spark; straw: a strip a piece | smithy (sparks), yard (straw) |
 
 `tests/web/effects.test.js` checks that each cost bounds the fills drawn, and the call records of
@@ -676,8 +678,12 @@ two places in a scene draw over each other. `tests/web/places.test.js` draws eac
 both, from what is painted rather than from a place's declared box: a place's 88 by 112 box is the
 room it was planned with, and may reach past the grid's edge where its drawing does not.
 
-**The kinds.** `KW.props.KINDS` holds each kind's `draw(x, y, t, ok, part)`, standing on the base
-`(x, y)`, and `mark`, the height above the base of the top of its question mark:
+**The kinds.** `KW.props.KINDS` holds the code's drawing of each kind, `draw(x, y, t, ok, part)`,
+standing on the base `(x, y)`, and `mark`, the height above the base of the top of its question
+mark. The engine draws from `KW.kinds`, which has the same interface: the compiler (`world.js`) fills
+it with the kinds the medieval world's prop set gives, and keeps `KW.props.KINDS`'s for the rest
+([worlds.md](./worlds.md#the-devices)). On a page without the compiler the engine reads
+`KW.props.KINDS` itself.
 
 | Kind | Up | Down |
 |---|---|---|
@@ -687,15 +693,17 @@ room it was planned with, and may reach past the grid's edge where its drawing d
 | `vm` | the same case as an outline of bright dots | only a few paler dots at its corners |
 | any other | a plain small grey box | the box tipped on its side, its lid off beside it, the inside dark |
 
-A kind the page does not know is drawn as the box. The kind is only ever a key into `KINDS`. The
-devices fit within 80 by 64 above the base.
+A kind the page does not know is drawn as the box. The kind is only ever a key into `KW.kinds`.
+The devices fit within 80 by 64 above the base.
 
 **The lamps.** Every device has one lamp, 10 by 10 in a dark rim, with a soft light round it in
 its own colour. While its machine is up, or `unknown`, the lamp fades from green to black and back
 over 3.6 seconds; while it is down, from red to black and back over 2 seconds, a slow blink. The
 loop starts 523 ms later in each place than in the one before it (`pie`, `h1` to `h3`, `g1` to
 `g3`), so the lamps of a scene never pulse together. Both loops come from `LAMP` and `lampLevel` in
-`props.js`, which every lamp shares.
+`props.js`, which every lamp shares, the drawings from a pack among them; `props.js` exports them with
+`lampRim` and `lampHD`, the engine's own lamp, and `LAMP_REDS`, the down lamp's three reds as a pack
+names them.
 
 **The raspberry.** The pie's lamp is the raspberry on its top, 25 pixels across and 33 tall
 with its calyx: round drupelets, each with a dark outline and a highlight, under a green calyx and
@@ -709,7 +717,8 @@ question mark.
 
 **Drawing.** `part` `'still'` draws what does not move and `'moving'` what does: the lamp, and the
 pie's steam and raspberry. The engine paints each device's still part once, with its pole, into a
-small canvas of its own, kept by place, kind and state, and draws it with one call where the
+small canvas of its own, kept by place, kind and state (and, for a kind from a pack, the compile it
+came from), and draws it with one call where the
 scene's `draw` calls `KW.devices.draw(t, s)`, so each scene's drawing order is what it was. Only the
 moving part is drawn each frame, and the question mark is kept in a canvas of its own as well. The
 raspberry is painted once in each of its colourings, lit and dark, into small canvases of its own
@@ -1153,6 +1162,12 @@ part is only its lamp, inside the place, in both states; that the lamp fades gre
 time; that gone differs from up; and that the pie in parts draws what the whole pie drew. For the
 raspberry it checks that it lights on the lamps' loops, up and down, is not in the up pie's still
 part, and stays inside the pie's place. It prints the calls each part costs.
+
+`tests/web/world-props.test.js` draws every kind from the medieval world's prop set beside the
+code's drawing of it, call for call, in every place of every scene (the court's among them), up and
+gone, with and without its question mark, at seven moments, and its still and moving parts alone;
+the moving parts every 25 ms through the lamps' loops; with the rest of what the compiler does for
+the devices ([worlds.md](./worlds.md#the-devices)).
 
 `tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that

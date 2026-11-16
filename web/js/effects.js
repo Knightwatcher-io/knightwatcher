@@ -24,7 +24,7 @@
 (function (KW) {
   'use strict';
   const D = KW.draw || {}, V = KW.view || {}, SP = KW.sprites || {};
-  const { alpha, glow, Rh, ell, rrect, poly, strip, hsh, dith } = D;
+  const { alpha, glow, Rh, ell, rrect, poly, strip, pix, hsh, dith } = D;
 
   /* The palette's colours the effects' defaults use, as draw.js has them. */
   const K = '#1a1524', W = '#ffffff', S2 = '#aab6c6', S3 = '#7d899b', N0 = '#b98045', N1 = '#96622f', N2 = '#70461f', N3 = '#4c2e12';
@@ -442,6 +442,63 @@
     }
   };
 
+  /* flutes: the grooves down the face of a dish, 2n + 1 of them from p across its middle, the one
+     k from the middle running from k * top across at p's height to k * bottom across h below, a
+     strip hw either side, groove k in of[k + n]. The grooves stand at fractions of a pixel that
+     the points of a pack's shapes, in eighths, cannot give. */
+  const flutes = {
+    fields: { p: { kind: 'point' }, n: { kind: 'int', lo: 0, hi: 16, def: 6 }, top: { kind: 'num', lo: -64, hi: 64, def: 5.3 }, bottom: { kind: 'num', lo: -64, hi: 64, def: 4.5 },
+      h: { kind: 'num', lo: 1, hi: 256, def: 18 }, hw: { kind: 'num', lo: 0, hi: 8, def: .6 }, of: { kind: 'colours', min: 1, max: 33 } },
+    cost: b => (2 * b.n + 1) * B.strip(b.n * Math.abs(b.top - b.bottom), b.h, b.hw),
+    draw(f) {
+      const [x, y] = f.p, n = f.n, of = f.of;
+      for (let i = -n; i <= n; i++) strip(x + i * f.top, y, x + i * f.bottom, y + f.h, f.hw, f.hw, of[Math.min(of.length - 1, i + n)]);
+    }
+  };
+
+  /* crust: a pie's top seen from the side and a little above, the middle of its rim at p: the rim
+     a flat ellipse rim[0] across and rim[1] high either side of p, and behind its middle a dome
+     dome[0] across and dome[1] high, outlined in colour. The crust shades from crust[0], lit from
+     the upper left, to crust[3]; a band of it runs round the rim in front of the dome, and over the
+     rest two sets of strips on the diagonal are woven over and under, the filling's three colours
+     between them. Along the near edge, from crimp left of the middle to crimp right of it, a crimp
+     every 7 pixels. The pie is painted pixel by pixel in one pass, as the raspberry pie's top is,
+     wider than a pix shape may be. */
+  const LATTICE = { period: 16, width: 6, slope: 1.6, shift: 320 }, CRIMP_STEP = 7;
+  const crust = {
+    fields: { p: { kind: 'point' }, rim: { kind: 'pair', int: true, of: [[4, 64], [1, 32]], def: [38, 9] }, dome: { kind: 'pair', int: true, of: [[1, 64], [1, 64]], def: [32, 21] },
+      crimp: { kind: 'int', lo: 0, hi: 64, def: 35 }, crust: { kind: 'colours', min: 4, max: 4, def: ['#ffd98a', '#f2ac4e', '#cc7f32', '#93521d'] },
+      filling: { kind: 'colours', min: 3, max: 3, def: ['#d2325f', '#9a1640', '#5c0a24'] }, colour: { kind: 'colour', def: K } },
+    // every pixel of the top its own fill at most, and three fills for each crimp
+    cost: b => (2 * b.rim[0] + 7) * (b.dome[1] + b.rim[1] + 3) + (Math.floor(2 * b.crimp / CRIMP_STEP) + 1) * (B.ell(4) + B.ell(2) + 1),
+    draw(f) {
+      const [cx, ry] = f.p, RIM = f.rim, DOME = f.dome, CRUST = f.crust, FILLING = f.filling, O = f.colour, L = LATTICE;
+      const rimAt = (u, v) => (u / RIM[0]) ** 2 + (v / RIM[1]) ** 2;
+      const onTop = (u, v) => rimAt(u, v) <= 1 || (v <= 0 && (u / DOME[0]) ** 2 + (v / DOME[1]) ** 2 <= 1);
+      function crustAt(u, v) {
+        if (!onTop(u, v)) return null;
+        if (!onTop(u - 2, v) || !onTop(u + 2, v) || !onTop(u, v - 2) || !onTop(u, v + 2)) return O;
+        const lit = -u / RIM[0] * .7 - v / DOME[1] * .5, tone = lit > .3 ? 0 : lit > -.2 ? 1 : lit > -.55 ? 2 : 3;
+        // the band of crust round the rim, in front of the dome
+        const r = rimAt(u, v), inDome = v < 0 && (u / DOME[0]) ** 2 + (v / DOME[1]) ** 2 <= .78;
+        if (r > .55 && !inDome) return CRUST[Math.max(0, tone - (r < .75 ? 1 : 0))];
+        // the lattice: two sets of strips on the diagonal, woven over and under, the filling between
+        const P = L.period, W = L.width, a = u + v * L.slope + L.shift, b = u - v * L.slope + L.shift, pa = a % P, pb = b % P;
+        if (pa < W || pb < W) {
+          const over = pa < W && pb < W ? ((Math.floor(a / P) + Math.floor(b / P)) % 2 ? pa : pb) : pa < W ? pa : pb;
+          return CRUST[Math.max(0, Math.min(3, tone + (over < 1 ? -1 : over >= W - 1 ? 1 : 0)))];
+        }
+        return FILLING[pa < W + 2 || pb < W + 2 ? 2 : tone < 2 ? 0 : 1];
+      }
+      pix(cx - RIM[0] - 3, ry - DOME[1] - 1, 2 * RIM[0] + 7, DOME[1] + RIM[1] + 3, (i, j) => crustAt(i - RIM[0] - 3, j - DOME[1] - 1));
+      // the crimping along the near edge
+      for (let u = -f.crimp; u <= f.crimp; u += CRIMP_STEP) {
+        const px = cx + u, py = ry + RIM[1] * Math.sqrt(1 - (u / RIM[0]) ** 2) - 1, tone = u < -12 ? 1 : u < 14 ? 2 : 3;
+        ell(px, py, 5, 4, O); ell(px, py, 3, 2, CRUST[tone]); Rh(px - 2, py - 2, 2, 1, CRUST[tone - 1]);
+      }
+    }
+  };
+
   /* burst: n pieces thrown from p after a trigger. Sparks (piece "spark", the clock the burst's
      progress from 0 to 1) fly out in a fan round a glow, as the hammer's blow throws them; straw
      (piece "straw", the clock the ms since the trigger) is flung apart and falls until 500 ms, as
@@ -467,7 +524,7 @@
   /* ---- The library ------------------------------------------------------------------------------ */
 
   /* The effects, in the order the world format lists them (pack.js names the same list). */
-  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, burst };
+  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, flutes, crust, burst };
   const NAMES = Object.freeze(Object.keys(TABLE));
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const SCALAR = ['offset', 'length', 'term'];
