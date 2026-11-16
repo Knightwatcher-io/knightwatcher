@@ -10,8 +10,7 @@ three monarchs, the goblin and the fly, and the words and the overlay. Step W5 o
 gave the scenes but the court, step W6 the devices, step W7 the cast and with it the court, and step
 W8 the words and the overlay: the page builds the quiet line and the events' captions from the
 parts the collector sends, in the world's words, and takes the colours and the font of the words
-over the scene from the world's overlay. Everything is drawn from `kw.medieval` 0.5.0, which ships
-unsigned until its signing run.
+over the scene from the world's overlay. Everything is drawn from `kw.medieval` 0.5.0, signed.
 
 ## The medieval world's pack
 
@@ -167,10 +166,10 @@ frame and 1 for what falls, against a limit of 200 for each.
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
 then version 0.2.0, version 0.3.0, which adds the devices, and version 0.4.0, which adds the cast.
-Version 0.5.0 adds the words and the overlay and ships unsigned until its signing run. Until then a
-deployed page refuses it: it draws every scene, every device and the cast from code, shows the
-collector's own quiet line and captions, and keeps `display.css`'s colours, while a `dev` page reads
-it all from the pack.
+Version 0.5.0, which adds the words and the overlay, is signed too. A copy changed after signing is
+refused by a deployed page until its next run: that page draws every scene, every device and the
+cast from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
+colours, while a `dev` page reads it all from the pack.
 
 ## Where the scenes are drawn from
 

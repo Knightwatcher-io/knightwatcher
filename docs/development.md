@@ -318,8 +318,7 @@ Whether the base pack ships signed today, and what a deployed page draws in each
 first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, and again the same
 day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house.
 Version 0.3.0, which adds the devices, was signed the same way on 16 November, and version 0.4.0,
-which adds the cast, the same day. Version 0.5.0, which adds the words and the overlay, ships
-unsigned until its run. A signed version is drawn from by a deployed
+which adds the cast, the same day, as was version 0.5.0, which adds the words and the overlay. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
