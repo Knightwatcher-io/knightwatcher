@@ -367,12 +367,20 @@ test('the brows are dressed by contrast: the lightest band of the hair where it 
   assert.ok(lightest.every(l => !/^(fair|warm) /.test(l)), 'the lightest band only on darker skins');
 });
 
-test('the court draws the patron KW.cast gives, and its backdrop key says where the patron comes from', () => {
-  const sc = PACK.KW.scenes.court, key = id => sc.key({ patron: { id, skin: skinOf('deep'), hair: null, robe: robeOf('wine') } });
-  for (const id of MONARCHS) assert.equal(key(id), id + '@' + PACK.KW.cast.patrons[id].from + '|deep||wine');
-  assert.equal(CODE.KW.scenes.court.key({ patron: { id: 'b', skin: skinOf('deep'), hair: null, robe: robeOf('wine') } }), 'b|deep||wine');
+test('the court, from the pack and from code, draws the patron KW.cast gives, and its backdrop key says where the patron comes from', () => {
+  // the code court, kept from before the start, and the court from the pack, on one page
+  const s0 = page(), code = s0.KW.scenes.court;
+  s0.KW.world.start([TEXT], true);
+  const sc = s0.KW.scenes.court, P = s0.KW.cast.patrons, look = id => ({ patron: { id, skin: skinOf('deep'), hair: null, robe: robeOf('wine') } });
+  assert.notEqual(sc, code);
+  for (const id of MONARCHS) {
+    assert.equal(code.key(look(id)), id + '@' + P[id].from + '|deep||wine');
+    assert.equal(sc.key(look(id)), '|' + id + '@' + P[id].from + '|deep||wine');
+  }
+  assert.equal(CODE.KW.scenes.court.key(look('b')), 'b|deep||wine');
   // an unknown monarch is A, from the pack
-  assert.equal(sc.key({ patron: { id: 'z' } }), 'a@' + PACK.KW.cast.patrons.a.from + '|');
+  assert.equal(code.key({ patron: { id: 'z' } }), 'a@' + P.a.from + '|');
+  assert.equal(sc.key({ patron: { id: 'z' } }), '|a@' + P.a.from + '|');
   const s = page([TEXT], true), seen = [];
   s.KW.cast.patrons.b = Object.assign({}, s.KW.cast.patrons.b, { draw: (x, by, look) => seen.push(['draw', x, by, look.hair && look.hair.id]), mouth: (x, by, open) => seen.push(['mouth', open]) });
   const frame = { w: s.KW.state.IDLE, devices: [], places: null, tv: false, kx: 360, o: s.KW.knight.pose('ssh_session', 100), here: null, inBed: false, helmOff: false, strike: false,

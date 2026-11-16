@@ -24,7 +24,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
 | `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names, its devices in `KW.kinds` and its cast in `KW.cast`, which the engine draws them from; see [worlds.md](./worlds.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
-| `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene but the court as data; see [worlds.md](./worlds.md) |
+| `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene, the devices and the cast as data; see [worlds.md](./worlds.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the devices in their places (`KW.devices`) |
 | `js/demo.js` | the invented conditions, the review bar and the demo loop |
@@ -410,8 +410,7 @@ Each file in `js/scenes/` registers one object on `KW.scenes` under the scene's 
 nothing outside it. The engine reads only what is listed here, and sets the grid's transform
 before it calls `paint`, `draw` and `over`. A scene may also come from a world pack: the scene
 compiler (`js/world.js`) builds an object with this same interface from the pack's data and puts it
-in the code scene's place, which a `dev` page does today for every scene but the court
-([worlds.md](./worlds.md)). The compiled scene works out its own `key`, gives `outdoors` from the
+in the code scene's place, which a `dev` page does today for every scene ([worlds.md](./worlds.md)). The compiled scene works out its own `key`, gives `outdoors` from the
 pack's `hosts`, and `foeZone` and, where the foe has a wall, `wallAt` from its `foe`.
 
 | Field | Required | Meaning |
@@ -523,6 +522,7 @@ beside itself the first time a pack names an effect.
 | `steam` | `p`, `n` (3), `gap` (14), `period` (1800), `sway` ([7, 5]), `rise` (46), `r` ([4, 7]), `a` (0.8), `colour` | an ell a puff | the pie, while up |
 | `flutes` | `p`, `n` (6), `top` (5.3), `bottom` (4.5), `h` (18), `hw` (0.6), `of` (1 to 33, one a groove from the left) | a strip a groove | the pie's dish, up and down: the grooves stand at fractions of a pixel a pack's eighths cannot give |
 | `crust` | `p`, `rim` ([38, 9]), `dome` ([32, 21]), `crimp` (35), `crust` (four colours), `filling` (three), `colour` (K) | a fill a pixel of its top, painted in one pass, and three a crimp | the pie's top, while up: 83 pixels across, wider than a pix shape may be |
+| `flicker` | `p`, `r`, `colour`, `a`, `amp`, `div`, `ph` (0) | a glow | the court as data, each torch's light: a glow's alpha in a pack takes a wave of a fixed phase alone, and the court's torches each flicker from their pillar's x; `court.js` keeps its own loop |
 | `fringe` | `p`, `colour` | a fill a row, 25 rows | monarch C's fringe in the medieval world's cast: its lower edge turns in, so no convex polygon fills its rows alike; `court.js` keeps its own polygon |
 | `fingers` | `p`, `a` (the angle, 0 up), `reach` (9), `spread` (0.65), `r`, `colour` | an ell a finger | the goblin's hands in the medieval world's cast: the fingers stand at fractions of a pixel a pack's eighths cannot give; `props.js` keeps its own loop |
 | `burst` | `p`, `n` (7), `piece` (`spark` or `straw`), `of` | sparks: a glow and 4 a spark; straw: a strip a piece | smithy (sparks), yard (straw) |
@@ -793,7 +793,9 @@ each with
 | `drawn` | its own hair and robe colours, `{ hair, robe }`, for the settings' "As drawn" |
 
 The court draws the patron `KW.cast.patrons` gives: the medieval world's cast's, compiled by
-`world.js`, and the code's own on a page without the compiler or when the pack is not read. It
+`world.js`, and the code's own on a page without the compiler or when the pack is not read. The
+court from the pack does the same through its `patron` mark ([worlds.md](./worlds.md#the-scene-compiler)),
+and gives `drawn` as `court.js` does. It
 checks `s.patron`'s colours before it hands them on, as it always has, and puts where the patron
 comes from into its backdrop's key (`b@kw.medieval#3|deep` for a patron from the pack, `b|deep` for
 the code's).
@@ -1393,10 +1395,10 @@ and 4700 ms, which catch the hammer striking and raised, the monarch talking wit
 shut, the question marks shown and hidden, the WAN's sparks and the sleeper's breathing, or at the
 moments of the dummy's wobble. The goblin's six poses, the flies, the hole, the clods, the smoke, the
 sparkles, the crate and its parachute are recorded once, apart (`cast`). The fly and the goblin of
-the medieval world's cast are drawn again from the pack against the same records, and the court,
-still a code scene, is drawn again with its monarchs from the pack's patrons against its own.
+the medieval world's cast are drawn again from the pack against the same records.
 
-Each scene the medieval world's pack gives (today every scene but the court) is then drawn again, compiled from the
+Each scene the medieval world's pack gives (today every scene) is then drawn again, with the
+monarchs from its cast, compiled from the
 pack by `world.js` as a `dev` page compiles it, in the same states, at the same sizes and moments,
 and held to the same stored records: the code and the pack must draw the same calls
 ([worlds.md](./worlds.md#two-copies-held-equal)). The backdrop's key is not in the records, so the
@@ -1411,9 +1413,10 @@ writes it to a folder of its own, such as `cellar@kw.medieval`.
 The 1 803 records are stored in `tests/web/fixtures/scenes/`, one file per scene and `cast.json`:
 for each record the first 16 characters of the hash of its calls, and for each distinct record its
 number of calls and a hash of each block of 1 024 calls, about 230 KB in all, where the records in
-full would weigh 287 MB (123 MB counting each distinct record once). A run takes about 39 seconds,
-the 1 260 records of the scenes from the pack included (the house's 270, the battlement's and the
-yard's 234 each, the camp's 216, the cellar's 162 and the smithy's 144). When a record differs, the test draws it again
+full would weigh 287 MB (123 MB counting each distinct record once). A run takes about 80 seconds,
+the 1 782 records of the scenes from the pack and the 21 of its cast included (the court's 522, the
+house's 270, the battlement's and the yard's 234 each, the camp's 216, the cellar's 162 and the
+smithy's 144). When a record differs, the test draws it again
 from the repository's `HEAD` (`git show`), and when `HEAD` draws the stored record it names the
 scene, the state, the size, the record and the first call that differs, with what `HEAD` drew there
 and what was drawn. Without git, or when `HEAD` draws something else too, it names the block the
@@ -1572,9 +1575,10 @@ one frame to the next, so every shot depends only on its address: two takes of t
 out byte for byte the same, on a busy machine too, apart from the clock when the minute turns.
 
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
-and every scene but the court drawn from the medieval world's pack. A deployed copy draws from each
-pack while it ships signed, and from code otherwise: today the knight from the base pack and every
-scene but the court from the medieval world's pack, both signed.
+and every scene, device and member of the cast drawn from the medieval world's pack. A deployed
+copy draws from each pack while it ships signed, and from code otherwise: today the knight from the
+base pack, signed, and everything else from code until the medieval world's pack 0.4.0 has its
+signing run.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches
@@ -1585,7 +1589,7 @@ copy's `kw-version` meta tag any value but `dev`; a page opened from disk runs t
 its version. Take the copy's signature off its base pack with
 `node tools/sign-pack.js --unsign <copy>/packs/base.pack.json`, so that the copy refuses it and
 draws from code whichever state ships; unsign the copy's medieval world's pack
-the same way (`<copy>/packs/medieval.pack.json`), so that it draws every scene but the court from code too. Do it before and after a change and compare each path's two
+the same way (`<copy>/packs/medieval.pack.json`), so that it draws every scene, device and member of the cast from code too. Do it before and after a change and compare each path's two
 sets:
 
 ```bash

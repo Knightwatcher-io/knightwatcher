@@ -4,12 +4,12 @@ A world is what the knight's surroundings are made of: the scenes, the supportin
 drawings of the devices, the words and the overlay. Format 1.1 of the packs carries a world as
 data ([packs.md](./packs.md#format-11) gives the format and its checks). This page describes what
 the page draws from a world today: the scene compiler, `web/js/world.js`, and the medieval world's
-pack, `kw.medieval`, which holds six scenes, the battlement, the camp, the yard, the cellar, the
-smithy and the house, the devices, the prop set `props.medieval`, and the cast: the three monarchs,
-the goblin and the fly. With the house, step W5 of the conversion is complete apart from the court,
-which waits for the patron (step W7), and with the devices step W6. Step W7 has given the cast: the
-court is still a code scene, though it draws its monarch from the pack's patrons, and the words and
-the overlay are still drawn from code.
+pack, `kw.medieval`, which holds all seven scenes, the battlement, the camp, the yard, the cellar,
+the smithy, the house and the court, the devices, the prop set `props.medieval`, and the cast: the
+three monarchs, the goblin and the fly. Step W5 of the conversion gave the scenes but the court,
+step W6 the devices, and step W7, now complete, the cast and with it the court: every scene, device
+and member of the cast is drawn from `kw.medieval` 0.4.0, which ships unsigned until its signing
+run. The words and the overlay are still drawn from code.
 
 ## The medieval world's pack
 
@@ -87,6 +87,16 @@ loads it after the base pack's. It holds:
   844, "y": 164, "w": 100, "h": 140 }`. It takes the helmet off, keeps the weapon away, is quiet and
   hosts the feast. Its `bed` is `{ "head": [-15, 262], "blanket": "blanket", "zeds": [150, 270] }`
   and its `screen` `{ "group": "tv" }`;
+- the scene `court`, the royal court of `web/js/scenes/court.js` written as data. Its one still
+  layer holds, in the code's order, the wall's bricks, the pillars every 480 with their ledges and
+  sconces (a tile), the two banners, the floor and its squares (three tiles, one for each row), the
+  carpet, the dais's steps (a tile of one repeat, below), the throne, the `patron` mark where the
+  monarch is painted, and the table. Its one moving layer holds the torches' lights and flames (a
+  tile, the light the effect `flicker`), the mark where the devices are drawn, the `patron` mark
+  where the monarch's mouth is drawn and the `bubble` mark. Its places, spot and `can`
+  (`ssh_session` alone) are the code scene's. It is not quiet and hosts nothing, and its `seat` is
+  `{ "x": 820, "y": 505, "bubble": [672, 180], "turn": 3200, "mouth": 230 }`, which gives it the
+  seat's act. Its one round, at its spot, is not compiled, as the smithy's is not;
 - the prop set `props.medieval`, the devices of `props.js` written as data: the five kinds `pi`,
   `camera`, `machine`, `vm` and `box`, each up and gone, below ([The devices](#the-devices));
 - the cast members `patron.a`, `patron.b` and `patron.c`, the three monarchs of `court.js` written
@@ -116,13 +126,15 @@ At the widest screen they assume, the checks find:
 | cellar | 440 shapes, 76 803 fills | 3 shapes, 120 fills, 1 glow |
 | smithy | 339 shapes, 15 212 fills | 9 shapes, 508 fills, 2 glows |
 | house | 370 shapes, 71 245 fills | 46 shapes, 2 128 fills, 3 glows |
+| court | 408 shapes, 50 555 fills | 19 shapes, 904 fills, 8 glows |
 
 against limits of 200 000 fills for the still layers, and 16 000 fills and 24 glows for a frame.
 The shapes are counted with each tile's repeats and each stamp's shapes written out. The camp's
 glows are the fire's light and the seven fireflies, the smithy's the fire's light and the sparks',
 and the house's the fire's, the television's and the candle's, counted together though the last
-two never show at once: a frame is costed with every layer drawn. The gear at rest, the hot tip, the
-sleeper and the Zs are the engine's drawing, as the devices are, and count toward no scene's cost;
+two never show at once: a frame is costed with every layer drawn; the court's are its torches'
+lights, one for each pillar the widest screen shows. The gear at rest, the hot tip, the sleeper, the
+Zs, the patron and its speech bubble are the engine's drawing, as the devices are, and count toward no scene's cost;
 the stamp a weapon's rest names counts twice, once for each peg.
 
 The devices cost, still and moving (the moving part with a lamp of the kind's own):
@@ -137,15 +149,16 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
 own lamp counts toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
-5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
+court counts none of them. The whole file weighs 233 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
 then version 0.2.0, and version 0.3.0, which adds the devices. Version 0.4.0, which adds the cast,
-ships unsigned until its signing run, so until then a `dev` page draws every scene but the court,
-every device and the cast from it, and a deployed page draws them from code. A change to the pack
+ships unsigned until its signing run, so until then a `dev` page draws every scene, every device and
+the cast from it, and a deployed page draws them from code. A change to the pack
 takes the signature's validity with it: until the next signing run a deployed page refuses it and
 draws every scene, every device and the cast from code, while a `dev` page still reads it.
 
@@ -156,7 +169,7 @@ draws every scene, every device and the cast from code, while a `dev` page still
 whose `kw-version` meta tag says `dev`. A `dev` page reads `kw.medieval` signed or not; a deployed
 page reads it only when it carries a signature that verifies against a key in `KEYS`.
 
-Each scene of `kw.medieval` whose id names a code scene (today every scene but the court) is compiled and takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
+Each scene of `kw.medieval` whose id names a code scene (today every scene) is compiled and takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
 which is not enumerable, so the engine and the settings, which list the scenes by their short names
 until worlds can be chosen, see the same seven scenes as before. The code scenes stay where they
 are, in `js/scenes/`, and are the fallback: the owner decided that the medieval world keeps a copy
@@ -172,10 +185,10 @@ A scene is drawn from code when:
 | reading threw, which `read()` never should | `...: the pack kw.medieval was refused at the size step`, the reason `the pack could not be read: <message>` |
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
 
-Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy and house are drawn
-from the pack kw.medieval 0.3.0, unsigned` (or `signed`), written with `console.info`; the others
+Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn
+from the pack kw.medieval 0.4.0, unsigned` (or `signed`), written with `console.info`; the others
 are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
-cellar failing to compile it is `the scenes battlement, camp, yard, smithy and house are drawn ...`, after
+cellar failing to compile it is `the scenes battlement, camp, yard, smithy, house and court are drawn ...`, after
 the cellar's own line. Of two copies of `kw.medieval` the higher
 version is used, as `gather` chooses.
 
@@ -227,8 +240,9 @@ compiled. A member that fails to compile is drawn from code, with a line of its 
 | `members` | for each member compiled or tried, by its id, `'pack'` or `'code'` |
 | `faults` | `{ member, reason }` for each member that failed to compile |
 
-The court is still a code scene, and draws its monarch from `KW.cast.patrons`, so on a page that
-reads the pack the monarchs come from the pack's patrons.
+The court draws its monarch from `KW.cast.patrons`, from the pack and from code alike, so on a page
+that reads the pack the monarchs come from the pack's patrons even where the court itself is drawn
+from code.
 
 `start` puts the code scenes, the code's devices and the code's cast back before it reads, so a
 second call starts afresh. Not done yet:
@@ -266,7 +280,7 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 | Interface | From |
 |---|---|
 | `spot`, `can` | the same fields |
-| `rounds` | the same field, but in a scene with an `anvil`, below |
+| `rounds` | the same field, but in a scene with an `anvil` or a `seat`, below |
 | `places` | `things`, each place copied as it is |
 | `rests` | `rests`, below; only when there are any |
 | `sword: false` | `"weapon": "away"` |
@@ -280,6 +294,7 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 | `draw(t, s)` | the moving layers |
 | `over(t, s)` | the over layers, and the sleeper's Zs in a scene with a `bed`; only when there are either, as a code scene without `over` has none |
 | `key(s)` | worked out by the compiler, below |
+| `drawn(mon)` | `seat`: each patron's own hair and robe colours, from `KW.cast.patrons`, as `court.js` gives them for the settings' "As drawn" |
 
 `name` and `quiet` are not read yet: the engine's own lists say which scenes take turns while all is
 quiet, until worlds can be chosen. Of `hosts`, only the flies and the crate are read, as `outdoors`,
@@ -468,16 +483,33 @@ that waits on `tv` as well. `glow` is optional, reserved and not read: the telev
 `glow` of the scene's own, in the palette track's colour. Streaming is the knight's pose, which the
 engine sets, so the screen gives no act of its own, and nor does the bed: the house has no `act`.
 
+**The seat's act.** A scene with a `seat`, `{ x, y, bubble, turn, mouth }`, gets the court's talk,
+`draw()` in `court.js` with its numbers from the part. The patron and the watcher take turns of
+`turn` ms, the patron silent first; while the patron talks its mouth opens and shuts every `mouth`
+ms and its speech bubble shows at `bubble`, through `KW.knight.speech`, and after the moving layers
+the act sets the watcher's pose: `o.mouth` `'flat'` and `o.speak` false while the patron talks,
+`'talk'` and true while it listens. The court's are `turn` 3 200 and `mouth` 230, the code's
+`Math.floor(t / 3200) % 2` and `Math.floor(t / 230) % 2`. The patron sits on the seat at `(x, y)`:
+the mark `{ "k": "patron" }` draws, in a still layer, the patron `s.patron` names
+(`KW.cast.patrons`, `a` for an id the cast does not have) in its look, its skin, hair and robe
+checked as `court.js` checks them, and in a moving or over layer its mouth, open or shut. The mark
+`{ "k": "bubble" }` draws the bubble while the patron talks. Where a still layer seats the patron,
+the backdrop's key goes on with `'|'` and the court's own key of the patron: its id, with `@` and
+where it comes from for a patron from a pack, and the ids of its skin, hair and robe, so a change of
+monarch or of colours paints the backdrop again. The act holds the watcher at its spot, so a scene
+with a `seat` gives no `rounds`, as `court.js` gives none, and it gives `drawn(mon)` for the
+settings.
+
 **What it does not build yet,** it refuses by name: the scene does not compile, the reason says
 `<field>: <what> is not built in this engine yet`, and the scene is drawn from code. That covers
-the shape kind `dith`, a `pix` colour chosen as it is drawn (a pick or a palette track's), the marks `patron`, `target` and `bubble`, `only` on a shape, `"g"`
+the shape kind `dith`, a `pix` colour chosen as it is drawn (a pick or a palette track's), the mark `target`, `only` on a shape, `"g"`
 on an effect or a mark, of keyframes a clock in seconds, a triggered clock (`trigger`), any ease but
 `step` and any channel but `show`, `dx` and `dy`, a colour a palette track drives inside a band
 list, in an effect or through another entry, a mix or a contrast outside a patron, a pick inside a band list or an
 effect, an effect inside a stamp, a triggered effect (`burst`) in a scene without a target or an
 anvil, a burst of sparks on a target's blow and of straw on the hammer's, a scene with both a target
 and an anvil, a scene that hosts the flies without the crate or the crate without the flies, and the
-fields `seat` and `pole`, which the court and its patron need. Each later scene adds the rows it
+field `pole`. Each later scene adds the rows it
 needs to the compiler's tables: a shape kind to `SHAPES`, a mark to `MARKS`, an act beside the
 target's and the anvil's, a part of the key beside the predicates and the gear.
 
@@ -754,6 +786,24 @@ The house needed three more effects, and keyframes of three new kinds:
 
 `house.js` keeps its own drawing of all of it, and the call records hold the two equal.
 
+The court needed one more effect, and two turns of tiles:
+
+- its torches' lights flicker by `.09 + .025 * Math.sin(t / 140 + x)`, `x` the pillar's, and a
+  glow's alpha in a pack takes `c` and a wave of a fixed phase alone. `flicker` draws the light,
+  with the phase a term: `{ "k": "fx", "fx": "flicker", "p": [{ "x": 1, "c": 25 }, 260], "r": 100,
+  "colour": "#ffb000", "a": 0.09, "amp": 0.025, "div": 140, "ph": { "x": 1 } }`, in the pillars'
+  tile;
+- its floor's squares are one loop every 40 that draws where `(x / 40 + j) % 2` holds, for three
+  rows `j`: three tiles every 80, the first and the last from 40, the middle from 0;
+- its dais's steps run from fixed xs to the right edge, `rrect(640, 512, HR - 640 + 8, ...)` and
+  three more, and a length's `c` may not be below 0. As the smithy's hearth, the four sit in a tile
+  of one repeat, here at x 700, and each width counts back from it: `{ "R": 1, "x": -1, "c": 68 }`
+  is `HR - 700 + 68`, the bits of `HR - 632` on the whole numbers the edges always are.
+
+The throne, the two banners and the table are written out as the code draws them, and the monarch
+is the patron's own drawing. `court.js` keeps its own drawing of all of it, and the call records
+hold the two equal.
+
 ## Two copies, held equal
 
 Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallback, and its data in
@@ -772,12 +822,14 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   drawn, `wallAt` among them.
 - An act changes the knight's pose and the drawing from one moment to the next, and the target's
   keeps the time of its last blow from one frame for the next, so `tests/web/world-scenes.test.js`
-  also runs every scene of the pack that has a `target`, an `anvil`, a `bed` or a `screen` frame by
-  frame beside its code scene, and compares every call (`over`'s among them), every change to the
-  knight's pose and `strike`: the target's every 10 ms through two training rounds while all is quiet
+  also runs every scene of the pack that has a `target`, an `anvil`, a `bed`, a `screen` or a `seat`
+  frame by frame beside its code scene, and compares every call (`over`'s among them), every change
+  to the knight's pose, after the act and after the draw, and `strike`: the target's every 10 ms through two training rounds while all is quiet
   and while the CPU runs hot, the anvil's every 10 ms through five blows of the hammer, idle and while
   updating, at the spot and at x 300, and the house's every 10 ms for 8.4 seconds asleep at night,
-  sick in bed, with the television on while streaming and with it off while all is quiet.
+  sick in bed, with the television on while streaming and with it off while all is quiet, and the
+  court's every 10 ms for 12.8 seconds, two rounds of its talk, while a shell is open and while all
+  is quiet.
 - `tests/web/knight.test.js` draws the house and the smithy from code with the knight's gear at
   rest, and `tests/web/world-knight.test.js` runs its checks on the two from the pack: the house
   painted with the television on and off and drawn asleep, unwell, with the helmet off and on, and
@@ -811,8 +863,8 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   page, a page without the compiler, that the engine plays the foe `KW.cast` gives with the exit it
   names, a member that fails to compile and one the engine does not know, and what the compiler
   refuses in the cast. `tests/web/scenes.test.js` draws the pack's fly and the goblin's six poses
-  against the stored records of the code's, `cast.json`, and the court, still a code scene, with the
-  monarchs from the pack's patrons against its own, `court.json`, all 522 of them; and
+  against the stored records of the code's, `cast.json`, and the court from the pack, with its
+  monarchs from the pack's patrons, against `court.json`, all 522 of them; and
   `tests/web/world-scenes.test.js` runs the goblin checks of `foe.test.js` on the pack's goblin, the
   blade against the drawn pixels of its poses among them.
 - `tests/web/world-props.test.js` draws every kind of device from the prop set beside the code's
@@ -824,8 +876,8 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   from code, the raspberry's canvases painted once with the lit drawing over the dark one, and what
   the compiler refuses in a prop. `tests/web/scenes.test.js` draws the scenes from the pack with the
   devices from it too, against the records stored from code.
-- The screenshots of the repository's own page, a `dev` page, draw the converted scenes and the
-  devices from the pack. To shoot the code path, take a pair of sets from a copy of `web/` whose `kw-version` is not
+- The screenshots of the repository's own page, a `dev` page, draw every scene, device and member of
+  the cast from the pack. To shoot the code path, take a pair of sets from a copy of `web/` whose `kw-version` is not
   `dev`, as for the knight ([page.md](./page.md#checks)).
 
 **A change to the medieval art is made in both copies, in the same commit.** Change the code scene
@@ -835,7 +887,7 @@ again from the code if the scene is meant to look different (`SCENES_LOG=write`,
 it is signed needs a signing run again ([development.md](./development.md#signing-the-packs)).
 
 `tests/web/world.test.js` checks the rest: that the pack reads clean with the costs above, where a
-`dev` and a deployed page draw every scene but the court from, the console lines and
+`dev` and a deployed page draw every scene from, the console lines and
 the status, the long names, a compile that throws for one scene or for all, the predicates and the
 key, the terms and the colours' spelling, `outdoors`, `foeZone` and `wallAt` from `hosts` and `foe`,
 the keyframes' clock with a phase and played once, an ell's clip and a tile's picks, the target's
@@ -844,5 +896,4 @@ and a moving layer and the key it adds to, the anvil's act against the code smit
 over nine seconds with its sparks and its hot tip, the `dx`, `dy`, wave and palette tracks, the
 house's screen, its sleeper with the ice bag and the blanket's breath, the Zs at night, the pegs
 from the blade and the stamp a rest names, a rest view held to its place, the pack library's rules
-for `targetDx` and `spot`, that the court stays the code scene, and that what the compiler does not
-build is refused by name.
+for `targetDx` and `spot`, and that what the compiler does not build is refused by name.

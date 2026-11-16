@@ -23,14 +23,17 @@
      or only;
    - layers: still (painted into the cached backdrop), moving (in draw) and over (in over), each with
      its when; a moving or over layer's groups, and keyframes on a clock in ms with show tracks;
-   - the things mark, where the devices behind the watcher are drawn, and the rest mark, where the
-     watcher's gear at rest is drawn at one of the scene's rests;
+   - the things mark, where the devices behind the watcher are drawn, the rest mark, where the
+     watcher's gear at rest is drawn at one of the scene's rests, the sleeper mark, and the patron
+     and bubble marks, where the patron on the seat and its speech bubble are drawn;
    - the backdrop's key, worked out from what the still layers read: the predicates of their when,
-     the gear they show at rest, and the spot when a rest they show it at counts from the spot;
+     the gear they show at rest, the spot when a rest they show it at counts from the spot, and the
+     patron they seat with its look;
    - hosts, as outdoors when a scene hosts both the flies and the crate, and from foe the foe's
      zone, foeZone, and with a wall the line it climbs over, wallAt;
-   - the acts of the target (the yard's training) and of the anvil (the smithy's hammer, with the
-     hot tip of the blade on the anvil);
+   - the acts of the target (the yard's training), of the anvil (the smithy's hammer, with the hot
+     tip of the blade on the anvil), of the bed and the screen (the house's) and of the seat (the
+     court's talk);
    - the kinds of a prop set: their still and moving shapes in both states, the engine's lamp at a
      point, and a lamp of the kind's own from two stamps of pix shapes, as the raspberry is;
    - the critters of the cast: their two frames and what falls, with a group's alpha; its foes:
@@ -285,8 +288,46 @@
         } else if (typeof R.fits !== 'function' || R.fits(r.slot, r.at)) R.draw(r.slot, x, y);
       }
     },
-    sleeper: { compile: (s, path, env) => ({ bed: env.bed }), draw(r, E) { sleeperAt(r.bed, E.s.o); } }
+    sleeper: { compile: (s, path, env) => ({ bed: env.bed }), draw(r, E) { sleeperAt(r.bed, E.s.o); } },
+    /* The patron on the scene's seat: in a still layer the patron itself, in a moving or over layer
+       its mouth, open or shut as the seat's act has it (seatAt, below). */
+    patron: {
+      compile: (s, path, env) => ({ seat: env.seat, still: env.where === 'still' }),
+      draw(r, E) {
+        const P = patronOf(E.s), look = patronLook(E.s);
+        if (r.still) P.draw(r.seat.x, r.seat.y, look);
+        else P.mouth(r.seat.x, r.seat.y, seatAt(r.seat, E.t).open, look);
+      }
+    },
+    /* The speech bubble over the patron while it talks, through KW.knight.speech. */
+    bubble: { compile: (s, path, env) => ({ seat: env.seat }), draw(r, E) { if (seatAt(r.seat, E.t).talks) KW.knight.speech(r.seat.bubble[0], r.seat.bubble[1], E.t, true); } }
   };
+  /* The seat's act, the court's talk: the patron and the watcher take turns of seat.turn ms, the
+     patron first silent, and while the patron talks its mouth opens and shuts every seat.mouth ms
+     and its speech bubble shows; as court.js has it. */
+  const seatAt = (seat, t) => { const talks = Math.floor(t / seat.turn) % 2 === 1; return { talks, open: talks && Math.floor(t / seat.mouth) % 2 === 1 }; };
+  /* The patron s.patron names, 'a' when it names none the cast has: from KW.cast, or from the code's
+     own, KW.props.PATRONS, on a page whose cast is not loaded. */
+  const patronSet = () => (KW.cast && KW.cast.patrons) || (KW.props && KW.props.PATRONS) || {};
+  const patronId = s => { const id = s && s.patron ? s.patron.id : null; return typeof id === 'string' && has(patronSet(), id) ? id : 'a'; };
+  const patronOf = s => patronSet()[patronId(s)];
+  /* The look the patron is drawn in, s.patron's skin, hair and robe where each can be read, and null
+     for the patron's own otherwise, checked as court.js checks them: a face of three bands and a
+     cheek, three hair bands, four robe bands, all hex colours. */
+  const isHex = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+  const bandsOk = (b, n) => Array.isArray(b) && b.length === n && b.every(isHex);
+  function patronLook(s) {
+    const p = (s && s.patron) || {}, sk = p.skin;
+    const skinOk = !!sk && Array.isArray(sk.face) && sk.face.length === 3 && isHex(sk.cheek) && sk.face.every(b => Array.isArray(b) && typeof b[0] === 'number' && isHex(b[1]));
+    return { skin: skinOk ? sk : null, hair: p.hair && bandsOk(p.hair.bands, 3) ? p.hair : null, robe: p.robe && bandsOk(p.robe.bands, 4) ? p.robe : null };
+  }
+  /* The part of the backdrop's key the patron adds where a still layer paints it, as court.js keys
+     it: the patron's id, with where it comes from when that is a pack, and its skin, hair and robe. */
+  function patronKey(s) {
+    const id = patronId(s), P = patronOf(s), L = patronLook(s);
+    const k = (P && P.from ? id + '@' + P.from : id) + '|' + (L.skin ? L.skin.id : ''), h = L.hair ? L.hair.id : '', r = L.robe ? L.robe.id : '';
+    return h || r ? k + '|' + h + '|' + r : k;
+  }
   /* The xs of a frame's stamp, from the blade of the weapon lying on it with its grip's middle at x:
      PEGS.from past where the blade starts and PEGS.to short of its point, as the house's pegs, which
      a weapon that gives no blade gets for the greatsword's, PEGS.blade. */
@@ -429,13 +470,12 @@
 
   /* ---- Scenes ---------------------------------------------------------------------------------- */
 
-  /* The fields of a scene this engine does not build yet: the part of the seat's act, and the pole
-     drawn under a high place. decor, quiet, name, sound and companion are not read: nothing draws
+  /* The fields of a scene this engine does not build yet: the pole drawn under a high place. decor, quiet, name, sound and companion are not read: nothing draws
      decorations yet, the engine's own lists say which scenes take turns while all is quiet, and the
      other three are names and reserved slots. Nor are the anvil's spark, the bed's blanket and the
      screen's glow, which say what the scene's own shapes draw (the hammer's sparks, the blanket over
      the sleeper and the television's light). */
-  const LATER = ['seat', 'pole'];
+  const LATER = ['pole'];
 
   /* The rests of a scene: where the watcher's gear is set down (docs/page.md, Gear at rest). A frame,
      { x, y, a }, is where the weapon lies, its grip's middle at (x, y) and a its angle, "upright" 0
@@ -563,6 +603,10 @@
     D.Rh(gx + (to - Ln.back), gy - (h - Ln.shine[0]), Ln.w, 2, Ln.shine[1]); D.Rh(gx + (to - Ln.back), gy + (h - Ln.shade[0]), Ln.w, 2, Ln.shade[1]);
   }
 
+  /* The watcher's side of the seat's act, after the moving layers are drawn as court.js does it: the
+     watcher talks while the patron is silent and listens, mouth flat, while it talks. */
+  function seatTalk(seat, t, s) { const talks = seatAt(seat, t).talks; s.o.mouth = talks ? 'flat' : 'talk'; s.o.speak = !talks; }
+
   /* The scene id of the loaded pack (a read() result of format 1.1) compiled to an object with the
      scene interface. Throws when the scene names something this engine does not build. */
   function compile(pack, id) {
@@ -575,7 +619,8 @@
     if (has(v, 'rests')) for (const n of Object.keys(v.rests)) rests[n] = freeze(restOf(v.rests[n]));
     const bed = has(v, 'bed') ? freeze({ head: v.bed.head.slice(), zeds: v.bed.zeds.slice() }) : null;
     const env = { pack, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: has(v, 'target'), anvil: has(v, 'anvil') ? v.anvil : null, rests, restStamps: {},
-      bed, screen: has(v, 'screen') ? v.screen.group : null, picks: null };
+      bed, screen: has(v, 'screen') ? v.screen.group : null, picks: null,
+      seat: has(v, 'seat') ? freeze({ x: v.seat.x, y: v.seat.y, bubble: v.seat.bubble.slice(), turn: v.seat.turn, mouth: v.seat.mouth }) : null };
     env.restStamps = restStamps(v, env);
     // the act, the target's or the anvil's, and the frame's values it gives the moving and over layers
     const acted = has(v, 'target') ? trainOn(v.target) : has(v, 'anvil') ? anvilOn() : null;
@@ -586,23 +631,27 @@
     // then, when they show gear at rest, the spot's x (rounded) if any of its rests counts from the
     // spot, and the name of each slot's equipped item, KW.knight.rest.key(slot), once
     const keyed = [], seen = new Set(), slots = [];
-    let bySpot = false;
+    let bySpot = false, seated = false;
     for (const l of lists.still) {
       for (const p of l.when) { const n = (p.neg ? '!' : '') + p.n + (p.id ? ':' + p.id : ''); if (!seen.has(n)) { seen.add(n); keyed.push(p); } }
       for (const c of l.shapes) if (c.k === 'rest') { if (!slots.includes(c.r.slot)) slots.push(c.r.slot); if (c.r.at.spot) bySpot = true; }
+      if (l.shapes.some(c => c.k === 'patron')) seated = true;
     }
     freeze(keyed); freeze(slots);
-    const gear = s => (bySpot ? '|' + Math.round(s.kx) : '') + slots.map(n => '|' + KW.knight.rest.key(n)).join('');
+    // the gear at rest the still layers paint, and the patron they seat, with its look
+    const gear = s => (bySpot ? '|' + Math.round(s.kx) : '') + slots.map(n => '|' + KW.knight.rest.key(n)).join('') + (seated ? '|' + patronKey(s) : '');
     const places = {};
     for (const n of Object.keys(v.things)) places[n] = Object.assign({}, v.things[n]);
     const sc = {
       spot: v.spot, places, can: v.can.slice(),
-      key: slots.length ? s => keyed.map(p => (holds(p, s) ? '1' : '0')).join('') + gear(s) : s => keyed.map(p => (holds(p, s) ? '1' : '0')).join(''),
-      draw(t, s) { drawLayers(lists.moving, frameAt(t, s)); }
+      key: slots.length || seated ? s => keyed.map(p => (holds(p, s) ? '1' : '0')).join('') + gear(s) : s => keyed.map(p => (holds(p, s) ? '1' : '0')).join(''),
+      draw(t, s) { drawLayers(lists.moving, frameAt(t, s)); if (env.seat) seatTalk(env.seat, t, s); }
     };
-    // the anvil's act holds the watcher at the anvil, so a scene with one gives no rounds to stroll
-    // between, as smithy.js gives none
-    if (!has(v, 'anvil')) sc.rounds = v.rounds.map(r => ({ x: r.x, act: r.act, dur: r.dur }));
+    // the anvil's act holds the watcher at the anvil and the seat's at the patron, so a scene with
+    // either gives no rounds to stroll between, as smithy.js and court.js give none
+    if (!has(v, 'anvil') && !has(v, 'seat')) sc.rounds = v.rounds.map(r => ({ x: r.x, act: r.act, dur: r.dur }));
+    // the colours each patron is drawn in, for the settings screen's "As drawn", as court.js gives them
+    if (env.seat) sc.drawn = mon => { const P = patronSet(), p = P[has(P, mon) ? mon : 'a']; return { hair: p.drawn.hair.slice(), robe: p.drawn.robe.slice() }; };
     if (has(v, 'rests')) sc.rests = restsOut(rests);
     if (lists.still.length) sc.paint = s => drawLayers(lists.still, named(0, s));
     // the over layers, and the sleeper's Zs over everything at night in a scene with a bed

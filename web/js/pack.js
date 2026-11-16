@@ -1076,7 +1076,7 @@
      and its drawing by the effects library, effects.js (KW.effects). The page loads that file before
      this one; under Node this file asks for it beside itself, the first time a pack names an
      effect. */
-  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'burst'];
+  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'flicker', 'burst'];
   /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
      for, the patron's anchors and the critter's frames. */
   const ROLES = ['patron', 'foe', 'critter'];
