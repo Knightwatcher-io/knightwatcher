@@ -8,8 +8,7 @@ pack, `kw.medieval`, which holds all seven scenes, the battlement, the camp, the
 the smithy, the house and the court, the devices, the prop set `props.medieval`, and the cast: the
 three monarchs, the goblin and the fly. Step W5 of the conversion gave the scenes but the court,
 step W6 the devices, and step W7, now complete, the cast and with it the court: every scene, device
-and member of the cast is drawn from `kw.medieval` 0.4.0, which ships unsigned until its signing
-run. The words and the overlay are still drawn from code.
+and member of the cast is drawn from `kw.medieval` 0.4.0, signed. The words and the overlay are still drawn from code.
 
 ## The medieval world's pack
 
@@ -156,9 +155,8 @@ frame and 1 for what falls, against a limit of 200 for each.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
-then version 0.2.0, and version 0.3.0, which adds the devices. Version 0.4.0, which adds the cast,
-ships unsigned until its signing run, so until then a `dev` page draws every scene, every device and
-the cast from it, and a deployed page draws them from code. A change to the pack
+then version 0.2.0, version 0.3.0, which adds the devices, and version 0.4.0, which adds the cast;
+a deployed page and a `dev` page alike draw every scene, every device and the cast from it. A change to the pack
 takes the signature's validity with it: until the next signing run a deployed page refuses it and
 draws every scene, every device and the cast from code, while a `dev` page still reads it.
 

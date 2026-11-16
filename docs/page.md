@@ -1577,8 +1577,8 @@ out byte for byte the same, on a busy machine too, apart from the clock when the
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
 and every scene, device and member of the cast drawn from the medieval world's pack. A deployed
 copy draws from each pack while it ships signed, and from code otherwise: today the knight from the
-base pack, signed, and everything else from code until the medieval world's pack 0.4.0 has its
-signing run.
+base pack and every scene, device and member of the cast from the medieval world's pack 0.4.0,
+both signed.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches

@@ -300,8 +300,8 @@ Whether the base pack ships signed today, and what a deployed page draws in each
 [packs.md](./packs.md#where-the-knight-is-drawn-from). The medieval world's pack, `kw.medieval`, was
 first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, and again the same
 day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house.
-Version 0.3.0, which adds the devices, was signed the same way on 16 November. Version 0.4.0, which
-adds the cast, ships unsigned until its signing run. A signed version is drawn from by a deployed
+Version 0.3.0, which adds the devices, was signed the same way on 16 November, and version 0.4.0,
+which adds the cast, the same day. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives; a
 version changed after signing ships unsigned until its next run, and meanwhile a deployed page draws
 every scene from code ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature

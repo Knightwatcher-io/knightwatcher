@@ -2894,5 +2894,6 @@
         "seat": { "x": 820, "y": 505, "bubble": [672, 180], "turn": 3200, "mouth": 230 }
       }
     }
-  }
+  },
+  "sig": { "alg": "ed25519", "kid": "kw1", "value": "yEvbNnLGzM3VXbnZticLB09qn6iPc0K4KFR2zabfMq9wxeVL8EwDpcTfbmLopqIv4NK384jpZNK6Sf4hNbTvAA==" }
 }
