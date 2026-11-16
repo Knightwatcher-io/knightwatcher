@@ -24,7 +24,8 @@ This page describes format 1.0 as the library implements it, and the world secti
 adds, as the library reads and refuses them, under [Format 1.1](#format-11). **The library draws
 nothing from the 1.1 sections:** a 1.1 pack's scenes, cast, props, stamps, words, overlays and presets
 are checked and kept as data. The scene compiler, `web/js/world.js`, draws the medieval world's
-scenes, devices and cast from them ([worlds.md](./worlds.md)).
+scenes, devices and cast from them, and lists the presets and prop sets of the packs it reads for
+the settings ([worlds.md](./worlds.md)).
 
 ## The file
 
@@ -488,8 +489,9 @@ steps as the rest, in the same order, and keeps it as data in the loaded pack's 
 **`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
 compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
 page draws every scene from the medieval world's pack that way, with its devices from its prop set
-and its monarchs, goblin and fly from its cast ([worlds.md](./worlds.md)). The other engine parts
-that will read the sections (the words, the overlay and the presets) come in later steps. The closed lists those parts own are fixed in `pack.js` under the names below and exported
+and its monarchs, goblin and fly from its cast, builds the quiet line and the captions in its words,
+takes the words' colours from its overlay, resolves the settings against its presets and draws
+each kind of device from the prop set chosen for it ([worlds.md](./worlds.md)). The closed lists those parts own are fixed in `pack.js` under the names below and exported
 as `WORLD_LISTS`. The effects library is built: `effects.js` gives each effect's table of fields and
 cost, which `pack.js` checks and costs a pack's effects by, and draws them for the scenes
 ([page.md](./page.md#the-effects)).
@@ -1358,15 +1360,17 @@ base pack's items falls back on any build.
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.5.0. It is signed with `kw1`, as were 0.1.0 (the cellar alone) to 0.4.0. It holds every scene as data, the three monarchs, the goblin
+`[1, 1]`, version 0.5.0. Version 0.5.0 was signed with `kw1`, as were 0.1.0 (the cellar alone) to
+0.4.0, and ships unsigned since the preset was added, until the next signing run. It holds every scene as data, the three monarchs, the goblin
 and the fly as its cast, the devices as the prop set `props.medieval`, the word set
-`words.medieval`, the overlay `overlay.phosphor`, the stamps the scenes and devices use (the sconce,
+`words.medieval`, the overlay `overlay.phosphor`, the preset `world.medieval`, the stamps the scenes and devices use (the sconce,
 the barrel, the house's peg, the raspberry's drawings and the virtual machine's dots) and one
 palette entry, `house.screen`, the television's colour. The page draws those scenes, devices and
 the cast from it, builds the quiet line and the captions in its words and takes the colours of the
 words over the scene from its overlay, on a `dev` page, and on a deployed page once it is signed;
 until then a deployed page refuses it and shows the collector's own words in `display.css`'s
-colours. It weighs 234 KB of the 512 KiB a pack may.
+colours. Its preset is the page's own level of the settings ([page.md](./page.md#worlds)). It
+weighs 235 KB of the 512 KiB a pack may.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 
@@ -1615,8 +1619,9 @@ status. That each scene from the pack draws what the code draws, call for call, 
 `tests/web/scenes.test.js`'s ([page.md](./page.md#checks)); that its `quiet` and `hosts` agree with
 the engine's own lists, and that the foe's and the places' checks hold on it, is
 `tests/web/world-scenes.test.js`'s. `tests/web/world-props.test.js` checks the devices from its prop
-set ([worlds.md](./worlds.md#the-devices)), and `tests/web/world-cast.test.js` its cast
-([worlds.md](./worlds.md#the-cast)).
+set ([worlds.md](./worlds.md#the-devices)), `tests/web/world-cast.test.js` its cast
+([worlds.md](./worlds.md#the-cast)), and `tests/web/worlds.test.js` its preset and the presets and
+prop sets of a second world pack made for the run ([worlds.md](./worlds.md#worlds-as-presets)).
 
 `tests/web/effects.test.js` checks that `pack.js` holds an effect to its table in `effects.js`, every
 field of every effect refused out of its kind or range, and costs it with its own cost function; and

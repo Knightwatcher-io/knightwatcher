@@ -16,11 +16,11 @@ from collector import config, schema
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 S = schema.SCHEMA
-TYPES = {"integer", "number", "string", "boolean", "list"}
+TYPES = {"integer", "number", "string", "boolean", "list", "table"}
 SETTING_FIELDS = {
-    "key", "type", "items", "item_keys", "values", "acts", "min", "above", "max", "min_items",
-    "max_items", "problem", "default", "page_default", "required", "required_problem", "form",
-    "unit", "scope", "gui", "editable", "help",
+    "key", "type", "items", "item_keys", "keys", "values", "long", "acts", "min", "above", "max",
+    "min_items", "max_items", "problem", "default", "page_default", "required", "required_problem",
+    "form", "unit", "scope", "gui", "editable", "help",
 }  # fmt: skip
 ENV_FIELDS = {
     "name", "scope", "required", "default", "mount", "services", "example", "source", "field",
@@ -44,7 +44,10 @@ def example_keys() -> dict[str, set[str]]:
     with open(os.path.join(ROOT, "config.example.toml"), encoding="utf-8") as fh:
         text = fh.read()
     # A commented setting is "# key = value", "# [[device]]" or the header of a defaults table.
-    setting = re.compile(r"^# (\[\[device\]\]|\[(?:look|display|quiet|scenes)\]|[a-z_]+ = .+)$")
+    setting = re.compile(
+        r"^# (\[\[device\]\]|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]"
+        r"|[a-z_]+ = .+)$"
+    )
     lines = [m.group(1) if (m := setting.match(line)) else line for line in text.splitlines()]
     raw = tomllib.loads("\n".join(lines) + "\n")
     out: dict[str, set[str]] = {}
@@ -91,7 +94,10 @@ class SchemaShapeTest(unittest.TestCase):
                         self.assertIn(s["default"], s["values"], where)
                     if any(k in s for k in ("min", "above", "max")):
                         self.assertIsNone(schema.range_problem(s, s["default"]), where)
-                if "page_default" in s and s["page_default"] is not None:
+                if s["type"] == "table":
+                    self.assertTrue(s["keys"] and s["long"], where)
+                    self.assertEqual(s["page_default"], {}, where)
+                elif "page_default" in s and s["page_default"] is not None:
                     allowed = s.get("acts", s.get("values"))
                     if s["type"] == "list":
                         self.assertLessEqual(set(s["page_default"]), set(allowed), where)
@@ -151,6 +157,24 @@ class CollectorAgreesTest(unittest.TestCase):
             self.assertLessEqual(set(s["acts"]), set(config.PAGE_SCENES), s["key"])
             self.assertEqual(s["page_default"], own[s["key"]], s["key"])
             self.assertIn(s["page_default"], s["acts"], s["key"])
+
+    def test_long_names(self):
+        # The pattern the collector checks a long name with is the schema's, as the page's is.
+        self.assertEqual(config.LONG_NAME.pattern, S["long_name"])
+        longs = {
+            f"{t['table']}.{s['key']}" for t in S["tables"] for s in t["settings"] if s.get("long")
+        }
+        scenes = {f"scenes.{s['key']}" for s in schema.settings("scenes")}
+        self.assertEqual(
+            longs,
+            {"look.world", "look.monarch", "look.foe", "look.critter", "look.props", "look.overlay"}
+            | {"look.words", "look.items", "look.devices", "quiet.scenes"}
+            | scenes,
+        )
+        self.assertEqual(dict(config.LOOK_TABLES), {
+            "items": tuple(schema.setting("look", "items")["keys"]),
+            "devices": ("pi", "camera", "machine", "vm", "box"),
+        })  # fmt: skip
 
     def test_tables_and_defaults(self):
         self.assertEqual(

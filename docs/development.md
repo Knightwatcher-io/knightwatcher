@@ -222,6 +222,16 @@ world's words, held to the collector's own rule at the limits of 52 and 44, with
 when there are no parts or no words; the overlay's CSS custom properties against the fallbacks
 `display.css` gives them; that `main.js` writes the words with `textContent`; where the words and the
 overlay come from on a `dev` and a deployed page; and the demo's parts, texts and lines.
+`tests/web/worlds.test.js` checks worlds as presets: the medieval preset in the pack, complete,
+its outfit the base pack's defaults and its scenes those of the code, and what the pack library
+refuses in a preset; what a page that reads kw.medieval and a second world pack made for the run
+lists for the settings (`KW.world.catalogue`, `KW.settings.pageWorld`), and that with nothing set
+the display is the same with the preset as from code; the rule that resolves a world against the
+parts set beside it, at the same level, above and below, the `items` and `devices` tables key by key,
+and the faults of a world whose parts are not loaded; long names kept, standing for short ones, or
+ignored with their reasons; the store's `chooseWorld`, kept in the browser and sent to a server in
+one write; the engine's scene from the world's `homes`; and each kind of device drawn from the prop
+set chosen for it, from the base world's where that set cannot give it.
 `tests/web/state.test.js` also checks that `quiet_parts` and an event's `parts` are read as strings,
 or not at all. `tests/web/settings-schema.test.js` checks the page's lists of
 settings, scenes and conditions against the settings schema. `tests/web/shared-settings.test.js` checks the shared settings against a fake server: the first

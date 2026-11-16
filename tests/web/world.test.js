@@ -76,11 +76,12 @@ const CODE = 'knightwatcher: the scenes of kw.medieval are drawn from code: ';
 
 // ---- The pack ---------------------------------------------------------------------------------------
 
-test('the medieval world\'s pack reads clean: kw.medieval 0.5.0, format 1.1, the battlement, the camp, the yard, the cellar, the smithy, the house, the court and their stamps, the words and the overlay', () => {
+test('the medieval world\'s pack reads clean: kw.medieval 0.5.0, format 1.1, the battlement, the camp, the yard, the cellar, the smithy, the house, the court and their stamps, the words, the overlay and the preset', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual([r.id, r.version, plain(r.format), r.signed], ['kw.medieval', '0.5.0', [1, 1], false]);
-  assert.deepEqual(plain(r.provides), ['palettes', 'scenes', 'cast', 'props', 'words', 'overlays', 'stamps']);
+  assert.deepEqual(plain(r.provides), ['palettes', 'scenes', 'cast', 'props', 'words', 'overlays', 'stamps', 'worlds']);
+  assert.deepEqual(Object.keys(r.data.worlds), ['world.medieval']);
   assert.deepEqual(Object.keys(r.data.words), ['words.medieval']);
   assert.deepEqual(Object.keys(r.data.overlays), ['overlay.phosphor']);
   assert.deepEqual(Object.keys(r.data.scenes), ['battlement', 'camp', 'yard', 'cellar', 'smithy', 'house', 'court']);

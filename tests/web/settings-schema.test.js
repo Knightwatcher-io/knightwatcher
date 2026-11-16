@@ -45,6 +45,13 @@ test('the values each key may take are the schema\'s', () => {
   assert.deepEqual(SET.MINUTES, { least: minutes.min, most: minutes.max });
 });
 
+test('a long name is the schema\'s long_name, and the keys that take one are the schema\'s', () => {
+  assert.equal(SET.LONG.source, SCHEMA.long_name.replace('/', '\\/'));
+  for (const sec of ['look', 'quiet']) for (const s of settings(sec)) assert.equal(!!(SET.SCHEMA[sec][s.key].long), !!s.long, sec + '.' + s.key);
+  for (const s of settings('look').filter(x => x.type === 'table')) assert.deepEqual(SET.TABLES[s.key], s.keys, s.key);
+  assert.deepEqual(SET.KINDS, settings('look').find(s => s.key === 'devices').keys);
+});
+
 test('the page\'s own defaults are the schema\'s', () => {
   for (const sec of ['look', 'display', 'quiet']) {
     const want = {};

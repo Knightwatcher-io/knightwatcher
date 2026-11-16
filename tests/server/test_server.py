@@ -280,6 +280,26 @@ class SettingsApiTest(ServerCase):
         self.assertEqual(body["quiet"], {"scenes": ["camp", "yard"], "minutes": 5})
         self.assertEqual(body["scenes"], {"cpu_hot": "camp"})
 
+    def test_the_world_its_parts_and_long_names_are_taken(self):
+        look = {
+            "world": "kw.cyber/world.neon",
+            "monarch": "kw.medieval/patron.b",
+            "props": "medieval",
+            "items": {"main": "kw.base/main.arming"},
+            "devices": {"camera": "kw.cyber/props.neon"},
+        }
+        status, _, body = self.s.put(
+            {
+                "look": look,
+                "quiet": {"scenes": ["kw.cyber/roof"]},
+                "scenes": {"cpu_hot": "kw.x/lab"},
+            }
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(body["look"], look)
+        self.assertEqual(body["quiet"], {"scenes": ["kw.cyber/roof"]})
+        self.assertEqual(body["scenes"], {"cpu_hot": "kw.x/lab"})
+
     def test_the_store_is_a_file_written_whole_and_read_again_at_start(self):
         self.s.put({"look": {"monarch": "c"}, "display": {"helmet_indoors": True}})
         path = os.path.join(self.s.data, FILE)
@@ -322,6 +342,12 @@ class SettingsApiTest(ServerCase):
             ),
             ({"look": {"cape": "red"}}, '[look]\ncape = "red"\n'),
             ({"look": "teal"}, 'look = "teal"\n'),
+            ({"look": {"world": "neon"}}, '[look]\nworld = "neon"\n'),
+            (
+                {"look": {"items": {"head": "kw.base/head.a"}, "devices": {"pi": "Medieval"}}},
+                '[look.items]\nhead = "kw.base/head.a"\n[look.devices]\npi = "Medieval"\n',
+            ),
+            ({"look": {"devices": "medieval"}}, '[look]\ndevices = "medieval"\n'),
         ]
         for body, toml in cases:
             with self.subTest(body=body):

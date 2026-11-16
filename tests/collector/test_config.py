@@ -3,6 +3,7 @@ import os
 import re
 import secrets
 import tempfile
+import tomllib
 import unittest
 
 from collector.config import (
@@ -580,7 +581,10 @@ FULL_LOOK = {
     "monarch_robe": "wine",
 }
 EMPTY = {"look": {}, "display": {}, "quiet": {}, "scenes": {}}
-SCENES_ALLOWED = "use battlement, camp, house, yard, cellar, smithy or court"
+QUIET_ALLOWED = 'use battlement, camp, house or yard, or a long name, "<pack>/<id>"'
+SCENES_ALLOWED = (
+    'use battlement, camp, house, yard, cellar, smithy or court, or a long name, "<pack>/<id>"'
+)
 
 
 class DefaultsConfigTest(unittest.TestCase):
@@ -677,7 +681,7 @@ class DefaultsConfigTest(unittest.TestCase):
         )
         self.assertProblems(
             {"look": {"monarch": "A", "monarch_skin": "Warm"}},
-            'look.monarch: unknown value "A"; use a, b or c',
+            'look.monarch: unknown value "A"; use a, b or c, or a long name, "<pack>/<id>"',
             'look.monarch_skin: unknown value "Warm"; use fair, warm, golden, tan, brown or deep',
         )
         self.assertProblems(
@@ -716,7 +720,7 @@ class DefaultsConfigTest(unittest.TestCase):
             )
 
     def test_quiet_scenes(self):
-        listed = "list one or more of battlement, camp, house or yard"
+        listed = "list one or more of battlement, camp, house or yard, or long names"
         self.assertProblems({"quiet": {"scenes": []}}, f"quiet.scenes: {listed}")
         self.assertProblems({"quiet": {"scenes": "camp"}}, f"quiet.scenes: {listed}")
         self.assertProblems(
@@ -724,12 +728,21 @@ class DefaultsConfigTest(unittest.TestCase):
         )
         self.assertProblems(
             {"quiet": {"scenes": ["court", "camp", 3]}},
-            'quiet.scenes: unknown scene "court"; use battlement, camp, house or yard',
-            "quiet.scenes: unknown scene 3; use battlement, camp, house or yard",
+            f'quiet.scenes: unknown scene "court"; {QUIET_ALLOWED}',
+            f"quiet.scenes: unknown scene 3; {QUIET_ALLOWED}",
         )
         self.assertEqual(
             problems({"quiet": {"scenes": ["court"], "minutes": 5}}),
-            ['quiet.scenes: unknown scene "court"; use battlement, camp, house or yard'],
+            [f'quiet.scenes: unknown scene "court"; {QUIET_ALLOWED}'],
+        )
+        # A long name is checked for its form alone, and is listed once like a short one.
+        scenes = ["kw.cyber/scene.roof", "camp", "kw.medieval/house"]
+        self.assertEqual(build({"quiet": {"scenes": scenes}}).defaults["quiet"], {"scenes": scenes})
+        self.assertProblems(
+            {"quiet": {"scenes": ["kw.cyber/roof", "kw.cyber/roof", "Kw/x", "kw.cyber/"]}},
+            'quiet.scenes: "kw.cyber/roof" listed twice',
+            f'quiet.scenes: unknown scene "Kw/x"; {QUIET_ALLOWED}',
+            f'quiet.scenes: unknown scene "kw.cyber/"; {QUIET_ALLOWED}',
         )
 
     def test_scenes(self):
@@ -742,6 +755,9 @@ class DefaultsConfigTest(unittest.TestCase):
                 )
         full = {"attack": "camp", "disk_full": "yard", "pi_silent": "battlement", "night": "camp"}
         self.assertEqual(build({"scenes": full}).defaults["scenes"], full)
+        # A long name, checked for its form alone.
+        long = {"cpu_hot": "kw.cyber/scene.lab", "attack": "kw.medieval/camp"}
+        self.assertEqual(build({"scenes": long}).defaults["scenes"], long)
 
     def test_each_bad_scenes_entry(self):
         self.assertProblems(
@@ -770,7 +786,81 @@ class DefaultsConfigTest(unittest.TestCase):
         self.assertProblems(
             {"look": {"skin": "warm", "plume": "pink"}, "quiet": {"scenes": [], "minutes": 5}},
             'look.plume: unknown value "pink"; use red, white, gold, royal, green or violet',
-            "quiet.scenes: list one or more of battlement, camp, house or yard",
+            "quiet.scenes: list one or more of battlement, camp, house or yard, or long names",
+        )
+
+    def test_the_world_and_its_parts(self):
+        # The short names are a closed list; a long name is checked for its form alone, since the
+        # collector knows nothing of packs.
+        look = {
+            "world": "medieval",
+            "monarch": "kw.medieval/patron.b",
+            "foe": "goblin",
+            "critter": "kw.cyber/critter.bug",
+            "props": "medieval",
+            "overlay": "kw.cyber/overlay.neon",
+            "words": "kw.cyber-2.x/words.neon-3",
+        }
+        self.assertEqual(build({"look": look}).defaults["look"], look)
+        self.assertEqual(
+            build({"look": {"world": "kw.cyber/world.neon", "tabard": "blue"}}).defaults["look"],
+            {"world": "kw.cyber/world.neon", "tabard": "blue"},
+        )
+        long = 'or a long name, "<pack>/<id>"'
+        self.assertProblems(
+            {"look": {"world": "neon", "foe": "troll", "critter": 3, "props": "Medieval"}},
+            f'look.world: unknown value "neon"; use medieval, {long}',
+            f'look.foe: unknown value "troll"; use goblin, {long}',
+            f"look.critter: expected text; use fly, {long}",
+            f'look.props: unknown value "Medieval"; use medieval, {long}',
+        )
+        # the form: a pack id of two to 32 characters and up to three dotted parts, a slash, and
+        # an id starting with a letter, of up to 48 characters
+        bad = ("k/x", "kw.cyber/", "/world", "kw.cyber/World", "kw.a.b.c.d/x", "kw/x/y")
+        for name in (*bad, "kw/" + "x" * 49):
+            self.assertProblems(
+                {"look": {"overlay": name}},
+                f'look.overlay: unknown value "{name}"; use medieval, {long}',
+            )
+        for good in ("kw/x", "kw.a.b.c/x", "kw/" + "x" * 48, "kw-1.x2/a.b-c"):
+            self.assertEqual(build({"look": {"overlay": good}}).defaults["look"], {"overlay": good})
+
+    def test_the_items_and_devices_tables(self):
+        items = {"main": "kw.base/main.arming", "helmet": "kw.cyber/helm.visor"}
+        devices = {"pi": "medieval", "camera": "kw.cyber/props.neon"}
+        c = build({"look": {"items": items, "devices": devices}})
+        self.assertEqual(c.defaults["look"], {"items": items, "devices": devices})
+        # [look.items] and [look.devices] in config.toml are these tables
+        raw = tomllib.loads(
+            '[look]\nworld = "medieval"\n[look.items]\nmain = "kw.base/main.arming"\n'
+            '[look.devices]\ncamera = "medieval"\n'
+        )
+        self.assertEqual(
+            build(raw).defaults["look"],
+            {
+                "world": "medieval",
+                "items": {"main": "kw.base/main.arming"},
+                "devices": {"camera": "medieval"},
+            },
+        )
+        long = 'or a long name, "<pack>/<id>"'
+        self.assertProblems(
+            {
+                "look": {
+                    "items": {"main": "arming", "head": "kw.base/head.a", "off": 1},
+                    "devices": "medieval",
+                }
+            },
+            "look.items.head: unknown key; use main, off, helmet, plume, hair, torso, pauldrons, "
+            "arms, gauntlets, legs, boots or back",
+            'look.items.main: unknown value "arming"; use a long name, "<pack>/<id>"',
+            'look.items.off: expected text; use a long name, "<pack>/<id>"',
+            "look.devices: expected a table",
+        )
+        self.assertProblems(
+            {"look": {"devices": {"tv": "medieval", "vm": "neon"}}},
+            "look.devices.tv: unknown key; use pi, camera, machine, vm or box",
+            f'look.devices.vm: unknown value "neon"; use medieval, {long}',
         )
 
     def test_an_unknown_key_and_tables_that_are_not_tables(self):
@@ -876,7 +966,10 @@ class LoadTest(unittest.TestCase):
             example = fh.read()
         # A commented setting is "# key = value", "# [[device]]" or the header of a defaults
         # table; a commented note is not.
-        setting = re.compile(r"^# (\[\[device\]\]|\[(?:look|display|quiet|scenes)\]|[a-z_]+ = .+)$")
+        setting = re.compile(
+            r"^# (\[\[device\]\]|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]"
+            r"|[a-z_]+ = .+)$"
+        )
         lines = [
             m.group(1) if (m := setting.match(line)) else line for line in example.splitlines()
         ]
@@ -894,6 +987,7 @@ class LoadTest(unittest.TestCase):
             c.defaults,
             {
                 "look": {
+                    "world": "medieval",
                     "build": "a",
                     "weapon": "greatsword",
                     "skin": "warm",
@@ -915,6 +1009,13 @@ class LoadTest(unittest.TestCase):
                     "monarch_skin": "warm",
                     "monarch_hair": "brown",
                     "monarch_robe": "wine",
+                    "foe": "goblin",
+                    "critter": "fly",
+                    "props": "medieval",
+                    "overlay": "medieval",
+                    "words": "medieval",
+                    "items": {"main": "kw.base/main.arming"},
+                    "devices": {"camera": "medieval"},
                 },
                 "display": {"headline": "medium", "clock": 24, "helmet_indoors": False},
                 "quiet": {"scenes": ["battlement", "camp", "house", "yard"], "minutes": 10},

@@ -89,11 +89,13 @@
      answers; from disk there is no server to ask. */
   const fromDisk = location.protocol === 'file:';
   const store = KW.settings.create({ hooks: HOOK, storage: () => window.localStorage, pack: () => KW.knight.basePack(), cache: !fromDisk });
-  let lookKey = '{}', twelve = false;
+  let lookKey = '{}', kindsKey = '', twelve = false;
   /* Puts what the settings say into the knight, the options and the clock. Returns whether the
      knight's look changed. */
   function settle() {
     const r = store.now(), d = r.values.display, look = KW.settings.knightLook(r), key = JSON.stringify(look);
+    // the devices, each kind from the prop set the settings choose for it (KW.world.useKinds)
+    if (KW.world) { const kinds = KW.settings.engineInput(r, null, 0).kinds, kk = JSON.stringify(kinds); if (kk !== kindsKey) { kindsKey = kk; KW.world.useKinds(kinds); E.invalidate(); } }
     if (!fixed.has('h')) S.h = d.helmet_indoors ? 'on' : 'auto';
     if (!fixed.has('hs')) S.hs = { small: 's', medium: 'm', large: 'l' }[d.headline];
     twelve = d.clock === 12;

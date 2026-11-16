@@ -6,8 +6,30 @@
     "version": "0.5.0",
     "format": [1, 1],
     "licence": "Part of Knightwatcher, on the same terms as the rest of the project.",
-    "provides": ["palettes", "scenes", "cast", "props", "words", "overlays", "stamps"],
+    "provides": ["palettes", "scenes", "cast", "props", "words", "overlays", "stamps", "worlds"],
     "palettes": { "house": { "screen": "#7fe9ff" } },
+    "worlds": {
+      "world.medieval": {
+        "name": "Medieval",
+        "body": "kw.base/build.a",
+        "outfit": {
+          "items": { "legs": "kw.base/legs.plate", "boots": "kw.base/boots.leather", "torso": "kw.base/torso.tabard", "hair": "kw.base/hair.short",
+            "plume": "kw.base/plume.crest", "helmet": "kw.base/helm.open", "pauldrons": "kw.base/pauldrons.plate", "arms": "kw.base/arms.plate",
+            "gauntlets": "kw.base/gauntlets.plate", "main": "kw.base/main.greatsword" },
+          "swatches": { "skin": "kw.base/warm", "hair": "kw.base/brown", "tabard": "kw.base/blue", "plume": "kw.base/red" }
+        },
+        "scenes": {
+          "quiet": ["battlement", "camp", "house", "yard"],
+          "for": { "attack": "battlement", "wan_down": "battlement", "container_unhealthy": "house", "disk_full": "cellar", "backup_overdue": "house",
+            "pi_silent": "house", "cpu_hot": "yard", "ssh_session": "court", "updating": "smithy", "streaming": "house", "night": "house" }
+        },
+        "cast": { "patron": "patron.a", "foe": "foe.goblin", "critter": "critter.fly" },
+        "props": "props.medieval",
+        "overlay": "overlay.phosphor",
+        "words": "words.medieval",
+        "picture": "camp"
+      }
+    },
     "words": {
       "words.medieval": {
         "name": "Medieval",
@@ -2925,6 +2947,5 @@
         "seat": { "x": 820, "y": 505, "bubble": [672, 180], "turn": 3200, "mouth": 230 }
       }
     }
-  },
-  "sig": { "alg": "ed25519", "kid": "kw1", "value": "+LLhvK7BBEYH0L/zbxNThxSgEX1BPvlYewCPQRs0E73WbfSHvXB1V634xDzFdO2F/7to4AFW4dNIkBryDBWRCw==" }
+  }
 }

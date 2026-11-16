@@ -27,12 +27,14 @@ const DOC_MARKS = ['<!-- settings-reference:start -->\n', '<!-- settings-referen
 
 /* ---- The page's copy ----------------------------------------------------------------------- */
 
-/* One setting as the page reads it: values (a boolean takes true or false), a range, and the
-   page's own default as page. */
+/* One setting as the page reads it: values (a boolean takes true or false), a range, long when it
+   takes a long name as well, the keys of a table, and the page's own default as page. */
 function pageSetting(s) {
   const o = {};
   if (s.type === 'boolean') o.values = [true, false];
   else if (s.values) o.values = s.values;
+  if (s.long) o.long = true;
+  if (s.type === 'table') o.keys = s.keys;
   if ('min' in s) o.min = s.min;
   if ('max' in s) o.max = s.max;
   o.page = s.page_default === undefined ? null : s.page_default;
@@ -42,7 +44,7 @@ function pageSetting(s) {
 /* A value on one line, as the page's own code writes it. */
 function oneLine(v) {
   if (Array.isArray(v)) return '[' + v.map(oneLine).join(', ') + ']';
-  if (v !== null && typeof v === 'object') return '{ ' + Object.keys(v).map(k => k + ': ' + oneLine(v[k])).join(', ') + ' }';
+  if (v !== null && typeof v === 'object') return Object.keys(v).length ? '{ ' + Object.keys(v).map(k => k + ': ' + oneLine(v[k])).join(', ') + ' }' : '{}';
   return typeof v === 'string' && /^[\w .+-]*$/.test(v) ? "'" + v + "'" : JSON.stringify(v);
 }
 
@@ -83,21 +85,24 @@ function rangeText(s) {
   if (max !== undefined) return 'at most ' + max;
   return '';
 }
+/* A long name, as the reference names it. */
+const LONG = 'a long name, `"<pack>/<id>"`';
 function valuesText(s) {
-  if (s.acts) return 'any scene; the page acts it in ' + or(s.acts.map(v => code(toml(v))));
+  if (s.acts) return 'any scene, or ' + LONG + '; the page acts it in ' + or(s.acts.map(v => code(toml(v))));
   if (s.type === 'boolean') return '`true` or `false`';
-  if (s.values && s.type !== 'list') return or(s.values.map(v => code(toml(v))));
+  if (s.type === 'table') return 'a table whose keys are ' + or(s.keys.map(code)) + ', each ' + (s.values.length ? or(s.values.map(v => code(toml(v)))) + ' or ' : '') + LONG;
+  if (s.values && s.type !== 'list') return or(s.values.map(v => code(toml(v)))) + (s.long ? ', or ' + LONG : '');
   if (s.type === 'integer' || s.type === 'number') {
     const noun = s.unit === 'percent' ? 'a percentage' : (s.type === 'integer' ? 'a whole number' : 'a number') + (s.unit ? ' of ' + s.unit : '');
     const range = s.form || rangeText(s);
     return noun + (range ? ', ' + range : '');
   }
-  if (s.type === 'list') return (s.form || 'a list') + (s.values ? ': ' + or(s.values.map(v => code(toml(v)))) : '');
+  if (s.type === 'list') return (s.form || 'a list') + (s.values ? ': ' + or(s.values.map(v => code(toml(v)))) : '') + (s.long ? ', or long names, `"<pack>/<id>"`' : '');
   return s.form || 'text';
 }
 function defaultText(s) {
   if (s.required) return 'required';
-  if (s.page_default !== undefined) return s.page_default === null ? 'none' : 'none; the page\'s own is ' + code(toml(s.page_default, s.type));
+  if (s.page_default !== undefined) return s.page_default === null || s.type === 'table' ? 'none' : 'none; the page\'s own is ' + code(toml(s.page_default, s.type));
   if (s.default === null || s.default === undefined) return 'none';
   return code(toml(s.default, s.type));
 }
