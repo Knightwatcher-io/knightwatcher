@@ -16,6 +16,9 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# the browser runs within the ceiling of tools/capped.sh
+[[ -n "${KW_CAPPED:-}" ]] || exec "$root/tools/capped.sh" "$0" "$@"
+
 # name|address hash, or name|address hash|width,height. Every entry hides the review bar and freezes
 # time.
 SHOTS=(

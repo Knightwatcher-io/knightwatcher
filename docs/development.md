@@ -49,6 +49,7 @@ tools/
                      docs/configuration.md
   icons.sh           regenerates the favicon and the app icons from the drawings in icons/
   shots.sh           regression screenshots of the page
+  capped.sh          runs a command within a ceiling on CPU and memory, for the checks
   check-private.sh   the check that no private detail is tracked
 docs/                this documentation
 compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
@@ -88,11 +89,20 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 
 ## Checks
 
+The checks and the screenshots are run inside a ceiling on CPU and memory, `tools/capped.sh`, so
+that they never crowd out the services on the machine they run on. The page's tests alone would
+otherwise take a core for each test file at once, and the scene records' file grows to about 1 GB.
+Under a systemd user session the wrapper runs its command in a transient scope with `CPUQuota=400%`
+(four cores) and `MemoryMax=4G`, at `nice` 10; without systemd it lowers the priority alone.
+`KW_CPU` and `KW_MEM` change the ceiling, for example `KW_CPU=200% tools/capped.sh ...`.
+`tools/shots.sh` puts itself inside the same ceiling, and `node --test` is given
+`--test-concurrency=2`, so at most two test files run at once.
+
 The collector and the server:
 
 ```bash
-python3 -m unittest discover -s tests/collector -v
-python3 -m unittest discover -s tests/server -v
+tools/capped.sh python3 -m unittest discover -s tests/collector -v
+tools/capped.sh python3 -m unittest discover -s tests/server -v
 uvx ruff check collector server tests && uvx ruff format --check collector server tests
 docker build -t knightwatcher:dev .
 docker compose config -q
@@ -116,8 +126,8 @@ The page:
 
 ```bash
 for f in $(find web/js web/packs web/admin -name '*.js'); do node --check "$f" || exit 1; done
-node --test tests/web/
-node --test tests/tools/
+tools/capped.sh node --test --test-concurrency=2 tests/web/
+tools/capped.sh node --test --test-concurrency=2 tests/tools/
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-ref    # before a change
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-new    # after it
 tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
