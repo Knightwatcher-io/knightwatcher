@@ -117,7 +117,19 @@ and `hip` move no anchor. The hands and the weapon follow the build too: see the
 `KW.knight.rig(o)` from outside takes the same build when none is passed, so whatever measures the
 knight from outside measures the knight drawn. `engine.js` does: `bladeOf` finds the blade on the
 rig, and through it `foeGaps`, `contactQ` and the goblin's plan work out where the blade meets the
-goblin on the build drawn (see [Modes](#modes)). On the code path the knight is always the present
+goblin on the build drawn (see [Modes](#modes)). The weapon is measured by its blade's outline, the
+`blade` with 4 pixels along each edge and a little more at the point, unless its drawing is wider
+than that beyond the blade's middle by a pixel or more. Such a weapon has a head the outline does
+not describe, and `KW.knight.rest.head()` gives the pieces its `main` list draws past the hand, read
+once for each look by drawing the list on a frame of its own: each shape as the exact circle or
+convex polygon it fills, an ellipse, a rounded rectangle or a pixel shape as the box around it, and
+a shape lying wholly inside another left out. The engine then meets the goblin with the drawing
+itself, by the distance from each point of the goblin's crown to the nearest piece. Only the mace
+has a head: its flanges reach 27 across its frame where its blade's outline gives 20, its knob
+reaches 151 along it, past the outline's 143, and its haft is 7 across. Measured as a straight
+blade, its swing stopped on the empty corners of that outline, up to 13 pixels short of the goblin,
+or let the flanges into it by up to 7. The swords' drawings past the middle are exactly as wide as
+their outlines, so they are measured as before. On the code path the knight is always the present
 knight. `rig(o, build)` takes another build's measurements, which only the tests pass.
 
 **The grip** is in the result's `grip` and places the hands and `main`:
@@ -573,8 +585,9 @@ hides the review bar and drives the display:
   passes through it; nothing gory is shown. After the bounce the knight returns to the stance; where
   the swing comes back low (the swings to the left, `KW.knight.ownReturn`), the return follows the
   swing's own, offset by where the bounce left the blade, so the blade does not pass the face again. The goblin stands where the weapon the knight holds
-  reaches it, the greatsword or the arming sword alike, on whichever build is drawn, and does not
-  come where none can; the
+  reaches it, the greatsword, the longsword, the arming sword or the mace alike, on whichever build
+  is drawn, and does not come where none can (the mace by its drawn head: see
+  [The knight's rig](#the-knights-rig)); the
   burst on the pot lasts the 80 ms the blade bounces off it. A foe is described in `KW.props.FOES` and played by
   the engine's foe player from its tables (`KW.engine.foe.FOE`), so a later foe reuses the
   entrance, the strike and the exit. A `seq` lower than the
@@ -1174,14 +1187,23 @@ foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches 
 the entrance runs in order and the poof is over within the event's 3.4 seconds; that the goblin
 stands in the scene's `foeZone`, clear of the knight, the pie and every device on the
 ground, and does not come when there is no room; and, for the greatsword from the base pack and
-from code and for the arming sword, at every spot the knight strolls to in both scenes, that the
-goblin stands within the weapon's reach, that the blade comes within 3 pixels of its crown at the
-hit and of a drawn pixel of its sprite, that the hit pose plays only from that moment, and that the
-blade never enters any drawn pixel of the goblin by more than 2. The same check runs on Broad and
-Slim with each weapon. On every build and with each weapon the goblin comes wherever it comes on
-Classic, at the same spot, and is struck within 12 ms of Classic's hit; at the knight's first spot
-the hits are 1662, 1664 and 1661 ms with the greatsword on Classic, Broad and Slim, and with the
-sword and shield 1645, 1651 and 1642 on the battlement and 1711, 1713 and 1711 at the camp. The
+from code, the arming sword and the mace, at every spot the knight strolls to in both scenes, that
+the goblin stands within the weapon's reach, that the blade comes within 3 pixels of its crown at
+the hit and of a drawn pixel of its sprite, that the hit pose plays only from that moment, and that
+the blade never enters the goblin by more than 2. A sword is measured by its blade's outline and
+kept out of every drawn pixel of the goblin through the whole strike. The mace is measured by its
+drawn outline, read from the base pack's own shapes rather than from the engine, and kept out of
+the goblin's crown, the planned outline, laid where the goblin is drawn at each moment up to and
+including the hit. Its head meets the goblin where the swords do not, by the near ear at the camp
+beside a device in `g3`, and there the hit pose flings the near hand above the crown and the bounce
+brings a flange back across the ear's point, so the drawn goblin and the bounce are left out of the
+mace's check. The same check runs on Broad and Slim with each weapon. On every build and with each
+weapon the goblin comes wherever it comes on Classic, at the same spot, and is struck within 12 ms
+of Classic's hit, or 16 with the mace, which beside `g3` meets the goblin at the end of its reach,
+where each build changes which point of a flange meets it first (14 ms at most); at the knight's
+first spot the hits are 1662, 1664 and 1661 ms with the greatsword on Classic, Broad and Slim, with
+the sword and shield 1645, 1651 and 1642 on the battlement and 1711, 1713 and 1711 at the camp, and
+with the mace and shield 1644, 1649 and 1641 on the battlement and 1709, 1712 and 1708 at the camp. The
 blade `bladeOf` measures is the rig's on the look's build, its grip raised by the build's height,
 and the present knight's on the code path. A blade too short to reach it anywhere keeps the goblin
 away.

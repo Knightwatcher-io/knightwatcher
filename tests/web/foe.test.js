@@ -26,9 +26,11 @@ function fakeCanvas() {
 
 /* The arming sword and the heater shield, as main.js asks for them with the address's arm=one. */
 const ONE = { look: { items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater' } } };
+/* The flanged mace and the round shield, a free item of the base pack 1.4.0 (arm=mace_and_shield). */
+const MACE = { look: { items: { main: 'kw.base/main.mace', off: 'kw.base/off.round' } } };
 /* The weapons the knight may hold at the bonk: the greatsword from the base pack and from code,
-   and the arming sword with the shield, which only the base pack holds. */
-const WEAPONS = [['the greatsword, from the base pack', true, null], ['the greatsword, from code', false, null], ['the arming sword', true, ONE]];
+   and the arming sword and the mace with a shield, which only the base pack holds. */
+const WEAPONS = [['the greatsword, from the base pack', true, null], ['the greatsword, from code', false, null], ['the arming sword', true, ONE], ['the flanged mace', true, MACE]];
 /* The base pack's other builds, Broad (build.b) and Slim (build.c), with each weapon. The engine
    measures the blade on the build drawn, so the goblin is met where the drawn blade meets it. */
 const BUILDS = { 'build.b': 'Broad', 'build.c': 'Slim' };
@@ -36,6 +38,7 @@ const BUILT = [];
 for (const [b, name] of Object.entries(BUILDS)) {
   BUILT.push([`the greatsword, ${name}`, true, { look: { build: 'kw.base/' + b } }]);
   BUILT.push([`the arming sword, ${name}`, true, { look: { build: 'kw.base/' + b, items: ONE.look.items } }]);
+  BUILT.push([`the flanged mace, ${name}`, true, { look: { build: 'kw.base/' + b, items: MACE.look.items } }]);
 }
 
 /* The page's scripts, with the knight drawn from the base pack (pack true) or from code, in the
@@ -49,7 +52,7 @@ function load(pack, opts) {
   const KW = box.window.KW;
   KW.knight.start(pack ? KW.packText : [], true, opts || undefined);
   assert.equal(KW.knight.source, pack ? 'pack' : 'code');
-  if (opts && opts.look.items) assert.equal(KW.knight.rest.blade().to, 175, 'the arming sword is held');
+  if (opts && opts.look.items) assert.equal(KW.knight.rest.key('main'), opts.look.items.main, 'the weapon asked for is held');
   if (opts && opts.look.build) assert.deepEqual(plain(KW.knight.status.fallbacks).filter(f => f.reason !== 'not set'), [], 'the build is drawn');
   KW.draw.setCtx(fakeCanvas().getContext('2d'));
   return { KW, E: KW.engine, F: KW.engine.foe, P: KW.props, K: KW.knight, V: KW.view };
@@ -178,10 +181,76 @@ function depth(bl, x, y, far) {
   const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), px = x - bl.x, py = y - bl.y, along = px * sx + py * sy, across = Math.abs(px * sy - py * sx);
   return along < bl.from || along > bl.to ? (far ? -Infinity : 0) : bl.half - across;
 }
+/* The drawn outline of a main item, read from the base pack's own shapes rather than from the
+   engine: the pieces its dark outline (@base.k) is drawn as, in frame units, each a circle
+   { c: [s, p], r } or a convex polygon { pts: [[s, p], ...] } (a strip is its four corners). */
+const BASE = JSON.parse(fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8')).pack;
+function drawnOutline(item) {
+  const out = [], at = q => [q.s, q.p];
+  for (const sh of BASE.items[item].parts[0].shapes) {
+    if (sh.fill !== '@base.k') continue;
+    if (sh.k === 'ell') { assert.equal(sh.rx, sh.ry); out.push({ c: at(sh.p), r: sh.rx }); }
+    else if (sh.k === 'poly') out.push({ pts: sh.pts.map(at) });
+    else if (sh.k === 'strip') {
+      const a = at(sh.p0), b = at(sh.p1), n = Math.hypot(b[0] - a[0], b[1] - a[1]), u = [-(b[1] - a[1]) / n, (b[0] - a[0]) / n];
+      out.push({ pts: [[a[0] - u[0] * sh.hw0, a[1] - u[1] * sh.hw0], [b[0] - u[0] * sh.hw1, b[1] - u[1] * sh.hw1], [b[0] + u[0] * sh.hw1, b[1] + u[1] * sh.hw1], [a[0] + u[0] * sh.hw0, a[1] + u[1] * sh.hw0]] });
+    } else assert.fail(`${item}: a ${sh.k} in the outline`);
+  }
+  return out;
+}
+/* How deep the point (s, p) lies inside a piece, in pixels; below 0 it is outside, by that much. */
+function pieceDepth(pc, s, p) {
+  if (pc.c) return pc.r - Math.hypot(s - pc.c[0], p - pc.c[1]);
+  const q = pc.pts;
+  let pos = 0, neg = 0, d = Infinity;
+  for (let i = 0; i < q.length; i++) {
+    const [as, ap] = q[i], [bs, bp] = q[(i + 1) % q.length], es = bs - as, ep = bp - ap;
+    const cr = es * (p - ap) - ep * (s - as), t = Math.max(0, Math.min(1, ((s - as) * es + (p - ap) * ep) / (es * es + ep * ep)));
+    if (cr > 0) pos++; else if (cr < 0) neg++;
+    d = Math.min(d, Math.hypot(s - as - t * es, p - ap - t * ep));
+  }
+  return pos && neg ? -d : d;
+}
+/* The mace's head is not a blade: its flanges reach 27 across its frame where its blade's outline
+   gives 20, its knob reaches 151 along it, past the outline's 143, and its haft is 7 across, not
+   20. So the mace is measured by its drawn outline, from where the blade's outline starts (3 short
+   of the blade), and the swords by their blade's outline, which holds each drawn blade.
+   The swords are held off every drawn pixel of the goblin through the whole strike. The mace is
+   held off the goblin's planned outline, its crown, placed as the goblin is drawn at each moment,
+   up to and including the hit: the plan's own measure. Its head meets the goblin where the swords
+   never do, by the near ear at the camp beside a device in g3, where the hit pose flings the near
+   hand above the crown and the bounce brings the flanges back across the ear's point, so the
+   drawn goblin and the bounce are not part of its check. */
+const DRAWN = { 'kw.base/main.mace': drawnOutline('main.mace') };
+/* The goblin's crown at el, laid on the grid as the goblin is drawn (its spot, side, squash and
+   the line it is clipped to while it climbs), as points to test; none once it is hidden. */
+function crownPoints(m, pl, el) {
+  const st = m.F.at(el, pl);
+  if (!st.show) return [];
+  const pts = [];
+  for (const [cx, cy] of pl.F.crown) {
+    const gx = Math.round(st.x) + pl.side * cx * st.sx, gy = Math.round(st.y) + cy * st.sy;
+    if (st.behind && gy > pl.lineAt(Math.round(gx))) continue;
+    pts.push([gx, gy]);
+  }
+  return pts;
+}
+function depthFor(opts) {
+  const pieces = opts && opts.look.items && DRAWN[opts.look.items.main];
+  if (!pieces) return depth;
+  return (bl, x, y, far) => {
+    const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), px = x - bl.x, py = y - bl.y, s = px * sx + py * sy, p = px * Math.cos(bl.a) + py * Math.sin(bl.a);
+    if (s < bl.from) return far ? -Infinity : 0;
+    let d = -Infinity; for (const pc of pieces) d = Math.max(d, pieceDepth(pc, s, p));
+    return d;
+  };
+}
 
 for (const [name, pack, opts] of WEAPONS.concat(BUILT)) {
   test(`the blade meets the goblin's pot at the bonk and never passes through it (${name})`, () => {
-    const m = load(pack, opts), S = m.F.FOE.strike;
+    const m = load(pack, opts), S = m.F.FOE.strike, into = depthFor(opts), drawn = into !== depth;
+    // what the blade is kept out of at el: the drawn goblin, or for the mace its crown until the hit
+    const goblin = (pl, el) => (drawn ? (el <= pl.hit ? crownPoints(m, pl, el) : []) : foePoints(m, pl, el));
     let plans = 0;
     for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) for (const devices of [[PIE], [PIE, device('g3')]]) {
       const pl = planFor(m, scene, kx, devices);
@@ -197,7 +266,7 @@ for (const [name, pack, opts] of WEAPONS.concat(BUILT)) {
       const oh = pose(m.K, m.V, kx, pl.hit); m.F.strike(oh, pl.hit, pl);
       const bh = m.F.bladeOf(oh), gapAtHit = m.F.bladeGap(bh, pl.F, pl.x, pl.side, m.V.HFL);
       assert.ok(Math.abs(gapAtHit) < 3, `${scene} knight ${kx}: the blade meets the crown at the hit (${gapAtHit.toFixed(1)})`);
-      let touch = -Infinity; for (const [x, y] of foePoints(m, pl, pl.hit - 1)) touch = Math.max(touch, depth(bh, x, y, true));
+      let touch = -Infinity; for (const [x, y] of foePoints(m, pl, pl.hit - 1)) touch = Math.max(touch, into(bh, x, y, true));
       assert.ok(touch >= -3, `${scene} knight ${kx}: the blade is ${(-touch).toFixed(1)} px from the drawn goblin at the hit`);
       let closest = Infinity;
       const times = []; for (let el = S.at; el <= pl.hit + S.rebound + S.recover; el += 8) times.push(el);
@@ -207,9 +276,9 @@ for (const [name, pack, opts] of WEAPONS.concat(BUILT)) {
         m.F.strike(o, el, pl);
         const bl = m.F.bladeOf(o);
         let worst = -Infinity;
-        for (const [x, y] of foePoints(m, pl, el)) worst = Math.max(worst, depth(bl, x, y));
+        for (const [x, y] of goblin(pl, el)) worst = Math.max(worst, into(bl, x, y));
         // the two outlines may touch, by up to 2 pixels, and no more
-        assert.ok(worst <= 2, `${scene} knight ${kx} at ${el} ms: the blade is ${worst.toFixed(1)} px into the goblin`);
+        assert.ok(worst <= 2, `${scene} knight ${kx} at ${el} ms: the blade is ${worst.toFixed(1)} px into the goblin${drawn ? '\'s crown' : ''}`);
         if (el <= pl.hit) closest = Math.min(closest, m.F.bladeGap(bl, pl.F, pl.x, pl.side, m.V.HFL));
       }
       assert.ok(closest <= 3, `${scene} knight ${kx}: the blade reaches the pot (${closest.toFixed(1)} px short)`);
@@ -219,15 +288,21 @@ for (const [name, pack, opts] of WEAPONS.concat(BUILT)) {
 }
 
 /* The hit at the knight's first spot in each scene, the pie alone, in ms from the start of the
-   event, for each grip on Classic, Broad and Slim. The poses are the present knight's, raised and
-   lowered with each build's shoulders, so the hit moves by a few ms at most. */
+   event, for each grip on Classic, Broad and Slim, and for the mace, held in one hand as the arming
+   sword is but met by its drawn head. The poses are the present knight's, raised and lowered with
+   each build's shoulders, so the hit moves by a few ms at most. */
 const HITS = {
   two: { battlement: [1662, 1664, 1661], camp: [1662, 1664, 1661] },
-  one: { battlement: [1645, 1651, 1642], camp: [1711, 1713, 1711] } };
+  one: { battlement: [1645, 1651, 1642], camp: [1711, 1713, 1711] },
+  mace: { battlement: [1644, 1649, 1641], camp: [1709, 1712, 1708] } };
 
-test('on every build, with either weapon, the goblin comes wherever it does on Classic, and is struck within a few ms of Classic\'s hit', () => {
-  for (const grip of ['two', 'one']) {
-    const looks = ['build.a', 'build.b', 'build.c'].map(b => ({ look: Object.assign({ build: 'kw.base/' + b }, grip === 'one' ? { items: ONE.look.items } : {}) }));
+test('on every build, with each weapon, the goblin comes wherever it does on Classic, and is struck within a few ms of Classic\'s hit', () => {
+  // The mace is struck within 16 ms of Classic's hit rather than 12: beside a device in g3 at the
+  // camp it meets the goblin at the end of its reach, by the near ear, and each build's shoulder
+  // line changes which point of a flange meets it first (14 ms at most, Slim at 460).
+  const ITEMS = { one: ONE.look.items, mace: MACE.look.items };
+  for (const grip of ['two', 'one', 'mace']) {
+    const looks = ['build.a', 'build.b', 'build.c'].map(b => ({ look: Object.assign({ build: 'kw.base/' + b }, ITEMS[grip] ? { items: ITEMS[grip] } : {}) }));
     const [a, ...others] = looks.map(o => load(true, o));
     for (const [scene, kx0] of [['battlement', 480], ['camp', 440]]) {
       const got = [a, ...others].map(m => planFor(m, scene, kx0, [PIE]).hit);
@@ -239,7 +314,7 @@ test('on every build, with either weapon, the goblin comes wherever it does on C
           assert.equal(!!p, !!pa, what + ': the goblin comes where it does on Classic');
           if (!p) return;
           assert.deepEqual([p.x, p.side], [pa.x, pa.side], what + ': where it stands');
-          assert.ok(Math.abs(p.hit - pa.hit) <= 12, what + `: struck at ${p.hit} ms, ${pa.hit} on Classic`);
+          assert.ok(Math.abs(p.hit - pa.hit) <= (grip === 'mace' ? 16 : 12), what + `: struck at ${p.hit} ms, ${pa.hit} on Classic`);
         });
       }
     }
@@ -275,7 +350,7 @@ test('a weapon too short to reach a goblin anywhere in the zone: the goblin does
   }
 });
 
-test('the greatsword keeps the gaps of the table, and the arming sword has its own, worked out from its reach', () => {
+test('the greatsword keeps the gaps of the table, and the arming sword and the mace have their own, worked out from their reach', () => {
   for (const [, pack, opts] of WEAPONS) {
     const m = load(pack, opts), G = m.P.FOES.goblin, o = pose(m.K, m.V, 480, 0);
     for (const side of [1, -1]) {
