@@ -1109,25 +1109,26 @@
   function useKinds(choice) {
     const st = api.devices = { choice: {}, kinds: {}, faults: [] };
     for (const k of Object.keys(baseKinds)) {
-      const want = isObj(choice) && typeof choice[k] === 'string' ? choice[k] : BASE;
+      const want = isObj(choice) && typeof choice[k] === 'string' ? choice[k] : BASE, d = drawingOf(want, k);
       st.choice[k] = want;
-      let got = null, why = '';
-      if (want !== BASE) {
-        const s = setOf(want);
-        if (!s) why = 'the prop set ' + want + ' is not loaded';
-        else if (!has(s.pack.data.props[s.set].kinds, k)) why = 'the prop set ' + want + ' does not draw it';
-        else {
-          const key = s.pack.id + '/' + s.set + '|' + k;
-          if (!built.has(key)) { try { built.set(key, compileKind(s.pack, s.set, k)); } catch (e) { built.set(key, new Error(message(e))); } }
-          got = built.get(key);
-          if (got instanceof Error) { why = 'it could not be compiled: ' + cutTo(got.message, 120); got = null; }
-        }
-      }
-      kinds[k] = got || baseKinds[k];
-      st.kinds[k] = got ? want : BASE;
-      if (why) st.faults.push({ kind: k, set: want, reason: why });
+      kinds[k] = d.kind || baseKinds[k];
+      st.kinds[k] = d.kind ? want : BASE;
+      if (d.why) st.faults.push({ kind: k, set: want, reason: d.why });
     }
     return st;
+  }
+  /* The drawing of one kind from the prop set name chooses, as useKinds would put it in KW.kinds:
+     { kind, why }, kind the drawing (the base world's for 'medieval'), or null with why saying why
+     the set cannot give it. The settings screen draws the devices' rows from it. */
+  function drawingOf(name, k) {
+    if (name === BASE) return { kind: baseKinds[k] || null, why: baseKinds[k] ? '' : 'the base world does not draw it' };
+    const s = setOf(name);
+    if (!s) return { kind: null, why: 'the prop set ' + name + ' is not loaded' };
+    if (!has(s.pack.data.props[s.set].kinds, k)) return { kind: null, why: 'the prop set ' + name + ' does not draw it' };
+    const key = s.pack.id + '/' + s.set + '|' + k;
+    if (!built.has(key)) { try { built.set(key, compileKind(s.pack, s.set, k)); } catch (e) { built.set(key, new Error(message(e))); } }
+    const got = built.get(key);
+    return got instanceof Error ? { kind: null, why: 'it could not be compiled: ' + cutTo(got.message, 120) } : { kind: got, why: '' };
   }
   /* What the page has loaded, for the settings (KW.settings.pageWorld, which worldOf there
      describes): { names, worlds, sets, scenes }, and with kw.medieval's preset the base world's
@@ -1145,7 +1146,7 @@
         const v = d.worlds[n], name = base && n === BASE_WORLD ? BASE : p.id + '/' + n;
         if (base && n === BASE_WORLD) names.world[p.id + '/' + n] = BASE;
         const words = typeof v.words === 'string' ? labelsOf(p, local(p, v.words)) : null;
-        out.worlds[name] = { name: v.name, pack: p.id, picture: base ? local(p, v.picture) : (v.picture.indexOf('/') < 0 ? p.id + '/' + v.picture : v.picture), preset: v, words };
+        out.worlds[name] = { name: v.name, pack: p.id, version: p.version, signed: p.signed === true, picture: base ? local(p, v.picture) : (v.picture.indexOf('/') < 0 ? p.id + '/' + v.picture : v.picture), preset: v, words };
       }
       for (const n of Object.keys(isObj(d.props) ? d.props : {})) {
         const v = d.props[n], name = base && n === PROPS ? BASE : p.id + '/' + n;
@@ -1311,5 +1312,5 @@
   }
 
   const api = KW.world = { MEDIEVAL, PROPS, WORDS, OVERLAY, QUIET_MAX, CAPTION_MAX, compile, compileKind, compileMember, compileWords, compileOverlay, join, quietLine, caption,
-    start, catalogue, useKinds, status: null, props: null, cast: null, words: null, overlay: null, devices: null };
+    start, catalogue, useKinds, drawingOf, status: null, props: null, cast: null, words: null, overlay: null, devices: null };
 })(window.KW);

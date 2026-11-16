@@ -146,8 +146,9 @@
                the name each stands for: kw.medieval/props.medieval stands for 'medieval'. The
                schema's short names are always loaded, and so is every long name in scenes, worlds
                and sets, standing for itself.
-       worlds  each loaded world by its name, { name, pack, picture, preset, words }: pack the
-               pack's id, preset the pack's preset as it reads, words its word set's labels. The
+       worlds  each loaded world by its name, { name, pack, version, signed, picture, preset,
+               words }: pack the pack's id, version and signed the pack's, picture the scene its
+               card shows, preset the pack's preset as it reads, words its word set's labels. The
                base world, 'medieval', is always there, drawn from code while its pack gives no
                preset (preset null).
        sets    each loaded prop set by its name, { name, kinds }; the base world's, 'medieval',
@@ -172,12 +173,12 @@
       for (const n of Object.keys(given)) if (isLong(n) && typeof given[n] === 'string') m[n] = given[n];
     }
     for (const n of Object.keys(out.scenes)) if (!has(out.names.scene, n)) out.names.scene[n] = n;
-    out.worlds[BASE_WORLD] = { name: BASE_NAME, pack: null, picture: BASE_PICTURE, preset: null, words: null };
+    out.worlds[BASE_WORLD] = { name: BASE_NAME, pack: null, version: null, signed: false, picture: BASE_PICTURE, preset: null, words: null };
     if (isObj(src.worlds)) for (const n of Object.keys(src.worlds)) {
       const x = src.worlds[n];
       if (!((n === BASE_WORLD || isLong(n)) && isObj(x))) continue;
-      out.worlds[n] = { name: typeof x.name === 'string' ? x.name : n, pack: typeof x.pack === 'string' ? x.pack : null, picture: typeof x.picture === 'string' ? x.picture : BASE_PICTURE,
-        preset: isObj(x.preset) ? x.preset : null, words: isObj(x.words) ? x.words : null };
+      out.worlds[n] = { name: typeof x.name === 'string' ? x.name : n, pack: typeof x.pack === 'string' ? x.pack : null, version: typeof x.version === 'string' ? x.version : null,
+        signed: x.signed === true, picture: typeof x.picture === 'string' ? x.picture : BASE_PICTURE, preset: isObj(x.preset) ? x.preset : null, words: isObj(x.words) ? x.words : null };
       out.names.world[n] = n;
     }
     out.sets[BASE_WORLD] = { name: 'Medieval devices', kinds: KINDS.slice() };
@@ -654,6 +655,14 @@
       offered: () => offered(loaded()),
       /* What the page has loaded: the worlds, the prop sets, the scenes and the names (see worldOf). */
       catalogue: loaded,
+      /* What the world id sets, in the contract's names (see worldParts). */
+      parts(id) { const w = loaded(); return worldParts(w, id, builtIn(pack(), w)); },
+      /* The look of the knight in the world id as it comes, with nothing changed from it, for
+         KW.knight.look(): {} for the base world. */
+      worldLook(id) {
+        const w = loaded(), lv = { saved: { look: { world: id }, display: {}, quiet: {}, scenes: {} } };
+        return knightLook(resolve(lv, builtIn(pack(), w), w));
+      },
       /* The defaults section of the latest valid state file, raw, or null. */
       defaults(raw) {
         const next = isObj(raw) ? raw : null;
@@ -830,6 +839,143 @@
   /* The line under the title on the pages that save: where choices are kept. */
   const SCOPE = { server: 'Saved on the Knightwatcher server, for every display.', local: 'Kept in this browser only: no Knightwatcher server.' };
 
+  /* ---- The worlds on the screen ----------------------------------------------------------------
+     What the World page, its device rows and the status page's world entries show, worked out
+     apart from the drawing so that the tests can read it (KW.settings.screen). labels are the
+     words in use's labels (KW.world.words.labels), or null for the screen's own. */
+  /* The kinds of device as the device rows name them. */
+  const DEVICE_KINDS = [['pi', 'Pi'], ['camera', 'Camera'], ['machine', 'Host'], ['vm', 'VM'], ['box', 'Other']];
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const lowerFirst = s => s.charAt(0).toLowerCase() + s.slice(1);
+  const listed = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
+  /* A label of the world's words, or own. */
+  const labelOf = (labels, k, own) => (isObj(labels) && typeof labels[k] === 'string' && labels[k] ? labels[k] : own);
+  /* The level a part came from; for a table, the highest of its keys'. */
+  function fromOf(r, sec, k) {
+    const f = r.from[sec][k];
+    if (!isObj(f)) return f;
+    const ls = Object.values(f);
+    return LEVELS.find(l => ls.includes(l)) || (ls.includes('world') ? 'world' : 'built-in');
+  }
+  /* The parts the World page compares with the world's own, [section, key]: the look's keys but
+     the world and the devices, which have rows of their own, the quiet scenes, and each condition
+     offered. */
+  function partKeys(r) {
+    const out = KEYS.look.filter(k => k !== 'world' && k !== 'devices').map(k => ['look', k]);
+    out.push(['quiet', 'scenes']);
+    for (const c of Object.keys(r.values.scenes)) out.push(['scenes', c]);
+    return out;
+  }
+  /* The parts whose value differs from the world's own (own, as the store's parts() gives it):
+     each { sec, k, v, own, from }. */
+  function changedParts(r, own) {
+    const out = [];
+    for (const [sec, k] of partKeys(r)) {
+      const v = r.values[sec][k], w = own[sec][k];
+      if (!same(v, w)) out.push({ sec, k, v, own: w, from: fromOf(r, sec, k) });
+    }
+    return out;
+  }
+  /* A part's name on the screen. */
+  function partLabel(sec, k, labels) {
+    if (sec === 'quiet') return k === 'scenes' ? 'Quiet scenes' : 'Each shows for';
+    if (sec === 'scenes') return CONDITION_NAMES[k] || k;
+    if (sec === 'display') return { headline: 'Headline size', clock: 'Clock', helmet_indoors: 'Helmet indoors' }[k] || k;
+    const sub = k.indexOf('.') > 0 ? k.split('.') : null;
+    if (sub) return partLabel(sec, sub[0], labels) + ', ' + (sub[0] === 'devices' ? (DEVICE_KINDS.find(d => d[0] === sub[1]) || [0, sub[1]])[1] : sub[1]);
+    const patron = labelOf(labels, 'patron', 'The monarch').replace(/^The (.)/, (m, c) => c.toUpperCase());
+    const own = { world: 'World', build: 'Build', weapon: 'Weapon', skin: 'Skin tone', hair: 'Hair colour', hair_style: 'Hair style', tabard: 'Tabard', plume: 'Plume',
+      monarch: patron, monarch_skin: patron + '\'s skin', monarch_hair: patron + '\'s hair', monarch_robe: patron + '\'s robe', foe: labelOf(labels, 'foe', 'Foe'),
+      critter: labelOf(labels, 'critter', 'Pest'), props: 'Devices', overlay: 'Overlay', words: 'Words', items: 'Items', devices: 'Devices by kind' };
+    for (const [a, b] of ARMOUR) own[a] = b;
+    return own[k] || k;
+  }
+  /* A part's value in words, from the base pack's names and what the page has loaded (cat, as the
+     store's catalogue() gives it). */
+  function valueName(sec, k, v, pack, cat) {
+    const name = n => (typeof n === 'string' && n ? n.charAt(0).toUpperCase() + n.slice(1) : String(n));
+    if (sec === 'quiet') return k === 'minutes' ? v + ' minutes' : same(v, SCENES) ? 'All four' : listed(v.map(x => SCENE_NAMES[x] || x));
+    if (sec === 'scenes') return SCENE_NAMES[v] || v;
+    if (v === null) return 'As drawn';
+    if (k === 'build') return isObj(pack) ? buildName(pack, v) : 'Build ' + v.toUpperCase();
+    if (k === 'weapon') return WEAPON_CHIPS[v] ? WEAPON_CHIPS[v][0] : v;
+    if (k === 'monarch') return /^[abc]$/.test(v) ? 'Monarch ' + v.toUpperCase() : v;
+    if (k === 'world') return isObj(cat) && isObj(cat.worlds[v]) ? cat.worlds[v].name : v;
+    if (k === 'props') return isObj(cat) && isObj(cat.sets[v]) ? cat.sets[v].name : v;
+    if (k === 'items') return Object.keys(v).length ? listed(Object.keys(v).map(s => v[s])) : 'Nothing named';
+    if (k === 'devices') return Object.keys(v).length ? listed(Object.keys(v).map(s => s + ' ' + v[s])) : 'All from the devices';
+    if (SETS[k]) { const s = isObj(pack) && pack.swatches[SETS[k]] && pack.swatches[SETS[k]][v]; return s ? s.name : v; }
+    if (v === 'none') return 'Nothing';
+    if (ITEMS[k]) { const it = isObj(pack) && pack.items[itemId(k, v)]; return it ? it.name : v; }
+    return name(v);
+  }
+  const partWords = (d, pack, cat, labels) => (d.sec === 'scenes' ? lowerFirst(partLabel(d.sec, d.k, labels)) + ' in the ' + lowerFirst(valueName(d.sec, d.k, d.v, pack, cat))
+    : 'the ' + lowerFirst(partLabel(d.sec, d.k, labels)) + ' (' + lowerFirst(valueName(d.sec, d.k, d.v, pack, cat)) + ')');
+  /* The line under the world's row once a world is chosen: name the world chosen; cleared, what
+     this display had chosen, each { sec, k, v }; under, what config.toml sets that now gives way,
+     each { sec, k, v }; shared, whether the choice is for every display. */
+  function chosenLine(name, cleared, under, shared, pack, cat, labels) {
+    let line = name + ' chosen' + (shared ? ' for every display' : '') + ': every part is now the world\'s.';
+    if (cleared.length) line += ' Cleared what was chosen here: ' + listed(cleared.map(d => partWords(d, pack, cat, labels))) + '.';
+    if (under.length) line += ' ' + listed(under.map(d => partWords(d, pack, cat, labels))).replace(/^the/, 'The') + ' from config.toml ' + (under.length === 1 ? 'gives' : 'give') + ' way to it.';
+    if (!cleared.length && !under.length) line += ' Nothing had been changed from it.';
+    return line + ' A part changed after this is kept over the world.';
+  }
+  /* The device rows, or null while fewer than two prop sets are loaded: { world, rows }, world the
+     prop set the world in use brings (its props), and a row for each kind, { kind, label, cur,
+     from, choices }, cur the set the kind is drawn from, from where that choice was made ('world'
+     or 'built-in' when nothing chose it), and choices each set that draws the kind, { id, name },
+     the world's first. */
+  function deviceRows(cat, r) {
+    const sets = isObj(cat) && isObj(cat.sets) ? cat.sets : {}, ids = Object.keys(sets);
+    if (ids.length < 2) return null;
+    const world = r.values.look.props, by = r.values.look.devices || {}, from = isObj(r.from.look.devices) ? r.from.look.devices : {};
+    const short = id => sets[id].name.replace(/ devices$/i, '');
+    return { world, rows: DEVICE_KINDS.map(([kind, label]) => ({ kind, label, cur: typeof by[kind] === 'string' ? by[kind] : world, from: from[kind] || fromOf(r, 'look', 'props'),
+      choices: ids.filter(id => sets[id].kinds.includes(kind)).sort((a, b) => (b === world) - (a === world)).map(id => ({ id, name: short(id) + (id === world ? ', the world\'s' : '') })) })) };
+  }
+  /* The devices table to save once set is chosen for kind on its row: the table the levels give,
+     with that kind's choice; the world's set leaves the kind out where this display chose it, so
+     that it follows the world again. Returns the table, which may be empty. */
+  function devicesAfter(r, kind, set) {
+    const next = Object.assign({}, r.values.look.devices || {}), from = isObj(r.from.look.devices) ? r.from.look.devices[kind] : undefined;
+    if (set === r.values.look.props && (from === undefined || from === 'saved' || from === 'world')) delete next[kind];
+    else next[kind] = set;
+    return next;
+  }
+  const ASKS = { hook: 'The page\'s address', saved: 'This screen', shared: 'The saved settings', defaults: 'config.toml' };
+  /* Every fallback, with its reason, for the status page: [what, why]. r is what the store gives
+     (its ignored and faults), w KW.world (its status, props, cast, devices), kn KW.knight.status. */
+  function fallbackLines(r, w, kn, pack, cat, labels) {
+    const out = [], W = isObj(w) ? w : {};
+    const show2 = v => (typeof v === 'string' ? '"' + v.slice(0, 48) + '"' : Array.isArray(v) ? listed(v.map(show2)) : isObj(v) ? 'a table' : String(v));
+    for (const f of Array.isArray(r.ignored) ? r.ignored : []) {
+      const what = f.key === null ? f.section : partLabel(f.section, f.key, labels), asks = ASKS[f.where] || f.where;
+      if (f.section === 'scenes' && f.why === 'that scene cannot act it' && has(r.values.scenes, f.key)) {
+        const now = r.values.scenes[f.key], whose = r.from.scenes[f.key] === 'world' || r.from.scenes[f.key] === 'built-in' ? ', the world\'s own' : '';
+        out.push([what, ': ' + asks + ' asks for the ' + lowerFirst(SCENE_NAMES[f.value] || String(f.value)) + ', which cannot act it. Shown in the ' + lowerFirst(SCENE_NAMES[now] || now) + whose + '.']);
+      } else out.push([what, ': ' + asks + ' asks for ' + show2(f.value) + ', which is ignored: ' + f.why + '.']);
+    }
+    for (const f of Array.isArray(r.faults) ? r.faults : []) {
+      const [sec, k] = f.part.split('.');
+      out.push([partLabel(sec, k, labels), ': the world names ' + show2(f.value) + ', which is ' + (f.why === 'not loaded' ? 'not loaded' : 'not used: ' + f.why) + ', so the ' + lowerFirst(valueName('look', 'world', 'medieval', pack, cat)) + ' world\'s is shown.']);
+    }
+    const st = W.status || {};
+    for (const f of st.faults || []) out.push([SCENE_NAMES[f.scene] || f.scene, ': drawn from code. ' + f.reason]);
+    for (const f of (W.props || {}).faults || []) out.push([f.kind, ': drawn from code. ' + f.reason]);
+    for (const f of (W.devices || {}).faults || []) out.push([f.kind, ': the base world\'s drawing, not ' + f.set + '\'s: ' + f.reason + '.']);
+    for (const f of (W.cast || {}).faults || []) out.push([f.member, ': drawn from code. ' + f.reason]);
+    for (const f of (W.words || {}).faults || []) out.push([f.set, ': the collector\'s words are shown. ' + f.reason]);
+    for (const f of (W.overlay || {}).faults || []) out.push([f.overlay, ': display.css\'s colours are shown. ' + f.reason]);
+    if (st.refused) out.push([st.refused.id, ': refused at the ' + st.refused.step + ' step, so every scene, device and member of the cast is drawn from code.']);
+    for (const f of (isObj(kn) && Array.isArray(kn.fallbacks) ? kn.fallbacks : [])) {
+      if (f.reason === 'not set' || f.wanted === null) continue;
+      out.push([f.key, ': ' + show2(f.wanted) + ' is not drawn (' + f.reason + '), so ' + (f.used ? f.used : 'nothing') + ' is.']);
+    }
+    return out;
+  }
+  api.screen = { DEVICE_KINDS, partKeys, changedParts, partLabel, valueName, chosenLine, deviceRows, devicesAfter, fallbackLines };
+
   function mount(o) {
     const store = o.store, K = KW.knight, D = KW.draw, V = KW.view, P = KW.props, U = V.U;
     const $ = id => document.getElementById(id);
@@ -995,10 +1141,126 @@
     }
     const hooked = (r, sec) => Object.keys(r.from[sec]).some(k => r.from[sec][k] === 'hook');
 
+    /* ---- The World page
+       The worlds loaded as cards, each drawn by its own picture scene with the world's own knight,
+       as it comes; then each part that differs from the chosen world's, beside the world's own; the
+       devices kind by kind once a second prop set is loaded; and the reset of the look. Choosing a
+       world saves it and clears every part chosen on this display (the store's chooseWorld), and
+       the line under the cards names what was cleared. */
+    const wordLabels = () => { const w = KW.world && KW.world.words; return w && w.source === 'pack' ? w.labels : null; };
+    const pageLabel = k => labelOf(wordLabels(), k === 'knight' ? 'watcher' : 'patron', k === 'knight' ? 'The knight' : 'The monarch');
+    const worldNamed = id => valueName('look', 'world', id, null, store.catalogue());
+    const named = (sec, k, v) => valueName(sec, k, v, K.basePack(), store.catalogue());
+    /* The page a part is chosen on, as the line under a changed part names it. */
+    const pageOf = (sec, k) => (sec === 'quiet' ? 'quiet scenes' : sec === 'scenes' ? 'scenes' : /^monarch/.test(k) ? lower(pageLabel('monarch').replace(/^The /, '')) : sec === 'look' && ['foe', 'critter', 'props', 'overlay', 'words'].includes(k) ? 'world' : lower(pageLabel('knight').replace(/^The /, '')));
+    function worldTap(id) {
+      const before = store.sections(), cat = store.catalogue(), shared = store.mode() === 'server';
+      const cleared = store.chooseWorld(id);
+      if (cleared === null) return;
+      const r = store.now(), own = store.parts(id), pack = K.basePack(), labels = wordLabels();
+      const was = cleared.map(p => { const [sec, k] = p.split('.'); return { sec, k, v: before[sec][k] }; });
+      const under = r.masked.filter(m => m.level === 'defaults' && m.key.indexOf('.') < 0 && !same(m.value, own[m.section][m.key])).map(m => ({ sec: m.section, k: m.key, v: m.value }));
+      st.notes.world = chosenLine(worldNamed(id), was, under, shared, pack, cat, labels);
+      render();
+    }
+    /* Puts one part back to the world's: clears what this display saved for it, and saves the
+       world's own over a level below that still sets it. */
+    function backToWorld(sec, k) {
+      const own = store.parts(store.now().world.id)[sec][k];
+      if (fromOf(store.now(), sec, k) === 'saved') store.clear(sec, k);
+      const r = store.now();
+      if (!same(r.values[sec][k], own) && fromOf(r, sec, k) !== 'hook' && own !== null && !isObj(own)) store.choose(sec, k, own);
+    }
+    /* A part's value as a chip of the row it has on its own page. */
+    function chipOf(sec, k, v, extra) {
+      const pack = K.basePack(), name = named(sec, k, v);
+      if (sec === 'scenes') { const cv = el('canvas'); cv.dataset.scene = v; return Object.assign({ node: cv, name, kind: 'scene' }, extra); }
+      if (SETS[k] && v !== null && pack) { const s = swatches(pack, k).find(x => x.id === v); if (s) return Object.assign({ fill: s.fill, name }, extra); }
+      if (SETS[k] && v === null) { const drawn = KW.scenes.court.drawn(store.now().values.look.monarch)[k === 'monarch_hair' ? 'hair' : 'robe']; return Object.assign({ fill: bandsCss(Object.assign({}, drawn)), name }, extra); }
+      return Object.assign({ chip: name, kind: 'text' }, extra);
+    }
+    /* A world's card: its picture scene, with the knight in the world's own look, painted once. */
+    function worldPicture(id, helmetIndoors) {
+      return picture('world|' + id + '|' + helmetIndoors, () => {
+        const cat = store.catalogue(), w = cat.worlds[id] || {}, s = cat.names.scene[w.picture], name = s && KW.scenes[s] ? s : KW.scenes[w.picture] ? w.picture : BASE_PICTURE;
+        const look = store.worldLook(id), now = knightLook(store.now()), swap = !same(look, now);
+        if (swap) K.look(look);
+        try {
+          const sc = KW.scenes[name], o2 = K.pose('idle', 2300);
+          o2.x = sc.spot * U; o2.floor = V.HFL; o2.helmet = helmetIndoors ? true : sc.helmet !== false; if (sc.sword === false) o2.sword = false;
+          const s2 = sceneState(sc, o2, { id: 'a', skin: null, hair: null, robe: null });
+          if (sc.paint) sc.paint(s2); sc.draw(2300, s2); K.draw(o2);
+        } finally { if (swap) K.look(now); }
+      });
+    }
+    /* A device of one kind as the set draws it, up and still, in a frame of 88 by 70 grid pixels
+       about the drawing, so that every kind shows at the same scale. */
+    function devicePicture(set, kind) {
+      const key = 'dev|' + set + '|' + kind;
+      if (!pics.has(key)) {
+        const got = KW.world && KW.world.drawingOf ? KW.world.drawingOf(set, kind).kind : null, k = got || P.KINDS[kind] || P.KINDS.box;
+        const big = document.createElement('canvas'); big.width = 200; big.height = 200;
+        const bc = big.getContext('2d');
+        onGrid(bc, () => k.draw(100, 160, 1200, true));
+        const px = bc.getImageData(0, 0, 200, 200).data;
+        let x0 = 200, y0 = 200, x1 = 0, y1 = 0;
+        for (let y = 0; y < 200; y++) for (let x = 0; x < 200; x++) if (px[(y * 200 + x) * 4 + 3] > 8) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+        const W = 88, H = 70, cx = Math.round((x0 + x1) / 2), cy = Math.round((y0 + y1) / 2);
+        const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+        cv.getContext('2d').drawImage(big, cx - W / 2, cy - H / 2, W, H, 0, 0, W, H);
+        pics.set(key, cv);
+      }
+      return pics.get(key);
+    }
+    function buildWorld(list, prev, r) {
+      const cat = store.catalogue(), pack = K.basePack(), labels = wordLabels(), ids = Object.keys(cat.worlds), cur = r.values.look.world, dflt = store.fallback().values.look.world;
+      list.appendChild(el('p', 'kws-intro', 'A world sets every part at once: ' + lower(pageLabel('knight')) + ', ' + lower(pageLabel('monarch')) +
+        ', the scenes, the cast, the devices and the words. A part changed on a later page is kept over the world.'));
+      const wr = row('world', 'World', ids.map(id => {
+        const cv = el('canvas'); cv.dataset.world = id;
+        return { id, node: cv, name: cat.worlds[id].name, sub: id === dflt ? 'Default' : '', kind: 'world', label: cat.worlds[id].name + ' world' };
+      }), cur, worldTap, hookNote(r, 'look', 'world'));
+      wr.classList.add('kws-worlds');
+      list.appendChild(wr);
+      if (ids.length === 1) list.appendChild(el('p', 'kws-intro kws-after', 'More worlds show here once their packs are loaded.'));
+
+      const diff = changedParts(r, store.parts(cur));
+      list.appendChild(el('p', 'kws-intro kws-head2', 'Changed from the ' + worldNamed(cur) + ' world'));
+      if (!diff.length) list.appendChild(el('p', 'kws-line kws-calm', 'Nothing: every part is the world\'s.'));
+      for (const d of diff) {
+        const note = d.from === 'hook' ? HOOK_NOTE : d.from === 'defaults' ? '' : 'Chosen on the ' + pageOf(d.sec, d.k) + ' page.';
+        const rr = row('part:' + d.sec + '.' + d.k, partLabel(d.sec, d.k, labels), [
+          chipOf(d.sec, d.k, d.v, { id: 'now', sub: d.from === 'defaults' ? 'Default' : '' }),
+          chipOf(d.sec, d.k, d.own, { id: 'own', sub: 'The world\'s' })
+        ], 'now', id => { if (id === 'own') backToWorld(d.sec, d.k); }, note);
+        rr.classList.add('kws-diff');
+        list.appendChild(rr);
+      }
+      const dev = deviceRows(cat, r);
+      if (dev) {
+        list.appendChild(el('p', 'kws-intro kws-head2', 'Devices, kind by kind'));
+        list.appendChild(el('p', 'kws-intro', 'The world brings ' + named('look', 'props', dev.world) + '. Each kind may come from any device set loaded.'));
+        for (const x of dev.rows) {
+          list.appendChild(row('kind:' + x.kind, x.label, x.choices.map(c => {
+            const cv = el('canvas'); cv.dataset.device = c.id + '|' + x.kind;
+            return { id: c.id, node: cv, name: c.name, kind: 'device' };
+          }), x.cur, set => {
+            const next = devicesAfter(store.now(), x.kind, set);
+            if (Object.keys(next).length) store.choose('look', 'devices', next); else store.clear('look', 'devices');
+          }, x.from === 'hook' ? HOOK_NOTE : ''));
+        }
+      }
+      const f = store.fallback(), fd = changedParts(f, store.parts(f.values.look.world)).filter(d => d.from === 'defaults');
+      const words = 'the ' + worldNamed(f.values.look.world) + ' world' + (fd.length ? ' with ' + listed(fd.map(d => 'a ' + lower(named(d.sec, d.k, d.v)) + ' ' + lower(partLabel(d.sec, d.k, labels)))) : ', every part as it comes');
+      list.appendChild(reset('look', 'look', words, KEYS.look.some(k => fromOf(f, 'look', k) === 'defaults'), hooked(r, 'look')));
+    }
+
     /* ---- The pages ---------------------------------------------------------------------------------- */
     const choose = (sec, k) => v => store.choose(sec, k, v);
+    /* Each page, in the rail's order; a label as a function takes the words of the world in use. */
     const PAGES = {
-      knight: { label: 'The knight', build(list, prev, r) {
+      world: { label: 'World', build: buildWorld },
+      knight: { label: () => pageLabel('knight'), build(list, prev, r) {
         const pack = K.basePack(), v = r.values.look;
         if (!pack) list.appendChild(el('p', 'kws-line', 'The knight is drawn from code, which has only the default look: the base pack could not be used (see Status). Choices made here are kept and show once it can.'));
         else {
@@ -1025,7 +1287,7 @@
         prev.appendChild(el('h2', 'home', 'At home, gear at rest'));
         const home = el('canvas', 'scene'); home.dataset.scene = 'house'; prev.appendChild(home);
       } },
-      monarch: { label: 'The monarch', build(list, prev, r) {
+      monarch: { label: () => pageLabel('monarch'), build(list, prev, r) {
         const pack = K.basePack(), v = r.values.look, e = monOf(r);
         list.appendChild(row('monarch', 'Monarch', ONE_OF.look.monarch.map(m => {
           const cv = el('canvas'); cv.dataset.mon = m;
@@ -1123,9 +1385,49 @@
             ul.appendChild(li);
           }
         });
-        stat('Knight', dd => {
-          if (s.base) { const p = line(dd, '', 'Drawn from the base pack '); p.appendChild(el('code', '', s.base.id + ' ' + s.base.version)); p.appendChild(document.createTextNode(s.base.signed ? ', signed.' : ', unsigned.')); }
-          else line(dd, 'warn', 'Drawn from code: ' + (String(s.note).split('drawn from code: ')[1] || 'the base pack could not be used') + '.');
+        // the world in use, where each part comes from, and every fallback with its reason
+        const r = store.now(), cat = store.catalogue(), pack = K.basePack(), labels = wordLabels(), WK = KW.world || {}, med = WK.status ? WK.status.pack : null;
+        const w = cat.worlds[r.world.id] || { name: r.world.id, pack: null };
+        const code = (p, text) => { p.appendChild(el('code', '', text)); return p; };
+        const txt = (p, text) => { p.appendChild(document.createTextNode(text)); return p; };
+        const packTxt = pk => (pk ? pk.id + ' ' + pk.version : 'code');
+        const WHERE_SET = { hook: 'Set by the page\'s address.', saved: store.mode() === 'server' ? 'Chosen on this screen, for every display.' : 'Chosen on this screen, for this display.',
+          defaults: 'Set in config.toml.', 'built-in': 'Nothing chooses a world, so the page uses its own.' };
+        stat('World', dd => {
+          // the base world's pack is the one KW.world drew from; another world's, as the catalogue read it
+          const pk = r.world.id === BASE_WORLD ? med : w.pack ? { id: w.pack, version: w.version, signed: w.signed } : null;
+          const p = line(dd, '', w.name + ', from '); code(p, packTxt(pk)); txt(p, pk ? (pk.signed ? ', signed.' : ', unsigned.') : '.');
+          line(dd, 'quiet', WHERE_SET[r.world.from]);
+        });
+        stat('Parts', dd => {
+          const diff = changedParts(r, store.parts(r.world.id)), mine = test => diff.filter(test);
+          const part = (label, src, rest) => { const p = el('div', 'kws-part'); p.appendChild(el('span', 'pl', label + ': ')); code(p, src); if (rest) txt(p, rest); dd.appendChild(p); return p; };
+          const changed = ds => (ds.length ? '; ' + listed(ds.map(d => partWords(d, pack, cat, labels) + (d.from === 'defaults' ? ' from config.toml' : d.from === 'hook' ? ' from the address' : ' chosen here'))) : '') + '.';
+          const kb = s.base;
+          if (!kb) line(dd, 'warn', pageLabel('knight') + ' is drawn from code: ' + (String(s.note).split('drawn from code: ')[1] || 'the base pack could not be used') + '.');
+          part(pageLabel('knight'), kb ? kb.id + ' ' + kb.version : 'code', ', as the world has it' + changed(mine(d => d.sec === 'look' && !/^monarch/.test(d.k) && !['foe', 'critter', 'props', 'overlay', 'words'].includes(d.k))));
+          const masked = r.masked.filter(m => m.key.indexOf('.') < 0 && m.level === 'defaults');
+          if (masked.length) line(dd, 'quiet kws-sub', listed(masked.map(m => partWords({ sec: m.section, k: m.key, v: m.value }, pack, cat, labels))).replace(/^the/, 'The') +
+            ' in config.toml ' + (masked.length === 1 ? 'gives' : 'give') + ' way to the world chosen ' + (r.world.from === 'hook' ? 'by the address.' : 'here.'));
+          const cast = WK.cast && WK.cast.source === 'pack' ? packTxt(med) : 'code';
+          part(pageLabel('monarch'), cast, ', ' + lower(named('look', 'monarch', r.values.look.monarch)) + changed(mine(d => d.sec === 'look' && /^monarch/.test(d.k))));
+          const sc = WK.status ? WK.status.scenes : {}, fromCode = Object.keys(sc).filter(k => sc[k] === 'code'), n = Object.keys(sc).length;
+          const NUM = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+          part('Scenes', WK.status && WK.status.source === 'pack' ? packTxt(med) : 'code', (fromCode.length ? ', ' + listed(fromCode.map(k => 'the ' + lower(SCENE_NAMES[k] || k))) + ' from code' : ', all ' + (NUM[n] || n)) +
+            changed(mine(d => d.sec === 'quiet' || d.sec === 'scenes')));
+          part('Cast', cast, ', the ' + lower(named('look', 'foe', r.values.look.foe)) + ' and the ' + lower(named('look', 'critter', r.values.look.critter)) + changed(mine(d => d.k === 'foe' || d.k === 'critter')));
+          const dv = WK.devices || { kinds: {} }, setName = id => named('look', 'props', id), props = r.values.look.props, others = Object.keys(dv.kinds).filter(k => dv.kinds[k] !== props);
+          const KIND_WORDS = { pi: 'the Pi', camera: 'the cameras', machine: 'the hosts', vm: 'the VMs', box: 'the other devices' };
+          const src = props === BASE_WORLD ? (WK.props && WK.props.source === 'pack' ? packTxt(med) : 'code') : props.split('/')[0];
+          part('Devices', src, ', ' + setName(props) + (others.length ? '; ' + listed(others.map(k => (KIND_WORDS[k] || k) + ' from ' + setName(dv.kinds[k]))) : '') + '.');
+          part('Words', WK.words && WK.words.source === 'pack' ? packTxt(med) : 'the collector\'s', WK.overlay && WK.overlay.source === 'pack' ? ', with the ' + WK.overlay.name + ' overlay.' : '.');
+        });
+        stat('Fallbacks', dd => {
+          const out = fallbackLines(r, WK, s, pack, cat, labels);
+          if (!out.length) { line(dd, 'ok', 'None. Every part is drawn from where it is set.'); return; }
+          line(dd, 'warn', out.length === 1 ? 'One part falls back:' : out.length + ' parts fall back:');
+          const ul = el('ul'); dd.appendChild(ul);
+          for (const [what, why] of out) { const li = el('li'); li.appendChild(el('code', '', what)); li.appendChild(document.createTextNode(why)); ul.appendChild(li); }
         });
         stat('Refused packs', dd => {
           if (!s.refused.length) { line(dd, 'ok', 'None.'); return; }
@@ -1151,8 +1453,9 @@
 
     /* The rail, built once. */
     const rail = kws.querySelector('.kws-rail');
+    const labelText = p => (typeof p.label === 'function' ? p.label() : p.label);
     for (const [k, p] of Object.entries(PAGES)) {
-      const b = el('button', '', p.label); b.type = 'button'; b.dataset.page = k;
+      const b = el('button', '', labelText(p)); b.type = 'button'; b.dataset.page = k;
       b.addEventListener('click', () => { st.page = k; st.notes = {}; render(); });
       rail.appendChild(b);
     }
@@ -1171,7 +1474,11 @@
       // a failed save says so until the next one succeeds; otherwise where choices are kept
       scope.textContent = page.scope || (st.unsaved || SCOPE[store.mode()]);
       scope.style.color = !page.scope && st.unsaved ? '#ffb000' : '';
-      rail.querySelectorAll('button').forEach(b => { if (b.dataset.page === st.page) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+      rail.querySelectorAll('button').forEach(b => {
+        const text = labelText(PAGES[b.dataset.page]);
+        if (b.textContent !== text) b.textContent = text;
+        if (b.dataset.page === st.page) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+      });
       if (focus) { const f = main.querySelector('[data-focus="' + focus + '"]'); if (f) f.focus({ preventScroll: true }); }
       paintStill(r); idleTick();
     }
@@ -1180,6 +1487,8 @@
       const e = monOf(r);
       main.querySelectorAll('canvas[data-mon]').forEach(cv => blit(cv, monarchPicture(cv.dataset.mon, e), true));
       main.querySelectorAll('canvas[data-scene]').forEach(cv => blit(cv, scenePicture(cv.dataset.scene, r.values.display.helmet_indoors), true));
+      main.querySelectorAll('canvas[data-world]').forEach(cv => blit(cv, worldPicture(cv.dataset.world, r.values.display.helmet_indoors), true));
+      main.querySelectorAll('canvas[data-device]').forEach(cv => { const [set, kind] = cv.dataset.device.split('|'); blit(cv, devicePicture(set, kind), false); });
       const ct = $('kws-court'); if (ct) blit(ct, monarchPicture(r.values.look.monarch, e), false);
     }
     /* What moves: the knights, every frame while the screen is open. */

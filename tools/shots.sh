@@ -284,6 +284,13 @@ SHOTS=(
   "free-settings-coif-cloak|bar=0&t=2300&is=battlement&set=knight&arm=mace_and_shield&sh=kite&hm=coif&bk=cloak|1480,2800"
   "free-settings-bd-b|bar=0&t=2300&is=battlement&set=knight&bd=b&hm=kettle&ps=feather&bo=cuirass&so=lames&am=mail&hn=leather&lg=mail&ft=sabatons&bk=cloak&pm=gold|1480,2800"
   "free-settings-bd-c|bar=0&t=2300&is=battlement&set=knight&bd=c&arm=mace_and_shield&sh=round&hm=coif&bo=gambeson&so=leather&am=padded&hn=mail&lg=hose&ft=shoes&bk=cape&tb=forest|1480,2800"
+  # the World page with nothing set, at 960 by 600 and on the tablet; with parts the address
+  # changes from the world, each beside the world's own; and the status page's World, Parts and
+  # Fallbacks, a fallback among them (the camp cannot act a full disk)
+  "settings-world|bar=0&t=2300&is=battlement&set=world"
+  "settings-world-tablet|bar=0&t=2300&is=camp&set=world|1480,924"
+  "settings-world-changed|bar=0&t=2300&is=camp&set=world&tb=forest&arm=one|1480,924"
+  "settings-status-world|bar=0&t=2300&is=camp&set=status&tb=forest&sc=disk_full:camp|1480,924"
 )
 
 take() {

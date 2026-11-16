@@ -869,7 +869,9 @@ prop set kw.example/props.neon does not draw it`. A kind no set draws at all, wh
 contract does not know can be, is drawn as `box` by the engine. `start()` ends with every kind from
 the base world, and `main.js` calls `useKinds()` whenever the settings change the choice. A compiled
 kind's `from` names its pack and the compile, so the engine's still-part canvases keep one set's
-drawing apart from another's.
+drawing apart from another's. `drawingOf(name, kind)` gives one set's drawing of one kind, or the
+reason it cannot, without touching `KW.kinds`: the settings screen draws its device rows from it
+([page.md](./page.md#the-settings-screen)).
 
 ## Writing a scene as data
 

@@ -356,3 +356,105 @@ test('the per-kind choice draws the same calls as the base world for a set copie
   KW.world.useKinds({ camera: 'kw.test/props.neon' });
   assert.deepEqual(calls(), before);
 });
+
+/* ---- The screen: the World page, its device rows and the status page ---------------------------- */
+
+/* The screen's parts, KW.settings.screen, from the sandbox, each result made a plain value of this
+   realm. */
+const SCR = new Proxy(WITH.KW.settings.screen, { get: (o, k) => (typeof o[k] === 'function' ? (...a) => plain(o[k](...a)) : o[k]) });
+const SETTINGS_JS = fs.readFileSync(path.join(WEB, 'js/settings.js'), 'utf8');
+
+test('the World page lists the parts that differ from the world in use, each beside the world\'s own, and where it was chosen', () => {
+  const { s } = store({ saved: { look: { tabard: 'forest' }, scenes: { cpu_hot: 'camp' } }, defaults: { look: { plume: 'gold' } } });
+  const r = s.now();
+  assert.deepEqual(plain(SCR.changedParts(r, s.parts(r.world.id))), [
+    { sec: 'look', k: 'tabard', v: 'forest', own: 'blue', from: 'saved' },
+    { sec: 'look', k: 'plume', v: 'gold', own: 'red', from: 'defaults' },
+    { sec: 'scenes', k: 'cpu_hot', v: 'camp', own: 'yard', from: 'saved' }]);
+  // nothing set: nothing differs; a world chosen whole: nothing differs from it
+  assert.deepEqual(SCR.changedParts(store().s.now(), store().s.parts('medieval')), []);
+  const n = store({ saved: { look: { world: NEON } } }).s;
+  assert.deepEqual(SCR.changedParts(n.now(), n.parts(NEON)), []);
+  // the devices have rows of their own, and are not listed as a changed part
+  assert.ok(!SCR.partKeys(r).some(([sec, k]) => k === 'devices' || k === 'world'));
+});
+
+test('a world\'s card shows the world as it comes: its own knight, whatever this display has changed', () => {
+  const { s } = store({ saved: { look: { tabard: 'wine', weapon: 'longsword' } } });
+  assert.deepEqual(s.worldLook('medieval'), {});
+  const neon = s.worldLook(NEON);
+  assert.deepEqual([neon.build, neon.items.main, neon.swatches.tabard], ['kw.base/build.b', 'kw.base/main.arming', 'kw.base/forest']);
+  assert.deepEqual(s.worldLook(NEON), store().s.worldLook(NEON), 'the same with nothing changed');
+});
+
+test('the line under the cards names the world chosen, what it cleared, what config.toml gives way with, and says "for every display" when shared', () => {
+  const P = BASE, cat = CAT;
+  assert.equal(SCR.chosenLine('Medieval', [{ sec: 'look', k: 'tabard', v: 'forest' }], [], true, P, cat, null),
+    'Medieval chosen for every display: every part is now the world\'s. Cleared what was chosen here: the tabard (forest). A part changed after this is kept over the world.');
+  assert.equal(SCR.chosenLine('Medieval', [], [{ sec: 'look', k: 'tabard', v: 'forest' }], true, P, cat, null),
+    'Medieval chosen for every display: every part is now the world\'s. The tabard (forest) from config.toml gives way to it. A part changed after this is kept over the world.');
+  assert.equal(SCR.chosenLine('Neon', [], [], false, P, cat, null),
+    'Neon chosen: every part is now the world\'s. Nothing had been changed from it. A part changed after this is kept over the world.');
+  assert.equal(SCR.chosenLine('Medieval', [{ sec: 'look', k: 'monarch', v: 'b' }, { sec: 'quiet', k: 'scenes', v: ['camp'] }, { sec: 'scenes', k: 'cpu_hot', v: 'camp' }], [], false, P, cat, null),
+    'Medieval chosen: every part is now the world\'s. Cleared what was chosen here: the monarch (monarch B), the quiet scenes (camp) and running hot in the camp. A part changed after this is kept over the world.');
+});
+
+test('the device rows show only once a second prop set is loaded, a row a kind, each set that draws it, the world\'s first', () => {
+  const one = store({ world: plain(CODE.KW.settings.pageWorld()) }).s;
+  assert.equal(SCR.deviceRows(one.catalogue(), one.now()), null, 'at launch nobody sees them');
+  const { s } = store({ saved: { look: { devices: { camera: 'kw.test/props.neon' } } } });
+  const d = SCR.deviceRows(s.catalogue(), s.now());
+  assert.equal(d.world, 'medieval');
+  assert.deepEqual(d.rows.map(x => [x.kind, x.label, x.cur, x.from, x.choices.map(c => c.id)]), [
+    ['pi', 'Pi', 'medieval', 'built-in', ['medieval']],
+    ['camera', 'Camera', 'kw.test/props.neon', 'saved', ['medieval', 'kw.test/props.neon']],
+    ['machine', 'Host', 'medieval', 'built-in', ['medieval', 'kw.test/props.neon']],
+    ['vm', 'VM', 'medieval', 'built-in', ['medieval']],
+    ['box', 'Other', 'medieval', 'built-in', ['medieval']]]);
+  assert.deepEqual(d.rows[1].choices.map(c => c.name), ['Medieval, the world\'s', 'Neon']);
+  // in the neon world its own set comes first
+  const n = store({ saved: { look: { world: NEON } } }).s, dn = SCR.deviceRows(n.catalogue(), n.now());
+  assert.deepEqual([dn.world, dn.rows[1].cur, dn.rows[1].from, dn.rows[1].choices.map(c => c.name)], ['kw.test/props.neon', 'kw.test/props.neon', 'world', ['Neon, the world\'s', 'Medieval']]);
+});
+
+test('a choice on a device row saves the kind\'s set, and the world\'s set puts back a kind this display chose', () => {
+  const { s } = store({ saved: { look: { devices: { camera: 'kw.test/props.neon' } } }, defaults: { look: { devices: { machine: 'kw.test/props.neon' } } } });
+  const r = s.now();
+  assert.deepEqual(SCR.devicesAfter(r, 'camera', 'medieval'), { machine: 'kw.test/props.neon' }, 'chosen here: left out, to follow the world');
+  assert.deepEqual(SCR.devicesAfter(r, 'machine', 'medieval'), { camera: 'kw.test/props.neon', machine: 'medieval' }, 'set in config.toml: chosen over it');
+  assert.deepEqual(SCR.devicesAfter(r, 'pi', 'kw.test/props.neon'), { camera: 'kw.test/props.neon', machine: 'kw.test/props.neon', pi: 'kw.test/props.neon' });
+  s.choose('look', 'devices', SCR.devicesAfter(r, 'machine', 'medieval'));
+  assert.deepEqual(plain(SET.engineInput(s.now(), BASE, 1000).kinds), { pi: 'medieval', camera: 'kw.test/props.neon', machine: 'medieval', vm: 'medieval', box: 'medieval' });
+});
+
+test('the status page lists every fallback with its reason', () => {
+  const { s } = store({ defaults: { scenes: { disk_full: 'camp' }, look: { foe: 'kw.other/foe.troll' } } });
+  const r = s.now(), W = { status: { faults: [{ scene: 'cellar', reason: 'it broke' }], refused: null }, props: { faults: [] }, cast: { faults: [] },
+    devices: { faults: [{ kind: 'pi', set: 'kw.test/props.neon', reason: 'the prop set kw.test/props.neon does not draw it' }] } };
+  const kn = { fallbacks: [{ kind: 'item', key: 'main', wanted: null, used: 'kw.base/main.greatsword', reason: 'not set' },
+    { kind: 'item', key: 'helmet', wanted: 'kw.gone/helm.x', used: 'kw.base/helm.open', reason: 'pack not loaded' }] };
+  assert.deepEqual(SCR.fallbackLines(r, W, kn, BASE, CAT, null), [
+    ['Foe', ': config.toml asks for "kw.other/foe.troll", which is ignored: no pack the page has loaded gives it.'],
+    ['Disk full', ': config.toml asks for the camp, which cannot act it. Shown in the cellar, the world\'s own.'],
+    ['Cellar', ': drawn from code. it broke'],
+    ['pi', ': the base world\'s drawing, not kw.test/props.neon\'s: the prop set kw.test/props.neon does not draw it.'],
+    ['helmet', ': "kw.gone/helm.x" is not drawn (pack not loaded), so kw.base/helm.open is.']]);
+  // a part of the world the page has not loaded
+  const cat = plain(CAT); cat.worlds[NEON].preset.cast.patron = 'kw.gone/patron.z';
+  const f = store({ world: cat, saved: { look: { world: NEON } } }).s.now();
+  assert.deepEqual(SCR.fallbackLines(f, {}, null, BASE, cat, null), [['Monarch', ': the world names "kw.gone/patron.z", which is not loaded, so the medieval world\'s is shown.']]);
+  assert.deepEqual(SCR.fallbackLines(store().s.now(), {}, null, BASE, CAT, null), []);
+});
+
+test('the pages take the world\'s labels; World is first in the rail, and the screen still opens on the knight', () => {
+  assert.equal(SCR.partLabel('look', 'monarch_skin', MED.words['words.medieval'].labels), 'Monarch\'s skin');
+  assert.equal(SCR.partLabel('look', 'monarch_skin', { patron: 'The queen' }), 'Queen\'s skin');
+  assert.equal(SCR.partLabel('look', 'critter', MED.words['words.medieval'].labels), 'Pest');
+  assert.equal(SCR.partLabel('look', 'devices.machine', null), 'Devices by kind, Host');
+  // the rail's order, and the labels from the words in use
+  const pages = /const PAGES = \{\s*world: \{ label: 'World', build: buildWorld \},\s*knight: \{ label: \(\) => pageLabel\('knight'\)/.test(SETTINGS_JS);
+  assert.ok(pages, 'World first, the knight\'s label from the words');
+  assert.match(SETTINGS_JS, /const st = \{ open: false, page: 'knight',/);
+  assert.match(SETTINGS_JS, /hold\.done = true; swallow = true; open\('knight'\);/);
+  assert.match(SETTINGS_JS, /const pageLabel = k => labelOf\(wordLabels\(\), k === 'knight' \? 'watcher' : 'patron', k === 'knight' \? 'The knight' : 'The monarch'\);/);
+});
