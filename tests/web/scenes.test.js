@@ -290,15 +290,15 @@ function sceneRecords(src, name, from) {
 function castRecords(src, from) {
   const { KW, log } = load(src, undefined, from), P = KW.props, ctx = KW.draw.getCtx(), out = [];
   const rec = (name, f) => { f(); out.push([name, log.slice()]); log.length = 0; };
-  const fly = from === 'pack' ? KW.cast.critters.fly : { draw: P.flyHD };
-  if (from === 'pack') assert.ok(fly.from, 'the fly is compiled from kw.medieval: ' + JSON.stringify(KW.world.cast));
+  const fly = from === 'pack' ? KW.cast.critters.fly : { draw: P.flyHD }, G = from === 'pack' ? KW.cast.foes.goblin : P.FOES.goblin;
+  if (from === 'pack') for (const m of [fly, G]) assert.ok(m.from, 'the cast is compiled from kw.medieval: ' + JSON.stringify(KW.world.cast));
   for (const flap of [0, 1]) rec(`fly flap ${flap}`, () => fly.draw(300, 200, flap));
   rec('fly struck', () => P.poofHD(300, 200));
-  for (const pose of P.FOES.goblin.poses) rec(`goblin ${pose}`, () => ctx.drawImage(P.FOES.goblin.pose(pose), 0, 0));
+  for (const pose of G.poses) rec(`goblin ${pose}`, () => ctx.drawImage(G.pose(pose), 0, 0));
   for (const k of [0.4, 1]) rec(`hole open ${k}`, () => P.holeHD(400, 530, k));
   for (const el of [120, 360]) rec(`clods el${el}`, () => P.clodsHD(400, 530, el));
-  for (const el of [40, 300, 800]) rec(`cloud el${el}`, () => P.cloudHD(400, 452, el, P.FOES.goblin.h));
-  for (const el of [120, 450, 800]) rec(`sparkles el${el}`, () => P.sparklesHD(400, 452, el, P.FOES.goblin.h));
+  for (const el of [40, 300, 800]) rec(`cloud el${el}`, () => P.cloudHD(400, 452, el, G.h));
+  for (const el of [120, 450, 800]) rec(`sparkles el${el}`, () => P.sparklesHD(400, 452, el, G.h));
   rec('crate', () => P.crateHD(300, 400));
   rec('chute', () => P.chuteHD(330, 400));
   return out;

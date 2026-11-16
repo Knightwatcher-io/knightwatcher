@@ -456,6 +456,20 @@
     }
   };
 
+  /* fingers: three fingers round p, each a disc r across, reach from p along the angles a - spread,
+     a and a + spread (0 is up, clockwise), in colour, as the goblin's hands spread theirs. The
+     fingers stand at fractions of a pixel that the points of a pack's shapes, in eighths, cannot
+     give. */
+  const fingers = {
+    fields: { p: { kind: 'point' }, a: { kind: 'num', lo: -4, hi: 4 }, reach: { kind: 'num', lo: 0, hi: 64, def: 9 }, spread: { kind: 'num', lo: 0, hi: 4, def: .65 },
+      r: { kind: 'num', lo: 0, hi: 32 }, colour: { kind: 'colour' } },
+    cost: b => 3 * B.ell(b.r),
+    draw(f) {
+      const [x, y] = f.p, a = f.a, s = f.spread;
+      for (const d of [-s, 0, s]) ell(x + Math.sin(a + d) * f.reach, y - Math.cos(a + d) * f.reach, f.r, f.r, f.colour);
+    }
+  };
+
   /* crust: a pie's top seen from the side and a little above, the middle of its rim at p: the rim
      a flat ellipse rim[0] across and rim[1] high either side of p, and behind its middle a dome
      dome[0] across and dome[1] high, outlined in colour. The crust shades from crust[0], lit from
@@ -524,7 +538,7 @@
   /* ---- The library ------------------------------------------------------------------------------ */
 
   /* The effects, in the order the world format lists them (pack.js names the same list). */
-  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, flutes, crust, burst };
+  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, flutes, crust, fingers, burst };
   const NAMES = Object.freeze(Object.keys(TABLE));
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const SCALAR = ['offset', 'length', 'term'];
