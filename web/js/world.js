@@ -37,7 +37,7 @@
      tip of the blade on the anvil), of the bed and the screen (the house's) and of the seat (the
      court's talk);
    - the kinds of a prop set: their still and moving shapes in both states, the engine's lamp at a
-     point, and a lamp of the kind's own from two stamps of pix shapes, as the raspberry is;
+     point, and a lamp of the kind's own from two stamps of pix shapes, as the pie's is;
    - the critters of the cast: their two frames and what falls, with a group's alpha; its foes:
      their poses, from parts shared between them, and their measures; and its patrons: their still
      parts and mouths at their anchors, in the user's skin, hair and robe, with the colours mixed,
@@ -212,7 +212,7 @@
       }
     },
     /* A shape given pixel by pixel: its rows, each character a colour of its key and "." clear,
-       painted in one pass from p, as the raspberry is. */
+       painted in one pass from p, as the pie's lamp is. */
     pix: {
       compile(s, path, env) {
         const key = {};
@@ -678,7 +678,7 @@
      lamp of the kind's own, { at, box, lit, dark, light }, is two stamps of pix shapes, each painted
      once into a canvas of its own the size of the two together, the lit drawing laid over the dark
      one, so that where the lit drawing is clear the dark one shows in both; each frame it is drawn
-     as the raspberry is (raspberryHD in props.js): a soft light of radius LAMP_GLOW at at, in light
+     as the pie's is (pieLampHD in props.js): a soft light of radius LAMP_GLOW at at, in light
      while up (the engine's green when it gives none) and the down lamp's red while gone, as
      strongly as the loop is bright, the dark canvas, and the lit canvas over it at the loop's
      level. Its drawings must lie inside its box, each pix shape at a whole point. */

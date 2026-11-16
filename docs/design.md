@@ -118,16 +118,18 @@ beside the pegs and on the smithy's wall over the quench barrel. Where the knigh
 weapon (the cellar's crates, the house), the shield is put away with it.
 
 The Raspberry Pi that watches the main host is a steaming raspberry pie, present in every scene.
-It is a fruit pie in a white dish, with a lattice crust and a large raspberry on top, drawn as a
-cluster of round drupelets under a green calyx so that it reads as a raspberry from across the
-room. The raspberry is the pie's lamp: while the Pi is up it glows and dims slowly in its own
-colours, from a deep crimson to a bright pink-red, on the same slow loop as the other lamps. The
-colour language says green for up, but a whole pie against an empty dish already says up or down,
-and a green raspberry would read as unripe. When the Pi is judged down, silent for its
-`down_after_s`, the pie is gone and the empty dish is left, with a few crumbs and a single
-raspberry, which blinks slowly from red to black like any other lamp of a down machine. A
-collector from before devices gives no judgement, and with it the dish empties at the
-first missed check, as it always did.
+It is a fruit pie in a white dish, with a crimped lattice crust over raspberry filling, and the
+steam rises from the top of its crust. The pie's lamp is its filling, which lights through the gaps
+of the lattice: while the Pi is up it fades slowly from green to near black and back, on the same
+loop and in the same green as every other device's lamp, so the pie speaks the colour language the
+rest of the devices speak. Until 16 November 2026 a large raspberry stood on top and was the lamp,
+glowing in its own crimson because a green raspberry would have read as unripe; the owner chose to
+take it off and let the light come from under the lattice, where green reads as light rather than
+as fruit. When the Pi is judged down, silent for its `down_after_s`, the pie is gone and the empty
+dish is left, with a few crumbs and the last slice lying in it. The slice's filling is the lamp,
+and it blinks slowly from red to black like any other lamp of a down machine. A collector from
+before devices gives no judgement, and with it the dish empties at the first missed check, as it
+always did.
 
 ## Devices
 
@@ -146,8 +148,8 @@ device with no place left is not drawn but is still watched.
 
 Every device carries one lamp that never stops: while the machine is up it fades slowly from green
 to black and back, and while it is down it blinks slowly from red to black. The pie's lamp is its
-raspberry, which keeps its own colours while the Pi is up and blinks red like the rest while it
-is down. A down device also
+filling, green through the gaps of its lattice while the Pi is up, and the last slice's filling,
+blinking red, while it is down. A down device also
 looks broken from across the room: the camera hangs from its arm, the tower goes dark with its
 side panel off, the dotted outline breaks up into a few dots at its corners, and the box lies on
 its side with its lid off. A question mark blinks over a down device that alerts; a device set not

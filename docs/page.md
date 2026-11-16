@@ -17,7 +17,7 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/effects.js` | `KW.effects`: the effects, drawings the engine owns that a scene names with numbers (sky, stars, bricks, flame and the rest), each with its table of fields, its cost and its drawing; see [The effects](#the-effects) |
-| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), the fly (`flyHD`, `deadFlyHD` and `CRITTERS`, the code's critters and the fallback for the pack's; see [The cast](#the-cast)), the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures, its crown and its exit, the code's foes and the fallback for the pack's) with the smoke, the sparkles and the hole they come and go by |
+| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's, and `pieShapes`, the maps of the pie's lamp and its last slice), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), the fly (`flyHD`, `deadFlyHD` and `CRITTERS`, the code's critters and the fallback for the pack's; see [The cast](#the-cast)), the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures, its crown and its exit, the code's foes and the fallback for the pack's) with the smoke, the sparkles and the hole they come and go by |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `ownReturn()` says whether a swing comes back by a return of its own (see [The knight's rig](#the-knights-rig)), `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
@@ -730,7 +730,7 @@ it with the kinds the medieval world's prop set gives, and keeps `KW.props.KINDS
 
 | Kind | Up | Down |
 |---|---|---|
-| `pi` | the pie in its dish, steaming, a large raspberry on top | the empty dish with crumbs and one raspberry |
+| `pi` | the pie in its dish, steaming, its filling lit through the lattice | the empty dish with crumbs and the last slice |
 | `camera` | a white bullet camera on a wall arm, its lens dark glass | the body hanging straight down from the arm, dulled, its lens dark |
 | `machine` | a grey tower case | the case dark, its side panel off and leant against it |
 | `vm` | the same case as an outline of bright dots | only a few paler dots at its corners |
@@ -748,25 +748,31 @@ loop starts 523 ms later in each place than in the one before it (`pie`, `h1` to
 `lampRim` and `lampHD`, the engine's own lamp, and `LAMP_REDS`, the down lamp's three reds as a pack
 names them.
 
-**The raspberry.** The pie's lamp is the raspberry on its top, 25 pixels across and 33 tall
-with its calyx: round drupelets, each with a dark outline and a highlight, under a green calyx and
-stalk. It lights on the lamps' loops from the pie's place, so its loop starts at the place's
-offset, 0. While the Pi is up it goes from a bright pink-red (`#ff5c80` on its drupelets) to a
-deep crimson (`#6a0f2e`) and back over 3.6 seconds, in a warm light (`#ff7a6a`); while the Pi is
-down a single raspberry lies low in the empty dish, to the right of the question mark and partly
-hidden by the dish's near rim, and blinks from the down lamp's red to black over 2 seconds. Its
-calyx and outline stay as they are. The steam rises behind it, and nothing else moves but the
-question mark.
+**The pie's lamp.** The pie's lamp is its filling: the 398 pixels the crust effect leaves in the
+filling's colours between the strips of the lattice, read from the effect when the pie is first
+drawn (`pieShapes` in `props.js`), so that the lamp lies exactly in the gaps. It lights on the
+lamps' loops from the pie's place, so its loop starts at the place's offset, 0. While the Pi is up
+it goes from the device lamp's green (`#8fe07a` on the filling's lit side, a darker green on its
+shaded side and along the strips, a highlight of `#e4ffd6` in the corner of each gap) to near black
+(`#0b130c`) and back over 3.6 seconds, in the engine's green light, centred 1 right of the base's
+middle and 30 above it. The strips, the rim band and the crimping stay the crust's colours, so the
+light seems to come from under the lattice. The steam rises from the top of the dome, its puffs
+starting 53 above the base. While the Pi is down the dish is empty but for crumbs and the last
+slice, a wedge of the pie lying in it with its point near the dish's middle, its cut face to the
+front and its outer crust to the right, partly hidden by the dish's near rim. Its filling, 108
+pixels in the gaps of its own small lattice and along its cut face, is the lamp, and blinks from the
+down lamp's red to black over 2 seconds, its light centred 4 right of the middle and 24 above the
+base. Nothing else moves but the question mark.
 
 **Drawing.** `part` `'still'` draws what does not move and `'moving'` what does: the lamp, and the
-pie's steam and raspberry. The engine paints each device's still part once, with its pole, into a
+pie's steam. The engine paints each device's still part once, with its pole, into a
 small canvas of its own, kept by place, kind and state (and, for a kind from a pack, the compile it
 came from), and draws it with one call where the
 scene's `draw` calls `KW.devices.draw(t, s)`, so each scene's drawing order is what it was. Only the
 moving part is drawn each frame, and the question mark is kept in a canvas of its own as well. The
-raspberry is painted once in each of its colourings, lit and dark, into small canvases of its own
-in `props.js`; each frame draws its light, the dark berry, and the lit berry over it at the loop's
-level, 18 calls, as a device's lamp costs 16 to 20. The pie up costs 114 calls a frame with its
+pie's lamp is a lamp of its own as a pack gives one: each of its drawings, lit and dark, up and
+down, is painted once into a small canvas of its own in `props.js` (`pieLampHD`); each frame draws
+its light, the dark drawing, and the lit one over it at the loop's level, 18 calls, as a device's lamp costs 16 to 20. The pie up costs 114 calls a frame with its
 steam, and the pie down 18. A frame with the pie and six devices costs about 75 calls more than one
 with the pie alone.
 
@@ -1248,8 +1254,10 @@ kind of device: that it stays inside 80 by 64 above its base, up and gone; that 
 part is only its lamp, inside the place, in both states; that the lamp fades green to black over
 3.6 seconds while up and red to black over 2 while down; that its still part does not change with
 time; that gone differs from up; and that the pie in parts draws what the whole pie drew. For the
-raspberry it checks that it lights on the lamps' loops, up and down, is not in the up pie's still
-part, and stays inside the pie's place. It prints the calls each part costs.
+pie's lamp it checks that it lights green on the lamps' loop up and in the down reds alone down,
+that it covers exactly the filling the still part leaves showing (through the lattice up, in the
+last slice down), that nothing but the steam stands above the dome, and that it stays inside the
+pie's place. It prints the calls each part costs.
 
 `tests/web/world-props.test.js` draws every kind from the medieval world's prop set beside the
 code's drawing of it, call for call, in every place of every scene (the court's among them), up and
@@ -1612,8 +1620,8 @@ out byte for byte the same, on a busy machine too, apart from the clock when the
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
 and every scene, device and member of the cast drawn from the medieval world's pack, with its words
 and its overlay. A deployed copy draws from each pack while it ships signed, and from code
-otherwise: today the knight from the base pack and everything else, words and overlay included, from the
-medieval world's pack 0.5.0, both signed.
+otherwise: today the knight from the base pack, signed, and everything else, words and overlay
+included, from code, since the medieval world's pack 0.6.0 ships unsigned until its signing run.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches
