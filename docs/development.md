@@ -345,7 +345,7 @@ day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy 
 Version 0.3.0, which adds the devices, was signed the same way on 16 November, and version 0.4.0,
 which adds the cast, the same day, as was version 0.5.0, which adds the words and the overlay.
 Version 0.6.0, which lights the pie through its lattice in place of the raspberry and draws the
-other devices as an owl, a cauldron, a flask and a chest, ships unsigned until its run. A signed version is drawn from by a deployed
+other devices as an owl, a cauldron, a flask and a chest, was signed the same day. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
