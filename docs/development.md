@@ -163,10 +163,12 @@ missing. Against a reference from base pack 1.3.0 six shots differ besides: the 
 knight page in `settings-knight`, `settings-look`, `settings-tablet`, `bd-b-settings-knight` and
 `bd-c-settings-knight`, whose weapon and hair style rows gained choices, and `settings-status`,
 which names the base pack's version and whether it is signed. Against a reference from before
-`kw.medieval` 0.6.0, which took the raspberry off the pie, 223 shots differ, each only where a pie
-is drawn: the pie in its place, the dimmed scene behind the settings screen, and the scenes'
-thumbnails and previews on the settings screen. The three of the monarch's settings page alone
-are the same. A headless browser has no saved choices, so every shot shows what its address asks for.
+`kw.medieval` 0.6.0, which took the raspberry off the pie and drew the other devices as an owl, a
+cauldron, a flask and a chest, 223 shots differ, each only where a pie or a device is drawn: the
+pie in its place, the dimmed scene behind the settings screen, and the scenes' thumbnails and
+previews on the settings screen; and in the 22 shots that place devices with the address's `dv=`,
+the devices in their places, with the lights of their lamps reaching up to 24 pixels past a place's
+box. The three of the monarch's settings page alone are the same. A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
@@ -323,8 +325,8 @@ first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, 
 day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house.
 Version 0.3.0, which adds the devices, was signed the same way on 16 November, and version 0.4.0,
 which adds the cast, the same day, as was version 0.5.0, which adds the words and the overlay.
-Version 0.6.0, which lights the pie through its lattice in place of the raspberry, ships unsigned
-until its run. A signed version is drawn from by a deployed
+Version 0.6.0, which lights the pie through its lattice in place of the raspberry and draws the
+other devices as an owl, a cauldron, a flask and a chest, ships unsigned until its run. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature

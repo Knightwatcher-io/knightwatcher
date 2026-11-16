@@ -731,16 +731,21 @@ it with the kinds the medieval world's prop set gives, and keeps `KW.props.KINDS
 | Kind | Up | Down |
 |---|---|---|
 | `pi` | the pie in its dish, steaming, its filling lit through the lattice | the empty dish with crumbs and the last slice |
-| `camera` | a white bullet camera on a wall arm, its lens dark glass | the body hanging straight down from the arm, dulled, its lens dark |
-| `machine` | a grey tower case | the case dark, its side panel off and leant against it |
-| `vm` | the same case as an outline of bright dots | only a few paler dots at its corners |
-| any other | a plain small grey box | the box tipped on its side, its lid off beside it, the inside dark |
+| `camera` | a barn owl on an iron wall bracket, its eyes the lamp | hanging upside down from the bracket by its talons, wings drooping, dazed red spirals for eyes, two feathers drifting down |
+| `machine` | an iron cauldron over a small log fire, its brew the lamp, bubbles showing as it brightens | tipped on its side, empty and cold, the fire out, the last ember blinking |
+| `vm` | a corked glass flask with a paper tag, its potion the lamp | on its side with its cork out beside it, the last of the potion blinking |
+| any other | a small iron-bound chest, the lamp the jewel in its lock plate | on its end, its lid knocked off beside it, three coins spilt |
 
-A kind the page does not know is drawn as the box. The kind is only ever a key into `KW.kinds`.
+Each kind is a medieval thing that stands for the device, by the owner's choice of 16 November 2026
+([design.md](./design.md#devices)). A kind the page does not know is drawn as the chest. The kind is only ever a key into `KW.kinds`.
 The devices fit within 80 by 64 above the base.
 
-**The lamps.** Every device has one lamp, 10 by 10 in a dark rim, with a soft light round it in
-its own colour. While its machine is up, or `unknown`, the lamp fades from green to black and back
+**The lamps.** Every device has one lamp with a soft light round it in its own colour. The chest's
+is the engine's lamp, 10 by 10 in a dark rim (`lampRim`, `lampHD`). The pie's, the owl's eyes, the
+cauldron's brew and then its last ember, and the flask's potion are lamps of their own, drawn as a
+pack draws one (`ownLampHD`): a light of radius 24, the dark drawing, and the lit drawing over it at
+the loop's level; their maps are `pieShapes` and `DEVICE_LAMPS`, and the chest's lamp stands at
+`CHEST_LAMP`. While its machine is up, or `unknown`, the lamp fades from green to black and back
 over 3.6 seconds; while it is down, from red to black and back over 2 seconds, a slow blink. The
 loop starts 523 ms later in each place than in the one before it (`pie`, `h1` to `h3`, `g1` to
 `g3`), so the lamps of a scene never pulse together. Both loops come from `LAMP` and `lampLevel` in
@@ -771,7 +776,7 @@ came from), and draws it with one call where the
 scene's `draw` calls `KW.devices.draw(t, s)`, so each scene's drawing order is what it was. Only the
 moving part is drawn each frame, and the question mark is kept in a canvas of its own as well. The
 pie's lamp is a lamp of its own as a pack gives one: each of its drawings, lit and dark, up and
-down, is painted once into a small canvas of its own in `props.js` (`pieLampHD`); each frame draws
+down, is painted once into a small canvas of its own in `props.js` (`ownLampHD`); each frame draws
 its light, the dark drawing, and the lit one over it at the loop's level, 18 calls, as a device's lamp costs 16 to 20. The pie up costs 114 calls a frame with its
 steam, and the pie down 18. A frame with the pie and six devices costs about 75 calls more than one
 with the pie alone.
@@ -1251,8 +1256,12 @@ as drawn, and the screenshots confirm the pixels.
 
 `tests/web/props.test.js` loads `draw.js`, `sprites.js`, `effects.js` and `props.js` the same way and checks each
 kind of device: that it stays inside 80 by 64 above its base, up and gone; that its moving
-part is only its lamp, inside the place, in both states; that the lamp fades green to black over
-3.6 seconds while up and red to black over 2 while down; that its still part does not change with
+part is only its lamp, inside the place, in both states (the chest's the engine's lamp, the owl's,
+the cauldron's and the flask's lamps of their own); that the engine's lamp fades green to black
+over 3.6 seconds while up and red to black over 2 while down; that the owl's eyes, the brew and the
+potion light in the device green while up and their down lamps only in the down reds, the dazed
+owl's spirals keeping their gaps dark; that the owl's wall plate stands where the camera's did, x
+22 to 32 from 64 above the base, so a pole meets it; that its still part does not change with
 time; that gone differs from up; and that the pie in parts draws what the whole pie drew. For the
 pie's lamp it checks that it lights green on the lamps' loop up and in the down reds alone down,
 that it covers exactly the filling the still part leaves showing (through the lattice up, in the

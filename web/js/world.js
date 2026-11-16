@@ -678,7 +678,7 @@
      lamp of the kind's own, { at, box, lit, dark, light }, is two stamps of pix shapes, each painted
      once into a canvas of its own the size of the two together, the lit drawing laid over the dark
      one, so that where the lit drawing is clear the dark one shows in both; each frame it is drawn
-     as the pie's is (pieLampHD in props.js): a soft light of radius LAMP_GLOW at at, in light
+     as the pie's is (ownLampHD in props.js): a soft light of radius LAMP_GLOW at at, in light
      while up (the engine's green when it gives none) and the down lamp's red while gone, as
      strongly as the loop is bright, the dark canvas, and the lit canvas over it at the loop's
      level. Its drawings must lie inside its box, each pix shape at a whole point. */

@@ -99,8 +99,9 @@ loads it after the base pack's. It holds:
   (`ssh_session` alone) are the code scene's. It is not quiet and hosts nothing, and its `seat` is
   `{ "x": 820, "y": 505, "bubble": [672, 180], "turn": 3200, "mouth": 230 }`, which gives it the
   seat's act. Its one round, at its spot, is not compiled, as the smithy's is not;
-- the prop set `props.medieval`, the devices of `props.js` written as data: the five kinds `pi`,
-  `camera`, `machine`, `vm` and `box`, each up and gone, below ([The devices](#the-devices));
+- the prop set `props.medieval`, the devices of `props.js` written as data: the five kinds `pi`
+  (the raspberry pie), `camera` (a barn owl), `machine` (a cauldron), `vm` (a potion flask) and
+  `box` (an iron-bound chest), each up and gone, below ([The devices](#the-devices));
 - the cast members `patron.a`, `patron.b` and `patron.c`, the three monarchs of `court.js` written
   as data: each seated on its anchors, its mouth shut and open, and the user's skin, hair and robe
   laid over it as the court lays them, below ([The cast](#the-cast));
@@ -111,11 +112,12 @@ loads it after the base pack's. It holds:
 - three stamps, `sconce`, `barrel` and `peg`: the props `sconceHD` and `barrelHD` of `props.js`, the
   barrel at the 84 by 72 the cellar and the yard draw it, and one of the house's pegs, counted from
   where the weapon's frame puts it;
-- ten stamps for the devices: the pie's lamp's dark and lit drawings, up the filling in the gaps
-  of the lattice and down the filling of the last slice (`pie.up.dark`, `pie.up.lit`,
-  `pie.down.dark`, `pie.down.lit`), and the virtual
-  machine's dots, the dark squares and the lights in them, up (`vm.up.dots-1` and `-2`,
-  `vm.up.lights-1` and `-2`) and gone (`vm.gone.dots`, `vm.gone.lights`);
+- sixteen stamps for the devices' lamps of their own, the dark and the lit drawing of each, up
+  and down: the pie's (`pie.up.*`, `pie.down.*`), the filling in the gaps of the lattice and then
+  the filling of the last slice; the owl's (`owl.up.*`, `owl.down.*`), its eyes and then its dazed
+  spirals; the cauldron's (`cauldron.up.*`, `cauldron.down.*`), its brew and bubbles and then its
+  last ember; and the flask's (`flask.up.*`, `flask.down.*`), its potion upright and then on its
+  side;
 - the word set `words.medieval`: the quiet line's parts as `ALL QUIET`, `{n} up`, `backup {at}`
   and `{n} ads slain`, `{short} ads slain` or `{short} slain`, and the captions `BANISHED {addr} ·
   {jail}` or `BANISHED {addr}` for a ban, `DELIVERED · {title}` for an import and `STORES SAFE {at}`
@@ -153,15 +155,15 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 | Kind | Up | Gone |
 |---|---|---|
 | `pi` | 3 308 fills still, 411 moving | 633 still, 34 moving |
-| `camera` | 695 still | 615 still |
-| `machine` | 105 still | 251 still |
-| `vm` | 176 still | 96 still |
-| `box` | 58 still | 101 still |
+| `camera` | 539 still, 32 moving | 644 still, 34 moving |
+| `machine` | 420 still, 54 moving | 366 still, 12 moving |
+| `vm` | 117 still, 72 moving | 108 still, 12 moving |
+| `box` | 137 still | 178 still |
 
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
 own lamp counts toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
 5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
-court counts none of them. The whole file weighs 233 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+court counts none of them. The whole file weighs 225 KB, against the 512 KiB a pack may. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each.
 
@@ -170,7 +172,8 @@ The pack is signed with `kw1` by a signing run, as the base pack is
 then version 0.2.0, version 0.3.0, which adds the devices, and version 0.4.0, which adds the cast.
 Version 0.5.0, which adds the words and the overlay, is signed too. Version 0.6.0 takes the
 raspberry off the pie and lights the pie through its lattice, with the last slice left in the dish
-when the Pi is down, and ships unsigned until its signing run. A copy changed after signing is
+when the Pi is down, and draws the other devices as medieval things, the owl, the cauldron, the
+flask and the chest; it ships unsigned until its signing run. A copy changed after signing is
 refused by a deployed page until its next run: that page draws every scene, every device and the
 cast from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.
@@ -577,7 +580,7 @@ a scene's are and drawn moved to the base, and its lamp:
   pix shapes, each pix shape at a whole point. Each is painted once, the first time it is drawn,
   into a canvas the size of the two drawings together, the lit drawing laid over the dark one, so
   that where the lit drawing is clear the lit canvas shows the dark drawing. Each frame, as
-  `pieLampHD` in `props.js` does, it draws a soft light of radius 24 round `at`, in `light` while up
+  `ownLampHD` in `props.js` does, it draws a soft light of radius 24 round `at`, in `light` while up
   (the engine's green if a kind gives none) and in the down lamp's red while gone, at 0.3 of the
   loop's level, then the dark canvas, then the lit canvas at the loop's level. The two drawings must
   lie inside `box` around `at`, or the kind is refused. The pie's lamp up is the filling in the gaps
@@ -592,7 +595,12 @@ code: a mark or a tile, an effect placed on the screen by a field of its own (a 
 that a prop cannot name. An effect's points are moved to the base like the other shapes.
 
 **The devices as data.** Each drawing of `props.js` is written out shape by shape, its coordinates
-counted from the base, in the order the code draws. Five things needed more than that:
+counted from the base, in the order the code draws. The owl, the cauldron, the flask and the chest
+are written out by recording the calls of `cameraHD`, `machineHD`, `vmHD` and `boxHD` from a base at
+(0, 0), so each shape is one call of the code; their lamps of their own are written from the maps in
+`DEVICE_LAMPS`, and the chest's engine lamp stands at `CHEST_LAMP`. Their numbers are all eighths:
+the owl's feathers and the cauldron's rivets have radii of 1.25, which at a whole centre fill the
+pixels a radius of 1.2 would. Three things needed more than that:
 
 - the pie's dish has thirteen flutes at `i * 5.3` across its rim, which fall between the eighths a
   pack's points keep to; the strip passes them to `fillRect` as they are, so no eighth draws the same
@@ -601,23 +609,17 @@ counted from the base, in the order the code draws. Five things needed more than
   and two pix shapes side by side would paint its rows in another order. The effect `crust` draws
   it, the lattice, the dome and the crimping, and `pieTop` in `props.js` now calls the same effect;
   `pieDish` calls `flutes`;
-- the virtual machine's 88 dots are 176 squares, all the dark ones and then all the lights, past the
-  128 shapes a part may hold. They sit in stamps of at most 64 shapes, drawn in the code's order:
-  `vm.up.dots-1`, `vm.up.dots-2`, `vm.up.lights-1` and `vm.up.lights-2`, and gone, with 48 dots,
-  `vm.gone.dots` and `vm.gone.lights`. The dots' places from the base, which `vmHD` rounds from the
-  absolute x, are the same at every whole base;
-- the gone camera's lens glint is a strip 0.6 either side, which is not an eighth; the pack gives
-  0.625, which fills the same pixels for every whole base, so the records are the code's;
 - the gone pie's lamp has a shaded side, the down red at two thirds. The format reserves it as
   `@lamp.downLo`, beside `@lamp.down` and `@lamp.downHi`, so that the gone lamp's lit drawing still
   uses only the engine's reds ([packs.md](./packs.md#format-11)). The pie's lamp stamps and the last
   slice, a pix shape of 34 by 16 in the gone still part, are written from the maps `pieShapes` in
-  `props.js` works out, the lamp's from the filling the `crust` effect paints.
+  `props.js` works out, the lamp's from the filling the `crust` effect paints. The dazed owl's
+  spirals keep their gaps dark: the lit stamp leaves them clear, so the dark drawing shows there,
+  and the lit drawing still uses only the reserved reds.
 
-The camera's sunshade reaches x -34.78 at its far corner, outside the high class box's -34, though
-its pixels start at -34, where the box was measured. The pack library measures a strip whose
-values are all fixed by the pixels it fills ([packs.md](./packs.md#props)), so the camera keeps to its
-class box as drawn.
+Until 16 November 2026 the devices were drawn as the devices they are: a bullet camera, a tower
+case, the same case in 88 dots for a virtual machine (in six stamps, past the 128 shapes a part may
+hold), and a grey box. The owner chose the medieval things in their place.
 
 ## The cast
 
