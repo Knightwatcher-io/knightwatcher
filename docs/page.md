@@ -17,12 +17,12 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/effects.js` | `KW.effects`: the effects, drawings the engine owns that a scene names with numbers (sky, stars, bricks, flame and the rest), each with its table of fields, its cost and its drawing; see [The effects](#the-effects) |
-| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), flies, the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
+| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), the fly (`flyHD`, `deadFlyHD` and `CRITTERS`, the code's critters and the fallback for the pack's; see [The cast](#the-cast)), the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures and its crown) with the smoke, the sparkles and the hole they come and go by |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](#the-knights-rig)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `ownReturn()` says whether a swing comes back by a return of its own (see [The knight's rig](#the-knights-rig)), `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
-| `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names, and its devices in `KW.kinds`, which the engine draws them from; see [worlds.md](./worlds.md) |
+| `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names, its devices in `KW.kinds` and its cast in `KW.cast`, which the engine draws them from; see [worlds.md](./worlds.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene but the court as data; see [worlds.md](./worlds.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
@@ -36,7 +36,8 @@ The load order is the order of that table, scenes in the order listed. A file ma
 earlier file put on `KW` at load time, and anything at all when its functions run. A carrier needs
 `KW.packText`, so it comes after `knight.js`; `ed25519.js` comes before `pack.js`, and `effects.js`
 comes before `props.js`, the scenes and `pack.js`, which use it. `world.js` comes after the scenes
-and `pack.js`, and does nothing at load but define `KW.world`.
+and `pack.js`, and does nothing at load but define `KW.world`, and `KW.kinds` and `KW.cast` filled
+with the code's devices and cast.
 
 ## One grid
 
@@ -751,6 +752,23 @@ none does. The knight looks towards that place (`look` is the sign of the place'
 knight's), or straight ahead when there is none. A device that does not alert has no effect on the
 knight.
 
+## The cast
+
+The engine plays a supporting cast whose drawings are not its own: today the fly. Where a fly
+hovers, the swat, the poof and the fall are the engine's; the critter gives its drawings.
+`KW.props.CRITTERS` holds the code's critters by name, each with
+
+| Field | Is |
+|---|---|
+| `draw(x, y, flap)` | the critter hovering at `(x, y)`, in its first frame (`flap` 0) or its second |
+| `dead(x, y)` | what falls once it is swatted, from `(x, y)` |
+
+The fly's are `flyHD` and `deadFlyHD`. The engine draws from `KW.cast.critters`, which has the
+same interface: the compiler (`world.js`) fills it with the members the medieval world's cast
+gives, and keeps the code's for the rest ([worlds.md](./worlds.md#the-cast)). On a page without the
+compiler the engine reads `KW.props.CRITTERS` itself. The goblin and the monarchs are still drawn
+from `KW.props.FOES` and the court's own code.
+
 ## Settings
 
 A display's look, its display preferences, its quiet scenes and the scene each offered condition
@@ -1182,6 +1200,12 @@ gone, with and without its question mark, at seven moments, and its still and mo
 the moving parts every 25 ms through the lamps' loops; with the rest of what the compiler does for
 the devices ([worlds.md](./worlds.md#the-devices)).
 
+`tests/web/world-cast.test.js` draws the fly from the medieval world's cast beside the code's, both
+frames and what falls, at whole and fractional points, and runs the engine's frames every 20 ms
+while six flies fly in, hover, are swatted and fall, with the cast from the pack and from code, every
+call of every frame compared; with the rest of what the compiler does for the cast
+([worlds.md](./worlds.md#the-cast)).
+
 `tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
 the entrance runs in order and the poof is over within the event's 3.4 seconds; that the goblin
@@ -1335,7 +1359,8 @@ outside the grid, and at 960 by 720 (4:3), where `HT` lies 122 above it; and at 
 and 4700 ms, which catch the hammer striking and raised, the monarch talking with the mouth open and
 shut, the question marks shown and hidden, the WAN's sparks and the sleeper's breathing, or at the
 moments of the dummy's wobble. The goblin's six poses, the flies, the hole, the clods, the smoke, the
-sparkles, the crate and its parachute are recorded once, apart (`cast`).
+sparkles, the crate and its parachute are recorded once, apart (`cast`). The fly of the medieval
+world's cast is drawn again from the pack against the same records.
 
 Each scene the medieval world's pack gives (today every scene but the court) is then drawn again, compiled from the
 pack by `world.js` as a `dev` page compiles it, in the same states, at the same sizes and moments,

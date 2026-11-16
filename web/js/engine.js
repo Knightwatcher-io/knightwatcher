@@ -58,7 +58,11 @@
     return is === 'auto' ? list[Math.floor((t - sceneT0) / turnMs) % list.length] : is;
   }
 
-  /* A blocked advert becomes a fly. Eight at most are on screen; the rest wait for the next swat. */
+  /* A blocked advert becomes a fly. Eight at most are on screen; the rest wait for the next swat.
+     The engine keeps where the flies hover, the swat, the poof and the fall; the fly's drawing is
+     the critter's, from KW.cast, which the world's cast fills (world.js), or from the code's own,
+     KW.props.CRITTERS, on a page without the compiler. */
+  const critters = () => (KW.cast ? KW.cast.critters : P.CRITTERS);
   function addFly(t) {
     const live = flies.filter(f => !f.dead);
     if (live.length >= 8) { pendingFlies++; return; }
@@ -502,9 +506,10 @@
     }
     if (!inBed) K.draw(o);
     placesHD(t, s, true);
+    const fly = critters().fly;
     for (const f of flies) {
-      if (!f.dead) { const [x, y] = flyPos(f, t); P.flyHD(x, y, Math.floor(t / 90 + f.ph) % 2); }
-      else { const a = t - f.dead; if (a < 260) P.poofHD(f.at[0], f.at[1]); if (a < 900) Rh(f.at[0] - 3, f.at[1] + a * a / 900, 6, 5, '#3a3344'); }
+      if (!f.dead) { const [x, y] = flyPos(f, t); fly.draw(x, y, Math.floor(t / 90 + f.ph) % 2); }
+      else { const a = t - f.dead; if (a < 260) P.poofHD(f.at[0], f.at[1]); if (a < 900) fly.dead(f.at[0], f.at[1] + a * a / 900); }
     }
     for (let i = flies.length - 1; i >= 0; i--) if (flies[i].dead && t - flies[i].dead > 1000) flies.splice(i, 1);
     if (foe) foeFxHD(plan, foe);
