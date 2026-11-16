@@ -46,7 +46,7 @@
     Rh(x - 5, y + 4, 10, 40, C.K); Rh(x - 3, y + 4, 6, 40, C.N2); Rh(x - 3, y + 4, 2, 40, C.N1);
     rrect(x - 13, y - 3, 26, 12, 3, C.K); rrect(x - 11, y - 1, 22, 8, 2, STEEL2);
   }
-  /* The lamps' colours and loops, the devices' and the raspberry's: while up from green to black
+  /* The lamps' colours and loops, the devices' and the pie's: while up from green to black
      and back over 3.6 seconds, while down from red to black and back over 2 seconds. lampLevel
      is how bright the loop is at time t, from 1 at t 0 to 0 at half the period. */
   const LAMP = { up: { rgb: [143, 224, 122], hi: '#e4ffd6', ms: 3600 }, down: { rgb: [255, 74, 61], hi: '#ffd0c8', ms: 2000 } };
@@ -55,10 +55,11 @@
   /* ---- The raspberry pie ------------------------------------------------------------------------
      A fruit pie seen from the side and a little above, its middle at x + 32 and its dish standing
      on a surface at y + 31: a fluted white dish, a domed crust with a crimped edge and a lattice
-     over raspberry filling, steam, and a raspberry on top, which is the pie's lamp. With ok false
-     the dish stands empty but for crumbs and one raspberry, which stays the lamp, under a question
-     mark.
-     part 'still' draws only what does not move, and 'moving' only the steam and the raspberry; the
+     over raspberry filling, and steam. Its lamp is the filling seen through the gaps of the
+     lattice, which lights green on the loop every device lamp keeps (PIE_LAMP, below). With ok
+     false the dish stands empty but for crumbs and the last slice, whose filling is the lamp and
+     blinks red, under a question mark.
+     part 'still' draws only what does not move, and 'moving' only the steam and the lamp; the
      engine draws the question mark of a device itself (see KINDS). */
   const CRUST = ['#ffd98a', '#f2ac4e', '#cc7f32', '#93521d'], FILLING = ['#d2325f', '#9a1640', '#5c0a24'];
   const DISH = [[.1, C.W], [.42, C.S0], [.74, C.S1], [1, C.S2]];
@@ -69,122 +70,164 @@
      rim is a flat ellipse, and behind its middle the crust rises in a dome, crimped along its near
      edge CRIMP either side of the middle: the effect crust (effects.js) draws it. */
   const RIM = [38, 9], DOME = [32, 21], CRIMP = 35;
+  /* The steam rises from the top of the dome: its puffs start 7 above it, 53 above the base. */
+  const STEAM_RISE = 7;
   function pieDish(cx, y) {
     poly([[cx - 38, y + 6], [cx + 38, y + 6], [cx + 33, y + 31], [cx - 33, y + 31]], C.K);
     poly([[cx - 35, y + 6], [cx + 35, y + 6], [cx + 30, y + 28], [cx - 30, y + 28]], DISH);
     KW.effects.flutes.draw({ p: [cx, y + 9], of: FLUTES });
   }
-  /* Where the raspberry's middle sits, from the pie's middle and the rim's middle: on the top of
-     the dome, sunk a little into the lattice, and, in the empty dish, low on its right, clear of
-     the question mark and hidden below the dish's near rim. */
-  const BERRY_ON_PIE = [0, -DOME[1] - 8], BERRY_IN_DISH = [20, -4];
   function pieHD(x, y, t, ok, part) {
-    const cx = x + 32, ry = y + 6;
+    const cx = x + 32, ry = y + 6, by = y + 31;
     if (part !== 'moving') pieDish(cx, y);
     if (!ok) {
       if (part !== 'moving') {
         ell(cx, ry, 40, 10, C.K); ell(cx, ry, 37, 8, DISH); ell(cx, ry + 1, 32, 6, [[.3, C.S3], [1, C.S4]]); ell(cx, ry + 3, 27, 4, [[.3, C.S1], [1, C.S2]]);
-        for (const [dx, dy, c] of [[-15, 3, CRUST[2]], [-5, 5, CRUST[1]], [8, 3, CRUST[3]], [16, 4, CRUST[2]], [1, 3, FILLING[1]], [-9, 2, FILLING[2]]]) Rh(cx + dx, ry + dy, 3, 2, c);
+        for (const [dx, dy, c] of [[-15, 3, CRUST[2]], [-5, 5, CRUST[1]], [-9, 2, FILLING[2]]]) Rh(cx + dx, ry + dy, 3, 2, c);
         Rh(cx - 46, y + 29, 3, 2, CRUST[2]); Rh(cx + 43, y + 30, 2, 2, CRUST[1]);
+        const s = pieShapes().slice;
+        D.pix(cx + s.x0, by + s.y0, s.w, s.h, (i, j) => s.cells[j * s.w + i]);
       }
-      if (part !== 'still') raspberryHD(cx + BERRY_IN_DISH[0], ry + BERRY_IN_DISH[1], t, false);
+      if (part !== 'still') ownLampHD(PIE_LAMP.down, cx, by, t, false);
       if (!part && Math.floor(t / 400) % 2) SP.mark(cx, y - 62, '?');
       return;
     }
     if (part !== 'moving') pieTop(cx, ry);
     if (part === 'still') return;
-    KW.effects.steam.draw({ p: [cx - 14, ry - DOME[1] - 16] }, t);
-    // the raspberry stands in front of the steam, which rises from behind it
-    raspberryHD(cx + BERRY_ON_PIE[0], ry + BERRY_ON_PIE[1], t, true);
+    KW.effects.steam.draw({ p: [cx - 14, ry - DOME[1] - STEAM_RISE] }, t);
+    ownLampHD(PIE_LAMP.up, cx, by, t, true);
   }
   /* The whole pie's crust and crimping, over the dish. */
   function pieTop(cx, ry) { KW.effects.crust.draw({ p: [cx, ry], rim: RIM, dome: DOME, crimp: CRIMP, crust: CRUST, filling: FILLING }); }
 
-  /* ---- The raspberry, the pie's lamp -------------------------------------------------------------
-     A raspberry of round drupelets, each with a dark outline and a highlight, under a green calyx
-     and its stalk, 25 pixels across and 33 tall. It lights and dims on the lamps' loops
-     (LAMP, above): while the Pi is up in its own colours, from a deep crimson to a bright pink-red
-     in a warm halo, over 3.6 seconds, and while it is down from red to black over 2 seconds. */
-  /* The drupelets' middles, in rows from the top, in the berry's frame: u across from the middle,
-     v down. Each is a disc of radius BERRY_R; those later in the list are in front. */
-  const BERRY_R = 3.6, DRUPES = [];
-  for (const [v, us] of [[-8, [-5.5, 0, 5.5]], [-3.5, [-8.25, -2.75, 2.75, 8.25]], [1, [-7.75, -2.6, 2.6, 7.75]], [5.5, [-5.25, 0, 5.25]], [10, [-2.6, 2.6]]]) for (const u of us) DRUPES.push([u, v]);
-  /* The calyx: four sepals spreading from the top of the berry, and the stalk. */
-  const SEPALS = [[-10, -8.5], [-4.5, -6], [4.5, -6], [10, -8.5]], CALYX = [0, -11.5];
-  function nearSeg(u, v, a, b, w0, w1) {
-    const dx = b[0] - a[0], dy = b[1] - a[1], q = Math.max(0, Math.min(1, ((u - a[0]) * dx + (v - a[1]) * dy) / (dx * dx + dy * dy)));
-    return Math.hypot(u - a[0] - q * dx, v - a[1] - q * dy) <= w0 + (w1 - w0) * q;
-  }
-  const inCalyx = (u, v) => SEPALS.some(s => nearSeg(u, v, CALYX, s, 2.2, .6)) || nearSeg(u, v, CALYX, [1.5, -17], 1.1, 1.1);
-  /* The drupelet a point lies in, outline and all: the frontmost whose disc, one pixel wider,
-     holds it; -1 for none. */
-  function drupeAt(u, v) { let k = -1; for (let i = 0; i < DRUPES.length; i++) if (Math.hypot(u - DRUPES[i][0], v - DRUPES[i][1]) <= BERRY_R + 1) k = i; return k; }
-  /* What the raspberry is at (u, v): k its outline, a, b and h a drupelet's lit side, shaded side
-     and highlight, g and G the calyx and its lit edge, or null outside. */
-  function berryAt(u, v) {
-    const cal = (du, dv) => inCalyx(u + du, v + dv), edgeOf = f => !f(-1, 0) || !f(1, 0) || !f(0, -1) || !f(0, 1);
-    if (cal(0, 0)) return edgeOf(cal) ? 'k' : u + v * .5 < -8 || (u < 0 && v < -12) ? 'G' : 'g';
-    const i = drupeAt(u, v);
-    if (i < 0) return !edgeOf((du, dv) => !cal(du, dv)) ? null : 'k';
-    if (edgeOf((du, dv) => !cal(du, dv))) return 'k';
-    const [du, dv] = DRUPES[i];
-    if (Math.hypot(u - du, v - dv) > BERRY_R) return 'k';
-    if (Math.hypot(u - du + 1.3, v - dv + 1.3) < 1.2) return 'h';
-    // each drupelet shaded on its lower right, and the drupelets on the berry's lower right darker
-    return (u - du) * .55 + (v - dv) * .65 > 1.2 || du * .5 + dv * .35 > 4.5 ? 'b' : 'a';
-  }
-  /* The berry's box: BW by BH, its frame's origin at (BX, BY) inside it. */
-  const BW = 27, BH = 34, BX = 13, BY = 18;
-  /* The berry's map, a key from berryAt for each pixel of its box, whole on the pie and, in the
-     dish, without what the dish's near rim hides: below the front edge of its inside. */
-  const inDish = (u, v) => { const du = u + BERRY_IN_DISH[0], dv = v + BERRY_IN_DISH[1]; return Math.abs(du) < 32 && dv <= 1 + 6 * Math.sqrt(1 - (du / 32) ** 2); };
-  const BERRY_MAP = { pie: [], dish: [] };
-  for (let j = 0; j < BH; j++) for (let i = 0; i < BW; i++) {
-    const k = berryAt(i - BX, j - BY);
-    BERRY_MAP.pie.push(k); BERRY_MAP.dish.push(inDish(i - BX, j - BY) ? k : null);
-  }
-  /* The berry's colours, lit and dark, up on the pie and down in the dish; the outline and the
-     calyx are the same in all. While down the drupelets go to black, as a lamp does. */
+  /* ---- The pie's lamp ----------------------------------------------------------------------------
+     The pie's lamp is a lamp of its own, as a world pack gives one ({ at, box, lit, dark, light },
+     docs/worlds.md): two drawings, dark and lit, of the same pixels, painted once each into a canvas
+     of their own, and each frame a soft light of radius 24 round the lamp's middle at 0.3 of the
+     loop's level, the dark drawing, and the lit one over it at the loop's level, as world.js draws
+     a pack's. Up, its pixels are the filling the crust paints in the gaps of the lattice, lit in
+     the device lamp's green and dark near black; gone, they are the filling of the last slice, lit
+     in the down lamp's reds and dark black.
+     Each pixel is a key: a the filling's lit side, b its shaded side, e its edge in the shadow of a
+     strip, and h a highlight, a lit pixel with the edge to its left and above it. */
   const rgb = (c, k) => 'rgb(' + c.map(v => Math.round(v * k)).join(',') + ')';
   /* The down lamp's reds, as a world pack names them in a lamp of its own: the red, the red at two
      thirds and the highlight (@lamp.down, @lamp.downLo and @lamp.downHi). */
   const LAMP_REDS = Object.freeze({ down: rgb(LAMP.down.rgb, 1), downLo: rgb(LAMP.down.rgb, .66), downHi: LAMP.down.hi });
-  const BERRY_COLS = {
-    up: { lit: { a: '#ff5c80', b: '#d8285a', h: '#ffd6e0' }, dark: { a: '#6a0f2e', b: '#430a1e', h: '#8a2244' }, glow: '#ff7a6a' },
-    down: { lit: { a: LAMP_REDS.down, b: LAMP_REDS.downLo, h: LAMP_REDS.downHi }, dark: { a: '#000000', b: '#000000', h: '#000000' }, glow: LAMP_REDS.down }
-  };
-  const CALYX_COLS = { k: C.K, g: '#4f9a45', G: '#8fe07a' };
-  /* The berry painted once in each of its colourings, in a small canvas of its own: up on the
-     pie, whole, and down in the dish, below its rim. */
-  const berrySprites = {};
-  function berrySprite(ok, lit) {
-    const key = (ok ? 'up' : 'down') + (lit ? '|lit' : '|dark');
-    let cv = berrySprites[key];
-    if (!cv) {
-      const cols = Object.assign({}, CALYX_COLS, BERRY_COLS[ok ? 'up' : 'down'][lit ? 'lit' : 'dark']), map = BERRY_MAP[ok ? 'pie' : 'dish'], was = D.getCtx();
-      cv = document.createElement('canvas'); cv.width = BW; cv.height = BH;
-      D.setCtx(cv.getContext('2d')); D.pix(0, 0, BW, BH, (i, j) => { const k = map[j * BW + i]; return k ? cols[k] : null; }); D.setCtx(was);
-      berrySprites[key] = cv;
+  /* The lamp's middle from the base, its colours, and the light round it: up, the engine's green
+     (no light of its own); down, the down lamp's red. */
+  const PIE_LAMP = Object.freeze({
+    up: { at: [1, -30], lit: { a: '#8fe07a', b: '#5e9451', e: '#395a31', h: LAMP.up.hi }, dark: { a: '#0b130c', b: '#080e09', e: '#050806', h: '#0b130c' },
+      light: rgb(LAMP.up.rgb, 1), map: () => pieShapes().lattice },
+    down: { at: [4, -24], lit: { a: LAMP_REDS.down, b: LAMP_REDS.downLo, e: LAMP_REDS.downLo, h: LAMP_REDS.downHi }, dark: { a: '#000000', b: '#000000', e: '#000000', h: '#000000' },
+      light: LAMP_REDS.down, map: () => pieShapes().sliceLamp }
+  });
+  /* The lamp L standing on the base (x, y) at time t: its canvases, painted once, its light and its
+     two drawings. */
+  const lampSprites = new Map();
+  function ownLampHD(L, x, y, t, ok) {
+    let sp = lampSprites.get(L);
+    if (!sp) {
+      const m = L.map(), paint = cols => {
+        const cv = document.createElement('canvas'), was = D.getCtx(); cv.width = m.w; cv.height = m.h;
+        D.setCtx(cv.getContext('2d')); D.pix(0, 0, m.w, m.h, (i, j) => { const k = m.keys[j * m.w + i]; return k ? cols[k] || L.dark[k] : null; }); D.setCtx(was);
+        return cv;
+      };
+      sp = { dark: paint(L.dark), lit: paint(L.lit), x0: m.x0 - L.at[0], y0: m.y0 - L.at[1] };
+      lampSprites.set(L, sp);
     }
-    return cv;
+    const a = lampLevel(t, ok), ctx = D.getCtx(), lx = x + L.at[0], ly = y + L.at[1], px = Math.round(lx) + sp.x0, py = Math.round(ly) + sp.y0;
+    glow(lx, ly, 24, L.light, .3 * a);
+    ctx.drawImage(sp.dark, px, py);
+    alpha(a); ctx.drawImage(sp.lit, px, py); alpha(1);
   }
-  /* The raspberry with its middle at (x, y) at time t, on the pie while up and in the dish while
-     down: a soft light round it in its lit colour, the dark berry, and the lit one over it as
-     strongly as the lamp's loop is bright. */
-  function raspberryHD(x, y, t, ok) {
-    const a = lampLevel(t, ok), ctx = D.getCtx(), px = Math.round(x) - BX, py = Math.round(y) - BY;
-    glow(x, y, 24, BERRY_COLS[ok ? 'up' : 'down'].glow, .3 * a);
-    ctx.drawImage(berrySprite(ok, false), px, py);
-    alpha(a); ctx.drawImage(berrySprite(ok, true), px, py); alpha(1);
+
+  /* ---- The shapes of the lamp and the last slice ---------------------------------------------------
+     Each is a map of keys over a box, { x0, y0, w, h, keys }, x0 and y0 its corner from the base,
+     trimmed to what it holds. Worked out once, the first time the pie is drawn.
+     The lattice: the filling the crust effect paints, read from the effect itself so that the lamp
+     always lies exactly in the gaps of its lattice: a pixel painted in FILLING[0] is a, FILLING[1]
+     b, FILLING[2] e.
+     The last slice: a wedge lying in the empty dish, its point to the left near the dish's middle
+     and its outer crust to the right, seen from the front and a little above: the top a triangle
+     of lattice with a band of crust along the outer edge, and the cut face in front, a layer of
+     filling between the top crust and the bottom crust. The dish's near rim hides what lies below
+     it. Its still drawing is the whole slice, its lamp the filling in its gaps and on its cut face. */
+  const SLICE = { tip: [-12, -2], back: [12, -7], front: [19, 1], depth: 7, lattice: { period: 11, width: 4, slope: 1.6, shift: 330 } };
+  let pieMaps = null;
+  function pieShapes() {
+    if (pieMaps) return pieMaps;
+    // the crust drawn with the rim's middle at (0, 0) into a context that keeps each pixel's colour
+    const at = new Map(), rec = { fillStyle: null, globalAlpha: 1, fillRect(x, y, w, h) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) at.set((x + i) + ',' + (y + j), this.fillStyle); } };
+    const was = D.getCtx(); D.setCtx(rec); pieTop(0, 0); D.setCtx(was);
+    const fill = { [FILLING[0]]: 'f0', [FILLING[1]]: 'f1', [FILLING[2]]: 'f2' };
+    // the lattice's filling in the base's frame: the rim's middle is 25 above the base
+    const top = (u, v) => fill[at.get(u + ',' + (v + 25))] || null;
+    const lattice = trim(-RIM[0] - 3, -25 - DOME[1] - 1, 2 * RIM[0] + 7, DOME[1] + RIM[1] + 3, (u, v) => lampKey(top, u, v));
+    // the slice, in the base's frame
+    const sk = (u, v) => sliceKey(u, v + 25);
+    const slice = trim(-RIM[0], -25 - 14, 2 * RIM[0], 28, sk), still = { x0: slice.x0, y0: slice.y0, w: slice.w, h: slice.h, cells: slice.keys.map(k => (k ? SLICE_COLOURS[k] : null)) };
+    const sliceLamp = trim(-RIM[0], -25 - 14, 2 * RIM[0], 28, (u, v) => lampKey(sk, u, v));
+    return (pieMaps = { lattice, slice: still, sliceLamp });
   }
+  /* The lamp's key at (u, v) of a map whose keys f gives as f0, f1 and f2. */
+  function lampKey(f, u, v) {
+    const k = f(u, v);
+    if (k === 'f0') return f(u - 1, v) === 'f2' && f(u, v - 1) === 'f2' ? 'h' : 'a';
+    return k === 'f1' ? 'b' : k === 'f2' ? 'e' : null;
+  }
+  /* The keys k(u, v) gives over the box from (x0, y0), w by h, trimmed to those it gives. */
+  function trim(x0, y0, w, h, k) {
+    let i0 = w, j0 = h, i1 = -1, j1 = -1;
+    const all = [];
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const v = k(x0 + i, y0 + j); all.push(v); if (v) { i0 = Math.min(i0, i); j0 = Math.min(j0, j); i1 = Math.max(i1, i); j1 = Math.max(j1, j); } }
+    const keys = [];
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) keys.push(all[j * w + i]);
+    return { x0: x0 + i0, y0: y0 + j0, w: i1 - i0 + 1, h: j1 - j0 + 1, keys };
+  }
+  const SLICE_COLOURS = { O: C.K, c0: CRUST[0], c1: CRUST[1], c2: CRUST[2], c3: CRUST[3], f0: FILLING[0], f1: FILLING[1], f2: FILLING[2] };
+  /* Which side of the line from a to b the point p lies. */
+  const cross = (a, b, p) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+  /* What the slice is at (u, v) from the rim's middle: 'top', 'face' with its depth below the top's
+     front edge, 'end', or null. */
+  function slicePart(u, v) {
+    const { tip, back, front, depth } = SLICE, p = [u, v], d1 = cross(tip, back, p), d2 = cross(back, front, p), d3 = cross(front, tip, p);
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return 'top';
+    if (u >= tip[0] && u <= front[0]) { const y = tip[1] + (front[1] - tip[1]) * (u - tip[0]) / (front[0] - tip[0]); if (v > y && v <= y + depth) return 'face' + (v - y); }
+    if (u >= back[0] && u <= front[0] && u > front[0] - 3) { const y = back[1] + (front[1] - back[1]) * (u - back[0]) / (front[0] - back[0]); if (v > y && v <= y + depth) return 'end'; }
+    return null;
+  }
+  /* What the dish's near rim leaves showing: above the front edge of its inside. */
+  const aboveRim = (u, v) => Math.abs(u) < 32 && v <= 1 + 6 * Math.sqrt(1 - (u / 32) ** 2);
+  /* The slice's key at (u, v) from the rim's middle: O its outline, c0 to c3 the crust, f0 to f2 the
+     filling. */
+  function sliceKey(u, v) {
+    const s = slicePart(u, v), inside = (du, dv) => slicePart(u + du, v + dv) !== null;
+    if (!s) return (inside(-1, 0) || inside(1, 0) || inside(0, -1) || inside(0, 1)) && aboveRim(u, v) ? 'O' : null;
+    if (!aboveRim(u, v)) return null;
+    if (!inside(-1, 0) || !inside(1, 0) || !inside(0, -1) || !inside(0, 1)) return 'O';
+    if (s === 'end') return 'c2';
+    if (s !== 'top') { const d = +s.slice(4); return d < 2 ? 'c1' : d < 3 ? 'f0' : d < 5 ? 'f1' : 'c3'; }
+    // the top: a band of crust along the outer edge, and the lattice over the rest
+    const edge = Math.abs(cross(SLICE.back, SLICE.front, [u, v])) / Math.hypot(SLICE.front[0] - SLICE.back[0], SLICE.front[1] - SLICE.back[1]);
+    if (edge < 3) return edge < 1.5 ? 'c1' : 'c2';
+    const L = SLICE.lattice, a = (u + v * L.slope + L.shift) % L.period, b = (u - v * L.slope + L.shift) % L.period;
+    if (a < L.width || b < L.width) return a < 1 || b < 1 ? 'c0' : 'c1';
+    return a < L.width + 1 || b < L.width + 1 ? 'f2' : 'f0';
+  }
+
   /* ---- The other devices -------------------------------------------------------------
-     Drawn as the devices they are, in the steels and whites of the palette. Each takes
-     (x, y, t, ok, part) like the pie, but (x, y) is the middle of the base, the line it stands on
-     (for a camera, the foot of the wall plate it hangs from), and it fits within 80 by 64 above it.
-     part 'still' draws what does not move, 'moving' what does, and nothing given draws both. Each
-     device has one lamp, its only moving part: while up it fades from green to black and back
-     over 3.6 seconds, and while down from red to black and back over 2 seconds, a slow blink.
-     A gone device stays where it is, plainly dead or broken. */
+     In the medieval world each kind is drawn as a medieval thing that stands for it, by the
+     owner's choice of 16 November 2026: the camera a barn owl on watch on an iron bracket, the
+     machine a cauldron brewing over a log fire, the virtual machine a corked potion flask, and a
+     kind the page does not know an iron-bound chest. Each takes (x, y, t, ok, part) like the pie,
+     but (x, y) is the middle of the base, the line it stands on (for the owl, the foot of the wall
+     plate its bracket hangs from), and it fits within 80 by 64 above it. part 'still' draws what
+     does not move, 'moving' what does, and nothing given draws both. Each device has one lamp, its
+     only moving part: while up it fades from green to black and back over 3.6 seconds, and while
+     down from red to black and back over 2 seconds, a slow blink. The chest's lamp is the engine's
+     (lampRim and lampHD); the owl's eyes, the brew, the ember and the potion are lamps of their own
+     (ownLampHD). A gone device stays where it is, plainly knocked over or broken. */
   /* The lamp's dark rim, 12 by 12 around its middle (x, y): the still part. */
   function lampRim(x, y) { Rh(x - 6, y - 6, 12, 12, C.K); }
   /* The lamp itself at time t: its colour between full and black, a highlight while it is bright,
@@ -196,98 +239,163 @@
     if (a > .5) { alpha(2 * a - 1); Rh(x - 4, y - 4, 3, 3, L.hi); alpha(1); }
   }
 
-  /* A bullet camera on a wall arm, facing left: the wall plate at the right, the arm, and the white
-     body under its sunshade with the dark lens at the front and the lamp on its side. Gone: the
-     body hangs straight down from the arm, dulled, its lens dark. The plate's foot is the base. */
-  const CAM_LAMP = { up: [-8, -40], down: [5, -28] };
+  /* The lamps of the devices' own, as the pie's: each its middle from the base, its lit and dark
+     colourings, its light (the engine's green up, the down lamp's red gone) and its map, keys over a
+     box from the base, worked out once. A key the lit colouring lacks shows the dark drawing in the
+     lit canvas too, as a pack's lamp does: the gaps of the dazed owl's spirals. */
+  const UP_GREEN = { a: '#8fe07a', b: '#5e9451', h: LAMP.up.hi }, DOWN_REDS = { a: LAMP_REDS.down, b: LAMP_REDS.downLo, h: LAMP_REDS.downHi };
+  const EYE_DARK = { a: '#2a2236', b: '#1e1828', h: '#3a3248', e: '#2a2236' }, BREW_DARK = { a: '#1c3a20', b: '#132a17', h: '#2a4a2c' };
+  const inEll = (u, v, cx, cy, rx, ry) => ((u - cx) / rx) ** 2 + ((v - cy) / ry) ** 2 <= 1;
+  /* A lamp of its own: at, the colourings, the light, and the map from key(u, v) over the box from
+     (x0, y0), w by h, trimmed to what it holds. */
+  const ownLamp = (at, lit, dark, light, x0, y0, w, h, key) => {
+    let m = null;
+    return Object.freeze({ at, lit, dark, light, map: () => m || (m = trim(x0, y0, w, h, key)) });
+  };
+  /* Two eyes n across, from their upper left corners: a highlight in the corner, shaded at the lower
+     right. */
+  const eyes = (centres, n) => (u, v) => {
+    for (const [ex, ey] of centres) { const i = u - ex, j = v - ey; if (i >= 0 && i < n && j >= 0 && j < n) return i === 0 && j === 0 ? 'h' : i + j >= 2 * n - 3 ? 'b' : 'a'; }
+    return null;
+  };
+  /* Two dazed eyes, a red spiral in each, its gaps dark. */
+  const SPIRAL = ['aaaaa', '....a', 'aaa.a', 'a...a', 'aaaaa'];
+  const spirals = centres => (u, v) => {
+    for (const [ex, ey] of centres) { const i = u - ex, j = v - ey; if (i >= 0 && i < 5 && j >= 0 && j < 5) return SPIRAL[j][i] === 'a' ? 'a' : 'e'; }
+    return null;
+  };
+  const EMBER = ['..aa...', '.aaaa..', 'aaahaa.', '.aaaaa.'];
+  const LAMPS = Object.freeze({
+    owl: { up: ownLamp([-4, -56], UP_GREEN, EYE_DARK, rgb(LAMP.up.rgb, 1), -10, -58, 13, 5, eyes([[-10, -58], [-2, -58]], 5)),
+      gone: ownLamp([-4, -10], DOWN_REDS, EYE_DARK, LAMP_REDS.down, -11, -12, 15, 5, spirals([[-11, -12], [-1, -12]])) },
+    cauldron: { up: ownLamp([0, -40], Object.assign({ B: UP_GREEN.a }, UP_GREEN), BREW_DARK, rgb(LAMP.up.rgb, 1), -21, -49, 43, 17, (u, v) => {
+      // the brew's surface, lit along its far edge, and three bubbles, rings that rise as it brightens
+      if (inEll(u, v, 0, -36, 20, 3.6)) return !inEll(u, v - 1, 0, -36, 20, 3.6) || (u < -10 && v === -38) ? 'h' : u > 10 ? 'b' : 'a';
+      for (const [bx, by, r] of [[-7, -43, 2.5], [6, -46, 1.6], [1, -41, 1.6]]) if (inEll(u, v, bx, by, r, r)) return Math.hypot(u - bx, v - by) < r - 1.2 ? null : 'B';
+      return null;
+    }),
+      gone: ownLamp([28, -6], DOWN_REDS, { a: '#3a2622', h: '#4a2e26' }, LAMP_REDS.down, 25, -8, 7, 4, (u, v) => { const c = EMBER[v + 8][u - 25]; return c === '.' ? null : c; }) },
+    flask: { up: ownLamp([0, -10], UP_GREEN, BREW_DARK, rgb(LAMP.up.rgb, 1), -12, -18, 25, 17, (u, v) => {
+      if (!inEll(u, v, 0, -14, 12, 12) || v > -2 || v < -18) return null;
+      if (v === -18 || (u === -4 && v === -12) || (u === 3 && v === -8) || (u === -1 && v === -5)) return 'h';
+      return u > 6 || v > -5 ? 'b' : 'a';
+    }),
+      gone: ownLamp([8, -4], DOWN_REDS, BREW_DARK, LAMP_REDS.down, -3, -7, 23, 6, (u, v) => (inEll(u, v, 8, -13, 11, 11) && v >= -6 ? (v === -6 ? 'h' : u > 14 ? 'b' : 'a') : null)) }
+  });
+  /* The engine's lamp of the chest, the jewel in its lock plate. */
+  const CHEST_LAMP = { up: [0, -20], gone: [15, -24] };
+
+  const BUFF = [[.15, '#f3d29a'], [.55, '#e0ae66'], [1, '#b9803f']], WOODV = [[.2, C.N0], [.7, C.N1], [1, C.N2]], DARKIN = '#100c16';
+  const IRONB = [[.12, '#7a8296'], [.45, '#4a5062'], [1, '#2a2a38']], COLD = [[.3, '#6a5e58'], [1, '#4a4048']];
+  const GLASS = '#3a4660', GLASS_HI = '#8ea0c0';
+  /* A feather drifting down. */
+  function feather(x, y, c) { ell(x, y, 4, 2.5, C.K); ell(x, y, 2.5, 1.25, c); }
+
+  /* The camera: a barn owl on an iron wall bracket, facing out, its eyes the lamp. The wall plate
+     stands where the old camera's did, from x 22 to 32, so the poles of a high place meet it. Gone:
+     it hangs upside down from the bracket by its talons, its wings drooping, its eyes dazed spirals
+     that blink red, two feathers drifting down. */
   function cameraHD(x, y, t, ok, part) {
-    const lp = ok ? CAM_LAMP.up : CAM_LAMP.down;
     if (part !== 'moving') {
-      rrect(x + 22, y - 64, 10, 28, 2, C.K); rrect(x + 24, y - 62, 6, 24, 1, STEEL3); Rh(x + 26, y - 59, 2, 2, C.S1); Rh(x + 26, y - 42, 2, 2, C.S1);
-      strip(x + 24, y - 52, x + 8, y - 56, 4, 4, C.K); strip(x + 24, y - 52, x + 8, y - 56, 2, 2, C.S3);
+      rrect(x + 22, y - 64, 10, 46, 2, C.K); rrect(x + 24, y - 62, 6, 42, 1, STEEL3); Rh(x + 26, y - 59, 2, 2, C.S1); Rh(x + 26, y - 25, 2, 2, C.S1);
+      strip(x + 24, y - 23, x + 12, y - 33, 2, 2, C.K); strip(x + 24, y - 23, x + 12, y - 33, 1, 1, C.S3);
+      strip(x + 24, y - 34, x - 17, y - 34, 3, 3, C.K); ell(x - 19, y - 34, 3, 3, C.K);
+      strip(x + 24, y - 34, x - 17, y - 34, 1.5, 1.5, C.S3); ell(x - 19, y - 34, 1.5, 1.5, C.S2);
       if (ok) {
-        strip(x + 16, y - 46, x - 26, y - 38, 11, 11, C.K);
-        strip(x + 15, y - 46, x - 25, y - 38, 9, 9, [[.12, C.W], [.5, C.S0], [.8, C.S1], [1, C.S2]]);
-        strip(x + 16, y - 57, x - 34, y - 47, 4, 4, C.K); strip(x + 15, y - 57, x - 33, y - 47, 2, 2, [[.5, C.W], [1, C.S1]]);
-        ell(x + 16, y - 46, 4, 9, C.K); ell(x + 16, y - 46, 2, 7, C.S2);
-        ell(x - 27, y - 38, 5, 9, C.K); ell(x - 27, y - 38, 3, 6, '#24314f'); Rh(x - 28, y - 42, 1, 3, '#9fb6e8');
+        ell(x - 4, y - 45, 12, 10, C.K); ell(x - 4, y - 45, 10, 8, BUFF);
+        ell(x - 4, y - 42, 6, 6, [[.35, C.W], [1, C.S1]]);
+        for (const [dx, dy] of [[-6, -44], [-2, -41], [-5, -39], [-1, -45]]) Rh(x + dx, y + dy, 1, 1, C.N1);
+        Rh(x - 13, y - 48, 1, 8, C.N2); Rh(x + 5, y - 48, 1, 8, C.N2);
+        ell(x - 4, y - 55, 12, 9, C.K); ell(x - 4, y - 55, 10, 7, BUFF);
+        ell(x - 4, y - 54, 9, 6, '#c98f4f'); ell(x - 8, y - 54, 4, 5, [[.4, C.W], [1, C.S0]]); ell(x, y - 54, 4, 5, [[.4, C.W], [1, C.S0]]);
+        Rh(x - 5, y - 52, 2, 3, C.G2);
+        Rh(x - 9, y - 37, 3, 2, C.G2); Rh(x - 1, y - 37, 3, 2, C.G2);
       } else {
-        strip(x + 7, y - 52, x + 3, y - 12, 11, 11, C.K);
-        strip(x + 7, y - 52, x + 3, y - 12, 9, 9, [[.15, C.S1], [.55, C.S2], [.85, C.S3], [1, C.S4]]);
-        strip(x - 6, y - 51, x - 10, y - 2, 4, 4, C.K); strip(x - 6, y - 51, x - 10, y - 2, 2, 2, C.S3);
-        ell(x + 7, y - 52, 9, 4, C.K); ell(x + 7, y - 52, 7, 2, C.S3);
-        ell(x + 3, y - 10, 9, 5, C.K); ell(x + 3, y - 10, 6, 3, '#0e1018'); strip(x - 1, y - 12, x + 6, y - 9, .6, .6, '#3a3f52');
+        Rh(x - 9, y - 31, 3, 2, C.G2); Rh(x - 1, y - 31, 3, 2, C.G2);
+        strip(x - 14, y - 28, x - 20, y - 13, 4, 2, C.K); strip(x + 6, y - 28, x + 12, y - 13, 4, 2, C.K);
+        strip(x - 14, y - 28, x - 20, y - 13, 2.5, 1, '#b9803f'); strip(x + 6, y - 28, x + 12, y - 13, 2.5, 1, '#b9803f');
+        ell(x - 4, y - 22, 12, 10, C.K); ell(x - 4, y - 22, 10, 8, BUFF);
+        ell(x - 4, y - 24, 6, 6, [[.35, C.W], [1, C.S1]]);
+        for (const [dx, dy] of [[-6, -23], [-2, -26], [-5, -28]]) Rh(x + dx, y + dy, 1, 1, C.N1);
+        ell(x - 4, y - 9, 12, 9, C.K); ell(x - 4, y - 9, 10, 7, BUFF);
+        ell(x - 4, y - 10, 9, 6, '#c98f4f'); ell(x - 8, y - 10, 4, 5, [[.4, C.W], [1, C.S0]]); ell(x, y - 10, 4, 5, [[.4, C.W], [1, C.S0]]);
+        Rh(x - 5, y - 16, 2, 3, C.G2);
+        feather(x + 16, y - 7, '#f3d29a'); feather(x - 26, y - 3, C.W);
       }
-      ell(x + 8, y - 56, 4, 4, C.K); ell(x + 8, y - 56, 2, 2, C.S2);
-      lampRim(x + lp[0], y + lp[1]);
     }
-    if (part !== 'still') lampHD(x + lp[0], y + lp[1], t, ok);
+    if (part !== 'still') ownLampHD(ok ? LAMPS.owl.up : LAMPS.owl.gone, x, y, t, ok);
   }
 
-  /* A tower case seen from the front and a little above, its side to the right. The front, the
-     side and the top as the points of three faces: */
-  const caseFaces = (x, y) => ({
-    front: [[x - 21, y - 50], [x + 9, y - 50], [x + 9, y], [x - 21, y]],
-    top: [[x - 21, y - 50], [x - 9, y - 56], [x + 21, y - 56], [x + 9, y - 50]],
-    side: [[x + 9, y - 50], [x + 21, y - 56], [x + 21, y - 6], [x + 9, y]] });
-  /* A grey tower case with its power lamp. Gone: the case dark, its side panel off and leant
-     against it, the inside showing. */
+  /* The machine: an iron cauldron on short legs over a small log fire, its brew the lamp, with
+     bubbles that show as it brightens. Gone: tipped on its side, empty and cold, the fire out, and
+     the last ember among the cold logs blinks. */
   function machineHD(x, y, t, ok, part) {
     if (part !== 'moving') {
-      if (!ok) { poly([[x + 20, y - 54], [x + 27, y - 58], [x + 40, y], [x + 31, y + 1]], C.K); poly([[x + 23, y - 53], [x + 27, y - 55], [x + 38, y - 1], [x + 33, y - 1]], [[.4, C.S4], [1, '#3a4150']], true); }
-      poly([[x - 23, y + 1], [x - 23, y - 51], [x - 10, y - 58], [x + 23, y - 58], [x + 23, y - 5], [x + 10, y + 1]], C.K);
-      Rv(x - 21, y - 49, 30, 49, ok ? [[.08, C.S0], [.7, C.S1], [1, C.S2]] : [[.08, C.S3], [.7, C.S4], [1, '#3a4150']]);
-      poly([[x - 20, y - 51], [x - 9, y - 56], [x + 21, y - 56], [x + 10, y - 51]], ok ? C.W : C.S3);
       if (ok) {
-        poly([[x + 10, y - 50], [x + 21, y - 56], [x + 21, y - 6], [x + 10, y]], [[.5, C.S2], [1, C.S3]], true);
-        for (let i = 0; i < 4; i++) Rh(x + 13 + i * 2, y - 40 - i, 1, 24, C.S4);
+        strip(x - 22, y - 2, x + 18, y - 6, 3, 3, C.K); strip(x - 18, y - 6, x + 22, y - 2, 3, 3, C.K);
+        strip(x - 22, y - 2, x + 18, y - 6, 2, 2, C.N2); strip(x - 18, y - 6, x + 22, y - 2, 2, 2, C.N1);
+        for (const [fx, h] of [[-8, 8], [-1, 10], [6, 7]]) { poly([[x + fx - 3, y - 5], [x + fx, y - 5 - h], [x + fx + 3, y - 5]], C.G1); poly([[x + fx - 1, y - 5], [x + fx, y + 1 - h], [x + fx + 1, y - 5]], C.G0); }
+        Rh(x - 16, y - 12, 4, 9, C.K); Rh(x - 15, y - 11, 2, 7, C.S4); Rh(x + 12, y - 12, 4, 9, C.K); Rh(x + 13, y - 11, 2, 7, C.S4);
+        ell(x - 26, y - 33, 3, 3, C.K); ell(x + 26, y - 33, 3, 3, C.K); ell(x - 26, y - 33, 1.25, 1.25, C.S4); ell(x + 26, y - 33, 1.25, 1.25, C.S4);
+        ell(x, y - 22, 24, 15, C.K); ell(x, y - 22, 22, 13, IRONB); Rh(x - 17, y - 28, 2, 7, '#9aa4b8');
+        ell(x, y - 36, 26, 7, C.K); ell(x, y - 36, 24, 5, [[.2, C.S2], [.6, C.S3], [1, C.S4]]); ell(x, y - 36, 21, 4, C.K);
       } else {
-        poly([[x + 10, y - 49], [x + 20, y - 54], [x + 20, y - 7], [x + 10, y - 1]], '#100c16');
-        poly([[x + 12, y - 44], [x + 18, y - 47], [x + 18, y - 24], [x + 12, y - 21]], '#232030'); Rh(x + 13, y - 15, 4, 6, '#232030');
+        ell(x - 24, y - 1, 10, 2, '#2e3a2c');
+        strip(x + 8, y - 2, x + 38, y - 5, 3, 3, C.K); strip(x + 8, y - 2, x + 38, y - 5, 2, 2, COLD);
+        Rh(x + 12, y - 1, 12, 1, C.S4);
+        strip(x + 24, y - 20, x + 32, y - 24, 2, 2, C.K); strip(x + 25, y - 9, x + 33, y - 9, 2, 2, C.K);
+        strip(x + 24, y - 20, x + 32, y - 24, 1, 1, C.S4); strip(x + 25, y - 9, x + 33, y - 9, 1, 1, C.S4);
+        ell(x + 6, y - 15, 19, 15, C.K); ell(x + 6, y - 15, 17, 13, [[.1, '#6a7082'], [.5, '#3e4252'], [1, '#26242f']]);
+        ell(x + 6, y - 30, 3, 3, C.K); ell(x + 6, y - 30, 1.25, 1.25, C.S4);
+        ell(x - 12, y - 15, 7, 15, C.K); ell(x - 12, y - 15, 5, 13, C.S4); ell(x - 11, y - 15, 3, 11, DARKIN);
       }
-      const face = ok ? C.S3 : '#2e3440';
-      for (const by of [y - 45, y - 38]) { Rh(x - 18, by, 24, 5, C.K); Rh(x - 17, by + 1, 22, 3, face); }
-      for (let i = 0; i < 4; i++) Rh(x - 17, y - 12 + i * 3, 22, 1, face);
-      lampRim(x - 6, y - 24);
     }
-    if (part !== 'still') lampHD(x - 6, y - 24, t, ok);
+    if (part !== 'still') ownLampHD(ok ? LAMPS.cauldron.up : LAMPS.cauldron.gone, x, y, t, ok);
   }
 
-  /* The same case as a dotted outline, for a virtual machine: bright dots while up; gone, only a
-     few paler dots at its corners are left. The lamp sits in the middle of its front. */
+  /* The virtual machine: a corked glass flask with a paper tag, the potion in it the lamp, what the
+     cauldron brews held in a smaller vessel. Gone: the flask lies on its side with its cork out
+     beside it, and the last of the potion blinks. */
   function vmHD(x, y, t, ok, part) {
     if (part !== 'moving') {
-      const f = caseFaces(x, y), dots = [];
-      const edge = (a, b, ends) => {
-        const n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 5));
-        for (let i = 0; i <= n; i++) if (!ends || i < 2 || i > n - 2) dots.push([Math.round(a[0] + (b[0] - a[0]) * i / n), Math.round(a[1] + (b[1] - a[1]) * i / n)]);
-      };
-      for (const k of ['front', 'top', 'side']) { const p = f[k]; for (let i = 0; i < 4; i++) edge(p[i], p[(i + 1) % 4], !ok); }
-      for (const [dx, dy] of dots) Rh(dx - 2, dy - 2, 4, 4, C.K);
-      for (const [dx, dy] of dots) Rh(dx - 1, dy - 1, 2, 2, ok ? C.W : C.S1);
-      lampRim(x - 6, y - 24);
+      if (ok) {
+        ell(x, y - 14, 14, 14, C.K); ell(x, y - 14, 12, 12, GLASS);
+        rrect(x - 5, y - 40, 10, 14, 1, C.K); rrect(x - 3, y - 39, 6, 13, 0, GLASS);
+        rrect(x - 7, y - 42, 14, 4, 1, C.K); Rh(x - 6, y - 41, 12, 2, C.S2);
+        rrect(x - 4, y - 48, 8, 7, 2, C.K); rrect(x - 3, y - 47, 6, 5, 1, C.N0);
+        Rh(x - 8, y - 23, 2, 4, GLASS_HI); Rh(x - 2, y - 36, 1, 6, GLASS_HI);
+        Rh(x + 4, y - 37, 5, 1, C.F2); poly([[x + 8, y - 38], [x + 16, y - 36], [x + 14, y - 29], [x + 7, y - 31]], C.K); poly([[x + 9, y - 36], [x + 14, y - 35], [x + 13, y - 31], [x + 9, y - 32]], C.F0);
+      } else {
+        ell(x + 8, y - 13, 13, 13, C.K); ell(x + 8, y - 13, 11, 11, GLASS);
+        rrect(x - 19, y - 18, 16, 10, 1, C.K); rrect(x - 18, y - 16, 15, 6, 0, GLASS);
+        rrect(x - 22, y - 20, 4, 14, 1, C.K); Rh(x - 21, y - 19, 2, 12, C.S2);
+        Rh(x + 2, y - 21, 6, 2, GLASS_HI);
+        rrect(x - 34, y - 6, 8, 7, 2, C.K); rrect(x - 33, y - 5, 6, 5, 1, C.N0);
+        poly([[x + 18, y - 22], [x + 25, y - 26], [x + 26, y - 20], [x + 20, y - 18]], C.K); poly([[x + 19, y - 22], [x + 24, y - 24], [x + 24, y - 21], [x + 20, y - 20]], C.F0);
+      }
     }
-    if (part !== 'still') lampHD(x - 6, y - 24, t, ok);
+    if (part !== 'still') ownLampHD(ok ? LAMPS.flask.up : LAMPS.flask.gone, x, y, t, ok);
   }
 
-  /* A plain small grey box with a lamp, for a kind the page does not know. Gone: tipped on its
-     side, its lid off and lying beside it, the dark inside showing. */
+  /* Any other kind: a small iron-bound chest, the engine's lamp the jewel in its lock plate. Gone:
+     tipped up on its end, its lid knocked off and lying upside down beside it, three coins spilt. */
   function boxHD(x, y, t, ok, part) {
-    const lp = ok ? [-13, -12] : [-1, -14];
+    const lp = ok ? CHEST_LAMP.up : CHEST_LAMP.gone;
     if (part !== 'moving') {
       if (ok) {
-        poly([[x - 26, y + 1], [x - 26, y - 23], [x - 17, y - 29], [x + 26, y - 29], [x + 26, y - 5], [x + 17, y + 1]], C.K);
-        Rv(x - 24, y - 22, 40, 22, [[.1, C.S1], [.75, C.S2], [1, C.S3]]);
-        poly([[x - 23, y - 23], [x - 16, y - 27], [x + 24, y - 27], [x + 17, y - 23]], C.S0);
-        poly([[x + 17, y - 22], [x + 24, y - 27], [x + 24, y - 6], [x + 17, y - 1]], [[.5, C.S3], [1, C.S4]], true);
-        for (let i = 0; i < 3; i++) Rh(x + 2, y - 16 + i * 4, 10, 1, C.S4);
+        rrect(x - 25, y - 25, 50, 26, 2, C.K); Rv(x - 23, y - 23, 46, 22, WOODV); Rh(x - 23, y - 16, 46, 1, C.N3); Rh(x - 23, y - 8, 46, 1, C.N3);
+        rrect(x - 25, y - 38, 50, 15, 6, C.K); rrect(x - 23, y - 36, 46, 12, 5, [[.3, C.N0], [1, C.N1]]); Rh(x - 23, y - 26, 46, 1, C.N3);
+        for (const bx of [-19, 14]) { Rh(x + bx, y - 37, 5, 38, C.K); Rh(x + bx + 1, y - 36, 3, 36, C.S3); Rh(x + bx + 2, y - 33, 1, 1, C.S1); Rh(x + bx + 2, y - 6, 1, 1, C.S1); }
+        rrect(x - 8, y - 28, 16, 16, 2, C.K); rrect(x - 7, y - 27, 14, 14, 1, STEEL2);
       } else {
-        poly([[x - 36, y + 1], [x - 36, y - 4], [x - 15, y - 13], [x - 15, y - 8]], C.K); poly([[x - 34, y - 1], [x - 34, y - 3], [x - 17, y - 10], [x - 17, y - 8]], C.S2);
-        poly([[x - 14, y + 1], [x - 14, y - 41], [x - 5, y - 47], [x + 22, y - 47], [x + 22, y - 6], [x + 13, y + 1]], C.K);
-        Rv(x - 12, y - 40, 24, 40, [[.1, C.S2], [.75, C.S3], [1, C.S4]]);
-        poly([[x - 11, y - 42], [x - 4, y - 46], [x + 21, y - 46], [x + 14, y - 42]], '#100c16');
-        poly([[x + 13, y - 40], [x + 20, y - 45], [x + 20, y - 6], [x + 13, y - 1]], [[.5, C.S4], [1, '#3a4150']], true);
-        for (let i = 0; i < 3; i++) Rh(x + 4 - i * 4, y - 34, 1, 10, C.S4);
+        rrect(x - 34, y - 12, 34, 13, 6, C.K); rrect(x - 32, y - 10, 30, 10, 5, [[.3, C.N1], [1, C.N2]]);
+        for (const bx of [-29, -9]) { Rh(x + bx, y - 12, 4, 13, C.K); Rh(x + bx + 1, y - 11, 2, 11, C.S3); }
+        rrect(x + 2, y - 48, 26, 49, 2, C.K); Rv(x + 4, y - 46, 22, 45, WOODV);
+        Rh(x + 4, y - 46, 3, 45, DARKIN);
+        for (const by of [-42, -8]) { Rh(x + 2, y + by, 26, 5, C.K); Rh(x + 3, y + by + 1, 24, 3, C.S3); }
+        Rh(x + 12, y - 37, 1, 29, C.N3); Rh(x + 20, y - 37, 1, 29, C.N3);
+        rrect(x + 7, y - 32, 16, 16, 2, C.K); rrect(x + 8, y - 31, 14, 14, 1, STEEL2);
+        for (const [cx, cy] of [[-4, -2], [-1, -1], [2, -3]]) { ell(x + cx, y + cy, 3, 2, C.K); ell(x + cx, y + cy, 2, 1, C.G1); }
       }
       lampRim(x + lp[0], y + lp[1]);
     }
@@ -551,7 +659,7 @@
     }
   }
 
-  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, pieHD, raspberryHD, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf,
+  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, pieHD, pieShapes, DEVICE_LAMPS: LAMPS, CHEST_LAMP, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf,
     LAMP, LAMP_REDS, lampLevel, lampRim, lampHD, crateHD, flyHD, deadFlyHD, CRITTERS, poofHD, chuteHD,
     FOES, starHD, cloudHD, CLOUD_MS, sparklesHD, SPARKLE_MS, holeHD, clodsHD };
 })(window.KW);

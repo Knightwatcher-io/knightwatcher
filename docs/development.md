@@ -167,7 +167,12 @@ the worlds: the World page with nothing set and at the tablet's size, the World 
 address changes from the world, and the status page's World, Parts and Fallbacks entries
 ([page.md](./page.md#checks)); against a reference from before worlds they are missing, and every
 settings shot that shows the side rail differs in it, where World was added first, and
-`settings-status` in its entries too. A headless browser has no saved choices, so every shot shows what its address asks for.
+`settings-status` in its entries too. Against a reference from before `kw.medieval` 0.6.0, which
+took the raspberry off the pie and drew the other devices as an owl, a cauldron, a flask and a
+chest, every shot that draws a pie or a device differs there: the pie in its place, the dimmed
+scene behind the settings screen, and the scenes' thumbnails and previews on the settings screen;
+and in the 22 shots that place devices with the address's `dv=`, the devices in their places, with
+the lights of their lamps reaching up to 24 pixels past a place's box. A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
@@ -263,7 +268,7 @@ another spot, the yard's dummy struck, the devices in all seven places up and go
 each monarch in its own colours, in each of the six skins and in a sample of hair and robe; each at
 960 by 600, 1400 by 600 and 960 by 720, at five moments chosen to catch what moves. The devices are
 drawn by the engine's own `KW.devices`, and a canvas drawn with `drawImage` (a device's still part,
-the raspberry, a pose of the goblin) is written into the record with its calls. Where a scene calls
+the pie's lamp, a pose of the goblin) is written into the record with its calls. Where a scene calls
 on the knight (the sleeper's head, the gear at rest, the speech bubble, a swing) the record holds
 one line with the call and its arguments, since the knight test checks the knight. The goblin, the
 flies and the other props of the events are recorded apart. It compares 1 803 records with those in
@@ -338,7 +343,9 @@ Whether the base pack ships signed today, and what a deployed page draws in each
 first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, and again the same
 day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house.
 Version 0.3.0, which adds the devices, was signed the same way on 16 November, and version 0.4.0,
-which adds the cast, the same day, as was version 0.5.0, which adds the words and the overlay. A signed version is drawn from by a deployed
+which adds the cast, the same day, as was version 0.5.0, which adds the words and the overlay.
+Version 0.6.0, which lights the pie through its lattice in place of the raspberry and draws the
+other devices as an owl, a cauldron, a flask and a chest, ships unsigned until its run. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature

@@ -64,7 +64,8 @@ there in a file. Credentials stay in `.env` ([The admin page](docs/server.md#the
 Open `web/index.html` in a browser. With no `state.json` beside it, the page runs on invented data
 and shows a bar of controls for every scene and state.
 
-Press and hold anywhere on the display for two seconds to open the settings: the knight's build
+Press and hold anywhere on the display for two seconds to open the settings: the world, which
+sets every part at once and is medieval for now, the knight's build
 (Classic, Broad or Slim), weapon, skin, hair, tabard and plume, the shield and armour from helmet
 to boots and a cloak or cape, the monarch and the monarch's skin, hair and robe, the headline size,
 a 12-hour clock, the helmet indoors, which quiet scenes take turns, and the scene some conditions
