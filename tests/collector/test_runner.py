@@ -8,7 +8,7 @@ import unittest
 from typing import ClassVar
 from unittest import mock
 
-from collector import contract
+from collector import contract, text
 from collector.net import AuthError, SourceError
 from collector.runner import Runner
 from collector.sources import Reading, Source
@@ -437,6 +437,247 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(line(29, 11283), "ALL QUIET · 29 up · backup 03:12 · 11.3k ads blocked")
         self.assertEqual(line(100, 11283), "ALL QUIET · 100 up · backup 03:12 · 11.3k blocked")
         self.assertEqual(line(100, 1355686), "ALL QUIET · 100 up · backup 03:12 · 1.4M ads blocked")
+
+    def quiet(self, readings, config=None):
+        r = self.runner([], config=config)
+        return r.quiet_parts(readings), r.quiet_line(readings)
+
+    def test_quiet_parts_carry_every_part_formatted_as_the_line_has_it(self):
+        parts, line = self.quiet(
+            {
+                "containers": Reading({"running": 29}),
+                "backup": Reading({"last_ok": "2026-01-15T03:12:00Z", "age_h": 1.0}),
+                "adblock": Reading({"blocked_today": 4812}),
+            }
+        )
+        self.assertEqual(
+            parts,
+            [
+                {"k": "quiet"},
+                {"k": "up", "n": "29"},
+                {"k": "backup", "at": "03:12"},
+                {"k": "ads", "n": "4,812", "short": "4,812"},
+            ],
+        )
+        self.assertEqual(line, "ALL QUIET · 29 up · backup 03:12 · 4,812 ads blocked")
+
+    def test_quiet_parts_leave_out_the_readings_that_are_missing(self):
+        self.assertEqual(self.quiet({}), ([{"k": "quiet"}], "ALL QUIET"))
+        self.assertEqual(
+            self.quiet({"adblock": Reading({"blocked_today": 11283})}),
+            (
+                [{"k": "quiet"}, {"k": "ads", "n": "11,283", "short": "11.3k"}],
+                "ALL QUIET · 11,283 ads blocked",
+            ),
+        )
+        self.assertEqual(
+            self.quiet({"containers": Reading({"running": 0})}),
+            ([{"k": "quiet"}, {"k": "up", "n": "0"}], "ALL QUIET · 0 up"),
+        )
+
+    def test_a_backup_with_no_completion_known_has_no_part(self):
+        parts, line = self.quiet(
+            {
+                "containers": Reading({"running": 29}),
+                "backup": Reading({"last_ok": None, "age_h": None}),
+            }
+        )
+        self.assertEqual(parts, [{"k": "quiet"}, {"k": "up", "n": "29"}])
+        self.assertEqual(line, "ALL QUIET · 29 up")
+
+    def test_the_backup_part_is_in_the_collectors_time_zone(self):
+        config = make_config(
+            {"collector": {"output_dir": self.out, "state_dir": self.var, "timezone": "Asia/Tokyo"}}
+        )
+        parts, line = self.quiet(
+            {"backup": Reading({"last_ok": "2026-01-15T03:12:00Z", "age_h": 1.0})}, config
+        )
+        self.assertEqual(parts, [{"k": "quiet"}, {"k": "backup", "at": "12:12"}])
+        self.assertEqual(line, "ALL QUIET · backup 12:12")
+
+    def test_the_ads_part_stays_when_the_line_shortens_or_drops_it(self):
+        backup = Reading({"last_ok": "2026-01-15T03:12:00Z", "age_h": 1.0})
+        shortened, line = self.quiet(
+            {
+                "containers": Reading({"running": 100}),
+                "backup": backup,
+                "adblock": Reading({"blocked_today": 11283}),
+            }
+        )
+        self.assertEqual(line, "ALL QUIET · 100 up · backup 03:12 · 11.3k blocked")
+        self.assertEqual(shortened[-1], {"k": "ads", "n": "11,283", "short": "11.3k"})
+        dropped, line = self.quiet(
+            {
+                "containers": Reading({"running": 10**12}),
+                "backup": backup,
+                "adblock": Reading({"blocked_today": 1355686}),
+            }
+        )
+        self.assertEqual(line, "ALL QUIET · 1000000000000 up · backup 03:12")
+        self.assertEqual(
+            dropped,
+            [
+                {"k": "quiet"},
+                {"k": "up", "n": "1000000000000"},
+                {"k": "backup", "at": "03:12"},
+                {"k": "ads", "n": "1,355,686", "short": "1.4M"},
+            ],
+        )
+
+    def test_the_quiet_line_is_what_it_was_before_the_parts(self):
+        def before(readings):
+            # The quiet line as it was built before it was built from its parts.
+            parts = ["ALL QUIET"]
+            containers = readings.get("containers")
+            if containers is not None:
+                parts.append(f"{containers.facts['running']} up")
+            backup = readings.get("backup")
+            if backup is not None and backup.facts["last_ok"]:
+                when = text.parse_iso(backup.facts["last_ok"]).astimezone(self.config.tz)
+                parts.append(f"backup {when:%H:%M}")
+            adblock = readings.get("adblock")
+            if adblock is not None:
+                n = adblock.facts["blocked_today"]
+                for part in (
+                    f"{text.count(n)} ads blocked",
+                    f"{text.short_count(n)} ads blocked",
+                    f"{text.short_count(n)} blocked",
+                ):
+                    if len(text.SEP.join([*parts, part])) <= text.QUIET_LINE_MAX:
+                        parts.append(part)
+                        break
+            return text.join_fitting(parts, text.QUIET_LINE_MAX)
+
+        r = self.runner([])
+        backups = [None, {"last_ok": None}, {"last_ok": "2026-01-15T03:12:00Z"}]
+        for up in (None, 0, 9, 29, 100, 12345, 10**8, 10**12, 10**40):
+            for backup in backups:
+                for n in (None, 0, 999, 4812, 11283, 99999, 240000, 1355686, 10**9, 10**15):
+                    readings = {}
+                    if up is not None:
+                        readings["containers"] = Reading({"running": up})
+                    if backup is not None:
+                        readings["backup"] = Reading(dict(backup))
+                    if n is not None:
+                        readings["adblock"] = Reading({"blocked_today": n})
+                    self.assertEqual(r.quiet_line(readings), before(readings), (up, backup, n))
+
+    def test_the_file_carries_the_quiet_parts(self):
+        adblock = Fake("adblock", "adblock", self.config, {"blocked_today": 4812})
+        self.runner([adblock]).cycle()
+        state = self.read_state()
+        self.assertEqual(
+            state["quiet_parts"], [{"k": "quiet"}, {"k": "ads", "n": "4,812", "short": "4,812"}]
+        )
+        self.assertEqual(state["quiet_line"], "ALL QUIET · 4,812 ads blocked")
+        self.assertEqual(contract.validate(state), [])
+
+    def events_written(self, found):
+        src = Fake(
+            "security", "security", self.config, {"threat_score": 0, "bans_24h": 0, "attack": False}
+        )
+        r = self.runner([src])
+        r.cycle()
+        src.events = found
+        r.cycle()
+        state = self.read_state()
+        self.assertEqual(contract.validate(state), [])
+        return state["events"]
+
+    def test_events_carry_their_parts_beside_the_text(self):
+        events = self.events_written(
+            [
+                {
+                    "type": "ip_banned",
+                    "count": 1,
+                    "text": "BANNED 198.51.100.9 · sshd",
+                    "parts": {"addr": "198.51.100.9", "jail": "sshd"},
+                },
+                {
+                    "type": "ip_banned",
+                    "count": 1,
+                    "text": "BANNED 198.51.100.10",
+                    "parts": {"addr": "198.51.100.10"},
+                },
+                {
+                    "type": "import",
+                    "count": 1,
+                    "text": "IMPORTED · A Film (2024)",
+                    "parts": {"title": "A Film (2024)"},
+                },
+                {
+                    "type": "backup_done",
+                    "count": 1,
+                    "text": "BACKUP DONE 03:12",
+                    "parts": {"at": "03:12"},
+                },
+                {"type": "ad_blocked", "count": 2, "text": ""},
+            ]
+        )
+        self.assertEqual(
+            [(e["type"], e["text"], e.get("parts")) for e in events],
+            [
+                (
+                    "ip_banned",
+                    "BANNED 198.51.100.9 · sshd",
+                    {"addr": "198.51.100.9", "jail": "sshd"},
+                ),
+                ("ip_banned", "BANNED 198.51.100.10", {"addr": "198.51.100.10"}),
+                ("import", "IMPORTED · A Film (2024)", {"title": "A Film (2024)"}),
+                ("backup_done", "BACKUP DONE 03:12", {"at": "03:12"}),
+                ("ad_blocked", "", None),
+            ],
+        )
+
+    def test_a_part_is_cleaned_and_capped_as_the_caption_is(self):
+        title = "The  Night\tShift\n" + "x" * 60
+        [event] = self.events_written(
+            [
+                {
+                    "type": "import",
+                    "count": 1,
+                    "text": f"IMPORTED · {title}",
+                    "parts": {"title": title},
+                }
+            ]
+        )
+        # The caption is as it always was; the part is cleaned by the same rule.
+        self.assertEqual(event["text"], text.event_text(f"IMPORTED · {title}"))
+        self.assertEqual(event["text"], "IMPORTED · The Night Shift " + "x" * 16 + "…")
+        self.assertEqual(event["parts"], {"title": "The Night Shift " + "x" * 27 + "…"})
+        self.assertEqual(len(event["parts"]["title"]), text.EVENT_TEXT_MAX)
+
+    def test_parts_that_clean_to_nothing_are_left_out(self):
+        events = self.events_written(
+            [
+                # A jail of spaces alone: the address stays.
+                {
+                    "type": "ip_banned",
+                    "count": 1,
+                    "text": "BANNED 198.51.100.9 ·  ",
+                    "parts": {"addr": "198.51.100.9", "jail": "  "},
+                },
+                # An import with no title: no parts at all, and the page words it from text.
+                {"type": "import", "count": 1, "text": "IMPORTED · ", "parts": {"title": ""}},
+                # Names a type does not have, and parts on a type that has none.
+                {
+                    "type": "backup_done",
+                    "count": 1,
+                    "text": "BACKUP DONE 03:12",
+                    "parts": {"at": "03:12", "where": "offsite"},
+                },
+                {"type": "ad_blocked", "count": 1, "text": "", "parts": {"n": "3"}},
+            ]
+        )
+        self.assertEqual(
+            [(e["text"], e.get("parts")) for e in events],
+            [
+                ("BANNED 198.51.100.9 ·", {"addr": "198.51.100.9"}),
+                ("IMPORTED ·", None),
+                ("BACKUP DONE 03:12", {"at": "03:12"}),
+                ("", None),
+            ],
+        )
 
     def test_attack_fact_follows_the_condition(self):
         sec = Fake(
