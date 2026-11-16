@@ -4,7 +4,7 @@
 //
 // The page's scripts run under Node in a sandbox, against a fake canvas context that writes one line
 // per call, as in tests/web/scenes.test.js: a canvas painted once and drawn with drawImage (a
-// device's still part, the raspberry, the question mark) is written into the record where it is
+// device's still part, the pie's lamp, the question mark) is written into the record where it is
 // drawn, each of its calls after a "| ". The engine draws the devices through KW.devices from
 // KW.kinds, which the compiler (web/js/world.js) fills from the prop set on a page that reads the
 // pack, and which holds the code's KW.props.KINDS otherwise. Every kind is drawn in every place of
@@ -98,20 +98,33 @@ test('the prop set props.medieval reads clean, gives the five kinds with their m
   assert.deepEqual(Object.keys(set.kinds), KINDS);
   // the marks are the code's
   for (const k of KINDS) assert.equal(set.kinds[k].mark, CODE.KW.props.KINDS[k].mark, k);
-  // the pie's lamp is its raspberry, a lamp of its own; every other kind has the engine's lamp
-  assert.deepEqual(plain(set.kinds.pi.up.lamp), { at: [0, -54], box: [28, 36], lit: 'berry.up.lit', dark: 'berry.up.dark', light: '#ff7a6a' });
-  assert.deepEqual(plain(set.kinds.pi.gone.lamp), { at: [20, -29], box: [28, 36], lit: 'berry.down.lit', dark: 'berry.down.dark' });
-  for (const k of KINDS.slice(1)) for (const st of ['up', 'gone']) assert.ok(Array.isArray(set.kinds[k][st].lamp), k + ' ' + st);
-  // the gone raspberry lights only in the down lamp's reds
-  assert.deepEqual(Object.values(r.data.stamps['berry.down.lit'][0].key).sort(), ['@lamp.down', '@lamp.downHi', '@lamp.downLo']);
+  // the medieval things that stand for the devices
+  assert.deepEqual(KINDS.map(k => set.kinds[k].name), ['Raspberry pie', 'Barn owl', 'Cauldron', 'Potion flask', 'Iron-bound chest']);
+  // the pie's lamp is a lamp of its own, the filling under its lattice up and the last slice's
+  // filling gone, in the engine's green (no light of its own) and red; so are the owl's eyes, the
+  // cauldron's brew and then its last ember, and the flask's potion; the chest has the engine's lamp
+  assert.deepEqual(plain(set.kinds.pi.up.lamp), { at: [1, -30], box: [56, 26], lit: 'pie.up.lit', dark: 'pie.up.dark' });
+  assert.deepEqual(plain(set.kinds.pi.gone.lamp), { at: [4, -24], box: [30, 10], lit: 'pie.down.lit', dark: 'pie.down.dark' });
+  const own = { camera: 'owl', machine: 'cauldron', vm: 'flask' };
+  for (const [k, n] of Object.entries(own)) for (const st of ['up', 'gone']) {
+    const L = set.kinds[k][st].lamp;
+    assert.deepEqual([L.lit, L.dark, 'light' in L], [n + (st === 'up' ? '.up' : '.down') + '.lit', n + (st === 'up' ? '.up' : '.down') + '.dark', false], k + ' ' + st);
+    // a gone lamp lights only in the down lamp's reds
+    if (st === 'gone') for (const c of Object.values(r.data.stamps[L.lit][0].key)) assert.match(c, /^@lamp\.down(Lo|Hi)?$/, k);
+  }
+  assert.deepEqual([plain(set.kinds.box.up.lamp), plain(set.kinds.box.gone.lamp)], [[0, -20], [15, -24]]);
+  // the steam rises from the top of the dome
+  assert.deepEqual(plain(set.kinds.pi.up.moving), [{ k: 'fx', fx: 'steam', p: [-14, -53] }]);
+  // the gone pie's lamp lights only in the down lamp's reds
+  assert.deepEqual([...new Set(Object.values(r.data.stamps['pie.down.lit'][0].key))].sort(), ['@lamp.down', '@lamp.downLo']);
   // the costs the counts step found, still and moving (the moving part with the lamp of the kind's
   // own), against limits of 4 000 and 600
   assert.deepEqual(plain(r.world.props['props.medieval']), {
-    pi: { up: { still: 3308, moving: 424 }, gone: { still: 545, moving: 291 } },
-    camera: { up: { still: 695, moving: 0 }, gone: { still: 615, moving: 0 } },
-    machine: { up: { still: 105, moving: 0 }, gone: { still: 251, moving: 0 } },
-    vm: { up: { still: 176, moving: 0 }, gone: { still: 96, moving: 0 } },
-    box: { up: { still: 58, moving: 0 }, gone: { still: 101, moving: 0 } }
+    pi: { up: { still: 3308, moving: 411 }, gone: { still: 633, moving: 34 } },
+    camera: { up: { still: 539, moving: 32 }, gone: { still: 644, moving: 34 } },
+    machine: { up: { still: 420, moving: 54 }, gone: { still: 366, moving: 12 } },
+    vm: { up: { still: 117, moving: 72 }, gone: { still: 108, moving: 12 } },
+    box: { up: { still: 137, moving: 0 }, gone: { still: 178, moving: 0 } }
   });
 });
 
@@ -203,18 +216,23 @@ test('a lamp of the kind\'s own is painted once into each of its two canvases, t
   const s = page([TEXT], true), K = s.KW.kinds.pi;
   const before = canvases;
   for (const t of MOMENTS) record(s.KW, () => K.draw(480, 463, t, true, 'moving'));
-  assert.equal(canvases - before, 2, 'the up raspberry\'s dark and lit canvases, once');
+  assert.equal(canvases - before, 2, 'the up lamp\'s dark and lit canvases, once');
   for (const t of MOMENTS) record(s.KW, () => K.draw(480, 463, t, false, 'moving'));
   assert.equal(canvases - before, 4, 'and the gone one\'s');
-  // where the lit drawing is clear, the lit canvas shows the dark one: the calyx and the outline
-  const log = record(s.KW, () => K.draw(480, 463, 0, false, 'moving')), images = [];
-  for (const l of log) if (l.startsWith('drawImage')) images.push([]); else if (l.startsWith('| s ')) images[images.length - 1].push(l.slice(4));
-  assert.equal(images.length, 2);
-  const [dark, lit] = images.map(c => [...new Set(c)].sort());
-  assert.deepEqual(dark, ['#000000', '#1a1524', '#4f9a45', '#8fe07a']);
-  assert.deepEqual(lit, ['#1a1524', '#4f9a45', '#8fe07a', '#ffd0c8', 'rgb(168,49,40)', 'rgb(255,74,61)']);
-  // the light round it: the pack's light while up, the engine's red while gone
-  assert.ok(record(s.KW, () => K.draw(480, 463, 0, true, 'moving')).includes('s #ff7a6a'));
+  // each canvas holds its own drawing: the gone lamp's dark one black, its lit one the down reds
+  const colours = log => {
+    const images = [];
+    for (const l of log) if (l.startsWith('drawImage')) images.push([]); else if (l.startsWith('| s ')) images[images.length - 1].push(l.slice(4));
+    assert.equal(images.length, 2);
+    return images.map(c => [...new Set(c)].sort());
+  };
+  const log = record(s.KW, () => K.draw(480, 463, 0, false, 'moving'));
+  assert.deepEqual(colours(log), [['#000000'], ['rgb(168,49,40)', 'rgb(255,74,61)']]);
+  // and the up lamp's the green and its darks
+  const up = record(s.KW, () => K.draw(480, 463, 0, true, 'moving'));
+  assert.deepEqual(colours(up), [['#050806', '#080e09', '#0b130c'], ['#395a31', '#5e9451', '#8fe07a', '#e4ffd6']]);
+  // the light round it: the engine's green while up, as the pack gives none, and its red while gone
+  assert.ok(up.includes('s rgb(143,224,122)'));
   assert.ok(log.includes('s rgb(255,74,61)'));
 });
 
@@ -231,14 +249,14 @@ const pie = d => d.props['props.medieval'].kinds.pi, camera = d => d.props['prop
 test('what the compiler does not build in a prop is refused by name', () => {
   const W = PACK.KW.world, refused = (edit, kind, want) => assert.throws(() => W.compileKind(readEdited(edit), 'props.medieval', kind), { message: want });
   // a lamp's drawings must lie inside its box
-  refused(d => { pie(d).up.lamp.box = [27, 34]; }, 'pi', 'props.props.medieval.kinds.pi.up.lamp.box: the lamp\'s drawings reach -13 -18 14 16 from its middle, outside its box, -13.5 -17 13.5 17');
+  refused(d => { pie(d).up.lamp.box = [55, 26]; }, 'pi', 'props.props.medieval.kinds.pi.up.lamp.box: the lamp\'s drawings reach -28 -13 28 10 from its middle, outside its box, -27.5 -13 27.5 13');
   // each of its pix shapes at a whole point
-  refused(d => { d.stamps['berry.up.dark'][0].p = [-13.5, -18]; }, 'pi', 'stamps.berry.up.dark[0].p: a lamp\'s pix shape at a point that is not a whole pixel is not built in this engine yet');
+  refused(d => { d.stamps['pie.up.dark'][0].p = [-27.5, -13]; }, 'pi', 'stamps.pie.up.dark[0].p: a lamp\'s pix shape at a point that is not a whole pixel is not built in this engine yet');
   // an effect placed on the screen by a field of its own does not move with the device
-  refused(d => { camera(d).up.still.push({ k: 'fx', fx: 'pebbles', y: 0 }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[17].fx: the effect "pebbles", placed on the screen by its field "y", in a prop is not built in this engine yet');
+  refused(d => { camera(d).up.still.push({ k: 'fx', fx: 'pebbles', y: 0 }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[27].fx: the effect "pebbles", placed on the screen by its field "y", in a prop is not built in this engine yet');
   // the marks and tiles belong to scenes
-  refused(d => { camera(d).up.still.push({ k: 'things' }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[17].k: the mark "things" in a prop is not built in this engine yet');
-  refused(d => { camera(d).up.still.push({ k: 'tile', step: 4, phase: 0, from: 0, to: 8, shapes: [] }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[17].k: a tile in a prop is not built in this engine yet');
+  refused(d => { camera(d).up.still.push({ k: 'things' }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[27].k: the mark "things" in a prop is not built in this engine yet');
+  refused(d => { camera(d).up.still.push({ k: 'tile', step: 4, phase: 0, from: 0, to: 8, shapes: [] }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[27].k: a tile in a prop is not built in this engine yet');
   refused(d => { delete d.props['props.medieval'].kinds.box; }, 'box', 'props.props.medieval.kinds.box: the pack has no such kind');
 });
 
