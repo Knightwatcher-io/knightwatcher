@@ -85,7 +85,8 @@ test('the medieval world\'s pack reads clean: kw.medieval 0.6.0, format 1.1, the
   assert.deepEqual(Object.keys(r.data.overlays), ['overlay.phosphor']);
   assert.deepEqual(Object.keys(r.data.scenes), ['battlement', 'camp', 'yard', 'cellar', 'smithy', 'house', 'court']);
   assert.deepEqual(Object.keys(r.data.stamps), ['sconce', 'barrel', 'peg', 'pie.up.dark', 'pie.up.lit', 'pie.down.dark', 'pie.down.lit',
-    'vm.up.dots-1', 'vm.up.dots-2', 'vm.up.lights-1', 'vm.up.lights-2', 'vm.gone.dots', 'vm.gone.lights']);
+    'owl.up.dark', 'owl.up.lit', 'owl.down.dark', 'owl.down.lit', 'cauldron.up.dark', 'cauldron.up.lit', 'cauldron.down.dark', 'cauldron.down.lit',
+    'flask.up.dark', 'flask.up.lit', 'flask.down.dark', 'flask.down.lit']);
   assert.deepEqual(plain(r.data.palettes), { house: { screen: '#7fe9ff' } });
   // the costs the counts step found, at the widest screen the checks assume
   assert.deepEqual(plain(r.world.scenes.battlement), { still: { n: 342, cost: 25967 }, frame: { n: 7, cost: 185, glows: 1 } });

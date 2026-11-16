@@ -76,15 +76,27 @@ test('each new kind fits within 80 by 64 above its base, up and gone', () => {
   }
 });
 
-test('the moving part of each new kind is its lamp, inside the place, up and down', () => {
+test('the moving part of each new kind is its lamp, inside the place, up and down: the chest\'s the engine\'s, the others\' their own', () => {
   const { P, take } = load();
   for (const k of NEW) for (const ok of [true, false]) {
     const m = take(() => P.KINDS[k].draw(X, Y, 0, ok, 'moving'));
-    assert.ok(m.rects.length >= 1 && m.rects.length <= 2, `${k} ${ok}: ${m.rects.length} fills`);
     assert.equal(m.arcs.length, 3, k);
-    // the light is centred on the lamp, inside the device's box, and its glow reaches 20 pixels at most
-    for (const [x, y, r] of m.arcs) assert.ok(x >= X - 40 && x <= X + 40 && y >= Y - 64 && y <= Y && r <= 20, `${k}: light ${x} ${y} ${r}`);
-    for (const [x, y, w, h] of m.rects) assert.ok(w <= 10 && h <= 10, `${k}: lamp ${w} by ${h}`);
+    if (k === 'box') {
+      // the engine's lamp, 10 by 10, its glow reaching 20 pixels at most
+      assert.ok(m.rects.length >= 1 && m.rects.length <= 2, `${k} ${ok}: ${m.rects.length} fills`);
+      for (const [, , w, h] of m.rects) assert.ok(w <= 10 && h <= 10, `${k}: lamp ${w} by ${h}`);
+      for (const [x, y, r] of m.arcs) assert.ok(x >= X - 40 && x <= X + 40 && y >= Y - 64 && y <= Y && r <= 20, `${k}: light ${x} ${y} ${r}`);
+    } else {
+      // a lamp of its own: the dark drawing and the lit one over it, inside the device's box, its
+      // light of radius 24 centred inside it too
+      assert.equal(m.rects.length, 0, k);
+      assert.equal(m.images.length, 2, k);
+      const [[dark, dx, dy], [lit, lx, ly]] = m.images;
+      assert.deepEqual([lx, ly, lit.width, lit.height], [dx, dy, dark.width, dark.height], k);
+      assert.ok(dx >= X - 40 && dx + dark.width <= X + 41 && dy >= Y - 64 && dy + dark.height <= Y + 2, `${k} ${ok}: lamp at ${dx} ${dy}`);
+      assert.equal(Math.max(...m.arcs.map(g => g[2])), 24, k);
+      for (const [x, y] of m.arcs) assert.ok(x >= X - 40 && x <= X + 40 && y >= Y - 64 && y <= Y, `${k}: light ${x} ${y}`);
+    }
   }
 });
 
@@ -93,13 +105,44 @@ test('the lamp fades to black and back: green over 3.6 s while up, red over 2 s 
   const fills = [];
   const ctx = new Proxy({}, { set(_, k, v) { if (k === 'fillStyle') fills.push(v); return true; }, get() { return () => {}; } });
   KW.draw.setCtx(ctx);
-  const core = (ok, t) => { fills.length = 0; P.KINDS.machine.draw(X, Y, t, ok, 'moving'); return fills[1]; };
+  const core = (ok, t) => { fills.length = 0; P.KINDS.box.draw(X, Y, t, ok, 'moving'); return fills[1]; };
   assert.equal(core(true, 0), 'rgb(143,224,122)');
   assert.equal(core(true, 1800), 'rgb(0,0,0)');
   assert.equal(core(true, 3600), 'rgb(143,224,122)');
   assert.equal(core(false, 0), 'rgb(255,74,61)');
   assert.equal(core(false, 1000), 'rgb(0,0,0)');
   assert.equal(core(false, 2000), 'rgb(255,74,61)');
+});
+
+test('the owl\'s eyes, the brew and the potion light green while up; gone, the dazed eyes, the ember and the potion blink in the down reds alone', () => {
+  const { P, take } = load();
+  const reds = Object.values(P.LAMP_REDS), greens = ['#8fe07a', '#5e9451', '#e4ffd6'];
+  for (const k of ['camera', 'machine', 'vm']) for (const ok of [true, false]) {
+    const at = t => take(() => P.KINDS[k].draw(X, Y, t, ok, 'moving'));
+    const m = at(0), [[dark], [lit, , , a]] = m.images, darks = new Set(dark.fills.map(f => f[4]));
+    assert.equal(a, 1, k);
+    // the lit drawing: the lamp's colours, and where they lack a key the dark drawing's
+    for (const [, , , , c] of lit.fills) assert.ok((ok ? greens : reds).includes(c) || darks.has(c), `${k} ${ok ? 'up' : 'gone'}: ${c}`);
+    assert.ok(lit.fills.some(f => (ok ? greens : reds).includes(f[4])), k);
+    assert.ok(m.arcs.every(g => g[3] === (ok ? 'rgb(143,224,122)' : 'rgb(255,74,61)')), k);
+    // dark at the bottom of the loop
+    assert.equal(at(ok ? 1800 : 1000).images[1][3], 0, k);
+  }
+  // the dazed owl's spirals keep their gaps dark
+  const gone = take(() => P.KINDS.camera.draw(X, Y, 0, false, 'moving')).images[1][0];
+  assert.ok(gone.fills.some(f => f[4] === '#2a2236'), 'the gaps of the spirals');
+});
+
+test('the owl\'s wall plate stands where the camera\'s stood, x 22 to 32 from 64 above the base, so a pole meets it', () => {
+  const { P, take } = load();
+  for (const ok of [true, false]) {
+    const { rects } = take(() => P.KINDS.camera.draw(X, Y, 0, ok, 'still'));
+    // the plate's outline, a column 10 wide whose top row is 64 above the base, and nothing right of it
+    const plate = rects.filter(([x, , w]) => x >= X + 22 && x + w <= X + 32);
+    assert.equal(Math.min(...plate.map(r => r[1])), Y - 64, ok ? 'up' : 'gone');
+    assert.ok(rects.some(([x, , w]) => x === X + 22 && w === 10), ok ? 'up' : 'gone');
+    for (const [x, , w] of rects) assert.ok(x + w <= X + 32, 'nothing right of the plate');
+  }
 });
 
 test('the still part does not change with time, so it can be painted once', () => {

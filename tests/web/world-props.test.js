@@ -98,12 +98,21 @@ test('the prop set props.medieval reads clean, gives the five kinds with their m
   assert.deepEqual(Object.keys(set.kinds), KINDS);
   // the marks are the code's
   for (const k of KINDS) assert.equal(set.kinds[k].mark, CODE.KW.props.KINDS[k].mark, k);
+  // the medieval things that stand for the devices
+  assert.deepEqual(KINDS.map(k => set.kinds[k].name), ['Raspberry pie', 'Barn owl', 'Cauldron', 'Potion flask', 'Iron-bound chest']);
   // the pie's lamp is a lamp of its own, the filling under its lattice up and the last slice's
-  // filling gone, in the engine's green (no light of its own) and red; every other kind has the
-  // engine's lamp
+  // filling gone, in the engine's green (no light of its own) and red; so are the owl's eyes, the
+  // cauldron's brew and then its last ember, and the flask's potion; the chest has the engine's lamp
   assert.deepEqual(plain(set.kinds.pi.up.lamp), { at: [1, -30], box: [56, 26], lit: 'pie.up.lit', dark: 'pie.up.dark' });
   assert.deepEqual(plain(set.kinds.pi.gone.lamp), { at: [4, -24], box: [30, 10], lit: 'pie.down.lit', dark: 'pie.down.dark' });
-  for (const k of KINDS.slice(1)) for (const st of ['up', 'gone']) assert.ok(Array.isArray(set.kinds[k][st].lamp), k + ' ' + st);
+  const own = { camera: 'owl', machine: 'cauldron', vm: 'flask' };
+  for (const [k, n] of Object.entries(own)) for (const st of ['up', 'gone']) {
+    const L = set.kinds[k][st].lamp;
+    assert.deepEqual([L.lit, L.dark, 'light' in L], [n + (st === 'up' ? '.up' : '.down') + '.lit', n + (st === 'up' ? '.up' : '.down') + '.dark', false], k + ' ' + st);
+    // a gone lamp lights only in the down lamp's reds
+    if (st === 'gone') for (const c of Object.values(r.data.stamps[L.lit][0].key)) assert.match(c, /^@lamp\.down(Lo|Hi)?$/, k);
+  }
+  assert.deepEqual([plain(set.kinds.box.up.lamp), plain(set.kinds.box.gone.lamp)], [[0, -20], [15, -24]]);
   // the steam rises from the top of the dome
   assert.deepEqual(plain(set.kinds.pi.up.moving), [{ k: 'fx', fx: 'steam', p: [-14, -53] }]);
   // the gone pie's lamp lights only in the down lamp's reds
@@ -112,10 +121,10 @@ test('the prop set props.medieval reads clean, gives the five kinds with their m
   // own), against limits of 4 000 and 600
   assert.deepEqual(plain(r.world.props['props.medieval']), {
     pi: { up: { still: 3308, moving: 411 }, gone: { still: 633, moving: 34 } },
-    camera: { up: { still: 695, moving: 0 }, gone: { still: 615, moving: 0 } },
-    machine: { up: { still: 105, moving: 0 }, gone: { still: 251, moving: 0 } },
-    vm: { up: { still: 176, moving: 0 }, gone: { still: 96, moving: 0 } },
-    box: { up: { still: 58, moving: 0 }, gone: { still: 101, moving: 0 } }
+    camera: { up: { still: 539, moving: 32 }, gone: { still: 644, moving: 34 } },
+    machine: { up: { still: 420, moving: 54 }, gone: { still: 366, moving: 12 } },
+    vm: { up: { still: 117, moving: 72 }, gone: { still: 108, moving: 12 } },
+    box: { up: { still: 137, moving: 0 }, gone: { still: 178, moving: 0 } }
   });
 });
 
@@ -244,10 +253,10 @@ test('what the compiler does not build in a prop is refused by name', () => {
   // each of its pix shapes at a whole point
   refused(d => { d.stamps['pie.up.dark'][0].p = [-27.5, -13]; }, 'pi', 'stamps.pie.up.dark[0].p: a lamp\'s pix shape at a point that is not a whole pixel is not built in this engine yet');
   // an effect placed on the screen by a field of its own does not move with the device
-  refused(d => { camera(d).up.still.push({ k: 'fx', fx: 'pebbles', y: 0 }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[17].fx: the effect "pebbles", placed on the screen by its field "y", in a prop is not built in this engine yet');
+  refused(d => { camera(d).up.still.push({ k: 'fx', fx: 'pebbles', y: 0 }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[27].fx: the effect "pebbles", placed on the screen by its field "y", in a prop is not built in this engine yet');
   // the marks and tiles belong to scenes
-  refused(d => { camera(d).up.still.push({ k: 'things' }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[17].k: the mark "things" in a prop is not built in this engine yet');
-  refused(d => { camera(d).up.still.push({ k: 'tile', step: 4, phase: 0, from: 0, to: 8, shapes: [] }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[17].k: a tile in a prop is not built in this engine yet');
+  refused(d => { camera(d).up.still.push({ k: 'things' }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[27].k: the mark "things" in a prop is not built in this engine yet');
+  refused(d => { camera(d).up.still.push({ k: 'tile', step: 4, phase: 0, from: 0, to: 8, shapes: [] }); }, 'camera', 'props.props.medieval.kinds.camera.up.still[27].k: a tile in a prop is not built in this engine yet');
   refused(d => { delete d.props['props.medieval'].kinds.box; }, 'box', 'props.props.medieval.kinds.box: the pack has no such kind');
 });
 
