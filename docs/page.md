@@ -1048,12 +1048,44 @@ back. The click of any other press is swallowed, the one whose hold opened the s
 so the screen that has just opened under the finger is not tapped by the release. The display asks
 for no menu, no selection and no scrolling on a long press (`touch-action: none` on `#surface`).
 
-**Layout.** A side rail of six pages, the knight, the monarch, display, quiet scenes, scenes and
-status, with DONE at the top right. The screen covers the whole window, review bar included; the scene
+**Layout.** A side rail of seven pages, World, the knight, the monarch, display, quiet scenes,
+scenes and status, with DONE at the top right. The screen opens on the knight's page; World is
+first in the rail. The knight's and the monarch's pages take their names from the labels of the
+world's words in use, `watcher` and `patron` ("The knight" and "The monarch" in `words.medieval`),
+and keep those words where there are none. The screen covers the whole window, review bar included; the scene
 keeps running behind, dimmed, and shows each choice as it is made. Every choice applies at once,
 with no Save button. On a window up to 1200 wide or 760 tall the screen is drawn a little tighter,
 with labels above their choices and the house's preview left out; every touch target stays at
 least 48 pixels tall.
+
+**World.** A line saying what a world is ("A world sets every part at once: the knight, the
+monarch, the scenes, the cast, the devices and the words. A part changed on a later page is kept
+over the world."), then a card for each world loaded (`catalogue()`, see [Worlds](#worlds)): its
+picture scene, drawn by the scene's own code with the world's own knight as it comes, whatever this
+display has changed (`worldLook()`), and its name under it; the world the page falls back to on a
+reset is marked Default. With one world loaded a grey line says more worlds show once their packs
+are loaded. Tapping a card, the chosen one included, chooses that world (`chooseWorld()`): every part
+chosen on this display is cleared, and the line under the cards names the world, what it cleared
+and what `config.toml` sets that now gives way, and says "for every display" with the bundled
+server: "Medieval chosen for every display: every part is now the world's. Cleared what was chosen
+here: the tabard (forest). A part changed after this is kept over the world."
+
+Under a heading "Changed from the Medieval world", a row for each part whose value differs from the
+world's own (`KW.settings.screen.changedParts`): the value in use, marked Default when it comes from
+`config.toml`, beside the world's own, marked "The world's", each as a chip of the row the part has
+on its own page; the line under it names the page it was chosen on ("Chosen on the knight page."),
+or says the address sets it. Tapping the world's chip puts the part back: this display's choice is
+cleared, and where a level below still sets the part, the world's value is saved over it. With
+nothing changed the line reads "Nothing: every part is the world's."
+
+Once a second prop set is loaded, a heading "Devices, kind by kind" and a row for each kind of
+device, Pi, Camera, Host, VM and Other, each with a picture of the kind as every loaded set that
+draws it draws it (`KW.world.drawingOf`), the world's set first and named "the world's"
+(`KW.settings.screen.deviceRows`). A choice saves the set for that kind in `look.devices`; the
+world's set clears a kind this display chose, so that it follows the world again
+(`KW.settings.screen.devicesAfter`). With one prop set, as at launch, there are no device rows. The
+page ends with the reset of the look: "The default is the Medieval world, every part as it comes",
+or with the parts `config.toml` sets beside it ("with a forest tabard").
 
 **The knight.** Build, weapon, skin tone, hair colour, hair style, tabard and plume, each a row of
 choices, and under a line headed Armour ten more rows of gear: shield, helmet, plume style, body,
@@ -1104,8 +1136,23 @@ Default. A choice applies at once, and the scene behind changes if that conditio
 
 **Status**, read only: the page's version (the deploy's hash, or `dev`), how long ago the state file
 was written and how often the collector writes it, the sources in it (all working, or each failing
-one with its error and the time of its last read), where the knight is drawn from with the base
-pack's id, version and whether it is signed, and the packs refused, each with its step and reason.
+one with its error and the time of its last read), then three entries for the world, and the packs
+refused, each with its step and reason. The world's entries:
+
+- **World**: the world in use, its pack's id and version and whether it is signed, and where it
+  is chosen ("Nothing chooses a world, so the page uses its own.", "Set in config.toml.", "Chosen on
+  this screen, for every display.", or by the address).
+- **Parts**: where each part comes from, a line each: the knight with the base pack's id and
+  version (or why it is drawn from code), the monarch, the scenes, the cast, the devices (with any
+  kind drawn from another set) and the words with the overlay. Each line names the parts that
+  differ from the world's and where they were set ("; the tabard (forest) chosen here."), and under
+  the knight a line names the parts `config.toml` sets that give way to a world chosen above it.
+- **Fallbacks**: every fallback with its reason (`KW.settings.screen.fallbackLines`): what a level
+  sets and the page ignores (`ignored`), as "Disk full: config.toml asks for the camp, which cannot
+  act it. Shown in the cellar, the world's own."; a part of the world the page has not loaded
+  (`faults`); a scene, a kind of device or a member of the cast drawn from code, a kind of device
+  drawn from the base world's set, and the knight's items that fell back. "None. Every part is
+  drawn from where it is set." when there are none.
 
 **Where choices are kept.** Under the title, each editable page says where its choices go: "Saved
 on the Knightwatcher server, for every display." with the bundled server, or "Kept in this browser
@@ -1117,7 +1164,8 @@ only: no Knightwatcher server." without one. A save the server refused replaces 
 is saved there ("Saved for every display." with the server, "This display has its own look." or
 "choices" without) and what the default is, and whether that comes from `config.toml`.
 The button clears the saved choices for the section, on every display with the server, so it falls back to the defaults;
-on the two look pages it clears the whole look, knight and monarch, which is one section, and on
+on the World page and the two look pages it clears the whole look, the world, the knight and the
+monarch, which is one section, and on
 the scenes page every condition's scene. A row a
 hook sets says "The page's address sets this for now."
 
@@ -1137,7 +1185,9 @@ as `is=` does, over the rotation. Everything chosen on the screen in the demo is
 **The calls.** `KW.settings.mount({ store, surface, info, time })`, from `main.js`, builds the
 screen into `#kws` and `#kws-cue` in `index.html`: `surface` is where the hold is watched, `info()`
 gives the status page `{ version, mode, view }`, and `time()` the time the knight's preview is
-drawn at, the frozen time when `t=` freezes it. It returns `open(page)`, `close()`, `isOpen()` and
+drawn at, the frozen time when `t=` freezes it. What the World page and the status page's world
+entries show is worked out in `KW.settings.screen`, apart from the drawing, so that
+`tests/web/worlds.test.js` reads it under Node. It returns `open(page)`, `close()`, `isOpen()` and
 `cue(x, y, q)`. Nothing of the screen is drawn while it is shut, so with it shut and nothing saved
 the page looks exactly as before there were settings.
 
@@ -1184,7 +1234,7 @@ down is used.
 | `mh=`, `mr=` | the monarch's hair and robe: the id of one of the base pack's hair swatches and of one of its tabard swatches, such as `mh=silver&mr=teal`. Without them, each monarch's own colours |
 | `sc=` | the scene a condition plays in: `<condition>:<scene>`, by the contract's ids, separated by commas, such as `sc=cpu_hot:camp,pi_silent:battlement`. A pair the page cannot act is ignored, with a line in the console |
 | `ck=` | the clock: `24`, or `12` for 9:42 with a small PM |
-| `set=` | opens the settings screen at load on a page: `knight`, `monarch`, `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
+| `set=` | opens the settings screen at load on a page: `world`, `knight`, `monarch`, `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
 | `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `device_down` on, the knight looks towards the first device that is down and alerts |
 | `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`. A page that cannot draw from the base pack draws Classic whatever the hook says |
 | `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its shield in the other, `two` the greatsword, or any weapon by its contract name: `longsword`, `mace_and_shield`. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
@@ -1671,6 +1721,16 @@ they are missing. Against a reference from base pack 1.3.0 the six settings shot
 page and of the status differ too: the weapon and hair style rows gained choices, and the status
 names the base pack's version and whether it is signed.
 
+The four shots that end the set show the worlds. `settings-world` opens the World page over the
+battlement with nothing set, and `settings-world-tablet` the same over the camp at the tablet's
+size; `settings-world-changed` has the weapon and the tabard the address changes from the world
+(`arm=one`, `tb=forest`), each beside the world's own, under a card that still shows the world as it
+comes; and `settings-status-world` is the status page at the tablet's size, whose World, Parts and
+Fallbacks entries show that tabard and a full disk asked for in the camp, which cannot act it
+(`sc=disk_full:camp`). Against a reference from before worlds these four are missing, and every
+settings shot that shows the rail differs in it, where World was added first; `settings-status`
+differs in its entries too, where the Knight entry gave way to World, Parts and Fallbacks.
+
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
 Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade
 in. With time frozen the events and the swat start before the first frame and nothing advances from
@@ -1680,8 +1740,9 @@ out byte for byte the same, on a busy machine too, apart from the clock when the
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
 and every scene, device and member of the cast drawn from the medieval world's pack, with its words
 and its overlay. A deployed copy draws from each pack while it ships signed, and from code
-otherwise: today the knight from the base pack and everything else, words and overlay included, from the
-medieval world's pack 0.5.0, both signed.
+otherwise: today the knight from the base pack, signed, and everything else, words and overlay
+included, from code, since the medieval world's pack 0.5.0 ships unsigned since its preset was
+added, until its next signing run.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches

@@ -162,7 +162,12 @@ gear's look hooks ([page.md](./page.md#checks)); against a reference from before
 missing. Against a reference from base pack 1.3.0 six shots differ besides: the settings screen's
 knight page in `settings-knight`, `settings-look`, `settings-tablet`, `bd-b-settings-knight` and
 `bd-c-settings-knight`, whose weapon and hair style rows gained choices, and `settings-status`,
-which names the base pack's version and whether it is signed. A headless browser has no saved choices, so every shot shows what its address asks for.
+which names the base pack's version and whether it is signed. The four shots that end the set show
+the worlds: the World page with nothing set and at the tablet's size, the World page with parts the
+address changes from the world, and the status page's World, Parts and Fallbacks entries
+([page.md](./page.md#checks)); against a reference from before worlds they are missing, and every
+settings shot that shows the side rail differs in it, where World was added first, and
+`settings-status` in its entries too. A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
@@ -230,8 +235,13 @@ the display is the same with the preset as from code; the rule that resolves a w
 parts set beside it, at the same level, above and below, the `items` and `devices` tables key by key,
 and the faults of a world whose parts are not loaded; long names kept, standing for short ones, or
 ignored with their reasons; the store's `chooseWorld`, kept in the browser and sent to a server in
-one write; the engine's scene from the world's `homes`; and each kind of device drawn from the prop
-set chosen for it, from the base world's where that set cannot give it.
+one write; the engine's scene from the world's `homes`; each kind of device drawn from the prop
+set chosen for it, from the base world's where that set cannot give it; and what the settings
+screen shows of the worlds (`KW.settings.screen`): the parts that differ from the world, a world's
+card as it comes, the line naming what choosing a world cleared, the device rows only once a second
+prop set is loaded and what a choice there saves, every fallback the status page lists with its
+reason, the labels from the world's words, World first in the rail and the screen opening on the
+knight.
 `tests/web/state.test.js` also checks that `quiet_parts` and an event's `parts` are read as strings,
 or not at all. `tests/web/settings-schema.test.js` checks the page's lists of
 settings, scenes and conditions against the settings schema. `tests/web/shared-settings.test.js` checks the shared settings against a fake server: the first

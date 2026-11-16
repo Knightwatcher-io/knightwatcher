@@ -26,7 +26,7 @@
      without one. pl=1 outlines the scene's places for devices. dv= sets the demo's
      devices: kinds separated by commas, each followed by - for down or ! for down and alerting; dv
      is the list in the contract's shape, or null without the hook. set= opens the settings screen
-     at load on a page (knight, monarch, display, quiet, scenes, status), or shows the hold's cue (hold). */
+     at load on a page (world, knight, monarch, display, quiet, scenes, status), or shows the hold's cue (hold). */
   const tHook = hv('t') == null ? NaN : +hv('t');
   const dvHook = (H0.match(/[#&]dv=([^&]*)/) || [])[1];
   KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'),

@@ -118,6 +118,28 @@
 .kws-stat code { font-family: inherit; color: #ffe28a; }
 .kws-stat .quiet { color: #aab6c6; }
 
+/* The World page. A world's card: its picture scene, drawn by the scene's own code, with its name
+   under it. */
+.kws-opt.world .chip { width: 320px; height: 200px; padding: 0; background: #0e0b13; overflow: hidden; }
+.kws-opt.world canvas { width: 320px; height: 200px; display: block; }
+.kws-opt.world .name { max-width: none; white-space: nowrap; font-size: var(--t-label); color: #d8e0ea; }
+.kws-opt.world.on .name { color: #ffe28a; }
+.kws-worlds .kws-label { padding-top: 0; }
+/* A device of one kind, as its set draws it. */
+.kws-opt.device .chip { width: 110px; height: 88px; padding: 0; background: #0e0b13; overflow: hidden; }
+.kws-opt.device canvas { width: 110px; height: 88px; display: block; }
+.kws-opt.device .name { max-width: none; white-space: nowrap; }
+/* A part that differs: the value in use and the world's own, each with a word under it. */
+.kws-diff .kws-opts { gap: 10px 34px; }
+/* A heading inside a page, and the quiet lines under it. */
+.kws-intro.kws-head2 { margin-top: 22px; font-size: var(--t-label); line-height: 1; color: #d8e0ea; }
+.kws-intro.kws-after { margin-top: 0; }
+.kws-line.kws-calm { color: #aab6c6; }
+/* Status: where each part comes from. */
+.kws-stat .kws-part { margin: 0 0 6px; }
+.kws-stat .kws-part .pl { color: #d8e0ea; }
+.kws-stat .kws-sub { margin: -2px 0 8px 18px; }
+
 .kws-foot { flex: none; padding: 8px 24px 8px; border-top: 3px solid #2b2333; font-size: var(--t-name); line-height: 1; color: #7d899b; }
 .kws-foot.soon { color: #ffb000; }
 
@@ -152,6 +174,9 @@
   .kws-switch .knob { width: 36px; height: 36px; }
   .kws-switch[aria-checked="true"] .knob { left: 54px; }
   .kws-foot { padding: 6px 16px; }
+  .kws-opt.world .chip, .kws-opt.world canvas { width: 224px; height: 140px; }
+  .kws-opt.device .chip, .kws-opt.device canvas { width: 100px; height: 80px; }
+  .kws-intro.kws-head2 { margin-top: 16px; }
 }
 /* A window narrower still, such as the 960 by 600 of the screenshots: the rail and the preview
    narrower. */
