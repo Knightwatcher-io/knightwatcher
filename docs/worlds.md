@@ -12,9 +12,8 @@ W8 the words and the overlay: the page builds the quiet line and the events' cap
 parts the collector sends, in the world's words, and takes the colours and the font of the words
 over the scene from the world's overlay. Step W9 added the world itself as a preset, `world.medieval`,
 which the settings resolve against the parts set beside it, and the devices chosen per kind
-([Worlds as presets](#worlds-as-presets)). Version 0.7.0 adds the mouser cat, the first pet. It
-ships unsigned until its signing run: a `dev` page draws everything from it, and a deployed page
-draws every scene, the devices and the cast, the cat among them, from code meanwhile.
+([Worlds as presets](#worlds-as-presets)). Version 0.7.0 adds the mouser cat, the first pet,
+and is signed: a deployed page and a `dev` page alike draw everything from it.
 
 ## The medieval world's pack
 
@@ -191,8 +190,7 @@ raspberry off the pie and lights the pie through its lattice, with the last slic
 when the Pi is down, draws the other devices as medieval things, the owl, the cauldron, the flask
 and the chest, and adds the preset `world.medieval`, and is signed too. Version 0.7.0, which adds
 the mouser cat and the redesigned scenes and devices (the crystal in place of the cauldron, the
-ground places along the front of the floor, the crate's stretches), ships unsigned until its
-signing run. A copy changed after signing is refused by a
+ground places along the front of the floor, the crate's stretches), is signed too. A copy changed after signing is refused by a
 deployed page until its next run: that page draws every scene, every device and the cast, the cat
 included, from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.

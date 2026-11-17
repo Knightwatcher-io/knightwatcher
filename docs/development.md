@@ -372,8 +372,7 @@ Version 0.3.0, which adds the devices, was signed the same way on 16 November, a
 which adds the cast, the same day, as was version 0.5.0, which adds the words and the overlay.
 Version 0.6.0, which lights the pie through its lattice in place of the raspberry and draws the
 other devices as an owl, a cauldron, a flask and a chest, was signed the same day. Version 0.7.0,
-which adds the mouser cat and the redesigned scenes and devices, ships unsigned until its signing run, and a deployed page draws the cat
-from code meanwhile, with every scene, device and the rest of the cast. A signed version is drawn from by a deployed
+which adds the mouser cat and the redesigned scenes and devices, was signed on 17 November. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
