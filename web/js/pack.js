@@ -1096,6 +1096,8 @@
      the two moments a clock can start from. */
   const ROUND_ACTS = ['guard', 'look', 'sniff', 'yawn', 'train'];
   const HOSTS = ['flies', 'crate', 'feast', 'foe'];
+  /* The crate's width, the least a scene's crate span may be. */
+  const CRATE_W = 60;
   const PREDICATES = ['tv', 'inBed', 'helmOff', 'strike', 'day', 'night'];
   const MARKS = ['things', 'rest', 'patron', 'sleeper', 'target', 'bubble'];
   const TRIGGERS = ['hit', 'strike'];
@@ -1121,7 +1123,9 @@
      of it may paint, x0, y0, x1, y1 from its base, as measured on today's drawings. */
   const PROP_KINDS = ['pi', 'camera', 'machine', 'vm', 'box'];
   const CLASS_OF = { pi: 'pie', camera: 'high', machine: 'ground', vm: 'ground', box: 'ground' };
-  const CLASS_BOX = { pie: [-46, -107, 45, 33], high: [-34, -64, 32, 0], ground: [-36, -58, 41, 2] };
+  const CLASS_BOX = { pie: [-46, -107, 45, 33], high: [-34, -64, 32, 0], ground: [-66, -93, 56, 2] };
+  /* Each class's place, w by h: the ground class's wide enough for its box either side of the base. */
+  const PLACE_SIZE = { pie: [88, 112], high: [88, 112], ground: [132, 112] };
   const PLACE_CLASS = { pie: 'pie', h1: 'high', h2: 'high', h3: 'high', g1: 'ground', g2: 'ground', g3: 'ground' };
   /* Words: the settings screen's labels, and the placeholders each part of the quiet line and each
      caption may use. */
@@ -1155,7 +1159,7 @@
   const WORLD_LIMITS = freeze({ scenes: 16, cast: 16, props: 8, overlays: 8, words: 8, worlds: 8, stamps: 64, stampShapes: 64,
     layers: 32, tiles: 64, effects: 48, tileShapes: 32, stillShapes: 2000, frameShapes: 400, stillCost: 200000, frameCost: 16000,
     glows: 24, patronStill: 16000, patronState: 400, poseCost: 8000, sprite: 256, critterFrame: 200, kindStill: 4000, kindMoving: 600, coats: 8, spots: 16, floors: 8,
-    mark: 128, offset: 2048, length: 4096 });
+    mark: 160, offset: 2048, length: 4096 });
   /* Where a shape of the world sections is, for the reasons. */
   const WWHERE = { still: 'a still layer', moving: 'a moving layer', over: 'an over layer', pole: 'a pole', stamp: 'a stamp', patron: 'the cast', foe: 'the cast', critter: 'the cast', pet: 'the cast', prop: 'a prop' };
   const LAYERED = ['still', 'moving', 'over'];
@@ -1432,8 +1436,9 @@
     oneOf(v.cls, key(path, 'cls'), ['pie', 'high', 'ground']);
     oneOf(v.kind, key(path, 'kind'), FITS);
     int(v.x, key(path, 'x'), 0, 960); int(v.y, key(path, 'y'), 0, 600);
-    if (v.w !== 88) fail(key(path, 'w'), 'must be 88: every place is 88 by 112');
-    if (v.h !== 112) fail(key(path, 'h'), 'must be 112: every place is 88 by 112');
+    const size = PLACE_SIZE[v.cls];
+    if (v.w !== size[0]) fail(key(path, 'w'), 'must be ' + size[0] + ': a ' + v.cls + ' place is ' + size[0] + ' by ' + size[1]);
+    if (v.h !== size[1]) fail(key(path, 'h'), 'must be ' + size[1] + ': a ' + v.cls + ' place is ' + size[0] + ' by ' + size[1]);
     for (const f of ['front', 'flip']) if (has(v, f)) bool(v[f], key(path, f));
     if (has(v, 'pole')) int(v.pole, key(path, 'pole'), 0, 600);
   }
@@ -1456,7 +1461,7 @@
     if (has(v, 'from') && v.from !== 'spot') fail(key(path, 'from'), 'must be "spot"');
   }
   const SCENE_KEYS = ['name', 'spot', 'rounds', 'quiet', 'can', 'hosts', 'helmet', 'weapon', 'still', 'moving', 'over', 'things', 'rests', 'decor',
-    'bed', 'screen', 'seat', 'anvil', 'target', 'foe', 'pole', 'sound', 'companion'];
+    'bed', 'screen', 'seat', 'anvil', 'target', 'foe', 'crate', 'pole', 'sound', 'companion'];
   const SCENE_REQ = ['name', 'spot', 'rounds', 'quiet', 'can', 'hosts', 'helmet', 'weapon', 'still', 'moving', 'over', 'things'];
   function scene(v, path) {
     obj(v, path, SCENE_KEYS, SCENE_REQ);
@@ -1513,6 +1518,15 @@
       const p = f('target');
       obj(v.target, p, ['group', 'hitAt', 'every'], ['group', 'hitAt', 'every']);
       id(v.target.group, key(p, 'group'), LOCAL_ID); int(v.target.hitAt, key(p, 'hitAt'), 0, 600000); ms(v.target.every, key(p, 'every'));
+    }
+    if (has(v, 'crate')) {
+      // the stretch of floor an import's crate may land on, 60 wide at the least, the crate's width
+      const p = f('crate');
+      obj(v.crate, p, ['span'], ['span']);
+      const sp = key(p, 'span');
+      if (!Array.isArray(v.crate.span) || v.crate.span.length !== 2) fail(sp, 'must be [from, to]');
+      int(v.crate.span[0], idx(sp, 0), 0, 960); int(v.crate.span[1], idx(sp, 1), 0, 960);
+      if (v.crate.span[1] - v.crate.span[0] < CRATE_W) fail(sp, 'must be ' + CRATE_W + ' wide at the least, the crate\'s width, from ' + v.crate.span[0] + ' to ' + v.crate.span[1]);
     }
     if (has(v, 'foe')) {
       const p = f('foe'), z = v.foe;
@@ -1657,10 +1671,12 @@
     }
   }
   function propState(v, path, gone) {
-    obj(v, path, ['still', 'moving', 'lamp'], ['still', 'lamp']);
+    obj(v, path, ['still', 'moving', 'lamp'], ['still']);
     shapeList(v.still, key(path, 'still'), 1, LIMITS.partShapes, { where: 'prop' });
     if (has(v, 'moving')) shapeList(v.moving, key(path, 'moving'), 1, LIMITS.partShapes, { where: 'prop' });
     const lp = key(path, 'lamp');
+    // a state with no lamp shows no light: a device dark while it is down
+    if (!has(v, 'lamp')) return;
     if (Array.isArray(v.lamp)) { pair(v.lamp, lp, -512, 512); return; }
     // a gone lamp's light is the engine's red, so it takes no colour of its own
     obj(v.lamp, lp, gone ? ['at', 'box', 'lit', 'dark'] : ['at', 'box', 'lit', 'dark', 'light'], ['at', 'box', 'lit', 'dark']);
@@ -1998,7 +2014,7 @@
     }
     for (const n of Object.keys(pack.props || {})) for (const k of Object.keys(pack.props[n].kinds)) for (const st of ['up', 'gone']) {
       const lamp = pack.props[n].kinds[k][st].lamp, lp = key(key(key(key(key(key(P, 'props'), n), 'kinds'), k), st), 'lamp');
-      if (!Array.isArray(lamp)) for (const f of ['lit', 'dark']) if (!(pack.stamps && has(pack.stamps, lamp[f]))) fail(key(lp, f), 'names a stamp, ' + quote(lamp[f]) + ', that the pack does not have');
+      if (lamp && !Array.isArray(lamp)) for (const f of ['lit', 'dark']) if (!(pack.stamps && has(pack.stamps, lamp[f]))) fail(key(lp, f), 'names a stamp, ' + quote(lamp[f]) + ', that the pack does not have');
     }
     for (const n of Object.keys(pack.words || {})) {
       const v = pack.words[n], wp = key(key(P, 'words'), n);
@@ -2146,6 +2162,12 @@
     for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) if (overlaps(boxes[ks[i]], boxes[ks[j]])) fail(things, 'the class boxes of ' + ks[i] + ' and ' + ks[j] + ' overlap');
     sc.can.forEach((c, i) => { const why = lacks(sc, c); if (why) fail(idx(key(sp, 'can'), i), 'the scene cannot act ' + quote(c) + ': it needs ' + why); });
     if (sc.hosts.includes('foe') && !sc.foe) fail(key(sp, 'hosts'), 'a scene hosts a foe only with a foe zone, foe');
+    if (sc.hosts.includes('crate') && !sc.crate) fail(key(sp, 'hosts'), 'a scene hosts the crate only with the stretch of floor it lands on, crate');
+    if (sc.crate) {
+      // the crate lands clear of every device on the ground and of the pie, whatever stands there
+      const [a, b] = sc.crate.span;
+      for (const k of ['pie', 'g1', 'g2', 'g3']) if (boxes[k][0] < b && a < boxes[k][2]) fail(key(key(sp, 'crate'), 'span'), 'from ' + a + ' to ' + b + ' reaches into the class box of ' + k + ', ' + boxes[k][0] + ' to ' + boxes[k][2]);
+    }
     let marks = 0;
     const seen = {};
     for (const k of LAYERED) sc[k].forEach((l, i) => {
@@ -2179,6 +2201,7 @@
       const check = (e, q) => { if (e && (e[0] < cb[0] || e[1] < cb[1] || e[2] > cb[2] || e[3] > cb[3])) fail(q, 'paints ' + e.join(' ') + ', outside the ' + CLASS_OF[k] + ' class box, ' + cb.join(' ') + ', from the base'); };
       for (const part of ['still', 'moving']) if (x[part]) x[part].forEach((s, i) => check(wextent(pack, s), idx(key(p, part), i)));
       const L = x.lamp, lp = key(p, 'lamp');
+      if (!L) continue;
       if (Array.isArray(L)) check([L[0] - 6, L[1] - 6, L[0] + 6, L[1] + 6], lp);
       else {
         check([L.at[0] - L.box[0] / 2, L.at[1] - L.box[1] / 2, L.at[0] + L.box[0] / 2, L.at[1] + L.box[1] / 2], lp);
@@ -2417,7 +2440,7 @@
           const x = pack.props[n].kinds[k][st], p = key(key(key(key(key(P, 'props'), n), 'kinds'), k), st), c = { where: 'prop', kind: k };
           const still = listCost(pack, x.still, c).cost;
           // a lamp of the kind's own, its lit and dark drawings, moves with the lamp's loop
-          const moving = (x.moving ? listCost(pack, x.moving, c).cost : 0) + (Array.isArray(x.lamp) ? 0 : out.stamps[x.lamp.lit] + out.stamps[x.lamp.dark]);
+          const moving = (x.moving ? listCost(pack, x.moving, c).cost : 0) + (!x.lamp || Array.isArray(x.lamp) ? 0 : out.stamps[x.lamp.lit] + out.stamps[x.lamp.dark]);
           cap(key(p, 'still'), still, L.kindStill, 'costs up to', 'fills');
           cap(p, moving, L.kindMoving, 'costs up to', 'fills in its moving part and its own lamp');
           out.props[n][k][st] = { still, moving };
@@ -2938,7 +2961,7 @@
   /* The closed lists format 1.1 names, which the engine takes over as it is built. */
   const WORLD_LISTS = freeze({ CONDITIONS: CONDITIONS.slice(), ROUND_ACTS: ROUND_ACTS.slice(), HOSTS: HOSTS.slice(), PREDICATES: PREDICATES.slice(), MARKS: MARKS.slice(),
     TRIGGERS: TRIGGERS.slice(), EFFECTS: EFFECTS.slice(), ROLES: ROLES.slice(), EXITS: EXITS.slice(), FOE_POSES: FOE_POSES.slice(), PET_POSES: PET_POSES.slice(), FONTS: FONTS.slice(),
-    PROP_KINDS: PROP_KINDS.slice(), CLASS_OF: Object.assign({}, CLASS_OF), CLASS_BOX: JSON.parse(JSON.stringify(CLASS_BOX)), LABELS: LABELS.slice(),
+    PROP_KINDS: PROP_KINDS.slice(), CLASS_OF: Object.assign({}, CLASS_OF), CLASS_BOX: JSON.parse(JSON.stringify(CLASS_BOX)), PLACE_SIZE: JSON.parse(JSON.stringify(PLACE_SIZE)), CRATE_W, LABELS: LABELS.slice(),
     QUIET_PARTS: JSON.parse(JSON.stringify(QUIET_PARTS)), CAPTIONS: JSON.parse(JSON.stringify(CAPTIONS)), LEVELS: JSON.parse(JSON.stringify(LEVELS)) });
   const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, VALUES, VALUE, MEASURES, TORSO, BASE, KEYS, ORDERS,
     WORLD_LIMITS, WORLD_LISTS, SCENE_RANGE, ACT_RANGE,

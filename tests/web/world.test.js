@@ -85,20 +85,20 @@ test('the medieval world\'s pack reads clean: kw.medieval 0.7.0, format 1.1, the
   assert.deepEqual(Object.keys(r.data.words), ['words.medieval']);
   assert.deepEqual(Object.keys(r.data.overlays), ['overlay.phosphor']);
   assert.deepEqual(Object.keys(r.data.scenes), ['battlement', 'camp', 'yard', 'cellar', 'smithy', 'house', 'court']);
-  assert.deepEqual(Object.keys(r.data.stamps), ['sconce', 'barrel', 'peg', 'pie.up.dark', 'pie.up.lit', 'pie.down.dark', 'pie.down.lit',
-    'owl.up.dark', 'owl.up.lit', 'owl.down.dark', 'owl.down.lit', 'cauldron.up.dark', 'cauldron.up.lit', 'cauldron.down.dark', 'cauldron.down.lit',
-    'flask.up.dark', 'flask.up.lit', 'flask.down.dark', 'flask.down.lit'].concat(['calico', 'ginger'].flatMap(c => ['rest', 'settle', 'alert0', 'alert1', 'stalk0', 'stalk1', 'pounce', 'land', 'pleased', 'walk0', 'walk1'].map(n => 'cat.' + c + '.' + n))));
+  assert.deepEqual(Object.keys(r.data.stamps), ['sconce', 'barrel', 'peg', 'pie.up.dark', 'pie.up.lit',
+    'owl.up.dark', 'owl.up.lit', 'crystal.up.lit', 'crystal.up.dark', 'flask.up.lit', 'flask.up.dark',
+    'chest.up.lit', 'chest.up.dark'].concat(['calico', 'ginger'].flatMap(c => ['rest', 'settle', 'alert0', 'alert1', 'stalk0', 'stalk1', 'pounce', 'land', 'pleased', 'walk0', 'walk1'].map(n => 'cat.' + c + '.' + n))));
   assert.deepEqual(plain(r.data.palettes), { house: { screen: '#7fe9ff' } });
   // the costs the counts step found, at the widest screen the checks assume
-  assert.deepEqual(plain(r.world.scenes.battlement), { still: { n: 342, cost: 25967 }, frame: { n: 7, cost: 185, glows: 1 } });
-  assert.deepEqual(plain(r.world.scenes.camp), { still: { n: 66, cost: 56668 }, frame: { n: 7, cost: 718, glows: 8 } });
+  assert.deepEqual(plain(r.world.scenes.battlement), { still: { n: 342, cost: 25879 }, frame: { n: 7, cost: 185, glows: 1 } });
+  assert.deepEqual(plain(r.world.scenes.camp), { still: { n: 57, cost: 57073 }, frame: { n: 7, cost: 718, glows: 8 } });
   assert.deepEqual(plain(r.world.scenes.yard), { still: { n: 298, cost: 28929 }, frame: { n: 44, cost: 2086, glows: 1 } });
   assert.deepEqual(plain(r.world.scenes.cellar), { still: { n: 440, cost: 76803 }, frame: { n: 3, cost: 120, glows: 1 } });
-  assert.deepEqual(plain(r.world.scenes.smithy), { still: { n: 339, cost: 15212 }, frame: { n: 9, cost: 508, glows: 2 } });
+  assert.deepEqual(plain(r.world.scenes.smithy), { still: { n: 339, cost: 15300 }, frame: { n: 9, cost: 508, glows: 2 } });
   assert.deepEqual(plain(r.world.scenes.house), { still: { n: 370, cost: 71245 }, frame: { n: 46, cost: 2128, glows: 3 } });
-  assert.deepEqual(plain(r.world.scenes.court), { still: { n: 408, cost: 50555 }, frame: { n: 19, cost: 904, glows: 8 } });
+  assert.deepEqual(plain(r.world.scenes.court), { still: { n: 413, cost: 50647 }, frame: { n: 19, cost: 904, glows: 8 } });
   // the whole file, against the 512 KiB a pack may weigh: since 0.7.0 the cat's stamps take it past
-  // half of that, to about 335 000 bytes
+  // half of that, to about 346 000 bytes with the redesigned devices
   assert.ok(Buffer.byteLength(SHIPPED) < 512 * 1024 * 0.7, Buffer.byteLength(SHIPPED) + ' bytes');
   // a deployed page refuses it unsigned
   assert.deepEqual([PK.read(TEXT).ok, PK.read(TEXT).step, PK.read(TEXT).reason], [false, 'signature', MISSING]);
@@ -311,10 +311,14 @@ test('hosts and the foe: the camp, hosting the flies and the crate, is outdoors 
   const camp = compiled(TEXT, 'camp').sc, cellar = compiled(TEXT).sc, code = sandbox().code;
   assert.equal(camp.outdoors, true);
   assert.deepEqual(plain(camp.foeZone), plain(code.camp.foeZone));
-  assert.deepEqual(plain(camp.foeZone), { side: -1, spans: [[70, 494]] });
+  assert.deepEqual(plain(camp.foeZone), { side: -1, spans: [[324, 470]] });
   assert.ok(Object.isFrozen(camp.foeZone) && Object.isFrozen(camp.foeZone.spans[0]));
   assert.equal(camp.wallAt, undefined, 'with no wall the goblin digs out of the ground');
-  for (const k of ['outdoors', 'foeZone', 'wallAt']) assert.equal(k in cellar, false, k);
+  // where the crate lands, as the code's camp gives it, frozen
+  assert.deepEqual(plain(camp.crate), plain(code.camp.crate));
+  assert.deepEqual(plain(camp.crate), { span: [298, 436] });
+  assert.ok(Object.isFrozen(camp.crate) && Object.isFrozen(camp.crate.span));
+  for (const k of ['outdoors', 'foeZone', 'wallAt', 'crate']) assert.equal(k in cellar, false, k);
   // the feast and the foe are played where the engine's lists say, so hosting them alone changes
   // nothing the compiled scene gives
   const feast = compiled(edited(p => { p.scenes.cellar.hosts = ['feast']; })).sc;
@@ -391,7 +395,7 @@ test('the pack library reads targetDx, the target\'s, with three decimals on its
   no(trained(sc => { delete sc.target; sc.rounds[0].act = 'sniff'; sc.moving[1].shapes = sc.moving[1].shapes.slice(1, 2); delete sc.moving[1].groups; }),
     'references', 'pack.scenes.camp.moving[1].shapes[0].p1[0].targetDx: is the target\'s dx, and needs the scene\'s target');
   no(trained(sc => { sc.still[0].shapes.push({ k: 'rect', p: [{ c: 1, targetDx: 1 }, 1], w: 1, h: 1, fill: '#000000' }); }),
-    'references', 'pack.scenes.camp.still[0].shapes[66].p[0].targetDx: cannot be used in a still layer');
+    'references', 'pack.scenes.camp.still[0].shapes[57].p[0].targetDx: cannot be used in a still layer');
   no(trained(sc => { sc.moving[1].shapes[1].p1[0].targetDx = 9; }), 'fields', 'pack.scenes.camp.moving[1].shapes[1].p1[0].targetDx: must be a number from -8 to 8');
   // the costs bound the lean over targetDx's range, ACT_RANGE
   assert.deepEqual(plain(PK.ACT_RANGE), { targetDx: [-15, 15], spot: [150, 810] });

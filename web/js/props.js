@@ -56,9 +56,9 @@
      A fruit pie seen from the side and a little above, its middle at x + 32 and its dish standing
      on a surface at y + 31: a fluted white dish, a domed crust with a crimped edge and a lattice
      over raspberry filling, and steam. Its lamp is the filling seen through the gaps of the
-     lattice, which lights green on the loop every device lamp keeps (PIE_LAMP, below). With ok
-     false the dish stands empty but for crumbs and the last slice, whose filling is the lamp and
-     blinks red, under a question mark.
+     lattice, which lights red on the loop every device lamp keeps (PIE_LAMP, below). With ok false
+     the dish stands empty but for crumbs and the last slice, unlit and without steam, under a
+     question mark.
      part 'still' draws only what does not move, and 'moving' only the steam and the lamp; the
      engine draws the question mark of a device itself (see KINDS). */
   const CRUST = ['#ffd98a', '#f2ac4e', '#cc7f32', '#93521d'], FILLING = ['#d2325f', '#9a1640', '#5c0a24'];
@@ -88,7 +88,6 @@
         const s = pieShapes().slice;
         D.pix(cx + s.x0, by + s.y0, s.w, s.h, (i, j) => s.cells[j * s.w + i]);
       }
-      if (part !== 'still') ownLampHD(PIE_LAMP.down, cx, by, t, false);
       if (!part && Math.floor(t / 400) % 2) SP.mark(cx, y - 62, '?');
       return;
     }
@@ -105,22 +104,20 @@
      docs/worlds.md): two drawings, dark and lit, of the same pixels, painted once each into a canvas
      of their own, and each frame a soft light of radius 24 round the lamp's middle at 0.3 of the
      loop's level, the dark drawing, and the lit one over it at the loop's level, as world.js draws
-     a pack's. Up, its pixels are the filling the crust paints in the gaps of the lattice, lit in
-     the device lamp's green and dark near black; gone, they are the filling of the last slice, lit
-     in the down lamp's reds and dark black.
+     a pack's. Its pixels are the filling the crust paints in the gaps of the lattice, lit in the
+     down lamp's reds and dark near black. Gone, the pie has no lamp: the last slice is unlit.
      Each pixel is a key: a the filling's lit side, b its shaded side, e its edge in the shadow of a
      strip, and h a highlight, a lit pixel with the edge to its left and above it. */
   const rgb = (c, k) => 'rgb(' + c.map(v => Math.round(v * k)).join(',') + ')';
   /* The down lamp's reds, as a world pack names them in a lamp of its own: the red, the red at two
      thirds and the highlight (@lamp.down, @lamp.downLo and @lamp.downHi). */
   const LAMP_REDS = Object.freeze({ down: rgb(LAMP.down.rgb, 1), downLo: rgb(LAMP.down.rgb, .66), downHi: LAMP.down.hi });
-  /* The lamp's middle from the base, its colours, and the light round it: up, the engine's green
-     (no light of its own); down, the down lamp's red. */
+  /* The lamp's middle from the base, its colours, and the light round it, the down lamp's red as a
+     hex colour, as a world pack gives a light. Its dark drawing is a dimmer red, never unlit: at
+     the low point of its pulse the pie still reads as lit, as every lamp up does. */
   const PIE_LAMP = Object.freeze({
-    up: { at: [1, -30], lit: { a: '#8fe07a', b: '#5e9451', e: '#395a31', h: LAMP.up.hi }, dark: { a: '#0b130c', b: '#080e09', e: '#050806', h: '#0b130c' },
-      light: rgb(LAMP.up.rgb, 1), map: () => pieShapes().lattice },
-    down: { at: [4, -24], lit: { a: LAMP_REDS.down, b: LAMP_REDS.downLo, e: LAMP_REDS.downLo, h: LAMP_REDS.downHi }, dark: { a: '#000000', b: '#000000', e: '#000000', h: '#000000' },
-      light: LAMP_REDS.down, map: () => pieShapes().sliceLamp }
+    up: { at: [1, -30], lit: { a: LAMP_REDS.down, b: LAMP_REDS.downLo, e: '#6a1f1a', h: LAMP_REDS.downHi }, dark: { a: LAMP_REDS.downLo, b: '#6e2019', e: '#3e120e', h: '#d06a5e' },
+      light: '#ff4a3d', map: () => pieShapes().lattice }
   });
   /* The lamp L standing on the base (x, y) at time t: its canvases, painted once, its light and its
      two drawings. */
@@ -218,20 +215,25 @@
 
   /* ---- The other devices -------------------------------------------------------------
      In the medieval world each kind is drawn as a medieval thing that stands for it, by the
-     owner's choice of 16 November 2026: the camera a barn owl on watch on an iron bracket, the
-     machine a cauldron brewing over a log fire, the virtual machine a corked potion flask, and a
-     kind the page does not know an iron-bound chest. Each takes (x, y, t, ok, part) like the pie,
-     but (x, y) is the middle of the base, the line it stands on (for the owl, the foot of the wall
-     plate its bracket hangs from), and it fits within 80 by 64 above it. part 'still' draws what
-     does not move, 'moving' what does, and nothing given draws both. Each device has one lamp, its
-     only moving part: while up it fades from green to black and back over 3.6 seconds, and while
-     down from red to black and back over 2 seconds, a slow blink. The chest's lamp is the engine's
-     (lampRim and lampHD); the owl's eyes, the brew, the ember and the potion are lamps of their own
-     (ownLampHD). A gone device stays where it is, plainly knocked over or broken. */
-  /* The lamp's dark rim, 12 by 12 around its middle (x, y): the still part. */
+     owner's choices of 16 and 17 November 2026: the camera a barn owl on watch on an iron bracket,
+     the machine a scrying crystal in a gilt claw stand, the virtual machine a corked potion flask,
+     and a kind the page does not know an iron-bound chest. Each takes (x, y, t, ok, part) like the
+     pie, but (x, y) is the middle of the base, the line it stands on (for the owl, the foot of the
+     wall plate its bracket hangs from). The owl fits within the high class's box, the others
+     within the ground class's, [-66, -93, 56, 2] from the base. part 'still' draws what does not
+     move, 'moving' what does, and nothing given draws both. A device's light is a lamp of its own
+     (ownLampHD), its only moving part: the owl's eyes, glowing amber; the crystal's ball, pale
+     blue-white; the flask's potion, blue; and the jewel in the chest's lock, gold. Up, each pulses
+     from its full colour to a dimmer one of the same hue and back over 3.6 seconds, never unlit.
+     Gone, a device has no lamp and stays where it is, plainly knocked over or broken and unlit: the
+     owl's eyes are dazed spirals, the chest's jewel dark glass, the crystal's ball dark and cracked
+     and the flask's potion spilt and dark. Nothing of it blinks; the question mark over it carries
+     the alert. */
+  /* The lamp's dark rim, 12 by 12 around its middle (x, y): the still part of the engine's own
+     lamp, which a world pack's kind may still name by a point (world.js). */
   function lampRim(x, y) { Rh(x - 6, y - 6, 12, 12, C.K); }
-  /* The lamp itself at time t: its colour between full and black, a highlight while it is bright,
-     and a soft light round it in its own colour. */
+  /* The engine's own lamp at time t: its colour between full and black, a highlight while it is
+     bright, and a soft light round it in its own colour. */
   function lampHD(x, y, t, ok) {
     const L = ok ? LAMP.up : LAMP.down, a = lampLevel(t, ok);
     glow(x, y, 20, 'rgb(' + L.rgb.join(',') + ')', .3 * a);
@@ -240,17 +242,24 @@
   }
 
   /* The lamps of the devices' own, as the pie's: each its middle from the base, its lit and dark
-     colourings, its light (the engine's green up, the down lamp's red gone) and its map, keys over a
-     box from the base, worked out once. A key the lit colouring lacks shows the dark drawing in the
-     lit canvas too, as a pack's lamp does: the gaps of the dazed owl's spirals. */
-  const UP_GREEN = { a: '#8fe07a', b: '#5e9451', h: LAMP.up.hi }, DOWN_REDS = { a: LAMP_REDS.down, b: LAMP_REDS.downLo, h: LAMP_REDS.downHi };
-  const EYE_DARK = { a: '#2a2236', b: '#1e1828', h: '#3a3248', e: '#2a2236' }, BREW_DARK = { a: '#1c3a20', b: '#132a17', h: '#2a4a2c' };
+     colourings, its light and its map, keys over a box from the base, worked out once. A key the lit
+     colouring lacks shows the dark drawing in the lit canvas too, as a pack's lamp does. */
+  /* Up, every lamp pulses between its full colour and a dimmer one of the same hue, never unlit, so
+     a device up never reads as down: the owl's eyes from amber to a deeper gold. Down, a device has
+     no lamp: the owl's dazed spirals are drawn still and unlit (DAZED). */
+  const AMBER = { a: C.G1, b: C.G2, h: C.G0 }, AMBER_DIM = { a: C.G2, b: C.G3, h: C.G1 };
+  const DAZED = { a: '#6e6478', e: '#1e1828' };
   const inEll = (u, v, cx, cy, rx, ry) => ((u - cx) / rx) ** 2 + ((v - cy) / ry) ** 2 <= 1;
   /* A lamp of its own: at, the colourings, the light, and the map from key(u, v) over the box from
      (x0, y0), w by h, trimmed to what it holds. */
   const ownLamp = (at, lit, dark, light, x0, y0, w, h, key) => {
     let m = null;
     return Object.freeze({ at, lit, dark, light, map: () => m || (m = trim(x0, y0, w, h, key)) });
+  };
+  /* The same over the box [x0, y0, x1, y1], x1 and y1 exclusive, rounded. */
+  const ownLampIn = (at, lit, dark, light, box, key) => {
+    const [x0, y0, x1, y1] = box.map(Math.round);
+    return ownLamp(at, lit, dark, light, x0, y0, x1 - x0, y1 - y0, key);
   };
   /* Two eyes n across, from their upper left corners: a highlight in the corner, shaded at the lower
      right. */
@@ -264,37 +273,215 @@
     for (const [ex, ey] of centres) { const i = u - ex, j = v - ey; if (i >= 0 && i < 5 && j >= 0 && j < 5) return SPIRAL[j][i] === 'a' ? 'a' : 'e'; }
     return null;
   };
-  const EMBER = ['..aa...', '.aaaa..', 'aaahaa.', '.aaaaa.'];
-  const LAMPS = Object.freeze({
-    owl: { up: ownLamp([-4, -56], UP_GREEN, EYE_DARK, rgb(LAMP.up.rgb, 1), -10, -58, 13, 5, eyes([[-10, -58], [-2, -58]], 5)),
-      gone: ownLamp([-4, -10], DOWN_REDS, EYE_DARK, LAMP_REDS.down, -11, -12, 15, 5, spirals([[-11, -12], [-1, -12]])) },
-    cauldron: { up: ownLamp([0, -40], Object.assign({ B: UP_GREEN.a }, UP_GREEN), BREW_DARK, rgb(LAMP.up.rgb, 1), -21, -49, 43, 17, (u, v) => {
-      // the brew's surface, lit along its far edge, and three bubbles, rings that rise as it brightens
-      if (inEll(u, v, 0, -36, 20, 3.6)) return !inEll(u, v - 1, 0, -36, 20, 3.6) || (u < -10 && v === -38) ? 'h' : u > 10 ? 'b' : 'a';
-      for (const [bx, by, r] of [[-7, -43, 2.5], [6, -46, 1.6], [1, -41, 1.6]]) if (inEll(u, v, bx, by, r, r)) return Math.hypot(u - bx, v - by) < r - 1.2 ? null : 'B';
-      return null;
-    }),
-      gone: ownLamp([28, -6], DOWN_REDS, { a: '#3a2622', h: '#4a2e26' }, LAMP_REDS.down, 25, -8, 7, 4, (u, v) => { const c = EMBER[v + 8][u - 25]; return c === '.' ? null : c; }) },
-    flask: { up: ownLamp([0, -10], UP_GREEN, BREW_DARK, rgb(LAMP.up.rgb, 1), -12, -18, 25, 17, (u, v) => {
-      if (!inEll(u, v, 0, -14, 12, 12) || v > -2 || v < -18) return null;
-      if (v === -18 || (u === -4 && v === -12) || (u === 3 && v === -8) || (u === -1 && v === -5)) return 'h';
-      return u > 6 || v > -5 ? 'b' : 'a';
-    }),
-      gone: ownLamp([8, -4], DOWN_REDS, BREW_DARK, LAMP_REDS.down, -3, -7, 23, 6, (u, v) => (inEll(u, v, 8, -13, 11, 11) && v >= -6 ? (v === -6 ? 'h' : u > 14 ? 'b' : 'a') : null)) }
-  });
-  /* The engine's lamp of the chest, the jewel in its lock plate. */
-  const CHEST_LAMP = { up: [0, -20], gone: [15, -24] };
 
   const BUFF = [[.15, '#f3d29a'], [.55, '#e0ae66'], [1, '#b9803f']], WOODV = [[.2, C.N0], [.7, C.N1], [1, C.N2]], DARKIN = '#100c16';
-  const IRONB = [[.12, '#7a8296'], [.45, '#4a5062'], [1, '#2a2a38']], COLD = [[.3, '#6a5e58'], [1, '#4a4048']];
   const GLASS = '#3a4660', GLASS_HI = '#8ea0c0';
+
+  /* ---- The crystal, the flask and the chest at their sizes ------------------------------------
+     Each is drawn at a size s, a redraw rather than an enlarged image: every shape's inner geometry
+     (positions, radii, widths) is its drawing at today's size times s about the base, rasterised at
+     one grid pixel, while the dark outlines keep their thickness and thin details (highlights, the
+     tag's string) stay 1 or 2 pixels. A part that rests on the ground is scaled about its own inner
+     bottom, its pivot, so it still rests on the base line. The lamps are worked out from the same
+     formulas at the size, so their edges stay one pixel. The machine and the chest are drawn at 2,
+     the flask at 1.4. R(v) is v at the size, rounded; Y(v, p) a height from the base scaled about
+     the pivot p. */
+  /* Discs drawn pixel by pixel: the pixels ell fills about (0, 0) for each [rx, ry, colour] of
+     list in turn, worked out once and painted with D.pix at (cx, cy), cy whole. For a disc whose
+     radius no multiple of 1/8 draws alike, as a pack's numbers must be: the crystal's ball and the
+     flask's bulb, which a pack carries as pix shapes of the same pixels. */
+  function discs(list) {
+    let m = null;
+    const cells = () => {
+      if (m) return m;
+      const at = new Map(), rec = { fillStyle: null, globalAlpha: 1, fillRect(x, y, w, h) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) at.set((x + i) + ',' + (y + j), this.fillStyle); } };
+      const was = D.getCtx(); D.setCtx(rec);
+      try { for (const [rx, ry, c] of list) ell(0, 0, rx, ry, c); } finally { D.setCtx(was); }
+      const r = Math.ceil(Math.max(...list.map(d => Math.max(d[0], d[1])))) + 1;
+      return (m = trim(-r, -r, 2 * r + 1, 2 * r + 1, (u, v) => at.get(u + ',' + v) || null));
+    };
+    return { cells, draw(cx, cy) { const c = cells(); D.pix(cx + c.x0, cy + c.y0, c.w, c.h, (i, j) => c.keys[j * c.w + i]); } };
+  }
+  function sized(s) {
+    const R = v => Math.round(v * s), Y = (v, p) => Math.round(p + (v - p) * s);
+    const one = Math.max(1, Math.round(s));
+
+    /* The machine: the scrying crystal on a gilt claw stand on a wooden foot, the whole ball the
+       lamp. Its shapes are the crystal's at c = s * 0.925, which brings the ball's top to 93 above
+       the base at 2. Up, the ball pulses from pale blue-white to a dimmer blue, still lit. Gone, the stand
+       has toppled and the ball lies on the floor beside it, dark, with a crack across it: no lamp,
+       so it is all still drawing. */
+    const c = s * .925, Rc = v => Math.round(v * c);
+    const ballR = 13 * c, ballY = Math.round(-36 * c);
+    const ORB = { a: '#dcecff', b: '#a6c6ec', h: '#ffffff', c: '#f2f8ff' };
+    const ORB_DIM = { a: '#7894c0', b: '#5a78a8', h: '#c8dcf6', c: '#90acd6' };
+    const ORB_DARK = { a: '#1c2638', b: '#121a28', h: '#3e5272', c: '#26344c' };
+    const crystal = ownLampIn([0, ballY], ORB, ORB_DIM, '#cde4ff', [-ballR - 1, ballY - ballR - 1, ballR + 2, ballY + ballR + 2], (u, v) => {
+      const r = ballR, d = Math.hypot(u, v - ballY);
+      if (d > r) return null;
+      if (Math.hypot(u + r * .42, v - ballY + r * .42) < r * .22) return 'h';
+      if (u * .6 + (v - ballY) * .7 > r * .45 || d > r - 1.2) return 'b';
+      if (Math.abs(Math.hypot(u + 2 * c, v - ballY + c) - r * .55) < .7 && u < 3 * c) return 'c';
+      return 'a';
+    });
+    const CRACK = [[-24, -22], [-19, -16], [-22, -12], [-16, -6], [-17, -3]];
+    /* The claws' half widths, outline and gold, at either end, kept to eighths as a pack's numbers
+       are: 1.2c + 1.3, 0.5c + 1, 1.2c and 0.5c at 2 come to these. The gold fills the same pixels;
+       the outline differs from the unrounded one by two pixels a claw. */
+    const CLAW = [3.5, 2, 2.25, .875];
+    /* The ball's outline, drawn pixel by pixel; gone, the ball, its highlight and the crack's four
+       strokes at the eighths that fill the pixels 22.35, 20.35, 4.48 and 0.8 would. */
+    const RING = discs([[ballR + 2, ballR + 2, C.K]]), DOWN = { ring: [22.375, 22.375], ball: [20.25, 20.375], hi: [4.375, 4.5], crack: [.75, .75, .75, .875] };
+    function machine(x, y, ok) {
+      if (ok) {
+        const ft = [[-14, 0], [-11, -5], [11, -5], [14, 0]].map(([u, v]) => [x + Rc(u), y + Rc(v)]);
+        poly([[ft[0][0] - 2, y + 1], [ft[1][0] - 1, ft[1][1] - 2], [ft[2][0] + 1, ft[2][1] - 2], [ft[3][0] + 2, y + 1]], C.K); poly(ft, WOODV);
+        const sx = x + Rc(-3), sy = y + Rc(-16), sw = Rc(6), sh = Rc(10);
+        rrect(sx - 2, sy - 1, sw + 4, sh + 2, 1, C.K); rrect(sx, sy, sw, sh, 0, GOLD);
+        for (const d of [-1, 1]) {
+          const p0 = [x + d * Rc(11), y + Rc(-22)], p1 = [x + d * Rc(15), y + Rc(-33)];
+          strip(p0[0], p0[1], p1[0], p1[1], CLAW[0], CLAW[1], C.K); strip(p0[0], p0[1], p1[0], p1[1], CLAW[2], CLAW[3], C.G1);
+        }
+        const cup = [[-12, -23], [12, -23], [7, -16], [-7, -16]].map(([u, v]) => [x + Rc(u), y + Rc(v)]);
+        poly([[cup[0][0] - 2, cup[0][1] - 1], [cup[1][0] + 2, cup[1][1] - 1], [cup[2][0] + 1, cup[2][1] + 1], [cup[3][0] - 1, cup[3][1] + 1]], C.K); poly(cup, GOLD);
+        RING.draw(x, y + ballY);
+      } else {
+        // the toppled stand, to the right: the cup on its side, the stem, the foot on its edge
+        const P2 = pts => pts.map(([u, v]) => [x + Rc(u), y + Math.round(v * c)]);
+        const cupO = P2([[2, -24], [11, -18], [11, -5], [2, 1]]), cupI = P2([[4, -21], [10, -17], [10, -6], [4, -1]]);
+        poly([[cupO[0][0] - 1, cupO[0][1] - 1], [cupO[1][0] + 1, cupO[1][1] - 1], [cupO[2][0] + 1, cupO[2][1] + 1], [cupO[3][0] - 1, y + 1]], C.K); poly(cupI, GOLD);
+        const sx = x + Rc(11), sy = y + Rc(-14), sw = Rc(10), sh = Rc(6);
+        rrect(sx - 1, sy - 2, sw + 2, sh + 4, 1, C.K); rrect(sx, sy, sw, sh, 0, GOLD);
+        const fO = P2([[21, -21], [29, -18], [29, 1], [21, 1]]), fI = P2([[22, -19], [28, -17], [28, 0], [22, 0]]);
+        poly([[fO[0][0] - 1, fO[0][1] - 1], [fO[1][0] + 1, fO[1][1] - 1], [fO[2][0] + 1, y + 1], [fO[3][0] - 1, y + 1]], C.K); poly(fI, WOODV);
+        // the ball, rolled off to the left, dark, cracked
+        const bx = x + Rc(-18), r = 11 * c, by = y - Math.round(r) - 1;
+        ell(bx, by, DOWN.ring[0], DOWN.ring[1], C.K); ell(bx, by, DOWN.ball[0], DOWN.ball[1], [[.25, ORB_DARK.c], [.7, ORB_DARK.a], [1, ORB_DARK.b]]);
+        ell(bx - Math.round(r * .42), by - Math.round(r * .42), DOWN.hi[0], DOWN.hi[1], ORB_DARK.h);
+        const ck = CRACK.map(([u, v]) => [bx + Math.round((u + 18) * c), by + Math.round((v + 13) * c)]);
+        for (let i = 1; i < ck.length; i++) strip(ck[i - 1][0], ck[i - 1][1], ck[i][0], ck[i][1], DOWN.crack[i - 1], DOWN.crack[i - 1], C.K);
+        for (const [sx2, sy2] of [[-3, -1], [1, -2], [-6, 0]]) { const px = x + Rc(sx2), py = y + Rc(sy2); poly([[px, py + 1], [px + 1, py - 1], [px + 2, py + 1]], C.S0); }
+      }
+    }
+
+    /* The box: the iron-bound chest, the jewel in its lock plate a lamp of its own, gold up, pulsing
+       to a deeper gold; gone, the jewel is dark glass, drawn still. Its body rests on the base
+       (pivot -1, the inside of its outline), its straps and the coins spilt from it on the base
+       itself. */
+    const JEWEL_DARK = { a: '#2a2430', h: '#4a4250' };
+    const jewel = (cx, cy, lit, dark, light) => {
+      const n = R(10), x0 = cx - Math.floor(n / 2), y0 = cy - Math.floor(n / 2), hl = Math.max(3, R(3));
+      return ownLampIn([cx, cy], lit, dark, light, [x0 - 2, y0 - 2, x0 + n + 2, y0 + n + 2], (u, v) => {
+        const i = u - x0, j = v - y0;
+        if (i < 0 || j < 0 || i >= n || j >= n) return null;
+        return i >= 1 && j >= 1 && i <= hl && j <= hl ? 'h' : 'a';
+      });
+    };
+    const jUp = [0, Y(-20, -1)], jGone = [R(15), Y(-24, -1)];
+    const chestUp = jewel(jUp[0], jUp[1], { a: C.G1, h: C.G0 }, { a: C.G2, h: C.G1 }, C.G1);
+    const chestGone = jewel(jGone[0], jGone[1], JEWEL_DARK, JEWEL_DARK, null);
+    const rim = (x, y, c) => { const n = R(10); Rh(x + c[0] - Math.floor(n / 2) - 1, y + c[1] - Math.floor(n / 2) - 1, n + 2, n + 2, C.K); };
+    function box(x, y, ok) {
+      if (ok) {
+        let ix = x + R(-23), iy = y + Y(-23, -1), iw = R(46), ih = R(22);
+        rrect(ix - 2, iy - 2, iw + 4, ih + 4, 2, C.K); Rv(ix, iy, iw, ih, WOODV);
+        Rh(ix, y + Y(-16, -1), iw, 1, C.N3); Rh(ix, y + Y(-8, -1), iw, 1, C.N3);
+        const ly = y + Y(-36, -1), lh = R(12);
+        rrect(ix - 2, ly - 2, iw + 4, lh + 3, 5 * s + 1, C.K); rrect(ix, ly, iw, lh, 5 * s, [[.3, C.N0], [1, C.N1]]); Rh(ix, y + Y(-26, -1), iw, 1, C.N3);
+        for (const bx of [-19, 14]) {
+          const sx = x + R(bx + 1), sy = y + Y(-36, 0), sw = R(3), sh = R(36);
+          Rh(sx - 1, sy - 1, sw + 2, sh + 2, C.K); Rh(sx, sy, sw, sh, C.S3);
+          Rh(x + R(bx + 2), y + Y(-33, 0), one, one, C.S1); Rh(x + R(bx + 2), y + Y(-6, 0), one, one, C.S1);
+        }
+        ix = x + R(-7); iy = y + Y(-27, -1); iw = R(14);
+        rrect(ix - 1, iy - 1, iw + 2, iw + 2, 2, C.K); rrect(ix, iy, iw, iw, 1, STEEL2);
+        rim(x, y, jUp);
+      } else {
+        let ix = x + R(-32), iy = y + Y(-10, 0), iw = R(30), ih = R(10);
+        rrect(ix - 2, iy - 2, iw + 4, ih + 3, 5 * s + 1, C.K); rrect(ix, iy, iw, ih, 5 * s, [[.3, C.N1], [1, C.N2]]);
+        for (const bx of [-29, -9]) { const sx = x + R(bx + 1), sy = y + Y(-11, 0), sw = R(2), sh = R(11); Rh(sx - 1, sy - 1, sw + 2, sh + 2, C.K); Rh(sx, sy, sw, sh, C.S3); }
+        ix = x + R(4); iy = y + Y(-46, -1); iw = R(22); ih = R(45);
+        rrect(ix - 2, iy - 2, iw + 4, ih + 4, 2, C.K); Rv(ix, iy, iw, ih, WOODV);
+        Rh(ix, iy, R(3), ih, DARKIN);
+        for (const by of [-42, -8]) { const yy = y + Y(by + 1, -1), hh = R(3); Rh(ix - 2, yy - 1, iw + 4, hh + 2, C.K); Rh(ix - 1, yy, iw + 2, hh, C.S3); }
+        Rh(x + R(12), y + Y(-37, -1), 1, R(29), C.N3); Rh(x + R(20), y + Y(-37, -1), 1, R(29), C.N3);
+        const px = x + R(8), py = y + Y(-31, -1), pw = R(14);
+        rrect(px - 1, py - 1, pw + 2, pw + 2, 2, C.K); rrect(px, py, pw, pw, 1, STEEL2);
+        for (const [cx, cy] of [[-4, -2], [-1, -1], [2, -3]]) { ell(x + R(cx), y + Y(cy, 0), 2 * s + 1, s + 1, C.K); ell(x + R(cx), y + Y(cy, 0), 2 * s, s, C.G1); }
+        rim(x, y, jGone);
+        const m = chestGone.map();
+        D.pix(x + m.x0, y + m.y0, m.w, m.h, (i, j) => { const k = m.keys[j * m.w + i]; return k ? JEWEL_DARK[k] : null; });
+      }
+    }
+
+    /* The vm: the potion flask, its potion blue. Up, it stands on its bulb (pivot -2), the potion
+       the lamp; gone, it lies on its bulb with its cork on the base beside it, the last of the
+       potion dark, drawn still. */
+    const POTION = { a: '#6fb4ff', b: '#3f78c8', h: '#d6ecff' }, POTION_DIM = { a: '#3f78c8', b: '#2c5aa0', h: '#9cc8f4' }, POTION_DARK = { a: '#14223c', b: '#0e182a', h: '#22345a' };
+    const fUpCy = Y(-14, -2), fGoneCy = Y(-13, -2), fGoneCx = R(8);
+    const sparks = [[-4, -12], [3, -8], [-1, -5]].map(([u, v]) => [R(u), Y(v, -2)]);
+    const potion = ownLampIn([0, Y(-10, -2)], POTION, POTION_DIM, '#6fb4ff', [-14 * s, -30 * s, 14 * s, 0], (u, v) => {
+      const top = Y(-18, -2);
+      if (!inEll(u, v, 0, fUpCy, 12 * s, 12 * s) || v > -2 || v < top) return null;
+      if (v === top || sparks.some(p => p[0] === u && p[1] === v)) return 'h';
+      return u > 6 * s || v > Y(-5, -2) ? 'b' : 'a';
+    });
+    const spilt = ownLampIn([R(8), Y(-4, -2)], POTION_DARK, POTION_DARK, null, [-6 * s, -12 * s, 24 * s, 0], (u, v) => {
+      const top = Y(-6, -2);
+      return inEll(u, v, fGoneCx, fGoneCy, 11 * s, 11 * s) && v >= top ? (v === top ? 'h' : u > 14 * s ? 'b' : 'a') : null;
+    });
+    /* The bulb, outline and glass, drawn pixel by pixel; the bulb lying down, and the cork's
+       corners, at the eighths that fill the pixels 17.4, 15.4, 2.4 and 1.4 would. */
+    const BULB = discs([[12 * s + 2, 12 * s + 2, C.K], [12 * s, 12 * s, GLASS]]), e8 = v => Math.round(v * 8) / 8;
+    const tag = (x, y, inner, outer) => {
+      const pin = inner.map(([u, v]) => [x + R(u), y + Y(v, -2)]);
+      poly(pin.map((p, i) => [p[0] + outer[i][0] - inner[i][0], p[1] + outer[i][1] - inner[i][1]]), C.K); poly(pin, C.F0);
+    };
+    function vm(x, y, ok) {
+      if (ok) {
+        BULB.draw(x, y + fUpCy);
+        let ix = x + R(-3), iy = y + Y(-39, -2), iw = R(6), ih = R(13);
+        rrect(ix - 2, iy - 1, iw + 4, ih + 1, 1, C.K); rrect(ix, iy, iw, ih, 0, GLASS);
+        ix = x + R(-6); iy = y + Y(-41, -2); iw = R(12); ih = R(2);
+        rrect(ix - 1, iy - 1, iw + 2, ih + 2, 1, C.K); Rh(ix, iy, iw, ih, C.S2);
+        ix = x + R(-3); iy = y + Y(-47, -2); iw = R(6); ih = R(5);
+        rrect(ix - 1, iy - 1, iw + 2, ih + 2, e8(s + 1), C.K); rrect(ix, iy, iw, ih, e8(s), C.N0);
+        Rh(x + R(-8), y + Y(-23, -2), 2, R(4), GLASS_HI); Rh(x + R(-2), y + Y(-36, -2), 1, R(6), GLASS_HI);
+        Rh(x + R(4), y + Y(-37, -2), R(5), 1, C.F2);
+        tag(x, y, [[9, -36], [14, -35], [13, -31], [9, -32]], [[8, -38], [16, -36], [14, -29], [7, -31]]);
+      } else {
+        ell(x + fGoneCx, y + fGoneCy, e8(11 * s + 2), e8(11 * s + 2), C.K); ell(x + fGoneCx, y + fGoneCy, e8(11 * s), e8(11 * s), GLASS);
+        let ix = x + R(-18), iy = y + Y(-16, -2), iw = x + fGoneCx - Math.round(11 * s) + 1 - ix, ih = R(6);
+        rrect(ix - 1, iy - 2, iw + 1, ih + 4, 1, C.K); rrect(ix, iy, iw, ih, 0, GLASS);
+        ix = x + R(-21); iy = y + Y(-19, -2); iw = R(2); ih = R(12);
+        rrect(ix - 1, iy - 1, iw + 2, ih + 2, 1, C.K); Rh(ix, iy, iw, ih, C.S2);
+        Rh(x + R(2), y + Y(-21, -2), R(6), 2, GLASS_HI);
+        ix = x + R(-33); iy = y + Y(-5, 0); iw = R(6); ih = R(5);
+        rrect(ix - 1, iy - 1, iw + 2, ih + 2, e8(s + 1), C.K); rrect(ix, iy, iw, ih, e8(s), C.N0);
+        tag(x, y, [[19, -22], [24, -24], [24, -21], [20, -20]], [[18, -22], [25, -26], [26, -20], [20, -18]]);
+        const m = spilt.map();
+        D.pix(x + m.x0, y + m.y0, m.w, m.h, (i, j) => { const k = m.keys[j * m.w + i]; return k ? POTION_DARK[k] : null; });
+      }
+    }
+    return { machine, crystal, box, chestUp, chestGone, vm, potion, spilt };
+  }
+  const BIG = sized(2), FLASK = sized(1.4);
+
+  const LAMPS = Object.freeze({
+    owl: { up: ownLamp([-4, -56], AMBER, AMBER_DIM, C.G1, -10, -58, 13, 5, eyes([[-10, -58], [-2, -58]], 5)), gone: null,
+      dazed: ownLamp([-4, -10], DAZED, DAZED, null, -11, -12, 15, 5, spirals([[-11, -12], [-1, -12]])) },
+    crystal: { up: BIG.crystal, gone: null },
+    flask: { up: FLASK.potion, gone: null, spilt: FLASK.spilt },
+    chest: { up: BIG.chestUp, gone: null, jewel: BIG.chestGone }
+  });
+
   /* A feather drifting down. */
   function feather(x, y, c) { ell(x, y, 4, 2.5, C.K); ell(x, y, 2.5, 1.25, c); }
 
-  /* The camera: a barn owl on an iron wall bracket, facing out, its eyes the lamp. The wall plate
-     stands where the old camera's did, from x 22 to 32, so the poles of a high place meet it. Gone:
-     it hangs upside down from the bracket by its talons, its wings drooping, its eyes dazed spirals
-     that blink red, two feathers drifting down. */
+  /* The camera: a barn owl on an iron wall bracket, facing out, its eyes the lamp, glowing amber.
+     The wall plate stands where the old camera's did, from x 22 to 32, so the poles of a high place
+     meet it. Gone: it hangs upside down from the bracket by its talons, its wings drooping, its eyes
+     dazed spirals, unlit, two feathers drifting down. */
   function cameraHD(x, y, t, ok, part) {
     if (part !== 'moving') {
       rrect(x + 22, y - 64, 10, 46, 2, C.K); rrect(x + 24, y - 62, 6, 42, 1, STEEL3); Rh(x + 26, y - 59, 2, 2, C.S1); Rh(x + 26, y - 25, 2, 2, C.S1);
@@ -321,90 +508,32 @@
         ell(x - 4, y - 10, 9, 6, '#c98f4f'); ell(x - 8, y - 10, 4, 5, [[.4, C.W], [1, C.S0]]); ell(x, y - 10, 4, 5, [[.4, C.W], [1, C.S0]]);
         Rh(x - 5, y - 16, 2, 3, C.G2);
         feather(x + 16, y - 7, '#f3d29a'); feather(x - 26, y - 3, C.W);
+        const m = LAMPS.owl.dazed.map();
+        D.pix(x + m.x0, y + m.y0, m.w, m.h, (i, j) => { const k = m.keys[j * m.w + i]; return k ? DAZED[k] : null; });
       }
     }
-    if (part !== 'still') ownLampHD(ok ? LAMPS.owl.up : LAMPS.owl.gone, x, y, t, ok);
+    if (part !== 'still' && ok) ownLampHD(LAMPS.owl.up, x, y, t, true);
   }
 
-  /* The machine: an iron cauldron on short legs over a small log fire, its brew the lamp, with
-     bubbles that show as it brightens. Gone: tipped on its side, empty and cold, the fire out, and
-     the last ember among the cold logs blinks. */
+  /* The machine: the scrying crystal (sized, above), its ball the lamp up; gone, dark. */
   function machineHD(x, y, t, ok, part) {
-    if (part !== 'moving') {
-      if (ok) {
-        strip(x - 22, y - 2, x + 18, y - 6, 3, 3, C.K); strip(x - 18, y - 6, x + 22, y - 2, 3, 3, C.K);
-        strip(x - 22, y - 2, x + 18, y - 6, 2, 2, C.N2); strip(x - 18, y - 6, x + 22, y - 2, 2, 2, C.N1);
-        for (const [fx, h] of [[-8, 8], [-1, 10], [6, 7]]) { poly([[x + fx - 3, y - 5], [x + fx, y - 5 - h], [x + fx + 3, y - 5]], C.G1); poly([[x + fx - 1, y - 5], [x + fx, y + 1 - h], [x + fx + 1, y - 5]], C.G0); }
-        Rh(x - 16, y - 12, 4, 9, C.K); Rh(x - 15, y - 11, 2, 7, C.S4); Rh(x + 12, y - 12, 4, 9, C.K); Rh(x + 13, y - 11, 2, 7, C.S4);
-        ell(x - 26, y - 33, 3, 3, C.K); ell(x + 26, y - 33, 3, 3, C.K); ell(x - 26, y - 33, 1.25, 1.25, C.S4); ell(x + 26, y - 33, 1.25, 1.25, C.S4);
-        ell(x, y - 22, 24, 15, C.K); ell(x, y - 22, 22, 13, IRONB); Rh(x - 17, y - 28, 2, 7, '#9aa4b8');
-        ell(x, y - 36, 26, 7, C.K); ell(x, y - 36, 24, 5, [[.2, C.S2], [.6, C.S3], [1, C.S4]]); ell(x, y - 36, 21, 4, C.K);
-      } else {
-        ell(x - 24, y - 1, 10, 2, '#2e3a2c');
-        strip(x + 8, y - 2, x + 38, y - 5, 3, 3, C.K); strip(x + 8, y - 2, x + 38, y - 5, 2, 2, COLD);
-        Rh(x + 12, y - 1, 12, 1, C.S4);
-        strip(x + 24, y - 20, x + 32, y - 24, 2, 2, C.K); strip(x + 25, y - 9, x + 33, y - 9, 2, 2, C.K);
-        strip(x + 24, y - 20, x + 32, y - 24, 1, 1, C.S4); strip(x + 25, y - 9, x + 33, y - 9, 1, 1, C.S4);
-        ell(x + 6, y - 15, 19, 15, C.K); ell(x + 6, y - 15, 17, 13, [[.1, '#6a7082'], [.5, '#3e4252'], [1, '#26242f']]);
-        ell(x + 6, y - 30, 3, 3, C.K); ell(x + 6, y - 30, 1.25, 1.25, C.S4);
-        ell(x - 12, y - 15, 7, 15, C.K); ell(x - 12, y - 15, 5, 13, C.S4); ell(x - 11, y - 15, 3, 11, DARKIN);
-      }
-    }
-    if (part !== 'still') ownLampHD(ok ? LAMPS.cauldron.up : LAMPS.cauldron.gone, x, y, t, ok);
+    if (part !== 'moving') BIG.machine(x, y, ok);
+    if (part !== 'still' && ok) ownLampHD(LAMPS.crystal.up, x, y, t, true);
   }
-
-  /* The virtual machine: a corked glass flask with a paper tag, the potion in it the lamp, what the
-     cauldron brews held in a smaller vessel. Gone: the flask lies on its side with its cork out
-     beside it, and the last of the potion blinks. */
+  /* The virtual machine: the potion flask (sized, above), its potion the lamp up; gone, dark. */
   function vmHD(x, y, t, ok, part) {
-    if (part !== 'moving') {
-      if (ok) {
-        ell(x, y - 14, 14, 14, C.K); ell(x, y - 14, 12, 12, GLASS);
-        rrect(x - 5, y - 40, 10, 14, 1, C.K); rrect(x - 3, y - 39, 6, 13, 0, GLASS);
-        rrect(x - 7, y - 42, 14, 4, 1, C.K); Rh(x - 6, y - 41, 12, 2, C.S2);
-        rrect(x - 4, y - 48, 8, 7, 2, C.K); rrect(x - 3, y - 47, 6, 5, 1, C.N0);
-        Rh(x - 8, y - 23, 2, 4, GLASS_HI); Rh(x - 2, y - 36, 1, 6, GLASS_HI);
-        Rh(x + 4, y - 37, 5, 1, C.F2); poly([[x + 8, y - 38], [x + 16, y - 36], [x + 14, y - 29], [x + 7, y - 31]], C.K); poly([[x + 9, y - 36], [x + 14, y - 35], [x + 13, y - 31], [x + 9, y - 32]], C.F0);
-      } else {
-        ell(x + 8, y - 13, 13, 13, C.K); ell(x + 8, y - 13, 11, 11, GLASS);
-        rrect(x - 19, y - 18, 16, 10, 1, C.K); rrect(x - 18, y - 16, 15, 6, 0, GLASS);
-        rrect(x - 22, y - 20, 4, 14, 1, C.K); Rh(x - 21, y - 19, 2, 12, C.S2);
-        Rh(x + 2, y - 21, 6, 2, GLASS_HI);
-        rrect(x - 34, y - 6, 8, 7, 2, C.K); rrect(x - 33, y - 5, 6, 5, 1, C.N0);
-        poly([[x + 18, y - 22], [x + 25, y - 26], [x + 26, y - 20], [x + 20, y - 18]], C.K); poly([[x + 19, y - 22], [x + 24, y - 24], [x + 24, y - 21], [x + 20, y - 20]], C.F0);
-      }
-    }
-    if (part !== 'still') ownLampHD(ok ? LAMPS.flask.up : LAMPS.flask.gone, x, y, t, ok);
+    if (part !== 'moving') FLASK.vm(x, y, ok);
+    if (part !== 'still' && ok) ownLampHD(LAMPS.flask.up, x, y, t, true);
   }
-
-  /* Any other kind: a small iron-bound chest, the engine's lamp the jewel in its lock plate. Gone:
-     tipped up on its end, its lid knocked off and lying upside down beside it, three coins spilt. */
+  /* Any other kind: the iron-bound chest (sized, above), its jewel the lamp, gold up; gone, dark. */
   function boxHD(x, y, t, ok, part) {
-    const lp = ok ? CHEST_LAMP.up : CHEST_LAMP.gone;
-    if (part !== 'moving') {
-      if (ok) {
-        rrect(x - 25, y - 25, 50, 26, 2, C.K); Rv(x - 23, y - 23, 46, 22, WOODV); Rh(x - 23, y - 16, 46, 1, C.N3); Rh(x - 23, y - 8, 46, 1, C.N3);
-        rrect(x - 25, y - 38, 50, 15, 6, C.K); rrect(x - 23, y - 36, 46, 12, 5, [[.3, C.N0], [1, C.N1]]); Rh(x - 23, y - 26, 46, 1, C.N3);
-        for (const bx of [-19, 14]) { Rh(x + bx, y - 37, 5, 38, C.K); Rh(x + bx + 1, y - 36, 3, 36, C.S3); Rh(x + bx + 2, y - 33, 1, 1, C.S1); Rh(x + bx + 2, y - 6, 1, 1, C.S1); }
-        rrect(x - 8, y - 28, 16, 16, 2, C.K); rrect(x - 7, y - 27, 14, 14, 1, STEEL2);
-      } else {
-        rrect(x - 34, y - 12, 34, 13, 6, C.K); rrect(x - 32, y - 10, 30, 10, 5, [[.3, C.N1], [1, C.N2]]);
-        for (const bx of [-29, -9]) { Rh(x + bx, y - 12, 4, 13, C.K); Rh(x + bx + 1, y - 11, 2, 11, C.S3); }
-        rrect(x + 2, y - 48, 26, 49, 2, C.K); Rv(x + 4, y - 46, 22, 45, WOODV);
-        Rh(x + 4, y - 46, 3, 45, DARKIN);
-        for (const by of [-42, -8]) { Rh(x + 2, y + by, 26, 5, C.K); Rh(x + 3, y + by + 1, 24, 3, C.S3); }
-        Rh(x + 12, y - 37, 1, 29, C.N3); Rh(x + 20, y - 37, 1, 29, C.N3);
-        rrect(x + 7, y - 32, 16, 16, 2, C.K); rrect(x + 8, y - 31, 14, 14, 1, STEEL2);
-        for (const [cx, cy] of [[-4, -2], [-1, -1], [2, -3]]) { ell(x + cx, y + cy, 3, 2, C.K); ell(x + cx, y + cy, 2, 1, C.G1); }
-      }
-      lampRim(x + lp[0], y + lp[1]);
-    }
-    if (part !== 'still') lampHD(x + lp[0], y + lp[1], t, ok);
+    if (part !== 'moving') BIG.box(x, y, ok);
+    if (part !== 'still' && ok) ownLampHD(LAMPS.chest.up, x, y, t, true);
   }
 
   /* The kinds of device the page draws, by the contract's kind. draw(x, y, t, ok, part)
      draws one standing on the base (x, y), and mark is the height above the base of the top of
-     the question mark the engine draws over a gone device that alerts: its foot clears the gone
+     the question mark the engine draws over a gone device: its foot clears the gone
      device by 4 pixels or more, except over the pie, whose mark stands where it always has. A kind
      not listed here is drawn as box. */
   const KINDS = {
@@ -412,7 +541,7 @@
     camera: { draw: cameraHD, mark: 128 },
     machine: { draw: machineHD, mark: 122 },
     vm: { draw: vmHD, mark: 122 },
-    box: { draw: boxHD, mark: 112 }
+    box: { draw: boxHD, mark: 158 }
   };
   const kindOf = k => (typeof k === 'string' && Object.prototype.hasOwnProperty.call(KINDS, k) ? KINDS[k] : KINDS.box);
 
@@ -659,7 +788,7 @@
     }
   }
 
-  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, pieHD, pieShapes, DEVICE_LAMPS: LAMPS, CHEST_LAMP, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf,
+  KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, pieHD, pieShapes, DEVICE_LAMPS: LAMPS, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf,
     LAMP, LAMP_REDS, lampLevel, lampRim, lampHD, crateHD, flyHD, deadFlyHD, CRITTERS, poofHD, chuteHD,
     FOES, starHD, cloudHD, CLOUD_MS, sparklesHD, SPARKLE_MS, holeHD, clodsHD };
 })(window.KW);

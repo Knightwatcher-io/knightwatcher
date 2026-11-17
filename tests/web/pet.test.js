@@ -87,7 +87,7 @@ test('the cat from the pack gives the code\'s interface and measures, and each p
   // the two coats differ, and every spot is on the grid, the house's with a spot by the bed
   assert.notDeepEqual(B.pose('calico', 'rest')[LOG], B.pose('ginger', 'rest')[LOG]);
   assert.deepEqual(Object.keys(B.spots), ['battlement', 'camp', 'yard', 'house', 'cellar', 'smithy', 'court']);
-  assert.deepEqual(plain(B.spots.house.bed.rest), [332, 405]);
+  assert.deepEqual(plain(B.spots.house.bed.rest), [312, 405]);
 });
 
 test('a page without the compiler, or with the pack unsigned on a deployed page, draws the cat from code', () => {

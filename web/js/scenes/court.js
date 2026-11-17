@@ -12,7 +12,8 @@
   /* The monarch's skin as drawn by default, the face bands and the cheek: the same colours as the
      base pack's warm skin. s.patron.skin replaces them with another of its skin swatches. */
   const SKIN = { face: [[.14, C.F0], [.72, C.F1], [1, C.F2]], cheek: '#f3a892' };
-  const KX = 820, KB = 505;
+  // the throne, 50 left of the dais's right end and up its third step, clear of the device at its foot
+  const KX = 770, KB = 490;
   /* The monarch's eye line and mouth, in grid pixels above the seat. */
   const EY = 208, MY = 193;
 
@@ -223,13 +224,14 @@
     Rh(HL, HFL, HR - HL, HH - HFL + 20, '#2b2333');
     for (let j = 0; j < 3; j++) for (let x = Math.floor(HL / 80) * 80; x < HR; x += 40) if (((x / 40) + j) % 2) Rh(x, HFL + j * 32, 40, 32, '#3b3247');
     Rh(HL, HFL, HR - HL, 2, '#5d5670');
-    Rh(HL, 546, 716 - HL, 38, C.K); Rv(HL, 548, 714 - HL, 34, [[.12, C.G1], [.2, C.R0], [.8, C.R1], [.88, C.R2], [1, C.G2]]);
-    rrect(640, 512, HR - 640 + 8, 20, 2, C.K); Rv(643, 514, HR - 643, 16, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
-    rrect(664, 497, HR - 664 + 8, 18, 2, C.K); Rv(667, 499, HR - 667, 13, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
-    Rv(700, 499, 240, 13, [[.3, C.R1], [1, C.R2]]); Rv(690, 514, 260, 16, [[.3, C.R1], [1, C.R2]]);
+    Rh(HL, 546, 676 - HL, 38, C.K); Rv(HL, 548, 674 - HL, 34, [[.12, C.G1], [.2, C.R0], [.8, C.R1], [.88, C.R2], [1, C.G2]]);
+    rrect(600, 512, HR - 600 + 8, 20, 2, C.K); Rv(603, 514, HR - 603, 16, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
+    rrect(624, 497, HR - 624 + 8, 18, 2, C.K); Rv(627, 499, HR - 627, 13, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
+    rrect(648, 482, HR - 648 + 8, 18, 2, C.K); Rv(651, 484, HR - 651, 13, [[.2, '#aab6c6'], [.6, '#7d899b'], [1, '#525c6e']]);
+    Rv(682, 484, 218, 13, [[.3, C.R1], [1, C.R2]]); Rv(660, 499, 240, 13, [[.3, C.R1], [1, C.R2]]); Rv(650, 514, 260, 16, [[.3, C.R1], [1, C.R2]]);
     throne(KX, KB); patronOf(s).draw(KX, KB, lookOf(s));
-    // the small table with the pie
-    P.tableHD(110, 470, 90, 60);
+    // the tall side table with the pie, between the two devices at the left
+    P.tableHD(106, 458, 76, 72);
   }
 
   /* Draws the court's fires and pie, and makes the knight and the monarch take turns to talk. */
@@ -239,7 +241,7 @@
     KW.devices.draw(t, s);
     const monarchTalks = Math.floor(t / 3200) % 2 === 1;
     patronOf(s).mouth(KX, KB, monarchTalks && Math.floor(t / 230) % 2 === 1, lookOf(s));
-    if (monarchTalks) K.speech(672, 180, t, true);
+    if (monarchTalks) K.speech(622, 180, t, true);
     s.o.mouth = monarchTalks ? 'flat' : 'talk'; s.o.speak = !monarchTalks;
   }
 
@@ -313,13 +315,13 @@
   /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
-    pie: { cls: 'pie', kind: 'surface', x: 154, y: 475, w: 88, h: 112 },
-    h1: { cls: 'high', kind: 'surface', x: 620, y: 300, w: 88, h: 112 },
-    h2: { cls: 'high', kind: 'surface', x: 700, y: 355, w: 88, h: 112 },
+    pie: { cls: 'pie', kind: 'surface', x: 144, y: 463, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 610, y: 300, w: 88, h: 112 },
+    h2: { cls: 'high', kind: 'surface', x: 634, y: 368, w: 88, h: 112 },
     h3: { cls: 'high', kind: 'surface', x: 132, y: 300, w: 88, h: 112, flip: true },
-    g1: { cls: 'ground', kind: 'floor', x: 40, y: 592, w: 88, h: 112, front: true },
-    g2: { cls: 'ground', kind: 'floor', x: 900, y: 592, w: 88, h: 112, front: true },
-    g3: { cls: 'ground', kind: 'floor', x: 555, y: 511, w: 88, h: 112 }
+    g1: { cls: 'ground', kind: 'floor', x: 70, y: 594, w: 132, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 904, y: 594, w: 132, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 218, y: 594, w: 132, h: 112, front: true }
   };
 
   /* The monarch, the skin, the hair and the robe are painted into the backdrop, so every choice is
@@ -333,7 +335,7 @@
   };
 
   KW.scenes.court = {
-    spot: 72, places: PLACES,
+    spot: 70, places: PLACES,
     // The conditions this scene can act out (docs/page.md): the court draws the knight and the
     // monarch taking turns to talk, whatever else is up, so it acts the SSH session alone. Kept
     // as plain data for the world format being drafted to take over.

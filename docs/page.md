@@ -413,7 +413,7 @@ nothing outside it. The engine reads only what is listed here, and sets the grid
 before it calls `paint`, `draw` and `over`. A scene may also come from a world pack: the scene
 compiler (`js/world.js`) builds an object with this same interface from the pack's data and puts it
 in the code scene's place, which a `dev` page does today for every scene ([worlds.md](./worlds.md)). The compiled scene works out its own `key`, gives `outdoors` from the
-pack's `hosts`, and `foeZone` and, where the foe has a wall, `wallAt` from its `foe`.
+pack's `hosts`, `foeZone` and, where the foe has a wall, `wallAt` from its `foe`, and `crate` from its `crate`.
 
 | Field | Required | Meaning |
 |---|---|---|
@@ -429,6 +429,7 @@ pack's `hosts`, and `foeZone` and, where the foe has a wall, `wallAt` from its `
 | `wallAt(x)` | no | the y of the top of whatever a foe climbs over at grid x; without it a foe digs up out of the ground |
 | `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a device on the ground or the pie, and 150 to 240 pixels from the knight's middle, within the reach of the weapon the knight holds; with no room the event shows its caption alone. A scene without it hosts no foe |
 | `outdoors` | no | `true` where flies are swatted and the crate may land |
+| `crate` | where the crate lands | `{ span: [from, to] }`, the stretch of floor the crate may land on, at least 60 wide. The engine (`crateX`) lands the crate's middle at `clamp(kx - 160, from + 30, to - 30)`, as near 160 left of the knight as the stretch allows; the stretch lies clear of the ground places and the pie. The battlement gives `[150, 384]`, the camp and the yard `[298, 436]`. Without it the crate's left edge lands 320 left of the knight, and at least 70 inside the view's left edge, as it did before scenes gave one |
 | `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy` |
 | `helmet` | no | `false` where the helmet comes off (unless the address says otherwise) |
 | `sword` | no | `false` where the knight puts the sword away |
@@ -700,7 +701,8 @@ and not at the first missed check.
 **Places.** A scene's `places` is `{ pie, h1, h2, h3, g1, g2, g3 }`, each
 `{ cls, kind, x, y, w, h }`: `cls` is `pie`, `high` or `ground`, and the rest is the shape the
 pack format gives places (`kind` `surface` or `floor`, `x` the middle and `y` the base, the line a
-device stands on, a box 88 wide and 112 tall above the base). For a camera the base is the foot of
+device stands on, a box 112 tall above the base, 132 wide for a ground place and 88 for the
+others). For a camera the base is the foot of
 the wall plate it hangs from. Three flags may follow:
 
 - `front: true` marks a ground place on the floor in front of the ground line, which the engine
@@ -720,8 +722,16 @@ spot the knight stands at, of the swings, and of the knight's boots. `pl=1` show
 Whatever a place may show is drawn wholly on the 960 by 600 grid, which is all a display exactly
 960 wide shows: every kind that may stand there, up and gone, its question mark and its pole. No
 two places in a scene draw over each other. `tests/web/places.test.js` draws each of them and checks
-both, from what is painted rather than from a place's declared box: a place's 88 by 112 box is the
-room it was planned with, and may reach past the grid's edge where its drawing does not.
+both, from what is painted rather than from a place's declared box: a place's box is the room it
+was planned with, and may reach past the grid's edge where its drawing does not. One overlap is
+accepted, as the owner approved it: in the court, the lower owl's question mark (`h2`) stands over
+the upper owl (`h1`) while the lower one is down, since between the right pillar's torch, the
+throne and the cat's leap there is no spot for two owls that avoids it.
+
+The ground places stand along the front edge of the floor (base y 594, `front: true`), in front of
+the knight and never under the knight's boots at any spot it strolls to, by the owner's decision of
+17 November 2026. Where a scene hosts the goblin or the crate, a stretch of floor is kept clear left
+of the knight: the goblin comes up there, and the crate lands there (the scene's `crate`).
 
 **The kinds.** `KW.props.KINDS` holds the code's drawing of each kind, `draw(x, y, t, ok, part)`,
 standing on the base `(x, y)`, and `mark`, the height above the base of the top of its question
@@ -733,43 +743,50 @@ it with the kinds the medieval world's prop set gives, and keeps `KW.props.KINDS
 | Kind | Up | Down |
 |---|---|---|
 | `pi` | the pie in its dish, steaming, its filling lit through the lattice | the empty dish with crumbs and the last slice |
-| `camera` | a barn owl on an iron wall bracket, its eyes the lamp | hanging upside down from the bracket by its talons, wings drooping, dazed red spirals for eyes, two feathers drifting down |
-| `machine` | an iron cauldron over a small log fire, its brew the lamp, bubbles showing as it brightens | tipped on its side, empty and cold, the fire out, the last ember blinking |
-| `vm` | a corked glass flask with a paper tag, its potion the lamp | on its side with its cork out beside it, the last of the potion blinking |
-| any other | a small iron-bound chest, the lamp the jewel in its lock plate | on its end, its lid knocked off beside it, three coins spilt |
+| `camera` | a barn owl on an iron wall bracket, its eyes the lamp, glowing amber | hanging upside down from the bracket by its talons, wings drooping, dazed spirals for eyes, unlit, two feathers drifting down |
+| `machine` | a scrying crystal in a gilt claw stand on a wooden foot, the whole ball the lamp, glowing pale blue-white | the stand toppled, the ball lying beside it, dark, with a crack across it |
+| `vm` | a corked glass flask with a paper tag, its blue potion the lamp | on its side with its cork out beside it, the last of the potion spilt and dark |
+| any other | an iron-bound chest, the lamp the jewel in its lock plate, glowing gold | on its end, its lid knocked off beside it, three coins spilt, the jewel dark |
 
 Each kind is a medieval thing that stands for the device, by the owner's choice of 16 November 2026
-([design.md](./design.md#devices)). A kind the page does not know is drawn as the chest. The kind is only ever a key into `KW.kinds`.
-The devices fit within 80 by 64 above the base.
+([design.md](./design.md#devices)), and the crystal, the chest's sizes and the colours of the lamps
+by the owner's choice of 17 November. A kind the page does not know is drawn as the chest. The kind
+is only ever a key into `KW.kinds`. The crystal and the chest are drawn at twice the size they were
+first drawn at and the flask at 1.4 times, each a redraw at that size whose outlines keep their
+thickness; the crystal is the first drawing's at 1.85 times, its ball's top 93 above the base.
+They fit within the ground class's box, 66 left of the base's middle to 56 right of it and 93
+above the base to 2 below; the owl within the high class's.
 
-**The lamps.** Every device has one lamp with a soft light round it in its own colour. The chest's
-is the engine's lamp, 10 by 10 in a dark rim (`lampRim`, `lampHD`). The pie's, the owl's eyes, the
-cauldron's brew and then its last ember, and the flask's potion are lamps of their own, drawn as a
-pack draws one (`ownLampHD`): a light of radius 24, the dark drawing, and the lit drawing over it at
-the loop's level; their maps are `pieShapes` and `DEVICE_LAMPS`, and the chest's lamp stands at
-`CHEST_LAMP`. While its machine is up, or `unknown`, the lamp fades from green to black and back
-over 3.6 seconds; while it is down, from red to black and back over 2 seconds, a slow blink. The
+**The lamps.** A device's light is a lamp of its own, drawn as a pack draws one (`ownLampHD`): a
+light of radius 24 in its own colour, the dark drawing, and the lit drawing over it at the loop's
+level. Up, or `unknown`, the pie's filling glows red (`#ff4a3d`), the owl's eyes amber, the
+crystal's ball pale blue-white (`#cde4ff`), the flask's potion blue (`#6fb4ff`) and the chest's
+jewel gold (`#ffb000`). Each pulses over 3.6 seconds from its full colour, the lit drawing, to its
+dark drawing, a dimmer colour of the same hue that still reads as lit (the crystal `#7894c0`, the
+potion `#3f78c8`, the jewel and the owl's eyes `#c98600`, the pie `rgb(168,49,40)`), so a device up
+never looks like one that is down. No device light is green. Down, no kind has a lamp: one rule
+for every device, by the owner's decision of 17 November 2026. A down device is unlit and nothing
+of it blinks; the owl's dazed spirals and the chest's dark jewel are part of its still drawing,
+and the question mark carries the alert. Their maps are `pieShapes` and `DEVICE_LAMPS`. The
 loop starts 523 ms later in each place than in the one before it (`pie`, `h1` to `h3`, `g1` to
 `g3`), so the lamps of a scene never pulse together. Both loops come from `LAMP` and `lampLevel` in
 `props.js`, which every lamp shares, the drawings from a pack among them; `props.js` exports them with
-`lampRim` and `lampHD`, the engine's own lamp, and `LAMP_REDS`, the down lamp's three reds as a pack
-names them.
+`lampRim` and `lampHD`, the engine's own lamp, which no medieval kind uses but a pack's kind may
+still name by a point, and `LAMP_REDS`, the down lamp's three reds as a pack names them.
 
 **The pie's lamp.** The pie's lamp is its filling: the 398 pixels the crust effect leaves in the
 filling's colours between the strips of the lattice, read from the effect when the pie is first
 drawn (`pieShapes` in `props.js`), so that the lamp lies exactly in the gaps. It lights on the
 lamps' loops from the pie's place, so its loop starts at the place's offset, 0. While the Pi is up
-it goes from the device lamp's green (`#8fe07a` on the filling's lit side, a darker green on its
-shaded side and along the strips, a highlight of `#e4ffd6` in the corner of each gap) to near black
-(`#0b130c`) and back over 3.6 seconds, in the engine's green light, centred 1 right of the base's
-middle and 30 above it. The strips, the rim band and the crimping stay the crust's colours, so the
+it goes from red (`#ff4a3d` on the filling's lit side, a darker red on its shaded side and along
+the strips, a highlight of `#ffd0c8` in the corner of each gap) to a dimmer red (`rgb(168,49,40)`,
+the down lamp's red at two thirds) and back over 3.6 seconds, in a red light centred 1 right of the base's middle and 30 above it. The strips, the rim band and the crimping stay the crust's colours, so the
 light seems to come from under the lattice. The steam rises from the top of the dome, its puffs
 starting 53 above the base. While the Pi is down the dish is empty but for crumbs and the last
 slice, a wedge of the pie lying in it with its point near the dish's middle, its cut face to the
 front and its outer crust to the right, partly hidden by the dish's near rim. Its filling, 108
-pixels in the gaps of its own small lattice and along its cut face, is the lamp, and blinks from the
-down lamp's red to black over 2 seconds, its light centred 4 right of the middle and 24 above the
-base. Nothing else moves but the question mark.
+pixels in the gaps of its own small lattice and along its cut face, is unlit, and there is no
+steam. Nothing moves but the question mark.
 
 **Drawing.** `part` `'still'` draws what does not move and `'moving'` what does: the lamp, and the
 pie's steam. The engine paints each device's still part once, with its pole, into a
@@ -779,13 +796,17 @@ scene's `draw` calls `KW.devices.draw(t, s)`, so each scene's drawing order is w
 moving part is drawn each frame, and the question mark is kept in a canvas of its own as well. The
 pie's lamp is a lamp of its own as a pack gives one: each of its drawings, lit and dark, up and
 down, is painted once into a small canvas of its own in `props.js` (`ownLampHD`); each frame draws
-its light, the dark drawing, and the lit one over it at the loop's level, 18 calls, as a device's lamp costs 16 to 20. The pie up costs 114 calls a frame with its
-steam, and the pie down 18. A frame with the pie and six devices costs about 75 calls more than one
+its light, the dark drawing, and the lit one over it at the loop's level, 18 calls, as each
+device's lamp does. The pie up costs 114 calls a frame with its steam, and every kind down nothing. A frame with the pie and six devices costs at most 108 calls more than one
 with the pie alone.
 
-**The question mark.** Over a gone device whose `alert` is true, the engine draws the question mark,
-blinking every 400 ms, with its foot at least 4 pixels above the gone device. A gone device that
-does not alert has no mark, only its red lamp. The pie's mark stands where it always has.
+**The question mark.** Over every gone device the engine draws the question mark, blinking every
+400 ms, with its foot at least 4 pixels above the gone device, whether or not the device alerts:
+since 17 November 2026 `placeHD` no longer reads `alert`, by the owner's decision, because the
+crystal, the flask and the pie go dark when down and would otherwise show nothing that moves.
+`alert` still decides whether the device raises `device_down` and so turns the knight. The pie's
+mark stands where it always has. Every mark keeps clear of the knight, the throne, the monarch and
+the resting cat in every scene, as the places are set.
 
 **`device_down`.** The condition has no scene of its own: the knight stays in the quiet scene of
 the moment, does not stroll, and frowns, as for `pi_silent`. `map` gives the winning `device_down`
@@ -871,11 +892,14 @@ in the same scene is planned again from there. The cat is drawn after the knight
 devices in front of the knight, mirrored when it faces left, in the coat `E.input.pet` names; its
 flies after the knight's; and at night the dimming covers both.
 
-The spots, by scene, each where the cat rests: the battlement's crenel by the torch (48, 464), the
-camp's log by the fire (800, 493), the yard's top bale (904, 425), the house's floor in front of the
-hearth (892, 590) and the foot of the bed (332, 405) while the knight is in bed, the cellar's low
-stack of crates (322, 430), the smithy's forge ledge (884, 318) and the court's lowest dais step
-(668, 512). On the battlement and in the cellar the cat faces right, elsewhere left.
+The spots, by scene, each where the cat rests: the battlement's left merlon (160, 411), leaping to
+the next merlon for its catch; the bough over the camp's fire (830, 401), along which it hunts; the
+top of the yard's curtain wall (876, 221), hunting in the sky over it; the house's floor in front
+of the hearth (895, 590), hunting over the rug, and the foot of the bed (312, 405) while the knight
+is in bed; the cellar's lower shelf among the jars (352, 380); the smithy's forge ledge (884, 318);
+and the court's lowest dais step (620, 512), its catch at (532, 420), where it steps back for room
+in front of the throne's left post before it pounces. They are the spots of the scenes' redesign
+of 17 November 2026. On the battlement the cat faces right, elsewhere left.
 
 The review bar's note on the flies says `the cat is hunting` while one of the cat's flies is up,
 the pet named by the label the world's words give it (`pet`, "The cat"), after the knight's note
@@ -1451,18 +1475,21 @@ compared, the alpha of such a fillStyle loses its leading zero. Every other char
 as drawn, and the screenshots confirm the pixels.
 
 `tests/web/props.test.js` loads `draw.js`, `sprites.js`, `effects.js` and `props.js` the same way and checks each
-kind of device: that it stays inside 80 by 64 above its base, up and gone; that its moving
-part is only its lamp, inside the place, in both states (the chest's the engine's lamp, the owl's,
-the cauldron's and the flask's lamps of their own); that the engine's lamp fades green to black
-over 3.6 seconds while up and red to black over 2 while down; that the owl's eyes, the brew and the
-potion light in the device green while up and their down lamps only in the down reds, the dazed
-owl's spirals keeping their gaps dark; that the owl's wall plate stands where the camera's did, x
-22 to 32 from 64 above the base, so a pole meets it; that its still part does not change with
-time; that gone differs from up; and that the pie in parts draws what the whole pie drew. For the
-pie's lamp it checks that it lights green on the lamps' loop up and in the down reds alone down,
-that it covers exactly the filling the still part leaves showing (through the lattice up, in the
-last slice down), that nothing but the steam stands above the dome, and that it stays inside the
-pie's place. It prints the calls each part costs.
+kind of device: that it stays inside its class box above its base, up and gone, the owl the high
+class's and the rest the ground class's; that its moving part is only its lamp of its own, inside
+its box, and that no kind has one while down; that the engine's lamp fades
+green to black over 3.6 seconds while up and red to black over 2 while down; that the owl's eyes
+glow amber, the crystal pale blue-white, the potion blue and the chest's jewel gold while up, and
+at the low point of the pulse a dimmer colour of the same hue, bright enough to read as lit; that
+down nothing is lit and no down red is left, the dazed owl's spirals and the chest's dark jewel
+drawn still; and that no device light is green; that the owl's wall plate stands where the camera's
+did, x 22 to 32 from 64 above the base, so a pole meets it; that its still part does not change
+with time; that gone differs from up; and that the pie in parts draws what the whole pie drew. For
+the pie's lamp it checks that it lights red on the lamps' loop up, down to a dimmer red, that down the pie has no lamp
+and no steam and its moving part draws nothing, that the lamp covers exactly the filling the
+still part leaves showing through the lattice, that the last slice's filling is still and unlit,
+that nothing but the steam stands above the dome, and that it stays inside the pie's place. It
+prints the calls each part costs.
 
 `tests/web/world-props.test.js` draws every kind from the medieval world's prop set beside the
 code's drawing of it, call for call, in every place of every scene (the court's among them), up and
@@ -1500,8 +1527,8 @@ lines ([worlds.md](./worlds.md#the-words-and-the-overlay)). `tests/web/state.tes
 `tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
 the entrance runs in order and the poof is over within the event's 3.4 seconds; that the goblin
-stands in the scene's `foeZone`, clear of the knight, the pie and every device on the
-ground, and does not come when there is no room; and, for the greatsword from the base pack and
+stands in the scene's `foeZone`, clear of the knight and of the whole class box of the pie and of
+every device on the ground, and does not come when there is no room; and, for the greatsword from the base pack and
 from code, the arming sword and the mace, at every spot the knight strolls to in both scenes, that
 the goblin stands within the weapon's reach, that the blade comes within 3 pixels of its crown at
 the hit and of a drawn pixel of its sprite, that the hit pose plays only from that moment, and that
@@ -1516,9 +1543,11 @@ mace's check. The same check runs on Broad and Slim with each weapon. On every b
 weapon the goblin comes wherever it comes on Classic, at the same spot, and is struck within 12 ms
 of Classic's hit, or 16 with the mace, which beside `g3` meets the goblin at the end of its reach,
 where each build changes which point of a flange meets it first (14 ms at most); at the knight's
-first spot the hits are 1662, 1664 and 1661 ms with the greatsword on Classic, Broad and Slim, with
-the sword and shield 1645, 1651 and 1642 on the battlement and 1711, 1713 and 1711 at the camp, and
-with the mace and shield 1644, 1649 and 1641 on the battlement and 1709, 1712 and 1708 at the camp. The
+first spot the hits are, on Classic, Broad and Slim, with the greatsword 1657, 1659 and 1656 ms on
+the battlement and 1661, 1663 and 1659 at the camp, with the sword and shield 1697, 1705 and 1691 on
+the battlement and 1707, 1709 and 1706 at the camp, and with the mace and shield 1698, 1709 and
+1684 on the battlement and 1706, 1710 and 1703 at the camp, the goblin coming left of the knight in
+both since the scenes' redesign. The
 blade `bladeOf` measures is the rig's on the look's build, its grip raised by the build's height,
 and the present knight's on the code path. A blade too short to reach it anywhere keeps the goblin
 away.
@@ -1661,7 +1690,7 @@ and held to the same stored records: the code and the pack must draw the same ca
 test also works out each scene's key in every recorded state, from code and from the pack, and
 requires the two to tell the states apart alike: two states share a key from the pack exactly when
 they share one from code, whatever the strings. And it requires the compiled scene to give the code
-scene's spot, places, rests, rounds, `can`, weapon and helmet, `outdoors` and `foeZone`, and the same
+scene's spot, places, rests, rounds, `can`, weapon and helmet, `outdoors`, `foeZone` and `crate`, and the same
 parts drawn. The records are
 stored from code alone: `SCENES_LOG=write` never stores the pack's copy, and `SCENES_LOG=dump:`
 writes it to a folder of its own, such as `cellar@kw.medieval`.
@@ -1732,9 +1761,9 @@ shots of devices (below), so a change to devices that leaves a Pi-only setup alo
 byte for byte the same.
 
 The seven `goblin-` shots play the goblin's event with the greatsword: on the battlement as it
-rises over the wall (`goblin-rise`), at the hit (`goblin-bonk`, 1662 ms) and in the puff
+rises over the wall (`goblin-rise`), at the hit (`goblin-bonk`, 1657 ms) and in the puff
 (`goblin-poof`); at the camp as it comes out of its hole (`goblin-camp-rise`), at the hit
-(`goblin-camp-bonk`, 1662 ms) and in the puff (`goblin-camp-poof`); and at the camp with three
+(`goblin-camp-bonk`, 1661 ms) and in the puff (`goblin-camp-poof`); and at the camp with three
 devices on the ground, which it stands clear of, as it pulls a face (`goblin-camp-g3`).
 
 The nine `arm-` shots draw the arming sword and the heater shield (`arm=one`): the quiet battlement
@@ -1743,8 +1772,8 @@ The nine `arm-` shots draw the arming sword and the heater shield (`arm=one`): t
 smithy with the sword on the anvil and the shield on the wall (`arm-update`), the swat to the left
 at the moment the sword passes in front of the shield (`arm-swat-left`), the cellar with the
 crate carried against the chest, at the largest headline (`arm-disk`), and the goblin a
-millisecond after the hit on the battlement (`arm-goblin-bonk`, hit at 1645 ms) and two after it
-at the camp, with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1711 ms). Every other shot but `settings-look` has no `arm=`, so a change to the one-handed look leaves them
+millisecond after the hit on the battlement (`arm-goblin-bonk`, hit at 1697 ms) and at the camp,
+with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1707 ms). Every other shot but `settings-look` has no `arm=`, so a change to the one-handed look leaves them
 byte for byte the same. A copy of the page from before the hook draws the greatsword in the `arm-`
 shots, so against such a reference those differ and the rest compare as usual.
 
@@ -1787,7 +1816,7 @@ cellar's crate carried, the smithy's hammering, asleep in bed, the sick tint in 
 the yard and the court (`on-`); the stance with the sword and shield (`arm-battlement`); the swat
 on the battlement, which is the swing, with each weapon (`swing-two-`, `swing-one-`), both ways at
 the wind-up (q .3), mid cut (q .42) and the cut's end (q .55); the goblin a millisecond after each
-weapon's hit on that build (`goblin-bonk` at 1665 and 1662 ms, `arm-goblin-bonk` at 1652 and 1643);
+weapon's hit on that build (`goblin-bonk` at 1660 and 1657 ms, `arm-goblin-bonk` at 1706 and 1692);
 and the settings screen's knight page with the build chosen (`settings-knight`), the build chosen
 by the address's `bd=` hook. No other shot has `bd=`, so they change nothing else in a comparison,
 and against a reference from before them they are missing.

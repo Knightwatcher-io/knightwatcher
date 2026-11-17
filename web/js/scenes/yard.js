@@ -68,8 +68,8 @@
     E.tufts.draw({ y: HFL, step: 67, spread: 40, seed: 7, tall: [6, 8], gap: 4, lean: 1.5, colour: '#2a4a22', light: '#3f6b33' });
     ell(690, HFL + 30, 150, 16, '#1b160f');
     rack();
-    // the barrel the pie stands on, and the hay
-    P.barrelHD(238, 458, 84, 72);
+    // the barrel the pie stands on, in front of the rack between the two devices at the left, and the hay
+    P.barrelHD(102, 458, 84, 72);
     bale(828, 474, 66, 56); bale(890, 474, 66, 56); bale(856, 424, 68, 52);
     // the dummy's post, which stays put while the dummy wobbles on it
     rrect(704, 440, 18, 90, 3, C.K); rrect(707, 440, 12, 90, 2, [[.3, C.N0], [1, C.N2]]); ell(713, 528, 22, 5, C.K);
@@ -103,13 +103,13 @@
   /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
-    pie: { cls: 'pie', kind: 'surface', x: 280, y: 463, w: 88, h: 112 },
-    h1: { cls: 'high', kind: 'surface', x: 905, y: 300, w: 88, h: 112 },
+    pie: { cls: 'pie', kind: 'surface', x: 144, y: 463, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 926, y: 360, w: 88, h: 112 },
     h2: { cls: 'high', kind: 'surface', x: 250, y: 310, w: 88, h: 112, flip: true },
     h3: { cls: 'high', kind: 'surface', x: 40, y: 300, w: 88, h: 112, flip: true },
-    g1: { cls: 'ground', kind: 'floor', x: 160, y: 568, w: 88, h: 112, front: true },
-    g2: { cls: 'ground', kind: 'floor', x: 870, y: 568, w: 88, h: 112, front: true },
-    g3: { cls: 'ground', kind: 'floor', x: 40, y: 568, w: 88, h: 112, front: true }
+    g1: { cls: 'ground', kind: 'floor', x: 70, y: 594, w: 132, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 218, y: 594, w: 132, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 883, y: 594, w: 132, h: 112, front: true }
   };
 
   KW.scenes.yard = {
@@ -120,7 +120,10 @@
     // at the empty dish: the pie stands to the knight's left. Kept as plain data for the world
     // format being drafted to take over.
     can: ['attack', 'disk_full', 'backup_overdue', 'device_down', 'cpu_hot', 'memory_tight'],
-    rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 80, act: 'look', dur: 14 }],
-    act, paint, draw
+    rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 98, act: 'look', dur: 14 }],
+    act, paint, draw,
+    // where the crate may land (docs/worlds.md): the beaten earth in front of the door, between the
+    // devices by the rack and the knight's boots at its look spot
+    crate: { span: [298, 436] }
   };
 })(window.KW);

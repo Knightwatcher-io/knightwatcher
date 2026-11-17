@@ -666,6 +666,8 @@
     if (v.helmet === 'off') sc.helmet = false;
     if (out) sc.outdoors = true;
     if (foe) { sc.foeZone = freeze(foe.zone); if (foe.wallAt) sc.wallAt = foe.wallAt; }
+    // the stretch of floor an import's crate lands on, which the engine reads (crateX)
+    if (has(v, 'crate')) sc.crate = freeze({ span: [v.crate.span[0], v.crate.span[1]] });
     return sc;
   }
 
@@ -746,7 +748,7 @@
       states[st] = {
         still: freeze(x.still.map((t, i) => shape(t, idx(at(p, 'still'), i), env))),
         moving: freeze((x.moving || []).map((t, i) => shape(t, idx(at(p, 'moving'), i), env))),
-        lamp: lampOf(x.lamp, at(p, 'lamp'), env, st === 'up')
+        lamp: has(x, 'lamp') ? lampOf(x.lamp, at(p, 'lamp'), env, st === 'up') : null
       };
     }
     const P = KW.props;
@@ -754,11 +756,12 @@
       const S = ok ? states.up : states.gone, L = S.lamp, E = named(t, null);
       if (part !== 'moving') {
         for (const c of S.still) drawShape(c, E, x, y);
-        if (!L.own) P.lampRim(x + L.at[0], y + L.at[1]);
+        if (L && !L.own) P.lampRim(x + L.at[0], y + L.at[1]);
       }
       if (part !== 'still') {
         for (const c of S.moving) drawShape(c, E, x, y);
-        if (L.own) ownLamp(L, x, y, t, ok); else P.lampHD(x + L.at[0], y + L.at[1], t, ok);
+        // a state with no lamp shows no light
+        if (L && L.own) ownLamp(L, x, y, t, ok); else if (L) P.lampHD(x + L.at[0], y + L.at[1], t, ok);
       }
     }
     return Object.freeze({ draw, mark: v.mark, from: pack.id + '#' + (++compiles) });

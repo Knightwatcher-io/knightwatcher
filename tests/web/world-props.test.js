@@ -99,32 +99,28 @@ test('the prop set props.medieval reads clean, gives the five kinds with their m
   // the marks are the code's
   for (const k of KINDS) assert.equal(set.kinds[k].mark, CODE.KW.props.KINDS[k].mark, k);
   // the medieval things that stand for the devices
-  assert.deepEqual(KINDS.map(k => set.kinds[k].name), ['Raspberry pie', 'Barn owl', 'Cauldron', 'Potion flask', 'Iron-bound chest']);
-  // the pie's lamp is a lamp of its own, the filling under its lattice up and the last slice's
-  // filling gone, in the engine's green (no light of its own) and red; so are the owl's eyes, the
-  // cauldron's brew and then its last ember, and the flask's potion; the chest has the engine's lamp
-  assert.deepEqual(plain(set.kinds.pi.up.lamp), { at: [1, -30], box: [56, 26], lit: 'pie.up.lit', dark: 'pie.up.dark' });
-  assert.deepEqual(plain(set.kinds.pi.gone.lamp), { at: [4, -24], box: [30, 10], lit: 'pie.down.lit', dark: 'pie.down.dark' });
-  const own = { camera: 'owl', machine: 'cauldron', vm: 'flask' };
-  for (const [k, n] of Object.entries(own)) for (const st of ['up', 'gone']) {
-    const L = set.kinds[k][st].lamp;
-    assert.deepEqual([L.lit, L.dark, 'light' in L], [n + (st === 'up' ? '.up' : '.down') + '.lit', n + (st === 'up' ? '.up' : '.down') + '.dark', false], k + ' ' + st);
-    // a gone lamp lights only in the down lamp's reds
-    if (st === 'gone') for (const c of Object.values(r.data.stamps[L.lit][0].key)) assert.match(c, /^@lamp\.down(Lo|Hi)?$/, k);
+  assert.deepEqual(KINDS.map(k => set.kinds[k].name), ['Raspberry pie', 'Barn owl', 'Scrying crystal', 'Potion flask', 'Iron-bound chest']);
+  // every lamp is a lamp of its own: the pie's filling under its lattice, red; the owl's eyes,
+  // amber; the crystal's ball, pale blue-white; the flask's potion, blue; the chest's jewel, gold.
+  // Gone, no kind has a lamp: each is unlit, and the question mark over it carries the alert
+  const own = { pi: ['pie', '#ff4a3d'], camera: ['owl', '#ffb000'], machine: ['crystal', '#cde4ff'], vm: ['flask', '#6fb4ff'], box: ['chest', '#ffb000'] };
+  for (const [k, [n, light]] of Object.entries(own)) {
+    const U = set.kinds[k].up.lamp;
+    assert.deepEqual([U.lit, U.dark, U.light], [n + '.up.lit', n + '.up.dark', light], k + ' up');
+    assert.equal(set.kinds[k].gone.lamp, undefined, k + ' gone');
   }
-  assert.deepEqual([plain(set.kinds.box.up.lamp), plain(set.kinds.box.gone.lamp)], [[0, -20], [15, -24]]);
-  // the steam rises from the top of the dome
+  for (const n of ['cauldron.up.lit', 'cauldron.down.lit', 'pie.down.lit', 'flask.down.lit', 'owl.down.lit', 'chest.down.lit']) assert.ok(!(n in r.data.stamps), n + ' is gone');
+  // the steam rises from the top of the dome, while up alone
   assert.deepEqual(plain(set.kinds.pi.up.moving), [{ k: 'fx', fx: 'steam', p: [-14, -53] }]);
-  // the gone pie's lamp lights only in the down lamp's reds
-  assert.deepEqual([...new Set(Object.values(r.data.stamps['pie.down.lit'][0].key))].sort(), ['@lamp.down', '@lamp.downLo']);
+  assert.equal(set.kinds.pi.gone.moving, undefined);
   // the costs the counts step found, still and moving (the moving part with the lamp of the kind's
   // own), against limits of 4 000 and 600
   assert.deepEqual(plain(r.world.props['props.medieval']), {
-    pi: { up: { still: 3308, moving: 411 }, gone: { still: 633, moving: 34 } },
-    camera: { up: { still: 539, moving: 32 }, gone: { still: 644, moving: 34 } },
-    machine: { up: { still: 420, moving: 54 }, gone: { still: 366, moving: 12 } },
-    vm: { up: { still: 117, moving: 72 }, gone: { still: 108, moving: 12 } },
-    box: { up: { still: 137, moving: 0 }, gone: { still: 178, moving: 0 } }
+    pi: { up: { still: 3308, moving: 411 }, gone: { still: 633, moving: 0 } },
+    camera: { up: { still: 539, moving: 32 }, gone: { still: 664, moving: 0 } },
+    machine: { up: { still: 336, moving: 430 }, gone: { still: 603, moving: 0 } },
+    vm: { up: { still: 185, moving: 92 }, gone: { still: 155, moving: 0 } },
+    box: { up: { still: 252, moving: 64 }, gone: { still: 354, moving: 0 } }
   });
 });
 
@@ -213,27 +209,25 @@ test('a page started from the pack and then from code draws the code\'s devices:
 // ---- The lamps ------------------------------------------------------------------------------------------
 
 test('a lamp of the kind\'s own is painted once into each of its two canvases, the lit drawing laid over the dark one', () => {
-  const s = page([TEXT], true), K = s.KW.kinds.pi;
+  const s = page([TEXT], true), K = s.KW.kinds.box;
   const before = canvases;
-  for (const t of MOMENTS) record(s.KW, () => K.draw(480, 463, t, true, 'moving'));
+  for (const t of MOMENTS) record(s.KW, () => K.draw(480, 594, t, true, 'moving'));
   assert.equal(canvases - before, 2, 'the up lamp\'s dark and lit canvases, once');
-  for (const t of MOMENTS) record(s.KW, () => K.draw(480, 463, t, false, 'moving'));
-  assert.equal(canvases - before, 4, 'and the gone one\'s');
-  // each canvas holds its own drawing: the gone lamp's dark one black, its lit one the down reds
+  // each canvas holds its own drawing
   const colours = log => {
     const images = [];
     for (const l of log) if (l.startsWith('drawImage')) images.push([]); else if (l.startsWith('| s ')) images[images.length - 1].push(l.slice(4));
     assert.equal(images.length, 2);
     return images.map(c => [...new Set(c)].sort());
   };
-  const log = record(s.KW, () => K.draw(480, 463, 0, false, 'moving'));
-  assert.deepEqual(colours(log), [['#000000'], ['rgb(168,49,40)', 'rgb(255,74,61)']]);
-  // and the up lamp's the green and its darks
-  const up = record(s.KW, () => K.draw(480, 463, 0, true, 'moving'));
-  assert.deepEqual(colours(up), [['#050806', '#080e09', '#0b130c'], ['#395a31', '#5e9451', '#8fe07a', '#e4ffd6']]);
-  // the light round it: the engine's green while up, as the pack gives none, and its red while gone
-  assert.ok(up.includes('s rgb(143,224,122)'));
-  assert.ok(log.includes('s rgb(255,74,61)'));
+  // the up lamp's: the dark one a deeper gold, still lit, and the lit one the gold
+  const up = record(s.KW, () => K.draw(480, 594, 0, true, 'moving'));
+  assert.deepEqual(colours(up), [['#c98600', '#ffb000'], ['#ffb000', '#ffe28a']]);
+  // the light round it: the chest's own gold
+  assert.ok(up.includes('s #ffb000'));
+  assert.equal(canvases - before, 2, 'and no more');
+  // no kind has a lamp while gone, so none draws anything that moves
+  for (const k of KINDS) assert.deepEqual(record(s.KW, () => s.KW.kinds[k].draw(480, 594, 0, false, 'moving')), [], k);
 });
 
 /* The pack, read, with its data changed by edit. */

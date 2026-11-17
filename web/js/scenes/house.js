@@ -19,7 +19,7 @@
      flat; and the wall right of the pegs, where a shield hangs by its strap from a nail in the
      beam, x and y the nail and w by h the room below it. */
   const RESTS = {
-    stool: { kind: 'surface', x: 460, y: V.HFL - 54, w: 76, h: 80 },
+    stool: { kind: 'surface', x: 484, y: V.HFL - 54, w: 76, h: 80 },
     pegs: { x: 618, y: 228, a: Math.PI / 2 },
     wall: { kind: 'hang', x: 844, y: 164, w: 100, h: 140 }
   };
@@ -103,8 +103,8 @@
     for (let i = 0; i < 18; i++) { Rh(470 + i * 12, 584, 2, 5, '#c7b088'); }
     bed();
     // the stool, where the helmet rests
-    rrect(422, 476, 76, 12, 3, C.K); Rv(425, 478, 70, 7, [[.3, C.N0], [1, C.N2]]);
-    for (const x of [430, 482]) { Rh(x - 2, 488, 12, 42, C.K); Rh(x, 488, 8, 42, C.N2); }
+    rrect(446, 476, 76, 12, 3, C.K); Rv(449, 478, 70, 7, [[.3, C.N0], [1, C.N2]]);
+    for (const x of [454, 506]) { Rh(x - 2, 488, 12, 42, C.K); Rh(x, 488, 8, 42, C.N2); }
     // the table and what stands on it: the television, or a candle
     P.tableHD(650, 430, 160, 100);
     if (s.tv) {
@@ -173,12 +173,12 @@
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
     pie: { cls: 'pie', kind: 'surface', x: 688, y: 435, w: 88, h: 112 },
-    h1: { cls: 'high', kind: 'surface', x: 406, y: 300, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 430, y: 300, w: 88, h: 112 },
     h2: { cls: 'high', kind: 'surface', x: 926, y: 300, w: 88, h: 112 },
     h3: { cls: 'high', kind: 'surface', x: 70, y: 300, w: 88, h: 112, flip: true },
-    g1: { cls: 'ground', kind: 'floor', x: 120, y: 594, w: 88, h: 112, front: true },
-    g2: { cls: 'ground', kind: 'floor', x: 300, y: 594, w: 88, h: 112, front: true },
-    g3: { cls: 'ground', kind: 'floor', x: 760, y: 530, w: 88, h: 112 }
+    g1: { cls: 'ground', kind: 'floor', x: 68, y: 594, w: 132, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 213, y: 594, w: 132, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 358, y: 594, w: 132, h: 112, front: true }
   };
 
   KW.scenes.house = {
@@ -189,7 +189,7 @@
     // tight. Not the attack: the weapon is put away here. Kept as plain data for the world format
     // being drafted to take over.
     can: ['container_unhealthy', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming', 'night'],
-    rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 100, act: 'yawn', dur: 14 }, { x: 110, act: 'look', dur: 14 }],
+    rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 108, act: 'yawn', dur: 14 }, { x: 111, act: 'look', dur: 14 }],
     key: s => (s.tv ? 'tv' : '') + '|' + K.rest.key('main') + offKey(), paint, draw, over
   };
 })(window.KW);

@@ -19,8 +19,10 @@ colour carries the status, green when quiet, amber for a warning, red when criti
 while something is at work.
 
 Other machines on the network, such as a NAS, a camera or a virtual machine, can be listed as
-devices. Each stands in the scene as the device it is, cameras mounted high and the rest on
-the ground, with a lamp that fades green while it is up and blinks red when it goes down;
+devices. Each stands in the scene as a medieval thing that stands for it, a camera as an owl
+mounted high and the rest on the ground (a machine as a scrying crystal, a virtual machine as a
+potion flask, anything else as a chest), with a light that glows while it is up. A device that goes
+down looks broken, with a question mark blinking over it;
 [Devices](docs/configuration.md#devices) says how to list them.
 
 ## Quick start

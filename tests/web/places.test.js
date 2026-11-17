@@ -80,7 +80,12 @@ test('everything a place may show stands wholly on the 960 by 600 grid, in every
   assert.deepEqual(bad, []);
 });
 
-test('no two places in a scene draw over each other', () => {
+/* The one overlap the owner accepted: in the court the lower owl's question mark stands over the
+   upper owl while the lower one is down. Between the right pillar's torch, the throne and the cat's
+   leap there is no spot for two owls that avoids it. */
+const ACCEPTED = ["court: h1 (camera) and h2 (camera's question mark)"];
+
+test('no two places in a scene draw over each other, but the one overlap the owner accepted', () => {
   const { KW, take } = load(), bad = [];
   for (const [name, sc] of Object.entries(KW.scenes)) {
     const boxes = Object.entries(sc.places).map(([p, pl]) => [p, placeBoxes(KW, take, pl)]);
@@ -90,7 +95,7 @@ test('no two places in a scene draw over each other', () => {
       }
     }
   }
-  assert.deepEqual(bad, []);
+  assert.deepEqual(bad, ACCEPTED);
 });
 
 test('a camera\'s question mark is never higher than y 172, clear of the headline', () => {

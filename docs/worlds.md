@@ -31,17 +31,18 @@ loads it after the base pack's. It holds:
   of rope on the walkway. Its first moving layer holds the stars that blink, the torch's light, its
   flame and the mark where the devices are drawn; its second, also while the WAN is down, the three
   sparks at the rope's end, which blink on a keyframe clock. Its places, spot, rounds and `can` are
-  the code scene's. It is quiet, hosts the flies, the crate, the feast and the foe, and gives the foe
-  the code scene's zone and a wall, the merlons and the parapet between them, which the goblin
-  climbs over;
+  the code scene's. It is quiet, hosts the flies, the crate, the feast and the foe, gives the foe
+  the code scene's zone, left of the knight, and a wall, the merlons and the parapet between them,
+  which the goblin climbs over, and gives the crate the stretch `[150, 384]`;
 - the scene `camp`, the camp of `web/js/scenes/camp.js` written as data. Its one still layer holds,
   in the code's order, the sky, the stars, the two rows of pines, the four broad trees, the ground
   and the worn patch round the fire, the tufts of grass, the tent with its pole and guy ropes, the
-  stone the pie warms on, the eight stones of the fire ring, the two crossed logs and the log to sit
-  on. Its one moving layer holds the fire's light, the three flames, the embers, the mark where the
+  stone the pie warms on, the eight stones of the fire ring, the two crossed logs and the bough of
+  the right-hand tree over the fire, where the cat rests. Its one moving layer holds the fire's light, the three flames, the embers, the mark where the
   devices are drawn and the fireflies. Its places, spot, rounds and `can` are the code scene's. It
-  is quiet, hosts the flies, the crate, the feast and the foe, and gives the foe the code scene's
-  zone with no wall, so the goblin digs out of the ground;
+  is quiet, hosts the flies, the crate, the feast and the foe, gives the foe the code scene's zone,
+  left of the knight, with no wall, so the goblin digs out of the ground, and gives the crate the
+  stretch `[298, 436]`;
 - the scene `yard`, the training yard of `web/js/scenes/yard.js` written as data. Its one still layer
   holds, in the code's order, the sky, the stars, the merlons of the curtain wall as a tile, the
   wall's bricks and coping, the two arrow slits, the door under its stone arch (the arch's rows
@@ -51,7 +52,7 @@ loads it after the base pack's. It holds:
   the mark where the devices are drawn, and the practice dummy: the lean of its pole, then its arms,
   sack, head and shield in the group `dummy`, and last the straw it sheds. Its places, spot, rounds
   (the first of them `train`) and `can` are the code scene's. It is quiet and hosts the flies, the
-  crate and the feast, but no foe, and its `target` is `{ "group": "dummy", "hitAt": 420, "every":
+  crate and the feast, but no foe, gives the crate the stretch `[298, 436]`, and its `target` is `{ "group": "dummy", "hitAt": 420, "every":
   5600 }`, which gives it the training act;
 - the scene `cellar`, the cellar of `web/js/scenes/cellar.js` written as data. Its one still layer
   holds, in the code's order, the wall's bricks, the row of arches, the two shelves with what stands
@@ -62,7 +63,7 @@ loads it after the base pack's. It holds:
 - the scene `smithy`, the smithy of `web/js/scenes/smithy.js` written as data. Its one still layer
   holds, in the code's order, the wall's bricks and its beam, the tool board with the hammer, the
   tongs and the two horseshoes (the effect `horseshoe`), the quench barrel and the glint on its
-  water, the small table, the forge's hood and chimney (the effect `hood`), its bricks, the hearth
+  water, the workbench the pie stands on, the forge's hood and chimney (the effect `hood`), its bricks, the hearth
   (a tile of one repeat, below), the mouth of the fire, the floor of slabs and the ash, the anvil,
   and last the gear at rest: the shield on the wall and the weapon across the anvil, each through a
   `rest` mark. Its first moving layer holds the fire's light, the coals, the three flames, the
@@ -95,16 +96,16 @@ loads it after the base pack's. It holds:
 - the scene `court`, the royal court of `web/js/scenes/court.js` written as data. Its one still
   layer holds, in the code's order, the wall's bricks, the pillars every 480 with their ledges and
   sconces (a tile), the two banners, the floor and its squares (three tiles, one for each row), the
-  carpet, the dais's steps (a tile of one repeat, below), the throne, the `patron` mark where the
+  carpet, the dais's three steps (a tile of one repeat, below), the throne, the `patron` mark where the
   monarch is painted, and the table. Its one moving layer holds the torches' lights and flames (a
   tile, the light the effect `flicker`), the mark where the devices are drawn, the `patron` mark
   where the monarch's mouth is drawn and the `bubble` mark. Its places, spot and `can`
   (`ssh_session` alone) are the code scene's. It is not quiet and hosts nothing, and its `seat` is
-  `{ "x": 820, "y": 505, "bubble": [672, 180], "turn": 3200, "mouth": 230 }`, which gives it the
+  `{ "x": 770, "y": 490, "bubble": [622, 180], "turn": 3200, "mouth": 230 }`, which gives it the
   seat's act. Its one round, at its spot, is not compiled, as the smithy's is not;
 - the prop set `props.medieval`, the devices of `props.js` written as data: the five kinds `pi`
-  (the raspberry pie), `camera` (a barn owl), `machine` (a cauldron), `vm` (a potion flask) and
-  `box` (an iron-bound chest), each up and gone, below ([The devices](#the-devices));
+  (the raspberry pie), `camera` (a barn owl), `machine` (a scrying crystal), `vm` (a potion flask)
+  and `box` (an iron-bound chest), each up and gone, below ([The devices](#the-devices));
 - the cast members `patron.a`, `patron.b` and `patron.c`, the three monarchs of `court.js` written
   as data: each seated on its anchors, its mouth shut and open, and the user's skin, hair and robe
   laid over it as the court lays them, below ([The cast](#the-cast));
@@ -119,12 +120,12 @@ loads it after the base pack's. It holds:
 - three stamps, `sconce`, `barrel` and `peg`: the props `sconceHD` and `barrelHD` of `props.js`, the
   barrel at the 84 by 72 the cellar and the yard draw it, and one of the house's pegs, counted from
   where the weapon's frame puts it;
-- sixteen stamps for the devices' lamps of their own, the dark and the lit drawing of each, up
-  and down: the pie's (`pie.up.*`, `pie.down.*`), the filling in the gaps of the lattice and then
-  the filling of the last slice; the owl's (`owl.up.*`, `owl.down.*`), its eyes and then its dazed
-  spirals; the cauldron's (`cauldron.up.*`, `cauldron.down.*`), its brew and bubbles and then its
-  last ember; and the flask's (`flask.up.*`, `flask.down.*`), its potion upright and then on its
-  side;
+- ten stamps for the devices' lamps of their own, the dark and the lit drawing of each, all up:
+  the pie's (`pie.up.*`), the filling in the gaps of the lattice; the owl's (`owl.up.*`), its eyes;
+  the crystal's (`crystal.up.*`), its ball; the flask's (`flask.up.*`), its potion; and the
+  chest's (`chest.up.*`), the jewel in its lock plate. Each dark drawing is a dimmer colour of the
+  lamp's hue, still lit. No kind has a lamp while down, so there is no down stamp: the owl's dazed
+  spirals and the chest's dark jewel are pix shapes of their gone still parts;
 - the word set `words.medieval`: the quiet line's parts as `ALL QUIET`, `{n} up`, `backup {at}`
   and `{n} ads slain`, `{short} ads slain` or `{short} slain`, and the captions `BANISHED {addr} ·
   {jail}` or `BANISHED {addr}` for a ban, `DELIVERED · {title}` for an import and `STORES SAFE {at}`
@@ -165,21 +166,22 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 
 | Kind | Up | Gone |
 |---|---|---|
-| `pi` | 3 308 fills still, 411 moving | 633 still, 34 moving |
-| `camera` | 539 still, 32 moving | 644 still, 34 moving |
-| `machine` | 420 still, 54 moving | 366 still, 12 moving |
-| `vm` | 117 still, 72 moving | 108 still, 12 moving |
-| `box` | 137 still | 178 still |
+| `pi` | 3 308 fills still, 411 moving | 633 still, no lamp |
+| `camera` | 539 still, 32 moving | 664 still, no lamp |
+| `machine` | 336 still, 430 moving | 603 still, no lamp |
+| `vm` | 185 still, 92 moving | 155 still, no lamp |
+| `box` | 252 still, 64 moving | 354 still, no lamp |
 
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
-own lamp counts toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
+own lamp, which no medieval kind uses now, would count toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
 5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
-court counts none of them. The whole file weighs 334 646 bytes, against the 512 KiB a pack may;
-the cat's stamps are 106 KB of it. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+court counts none of them. The whole file weighs 345 937 bytes, against the 512 KiB a pack may;
+the cat's stamps are 106 KB of it and the lamps' 15 KB. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each. The cat's poses cost from 621 fills
 (calico, resting) to 1 263 (ginger, the pounce), against a limit of 8 000 for each, and its stamps
-hold 132 902 of the pack's 139 200 pixels in pix shapes, against a limit of 160 000.
+hold 132 902 of the pack's 148 108 pixels in pix shapes, against a limit of 160 000; the devices'
+lamps hold 9 760 of them.
 
 The pack is signed with `kw1` by a signing run, as the base pack is
 ([development.md](./development.md#signing-the-packs)): version 0.1.0, which held the cellar alone,
@@ -188,7 +190,9 @@ Version 0.5.0, which adds the words and the overlay, is signed too. Version 0.6.
 raspberry off the pie and lights the pie through its lattice, with the last slice left in the dish
 when the Pi is down, draws the other devices as medieval things, the owl, the cauldron, the flask
 and the chest, and adds the preset `world.medieval`, and is signed too. Version 0.7.0, which adds
-the mouser cat, ships unsigned until its signing run. A copy changed after signing is refused by a
+the mouser cat and the redesigned scenes and devices (the crystal in place of the cauldron, the
+ground places along the front of the floor, the crate's stretches), ships unsigned until its
+signing run. A copy changed after signing is refused by a
 deployed page until its next run: that page draws every scene, every device and the cast, the cat
 included, from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.
@@ -346,6 +350,7 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 | `helmet: false` | `"helmet": "off"` |
 | `outdoors: true` | `hosts` naming both `flies` and `crate` |
 | `foeZone` | `foe`: its `side` and `spans`, as `{ side, spans }` |
+| `crate` | `crate`: its `span`, as `{ span }` |
 | `wallAt(x)` | `foe.wall`, below; only when it has one |
 | `act(t, s)` | `target`, the training act, or `anvil`, the anvil's act, both below; only when there is one |
 | `bed: true` | `bed`, below |
@@ -587,13 +592,14 @@ drawing order, the still part's canvas and the lamp's phase in each place stay t
 kind's class (where it may stand) is the engine's too.
 
 A kind compiles each of its states, `up` and `gone`, into the still and moving shapes, compiled as
-a scene's are and drawn moved to the base, and its lamp:
+a scene's are and drawn moved to the base, and its lamp, if it has one. A state with no lamp shows
+no light: every medieval kind while down.
 
 - **The engine's lamp**, a pair `[x, y]`: its dark rim is drawn after the still shapes
   (`KW.props.lampRim`) and its light after the moving ones (`KW.props.lampHD`), at the base plus
   the pair, on the loops of `LAMP` and `lampLevel`: green to black over 3.6 seconds while up, red to
   black over 2 while down.
-- **A lamp of the kind's own**, `{ at, box, lit, dark, light }`, as the pie's is: two stamps of
+- **A lamp of the kind's own**, `{ at, box, lit, dark, light }`, as every medieval kind's is: two stamps of
   pix shapes, each pix shape at a whole point. Each is painted once, the first time it is drawn,
   into a canvas the size of the two drawings together, the lit drawing laid over the dark one, so
   that where the lit drawing is clear the lit canvas shows the dark drawing. Each frame, as
@@ -601,10 +607,13 @@ a scene's are and drawn moved to the base, and its lamp:
   (the engine's green if a kind gives none) and in the down lamp's red while gone, at 0.3 of the
   loop's level, then the dark canvas, then the lit canvas at the loop's level. The two drawings must
   lie inside `box` around `at`, or the kind is refused. The pie's lamp up is the filling in the gaps
-  of its lattice, 398 pixels over 56 by 23, at `[1, -30]` in a box of 56 by 26, in the engine's green
-  with no `light` of its own; its lamp gone is the filling of the last slice, 108 pixels over 30 by
-  10, at `[4, -24]` in a box of 30 by 10. Both drawings of each cover the same pixels, so the lit
-  canvas is the lit drawing alone.
+  of its lattice, 398 pixels over 56 by 23, at `[1, -30]` in a box of 56 by 26, red with the light
+  `#ff4a3d`. The crystal's is its ball, at `[0, -67]` in a box of 50 by 50, light `#cde4ff`; the
+  flask's its potion, at `[0, -13]` in a box of 34 by 22, light `#6fb4ff`; the owl's its eyes,
+  light `#ffb000`; and the chest's its jewel, at `[0, -39]` in a box of 20 by 20, light `#ffb000`.
+  Both drawings of each cover the same pixels, so the lit canvas is the lit drawing alone, and the
+  dark drawing is a dimmer colour of the same hue, so that at the low point of the pulse the lamp
+  still reads as lit. The lamps' stamps hold 9 760 pixels in all.
 
 What the compiler does not build in a prop is refused with a reason, and that kind is drawn from
 code: a mark or a tile, an effect placed on the screen by a field of its own (a field of kind
@@ -612,12 +621,13 @@ code: a mark or a tile, an effect placed on the screen by a field of its own (a 
 that a prop cannot name. An effect's points are moved to the base like the other shapes.
 
 **The devices as data.** Each drawing of `props.js` is written out shape by shape, its coordinates
-counted from the base, in the order the code draws. The owl, the cauldron, the flask and the chest
+counted from the base, in the order the code draws. The owl, the crystal, the flask and the chest
 are written out by recording the calls of `cameraHD`, `machineHD`, `vmHD` and `boxHD` from a base at
 (0, 0), so each shape is one call of the code; their lamps of their own are written from the maps in
-`DEVICE_LAMPS`, and the chest's engine lamp stands at `CHEST_LAMP`. Their numbers are all eighths:
-the owl's feathers and the cauldron's rivets have radii of 1.25, which at a whole centre fill the
-pixels a radius of 1.2 would. Three things needed more than that:
+`DEVICE_LAMPS`. Their numbers are all eighths: the owl's feathers have radii of 1.25, which at a
+whole centre fill the pixels a radius of 1.2 would, and each number of the crystal, the flask and
+the chest at their sizes is an eighth that fills the same pixels as the size's own value. Five
+things needed more than that:
 
 - the pie's dish has thirteen flutes at `i * 5.3` across its rim, which fall between the eighths a
   pack's points keep to; the strip passes them to `fillRect` as they are, so no eighth draws the same
@@ -626,17 +636,29 @@ pixels a radius of 1.2 would. Three things needed more than that:
   and two pix shapes side by side would paint its rows in another order. The effect `crust` draws
   it, the lattice, the dome and the crimping, and `pieTop` in `props.js` now calls the same effect;
   `pieDish` calls `flutes`;
-- the gone pie's lamp has a shaded side, the down red at two thirds. The format reserves it as
-  `@lamp.downLo`, beside `@lamp.down` and `@lamp.downHi`, so that the gone lamp's lit drawing still
-  uses only the engine's reds ([packs.md](./packs.md#format-11)). The pie's lamp stamps and the last
-  slice, a pix shape of 34 by 16 in the gone still part, are written from the maps `pieShapes` in
-  `props.js` works out, the lamp's from the filling the `crust` effect paints. The dazed owl's
-  spirals keep their gaps dark: the lit stamp leaves them clear, so the dark drawing shows there,
-  and the lit drawing still uses only the reserved reds.
+- the down lamp's shaded side, the down red at two thirds, is reserved as `@lamp.downLo`, beside
+  `@lamp.down` and `@lamp.downHi`, so that a gone lamp's lit drawing still uses only the engine's
+  reds ([packs.md](./packs.md#format-11)); the pie's red lamp up names the same three. The pie's
+  lamp stamps and the last slice, a pix shape of 34 by 16 in the gone still part, are written from
+  the maps `pieShapes` in `props.js` works out, the lamp's from the filling the `crust` effect
+  paints. A gone lamp's reds are no longer used by the medieval kinds, which have no lamp while
+  down, but the format keeps them for a world that wants one;
+- the crystal's ball, its dark ring and the flask's bulb are circles whose radii at their sizes no
+  eighth draws alike. `discs` in `props.js` paints them pixel by pixel with `D.pix`, from the
+  pixels `ell` fills at the size, worked out once, and the pack carries the same pixels as pix
+  shapes;
+- the crystal's claws are strips whose outlines, at 1.85 times, no eighths fill alike. They are
+  drawn at the nearest eighths, `[3.5, 2]` for the outline and `[2.25, 0.875]` for the gilt, in
+  code and in the pack alike, which leaves each claw's outline 2 pixels from the mock-up's.
 
 Until 16 November 2026 the devices were drawn as the devices they are: a bullet camera, a tower
 case, the same case in 88 dots for a virtual machine (in six stamps, past the 128 shapes a part may
-hold), and a grey box. The owner chose the medieval things in their place.
+hold), and a grey box. The owner chose the medieval things in their place. On 17 November 2026 the
+owner chose the redesign: the cauldron gave way to the scrying crystal, the crystal and the chest
+were drawn at twice their size and the flask at 1.4 times, the ground class's box grew from
+`[-36, -58, 41, 2]` to `[-66, -93, 56, 2]` and a ground place from 88 to 132 wide, and the lights
+took colours of their own, none green. The chest's `mark` is 158, past the 128 a mark could be,
+so a mark may now be up to 160.
 
 ## The cast
 
@@ -1040,7 +1062,7 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   pack when, and only when, they share it from code. The keys themselves may differ. The check walks
   every scene the pack gives, so each later scene comes under it as it is added.
 - The same test checks that the compiled scene gives the code scene's interface: the same spot,
-  places, rests, rounds, `can`, weapon and helmet, `outdoors` and `foeZone`, and the same parts
+  places, rests, rounds, `can`, weapon and helmet, `outdoors`, `foeZone` and `crate`, and the same parts
   drawn, `wallAt` among them.
 - An act changes the knight's pose and the drawing from one moment to the next, and the target's
   keeps the time of its last blow from one frame for the next, so `tests/web/world-scenes.test.js`
@@ -1121,7 +1143,7 @@ it is signed needs a signing run again ([development.md](./development.md#signin
 `tests/web/world.test.js` checks the rest: that the pack reads clean with the costs above, where a
 `dev` and a deployed page draw every scene from, the console lines and
 the status, the long names, a compile that throws for one scene or for all, the predicates and the
-key, the terms and the colours' spelling, `outdoors`, `foeZone` and `wallAt` from `hosts` and `foe`,
+key, the terms and the colours' spelling, `outdoors`, `foeZone`, `wallAt` and `crate` from `hosts`, `foe` and `crate`,
 the keyframes' clock with a phase and played once, an ell's clip and a tile's picks, the target's
 act with its blow, its wobble and its straw, the rests and their angles, the rest mark in a still
 and a moving layer and the key it adds to, the anvil's act against the code smithy's every 10 ms
