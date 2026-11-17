@@ -227,7 +227,12 @@ field of every effect out of its table and costs each with its own cost function
 its looks, records included, equal to a copy stored from the library before format 1.1;
 [packs.md](./packs.md#tests) says how to store it again, which only a change to the base pack calls
 for. `tests/web/loading.test.js` checks the downloaded packs, the refusals and the knight drawn from code
-when no base pack can be used; its signed packs use keys generated for the run. `tests/web/places.test.js`
+when no base pack can be used; its signed packs use keys generated for the run.
+`tests/web/world-loading.test.js` checks the same of the medieval world's pack: refused, missing or
+failing to compile, a scene, a kind of device, each role of the cast and the word set throwing while
+drawing and drawn from code alone from the next frame, a throw in the engine's own drawing not put
+down to the pack, the world started again with the downloaded packs, and the admin page's scripts
+against the walls'; its signed packs use keys generated for the run too. `tests/web/places.test.js`
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
 and that no two places draw over each other. `tests/web/world-scenes.test.js` runs those checks of
 `foe.test.js` and `places.test.js` that depend on a scene on each scene of the medieval world's pack,

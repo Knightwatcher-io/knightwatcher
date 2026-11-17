@@ -23,14 +23,14 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [packs.md](./packs.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
-| `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names, its devices in `KW.kinds` and its cast in `KW.cast`, which the engine draws them from, and compiles its words and its overlay (`KW.world.words`, `KW.world.overlay`) and builds the quiet line and the captions from the collector's parts; see [worlds.md](./worlds.md) |
+| `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names, its devices in `KW.kinds` and its cast in `KW.cast`, which the engine draws them from, and compiles its words and its overlay (`KW.world.words`, `KW.world.overlay`) and builds the quiet line and the captions from the collector's parts; a part that throws while drawing gives way to its code copy alone; see [worlds.md](./worlds.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene, the devices and the cast as data; see [worlds.md](./worlds.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, the words for the streams (`streamWords`), and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, the pet's catch (`KW.engine.pet`), events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the devices in their places (`KW.devices`) |
 | `js/demo.js` | the invented conditions and streams, the review bar and the demo loop |
 | `js/settings.js` | `KW.settings`: the levels the display's settings come from, the saved settings (the server's, shared by every display, or this browser's own), keeping them in step with the server (`connect`), the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
-| `js/main.js` | start-up (starting the knight and then the world from the medieval world's pack, setting the overlay's custom properties on the display, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
+| `js/main.js` | start-up (starting the knight and then the world from the medieval world's pack, setting the overlay's custom properties on the display, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs and starting the world again with them, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 | `admin/index.html`, `admin/admin.js`, `admin/admin.css` | the admin page, served by the bundled server alone; see [The admin page](#the-admin-page) |
 
 The load order is the order of that table, scenes in the order listed. A file may use what an
@@ -280,8 +280,11 @@ says which state ships today.
 
 Served over HTTP, `main.js` then fetches the packs the collector downloaded into `data/packs/`, once
 at load and in every mode, with `KW.knight.fetchPacks(fetch)`, and hands them to `KW.knight.add()`,
-which reads them with the same rule and resolves the look again; the page then paints its
-backdrops again. `look()` keeps the same rule: a pack refused or marked bad stays so. From disk it fetches nothing. A missing `data/packs/index.json` means no packs and
+which reads them with the same rule and resolves the look again. When any pack came, it then starts
+the world again at once with every text, those the page ships with and the downloaded ones
+(`KW.world.start(KW.packText.concat(...), ownVersion === 'dev')`), sets the overlay's properties
+and the devices' prop sets again, and paints its backdrops again
+([worlds.md](./worlds.md#downloaded-world-packs)). `look()` keeps the same rule: a pack refused or marked bad stays so. From disk it fetches nothing. A missing `data/packs/index.json` means no packs and
 is silent. [packs.md](./packs.md#downloaded-packs) has the index's shape and its limits.
 
 `knight.js` writes one line to the console for each refused pack, and one each time the source
@@ -423,7 +426,7 @@ pack's `hosts`, `foeZone` and, where the foe has a wall, `wallAt` from its `foe`
 | `draw(t, s)` | yes | draws the scene at time `t` in ms: everything on a scene without `paint`, otherwise what moves. It calls `KW.devices.draw(t, s)` at the point where the devices behind the knight belong in its drawing order |
 | `rounds` | no | the spots the knight strolls between while free to move: `[{ x, act, dur }]`, `x` in units of `U`, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles |
 | `paint(s)` | no | the still part, painted once into a cached canvas and kept until the key or the screen's shape changes |
-| `key(s)` | no | a string; the cached backdrop is painted again when it changes. A scene that paints the knight's gear at rest into its backdrop includes `KW.knight.rest.key(slot)` for each such item |
+| `key(s)` | no | a string; the cached backdrop is painted again when it changes, and when `KW.world.changes` does (the world started again, or a part of a pack gave way to its code copy; [worlds.md](./worlds.md#when-a-part-throws)). A scene that paints the knight's gear at rest into its backdrop includes `KW.knight.rest.key(slot)` for each such item |
 | `act(t, s)` | no | called each frame after strolling and before the swat and events; may change the knight's pose `s.o` |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
 | `wallAt(x)` | no | the y of the top of whatever a foe climbs over at grid x; without it a foe digs up out of the ground |
@@ -1280,8 +1283,10 @@ refused, each with its step and reason. The world's entries:
 - **Fallbacks**: every fallback with its reason (`KW.settings.screen.fallbackLines`): what a level
   sets and the page ignores (`ignored`), as "Disk full: config.toml asks for the camp, which cannot
   act it. Shown in the cellar, the world's own."; a part of the world the page has not loaded
-  (`faults`); a scene, a kind of device or a member of the cast drawn from code, a kind of device
-  drawn from the base world's set, and the knight's items that fell back. "None. Every part is
+  (`faults`); a scene, a kind of device or a member of the cast drawn from code, because it failed
+  to compile or because it threw while drawing ("Camp: drawn from code. The scene camp threw while
+  drawing: ..."), a kind of device drawn from the base world's set, the word set given way to the
+  collector's words, and the knight's items that fell back. "None. Every part is
   drawn from where it is set." when there are none.
 
 **Where choices are kept.** Under the title, each editable page says where its choices go: "Saved
@@ -1400,11 +1405,19 @@ page is opened again.
 `admin/` holds the household's admin page: its own HTML, script and stylesheet, served by the
 bundled server at `/admin/` and nowhere else, since it needs the server's API
 ([server.md](./server.md#the-admin-page)). From disk, or from a web server of your own, it says
-the admin page is off and why. It loads the same drawing scripts and base pack as `index.html`,
-in the same order, without `demo.js` and `main.js`: it runs no display, and uses `KW.knight`,
-the scenes' own `paint()` and `draw()` and `KW.settings` to draw the household look's previews
-exactly as every wall draws them. It reads the base pack as a deployed wall does, signed unless
-its own `kw-version` is `dev`. The server stamps its addresses with the page's version, as the
+the admin page is off and why. It loads the same drawing scripts and packs as `index.html`, the
+scene compiler, `cat.js`, the base pack and the medieval world's pack among them, in the same
+order, without `demo.js` and `main.js`: it runs no display, and uses `KW.knight`, `KW.world`, the
+scenes' own `paint()` and `draw()` and `KW.settings` to draw the household look's previews exactly
+as every wall draws them. It starts the knight and then the world as `main.js` does, reading the
+packs as a deployed wall does, signed unless its own `kw-version` is `dev`, so its previews of the
+scenes, the devices in them and the monarchs are drawn from `kw.medieval`, and from code only where
+a wall's would be ([worlds.md](./worlds.md#when-a-part-throws)). Served, it fetches the packs the
+collector downloaded from `../data/packs/`, beside the walls, with `KW.knight.fetchPacks(fetch,
+'../')`, adds them to the knight and starts the world again with every text, as a wall does, and
+paints its previews again; a field being typed in is left as it is until it is left.
+`tests/web/world-loading.test.js` holds its scripts to the walls' own but `demo.js` and `main.js`,
+in their order. The server stamps its addresses with the page's version, as the
 rest; it works under the same content security policy, from its own address only, with its own
 script and stylesheet and no inline script.
 
@@ -1644,7 +1657,10 @@ diff -r /tmp/kw-calls-old /tmp/kw-calls-new
 fallback to the base pack's defaults, the code path in every case of failure and a throw inside a
 draw list, and that `look()` draws a new look from the packs already loaded, a downloaded one
 included, where `start()` again would lose it; see
-[packs.md](./packs.md#tests).
+[packs.md](./packs.md#tests). `tests/web/world-loading.test.js` checks the same for the medieval
+world's pack: refused, missing, failing to compile, a part throwing while drawing and drawn from
+code alone from the next frame, a throw in the engine's own drawing, the downloaded world packs and
+the admin page's scripts; see [worlds.md](./worlds.md#two-copies-held-equal).
 
 `tests/web/settings.test.js` checks the settings: the order of the levels key by key, a value each
 level does not know ignored with one console line, a section that is not an object, the builds

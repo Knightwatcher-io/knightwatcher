@@ -53,7 +53,7 @@
   // the pet's catches, in the order its flies came, the time it is free again after the last, and
   // the flies leaving the scene under a warning
   const catches = [], leaving = []; let petFree = -1e9;
-  const bgCache = { key: '', cv: document.createElement('canvas') };
+  const bgCache = { key: '', changes: 0, cv: document.createElement('canvas') };
 
   /* The scene the winning condition w plays in at t: the one the input's scenes chose for it,
      when that scene can act it, else the condition's own in the world in use (the input's homes),
@@ -608,12 +608,16 @@
     placeX(s, name) { const pl = s.places && name ? s.places[name] : null; return pl && s.devices.some(dv => dv && dv.place === name) ? pl.x : null; }
   };
 
-  /* A scene's still part is painted once into its own canvas and kept until the key changes or
-     the screen changes shape. */
+  /* A scene's still part is painted once into its own canvas and kept until the key changes, the
+     screen changes shape, or what the world draws changes (KW.world.changes: the world started
+     again, or a part of a pack gave way to its code copy, perhaps while this canvas was being
+     painted, which the count taken before the painting catches). */
+  const worldChanges = () => (KW.world && typeof KW.world.changes === 'number' ? KW.world.changes : 0);
   function backdrop(key, sc, s, sway) {
-    if (bgCache.key !== key) {
+    const n = worldChanges();
+    if (bgCache.key !== key || bgCache.changes !== n) {
       bgCache.cv.width = V.LW + 32; bgCache.cv.height = V.LH; const c = bgCache.cv.getContext('2d');
-      D.setCtx(c); c.setTransform(1, 0, 0, 1, V.X0 + 16, V.Y0); sc.paint(s); D.setCtx(main); bgCache.key = key;
+      D.setCtx(c); c.setTransform(1, 0, 0, 1, V.X0 + 16, V.Y0); sc.paint(s); D.setCtx(main); bgCache.key = key; bgCache.changes = n;
     }
     main.setTransform(1, 0, 0, 1, 0, 0); main.drawImage(bgCache.cv, sway - 16, 0);
   }
