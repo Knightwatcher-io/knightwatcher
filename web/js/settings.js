@@ -970,11 +970,14 @@
       out.push([partLabel(sec, k, labels), ': the world names ' + show2(f.value) + ', which is ' + (f.why === 'not loaded' ? 'not loaded' : 'not used: ' + f.why) + ', so the ' + lowerFirst(valueName('look', 'world', 'medieval', pack, cat)) + ' world\'s is shown.']);
     }
     const st = W.status || {};
-    for (const f of st.faults || []) out.push([SCENE_NAMES[f.scene] || f.scene, ': drawn from code. ' + f.reason]);
-    for (const f of (W.props || {}).faults || []) out.push([f.kind, ': drawn from code. ' + f.reason]);
+    // a part that threw while drawing says so in a sentence of its own, "The scene camp threw while
+    // drawing: ..."; a compile fault's reason is the path the compiler names, as it is
+    const why = f => (f.step === 'draw' ? f.reason.charAt(0).toUpperCase() + f.reason.slice(1) : f.reason);
+    for (const f of st.faults || []) out.push([SCENE_NAMES[f.scene] || f.scene, ': drawn from code. ' + why(f)]);
+    for (const f of (W.props || {}).faults || []) out.push([f.kind, ': drawn from code. ' + why(f)]);
     for (const f of (W.devices || {}).faults || []) out.push([f.kind, ': the base world\'s drawing, not ' + f.set + '\'s: ' + f.reason + '.']);
-    for (const f of (W.cast || {}).faults || []) out.push([f.member, ': drawn from code. ' + f.reason]);
-    for (const f of (W.words || {}).faults || []) out.push([f.set, ': the collector\'s words are shown. ' + f.reason]);
+    for (const f of (W.cast || {}).faults || []) out.push([f.member, ': drawn from code. ' + why(f)]);
+    for (const f of (W.words || {}).faults || []) out.push([f.set, ': the collector\'s words are shown. ' + why(f)]);
     for (const f of (W.overlay || {}).faults || []) out.push([f.overlay, ': display.css\'s colours are shown. ' + f.reason]);
     if (st.refused) out.push([st.refused.id, ': refused at the ' + st.refused.step + ' step, so every scene, device and member of the cast is drawn from code.']);
     for (const f of (isObj(kn) && Array.isArray(kn.fallbacks) ? kn.fallbacks : [])) {
@@ -1534,7 +1537,9 @@
     function render() {
       const r = store.now(), page = PAGES[st.page], old = main.querySelector('.kws-list'), top = old ? old.scrollTop : 0, same = main.dataset.page === st.page;
       const focus = document.activeElement && main.contains(document.activeElement) ? document.activeElement.dataset.focus : null;
-      const pk = JSON.stringify(knightLook(r)) + '|' + r.values.display.helmet_indoors;
+      // the pictures are painted again when the look changes, and when what the world draws does
+      // (KW.world.changes: it started again with the downloaded packs, or a part gave way to code)
+      const pk = JSON.stringify(knightLook(r)) + '|' + r.values.display.helmet_indoors + '|' + (KW.world ? KW.world.changes : 0);
       if (pk !== picKey) { picKey = pk; pics.clear(); }
       main.textContent = ''; main.dataset.page = st.page;
       const list = el('div', 'kws-list'); main.appendChild(list);

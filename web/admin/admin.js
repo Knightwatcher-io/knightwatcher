@@ -1,7 +1,9 @@
 /* The admin page: the household's settings, served by the bundled server at admin/.
 
-   Runs after the page's own drawing scripts and base pack (window.KW), which draw the household
-   look's previews exactly as every wall draws the knight. Everything else comes from the server:
+   Runs after the page's own drawing scripts and packs (window.KW), the base pack and the medieval
+   world's, which draw the household look's previews exactly as every wall draws the knight and the
+   scenes, from the packs, with the packs the collector downloaded added once they have come.
+   Everything else comes from the server:
 
    - api/admin/state says whether the page is on and whether this browser is signed in;
    - api/admin/schema is collector/settings-schema.json, from which every section, label, help
@@ -800,7 +802,9 @@
   }
   function paintStill() {
     if (!A || !W) return;
-    const r = resolved(), e = KW.settings.engineInput(r, PACK, 600000), key = JSON.stringify(KW.settings.knightLook(r)) + '|' + JSON.stringify([e.patron.skin, e.patron.hair, e.patron.robe]) + '|' + r.values.display.helmet_indoors;
+    // painted again too when what the world draws changes: it started again with the downloaded
+    // packs, or a part gave way to its code copy (KW.world.changes)
+    const r = resolved(), e = KW.settings.engineInput(r, PACK, 600000), key = JSON.stringify(KW.settings.knightLook(r)) + '|' + JSON.stringify([e.patron.skin, e.patron.hair, e.patron.robe]) + '|' + r.values.display.helmet_indoors + '|' + (KW.world ? KW.world.changes : 0);
     if (key !== lookKey) { lookKey = key; pics.clear(); K.look(KW.settings.knightLook(r)); }
     root.querySelectorAll('canvas[data-mon]').forEach(cv => blit(cv, monarchPicture(cv.dataset.mon, e)));
     root.querySelectorAll('canvas[data-scene]').forEach(cv => blit(cv, scenePicture(cv.dataset.scene, r.values.display.helmet_indoors)));
@@ -1049,11 +1053,30 @@
     lastSeen = JSON.stringify([Object.assign({}, A, { now: null }), W]);
     render(true);
   }
+  /* The packs the collector downloaded, from data/packs/ beside the walls (up one level from this
+     page), added as a wall adds them: the knight reads them and the world starts again at once
+     with every text. Served alone; nothing is fetched from disk. */
+  function addDownloaded(dev) {
+    if (!/^https?:$/.test(location.protocol)) return;
+    K.fetchPacks((url, init) => fetch(url, init), '../').then(got => {
+      if (!got.files.length && !got.refused.length) return;
+      K.add(got);
+      if (KW.world && got.files.length) KW.world.start(KW.packText.concat(got.files.map(f => f.text)), dev);
+      PACK = K.basePack(); OWN = KW.settings.builtIn(PACK, KW.settings.pageWorld()); lookKey = '';
+      // a field being typed in is not drawn again under the cursor: the previews are, and the rest
+      // waits until it is left, as news from the server does
+      if (editing() || st.menu || st.exp !== null || st.resetAsk) { st.dirty = true; paintStill(); } else render(true);
+    }, () => {});
+  }
   async function start() {
     const own = (document.querySelector('meta[name="kw-version"]') || {}).content || 'dev';
-    // The base pack as the walls read it: signed when deployed, unsigned allowed for a dev page.
+    // The packs as the walls read them: signed when deployed, unsigned allowed for a dev page. The
+    // knight from the base pack, and the scenes, the devices and the cast from the medieval
+    // world's, as main.js starts them.
     K.start(KW.packText, own === 'dev', { look: {} });
+    if (KW.world) KW.world.start(KW.packText, own === 'dev');
     PACK = K.basePack(); OWN = KW.settings.builtIn(PACK, KW.settings.pageWorld());
+    addDownloaded(own === 'dev');
     render(true);
     const r = await call('GET', 'admin/state');
     if (r.status !== 200) { auth.mode = 'off'; auth.error = r.json.error || 'the server has no admin page'; render(true); return; }

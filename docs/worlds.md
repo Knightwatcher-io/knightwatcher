@@ -13,7 +13,11 @@ parts the collector sends, in the world's words, and takes the colours and the f
 over the scene from the world's overlay. Step W9 added the world itself as a preset, `world.medieval`,
 which the settings resolve against the parts set beside it, and the devices chosen per kind
 ([Worlds as presets](#worlds-as-presets)). Version 0.7.0 adds the mouser cat, the first pet,
-and is signed: a deployed page and a `dev` page alike draw everything from it.
+and is signed: a deployed page and a `dev` page alike draw everything from it. Step W10 settled
+loading and failure: a part that throws while drawing gives way to its code copy alone ([When a
+part throws](#when-a-part-throws)), the world packs the collector downloads are read as the knight's
+are ([Downloaded world packs](#downloaded-world-packs)), and the admin page draws its previews from
+the pack, as a wall does.
 
 ## The medieval world's pack
 
@@ -217,6 +221,7 @@ A scene is drawn from code when:
 | the pack library is not loaded | `...: the pack library is not loaded` |
 | reading threw, which `read()` never should | `...: the pack kw.medieval was refused at the size step`, the reason `the pack could not be read: <message>` |
 | that scene failed to compile | `knightwatcher: the scene cellar is drawn from code: it could not be compiled: <reason>` |
+| that scene threw while drawing, in this version of the pack ([When a part throws](#when-a-part-throws)) | `knightwatcher: the scene camp is drawn from code: it threw while drawing: <message>` |
 
 Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn
 from the pack kw.medieval 0.7.0, signed` (or `unsigned`), written with `console.info`; the others
@@ -240,7 +245,7 @@ that line and the scenes' line above it, which is the pair the base pack gives.
 | `pack` | `{ id, version, signed }` of the pack in use, or `null` |
 | `refused` | `{ id, step, reason }` when the pack was turned away, or `null` |
 | `scenes` | for each scene the pack gives that the engine knows, `'pack'` or `'code'` |
-| `faults` | `{ scene, reason }` for each scene that failed to compile |
+| `faults` | `{ scene, reason }` for each scene that failed to compile, and `{ scene, reason, step: 'draw' }` for each that threw while drawing |
 | `note` | the last line written to the console |
 
 The devices are read in the same call, from the same pack: each kind of the prop set
@@ -257,7 +262,7 @@ compile adds no line. `KW.world.props` holds what `start` found for them:
 | `source` | `'pack'` when any kind is drawn from the prop set, `'code'` otherwise |
 | `set` | `'props.medieval'` when the pack in use gives it, or `null` |
 | `kinds` | for each kind the set gives, `'pack'` or `'code'` |
-| `faults` | `{ kind, reason }` for each kind that failed to compile |
+| `faults` | `{ kind, reason }` for each kind that failed to compile, and `{ kind, reason, step: 'draw' }` for each that threw while drawing |
 
 The cast is read in the same call too. Each member of the pack's cast whose id is its role, a dot
 and the name of a member the engine has, as `critter.fly`, is compiled ([The cast](#the-cast)) and
@@ -271,7 +276,7 @@ compiled. A member that fails to compile is drawn from code, with a line of its 
 |---|---|
 | `source` | `'pack'` when any member is drawn from the pack's cast, `'code'` otherwise |
 | `members` | for each member compiled or tried, by its id, `'pack'` or `'code'` |
-| `faults` | `{ member, reason }` for each member that failed to compile |
+| `faults` | `{ member, reason }` for each member that failed to compile, and `{ member, reason, step: 'draw' }` for each that threw while drawing |
 
 The words and the overlay are read in the same call, each by its name until worlds can be chosen:
 the word set `words.medieval` and the overlay `overlay.phosphor` ([The words and the
@@ -290,7 +295,7 @@ found:
 | `words.set` | `'words.medieval'` when it is in use, or `null` |
 | `words.name`, `words.watcher`, `words.labels` | the set's name, its watcher and its labels as written, each `null` without it; the settings screen does not read them yet |
 | `words.quiet`, `words.captions` | its templates for each part of the quiet line and for each event type, or `null` |
-| `words.faults` | `{ set, reason }` when the set failed to compile |
+| `words.faults` | `{ set, reason }` when the set failed to compile, and `{ set, reason, step: 'draw' }` when it threw while filling |
 | `overlay.source` | `'pack'` when the overlay is in use, `'code'` otherwise |
 | `overlay.id`, `overlay.name`, `overlay.font` | `'overlay.phosphor'`, its name and its font's id, each `null` without it |
 | `overlay.props` | the CSS custom properties `main.js` sets on the display, `{}` without it |
@@ -301,11 +306,91 @@ that reads the pack the monarchs come from the pack's patrons even where the cou
 from code.
 
 `start` puts the code scenes, the code's devices and the code's cast back before it reads, and
-leaves the words and the overlay out, so a second call starts afresh. Not done yet:
-a `kw.medieval` the collector downloaded into `data/packs/` is read by the knight but not compiled,
-so the scenes come from the one that ships with the page; a scene from the pack that throws while
-drawing is not caught; and the admin page draws its previews of the scenes from code, since it
-does not start the world.
+leaves the words and the overlay out, so a second call starts afresh, and writes its lines again.
+`main.js` calls it a second time once the packs the collector downloaded have come ([Downloaded
+world packs](#downloaded-world-packs)). The admin page starts the world as a wall does, after the
+knight and with the same rule, and so draws its previews of the scenes, the devices in them and the
+monarchs from the pack ([page.md](./page.md#the-admin-page)).
+
+## When a part throws
+
+A compiled part should never throw while it is drawn: the checks and the compiler see to that. One
+that does anyway is caught for that frame, and from the next frame that part alone is drawn from
+its code copy, while the rest of the pack stays in use, as when a part fails to compile. The owner
+decided this, a part at a time rather than the whole pack. It mirrors rule 4 of the knight's
+([packs.md](./packs.md#when-packs-fail)):
+
+| Part | Caught in | From the next frame | The line in the console (`console.warn`) |
+|---|---|---|---|
+| a scene | `paint`, `draw`, `over`, `act`, `key`, `wallAt` and `drawn` | the code scene, under its short name and its long one | `knightwatcher: the scene camp is drawn from code: it threw while drawing: <message>` |
+| a kind of the medieval prop set | `draw`, its still and moving parts | the code's drawing of that kind, in `KW.kinds` again through `useKinds()` | `knightwatcher: the device kind pi is drawn from code: it threw while drawing: <message>` |
+| a kind of another prop set | the same | the base world's drawing of that kind | `knightwatcher: the device kind camera of the prop set kw.example/props.neon is drawn from the base world's: it threw while drawing: <message>` |
+| a member of the cast | a critter's `draw` and `dead`, a patron's `draw` and `mouth`, a foe's or a pet's `pose` | the code's member | `knightwatcher: the cast member critter.fly is drawn from code: it threw while drawing: <message>` |
+| the word set | the filling of its templates (`quietLine`, `caption`) | the collector's own words | `knightwatcher: the words are the collector's: the word set words.medieval threw while filling: <message>` |
+
+On the call that throws, a drawing draws no more, and a call whose result the engine uses (a
+scene's key or the foe's wall, a pose's canvas, a line of words) gives the code copy's. The fault
+goes into the part's `faults` with `step: 'draw'` and the reason `the scene camp threw while
+drawing: <message>` (`the device kind pi`, `the cast member critter.fly`, `the word set
+words.medieval threw while filling`), its source becomes `'code'`, and `source` follows: `'pack'`
+while any other part of its kind is still drawn from the pack. A kind of another prop set goes into
+`KW.world.devices.faults` as `{ kind, set, reason: 'it threw while drawing: <message>', step: 'draw' }`.
+The line is written once, and `status.note` takes it. The message is cut to 120 characters, in
+the reason as in the line. Nothing is drawn on the wall about it: the settings screen's status page
+lists it under Fallbacks, "Camp: drawn from code. The scene camp threw while drawing: ...", and the
+console has the line.
+
+`start()` puts each part in place behind a guard, a copy of it whose functions note the part being
+drawn while they run; a held copy (the goblin the engine keeps for its event, the foe's wall it
+climbs over) is drawn from the code copy once the part has given way. A throw is put down to the
+part only when it comes from the part's own drawing. What a part asks of the engine runs outside
+it: the devices a scene's `things` mark draws, the gear at rest and the hot tip, the sleeper and
+the Zs, the patron and its speech bubble, the engine's lamp and the lamps' loop. A throw there, or
+anywhere else in the engine's own drawing, is not put down to the pack, marks nothing and goes on
+as it always has, and so does a throw from a part already on code. A part that throws while it
+paints a canvas of its own (a pose, a lamp) has the drawing context it was called with put back, at
+an alpha of 1.
+
+A backdrop a part painted, or was painting when it threw, is painted again: `KW.world.changes` goes
+up at each `start()` and each part that gives way, and the engine paints its backdrop again when it
+changes, as it does when the key changes, counting from before the painting so that a part that
+throws while painting is caught too. The settings screen's and the admin page's pictures of the
+scenes and the monarchs are kept by a key that holds it too. A device's canvas is kept by its
+drawing's `from`, so the code's drawing never shares one with the pack's.
+
+A part stays on code until the page is loaded again. `start()` again keeps it there while the same
+version of the pack is in use, with its fault in the status and its line written again; a different
+version of the pack, a downloaded one of a higher version among them, is tried afresh. A part of an
+earlier `start()` that throws in a held copy gives way to code without touching what the world now
+holds.
+
+## Downloaded world packs
+
+Served over HTTP, `main.js` fetches the packs the collector downloaded into `data/packs/`, once at
+load, with `KW.knight.fetchPacks(fetch)`, and hands them to `KW.knight.add()`
+([packs.md](./packs.md#downloaded-packs)). When any pack came, it starts the world again at once,
+`KW.world.start(KW.packText.concat(<the downloaded texts>), ownVersion === 'dev')`, with every
+text, those the page ships with first, and then sets the overlay's properties again (taking off
+any the overlay no longer sets), chooses each kind's prop set again and paints its backdrops again.
+The owner decided on the switch at once, rather than at the next scene or by holding the first
+frame. Only a fetch that brought nothing, or refusals alone, leaves the world as it started.
+
+The same rules hold as for the packs that ship with the page:
+
+- **The signature.** A deployed page reads only signed packs, and a `dev` page unsigned ones too.
+- **Two copies of one pack.** A downloaded `kw.medieval` takes the place of the shipped one only
+  when its version is higher, as `gather` chooses; one of the same or a lower version is passed
+  over.
+- **Presets and prop sets.** A downloaded pack that holds presets or prop sets joins the others
+  `KW.world` keeps, and `catalogue()` lists it for the settings.
+- **Refusals.** A refused downloaded world pack is the knight's to report, as for the packs that ship
+  with the page: the knight reads the same texts, writes one line for it and lists it in
+  `KW.knight.status.refused` with its file's name. The world writes nothing about it, unless it
+  leaves no `kw.medieval` at all, when the scenes' line says the pack was refused at that step.
+
+The admin page does the same from `admin/`: it fetches `../data/packs/`, beside the walls, with
+`KW.knight.fetchPacks(fetch, '../')`, adds what came to the knight and starts the world again with
+every text ([page.md](./page.md#the-admin-page)).
 
 ## The scene compiler
 
@@ -314,10 +399,11 @@ does not start the world.
 | Name | Is |
 |---|---|
 | `compile(pack, id)` | the scene `id` of a loaded pack (a `read()` result of format 1.1) as an object with the scene interface; throws when the scene names something the compiler does not build |
-| `start(texts, allowUnsigned, opts)` | reads `kw.medieval` from `texts` and puts its scenes in place, as above; `opts.keys` replaces `KEYS` in `read()`, for the tests only |
+| `start(texts, allowUnsigned, opts)` | reads `kw.medieval` from `texts` and puts its scenes in place, as above, each behind a guard ([When a part throws](#when-a-part-throws)); `opts.keys` replaces `KEYS` in `read()`, for the tests only |
 | `compileKind(pack, set, kind)` | the kind of device `kind` of the prop set `set` of a loaded pack, as an entry of `KW.kinds` ([The devices](#the-devices)); throws when it names something the compiler does not build |
 | `compileMember(pack, id)` | the cast member `id` of a loaded pack, as an entry of `KW.cast` ([The cast](#the-cast)); throws when it names something the compiler does not build |
-| `status` | what the last `start` found, or `null` before it |
+| `status` | what the last `start` found, with any fault since, or `null` before it |
+| `changes` | a count that goes up at each `start` and each part that gives way to its code copy, which tells the engine and the settings screen to paint their backdrops and pictures again ([When a part throws](#when-a-part-throws)) |
 | `props` | what the last `start` found for the devices, or `null` before it |
 | `cast` | what the last `start` found for the cast, or `null` before it |
 | `compileWords(pack, id)`, `compileOverlay(pack, id)` | the word set or the overlay `id` of a loaded pack, compiled ([The words and the overlay](#the-words-and-the-overlay)); each throws when it names something the compiler does not build |
@@ -918,7 +1004,8 @@ the code, so with nothing set the display is the same either way.
 `start()` reads every pack among the texts but the base pack, which the knight reads, with the same
 rule for signatures. Besides kw.medieval, it keeps each pack read cleanly that holds presets or prop
 sets; a refusal of one of them is the knight's to report, as it reads the same texts. Today the page
-ships no other world pack, and `data/packs/` brings none to `KW.world` yet. `catalogue()` lists for
+ships no other world pack; one the collector downloads into `data/packs/` joins them when the world
+starts again with it ([Downloaded world packs](#downloaded-world-packs)). `catalogue()` lists for
 the settings what is loaded:
 
 - `worlds`: each preset by the name the settings use, `medieval` for `world.medieval` and
@@ -1131,6 +1218,21 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   quiet line from the medieval words, that `main.js` writes them with `textContent`, where the words
   and the overlay come from on a `dev` and a deployed page, one of them failing to compile, what
   `compileOverlay` refuses, and the demo's parts, texts and lines.
+- `tests/web/world-loading.test.js` holds loading and failure, as `tests/web/loading.test.js` does
+  for the base pack: a page without `kw.medieval` drawing every scene, device and member of the cast
+  from code without a throw; the pack refused unsigned on a deployed page and with a signature that
+  does not verify; a part that fails to compile; a scene whose still or moving layers throw, a kind
+  of device, the fly, the goblin, a monarch and the cat each throwing, caught, and the engine's
+  frames from the next frame the same, call for call, as those of a page where that part alone
+  failed to compile; a kind of another prop set giving way to the base world's; the word set
+  giving way to the collector's words; a throw in the gear at rest, the speech bubble or the
+  engine's lamp not put down to the pack; a part already on code not caught; the status page's
+  lines; a restart keeping a part that threw with the same version and trying it afresh with
+  another; a downloaded `kw.medieval` of a higher version taking the place of the shipped one, and
+  one of the same or a lower version passed over; a downloaded one refused on a deployed page and
+  reported by the knight alone, once; a downloaded world pack joining the catalogue; the backdrop
+  painted again after a restart; `main.js` and the admin page starting the world again; and the
+  admin page's scripts, which must be the walls' own but `demo.js` and `main.js`, in their order.
 - The screenshots of the repository's own page, a `dev` page, draw every scene, device and member of
   the cast from the pack, and show the medieval words. To shoot the code path, take a pair of sets from a copy of `web/` whose `kw-version` is not
   `dev`, as for the knight ([page.md](./page.md#checks)).

@@ -1538,8 +1538,18 @@ itself, and then every file it names from `data/packs/`, as text: never as scrip
 anywhere else, each with `cache: "no-store"`, no redirects followed, and the same four-second
 cut-off as `state.json`. `KW.knight.fetchPacks(fetch)` does the fetching and `KW.knight.add()` the
 reading, through the same `read()` as the carriers; `KW.knight.packIndex(value)` checks a parsed
-index. A page opened from disk fetches nothing and shows the packs it ships with. A pack added later
-shows when the page is next loaded, since a page reads the folder only once.
+index. The admin page, one level down at `admin/`, fetches the same folder beside the walls with
+`KW.knight.fetchPacks(fetch, '../')`; `'../'` is the only other root it takes, and anything else
+fetches from beside the page. A page opened from disk fetches nothing and shows the packs it ships
+with. A pack added later shows when the page is next loaded, since a page reads the folder only
+once.
+
+When any pack came, the page starts the world again at once with every text, those it ships with
+and the downloaded ones, so that a downloaded world pack is read by the scene compiler under the
+same rules: a downloaded `kw.medieval` of a higher version takes the place of the shipped one, and a
+pack holding presets or prop sets joins the catalogue ([worlds.md](./worlds.md#downloaded-world-packs)).
+A downloaded pack refused at any step is reported by the knight alone, once, whether it is the
+knight's or a world's.
 
 A missing index (a 404) means no packs and is silent. Everything else that goes wrong is a refusal
 in the status:
@@ -1563,7 +1573,7 @@ The knight never vanishes. In order:
    downloaded file's name, or `null` for a pack that ships with the page; `step` is the step of
    the checks, `index` or `fetch` from the table above, `counts` when more than 32 packs are
    loaded, or `draw` for a pack marked bad (rule 4). Nothing on the wall changes, and the settings
-   screen's status panel (not built yet) shows the list. A panel must show the entries as text.
+   screen's status page lists them under Refused packs. It shows the entries as text.
 2. **An item, swatch or build in the look is missing**, because its pack was refused, removed or
    never downloaded: that slot, set or build takes the base pack's default, as `resolve` does, and
    `status.fallbacks` says so. A shield in a look whose weapon is not one-handed, the greatsword
@@ -1584,6 +1594,15 @@ The knight never vanishes. In order:
    <list> list threw while drawing: <message>`. From the next frame the knight is drawn by the
    rules above without them. The same holds for the lists of the gear at rest and the sleeper's
    head. A throw in the engine's own drawing is not put down to a pack.
+
+The world's parts follow the same order ([worlds.md](./worlds.md#where-the-scenes-are-drawn-from)).
+`kw.medieval` refused or missing leaves every scene, device and member of the cast drawn from code,
+the collector's words and `display.css`'s colours; the refusal is the knight's to report, since the
+knight reads the same texts. A part that fails to compile is drawn from code alone. A part that
+throws while drawing is caught for that frame and drawn from its code copy alone from the next,
+the rest of the pack staying in use, rather than the whole pack marked bad as the knight's lists are
+([worlds.md](./worlds.md#when-a-part-throws)); it shows on the status page under Fallbacks rather
+than under Refused packs.
 
 ### Gear at rest
 
@@ -1655,7 +1674,11 @@ draws every scene from it and a deployed page from code while it is unsigned, an
 once signed with a key made for the run, and the shipped file on a deployed page draws from it when
 it carries a signature; a refused, missing or unreadable pack, a missing library and a compile
 that throws all leave the scenes concerned the code scenes, each with its console line and its
-status. That each scene from the pack draws what the code draws, call for call, is
+status. `tests/web/world-loading.test.js` holds the world's loading and failure as
+`tests/web/loading.test.js` holds the knight's: the pack refused, missing or failing to compile, a
+part that throws while drawing caught and drawn from code alone from the next frame, a throw in the
+engine's own drawing not put down to the pack, and the downloaded world packs
+([worlds.md](./worlds.md#two-copies-held-equal)). That each scene from the pack draws what the code draws, call for call, is
 `tests/web/scenes.test.js`'s ([page.md](./page.md#checks)); that its `quiet` and `hosts` agree with
 the engine's own lists, and that the foe's and the places' checks hold on it, is
 `tests/web/world-scenes.test.js`'s. `tests/web/world-props.test.js` checks the devices from its prop

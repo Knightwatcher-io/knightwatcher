@@ -53,7 +53,8 @@
      line and the captions from the collector's parts, and its overlay gives the colours and the
      font of the words over the scene, set below; without them the page shows the collector's text
      and display.css's colours. KW.world writes one line to the console about where the scenes are
-     drawn from (docs/worlds.md). */
+     drawn from (docs/worlds.md). A part that throws while drawing gives way to its code copy
+     alone. The world starts again below once the downloaded packs have come. */
   if (KW.world) KW.world.start(KW.packText, ownVersion === 'dev');
 
   /* ---- The settings ------------------------------------------------------------------------------
@@ -111,9 +112,16 @@
   const cv = $('cv'), surface = $('surface'), hl = $('hl'), sub = $('sub'), more = $('more'), streamsEl = $('streams'), quiet = $('quiet'), cap = $('cap'), ov = $('ov'), clock = $('clock');
   E.init(cv.getContext('2d'));
   /* The overlay's colours and font, as CSS custom properties that display.css reads, each a value
-     KW.world has checked. With no overlay none is set, and display.css's own values stand. */
-  const ovProps = KW.world && KW.world.overlay ? KW.world.overlay.props : {};
-  for (const k of Object.keys(ovProps)) surface.style.setProperty(k, ovProps[k]);
+     KW.world has checked. With no overlay none is set, and display.css's own values stand. Set
+     again when the world starts again, taking off what the overlay no longer sets. */
+  let ovSet = [];
+  function overlay() {
+    const ovProps = KW.world && KW.world.overlay ? KW.world.overlay.props : {};
+    for (const k of ovSet) if (!Object.prototype.hasOwnProperty.call(ovProps, k)) surface.style.removeProperty(k);
+    ovSet = Object.keys(ovProps);
+    for (const k of Object.keys(ovProps)) surface.style.setProperty(k, ovProps[k]);
+  }
+  overlay();
   /* The quiet line and an event's caption: built from the collector's parts in the world's words,
      or the collector's own text (KW.world.quietLine and caption). */
   const quietOf = v => (KW.world ? KW.world.quietLine(v.quietParts, v.quietLine) : v.quietLine);
@@ -331,12 +339,18 @@
   // Browsers refuse to fetch from disk, so a page opened from disk does not try.
   if (!fromDisk && !forceDemo) ST.start(onView);
   /* The packs the collector downloaded, in data/packs/, fetched once at load in every mode while
-     served. From disk the page shows the packs it ships with. A page whose packs changed paints its
-     backdrops again, since a scene may paint the knight's gear into one. */
+     served. From disk the page shows the packs it ships with. The knight adds them, and when any
+     came the world starts again at once with every text, those the page ships with and the
+     downloaded ones (a downloaded kw.medieval of a higher version takes the place of the shipped
+     one, and a pack holding presets or prop sets joins the catalogue); the overlay is set again
+     and the devices chosen again. A page whose packs changed paints its backdrops again, since a
+     scene may paint the knight's gear into one. A refused pack is the knight's to report. */
   if (!fromDisk) {
     KW.knight.fetchPacks((url, init) => fetch(url, init)).then(got => {
       if (!got.files.length && !got.refused.length) return;
-      KW.knight.add(got); E.invalidate(); store.check();
+      KW.knight.add(got);
+      if (KW.world && got.files.length) { KW.world.start(KW.packText.concat(got.files.map(f => f.text)), ownVersion === 'dev'); overlay(); kindsKey = ''; settle(); }
+      E.invalidate(); store.check();
     }, () => {});
   }
 })(window.KW);

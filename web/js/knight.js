@@ -689,11 +689,13 @@
   const basePack = () => (PK.look ? PK.packs.get(PK.lib.BASE_ID).data : null);
   /* ---- Downloaded packs -------------------------------------------------------------------------
      The packs the collector downloads lie in data/packs/ beside state.json, with index.json naming
-     them: { "packs": ["<file>.pack.json", ...] }, names only. fetchPacks(get) fetches the index and
-     then each file it names, as text, with get (the page passes window.fetch): never as script,
-     never from outside data/packs/, each fetch with cache 'no-store', no redirects, and cut off after
-     four seconds. A missing index (404) means no packs and is silent. Returns { files: [{ file, text
-     }], refused }, which add() takes; nothing is read here. */
+     them: { "packs": ["<file>.pack.json", ...] }, names only. fetchPacks(get, root) fetches the
+     index and then each file it names, as text, with get (the page passes window.fetch): never as
+     script, never from outside data/packs/, each fetch with cache 'no-store', no redirects, and cut
+     off after four seconds. root is the way from the page to the folder data/ lies in: '' for the
+     display (the default), '../' for the admin page at admin/, and nothing else. A missing index
+     (404) means no packs and is silent. Returns { files: [{ file, text }], refused }, which add()
+     takes, and which KW.world.start() reads again; nothing is read here. */
   const PACK_DIR = 'data/packs/', CUT_MS = 4000;
   const INDEX = Object.freeze({ files: 32, bytes: 16 * 1024, name: 64 });
   /* A pack file's name: lower-case letters, digits, '-' and '_', dots between them but never two in
@@ -734,11 +736,13 @@
       return { ok: false, reason: ctl.signal.aborted ? 'no answer within four seconds' : 'the file could not be fetched' };
     } finally { clearTimeout(cut); }
   }
-  async function fetchPacks(get) {
+  async function fetchPacks(get, root) {
     const out = { files: [], refused: [] };
     const no = (file, step, reason) => { out.refused.push({ id: null, file, step, reason }); };
     if (typeof get !== 'function') return out;
-    const ix = await fetchText(get, PACK_DIR + 'index.json', INDEX.bytes);
+    // the folder, from the page itself or from the admin page one level down, and nowhere else
+    const dir = (root === '../' ? root : '') + PACK_DIR;
+    const ix = await fetchText(get, dir + 'index.json', INDEX.bytes);
     if (ix.missing) return out;
     if (!ix.ok) { no('index.json', 'index', ix.reason); return out; }
     let v;
@@ -747,7 +751,7 @@
     if (!list.ok) { no('index.json', 'index', list.reason); return out; }
     out.refused.push(...list.refused);
     const max = KW.pack && KW.pack.LIMITS ? KW.pack.LIMITS.text : 512 * 1024;
-    const got = await Promise.all(list.files.map(f => fetchText(get, PACK_DIR + f, max)));
+    const got = await Promise.all(list.files.map(f => fetchText(get, dir + f, max)));
     got.forEach((g, i) => {
       if (g.ok) out.files.push({ file: list.files[i], text: g.text });
       else no(list.files[i], 'fetch', g.missing ? 'the file the index names is missing' : g.reason);

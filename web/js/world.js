@@ -6,7 +6,8 @@
    asks for, which it puts in KW.cast in place of the code's (KW.props.CRITTERS, FOES, PATRONS and
    PETS);
    and takes its words, which build the quiet line and the captions from the collector's parts, and
-   its overlay's colours and font, which the page sets on the display.
+   its overlay's colours and font, which the page sets on the display. A part that throws while it
+   is drawn gives way to its code copy alone (Drawing faults, below).
 
    Nothing in a pack runs. A scene compiles into frozen records: each shape a kind from SHAPES, each
    mark one of MARKS, each predicate one the engine evaluates in holds(), each effect a name in
@@ -274,9 +275,12 @@
      rest view fits the place, KW.knight.rest.fits: its fits the place's kind and its box within the
      place's w by h. A frame that names a stamp has the stamp drawn under the weapon first, as the
      house's pegs, at PEGS from the blade (pegsAt, below). sleeper draws the watcher's head in bed,
-     with the ice bag while unwell, where the scene's bed puts it (sleeperAt, below). */
+     with the ice bag while unwell, where the scene's bed puts it (sleeperAt, below). What a mark
+     draws of the engine's own (the devices, the gear and its hot tip, the sleeper, the patron and
+     the bubble) is drawn outside() the scene, so that a throw there is not put down to the pack
+     (Drawing faults, below). */
   const MARKS = {
-    things: { compile: () => ({}), draw(r, E) { KW.devices.draw(E.t, E.s); } },
+    things: { compile: () => ({}), draw(r, E) { outside(() => KW.devices.draw(E.t, E.s)); } },
     rest: {
       compile(s, path, env) {
         const hot = s.slot === 'main' && !!env.anvil && env.anvil.rest === s.at && env.where !== 'still';
@@ -284,27 +288,30 @@
         return { slot: s.slot, at: env.rests[s.at], hot, stamp };
       },
       draw(r, E) {
+        // the gear and the hot tip are the engine's drawing, and the pegs' stamp the scene's
         const R = KW.knight.rest, x = r.at.spot ? E.s.kx + r.at.x : r.at.x, y = r.at.y;
-        if (r.hot) hotTip(x, y, R.blade(), E.t);
+        if (r.hot) outside(() => hotTip(x, y, R.blade(), E.t));
         else if (r.slot === 'main') {
-          if (r.stamp) for (const px of pegsAt(x, R.blade())) for (const t of r.stamp) drawShape(t, E, px, y);
-          R.draw('main', x, y, r.at.a);
-        } else if (typeof R.fits !== 'function' || R.fits(r.slot, r.at)) R.draw(r.slot, x, y);
+          if (r.stamp) for (const px of outside(() => pegsAt(x, R.blade()))) for (const t of r.stamp) drawShape(t, E, px, y);
+          outside(() => R.draw('main', x, y, r.at.a));
+        } else if (outside(() => typeof R.fits !== 'function' || R.fits(r.slot, r.at))) outside(() => R.draw(r.slot, x, y));
       }
     },
-    sleeper: { compile: (s, path, env) => ({ bed: env.bed }), draw(r, E) { sleeperAt(r.bed, E.s.o); } },
+    sleeper: { compile: (s, path, env) => ({ bed: env.bed }), draw(r, E) { outside(() => sleeperAt(r.bed, E.s.o)); } },
     /* The patron on the scene's seat: in a still layer the patron itself, in a moving or over layer
        its mouth, open or shut as the seat's act has it (seatAt, below). */
     patron: {
       compile: (s, path, env) => ({ seat: env.seat, still: env.where === 'still' }),
       draw(r, E) {
-        const P = patronOf(E.s), look = patronLook(E.s);
-        if (r.still) P.draw(r.seat.x, r.seat.y, look);
-        else P.mouth(r.seat.x, r.seat.y, seatAt(r.seat, E.t).open, look);
+        outside(() => {
+          const P = patronOf(E.s), look = patronLook(E.s);
+          if (r.still) P.draw(r.seat.x, r.seat.y, look);
+          else P.mouth(r.seat.x, r.seat.y, seatAt(r.seat, E.t).open, look);
+        });
       }
     },
     /* The speech bubble over the patron while it talks, through KW.knight.speech. */
-    bubble: { compile: (s, path, env) => ({ seat: env.seat }), draw(r, E) { if (seatAt(r.seat, E.t).talks) KW.knight.speech(r.seat.bubble[0], r.seat.bubble[1], E.t, true); } }
+    bubble: { compile: (s, path, env) => ({ seat: env.seat }), draw(r, E) { if (seatAt(r.seat, E.t).talks) outside(() => KW.knight.speech(r.seat.bubble[0], r.seat.bubble[1], E.t, true)); } }
   };
   /* The seat's act, the court's talk: the patron and the watcher take turns of seat.turn ms, the
      patron first silent, and while the patron talks its mouth opens and shuts every seat.mouth ms
@@ -549,8 +556,8 @@
     const H = TRAIN.hot, Wb = TRAIN.wobble;
     function act(t, s) {
       const o = s.o, here = s.here, K = KW.knight;
-      if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % part.every; if (c < TRAIN.swing) { K.swing(o, c / TRAIN.swing, 1); if (c > part.hitAt && t - hit > TRAIN.rest) hit = t; } }
-      if (s.w.id === 'cpu_hot') { const c = t % H.every; K.swing(o, c / H.every, 1); if (c > H.at && t - hit > H.rest) hit = t; o.eyes = 'half'; o.bob = Math.floor(t / H.bob) % 2; }
+      if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % part.every; if (c < TRAIN.swing) { outside(() => K.swing(o, c / TRAIN.swing, 1)); if (c > part.hitAt && t - hit > TRAIN.rest) hit = t; } }
+      if (s.w.id === 'cpu_hot') { const c = t % H.every; outside(() => K.swing(o, c / H.every, 1)); if (c > H.at && t - hit > H.rest) hit = t; o.eyes = 'half'; o.bob = Math.floor(t / H.bob) % 2; }
     }
     /* The frame's values at t: the wobble, the time since the blow, and the group it moves. */
     function frame(E, t) {
@@ -643,7 +650,7 @@
     }
     freeze(keyed); freeze(slots);
     // the gear at rest the still layers paint, and the patron they seat, with its look
-    const gear = s => (bySpot ? '|' + Math.round(s.kx) : '') + slots.map(n => '|' + KW.knight.rest.key(n)).join('') + (seated ? '|' + patronKey(s) : '');
+    const gear = s => outside(() => (bySpot ? '|' + Math.round(s.kx) : '') + slots.map(n => '|' + KW.knight.rest.key(n)).join('') + (seated ? '|' + patronKey(s) : ''));
     const places = {};
     for (const n of Object.keys(v.things)) places[n] = Object.assign({}, v.things[n]);
     const sc = {
@@ -659,7 +666,7 @@
     if (has(v, 'rests')) sc.rests = restsOut(rests);
     if (lists.still.length) sc.paint = s => drawLayers(lists.still, named(0, s));
     // the over layers, and the sleeper's Zs over everything at night in a scene with a bed
-    if (lists.over.length || bed) sc.over = (t, s) => { drawLayers(lists.over, frameAt(t, s)); if (bed && s.w && s.w.id === 'night') zedsAt(bed, t); };
+    if (lists.over.length || bed) sc.over = (t, s) => { drawLayers(lists.over, frameAt(t, s)); if (bed && s.w && s.w.id === 'night') outside(() => zedsAt(bed, t)); };
     if (bed) sc.bed = true;
     if (acted) sc.act = acted.act;
     if (v.weapon === 'away') sc.sword = false;
@@ -731,7 +738,7 @@
   }
   /* The lamp of one's own at time t, for a device standing on (x, y). */
   function ownLamp(L, x, y, t, ok) {
-    const o = L.own, a = KW.props.lampLevel(t, ok), ctx = D.getCtx(), lx = x + L.at[0], ly = y + L.at[1], px = Math.round(lx) + o.x0, py = Math.round(ly) + o.y0;
+    const o = L.own, a = outside(() => KW.props.lampLevel(t, ok)), ctx = D.getCtx(), lx = x + L.at[0], ly = y + L.at[1], px = Math.round(lx) + o.x0, py = Math.round(ly) + o.y0;
     D.glow(lx, ly, LAMP_GLOW, o.glow, .3 * a);
     ctx.drawImage(o.sprite('dark'), px, py);
     D.alpha(a); ctx.drawImage(o.sprite('lit'), px, py); D.alpha(1);
@@ -756,12 +763,12 @@
       const S = ok ? states.up : states.gone, L = S.lamp, E = named(t, null);
       if (part !== 'moving') {
         for (const c of S.still) drawShape(c, E, x, y);
-        if (L && !L.own) P.lampRim(x + L.at[0], y + L.at[1]);
+        if (L && !L.own) outside(() => P.lampRim(x + L.at[0], y + L.at[1]));
       }
       if (part !== 'still') {
         for (const c of S.moving) drawShape(c, E, x, y);
         // a state with no lamp shows no light
-        if (L && L.own) ownLamp(L, x, y, t, ok); else if (L) P.lampHD(x + L.at[0], y + L.at[1], t, ok);
+        if (L && L.own) ownLamp(L, x, y, t, ok); else if (L) outside(() => P.lampHD(x + L.at[0], y + L.at[1], t, ok));
       }
     }
     return Object.freeze({ draw, mark: v.mark, from: pack.id + '#' + (++compiles) });
@@ -1054,15 +1061,21 @@
   /* The quiet line the page shows: built from the collector's quiet_parts in the words in use, or
      the collector's quiet_line as it is. */
   function quietLine(parts, own) {
-    const sets = api.words && api.words.quiet, s = sets ? join(parts, sets, QUIET_MAX) : null;
+    const sets = api.words && api.words.quiet, s = sets ? filled(parts, sets, QUIET_MAX) : null;
     return s === null ? text(own) : s;
   }
   /* An event's caption: built from its parts in the words in use for its type, or its text as it
      is. */
   function caption(type, parts, own) {
     const sets = api.words && api.words.captions;
-    const s = sets && typeof type === 'string' && isObj(parts) ? join([Object.assign({}, parts, { k: type })], sets, CAPTION_MAX) : null;
+    const s = sets && typeof type === 'string' && isObj(parts) ? filled([Object.assign({}, parts, { k: type })], sets, CAPTION_MAX) : null;
     return s === null ? text(own) : s;
+  }
+  /* join() for the words in use, which should never throw: one that does is put down to the word
+     set, which gives way to the collector's own words from then on (wordsFell, below), and this
+     line is the collector's too. */
+  function filled(parts, sets, limit) {
+    try { return join(parts, sets, limit); } catch (e) { wordsFell(e); return null; }
   }
   /* The word set id of the loaded pack, compiled: its name, watcher and labels as written, and its
      templates for the quiet line's parts and for the captions, each null when the set gives none. */
@@ -1148,7 +1161,7 @@
       st.choice[k] = want;
       kinds[k] = d.kind || baseKinds[k];
       st.kinds[k] = d.kind ? want : BASE;
-      if (d.why) st.faults.push({ kind: k, set: want, reason: d.why });
+      if (d.why) st.faults.push(d.draw ? { kind: k, set: want, reason: d.why, step: 'draw' } : { kind: k, set: want, reason: d.why });
     }
     return st;
   }
@@ -1160,10 +1173,22 @@
     const s = setOf(name);
     if (!s) return { kind: null, why: 'the prop set ' + name + ' is not loaded' };
     if (!has(s.pack.data.props[s.set].kinds, k)) return { kind: null, why: 'the prop set ' + name + ' does not draw it' };
-    const key = s.pack.id + '/' + s.set + '|' + k;
-    if (!built.has(key)) { try { built.set(key, compileKind(s.pack, s.set, k)); } catch (e) { built.set(key, new Error(message(e))); } }
+    const key = s.pack.id + '/' + s.set + '|' + k, tk = threwKey(s.pack, 'kind:' + s.set + '/' + k);
+    if (!built.has(key)) {
+      if (threw.has(tk)) built.set(key, { threw: threw.get(tk) });
+      else {
+        try {
+          // guarded: a throw while drawing gives the kind the base world's drawing from then on
+          const part = { key: tk, gen, bad: false, code: () => baseKinds[k],
+            fall: msg => { built.set(key, { threw: msg }); useKinds(api.devices ? api.devices.choice : null); return 'knightwatcher: the device kind ' + k + ' of the prop set ' + name + ' is drawn from the base world\'s: it threw while drawing: ' + msg; } };
+          built.set(key, guard(compileKind(s.pack, s.set, k), part, ['draw'], []));
+        } catch (e) { built.set(key, new Error(message(e))); }
+      }
+    }
     const got = built.get(key);
-    return got instanceof Error ? { kind: null, why: 'it could not be compiled: ' + cutTo(got.message, 120) } : { kind: got, why: '' };
+    if (got instanceof Error) return { kind: null, why: 'it could not be compiled: ' + cutTo(got.message, 120) };
+    if (has(got, 'threw')) return { kind: null, why: 'it threw while drawing: ' + got.threw, draw: true };
+    return { kind: got, why: '' };
   }
   /* What the page has loaded, for the settings (KW.settings.pageWorld, which worldOf there
      describes): { names, worlds, sets, scenes }, and with kw.medieval's preset the base world's
@@ -1209,8 +1234,10 @@
   }
   /* ---- Loading ---------------------------------------------------------------------------------
      start() reads kw.medieval, and every other pack but the base pack, from the texts of the packs
-     that ship with the page (the page passes KW.packText, as it does to the knight) with the
-     knight's rule: a 'dev' page accepts a pack unsigned, a deployed page only signed. Another pack
+     that ship with the page (the page passes KW.packText, as it does to the knight), and again
+     with the packs the collector downloaded once they have come, with the knight's rule: a 'dev'
+     page accepts a pack unsigned, a deployed page only signed. Of two copies of one pack the
+     higher version is used, as gather() chooses. Another pack
      read cleanly is kept for its presets and prop sets (see catalogue and useKinds). Each of its scenes whose id names a code scene is
      compiled and takes that scene's place in KW.scenes, and is also put under its long name,
      kw.medieval/<id>, which is not enumerable, so that the engine and the settings, which list the
@@ -1218,7 +1245,8 @@
      and every scene when the pack is refused, missing or the library is not loaded, stays the code
      scene. The refusal itself is the knight's to report, since the knight reads the same texts;
      start() writes one line about where the scenes are drawn from, and one for each scene, kind of
-     device, member of the cast, word set or overlay that failed to compile. */
+     device, member of the cast, word set or overlay that failed to compile or, in this version of
+     the pack, threw while drawing (Drawing faults, above). */
   const CODE = {}, LONG = [];
   const cutTo = (s, n) => (s.length > n ? s.slice(0, n - 3) + '...' : s);
   const say = (level, line) => { const c = typeof console !== 'undefined' ? console : null; if (c && typeof c[level] === 'function') c[level](line); };
@@ -1234,18 +1262,104 @@
   }
   const listed = ids => (ids.length === 1 ? 'the scene ' + ids[0] + ' is' : 'the scenes ' + ids.slice(0, -1).join(', ') + ' and ' + ids[ids.length - 1] + ' are');
 
-  /* Starts the scenes from the texts of the packs that ship with the page, once at start-up, as
-     KW.knight.start does the knight. opts may hold keys, which replaces KEYS in read() and is for
+  /* ---- Drawing faults ------------------------------------------------------------------------
+     A compiled part should never throw while it is drawn: the checks and the compiler see to that.
+     One that does anyway (a scene, a kind of device or a member of the cast) is caught for that
+     frame, and from then on that part alone is drawn from its code copy, the rest of the pack
+     staying in use, as a part that fails to compile is (docs/worlds.md, When a part throws). Its
+     fault goes into the status with step 'draw' and to the console once. A word set whose
+     templates throw while filling gives way to the collector's own words the same way (filled,
+     above).
+
+     start() puts each part in place behind guard(): a copy of it whose functions note the part
+     being drawn in cur while they run. A throw is the part's only when cur still names it: what a
+     part asks of the engine (the devices, the gear at rest, the sleeper, the patron, the lamps)
+     runs outside(), with cur null, so that a throw there is not put down to the pack, and goes on
+     as it always has. A part already on code is not guarded, and throws as it always has.
+
+     A part that threw is remembered by its pack's id and version (threw): start() again with the
+     same version keeps it on code, and a different version of the pack is tried afresh.
+     api.changes goes up at each start() and each part that gives way, which tells the engine and
+     the settings screen to paint again the backdrops and pictures they keep. */
+  let cur = null, gen = 0;
+  const threw = new Map();
+  /* fn(), with no part noted as being drawn: the engine's own drawing, inside a part's. */
+  function outside(fn) { const was = cur; cur = null; const r = fn(); cur = was; return r; }
+  /* A copy of the compiled part obj whose functions named in draws (drawing, which give nothing
+     back) and values (whose result the engine uses) are guarded. part is { key, gen, code, fall,
+     bad }: key the name it is remembered by in threw, code() its code copy, which the copy's
+     functions call once it has given way, and fall(message) what giving way changes. On the call
+     that throws, a drawing function draws no more and a value is the code copy's. */
+  function guard(obj, part, draws, values) {
+    const out = Object.assign({}, obj);
+    const viaCode = (k, args) => { const c = part.code(); return c && typeof c[k] === 'function' ? c[k].apply(c, args) : undefined; };
+    const wrap = (k, value) => {
+      const fn = obj[k];
+      if (typeof fn !== 'function') return;
+      out[k] = function () {
+        if (part.bad) return viaCode(k, arguments);
+        const was = cur, ctx = D.getCtx();
+        cur = part;
+        try { const r = fn.apply(obj, arguments); cur = was; return r; } catch (e) {
+          // a throw in the engine's own drawing, or in a part inside this one, goes on
+          if (cur !== part) throw e;
+          cur = was;
+          // put back the context a sprite's painting may have left set, at full strength
+          if (ctx) { D.setCtx(ctx); try { D.alpha(1); } catch (e2) { /* a context that refuses it keeps its own */ } }
+          fell(part, e);
+          return value ? viaCode(k, arguments) : undefined;
+        }
+      };
+    };
+    for (const k of draws) wrap(k, false);
+    for (const k of values) wrap(k, true);
+    return Object.isFrozen(obj) ? Object.freeze(out) : out;
+  }
+  const throwLine = (what, msg) => 'knightwatcher: ' + what + ' is drawn from code: it threw while drawing: ' + msg;
+  /* A guarded part threw: it gives way from now on, is remembered, and, while it is still one the
+     last start() put in place, says so. */
+  function fell(part, e) {
+    const msg = cutTo(message(e), 120);
+    part.bad = true; api.changes++;
+    if (part.key) threw.set(part.key, msg);
+    if (part.gen !== gen) return;
+    const ln = part.fall(msg);
+    if (api.status) api.status.note = ln;
+    say('warn', ln);
+  }
+  /* The name a part of the pack p is remembered by in threw. */
+  const threwKey = (p, what) => p.id + '@' + p.version + '|' + what;
+  const anyPack = o => (Object.keys(o).some(k => o[k] === 'pack') ? 'pack' : 'code');
+  /* The word set in use threw while filling: the collector's own words from now on. */
+  let wordsKey = null;
+  function wordsFell(e) {
+    const w = api.words;
+    if (!w || w.source !== 'pack') return;
+    const msg = cutTo(message(e), 120), set = w.set;
+    if (wordsKey) threw.set(wordsKey, msg);
+    Object.assign(w, { source: 'code', set: null, name: null, watcher: null, labels: null, quiet: null, captions: null });
+    w.faults.push({ set, reason: 'the word set ' + set + ' threw while filling: ' + msg, step: 'draw' });
+    api.changes++;
+    const ln = 'knightwatcher: the words are the collector\'s: the word set ' + set + ' threw while filling: ' + msg;
+    if (api.status) api.status.note = ln;
+    say('warn', ln);
+  }
+
+  /* Starts the scenes from the texts of the packs that ship with the page, at start-up, as
+     KW.knight.start does the knight, and again with the downloaded packs added. opts may hold keys, which replaces KEYS in read() and is for
      the tests only. Returns, and keeps in KW.world.status, { source, pack, refused, scenes, faults,
      note }: source is 'pack' when any scene is drawn from kw.medieval and 'code' otherwise, pack is
      { id, version, signed } of the pack in use or null, refused { id, step, reason } when it was
      turned away, scenes says for each scene the pack gives whether it is drawn from the 'pack' or
      from 'code', faults lists { scene, reason } for each scene that failed to compile, and note is
      the last line written to the console. What it found for the devices, the cast, the words and
-     the overlay it keeps in KW.world.props, KW.world.cast, KW.world.words and KW.world.overlay. */
+     the overlay it keeps in KW.world.props, KW.world.cast, KW.world.words and KW.world.overlay.
+     Each part it puts in place is guarded (guard, above), and a fault while drawing is added to
+     these, with step 'draw'. */
   function start(texts, allowUnsigned, opts) {
     const o = isObj(opts) ? opts : {}, lib = KW.pack && typeof KW.pack.read === 'function' ? KW.pack : null;
     restore(); restoreKinds(); restoreCast(); medieval = null; others.clear(); built.clear();
+    gen++; api.changes++; wordsKey = null;
     const status = api.status = { source: 'code', pack: null, refused: null, scenes: {}, faults: [], note: '' };
     const props = api.props = { source: 'code', set: null, kinds: {}, faults: [] };
     const castStatus = api.cast = { source: 'code', members: {}, faults: [] };
@@ -1286,7 +1400,22 @@
         props.set = PROPS;
         for (const k of Object.keys(sets[PROPS].kinds)) {
           if (!has(baseKinds, k)) continue;
-          try { baseKinds[k] = compileKind(pack, PROPS, k); props.kinds[k] = 'pack'; props.source = 'pack'; } catch (e) {
+          const tk = threwKey(pack, 'kind:' + PROPS + '/' + k), what = 'the device kind ' + k;
+          if (threw.has(tk)) {
+            props.kinds[k] = 'code'; props.faults.push({ kind: k, reason: what + ' threw while drawing: ' + threw.get(tk), step: 'draw' });
+            line('warn', throwLine(what, threw.get(tk)));
+            continue;
+          }
+          try {
+            const code = baseKinds[k];
+            const part = { key: tk, gen, bad: false, code: () => code, fall: msg => {
+              baseKinds[k] = code; props.kinds[k] = 'code'; props.source = anyPack(props.kinds);
+              props.faults.push({ kind: k, reason: what + ' threw while drawing: ' + msg, step: 'draw' });
+              useKinds(api.devices ? api.devices.choice : null);
+              return throwLine(what, msg);
+            } };
+            baseKinds[k] = guard(compileKind(pack, PROPS, k), part, ['draw'], []); props.kinds[k] = 'pack'; props.source = 'pack';
+          } catch (e) {
             const reason = message(e);
             props.kinds[k] = 'code'; props.faults.push({ kind: k, reason });
             line('warn', 'knightwatcher: the device kind ' + k + ' is drawn from code: it could not be compiled: ' + cutTo(reason, 120));
@@ -1299,7 +1428,21 @@
       for (const id of Object.keys(members)) {
         const slot = slotOf(id, members[id]);
         if (!slot) continue;
-        try { cast[slot[0]][slot[1]] = compileMember(pack, id); castStatus.members[id] = 'pack'; castStatus.source = 'pack'; } catch (e) {
+        const tk = threwKey(pack, 'member:' + id), what = 'the cast member ' + id, code = cast[slot[0]][slot[1]];
+        if (threw.has(tk)) {
+          castStatus.members[id] = 'code'; castStatus.faults.push({ member: id, reason: what + ' threw while drawing: ' + threw.get(tk), step: 'draw' });
+          line('warn', throwLine(what, threw.get(tk)));
+          continue;
+        }
+        // what the engine calls each member to draw: a critter's frames, a patron's still parts and
+        // mouth, and the canvas of a foe's or a pet's pose
+        const role = members[id].role, draws = role === 'critter' ? ['draw', 'dead'] : role === 'patron' ? ['draw', 'mouth'] : [], values = role === 'foe' || role === 'pet' ? ['pose'] : [];
+        const part = { key: tk, gen, bad: false, code: () => code, fall: msg => {
+          cast[slot[0]][slot[1]] = code; castStatus.members[id] = 'code'; castStatus.source = anyPack(castStatus.members);
+          castStatus.faults.push({ member: id, reason: what + ' threw while drawing: ' + msg, step: 'draw' });
+          return throwLine(what, msg);
+        } };
+        try { cast[slot[0]][slot[1]] = guard(compileMember(pack, id), part, draws, values); castStatus.members[id] = 'pack'; castStatus.source = 'pack'; } catch (e) {
           const reason = message(e);
           castStatus.members[id] = 'code'; castStatus.faults.push({ member: id, reason });
           line('warn', 'knightwatcher: the cast member ' + id + ' is drawn from code: it could not be compiled: ' + cutTo(reason, 120));
@@ -1307,8 +1450,12 @@
       }
       // the words and the overlay, each by its name: the collector's text and display.css's colours
       // when the pack gives none, and when one fails to compile, with a line of its own
-      if (isObj(pack.data && pack.data.words) && has(pack.data.words, WORDS)) {
-        try { Object.assign(words, compileWords(pack, WORDS), { source: 'pack', set: WORDS }); } catch (e) {
+      const wk = threwKey(pack, 'words:' + WORDS);
+      if (isObj(pack.data && pack.data.words) && has(pack.data.words, WORDS) && threw.has(wk)) {
+        words.faults.push({ set: WORDS, reason: 'the word set ' + WORDS + ' threw while filling: ' + threw.get(wk), step: 'draw' });
+        line('warn', 'knightwatcher: the words are the collector\'s: the word set ' + WORDS + ' threw while filling: ' + threw.get(wk));
+      } else if (isObj(pack.data && pack.data.words) && has(pack.data.words, WORDS)) {
+        try { Object.assign(words, compileWords(pack, WORDS), { source: 'pack', set: WORDS }); wordsKey = wk; } catch (e) {
           const reason = message(e);
           words.faults.push({ set: WORDS, reason });
           line('warn', 'knightwatcher: the words are the collector\'s: the word set ' + WORDS + ' could not be compiled: ' + cutTo(reason, 120));
@@ -1325,8 +1472,23 @@
       for (const id of Object.keys(data)) {
         if (!(has(KW.scenes, id) || has(CODE, id))) continue;
         if (!has(CODE, id)) CODE[id] = KW.scenes[id];
+        const tk = threwKey(pack, 'scene:' + id), what = 'the scene ' + id, long = MEDIEVAL + '/' + id;
+        if (threw.has(tk)) {
+          status.scenes[id] = 'code'; status.faults.push({ scene: id, reason: what + ' threw while drawing: ' + threw.get(tk), step: 'draw' });
+          line('warn', throwLine(what, threw.get(tk)));
+          continue;
+        }
+        // what the engine calls a scene for: its drawing, its act, its backdrop's key, the foe's
+        // wall and the patrons' own colours
+        const part = { key: tk, gen, bad: false, code: () => CODE[id], fall: msg => {
+          KW.scenes[id] = CODE[id];
+          Object.defineProperty(KW.scenes, long, { value: CODE[id], enumerable: false, configurable: true, writable: false });
+          status.scenes[id] = 'code'; status.source = anyPack(status.scenes);
+          status.faults.push({ scene: id, reason: what + ' threw while drawing: ' + msg, step: 'draw' });
+          return throwLine(what, msg);
+        } };
         try {
-          const sc = compile(pack, id), long = MEDIEVAL + '/' + id;
+          const sc = guard(compile(pack, id), part, ['paint', 'draw', 'over', 'act'], ['key', 'wallAt', 'drawn']);
           KW.scenes[id] = sc;
           Object.defineProperty(KW.scenes, long, { value: sc, enumerable: false, configurable: true, writable: false });
           LONG.push(long);
@@ -1347,5 +1509,5 @@
   }
 
   const api = KW.world = { MEDIEVAL, PROPS, WORDS, OVERLAY, QUIET_MAX, CAPTION_MAX, compile, compileKind, compileMember, compileWords, compileOverlay, join, quietLine, caption,
-    start, catalogue, useKinds, drawingOf, status: null, props: null, cast: null, words: null, overlay: null, devices: null };
+    start, catalogue, useKinds, drawingOf, status: null, props: null, cast: null, words: null, overlay: null, devices: null, changes: 0 };
 })(window.KW);
