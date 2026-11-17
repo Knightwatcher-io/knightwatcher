@@ -346,7 +346,7 @@
     conditions: 'When each condition is raised, and which wins when several are. A condition left out of the priority is never raised.',
     sources: 'What the collector reads. Each source is on or off, with its address, its pace and its own options. Credentials are never typed here: each source that needs one says whether .env holds it.',
     devices: 'Machines on the network to watch, each checked at its own pace and drawn as a prop in the scene. The first Pi, the first three cameras and the first three others are drawn, in this order.',
-    look: 'The knight, the monarch at court and the cat\'s coat, for every display. These are the same settings as each wall\'s settings screen: a change here shows on every wall within about five seconds, and a choice made on a wall shows here as Set here.',
+    look: 'The world, the knight, the monarch at court and the cast, for every display, from every world whose pack is loaded. These are the same settings as each wall\'s settings screen: a change here shows on every wall within about five seconds, and a choice made on a wall shows here as Set here.',
     display: 'How every display shows the words. The same settings as each wall\'s settings screen.',
     quiet: 'The scenes that take turns while all is quiet, for every display. The same settings as each wall\'s settings screen.',
     scenes: 'Where the knight acts out the conditions that more than one scene can play. The same settings as each wall\'s settings screen.',
@@ -609,7 +609,6 @@
     let p = 0;
     return 'linear-gradient(90deg,' + list.map(([f, c]) => { const s = c + ' ' + (p * 100).toFixed(1) + '% ' + (f * 100).toFixed(1) + '%'; p = f; return s; }).join(',') + ')';
   }
-  const SETS = { skin: 'skin', hair: 'hair', tabard: 'tabard', plume: 'plume', monarch_skin: 'skin', monarch_hair: 'hair', monarch_robe: 'tabard' };
   /* What a display would resolve, in KW.settings' shape: values and the level each came from. */
   function resolved() {
     const values = {}, fromL = {};
@@ -632,38 +631,113 @@
     }
     return g;
   }
-  /* The base pack's swatches for a row; with no base pack in use (a deployed copy whose pack is
-     unsigned), the values by name, as the knight is then drawn from code. */
-  function swatchesOf(k) {
-    const set = PACK && PACK.swatches ? PACK.swatches[SETS[k]] || {} : null;
-    if (!set) return SPEC['look.' + k].values.map(id => ({ id, chip: cap(id), kind: 'txt' }));
-    return SPEC['look.' + k].values.filter(id => set[id]).map(id => ({ id, name: set[id].name, fill: bandsCss(set[id].entries) }));
+  /* The household look as every wall resolves it: a store of the walls' own settings code over the
+     shared settings and config.toml's tables, with the packs this page has loaded, so that the
+     world, the parts it gives and what differs from it are worked out exactly as on a wall. */
+  let LOOK = null;
+  function lookStore() {
+    if (!LOOK) LOOK = KW.settings.create({ storage: () => null, pack: () => PACK, world: KW.settings.pageWorld, say: () => {} });
+    if (W) LOOK.shared(W);
+    const f = file(), d = {};
+    for (const sec of WALL) if (has(f, sec)) d[sec] = f[sec];
+    LOOK.defaults(Object.keys(d).length ? d : null);
+    return LOOK;
   }
-  /* The choices of a gear row, weapon included: the base pack's items by their names, in the
-     schema's order (KW.settings.itemChoices); with no base pack in use, the values by name. */
-  function gearOf(k) {
-    const W = KW.settings.WEAPON_CHIPS;
-    if (!PACK) return SPEC['look.' + k].values.map(id => (k === 'weapon' && W[id] ? { id, chip: W[id][0], name: W[id][1], kind: 'txt' } : { id, chip: cap(id), kind: 'txt' }));
-    return KW.settings.itemChoices(PACK, k).map(c => ({ id: c.id, chip: c.name, name: c.sub, kind: 'txt' }));
+  /* A world's card: its picture scene with the knight as the world has it, painted once. */
+  function worldCard(id) {
+    return picture('world|' + id, cv => {
+      const S = lookStore(), cat = S.catalogue(), w = cat.worlds[id] || {}, n = cat.names.scene[w.picture], name = n && KW.scenes[n] ? n : KW.scenes[w.picture] ? w.picture : 'camp';
+      const look = S.worldLook(id), was = KW.settings.knightLook(S.now());
+      K.look(look);
+      try {
+        onGrid(cv.getContext('2d'), () => {
+          const sc = KW.scenes[name], o2 = K.pose('idle', 2300);
+          o2.x = sc.spot * U; o2.floor = V.HFL; o2.helmet = sc.helmet !== false; if (sc.sword === false) o2.sword = false;
+          const st0 = sceneState(sc, o2, 'a', { patron: {} }); if (sc.paint) sc.paint(st0); sc.draw(2300, st0); K.draw(o2);
+        });
+      } finally { K.look(was); }
+    });
   }
+  /* A row of a part from every loaded world (KW.settings.screen's rows): each other world's choices
+     after the world's name, the world in use's first; pick(id) applies one. */
+  function mixRow(x, pick) {
+    const S = lookStore(), v = S.now().values.look, g = el('div', 'opts');
+    for (const grp of x.groups) {
+      if (grp.world !== null && grp.world !== v.world) g.appendChild(el('span', 'wtag', grp.name));
+      for (const c of grp.choices) {
+        const on = JSON.stringify(c.id) === JSON.stringify(x.cur), kind = { swatch: '', text: 'txt', wide: 'txt', pic: 'pic', pet: 'txt', foe: 'pic fig', critter: 'pic fig' }[c.kind];
+        const b = btn('opt' + (kind ? ' ' + kind : '') + (c.off ? ' off' : ''), '', () => { if (on || c.off) return; pick(c.id, c.name || c.chip); });
+        b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', x.label + ': ' + (c.name || c.chip) + (c.off ? ', ' + c.offNote : ''));
+        const chip = el('span', 'c', c.kind === 'text' || c.kind === 'wide' ? c.chip : c.kind === 'pet' ? c.name : '');
+        if (c.kind === 'swatch') {
+          if (c.drawn) { const own = KW.scenes.court.drawn(v.monarch)[x.k === 'monarch_hair' ? 'hair' : 'robe']; if (own.length) chip.style.background = bandsCss(Object.assign({}, own)); }
+          else { const e = isLongName(c.id) ? (KW.world && KW.world.swatchOf ? KW.world.swatchOf(c.set, c.id) : null) : PACK && PACK.swatches[c.set] && PACK.swatches[c.set][c.id] ? PACK.swatches[c.set][c.id].entries : null; if (e) chip.style.background = bandsCss(e); }
+        }
+        if (c.kind === 'pic') { const cv = el('canvas'); cv.dataset.mon = c.id; chip.appendChild(cv); }
+        if (c.kind === 'foe' || c.kind === 'critter') { const cv = el('canvas'); cv.dataset[c.kind] = c.id; chip.appendChild(cv); }
+        b.appendChild(chip);
+        if (c.kind !== 'text' && c.kind !== 'wide' && c.kind !== 'pet') b.appendChild(el('span', '', c.name));
+        else if (c.name && c.kind !== 'pet') b.appendChild(el('span', '', c.name));
+        g.appendChild(b);
+      }
+    }
+    return g;
+  }
+  const isLongName = v => typeof v === 'string' && KW.settings.LONG.test(v);
+  const ITEM_SLOT = k => (k === 'weapon' ? 'main' : KW.settings.ITEMS[k] ? KW.settings.ITEMS[k][0] : null);
   function pageLook(m) {
-    const grid = el('div', 'lookgrid'), left = el('div'), c = card('Household look', '[look]', TABLES.look.help);
-    const L = 'look.';
-    c.appendChild(row(L + 'build', optRow(L + 'build', SPEC[L + 'build'].values.map(id => ({ id, chip: KW.settings.buildName(PACK, id).toUpperCase(), kind: 'txt' })))));
-    c.appendChild(row(L + 'weapon', optRow(L + 'weapon', gearOf('weapon'))));
-    for (const k of ['skin', 'hair']) c.appendChild(row(L + k, optRow(L + k, swatchesOf(k))));
-    c.appendChild(row(L + 'hair_style', optRow(L + 'hair_style', gearOf('hair_style'))));
-    for (const k of ['tabard', 'plume']) c.appendChild(row(L + k, optRow(L + k, swatchesOf(k))));
-    // the gear, as the walls' settings screen lists it under Armour
-    for (const k of ['shield', 'helmet', 'plume_style', 'body', 'shoulders', 'arms', 'hands', 'legs', 'feet', 'back']) c.appendChild(row(L + k, optRow(L + k, gearOf(k))));
-    c.appendChild(row(L + 'monarch', optRow(L + 'monarch', SPEC[L + 'monarch'].values.map(id => { const cv = el('canvas'); cv.dataset.mon = id; return { id, node: cv, name: 'Monarch ' + id.toUpperCase(), kind: 'pic' }; }))));
-    c.appendChild(row(L + 'monarch_skin', optRow(L + 'monarch_skin', swatchesOf('monarch_skin'))));
-    const own = KW.scenes.court.drawn(val(L + 'monarch'));
-    c.appendChild(row(L + 'monarch_hair', optRow(L + 'monarch_hair', [{ id: null, name: 'As drawn', fill: bandsCss(Object.assign({}, own.hair)) }].concat(swatchesOf('monarch_hair')))));
-    c.appendChild(row(L + 'monarch_robe', optRow(L + 'monarch_robe', [{ id: null, name: 'As drawn', fill: bandsCss(Object.assign({}, own.robe)) }].concat(swatchesOf('monarch_robe')))));
-    // the pet's coat, by the names the walls' settings screen gives them
-    const COATS = { calico: 'Calico', ginger: 'Ginger tabby' };
-    c.appendChild(row(L + 'pet_coat', optRow(L + 'pet_coat', SPEC[L + 'pet_coat'].values.map(id => ({ id, chip: COATS[id] || cap(id), kind: 'txt' })))));
+    const S = lookStore(), r = S.now(), v = r.values.look, cat = S.catalogue(), own = S.parts(v.world), scr = KW.settings.screen, L = 'look.';
+    const labels = scr.roleLabels(KW.world && KW.world.words && KW.world.words.source === 'pack' ? KW.world.words.labels : null, v, cat);
+    // a part of any loaded pack: an item goes into items for its slot, the key's own choice leaves
+    // it, in one write; null clears the key (the monarch's "As drawn")
+    const pickPart = k => (id, name) => {
+      const slot = ITEM_SLOT(k), items = Object.assign({}, W.look.items || {}), ch = {};
+      if (slot && isLongName(id) && cat.items[id] === slot) { items[slot] = id; ch[L + k] = undefined; }
+      else { ch[L + k] = id === null ? undefined : id; if (slot) delete items[slot]; }
+      if (slot) ch[L + 'items'] = Object.keys(items).length ? items : undefined;
+      apply(ch, { ctx: L + k, say: SPEC[L + k].gui.admin.label + ': ' + (id === null ? 'as drawn' : name) });
+    };
+    // the part's row, with the line saying what the world's own is when it differs, and the amber
+    // line of a part that cannot be used where it is chosen
+    const part = (c, x, label) => {
+      const extra = el('div');
+      if (x.warn) extra.appendChild(rich('p', 'help warn', x.warn));
+      if (x.changed) extra.appendChild(rich('p', 'help differs', scr.changedLine(x, r, cat)));
+      const rr = row(L + x.k, mixRow(x, pickPart(x.k)), { label, extra: extra.childNodes.length ? extra : undefined });
+      // an item named for the key's slot is set here as the key itself would be
+      const slot = ITEM_SLOT(x.k);
+      if (slot && W.look.items && W.look.items[slot] && from(L + x.k) !== 'set') {
+        const wh = rr.querySelector('.where'); wh.textContent = ''; wh.appendChild(el('span', 'from set', 'Set here'));
+        const b = btn('reset', 'Reset', () => pickPart(x.k)(own.look[x.k], String(own.look[x.k]))); b.setAttribute('aria-label', 'Reset to the world\'s own'); wh.appendChild(b);
+        rr.classList.add('set');
+      }
+      if (x.changed) rr.classList.add('changed');
+      c.appendChild(rr);
+    };
+    const grid = el('div', 'lookgrid'), left = el('div');
+    // the world, as cards: choosing one clears the parts set here, as choosing it on a wall does
+    const cw = card('World', '[look] world', 'The world every display shows, which sets every part below at once. Choosing one clears the parts set here, as choosing it on a wall does; a part changed afterwards is kept over the world.');
+    const ids = Object.keys(cat.worlds), wr = el('div', 'opts');
+    for (const id of ids) {
+      const on = id === v.world, b = btn('opt wcard', '', () => {
+        if (on) return;
+        const ch = { [L + 'world']: id };
+        for (const k of Object.keys(W.look)) if (k !== 'world') ch[L + k] = undefined;
+        if (W.quiet && has(W.quiet, 'scenes')) ch['quiet.scenes'] = undefined;
+        for (const k of Object.keys(W.scenes || {})) ch['scenes.' + k] = undefined;
+        apply(ch, { ctx: L + 'world', say: 'World: ' + cat.worlds[id].name + ', every part its own' });
+      });
+      b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', 'World: ' + cat.worlds[id].name);
+      const chip = el('span', 'c'), cv = el('canvas'); cv.dataset.world = id; chip.appendChild(cv); b.appendChild(chip); b.appendChild(el('span', '', cat.worlds[id].name));
+      wr.appendChild(b);
+    }
+    cw.appendChild(row(L + 'world', wr, { noHelp: true }));
+    if (ids.length === 1) cw.appendChild(rich('p', 'help', 'More worlds show here once their packs are loaded.'));
+    left.appendChild(cw);
+    const c = card('Household look', '[look]', TABLES.look.help);
+    for (const x of scr.knightRows(r, own, PACK, cat, K.status)) if (!x.intro) part(c, x);
+    for (const x of scr.patronRows(r, own, PACK, cat, labels)) part(c, x, x.k === 'monarch' ? x.label : undefined);
+    for (const x of scr.castRows(r, own, PACK, cat, labels)) part(c, x, x.k === 'pet' || x.k === 'foe' || x.k === 'critter' ? x.label : undefined);
     left.appendChild(c); grid.appendChild(left);
     const pv = el('aside', 'prev');
     pv.appendChild(el('h3', '', 'As every wall will show it'));
@@ -671,7 +745,7 @@
     const caps = el('div', 'caps'); caps.appendChild(el('span', '', 'Helmet on')); caps.appendChild(el('span', '', 'Helmet off')); pv.appendChild(caps);
     pv.appendChild(el('h3', 'h-court', 'At court'));
     const ct = el('canvas', 'court'); ct.id = 'pv-court'; ct.setAttribute('aria-label', 'The monarch at court'); pv.appendChild(ct);
-    pv.appendChild(el('p', '', PACK ? 'Drawn by the display\'s own code from the base pack, ' + PACK.id + ' ' + PACK.version + '.' : 'Drawn by the display\'s own code.'));
+    pv.appendChild(el('p', '', PACK ? 'Drawn by the display\'s own code from the base pack, ' + PACK.id + ' ' + PACK.version + ', and the packs of the worlds loaded.' : 'Drawn by the display\'s own code.'));
     grid.appendChild(pv);
     m.appendChild(grid);
   }
@@ -804,11 +878,21 @@
     if (!A || !W) return;
     // painted again too when what the world draws changes: it started again with the downloaded
     // packs, or a part gave way to its code copy (KW.world.changes)
-    const r = resolved(), e = KW.settings.engineInput(r, PACK, 600000), key = JSON.stringify(KW.settings.knightLook(r)) + '|' + JSON.stringify([e.patron.skin, e.patron.hair, e.patron.robe]) + '|' + r.values.display.helmet_indoors + '|' + (KW.world ? KW.world.changes : 0);
+    const r = A && W ? lookStore().now() : resolved(), e = KW.settings.engineInput(r, PACK, 600000), key = JSON.stringify(KW.settings.knightLook(r)) + '|' + JSON.stringify([e.patron.skin, e.patron.hair, e.patron.robe]) + '|' + r.values.display.helmet_indoors + '|' + (KW.world ? KW.world.changes : 0);
     if (key !== lookKey) { lookKey = key; pics.clear(); K.look(KW.settings.knightLook(r)); }
+    root.querySelectorAll('canvas[data-world]').forEach(cv => blit(cv, worldCard(cv.dataset.world)));
+    root.querySelectorAll('canvas[data-foe]').forEach(cv => blit(cv, castPicture('foe', cv.dataset.foe)));
+    root.querySelectorAll('canvas[data-critter]').forEach(cv => blit(cv, castPicture('critter', cv.dataset.critter)));
     root.querySelectorAll('canvas[data-mon]').forEach(cv => blit(cv, monarchPicture(cv.dataset.mon, e)));
     root.querySelectorAll('canvas[data-scene]').forEach(cv => blit(cv, scenePicture(cv.dataset.scene, r.values.display.helmet_indoors)));
     const ct = document.getElementById('pv-court'); if (ct) blit(ct, monarchPicture(r.values.look.monarch, e));
+  }
+  /* A foe standing or a pest hovering, from the cast, for the cast's rows. */
+  function castPicture(kind, id) {
+    return picture(kind + '|' + id, cv => {
+      if (kind === 'foe') { const set = (KW.cast && KW.cast.foes) || P.FOES || {}, f = set[id] || set.goblin; if (f) cv.getContext('2d').drawImage(f.pose('stand'), 80 - f.anchor[0], 232 - f.anchor[1]); }
+      else { const set = (KW.cast && KW.cast.critters) || P.CRITTERS || {}, c0 = set[id] || set.fly; if (c0) onGrid(cv.getContext('2d'), () => c0.draw(20, 17, 0)); }
+    }, kind === 'foe' ? 160 : 40, kind === 'foe' ? 240 : 30);
   }
   /* The knights move, as on the wall; ?t= on the address holds them at one moment, for screenshots. */
   const frozen = (() => { const m = /[?&]t=(\d+)/.exec(location.search); return m ? +m[1] : null; })();
@@ -1062,7 +1146,7 @@
       if (!got.files.length && !got.refused.length) return;
       K.add(got);
       if (KW.world && got.files.length) KW.world.start(KW.packText.concat(got.files.map(f => f.text)), dev);
-      PACK = K.basePack(); OWN = KW.settings.builtIn(PACK, KW.settings.pageWorld()); lookKey = '';
+      PACK = K.basePack(); OWN = KW.settings.builtIn(PACK, KW.settings.pageWorld()); lookKey = ''; if (LOOK) LOOK.check();
       // a field being typed in is not drawn again under the cursor: the previews are, and the rest
       // waits until it is left, as news from the server does
       if (editing() || st.menu || st.exp !== null || st.resetAsk) { st.dirty = true; paintStill(); } else render(true);

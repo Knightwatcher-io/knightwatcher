@@ -140,7 +140,7 @@ test('the catalogue lists Orbit\'s world, scenes, cast, words, overlay, body, sw
   const cat = P.KW.world.catalogue();
   assert.deepEqual(Object.keys(cat.worlds), ['medieval', WORLD]);
   assert.deepEqual([cat.worlds[WORLD].name, cat.worlds[WORLD].picture], ['Orbit', O('deck')]);
-  assert.deepEqual(plain(cat.scenes[O('airlock')]), { can: ['cpu_hot'], quiet: false });
+  assert.deepEqual(plain(cat.scenes[O('airlock')]), { can: ['cpu_hot'], quiet: false, hosts: [] });
   assert.equal(cat.scenes[O('deck')].quiet, true);
   for (const [kind, n] of [['scene', 'deck'], ['monarch', 'patron.captain'], ['foe', 'foe.glitch'], ['critter', 'critter.moth'], ['pet', 'pet.drone'], ['words', 'words.orbit'], ['overlay', 'overlay.orbit']]) {
     assert.equal(cat.names[kind][O(n)], O(n), kind);

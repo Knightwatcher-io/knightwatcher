@@ -140,6 +140,22 @@
 .kws-intro.kws-head2 { margin-top: 22px; font-size: var(--t-label); line-height: 1; color: #d8e0ea; }
 .kws-intro.kws-after { margin-top: 0; }
 .kws-line.kws-calm { color: #aab6c6; }
+/* A part from every loaded world: each other world's choices follow the world in use's after its
+   name, set off by a rule. */
+.kws-wtag { flex: none; align-self: stretch; display: flex; align-items: flex-start; padding: 14px 4px 0 14px; margin-left: 6px; border-left: 3px solid #3b3247;
+  font-size: var(--t-name); line-height: 1; color: #aab6c6; letter-spacing: 1px; text-transform: uppercase; }
+/* A part that is not the world in use's own: a mark by its label, and a line saying what the
+   world's own is, in blue, apart from the amber of what is not drawn. */
+.kws-row.kws-changed .kws-label::after { content: ""; display: inline-block; width: 10px; height: 10px; margin: 0 0 4px 10px; background: #8fb8ff; box-shadow: 0 0 0 2px #1a1524; }
+.kws-note.kws-differs { color: #8fb8ff; }
+/* The cast: a foe standing, a pest hovering. */
+.kws-opt.foe .chip { width: 96px; height: 144px; padding: 0; background: #0e0b13; overflow: hidden; }
+.kws-opt.foe canvas { width: 96px; height: 144px; display: block; image-rendering: pixelated; }
+.kws-opt.critter .chip { width: 96px; height: 72px; padding: 0; background: #0e0b13; overflow: hidden; }
+.kws-opt.critter canvas { width: 96px; height: 72px; display: block; image-rendering: pixelated; }
+.kws-opt.foe .name, .kws-opt.critter .name { max-width: none; white-space: nowrap; }
+/* A line under a preview: what is not drawn there. */
+.kws-prev .kws-prevnote { margin: 0; font-size: var(--t-name); line-height: 1.1; color: #ffb000; }
 /* Status: where each part comes from. */
 .kws-stat .kws-part { margin: 0 0 6px; }
 .kws-stat .kws-part .pl { color: #d8e0ea; }
@@ -184,6 +200,9 @@
   .kws-opt.world .chip, .kws-opt.world canvas { width: 224px; height: 140px; }
   .kws-opt.device .chip, .kws-opt.device canvas { width: 100px; height: 80px; }
   .kws-intro.kws-head2 { margin-top: 16px; }
+  .kws-wtag { padding-top: 10px; padding-left: 10px; }
+  .kws-opt.foe .chip, .kws-opt.foe canvas { width: 72px; height: 108px; }
+  .kws-opt.critter .chip, .kws-opt.critter canvas { width: 80px; height: 60px; }
 }
 /* A window narrower still, such as the 960 by 600 of the screenshots: the rail and the preview
    narrower. */

@@ -1089,10 +1089,38 @@ listed in `faults`.
 `build`, `skin`, `hair`, `tabard` and `plume` take the long name of a body or a swatch of a loaded
 pack at any level, as `world` and the cast's keys do; `knightLook()` passes a long name as it is
 and a short one as the base pack's, so `build = "kw.example/body.courier"` draws the knight on that
-body, with its own head. A long name the page has not loaded is left out, with `no pack the page
-has loaded gives that build` (or `swatch`). In `scenes`, a loaded world's scene by its long name may
-be given any condition with a scene of its own when it can act it, even one the page offers no
-choice for, such as `night`; a short name keeps to the conditions offered.
+body, with its own head. `monarch_skin`, `monarch_hair` and `monarch_robe` take the long name of a
+skin, hair or tabard swatch of a loaded pack the same way, and the patron is drawn in its colours
+(`engineInput()` reads its entries with `KW.world.swatchOf`). A long name the page has not loaded is
+left out, with `no pack the page has loaded gives that build` (or `swatch`). In `scenes`, a loaded
+world's scene by its long name may be given any condition with a scene of its own when it can act
+it, even one the page offers no choice for, such as `night`; a short name keeps to the conditions
+offered, which count every loaded world's scenes (`offered(world, true)`): once another world gives
+the WAN going down a second scene, the battlement may be chosen for it too. The page's own level
+keeps a scene for the base world's offered conditions alone, so with nothing set the settings are
+the same whatever else is loaded.
+
+Three rules fit parts from different worlds together, in `resolve()`:
+
+- **A slot's item gives way to its key.** An item `items` names for a slot (the helmet's, the
+  weapon's `main`) is drawn over the key that chooses that slot's item, as before, unless a level
+  above the item's sets the key, or the item is the world's and the key is set at the world's level
+  or above. So the open helm chosen on a display is drawn in a world whose preset gives another
+  helmet, and `[look.items]` in `config.toml` still beats a key set beside it.
+- **The pet's coat is a coat of the pet in use.** `pet_coat` takes the cat's `calico` and `ginger`,
+  or a coat of a loaded pack's pet by the pack and the coat's id, `"<pack>/<coat>"`. A coat the pet
+  in use does not have, another pet's, gives the pet's first (the page's own coat for the cat), with
+  `from` the pet's; a world naming a pet and no coat gives its pet's first. The engine is given the
+  coat's own id within the pet.
+- **The weapon is held as its item says.** `now()` gives `grip`, `'one'` or `'two'`: from the item
+  in `items.main` where it names one the page knows the grip of, from the weapon key otherwise. A
+  one-handed item chosen on a level carries the shield the shield key gives, as the sword and shield
+  does; a world's own one-handed weapon carries one only where a level sets the shield.
+
+The store's `choosePart(k, id)` saves a part of any loaded pack for the key `k` in one write naming
+`look`: an item for the slot `k` chooses goes into `items` for that slot, and a value of the key
+itself leaves the slot's item out, so what is chosen is what is drawn. `clearPart(k)` clears both,
+and the part is the world's again.
 
 The store's `chooseWorld(id)` saves a world on this display and clears every part this display has
 chosen, the look's other keys, the quiet scenes and the scene of each condition, in one write
@@ -1191,12 +1219,28 @@ back. The click of any other press is swallowed, the one whose hold opened the s
 so the screen that has just opened under the finger is not tapped by the release. The display asks
 for no menu, no selection and no scrolling on a long press (`touch-action: none` on `#surface`).
 
-**Layout.** A side rail of eight pages, World, the knight, the monarch, the pet, display, quiet
+**Layout.** A side rail of eight pages, World, the knight, the monarch, the cast, display, quiet
 scenes, scenes and status, with DONE at the top right. The screen opens on the knight's page; World
-is first in the rail. The knight's, the monarch's and the pet's pages take their names from the
-labels of the world's words in use, `watcher`, `patron` and `pet` ("The knight", "The monarch" and
-"The cat" in `words.medieval`), and keep "The knight", "The monarch" and "The pet" where there are
-none. The screen covers the whole window, review bar included; the scene
+is first in the rail. The knight's and the monarch's pages take their names from the labels of the
+world's words in use, `watcher` and `patron` ("The knight" and "The monarch" in `words.medieval`),
+and keep "The knight" and "The monarch" where there are none. A role's label is the words' own while
+the part in that role comes from the words' world, and the role's plain name otherwise
+(`KW.settings.screen.roleLabels`): with the medieval words and another world's patron the page is
+"The patron" and its row "Patron", and another world's pet is "Pet", not "Cat"; so are the
+patron, pet, foe and pest wherever the screen names them, the status page among them.
+
+**Parts from every loaded world.** The part pages (the knight, the monarch, the cast, the scenes and
+the quiet scenes) list every loaded world's parts beside the medieval world's, so a household can
+mix parts across worlds on the wall itself. Each row lists the world in use's choices first, then
+each other world's after its name, set off by a rule ("ORBIT"); a world with nothing for that row
+gives no group. A row whose part is not the world in use's own carries a blue square by its label
+and a blue line under it naming the world's own ("Changed from the Medieval world's own: open
+helm."); an item is compared by the slot it fills, so another pack's helmet shows as the helmet it
+is. A part that cannot be used where it is chosen says so in amber on the row that chose it, as a
+greyed choice does. What each row lists is worked out apart from the drawing
+(`KW.settings.screen.knightRows`, `patronRows`, `castRows`, `sceneRows` and `quietGroups`), each
+row `{ key, label, groups, cur, own, changed, warn }`, which the admin page's household look lists
+too. With only the medieval world loaded each row has its one group and reads as before. The screen covers the whole window, review bar included; the scene
 keeps running behind, dimmed, and shows each choice as it is made. Every choice applies at once,
 with no Save button. On a window up to 1200 wide or 760 tall the screen is drawn a little tighter,
 with labels above their choices, the rail's entries 48 pixels tall and 6 apart so that all eight
@@ -1218,8 +1262,10 @@ Under a heading "Changed from the Medieval world", a row for each part whose val
 world's own (`KW.settings.screen.changedParts`): the value in use, marked Default when it comes from
 `config.toml`, beside the world's own, marked "The world's", each as a chip of the row the part has
 on its own page; the line under it names the page it was chosen on ("Chosen on the knight page."),
-or says the address sets it. Tapping the world's chip puts the part back: this display's choice is
-cleared, and where a level below still sets the part, the world's value is saved over it. With
+or says the address sets it. An item is compared by the key of the slot it fills, so another pack's
+helmet is a Helmet row. Tapping the world's chip puts the part back: this display's choice is
+cleared (for a slot, the key and the item together, `clearPart()`), and where a level below still
+sets the part, the world's value is saved over it. With
 nothing changed the line reads "Nothing: every part is the world's."
 
 Once a second prop set is loaded, a heading "Devices, kind by kind" and a row for each kind of
@@ -1233,16 +1279,24 @@ or with the parts `config.toml` sets beside it ("with a forest tabard").
 
 **The knight.** Build, weapon, skin tone, hair colour, hair style, tabard and plume, each a row of
 choices, and under a line headed Armour ten more rows of gear: shield, helmet, plume style, body,
-shoulders, arms, hands, legs, feet and back; names and colours come from the base pack. The weapon
+shoulders, arms, hands, legs, feet and back; names and colours come from the base pack, and each
+other loaded pack's bodies, swatches and items follow under its world's name, by the names its pack
+gives them (a weapon with One hand or Two hands under it, by its grip). The line over the armour
+says "each piece from its world's pack" once another world is loaded. A choice is saved by
+`choosePart()`, an item of another pack in `items` for its slot. The weapon
 row shows the greatsword and the longsword (Two hands) and the sword and shield and the mace and
 shield (One hand each); each gear row shows the items of its slot the base pack in use draws, by
 their names, in the schema's order (`KW.settings.itemChoices`), and the back starts with Nothing. A
 row the look does not show is greyed as an unready build is, and a tap on a greyed choice says why
-in the line under the row and changes nothing (`KW.settings.greyed`): the shield beside a
-two-handed weapon ("A shield is carried only with a one-handed weapon: the sword and shield or the
-mace and shield."), and the plume style with a helmet that has no plume mount, the mail coif ("The
-mail coif has no plume mount, so no plume is drawn with it."), the plume's colour too unless the
-long cloak, which takes the plume's colours, is worn. The build row shows the contract's three
+in the line under the row and changes nothing (`KW.settings.greyed`, from the weapon and the helmet
+drawn, an item in `items` over its key): the shield beside a two-handed weapon ("A shield is carried
+only with a one-handed weapon: the sword and shield or the mace and shield.", or for an item, "The
+pry bar is held in both hands, so no shield is carried."), and the plume style with a helmet that
+has no plume mount, the mail coif ("The mail coif has no plume mount, so no plume is drawn with
+it."), the plume's colour too unless the long cloak, which takes the plume's colours, is worn. A
+body of another pack the knight could not draw (its pack refused, or the knight's status falling
+back from it) is greyed as an unready build is, "Coming". Under the house's preview a line says
+when the helmet drawn has no rest view, so the stool stays bare. The build row shows the contract's three
 builds, `a`, `b` and `c`, each by the name the base pack gives it, Classic, Broad and Slim, with
 Ready under each (`KW.settings.buildChoices`). A build the base pack in use does not declare, as a
 fork's base pack might, is greyed with a dashed border, named by its letter (Build B) and says
@@ -1255,27 +1309,37 @@ and the house with the gear at rest. On the code path the page says the look can
 base pack can be used, and keeps the choices.
 
 **The monarch.** The three monarchs, each a crop of the court's own drawing in the chosen skin,
-hair and robe; the six skin tones of the base pack; a Hair colour row and a Robe row, each starting
-with "As drawn", in the chosen monarch's own colours, followed by the base pack's six hair colours
-and six tabard colours. "As drawn" saves nothing: it clears this display's choice for that key
+hair and robe, then every other loaded world's patrons, seated on the same throne; the six skin
+tones of the base pack; a Hair colour row and a Robe row, each starting with "As drawn", in the
+chosen monarch's own colours, followed by the base pack's six hair colours and six tabard colours;
+each row then every other loaded pack's swatches of that set. A patron that binds none of the user's
+sets is drawn in its own colours, and its skin, hair and robe rows are greyed: "The captain is drawn
+in its own colours, so none is chosen for it." "As drawn" saves nothing: it clears this display's choice for that key
 (`clear`), so the default from `config.toml` applies, or the monarch's own colours when there is
 none; a row whose value comes from `config.toml` therefore shows that colour chosen after "As
 drawn". Beside the rows, the chosen monarch at court; on a full-size screen that picture is a
 little narrower than on the knight's page, so that a row of seven stays on one line.
 
-**The pet.** A line saying what the cat does ("The cat catches the flies the knight cannot:
-indoors, and outdoors while the knight is busy."), then a row of the pets, today the mouser cat
-alone, and a Coat row, Calico and Ginger tabby, the one the page falls back to on a reset marked
-Default. Each choice is a card with the cat drawn sitting up in that coat, from the pet in use
-(`KW.cast.pets`, so from the pack where it is drawn from the pack). Beside the rows, under "At
-home", the cat curled on the house's floor in front of the hearth in the chosen coat, cropped from
-the house drawn by its own code. The page ends with the reset of the look, whose words name the cat
-and its coat ("the mouser cat, calico"). The cat cannot be turned off.
+**The cast.** One page for who shares the scenes with the knight, in place of the pet's page: a
+line saying what each does, then a row of the pets, the mouser cat and every other loaded world's;
+a Coat row of the pet in use's coats (the cat's Calico and Ginger tabby), the one the page falls back
+to on a reset marked Default; the foe, the goblin and every other world's; and the pest, the fly and
+every other world's. Each pet and coat is a card with the pet drawn sitting up in that coat, each
+foe standing and each pest hovering, from the cast in use (`KW.cast`). When attacks play in a scene
+with no room for a foe (one whose `hosts` lack the foe), the foe row says in amber that none comes
+there and that the Scenes page chooses where attacks play. Beside the rows, under "At home", the pet
+at rest in the chosen coat: the cat curled on the house's floor in front of the hearth, cropped
+from the house drawn by its own code, and another world's pet at its spot in the first of its own
+world's scenes. The page ends with the reset of the look, whose words name the pet and its coat
+("the mouser cat, calico"). The pet cannot be turned off. The rail calls it "The cast", and the
+address still opens it with `set=pet`.
 
 **Display.** The headline size (small, medium, large), the clock (24 hour, 12 hour) and the helmet
 indoors (off in the house and the smithy, or kept on everywhere).
 
-**Quiet scenes.** The four quiet scenes, each with a picture drawn by its own code and a switch.
+**Quiet scenes.** The four quiet scenes, each with a picture drawn by its own code and a switch,
+and once another world gives quiet scenes, each world's under its name, the world in use's first;
+a blue line says when the rotation differs from the world's own.
 The last one in the rotation cannot be switched off, and a line says "One scene at least stays in
 the rotation."; a scene switched back on joins the end of the rotation. One length for every scene:
 5, 10, 15, 30 or 60 minutes, and a length set elsewhere outside those shows as a choice of its own.
@@ -1283,9 +1347,14 @@ In the demo, while nothing sets the length, a line says the demo shows each scen
 
 **Scenes.** A line saying what the page is for, then one row for each condition offered, named as
 its headline reads (Under attack, Disk full, Backup overdue, Pi silent, Running hot), with a small
-picture of each scene that can act it, drawn by the scene's own code as on the quiet scenes page.
-The scene the condition goes back to on a reset (its own, or the one `config.toml` sets) is marked
-Default. A choice applies at once, and the scene behind changes if that condition is showing.
+picture of each scene that can act it, drawn by the scene's own code as on the quiet scenes page,
+every other loaded world's after its name; a condition only one medieval scene acts, such as the
+WAN going down, gets a row once another world acts it. The scene the condition goes back to on a
+reset (its own, or the one `config.toml` sets) is marked Default. A scene a level asks for that
+cannot act the condition is named in amber with the scene shown instead ("config.toml asks for the
+bridge, from Orbit, which cannot act it. Shown in the training yard."), and so is an attack's scene
+with no room for a foe. A choice applies at once, and the scene behind changes if that condition is
+showing.
 
 **Status**, read only: the page's version (the deploy's hash, or `dev`), how long ago the state file
 was written and how often the collector writes it, the sources in it (all working, or each failing
@@ -1346,9 +1415,9 @@ as `is=` does, over the rotation. Everything chosen on the screen in the demo is
 **The calls.** `KW.settings.mount({ store, surface, info, time })`, from `main.js`, builds the
 screen into `#kws` and `#kws-cue` in `index.html`: `surface` is where the hold is watched, `info()`
 gives the status page `{ version, mode, view }`, and `time()` the time the knight's preview is
-drawn at, the frozen time when `t=` freezes it. What the World page and the status page's world
-entries show is worked out in `KW.settings.screen`, apart from the drawing, so that
-`tests/web/worlds.test.js` reads it under Node. It returns `open(page)`, `close()`, `isOpen()` and
+drawn at, the frozen time when `t=` freezes it. What the World page, the part pages and the status
+page's world entries show is worked out in `KW.settings.screen`, apart from the drawing, so that
+`tests/web/worlds.test.js` and `tests/web/world-mix.test.js` read it. It returns `open(page)`, `close()`, `isOpen()` and
 `cue(x, y, q)`. Nothing of the screen is drawn while it is shut, so with it shut and nothing saved
 the page looks exactly as before there were settings.
 
@@ -1357,8 +1426,8 @@ the page looks exactly as before there were settings.
 `KW.engine.input` (see the head of `engine.js`) takes from the settings `turns`, the quiet scenes
 that take turns, in order (all four, `TURNS`, when it is left out or empty), `turnMs`, how long
 each lasts, `patron`, the monarch as `{ id, skin, hair, robe }`, its id and its skin, hair and
-robe, which the engine passes to the scenes in `s.patron`, `pet`, the pet and its coat as
-`{ id, coat }`, `scenes`, the scene chosen for a condition
+robe (another pack's swatch by its long name among them), which the engine passes to the scenes in
+`s.patron`, `pet`, the pet and its coat as `{ id, coat }`, the coat by its own id within the pet, `scenes`, the scene chosen for a condition
 by its id, `homes`, the world's own scene for each condition, and `foe` and `critter`, the foe of
 the banned address's event and the critter a blocked advert becomes, each by the name `KW.cast`
 knows it by (`goblin`, `fly`, or another world's member by its long name). The engine draws the foe
@@ -1406,7 +1475,7 @@ down is used.
 | `mh=`, `mr=` | the monarch's hair and robe: the id of one of the base pack's hair swatches and of one of its tabard swatches, such as `mh=silver&mr=teal`. Without them, each monarch's own colours |
 | `sc=` | the scene a condition plays in: `<condition>:<scene>`, by the contract's ids, separated by commas, such as `sc=cpu_hot:camp,pi_silent:battlement`. A pair the page cannot act is ignored, with a line in the console |
 | `ck=` | the clock: `24`, or `12` for 9:42 with a small PM |
-| `set=` | opens the settings screen at load on a page: `world`, `knight`, `monarch`, `pet`, `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
+| `set=` | opens the settings screen at load on a page: `world`, `knight`, `monarch`, `pet` (the cast), `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
 | `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `device_down` on, the knight looks towards the first device that is down and alerts |
 | `wd=` | the world: `medieval`, or a loaded world by its long name, such as `wd=kw.example/world.neon`, chosen at the address's level, so that it sets every part the address leaves alone. A hook's value may hold the slash of a long name, as `bd=kw.example/body.courier` or `sk=kw.example/chrome` |
 | `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`, or a loaded body by its long name. A page that cannot draw from the base pack draws Classic whatever the hook says |
@@ -1460,6 +1529,16 @@ signed in it reads the schema from `api/admin/schema`, from which every section,
 default, range and list of values is taken, and its settings from `api/admin/settings` and
 `api/settings`, again every five seconds, and sooner after a change. A field being typed in is
 never redrawn under the cursor: news waits until it is left.
+
+The household look lists what every wall's part pages list, from the same rows
+(`KW.settings.screen`), resolved by a store of the walls' own settings code over the shared
+settings and `config.toml`'s tables: the world as cards, a world chosen clearing the parts set here
+as a wall's choice does; then the knight's build, weapon, swatches, hair style, gear, the monarch
+and the monarch's colours, the pet and its coat, the foe and the pest, each with every loaded
+world's choices after the world's name, the line naming the world's own where a part differs from
+it in blue, and the line of a part that cannot be used where it is chosen in amber. An item of
+another pack is sent in `look.items` for its slot, and the key's own choice takes it out, in one
+change.
 
 The layout is a side rail of nine sections with a count of
 what is set there or failing, the collector's pulse, Download config.toml and Sign out in the
@@ -1945,6 +2024,27 @@ Fallbacks entries show that tabard and a full disk asked for in the camp, which 
 settings shot that shows the rail differs in it, where World was added first; `settings-status`
 differs in its entries too, where the Knight entry gave way to World, Parts and Fallbacks.
 
+Against a reference from before parts could be mixed across worlds, every settings shot that shows
+the rail differs in it, where the pet's page became "The cast"; the cat's settings shots
+(`cat-settings-`) show the cast's page, with the foe and the pest under the pet; and each settings
+shot whose address changes a part from the world shows that row's blue mark and line
+(`settings-look`, `settings-monarch-skin`, `settings-monarch-colours`, `settings-scenes-tablet`,
+the `bd-` and `free-settings-` shots of the knight's page), which moves the rows under it down.
+
+`tools/shots.sh worlds DIR` takes the `worldmix-` shots: the settings screen with the test world
+loaded beside the medieval one, from a copy of `web/` it makes outside the repository with the test
+world's carrier added, and removes ([development.md](./development.md#the-test-world)), all at the
+tablet's size but the last. `worldmix-knight` is the knight's page with the test world's body and
+chrome skin chosen by the address, each row with the test world's choices after ORBIT and the two
+rows marked as changed from the medieval world; `worldmix-knight-orbit` has the test world in use
+with the open helm and a wine tabard over it, its choices first and the medieval world's after
+MEDIEVAL; `worldmix-monarch` seats its Captain on the medieval throne, the rail and the row calling
+it the patron and its colours greyed, since it binds none; `worldmix-cast` is the cast's page in the
+test world, its drone at home on the Deck; `worldmix-scenes` gives the WAN going down the Deck, a
+condition only the battlement acts in the medieval world; `worldmix-world` is the World page with
+the open helm changed from the test world's dome; and `worldmix-knight-small` is the first at 960
+by 600. `tools/shots.sh compare-worlds` compares two such sets.
+
 The 28 `cat-` shots show the mouser cat. Every shot above shows it resting at its
 spot in its calico coat; these show it in the ginger coat (`pc=ginger`) at each of its eight spots
 (`cat-ginger-`), and catching. One fly (`f=1`) in the house while streaming comes at -5000 ms and
@@ -1958,7 +2058,7 @@ with the goblin at 600 ms (`e=goblin&f=1&fa=600`) is the cat's, since the knight
 looks up at it with the goblin on the wall (`cat-goblin-notice`), and leaps for it at 22 406, long
 after the goblin has gone, on the battlement, at the camp and, with the crate, in the yard. Five
 flies in the house leave three on screen (`cat-house-three`), and the cellar, a warning, has none
-(`cat-cellar-none`). The settings screen's Pet page shows at 960 by 600 and at the tablet's size,
+(`cat-cellar-none`). The settings screen's cast page (`set=pet`) shows at 960 by 600 and at the tablet's size,
 in calico and in ginger (`cat-settings-`). A copy of the page from before the cat ignores `pc=`
 and `fa=` and draws no cat, so against it every shot differs: a scene by the cat's 2 756 pixels at
 the most where it rests (the curl), the `cat-` shots more, and the settings shots in the rail too,

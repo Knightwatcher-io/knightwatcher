@@ -1034,8 +1034,8 @@ the settings what is loaded:
   settings screen's pages);
 - `sets`: each prop set by name, `medieval` for `props.medieval` and `<pack>/<id>` otherwise, with its
   display name and the kinds it draws;
-- `scenes`: kw.medieval's scenes by their long names, `kw.medieval/camp`, each with its `can` and
-  whether it is quiet;
+- `scenes`: kw.medieval's scenes by their long names, `kw.medieval/camp`, each with its `can`,
+  whether it is quiet, and the events it hosts (`hosts`);
 - `names`: each long name of kw.medieval's parts and the short name it stands for:
   `kw.medieval/world.medieval` for `medieval`, `kw.medieval/patron.b` for `b`,
   `kw.medieval/foe.goblin`, `kw.medieval/critter.fly`, `kw.medieval/pet.cat` for `cat`, `kw.medieval/props.medieval`,
@@ -1047,7 +1047,16 @@ the settings what is loaded:
   use (patrons under `monarch`), each word set and each overlay the same way; `builds`, each body
   by its long name with its name; `swatches`, for each of the user's sets, each swatch by its long
   name with its name; `items`, each item by its long name with its slot; and `titles`, the name of
-  each of these parts and of each prop set, which the settings screen shows.
+  each of these parts and of each prop set, which the settings screen shows. For the screen's rows
+  it also gives `coats`, each pet in use by its long name with its coats, each `"<pack>/<coat>"` and
+  its name; `binds`, each patron in use with the sets it binds (`skin`, `hair`, `robe`, or none, for
+  a patron drawn in its own colours); and `gear`, each item with its `grip` (`'one'`, `'two'`, or
+  null for an item that is not a weapon), whether it has a plume mount (`plume`) and whether it has
+  a rest view (`rest`).
+
+`swatchOf(set, name)` gives the entries of another pack's swatch of one of the user's sets by its
+long name, or null: the settings take the patron's skin, hair and robe from it when
+`monarch_skin`, `monarch_hair` or `monarch_robe` names one ([page.md](./page.md#the-engines-input)).
 
 Every other world pack's scenes, cast, words and overlay are drawn too, under their long names, and
 `catalogue()` lists them: see [Other worlds](#other-worlds).
@@ -1120,7 +1129,8 @@ in use comes from it.
 Of 9.3's meetings of parts from different worlds, what holds today: a body and items from
 different packs are drawn together, as every item fits every build's ranges; props stand in
 another world's places, and a kind the chosen set lacks takes the base world's drawing; a patron
-sits on any seat; a foe plays in any scene that hosts it and gives it room, over its wall or out of
+sits on any seat, the medieval court's throne among them, in another pack's colours where it binds
+the user's sets; another world's pet rests at home in its own world's scenes; a foe plays in any scene that hosts it and gives it room, over its wall or out of
 its ground; a scene from another world may be given a condition it can act, by `[scenes]` or by a
 world's preset, and a condition with no scene in the chosen world plays in the base world's own; a
 part not loaded takes the base world's; and words without a template for a part show the

@@ -449,7 +449,7 @@ Machines on the network to watch, each a [[device]] table at the top level of co
 
 ### [look]
 
-The world, and the parts it sets: the knight, the monarch at court, the cast, the devices and the words, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The colours, tones, hair styles and gear are those of the base pack. A long name, "<pack>/<id>", is checked here only for its form; a display that has not loaded it uses the next level down.
+The world, and the parts it sets: the knight, the monarch at court, the cast, the devices and the words, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The short names of the colours, tones, hair styles and gear are those of the base pack; another loaded pack's are given by long name. A long name, "<pack>/<id>", is checked here only for its form; a display that has not loaded it uses the next level down.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
@@ -472,11 +472,11 @@ The world, and the parts it sets: the knight, the monarch at court, the cast, th
 | `feet` | `"leather"`, `"sabatons"` or `"shoes"` | none; the page's own is `"leather"` | display | The feet: riding boots (leather), sabatons or turnshoes. |
 | `back` | `"none"`, `"cloak"` or `"cape"` | none; the page's own is `"none"` | display | What hangs from the shoulders: nothing, a long cloak in the plume's colour or a short cape in the tabard's. |
 | `monarch` | `"a"`, `"b"` or `"c"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"a"` | display | Which of the three monarchs sits in the court, or a patron of a loaded pack by its long name, "<pack>/<patron>". |
-| `monarch_skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"` | none; the page's own is `"warm"` | display | The monarch's skin tone. The page's own is the court's own skin. |
-| `monarch_hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"` or `"silver"` | none | display | The monarch's hair colour. Left out, each monarch keeps the hair the court draws them with ("As drawn"). |
-| `monarch_robe` | `"blue"`, `"forest"`, `"violet"`, `"wine"`, `"teal"` or `"sable"` | none | display | The colour of the monarch's robe. Left out, each monarch keeps their own robe (A red, B violet, C green). |
+| `monarch_skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"warm"` | display | The monarch's skin tone, or a skin swatch of a loaded pack by its long name, "<pack>/<swatch>". The page's own is the court's own skin. |
+| `monarch_hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"` or `"silver"`, or a long name, `"<pack>/<id>"` | none | display | The monarch's hair colour, or a hair swatch of a loaded pack by its long name, "<pack>/<swatch>". Left out, each monarch keeps the hair the court draws them with ("As drawn"). |
+| `monarch_robe` | `"blue"`, `"forest"`, `"violet"`, `"wine"`, `"teal"` or `"sable"`, or a long name, `"<pack>/<id>"` | none | display | The colour of the monarch's robe, or a tabard swatch of a loaded pack by its long name, "<pack>/<swatch>". Left out, each monarch keeps their own robe (A red, B violet, C green). |
 | `pet` | `"cat"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"cat"` | display | The pet who catches the flies the knight cannot, indoors and while the knight is busy: the mouser cat, or a pet of a loaded pack by its long name, "<pack>/<pet>". |
-| `pet_coat` | `"calico"` or `"ginger"` | none; the page's own is `"calico"` | display | The mouser cat's coat: calico, white with ginger and black patches, or a ginger tabby. |
+| `pet_coat` | `"calico"` or `"ginger"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"calico"` | display | The pet's coat: the mouser cat's calico, white with ginger and black patches, or ginger tabby; or a coat of a loaded pack's pet by its pack and the coat's id, "<pack>/<coat>", which counts only while that pet is in use. A coat the pet in use does not have gives its first. |
 | `foe` | `"goblin"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"goblin"` | display | Who comes for the knight when an address is banned: the goblin, or a foe of a loaded pack by its long name, "<pack>/<foe>". |
 | `critter` | `"fly"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"fly"` | display | What a blocked advert turns into: the fly, or a critter of a loaded pack by its long name, "<pack>/<critter>". |
 | `props` | `"medieval"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"medieval"` | display | The drawings of the devices, every kind at once: medieval, or a prop set of a loaded pack by its long name, "<pack>/<prop set>". A kind the set does not draw takes the medieval drawing. |
@@ -682,16 +682,19 @@ cpu_hot = "camp"
 ```
 
 `config.example.toml` has all four tables commented out, every setting shown with the allowed
-values beside it. The colours, tones, hair styles and gear are those of the base pack
-(`web/packs/base.pack.json`). The monarch's hair and robe have no value for "as drawn": leaving the
+values beside it. The short names of the colours, tones, hair styles and gear are those of the base
+pack (`web/packs/base.pack.json`); another loaded pack's are given by their long names. The monarch's hair and robe have no value for "as drawn": leaving the
 setting out is how a display keeps the monarch's own colours.
 
-`pet_coat` is the mouser cat's coat, `calico` or `ginger`; the cat itself cannot be turned off.
+`pet_coat` is the pet's coat: the mouser cat's `calico` or `ginger`, or a coat of a world pack's pet by
+the pack and the coat's id, `"<pack>/<coat>"`, which counts only while that pet is in use; a coat
+the pet in use does not have gives its first. The pet itself cannot be turned off.
 
 `world`, `monarch`, `pet`, `foe`, `critter`, `props`, `overlay` and `words` take a short name, the medieval
 world's, or the long name of something in a world pack, `"<pack>/<id>"`. So do the knight's body
 and colours: `build` takes a body of a world pack, and `skin`, `hair`, `tabard` and `plume` a
-swatch of that set from one, as `build = "kw.cyber/body.courier"`. Two tables inside
+swatch of that set from one, as `build = "kw.cyber/body.courier"`, and `monarch_skin`,
+`monarch_hair` and `monarch_robe` a skin, hair or tabard swatch of one. Two tables inside
 `[look]` name parts directly: `[look.items]` gives a slot's item by its long name, over the key that
 would choose the item for that slot, and `[look.devices]` gives the prop set one kind of device
 (`pi`, `camera`, `machine`, `vm` or `box`) is drawn from, over `props` for that kind:

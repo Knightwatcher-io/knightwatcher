@@ -229,7 +229,7 @@ class DefaultsContractTest(unittest.TestCase):
             broken(given(scenes={"cpu": "camp", "attack": "moon"}, look={"monarch_robe": "red"})),
             [
                 'defaults.look.monarch_robe: unknown value "red"; use blue, forest, violet, wine, '
-                "teal or sable",
+                'teal or sable, or a long name, "<pack>/<id>"',
                 "defaults.scenes.cpu: unknown condition",
                 'defaults.scenes.attack: unknown value "moon"; use battlement, camp, house, yard, '
                 'cellar, smithy or court, or a long name, "<pack>/<id>"',
@@ -244,6 +244,9 @@ class DefaultsContractTest(unittest.TestCase):
                         "foe": "kw.cyber/foe.drone",
                         "build": "kw.cyber/body.courier",
                         "skin": "kw.cyber/chrome",
+                        "monarch_skin": "kw.cyber/chrome",
+                        "monarch_robe": "kw.cyber/panel",
+                        "pet_coat": "kw.cyber/steel",
                         "items": {"main": "kw.base/main.arming"},
                         "devices": {"camera": "medieval", "pi": "kw.cyber/props.neon"},
                     },

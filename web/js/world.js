@@ -1208,12 +1208,25 @@
     if (has(got, 'threw')) return { kind: null, why: 'it threw while drawing: ' + got.threw, draw: true };
     return { kind: got, why: '' };
   }
+  /* The entries of a swatch of another pack by its long name, "<pack>/<swatch>", in the user's set
+     set (skin, hair, tabard or plume), or null when no pack the world has read gives it. The
+     settings take the patron's skin, hair and robe from it (KW.settings.engineInput). */
+  function swatchOf(set, long) {
+    const i = typeof long === 'string' ? long.indexOf('/') : -1;
+    if (i < 0) return null;
+    const p = others.get(long.slice(0, i)), sw = p && isObj(p.data.swatches) && isObj(p.data.swatches[set]) ? p.data.swatches[set][long.slice(i + 1)] : null;
+    return isObj(sw) && isObj(sw.entries) ? sw.entries : null;
+  }
   /* What the page has loaded, for the settings (KW.settings.pageWorld, which worldOf there
      describes): { names, worlds, sets, scenes }, and with kw.medieval's preset the base world's
-     homes and quiet scenes. */
+     homes and quiet scenes. For the settings screen's rows it also gives, of the other packs: each
+     pet's coats, by the pet's long name, each coat named "<pack>/<coat>"; each patron's bound sets
+     (binds), the keys of its sets, skin, hair and robe; and each item's grip ('one', 'two', or null
+     for an item that is not a weapon), whether it has a plume mount and whether it has a rest view
+     (gear). Each scene says which events it hosts. */
   function catalogue() {
     const names = { world: {}, monarch: {}, foe: {}, critter: {}, pet: {}, props: {}, overlay: {}, words: {}, scene: {} };
-    const out = { names, worlds: {}, sets: {}, scenes: {}, titles: {}, builds: {}, swatches: {}, items: {} };
+    const out = { names, worlds: {}, sets: {}, scenes: {}, titles: {}, builds: {}, swatches: {}, items: {}, coats: {}, binds: {}, gear: {} };
     const ROLE_KINDS = { patron: 'monarch', foe: 'foe', critter: 'critter', pet: 'pet' };
     const labelsOf = (p, n) => (isObj(p.data.words) && isObj(p.data.words[n]) && isObj(p.data.words[n].labels) ? Object.assign({}, p.data.words[n].labels) : null);
     const local = (p, n) => (typeof n === 'string' && n.startsWith(p.id + '/') ? n.slice(p.id.length + 1) : n);
@@ -1239,11 +1252,13 @@
       const d = p.data, long = n => p.id + '/' + n;
       for (const n of Object.keys(isObj(d.scenes) ? d.scenes : {})) {
         const l = long(n); out.titles[l] = d.scenes[n].name;
-        if (inUse(l) && KW.scenes[l]) { names.scene[l] = l; out.scenes[l] = { can: KW.scenes[l].can.slice(), quiet: d.scenes[n].quiet === true }; }
+        if (inUse(l) && KW.scenes[l]) { names.scene[l] = l; out.scenes[l] = { can: KW.scenes[l].can.slice(), quiet: d.scenes[n].quiet === true, hosts: (KW.scenes[l].hosts || []).slice() }; }
       }
       for (const n of Object.keys(isObj(d.cast) ? d.cast : {})) {
         const l = long(n), v = d.cast[n]; out.titles[l] = v.name;
         if (inUse(l) && has(ROLE_KINDS, v.role)) names[ROLE_KINDS[v.role]][l] = l;
+        if (inUse(l) && v.role === 'pet' && isObj(v.coats)) { out.coats[l] = {}; for (const c of Object.keys(v.coats)) out.coats[l][long(c)] = v.coats[c].name; }
+        if (inUse(l) && v.role === 'patron') out.binds[l] = Object.keys(isObj(v.sets) ? v.sets : {});
       }
       for (const [sec, kind] of [['words', 'words'], ['overlays', 'overlay']]) for (const n of Object.keys(isObj(d[sec]) ? d[sec] : {})) {
         const l = long(n); out.titles[l] = d[sec][n].name;
@@ -1254,7 +1269,12 @@
       for (const set of Object.keys(isObj(d.swatches) ? d.swatches : {})) for (const n of Object.keys(d.swatches[set])) {
         (out.swatches[set] = out.swatches[set] || {})[long(n)] = d.swatches[set][n].name; out.titles[long(n)] = d.swatches[set][n].name;
       }
-      for (const n of Object.keys(isObj(d.items) ? d.items : {})) { const it = d.items[n]; if (isObj(it) && typeof it.slot === 'string') { out.items[long(n)] = it.slot; out.titles[long(n)] = it.name; } }
+      for (const n of Object.keys(isObj(d.items) ? d.items : {})) {
+        const it = d.items[n];
+        if (!(isObj(it) && typeof it.slot === 'string')) continue;
+        out.items[long(n)] = it.slot; out.titles[long(n)] = it.name;
+        out.gear[long(n)] = { grip: isObj(it.grip) && (it.grip.kind === 'one' || it.grip.kind === 'two') ? it.grip.kind : null, plume: isObj(it.mounts) && has(it.mounts, 'plume'), rest: isObj(it.rest) };
+      }
     }
     if (medieval) {
       const d = medieval.data, id = medieval.id;
@@ -1262,7 +1282,7 @@
       for (const n of Object.keys(isObj(d.cast) ? d.cast : {})) { const s = slotOf(n, d.cast[n]); if (s) names[ROLE_KINDS[d.cast[n].role]][id + '/' + n] = s[1]; }
       if (isObj(d.words) && has(d.words, WORDS)) names.words[id + '/' + WORDS] = BASE;
       if (isObj(d.overlays) && has(d.overlays, OVERLAY)) names.overlay[id + '/' + OVERLAY] = BASE;
-      for (const n of LONG) { const short = n.slice(id.length + 1); names.scene[n] = short; out.scenes[n] = { can: KW.scenes[n].can.slice(), quiet: d.scenes[short].quiet === true }; }
+      for (const n of LONG) { const short = n.slice(id.length + 1); names.scene[n] = short; out.scenes[n] = { can: KW.scenes[n].can.slice(), quiet: d.scenes[short].quiet === true, hosts: (KW.scenes[n].hosts || []).slice() }; }
       // the base world's own scenes, from its preset
       const pre = isObj(d.worlds) ? d.worlds[BASE_WORLD] : null;
       if (isObj(pre) && isObj(pre.scenes)) {
@@ -1644,5 +1664,5 @@
   }
 
   const api = KW.world = { MEDIEVAL, PROPS, WORDS, OVERLAY, QUIET_MAX, CAPTION_MAX, compile, compileKind, compileMember, compileWords, compileOverlay, join, quietLine, caption,
-    start, catalogue, useKinds, useWords, useOverlay, drawingOf, status: null, others: null, props: null, cast: null, words: null, overlay: null, devices: null, changes: 0 };
+    start, catalogue, swatchOf, useKinds, useWords, useOverlay, drawingOf, status: null, others: null, props: null, cast: null, words: null, overlay: null, devices: null, changes: 0 };
 })(window.KW);
