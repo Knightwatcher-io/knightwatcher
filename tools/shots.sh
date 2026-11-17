@@ -326,6 +326,20 @@ SHOTS=(
   "cat-settings-pet|bar=0&t=2300&is=house&set=pet"
   "cat-settings-pet-tablet|bar=0&t=2300&is=house&set=pet|1480,924"
   "cat-settings-pet-ginger|bar=0&t=2300&is=house&set=pet&pc=ginger|1480,924"
+  # the streams' line and badge, with the demo's invented streams: st= how many play (3 without
+  # it), sm= the collector's setting show. The line takes each stream for 8 seconds by the clock,
+  # so t=2300 shows the first of three and t=10300 the second. One stream has no "1 of 1"; titles
+  # leaves the names out and count the titles too. Under a full disk and running hot, with two
+  # streams, the badge stands beside +1 MORE at each headline size, and alone at court
+  "streams-three-1|bar=0&t=2300&on=plex&st=3"
+  "streams-three-2|bar=0&t=10300&on=plex&st=3"
+  "streams-one|bar=0&t=2300&on=plex&st=1"
+  "streams-titles|bar=0&t=10300&on=plex&sm=titles"
+  "streams-count|bar=0&t=2300&on=plex&sm=count"
+  "streams-badge-s|bar=0&t=2300&on=disk,cpu,plex&st=2&hs=s"
+  "streams-badge-m|bar=0&t=2300&on=disk,cpu,plex&st=2&hs=m"
+  "streams-badge-l|bar=0&t=2300&on=disk,cpu,plex&st=2&hs=l"
+  "streams-badge-court|bar=0&t=3450&on=ssh,plex&st=2"
 )
 
 take() {

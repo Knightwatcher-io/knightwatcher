@@ -338,3 +338,64 @@ class PartsContractTest(unittest.TestCase):
         value = "events[0].parts has a value that is not text of 1 to 44"
         for parts in ({"title": ""}, {"title": "x" * 45}, {"title": 7}):
             self.assertEqual(broken(events(event("import", parts))), [value])
+
+
+def streams(section) -> list[str]:
+    return broken(lambda s: s["facts"].update(streams=section))
+
+
+class StreamsContractTest(unittest.TestCase):
+    def test_each_mode_of_show_keeps_the_contract(self):
+        names = {
+            "count": 2,
+            "titles": ["Harbour of Glass", "Fen Owls - Low Tide"],
+            "sessions": [{"who": "Sam", "title": "Harbour of Glass"}, {"who": "Alex"}],
+        }
+        self.assertEqual(streams(names), [])
+        titles = {
+            "count": 2,
+            "titles": ["Harbour of Glass"],
+            "sessions": [{"title": "Harbour of Glass"}],
+        }
+        self.assertEqual(streams(titles), [])
+        self.assertEqual(streams({"count": 0}), [])
+        self.assertEqual(streams({"count": 1, "titles": []}), [])
+        self.assertEqual(streams(None), [])
+
+    def test_the_section(self):
+        self.assertEqual(
+            streams({"titles": []}),
+            ["facts.streams is not count, with titles and sessions alone beside it"],
+        )
+        self.assertEqual(
+            streams({"count": 1, "player": "Lounge TV"}),
+            ["facts.streams is not count, with titles and sessions alone beside it"],
+        )
+        self.assertEqual(streams({"count": -1}), ["facts.streams.count is not a whole number"])
+        self.assertEqual(streams({"count": True}), ["facts.streams.count is not a whole number"])
+        self.assertEqual(
+            streams({"count": 1, "titles": [""]}),
+            ["facts.streams.titles is not a list of text of 1 to 60"],
+        )
+        self.assertEqual(
+            streams({"count": 1, "sessions": []}),
+            ["facts.streams.sessions is not a list of 1 to 32 sessions"],
+        )
+        self.assertEqual(
+            streams({"count": 33, "sessions": [{"title": "Harbour of Glass"}] * 33}),
+            ["facts.streams.sessions is not a list of 1 to 32 sessions"],
+        )
+        self.assertEqual(
+            streams({"count": 1, "sessions": [{}, {"who": "Sam", "device": "TV"}]}),
+            [
+                "facts.streams.sessions[0] is not an object with who, title or both",
+                "facts.streams.sessions[1] is not an object with who, title or both",
+            ],
+        )
+        self.assertEqual(
+            streams({"count": 1, "sessions": [{"who": "x" * 17}, {"title": "y" * 61}]}),
+            [
+                "facts.streams.sessions[0] has a who or a title that is empty or too long",
+                "facts.streams.sessions[1] has a who or a title that is empty or too long",
+            ],
+        )

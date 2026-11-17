@@ -26,9 +26,9 @@ share one global object, `KW`. ES modules would fail from `file://`.
 | `js/world.js` | `KW.world`, the scene compiler: turns a scene of a world pack into the scene interface below, and puts the scenes of the medieval world's pack in place of the code scenes of the same names, its devices in `KW.kinds` and its cast in `KW.cast`, which the engine draws them from, and compiles its words and its overlay (`KW.world.words`, `KW.world.overlay`) and builds the quiet line and the captions from the collector's parts; see [worlds.md](./worlds.md) |
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [packs.md](./packs.md#carriers) |
 | `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene, the devices and the cast as data; see [worlds.md](./worlds.md) |
-| `js/state.js` | reading `data/state.json` and turning it into what the engine needs, and deciding when to reload for a new version |
+| `js/state.js` | reading `data/state.json` and turning it into what the engine needs, the words for the streams (`streamWords`), and deciding when to reload for a new version |
 | `js/engine.js` | the frame: scene choice, strolling, the swat, the pet's catch (`KW.engine.pet`), events and the foe player that plays a foe's entrance, strike and exit (`KW.engine.foe`), drawing order, and the devices in their places (`KW.devices`) |
-| `js/demo.js` | the invented conditions, the review bar and the demo loop |
+| `js/demo.js` | the invented conditions and streams, the review bar and the demo loop |
 | `js/settings.js` | `KW.settings`: the levels the display's settings come from, the saved settings (the server's, shared by every display, or this browser's own), keeping them in step with the server (`connect`), the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](#settings)) |
 | `js/main.js` | start-up (starting the knight and then the world from the medieval world's pack, setting the overlay's custom properties on the display, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs, sizing), the clock and the words over the scene, the choice of mode, the check for a new version |
 | `admin/index.html`, `admin/admin.js`, `admin/admin.css` | the admin page, served by the bundled server alone; see [The admin page](#the-admin-page) |
@@ -573,6 +573,21 @@ hides the review bar and drives the display:
   id the page does not know is skipped and plays no part in the badge.
 - The "+N MORE" badge counts the other known conditions at warning or critical, and turns red
   when any of them is critical.
+- While `streaming` is shown, the detail line takes each stream in `facts.streams.sessions` in
+  turn, eight seconds each (`KW.state.STREAM_MS`), as `Robin · The Night Shift S02E04 · 2 of 3`;
+  one stream reads `Robin · The Night Shift S02E04`. Which stream shows is worked out from the
+  clock alone, `Math.floor(now / 8000) % n` on the wall clock (the frozen time of `t=` in a
+  screenshot), so every display shows the same stream at the same moment, and the collector keeps
+  the streams in the order they started, so a new file does not move the line on. The name and the
+  `2 of 3` stay whole and the title gives way, to the detail's 60 characters. With no sessions (a
+  collector from before them, or one whose setting `show` is `count`) the line is the
+  collector's `detail` as it is, such as `3 streams`.
+- While `streaming` is up and a higher condition is shown, a second badge, `2 STREAMING`, stands
+  beside "+N MORE" (in its place when there is no "+N MORE"), with `facts.streams.count` as the
+  number, which every mode of `show` keeps, or `STREAMING` alone when the file has no count. It is
+  muted beside "+N MORE": outlined in the night's dim green (`--kw-sleep2`), not filled, and sized
+  with the headline (`hs-s`, `hs-m`, `hs-l`), so it never outshouts the warning above it. It is
+  hidden while `streaming` is the condition shown, and under NO SIGNAL.
 - With no known condition the quiet scenes the settings choose take turns, ten minutes each
   unless the settings set another length (`LIVE_TURN_MS` in `main.js` is the ten), and the small
   line is the quiet line, built from `quiet_parts` in the world's words or `quiet_line` as it is
@@ -637,7 +652,10 @@ whose version is `dev` never checks, so the page still opens from disk, or is se
 `web/`, with no build step. The same version decides whether the page accepts an unsigned pack: only
 a `dev` page does (see [The knight from the base pack](#the-knight-from-the-base-pack)).
 
-The mapping is the pure function `KW.state.map(file, nowMs)`. Beside it,
+The mapping is the pure function `KW.state.map(file, nowMs)`, whose view carries the streams as
+`streams` (`streamsOf(facts.streams)`: the count and the sessions) and `streamsBehind`, whether
+`streaming` is up behind the condition shown. `streamWords(streams, nowMs)` gives the detail line
+for that moment, or null without sessions, and the badge. Beside them,
 `judge(view, lastGood, nowMs)` decides between showing a file, holding the last one, NO SIGNAL and
 the demo, `arrange(list)` puts a list of devices in the places (see
 [Devices](#devices)), `listFromHook(text)` reads the address's `dv=` hook into a list
@@ -648,10 +666,13 @@ fetched one, the record of the last reload and the time. `state.js` loads under 
 
 ## The words over the scene
 
-The headline, the detail, the "+N MORE" badge, the quiet line, the caption and the clock are HTML
-text over the canvas, in VT323. `KW.ui.show` and `KW.ui.caption` in `main.js` write them with
-`textContent`, never as markup. The headline, the detail and the badge are the collector's words as
-they come. The quiet line and the captions are the world's: `KW.state.map` keeps the collector's
+The headline, the detail, the "+N MORE" badge, the streams' badge, the quiet line, the caption and
+the clock are HTML text over the canvas, in VT323. `KW.ui.show` and `KW.ui.caption` in `main.js`
+write them with `textContent`, never as markup. The headline, the detail and the badge are the
+collector's words as they come. The detail of `streaming` and the streams' badge are worded on the
+page from `facts.streams`, by `KW.state.streamWords(streams, nowMs)` alone, in the collector's own
+words and to its own rule (`line()` in `collector/sources/streams.py`); no world words them yet,
+and `KW.ui.streamTick`, called each second with the clock, moves the line on. The quiet line and the captions are the world's: `KW.state.map` keeps the collector's
 `quiet_parts` and each event's `type` and `parts` beside its text, and `main.js` passes them to
 `KW.world.quietLine(parts, text)` and `KW.world.caption(type, parts, text)`, which build the line
 from the parts in the medieval world's words, `words.medieval`, within the collector's limits of 52
@@ -663,7 +684,7 @@ them.
 The colours come from the world's overlay, `overlay.phosphor`. At start-up `main.js` sets the
 custom properties in `KW.world.overlay.props` on `#surface`: `--kw-ok` to `--kw-sleep` and
 `--kw-ok2` to `--kw-sleep2` for each level's `--fg` and `--fg2` (`--kw-warn` and `--kw-crit` also
-colour the badge), `--kw-outline` for the words' outline, `--kw-scrim` for the scrim's colour as
+colour the "+N MORE" badge, and `--kw-sleep2` the streams' badge), `--kw-outline` for the words' outline, `--kw-scrim` for the scrim's colour as
 `r,g,b`, `--kw-caption` for the caption's background and `--kw-font` for the font. `display.css`
 reads each as `var(--kw-ok, #39ff6a)`, with today's value as the fallback, and a page with no
 overlay in use shows those. The scrim's stops and alphas, the sizes and the rest of the layout stay in
@@ -1320,7 +1341,7 @@ build the input.
 The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `pl=`,
 `set=` and the settings hooks (`bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
 `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`, `pc=`,
-`ck=`, `sc=`) also work in live mode. `f=`, `fa=`, `e=`, `sw=` and `dv=` act in the demo and do nothing elsewhere. The
+`ck=`, `sc=`) also work in live mode. `f=`, `fa=`, `e=`, `sw=`, `dv=`, `st=` and `sm=` act in the demo and do nothing elsewhere. The
 settings hooks, `h=` and `hs=` are the highest of the settings' levels (see [Settings](#settings)):
 each outranks this display's saved choices and the state file's defaults while the address holds
 it, and a value it does not know is ignored, with a line in the console, so that the next level
@@ -1339,6 +1360,8 @@ down is used.
 | `f=` | starts with that many flies, which come at -5000 ms, or at `fa=` |
 | `fa=` | when the flies of `f=` come, in ms, such as `fa=600`: with `e=` and time frozen, a fly that comes during the event is the cat's |
 | `pc=` | the pet's coat: `calico` or `ginger` |
+| `st=` | how many of the demo's three invented streams play, `1` to `3`; without it three |
+| `sm=` | the demo's streams as the collector's setting `show` would send them: `names`, `titles` or `count`; without it `names` |
 | `sw=1` | starts a swat |
 | `kx=` | places the knight, in units of `U` |
 | `mon=` | the monarch at court: `a` the king, `b` the queen, `c` the monarch who is neither |
@@ -1368,7 +1391,7 @@ the code path they do nothing. A value outside the contract's is ignored, as at 
 The demo rewrites the hash as its settings change, with the contract's ids in `on=`. It writes
 `h=` and `hs=` only when the address named them or the review bar's buttons set them
 (`KW.hooks.fixed`), so that a reload keeps the bar's choice and otherwise leaves the settings' in
-force. The test hooks (`t=`, `kx=`, `dv=`, `pl=`, `set=`, the settings hooks, `f=`, `fa=`, `e=` and `sw=`)
+force. The test hooks (`t=`, `kx=`, `dv=`, `pl=`, `set=`, the settings hooks, `f=`, `fa=`, `e=`, `sw=`, `st=` and `sm=`)
 are read once when the page loads, and the rewritten hash leaves them out, so they last until the
 page is opened again.
 
@@ -1523,6 +1546,16 @@ writes the words with `textContent` and sets the overlay after the world has sta
 words and the overlay come from on a `dev` and a deployed page; and the demo's parts, texts and
 lines ([worlds.md](./worlds.md#the-words-and-the-overlay)). `tests/web/state.test.js` checks that
 `quiet_parts` and an event's `parts` are read as strings, or not at all.
+
+`tests/web/streams.test.js` checks the streams: the stream the line shows at each moment, by the
+clock alone; one stream without `1 of 1`; the title giving way to the name and the count within 60
+characters, counted by code point; each line held to the collector's own `line()`, run through
+`python3` (the test is skipped without it); the sessions read as strings, at most 32, a session with
+nothing to show passed over; the collector's `detail` whenever there are no sessions; when the
+badge shows, its count in every mode of `show`, and that `main.js` writes both with `textContent`
+from `streamWords` and `display.css` keeps the badge outlined in a colour of the overlay and sized
+with the headline; and the demo's invented streams in each mode, with the detail the collector
+would write for them.
 
 `tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
@@ -1863,7 +1896,7 @@ Fallbacks entries show that tabard and a full disk asked for in the camp, which 
 settings shot that shows the rail differs in it, where World was added first; `settings-status`
 differs in its entries too, where the Knight entry gave way to World, Parts and Fallbacks.
 
-The 28 `cat-` shots that end the set show the mouser cat. Every shot above shows it resting at its
+The 28 `cat-` shots show the mouser cat. Every shot above shows it resting at its
 spot in its calico coat; these show it in the ginger coat (`pc=ginger`) at each of its eight spots
 (`cat-ginger-`), and catching. One fly (`f=1`) in the house while streaming comes at -5000 ms and
 buzzes until 13 730: the cat looks up at a fly that comes at 0 (`cat-house-notice`, `fa=0`), sits
@@ -1882,6 +1915,18 @@ and `fa=` and draws no cat, so against it every shot differs: a scene by the cat
 the most where it rests (the curl), the `cat-` shots more, and the settings shots in the rail too,
 where the pet's page was added, which on a small window now has its entries 48 pixels tall and 6
 apart, so that eight fit.
+
+The nine `streams-` shots that end the set show the streams, with the demo's three invented
+streams (`st=` how many play, `sm=` the collector's setting `show`). In the house, at the medium
+headline: three streams on the first (`streams-three-1`, `t=2300`) and the second
+(`streams-three-2`, `t=10300`), since the line takes each for eight seconds by the clock; one
+stream, with no `1 of 1` (`streams-one`); the titles alone (`streams-titles`, on the second); and
+the count alone (`streams-count`, `3 streams`). Under a full disk and running hot with two streams
+the badge `2 STREAMING` stands beside `+1 MORE` at each headline size (`streams-badge-s`, `-m` and
+`-l`), and alone at court (`streams-badge-court`). Against a reference from before the streams'
+sessions these nine are missing, and the nine shots that show streaming differ in their words:
+`on-plex`, whose headline was `NOW SHOWING`, and the eight `cat-house-` shots, where the line now
+names whoever watches and moves on to the next stream by the frozen time.
 
 Headless Chromium paints few animation frames, and how many depends on how busy the machine is.
 Freeze time with `t=` for screenshots, and never make the first frame wait on elapsed time or fade
@@ -1914,5 +1959,5 @@ CHROME=/path/to/chrome-headless-shell PAGE=/tmp/kw-code/index.html tools/shots.s
 ```
 
 The comparison prints `identical bytes` only when both sets show the same minute on the clock;
-otherwise `pixels equal outside the clock` is the same result. A set of 192 takes about a minute, so the two
+otherwise `pixels equal outside the clock` is the same result. A set of 267 takes about two minutes, so the two
 sets seldom show the same minute, and `pixels equal outside the clock` is the usual result.

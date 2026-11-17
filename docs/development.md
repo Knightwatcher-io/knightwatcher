@@ -177,8 +177,8 @@ took the raspberry off the pie and drew the other devices as an owl, a cauldron,
 chest, every shot that draws a pie or a device differs there: the pie in its place, the dimmed
 scene behind the settings screen, and the scenes' thumbnails and previews on the settings screen;
 and in the 22 shots that place devices with the address's `dv=`, the devices in their places, with
-the lights of their lamps reaching up to 24 pixels past a place's box. The 28 `cat-` shots that
-end the set show the mouser cat: in its ginger coat at each of its eight spots, through a catch in
+the lights of their lamps reaching up to 24 pixels past a place's box. The 28 `cat-` shots
+show the mouser cat: in its ginger coat at each of its eight spots, through a catch in
 the house, leaping at night, in the smithy and at court, catching a fly that came with the goblin
 or the crate outdoors, three flies at most, none in the cellar, and the settings screen's Pet page
 ([page.md](./page.md#checks)). Against a reference from before the cat every shot differs: the
@@ -188,7 +188,12 @@ and devices of 17 November 2026 (the crystal in place of the cauldron, the groun
 front of the floor, the question mark over every down device), every shot that draws a scene
 differs: the scenes were recomposed, the devices redrawn and recoloured, and the cat moved to its
 new spots. The goblin's bonk shots are timed to the new hits, since the goblin now comes left of the
-knight. A headless browser has no saved choices, so every shot shows what its address asks for.
+knight. The nine `streams-` shots that end the set show the streams' detail line on two moments of
+three streams, on one stream, with titles alone and with the count alone, and the streams' badge
+beside `+1 MORE` at each headline size and alone at court, with the demo's invented streams
+(`st=`, `sm=`). Against a reference from before the streams' sessions they are missing, and the
+nine shots that show streaming differ in their words: `on-plex` and the eight `cat-house-` shots.
+A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
@@ -272,7 +277,10 @@ prop set is loaded and what a choice there saves, every fallback the status page
 reason, the labels from the world's words, World first in the rail and the screen opening on the
 knight.
 `tests/web/state.test.js` also checks that `quiet_parts` and an event's `parts` are read as strings,
-or not at all. `tests/web/settings-schema.test.js` checks the page's lists of
+or not at all. `tests/web/streams.test.js` checks the streams' detail line and badge: the stream
+shown at each moment by the clock, the clipping, each line held to the collector's `line()` through
+`python3`, the fallback to the collector's `detail`, when the badge shows and its count, and the
+demo's invented streams ([page.md](./page.md#checks)). `tests/web/settings-schema.test.js` checks the page's lists of
 settings, scenes and conditions against the settings schema. `tests/web/shared-settings.test.js` checks the shared settings against a fake server: the first
 answer, the carry-over of a browser's own choices, no server, a choice sent and a write refused,
 and two displays sharing one server. `tests/web/settings.test.js` checks the settings in

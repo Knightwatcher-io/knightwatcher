@@ -68,6 +68,14 @@ source's error text is scrubbed of every credential value before it reaches the 
 credential variables and whether each holds a value, never a value. Treat `.env` as you would the
 services' own configuration.
 
+The display often hangs where guests can read it, and `state.json` is served to anyone who can
+reach the page. So the collector decides how much of the streams leaves it, with `show` in
+`[sources.streams]`: `names` (who is watching and what, the default), `titles` (what alone) or
+`count` (how many and nothing else). It reads a user's name from Tautulli only for `names`, and
+what the setting holds back is never written to `state.json`, the words of `streaming` held
+through its clearing period included ([state.md](./state.md#fields)). The page cannot show what
+the file does not carry, whatever its version.
+
 ## The server's privileges
 
 The bundled server ([server.md](./server.md)) serves the page and `state.json`, keeps the

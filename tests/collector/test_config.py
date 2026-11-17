@@ -184,6 +184,24 @@ class BuildTest(unittest.TestCase):
             ],
         )
 
+    def test_streams_show_is_names_titles_or_count(self):
+        env = {"KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-example"}
+        url = "http://192.0.2.20:8181"
+        c = build({"sources": {"streams": {"url": url}}}, env)
+        self.assertEqual(c.sources["streams"]["show"], "names")
+        for show in ("names", "titles", "count"):
+            c = build({"sources": {"streams": {"url": url, "show": show}}}, env)
+            self.assertEqual(c.sources["streams"]["show"], show)
+        with self.assertRaises(ConfigError) as cm:
+            build({"sources": {"streams": {"url": url, "show": "everything"}}}, env)
+        self.assertEqual(
+            cm.exception.problems,
+            ['sources.streams.show: unknown value "everything"; use names, titles or count'],
+        )
+        with self.assertRaises(ConfigError) as cm:
+            build({"sources": {"streams": {"url": url, "show": 3}}}, env)
+        self.assertEqual(cm.exception.problems, ["sources.streams.show: expected str"])
+
     def test_auth_backoff_cannot_be_shorter_than_twenty_minutes(self):
         with self.assertRaises(ConfigError):
             build({"collector": {"auth_backoff_s": 60}})

@@ -65,6 +65,55 @@
     return out.every(p => p && typeof p.k === 'string' && p.k) ? out : null;
   }
 
+  /* ---- The streams ---------------------------------------------------------------------------
+     While streaming is the condition shown, the detail line takes each stream in turn, STREAM_MS
+     each, from facts.streams.sessions; while a higher condition hides it, a badge says how many
+     streams play. The collector decides what a session may hold (its setting show), and the
+     page shows what it is given. The words are the collector's, built here by streamWords. */
+  const STREAM_MS = 8000, MAX_SESSIONS = 32, NAME_MAX = 16, DETAIL_MAX = 60, SEP = ' · ', ELLIPSIS = '…';
+  /* The characters of a text, counted by code point, as the collector counts them. */
+  const chars = t => Array.from(t);
+  const single = t => String(t).trim().split(/\s+/).join(' ');
+  /* The collector's text.clip(): runs of white space made single, cut to at most limit characters
+     with an ellipsis when cut. */
+  function clip(t, limit) {
+    const c = chars(single(t));
+    return c.length <= limit ? c.join('') : c.slice(0, limit - 1).join('').trimEnd() + ELLIPSIS;
+  }
+  /* The streams section as the page reads it: n the count, or null when the file gives none, and
+     sessions [{ who, title }] in the collector's order, each with at least one of the two, or null
+     when there are none. Each value is a string, '' when the session has none. */
+  function streamsOf(sec) {
+    if (!isObj(sec)) return null;
+    const n = Number.isInteger(sec.count) && sec.count >= 0 ? sec.count : null;
+    const list = (Array.isArray(sec.sessions) ? sec.sessions.slice(0, MAX_SESSIONS) : []).map(values)
+      .filter(Boolean).map(v => ({ who: single(v.who || ''), title: single(v.title || '') })).filter(v => v.who || v.title);
+    return { n, sessions: list.length ? list : null };
+  }
+  /* One stream in words, the i-th of n: "Robin · The Night Shift S02E04 · 1 of 3", with no "1 of 1"
+     for a single stream; the collector's streams.line(). The name, cut at NAME_MAX, and the count
+     stay whole and the title gives way, cut with an ellipsis to fit DETAIL_MAX. */
+  function streamLine(s, i, n) {
+    const who = clip(s.who, NAME_MAX), tail = n > 1 ? i + ' of ' + n : '', fixed = [who, tail].filter(Boolean);
+    const room = fixed.length ? DETAIL_MAX - chars(fixed.concat('').join(SEP)).length : DETAIL_MAX;
+    const title = s.title && room > 1 ? clip(s.title, room) : '';
+    return clip([who, title, tail].filter(Boolean).join(SEP), DETAIL_MAX);
+  }
+  /* The words the page shows for the streams (streamsOf's shape, or null) at the time nowMs:
+     line, the detail line, which takes the sessions in turn by the clock alone, STREAM_MS each, so
+     that every display shows the same stream at the same moment, or null when there are no
+     sessions and the page shows the collector's detail; and badge, "3 STREAMING", or "STREAMING"
+     when the count is unknown or none. This is the one place the page words the streams. */
+  function streamWords(streams, nowMs) {
+    const list = streams && streams.sessions, n = streams ? streams.n : null;
+    let line = null;
+    if (list && list.length) {
+      const i = ((Math.floor(nowMs / STREAM_MS) % list.length) + list.length) % list.length;
+      line = streamLine(list[i], i + 1, list.length);
+    }
+    return { line, badge: (n ? n + ' ' : '') + 'STREAMING' };
+  }
+
   /* The engine's record of one condition: its id, lv and scene from the table above, its colour
      from the file's level (or the design's when the file has none), and the file's words. */
   function condition(c) {
@@ -134,6 +183,8 @@
                   towards, or null (see lookPlace)
        more       { n, crit }: the other known conditions at warning or critical, and whether any
                   of them is critical
+       streams    the streams the file reports, { n, sessions } (see streamsOf), or null
+       streamsBehind  whether streaming is up but a higher condition is shown, for its badge
        quietLine  the collector's line shown when w is null
        quietParts the parts it was written from, [{ k, ...values }], each value a string, or null
                   when the file has none or one cannot be read
@@ -180,6 +231,7 @@
     return {
       ok: true, problem: '', generatedAt, ageS, w,
       more: { n: rest.length, crit: rest.some(c => c.level === 'critical') },
+      streams: streamsOf(facts.streams), streamsBehind: known.slice(1).some(c => c.id === 'streaming'),
       quietLine: str(file.quiet_line), quietParts: quietParts(file.quiet_parts),
       devices: drawn.devices,
       tv: (typeof streams === 'number' && streams > 0) || known.some(c => c.id === 'streaming'),
@@ -277,7 +329,7 @@
     poll();
   }
 
-  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, PLACES, RELOAD_GUARD_MS, map, arrange, lookPlace, listFromHook, takeEvents, judge, noSignal, versionOf, reloadDue, start };
+  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, PLACES, RELOAD_GUARD_MS, STREAM_MS, map, streamsOf, streamWords, arrange, lookPlace, listFromHook, takeEvents, judge, noSignal, versionOf, reloadDue, start };
   KW.state = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? (window.KW = window.KW || {}) : {});

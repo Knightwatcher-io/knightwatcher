@@ -35,7 +35,8 @@ Every value below is invented.
     "backup": { "last_ok": "2026-01-15T03:12:00Z", "age_h": 18.5 },
     "pi": { "up": true },
     "updates": { "running": false, "what": "" },
-    "streams": { "count": 1, "titles": ["The Night Shift S02E04"] },
+    "streams": { "count": 1, "titles": ["The Night Shift S02E04"],
+                 "sessions": [ { "who": "Robin", "title": "The Night Shift S02E04" } ] },
     "ssh": { "count": 0, "sources": [] },
     "adblock": { "blocked_today": 4812 },
     "security": { "threat_score": 2, "bans_24h": 14, "attack": false },
@@ -166,7 +167,7 @@ and `sources` the parts come from are shown:
 
 - **`schema`** is `1`. A page that meets a number it does not know shows NO SIGNAL once it has had
   a valid file; see [page.md](./page.md). Fields added later without changing it, such as
-  `quiet_parts` and an event's `parts`, are optional: a page from before them ignores them, and a
+  `quiet_parts`, an event's `parts` and `facts.streams.sessions`, are optional: a page from before them ignores them, and a
   file from a collector before them lacks them.
 - **`generated_at`** and **`interval_s`**: when the file was written and how often it should be,
   the collector's real interval (10 seconds by default). The page treats the file as stale once
@@ -190,6 +191,10 @@ and `sources` the parts come from are shown:
     [Devices](./page.md#devices). One `device_down` covers every device that
     alerts and is down, however many there are. While it is held after the last of them has
     answered again, it keeps the positions it last had, and those devices are then `up`.
+  - The `detail` of `streaming` is the first stream in `facts.streams.sessions` as one line,
+    `Robin · The Night Shift S02E04 · 1 of 3`, with no `1 of 1` when one stream plays; without
+    sessions it is the count, `3 streams`. A page from before the sessions shows it as it is, and
+    a newer page takes each stream in turn from the sessions ([page.md](./page.md#modes)).
 - **`quiet_line`** is shown when `conditions` is empty. At most 52 characters. The collector
   shortens the blocked count to fit (`11.3k ads blocked`, then `11.3k blocked`) before it drops
   a part from the end.
@@ -237,6 +242,25 @@ and `sources` the parts come from are shown:
   collector's time zone. `pi.up` says whether the Pi of `[sources.pi]` answered its last check,
   so it turns false at the first check it misses; whether the Pi has been silent long enough to
   count as down is its entry in `devices`.
+- **`facts.streams`** says what plays, from Tautulli, as far as the collector's setting `show` in
+  `[sources.streams]` lets it out ([configuration.md](./configuration.md#sourcesstreams)). It is
+  for a display guests can see, so what the setting holds back is never in the file, the words of
+  `streaming` held through its clearing period included; a change to the setting holds from the
+  next file on.
+  - `count`, always: how many streams Tautulli reports.
+  - `titles`, with `show` `names` or `titles`: what each stream plays, sorted as `sessions` is.
+    Episodes read `The Night Shift S02E04` and tracks `<artist> - <track>`.
+  - `sessions`, with `show` `names` or `titles`, when any stream has a name or a title to show:
+    1 to 32 of them, in the order the streams started (Tautulli's session key), so a new stream
+    joins the end and the others keep their places. Each is an object with `title`, 1 to 60
+    characters, and `who`, 1 to 16: Tautulli's friendly name for the user, else the user, else the
+    user name. Either is cut with an ellipsis at its limit. `who` is there with `show` `names` alone, and each key is
+    left out when the stream has none; a stream with neither is counted and not listed.
+  - With `show` `count` there is `count` and nothing else.
+
+  Names and titles are cleaned: control characters and the marks that turn text
+  right to left become spaces, and runs of white space one space. Nothing else about a stream,
+  such as its device, quality or progress, is read.
 - **`facts.devices`** lists the devices (see
   [configuration.md](./configuration.md#devices)). It is `null` when there are none, the
   Pi of `[sources.pi]` included, and otherwise an object with one key, `list`: every enabled
@@ -342,6 +366,8 @@ condition maps to, and nothing else; `defaults.scenes` only asks it for another 
 grants that where the scene can act the condition. Thresholds and durations are the collector's
 configuration.
 
-The quiet line and the captions are the one place the page may choose words of its own, from
+The quiet line and the captions are the places the page may choose words of its own, from
 `quiet_parts` and an event's `parts`. Even then the collector formats every number and time, in its
-own time zone, and the page only picks the words around them and joins them.
+own time zone, and the page only picks the words around them and joins them. The detail line of
+`streaming` is built on the page from `facts.streams.sessions`, so that it can take each stream in
+turn, in the collector's words: the same rule as the collector's `detail`, and no world's words yet.

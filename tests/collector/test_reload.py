@@ -13,6 +13,7 @@ import tempfile
 import time
 import tomllib
 import unittest
+from typing import ClassVar
 from unittest import mock
 
 from collector import config, contract, overlay, reload
@@ -21,7 +22,7 @@ from collector.config import ConfigError, build, credential_names
 from collector.runner import Runner
 from collector.sources import MissingCredentials
 from collector.store import Memory
-from kw_helpers import Clock, FakeProc, closed_port
+from kw_helpers import Clock, FakeHttp, FakeProc, closed_port
 
 
 def write_admin(path: str, given: dict) -> str:
@@ -530,6 +531,109 @@ class ExampleConfigTest(unittest.TestCase):
         for path in overlay.PATHS:
             table, key = path.rsplit(".", 1)
             self.assertIn(key, [s["key"] for s in config.schema.settings(table)], path)
+
+
+class StreamsShowTest(unittest.TestCase):
+    """The setting sources.streams.show changed on the admin page while streams play: from the
+    next poll on, nothing it holds back is in the state file, the words held through the
+    condition's clearing period included."""
+
+    SESSIONS: ClassVar[list] = [
+        {
+            "session_key": "4",
+            "friendly_name": "Robin",
+            "media_type": "movie",
+            "title": "Harbour of Glass",
+        },
+        {
+            "session_key": "9",
+            "user": "Sam",
+            "media_type": "episode",
+            "grandparent_title": "The Lantern Keepers",
+            "parent_media_index": "1",
+            "media_index": "3",
+        },
+    ]
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+        self.answer(200)
+        self.out = os.path.join(self.tmp.name, "out")
+        self.var = os.path.join(self.tmp.name, "var")
+        os.mkdir(self.out)
+        os.mkdir(self.var)
+        config_path = os.path.join(self.tmp.name, "config.toml")
+        self.admin_path = os.path.join(self.tmp.name, overlay.FILE)
+        with open(config_path, "w", encoding="utf-8") as fh:
+            fh.write(
+                f'[collector]\noutput_dir = "{self.out}"\nstate_dir = "{self.var}"\n'
+                f'[sources.streams]\nurl = "{self.http.url}"\n'
+            )
+        self.clock = Clock()
+        key = {"KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-" + secrets.token_hex(8)}
+        self.settings = reload.Settings(config_path, self.admin_path, key)
+        c, _said = self.settings.start()
+        self.runner = Runner(c, Memory(self.var), clock=self.clock)
+
+    def answer(self, status):
+        data = {"stream_count": "2", "sessions": self.SESSIONS}
+        reply = {"response": {"result": "success", "data": data}}
+        self.http.routes["/api/v2"] = (status, reply if status == 200 else {})
+
+    def poll(self, change=None, wait=10):
+        if change is not None:
+            write_admin(self.admin_path, {"sources.streams.show": change})
+        self.clock.advance(wait)
+        reload.poll(self.settings, self.runner, self.clock)
+        self.runner.cycle()
+        with open(os.path.join(self.out, "state.json"), encoding="utf-8") as fh:
+            written = fh.read()
+        state = json.loads(written)
+        self.assertEqual(contract.validate(state), [])
+        return state, written
+
+    def test_titles_then_count(self):
+        state, written = self.poll()
+        self.assertEqual(state["conditions"][0]["detail"], "Robin · Harbour of Glass · 1 of 2")
+        self.assertEqual(
+            state["facts"]["streams"]["sessions"],
+            [
+                {"who": "Robin", "title": "Harbour of Glass"},
+                {"who": "Sam", "title": "The Lantern Keepers S01E03"},
+            ],
+        )
+        # Tautulli stops answering as the setting changes: the condition is held on its last words
+        self.answer(500)
+        state, written = self.poll("titles")
+        self.assertEqual(state["conditions"][0]["id"], "streaming")
+        self.assertEqual(state["conditions"][0]["detail"], "Harbour of Glass · 1 of 2")
+        self.assertIsNone(state["facts"]["streams"])
+        for name in ("Robin", "Sam"):
+            self.assertNotIn(name, written)
+        # and answers again at the source's next read, 30 seconds after the last
+        self.answer(200)
+        state, written = self.poll(wait=30)
+        self.assertEqual(
+            state["facts"]["streams"],
+            {
+                "count": 2,
+                "titles": ["Harbour of Glass", "The Lantern Keepers S01E03"],
+                "sessions": [
+                    {"title": "Harbour of Glass"},
+                    {"title": "The Lantern Keepers S01E03"},
+                ],
+            },
+        )
+        for name in ("Robin", "Sam"):
+            self.assertNotIn(name, written)
+        state, written = self.poll("count")
+        self.assertEqual(state["facts"]["streams"], {"count": 2})
+        self.assertEqual(state["conditions"][0]["detail"], "2 streams")
+        for held in ("Robin", "Sam", "Harbour", "Lantern"):
+            self.assertNotIn(held, written)
 
 
 if __name__ == "__main__":

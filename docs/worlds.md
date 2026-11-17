@@ -869,7 +869,10 @@ where the collector wrote `... 4,812 ads blocked`, `BANISHED 203.0.113.77 · ssh
 203.0.113.77 · sshd`, `DELIVERED · <title>` for `IMPORTED · <title>` and `STORES SAFE 03:12` for
 `BACKUP DONE 03:12`. A count too long for the line takes its short form, `1.2M ads slain` for
 1,234,567, before it is dropped. `main.js` writes the result with `textContent`, never as markup. The
-headline, the detail and the "+N MORE" badge are always the collector's.
+headline, the detail and the "+N MORE" badge are always the collector's. So, for now, are the
+detail line of `streaming` and the streams' badge: the page builds them from `facts.streams` in the
+collector's own words, in `KW.state.streamWords` alone, and no word set has templates for them yet
+([page.md](./page.md#the-words-over-the-scene)).
 
 `labels` and `watcher` are carried in the compiled set for the settings screen, which does not read
 them yet.
@@ -879,7 +882,7 @@ sets on `#surface` once at start-up and `display.css` reads:
 
 | Property | From | Read by |
 |---|---|---|
-| `--kw-ok` to `--kw-sleep`, `--kw-ok2` to `--kw-sleep2` | each level's two colours | each level's `--fg` and `--fg2`; `--kw-warn` and `--kw-crit` also colour the "+N MORE" badge |
+| `--kw-ok` to `--kw-sleep`, `--kw-ok2` to `--kw-sleep2` | each level's two colours | each level's `--fg` and `--fg2`; `--kw-warn` and `--kw-crit` also colour the "+N MORE" badge, and `--kw-sleep2` the streams' badge |
 | `--kw-outline` | `outline` | the words' outline, `text-shadow` |
 | `--kw-scrim` | `scrim`, as `r,g,b` | the scrim's gradient stops, whose alphas stay in `display.css` |
 | `--kw-caption` | `caption` | the caption's background |

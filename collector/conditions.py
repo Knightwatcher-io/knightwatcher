@@ -23,7 +23,7 @@ from typing import Any
 
 from collector import text
 from collector.config import Config
-from collector.sources import Reading
+from collector.sources import Reading, streams
 
 log = logging.getLogger("collector")
 
@@ -258,6 +258,12 @@ class Conditions:
             else:
                 self.causes.pop("device_down")
                 self.trackers["device_down"] = Tracker(clear_after_s=clear)
+        # Words held through streaming's clearing period say no more than the setting `show`
+        # now lets out: a change to it restarts the source, but not the words it last gave.
+        held = self.causes.get("streaming")
+        if held is not None and held.context is not None:
+            show = config.sources["streams"]["show"] if "streams" in config.sources else "count"
+            held.context = streams.shown(held.context, show)
 
     # Causes -----------------------------------------------------------------------------------
 
@@ -454,11 +460,12 @@ class Conditions:
         if cid == "updating":
             return "MAINTENANCE", f"{ctx['what'] or 'maintenance'} running for {held}"
         if cid == "streaming":
-            titles = ctx["titles"]
-            if ctx["count"] == 1 and titles:
-                return "STREAMING", titles[0]
-            first = f"{text.SEP}{titles[0]}" if titles else ""
-            return "STREAMING", f"{text.plural(ctx['count'], 'stream')}{first}"
+            # The first stream, as a page from before the streams' sessions shows it; a newer
+            # page takes each in turn from facts.streams.sessions.
+            sessions = ctx.get("sessions") or []
+            if sessions:
+                return "STREAMING", streams.line(sessions[0], 1, len(sessions))
+            return "STREAMING", text.plural(ctx["count"], "stream")
         if cid == "night":
             return "NIGHT", f"quiet hours until {ctx}"
         raise KeyError(cid)

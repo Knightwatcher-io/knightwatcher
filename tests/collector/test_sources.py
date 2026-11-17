@@ -1,10 +1,12 @@
 import datetime as dt
+import json
 import os
 import re
 import socket
 import tempfile
 import threading
 import unittest
+from typing import ClassVar
 from unittest import mock
 
 from collector.net import AuthError, SourceError, dns_query
@@ -17,7 +19,7 @@ from collector.sources.host import HostSource, Sample, cpu_average, mem_average
 from collector.sources.imports import RadarrSource, SonarrSource
 from collector.sources.security import SecuritySource
 from collector.sources.ssh import SshSource, decode_address
-from collector.sources.streams import StreamsSource, title_of
+from collector.sources.streams import StreamsSource, line, name_of, shown, title_of
 from collector.sources.updates import UpdatesSource
 from collector.sources.wan import WanSource
 from kw_helpers import T0, FakeHttp, FakeProc, at, closed_port, make_config
@@ -808,8 +810,174 @@ class StreamsTest(unittest.TestCase):
         }
         self.http.routes["/api/v2"] = (200, reply)
         s = source(StreamsSource, "streams", {"url": self.http.url})
-        self.assertEqual(s.fetch(T0).facts, {"count": 1, "titles": ["A Film"]})
+        self.assertEqual(
+            s.fetch(T0).facts,
+            {"count": 1, "titles": ["A Film"], "sessions": [{"title": "A Film"}]},
+        )
         self.assertIn("apikey=tk-example", self.http.requests[0][0])
+
+    # Three invented streams, as Tautulli lists them: not in the order they started.
+    SESSIONS: ClassVar[list] = [
+        {
+            "session_key": "12",
+            "friendly_name": "Sam",
+            "user": "sam.k",
+            "username": "samk",
+            "media_type": "movie",
+            "title": "Harbour of Glass",
+            "transcode_decision": "transcode",
+            "player": "Lounge TV",
+        },
+        {
+            "session_key": "7",
+            "friendly_name": "Robin",
+            "media_type": "episode",
+            "grandparent_title": "The Lantern Keepers",
+            "parent_media_index": "1",
+            "media_index": "3",
+        },
+        {
+            "session_key": "30",
+            "friendly_name": "",
+            "user": "alex",
+            "media_type": "track",
+            "grandparent_title": "Fen Owls",
+            "title": "Low Tide",
+        },
+    ]
+
+    def fetch(self, show=None, sessions=None, count="3"):
+        given = self.SESSIONS if sessions is None else sessions
+        data = {"stream_count": count, "sessions": given}
+        self.http.routes["/api/v2"] = (200, {"response": {"result": "success", "data": data}})
+        settings = {"url": self.http.url}
+        if show is not None:
+            settings["show"] = show
+        return source(StreamsSource, "streams", settings).fetch(T0).facts
+
+    def test_names_by_default_in_the_order_the_streams_started(self):
+        self.assertEqual(
+            self.fetch(),
+            {
+                "count": 3,
+                "titles": ["The Lantern Keepers S01E03", "Harbour of Glass", "Fen Owls - Low Tide"],
+                "sessions": [
+                    {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+                    {"who": "Sam", "title": "Harbour of Glass"},
+                    {"who": "alex", "title": "Fen Owls - Low Tide"},
+                ],
+            },
+        )
+
+    def test_a_name_is_the_friendly_name_then_the_user_then_the_user_name(self):
+        self.assertEqual(
+            name_of({"friendly_name": "Robin", "user": "r", "username": "rb"}), "Robin"
+        )
+        self.assertEqual(name_of({"friendly_name": " \t", "user": "r", "username": "rb"}), "r")
+        self.assertEqual(name_of({"friendly_name": None, "username": "rb"}), "rb")
+        self.assertEqual(name_of({"friendly_name": 7, "user": ""}), "")
+        self.assertEqual(name_of({}), "")
+        # a stream with no name is shown by its title alone, and one with neither is counted
+        facts = self.fetch(
+            sessions=[
+                {"session_key": "1", "title": "Harbour of Glass"},
+                {"session_key": "2", "user": "Sam"},
+                {"session_key": "3"},
+            ]
+        )
+        self.assertEqual(facts["sessions"], [{"title": "Harbour of Glass"}, {"who": "Sam"}])
+        self.assertEqual(facts["count"], 3)
+
+    def test_names_and_titles_are_cleaned_and_a_name_is_cut_at_sixteen(self):
+        facts = self.fetch(
+            sessions=[
+                {
+                    "session_key": "1",
+                    "friendly_name": "The Whole\x00 Family\nDownstairs",
+                    "title": "Harbour\u202e of\tGlass\r\n",
+                },
+            ],
+            count="1",
+        )
+        self.assertEqual(
+            facts["sessions"], [{"who": "The Whole Famil…", "title": "Harbour of Glass"}]
+        )
+        long = self.fetch(sessions=[{"title": "A Very Long Title " * 6}], count="1")
+        self.assertEqual(len(long["sessions"][0]["title"]), 60)
+        self.assertTrue(long["sessions"][0]["title"].endswith("…"))
+
+    def test_titles_reads_no_names(self):
+        facts = self.fetch("titles")
+        self.assertEqual(
+            facts,
+            {
+                "count": 3,
+                "titles": ["The Lantern Keepers S01E03", "Harbour of Glass", "Fen Owls - Low Tide"],
+                "sessions": [
+                    {"title": "The Lantern Keepers S01E03"},
+                    {"title": "Harbour of Glass"},
+                    {"title": "Fen Owls - Low Tide"},
+                ],
+            },
+        )
+        written = json.dumps(facts)
+        for name in ("Robin", "Sam", "sam", "alex"):
+            self.assertNotIn(name, written)
+
+    def test_at_most_thirty_two_sessions_are_listed(self):
+        many = [{"session_key": str(i), "title": f"Title {i}"} for i in range(40)]
+        facts = self.fetch(sessions=many, count="40")
+        self.assertEqual(facts["count"], 40)
+        self.assertEqual(len(facts["sessions"]), 32)
+        self.assertEqual(facts["sessions"][-1], {"title": "Title 31"})
+
+    def test_count_reads_no_names_and_no_titles(self):
+        facts = self.fetch("count")
+        self.assertEqual(facts, {"count": 3})
+
+    def test_nothing_else_of_a_stream_is_kept(self):
+        written = json.dumps(self.fetch())
+        for detail in ("transcode", "Lounge", "session_key", "12"):
+            self.assertNotIn(detail, written)
+
+    def test_the_line_of_a_stream(self):
+        robin = {"who": "Robin", "title": "The Lantern Keepers S01E03"}
+        self.assertEqual(line(robin, 1, 3), "Robin · The Lantern Keepers S01E03 · 1 of 3")
+        self.assertEqual(line(robin, 1, 1), "Robin · The Lantern Keepers S01E03")
+        self.assertEqual(line({"title": "Harbour of Glass"}, 2, 3), "Harbour of Glass · 2 of 3")
+        self.assertEqual(line({"who": "Sam"}, 2, 2), "Sam · 2 of 2")
+        self.assertEqual(line({"title": "Harbour of Glass"}, 1, 1), "Harbour of Glass")
+
+    def test_the_title_gives_way_and_the_name_and_count_survive(self):
+        title = "An Extraordinarily Long Film Title: The Sequel to the Sequel"
+        cut = line({"who": "Robin", "title": title}, 2, 3)
+        self.assertEqual(cut, "Robin · An Extraordinarily Long Film Title: The Se… · 2 of 3")
+        self.assertEqual(len(cut), 60)
+        cut = line({"who": "A Name Far Too Long", "title": title}, 12, 12)
+        self.assertTrue(cut.startswith("A Name Far Too… · An Extraordinarily"))
+        self.assertTrue(cut.endswith("… · 12 of 12"))
+        self.assertEqual(len(cut), 60)
+        alone = line({"title": title + " and More"}, 1, 1)
+        self.assertEqual(len(alone), 60)
+        self.assertTrue(alone.endswith("…"))
+
+    def test_shown_holds_back_what_the_setting_does_not_let_out(self):
+        facts = {
+            "count": 2,
+            "titles": ["Harbour of Glass"],
+            "sessions": [{"who": "Sam", "title": "Harbour of Glass"}, {"who": "Robin"}],
+        }
+        self.assertEqual(shown(facts, "names"), facts)
+        self.assertEqual(
+            shown(facts, "titles"),
+            {
+                "count": 2,
+                "titles": ["Harbour of Glass"],
+                "sessions": [{"title": "Harbour of Glass"}],
+            },
+        )
+        self.assertEqual(shown(facts, "count"), {"count": 2})
+        self.assertIsNone(shown(None, "names"))
 
     def test_bad_key_is_an_auth_error(self):
         reply = {"response": {"result": "error", "message": "Invalid apikey", "data": {}}}

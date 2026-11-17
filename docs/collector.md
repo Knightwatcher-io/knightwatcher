@@ -82,7 +82,9 @@ requiring `config.toml` to pass alone, and when they pass it swaps to them betwe
   still running left to finish unseen. A change to the collector's own settings, the interval
   among them, starts every source afresh;
 - each condition keeps its state and takes up its new thresholds; one left out of the priority is
-  forgotten;
+  forgotten. The words `streaming` holds through its clearing period keep only what the new
+  `show` of `[sources.streams]` lets out, so a name held back from the next file is not in its
+  `detail` either;
 - each device keeps its record while its name and its check are the same, at its new place
   in the list, and one renamed, given a new check or added starts as after a restart;
 - the next poll is scheduled at the new interval.
@@ -315,7 +317,7 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `pi` | `devices.py` | a TCP connection to every port at once; a refusal counts as an answer | `pi` |
 | `updates` | `updates.py` | the host's lock table, `/proc/locks`, and the command line of each process holding a lock | `updates` |
 | `ssh` | `ssh.py` | established connections to the SSH port in `/proc/net/tcp` and `tcp6` | `ssh` |
-| `streams` | `streams.py` | Tautulli's `get_activity` | `streams` |
+| `streams` | `streams.py` | Tautulli's `get_activity`: of each stream its title, and its user's name only when `show` is `names` | `streams` |
 | `adblock` | `adblock.py` | AdGuard Home's `/control/stats` | `adblock` |
 | `security` | `security.py` | a fail2ban summary at `/soc` | `security` |
 | `sonarr`, `radarr` | `imports.py` | the last ten import records in each one's history | none |
