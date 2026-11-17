@@ -239,6 +239,9 @@ def _validate_conditions(c: dict, problems: list[str]) -> None:
 def _validate_source(name: str, s: dict, problems: list[str]) -> None:
     table = f"sources.{name}"
     _check_ranges(table, s, table, problems)
+    for spec in schema.settings(table):
+        if spec["type"] == "string" and "values" in spec:
+            _choice(f"{table}.{spec['key']}", s[spec["key"]], tuple(spec["values"]), problems)
     for key in REQUIRED.get(name, []):
         if not s[key]:
             why = schema.setting(table, key).get("required_problem")

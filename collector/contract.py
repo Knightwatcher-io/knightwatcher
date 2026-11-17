@@ -7,6 +7,7 @@ from typing import Any
 
 from collector import SCHEMA, text
 from collector.config import CONDITION_IDS, DEFAULT_TABLES, check_defaults
+from collector.sources.streams import NAME_MAX, SESSION_KEYS, SESSIONS_MAX
 
 LEVELS = {"critical", "warning", "work", "quiet", "sleep"}
 EVENT_TYPES = {"ad_blocked", "ip_banned", "import", "backup_done"}
@@ -86,6 +87,38 @@ def _devices(devices: Any, p: list[str]) -> int:
         if state == "up" and t.get("seen") is False:
             p.append(f"{w} is up but not seen")
     return len(entries)
+
+
+def _text(value: Any, limit: int) -> bool:
+    return isinstance(value, str) and 0 < len(value) <= limit
+
+
+def _streams(streams: Any, p: list[str]) -> None:
+    """Check facts.streams: the count, and the titles and sessions the setting `show` lets out."""
+    if not isinstance(streams, dict):
+        return
+    if "count" not in streams or set(streams) - {"count", "titles", "sessions"}:
+        p.append("facts.streams is not count, with titles and sessions alone beside it")
+        return
+    n = streams["count"]
+    if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+        p.append("facts.streams.count is not a whole number")
+    if "titles" in streams:
+        titles = streams["titles"]
+        if not isinstance(titles, list) or not all(_text(t, text.DETAIL_MAX) for t in titles):
+            p.append(f"facts.streams.titles is not a list of text of 1 to {text.DETAIL_MAX}")
+    if "sessions" in streams:
+        sessions = streams["sessions"]
+        if not isinstance(sessions, list) or not 1 <= len(sessions) <= SESSIONS_MAX:
+            p.append(f"facts.streams.sessions is not a list of 1 to {SESSIONS_MAX} sessions")
+            return
+        limits = {"who": NAME_MAX, "title": text.DETAIL_MAX}
+        for i, s in enumerate(sessions):
+            w = f"facts.streams.sessions[{i}]"
+            if not isinstance(s, dict) or not s or set(s) - set(SESSION_KEYS):
+                p.append(f"{w} is not an object with who, title or both")
+            elif not all(_text(v, limits[k]) for k, v in s.items()):
+                p.append(f"{w} has a who or a title that is empty or too long")
 
 
 def _config(note: Any) -> list[str]:
@@ -229,6 +262,7 @@ def validate(state: Any) -> list[str]:
                 p.append(f"facts.{name} is neither an object nor null")
         if isinstance(facts.get("devices"), dict):
             listed = _devices(facts["devices"], p)
+        _streams(facts.get("streams"), p)
     for i, c in enumerate(conditions):
         if isinstance(c, dict) and c.get("id") == "device_down":
             # The page finds the devices that are down by their positions in facts.devices.list.

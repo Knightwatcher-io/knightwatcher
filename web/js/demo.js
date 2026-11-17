@@ -19,7 +19,7 @@
     { id: 'memory_tight',        alias: 'swap',   name: 'Swap',        hl: 'SWAP FILLING',   sub: 'swap 91% and climbing · RAM 93% · VS Code server holds most' },
     { id: 'ssh_session',         alias: 'ssh',    name: 'SSH session', hl: 'AT COURT',       sub: 'admin signed in from 192.0.2.10 · session open 14 min' },
     { id: 'updating',            alias: 'update', name: 'Updating',    hl: 'UPDATING',       sub: 'Komodo is redeploying 3 stacks · sonarr, radarr, bazarr' },
-    { id: 'streaming',           alias: 'plex',   name: 'Plex stream', hl: 'NOW SHOWING',    sub: '1 stream, direct play · The Night Shift S02E04' },
+    { id: 'streaming',           alias: 'plex',   name: 'Plex stream', hl: 'STREAMING',      sub: '' },
     { id: 'night',               alias: 'night',  name: 'Night',       hl: 'NIGHT WATCH',    sub: 'nothing to report since 23:40' }
   ].map(c => { const k = ST.CONDITIONS[c.id]; return Object.assign(c, { lv: k.lv, level: k.level, st: ST.LEVELS[k.level], scene: k.scene }); });
   const ALIAS = {}; for (const c of CONDS) ALIAS[c.alias] = c.id;
@@ -29,6 +29,27 @@
     goblin: { name: 'IP banned',   type: 'ip_banned',   text: 'BANNED 203.0.113.77 · sshd',          parts: { addr: '203.0.113.77', jail: 'sshd' } },
     crate:  { name: 'Import',      type: 'import',      text: 'IMPORTED · The Night Shift S02E04',   parts: { title: 'The Night Shift S02E04' } },
     feast:  { name: 'Backup done', type: 'backup_done', text: 'BACKUP DONE 03:12',                   parts: { at: '03:12' } } };
+  /* The invented streams, in the order they started. The address's st= sets how many play (1 to 3,
+     3 without it) and sm= the collector's setting show (names, titles or count, names without
+     it). */
+  const STREAMS = [
+    { who: 'Robin', title: 'The Lantern Keepers S01E03' },
+    { who: 'Sam', title: 'Harbour of Glass' },
+    { who: 'Alex', title: 'Fen Owls - Low Tide' } ];
+  const SHOWS = ['names', 'titles', 'count'];
+  /* facts.streams as the collector writes it for n of the streams under the setting show. */
+  function streamsFor(n, show) {
+    const list = STREAMS.slice(0, n), facts = { count: list.length };
+    if (show === 'count') return facts;
+    facts.titles = list.map(s => s.title);
+    facts.sessions = list.map(s => (show === 'titles' ? { title: s.title } : { who: s.who, title: s.title }));
+    return facts;
+  }
+  /* The detail the collector writes for those streams: the first stream's line, or the count. */
+  function detailFor(facts) {
+    const w = ST.streamWords(ST.streamsOf(facts), 0).line;
+    return w || facts.count + (facts.count === 1 ? ' stream' : ' streams');
+  }
   /* The collector's own words for the quiet line (quiet_line() in collector/runner.py), which write
      the demo's quiet_line, the text shown without a world's words. */
   const COLLECTOR_QUIET = { quiet: ['ALL QUIET'], up: ['{n} up'], backup: ['backup {at}'], ads: ['{n} ads blocked', '{short} ads blocked', '{short} blocked'] };
@@ -44,6 +65,7 @@
      length (docs/page.md). */
   const DEMO_TURN_MS = 60 * 1000;
 
+  let streams = streamsFor(3, 'names');
   let S = null, E = null, running = false, built = false, flyTimer = 0, demoAt = 0, demoI = -1, swatNote = null, stepDevices = null;
   let ads = 4812;
   /* A count of adverts as the collector writes it, whole (text.count()) and short (short_count()):
@@ -76,10 +98,12 @@
     document.body.classList.toggle('nobar', S.bar === '0');
     const act = active(), others = act.slice(1).filter(c => c.lv >= 3), list = demoList(), placed = ST.arrange(list);
     let w = act[0] || IDLE;
+    if (w.id === 'streaming') w = Object.assign({}, w, { sub: detailFor(streams) });
     // device_down names the devices that are down and alert, as the collector would
     if (w.id === 'device_down') w = Object.assign({}, w, { place: ST.lookPlace(list.map((e, i) => (e && e.state === 'down' && e.alert ? i : -1)).filter(i => i >= 0), placed.at) });
     E.input = Object.assign({ w, is: S.is, turnMs: DEMO_TURN_MS, devices: placed.devices, tv: isOn('streaming'), helmet: S.h }, KW.ui.extras(DEMO_TURN_MS));
-    KW.ui.show({ st: w.st, hl: w.hl, sub: w.sub, quiet: idleLine(), more: { n: others.length, crit: others.some(c => c.lv >= 4) } });
+    KW.ui.show({ st: w.st, hl: w.hl, sub: w.sub, quiet: idleLine(), more: { n: others.length, crit: others.some(c => c.lv >= 4) },
+      id: w.id, streams: ST.streamsOf(streams), behind: isOn('streaming') && w.id !== 'streaming' });
     // the helmet and the headline size go into the address only when the address or this bar set
     // them; otherwise they are the settings' (KW.hooks.fixed)
     const inHash = ([k]) => (k !== 'h' && k !== 'hs') || KW.hooks.fixed.has(k);
@@ -142,6 +166,8 @@
        where the short aliases are turned into the contract's ids. */
     start() {
       S = KW.opts; E = KW.engine; running = true;
+      const hv = KW.hooks.hv, n = +hv('st');
+      streams = streamsFor(n >= 1 && n <= STREAMS.length ? Math.floor(n) : STREAMS.length, SHOWS.includes(hv('sm')) ? hv('sm') : 'names');
       S.on = S.on.split(',').filter(Boolean).map(a => ALIAS[a] || a).join(',');
       build();
       flyTimer = setInterval(() => { if (Math.random() < .6) { addFly(performance.now()); refreshSub(); } }, 5200);
@@ -163,8 +189,8 @@
     /* Applies the demo's settings again, after the settings screen changed something. */
     refresh() { if (running) apply(); },
     tick,
-    /* The quiet line and the events, for the tests. */
-    quietFor, captionOf, EVENTS,
+    /* The quiet line, the events and the streams, for the tests. */
+    quietFor, captionOf, EVENTS, STREAMS, streamsFor, detailFor,
     note(text) { if (swatNote) swatNote.textContent = text; }
   };
 })(window.KW);

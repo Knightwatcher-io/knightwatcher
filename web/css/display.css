@@ -49,6 +49,10 @@ body.nobar { cursor: none; }
 #surface.quiet #sub { display: none; }
 #more { font-size: 7cqh; line-height: 0.82; color: #000; background: var(--kw-warn, #ffb000); padding: 0.5cqh 1cqw 0; display: none; text-shadow: none; margin-top: 1.2cqh; }
 #more.crit { background: var(--kw-crit, #ff4a3d); }
+/* How many streams play while a higher condition hides streaming: muted beside the badge, in the
+   night's dim green and outlined rather than filled, sized with the headline. */
+#streams { font-size: calc(var(--hs) * 0.32cqh); line-height: 0.82; color: var(--kw-sleep2, #1c8a3a); border: 0.3cqh solid currentColor; padding: 0.5cqh 0.8cqw 0; display: none; margin-top: 1.2cqh; }
+#streams.after { margin-left: 1.2cqw; }
 #clock { font-size: 15cqh; line-height: 0.78; color: var(--fg); }
 /* The 12-hour clock's AM or PM, small after the minutes. */
 #clock small { font-size: .42em; margin-left: .12em; }

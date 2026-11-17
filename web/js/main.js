@@ -108,7 +108,7 @@
 
   /* ---- The words over the scene ------------------------------------------------------------- */
   const $ = id => document.getElementById(id);
-  const cv = $('cv'), surface = $('surface'), hl = $('hl'), sub = $('sub'), more = $('more'), quiet = $('quiet'), cap = $('cap'), ov = $('ov'), clock = $('clock');
+  const cv = $('cv'), surface = $('surface'), hl = $('hl'), sub = $('sub'), more = $('more'), streamsEl = $('streams'), quiet = $('quiet'), cap = $('cap'), ov = $('ov'), clock = $('clock');
   E.init(cv.getContext('2d'));
   /* The overlay's colours and font, as CSS custom properties that display.css reads, each a value
      KW.world has checked. With no overlay none is set, and display.css's own values stand. */
@@ -118,17 +118,27 @@
      or the collector's own text (KW.world.quietLine and caption). */
   const quietOf = v => (KW.world ? KW.world.quietLine(v.quietParts, v.quietLine) : v.quietLine);
   const captionOf = e => (KW.world ? KW.world.caption(e.type, e.parts, e.text) : e.text);
+  /* The streams' words (KW.state.streamWords): the detail line while streaming is shown, each
+     stream in turn by the clock, the frozen time of t= for screenshots and the wall clock
+     otherwise, so that every display shows the same stream; and the badge while a higher
+     condition hides streaming. Without sessions the detail is the collector's. */
+  const streamClock = () => (freeze ? KW.hooks.t : Date.now());
+  const subOf = t => (t.id === 'streaming' && t.streams ? ST.streamWords(t.streams, streamClock()).line || t.sub : t.sub);
   let capTimer = 0, lastShow = null; if (freeze) cap.style.transition = 'none';
   KW.ui = {
-    /* t: { st, hl, sub, quiet, more: { n, crit } }. With no headline the screen is quiet and shows
-       the quiet line instead of the detail. */
+    /* t: { st, hl, sub, quiet, more: { n, crit } }, and with a condition shown its id, the streams
+       the file reports (KW.state.map's streams) and behind, whether streaming is up behind it.
+       With no headline the screen is quiet and shows the quiet line instead of the detail. */
     show(t) {
       lastShow = t;
       surface.className = 'st-' + t.st + ' hs-' + S.hs + (t.hl ? '' : ' quiet');
-      hl.textContent = t.hl; if (!t.hl) quiet.textContent = t.quiet; else sub.textContent = t.sub;
+      hl.textContent = t.hl; if (!t.hl) quiet.textContent = t.quiet; else sub.textContent = subOf(t);
       more.style.display = t.more.n ? 'inline-block' : 'none'; more.textContent = '+' + t.more.n + ' MORE'; more.className = t.more.crit ? 'crit' : '';
+      streamsEl.style.display = t.behind ? 'inline-block' : 'none'; streamsEl.textContent = ST.streamWords(t.streams || null, 0).badge; streamsEl.className = t.more.n ? 'after' : '';
       requestAnimationFrame(fit);
     },
+    /* Moves the detail line on to the stream of the moment; called every second. */
+    streamTick() { if (lastShow && lastShow.hl) { const t = subOf(lastShow); if (sub.textContent !== t) sub.textContent = t; } },
     /* Shows the last state again, after the headline size changed. */
     again() { if (lastShow) KW.ui.show(lastShow); },
     /* What the engine's input takes from the settings, with ownMs the length of each quiet scene
@@ -149,7 +159,7 @@
     }
     if (!freeze) { const t = performance.now(); ov.style.transform = 'translate(' + (Math.sin(t / 97000) * surface.clientWidth * .012).toFixed(1) + 'px,' + (Math.cos(t / 131000) * surface.clientHeight * .012).toFixed(1) + 'px)'; }
   }
-  setInterval(tick, 1000); tick();
+  setInterval(() => { tick(); KW.ui.streamTick(); }, 1000); tick();
 
   /* ---- Sizing: the scene cut to the screen's own shape ---------------------------------------
      From twice the grid's size upwards the canvas is scaled by a whole number of device pixels, which
@@ -191,7 +201,8 @@
   /* Shows a valid view's state; its events are played separately. */
   function showLive(v) {
     E.input = Object.assign({ w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, devices: v.devices, tv: v.tv, helmet: S.h }, KW.ui.extras(LIVE_TURN_MS));
-    showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more } : { st: 'ok', hl: '', sub: '', quiet: quietOf(v), more: { n: 0, crit: false } });
+    showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more, id: v.w.id, streams: v.streams, behind: v.streamsBehind }
+      : { st: 'ok', hl: '', sub: '', quiet: quietOf(v), more: { n: 0, crit: false } });
   }
   function onView(v) {
     if (sync) sync.poll();

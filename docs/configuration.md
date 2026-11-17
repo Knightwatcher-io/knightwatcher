@@ -381,6 +381,7 @@ Streams playing, from Tautulli.
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Tautulli. |
+| `show` | `"names"`, `"titles"` or `"count"` | `"names"` | household | What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file. |
 | `secret` | letters, digits and underscores | `"tautulli"` | household | The name its credential is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone. |
 
 ### [sources.adblock]

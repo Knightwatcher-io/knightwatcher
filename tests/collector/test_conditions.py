@@ -5,6 +5,7 @@ from unittest import mock
 
 from collector.conditions import Conditions
 from collector.sources import Reading
+from collector.sources import streams as streams_source
 from collector.sources.host import HostSource
 from kw_helpers import T0, FakeProc, at, make_config
 
@@ -496,7 +497,13 @@ class EachConditionTest(unittest.TestCase):
         out = h.poll(
             ssh=ssh(A),
             updates=Reading({"running": True, "what": "nightly maintenance"}),
-            streams=Reading({"count": 1, "titles": ["The Night Shift S02E04"]}),
+            streams=Reading(
+                {
+                    "count": 1,
+                    "titles": ["The Night Shift S02E04"],
+                    "sessions": [{"title": "The Night Shift S02E04"}],
+                }
+            ),
         )
         self.assertEqual(ids(out), ["ssh_session", "updating", "streaming"])
         self.assertEqual(out[0]["detail"], "1 ssh session from 192.0.2.10")
@@ -507,8 +514,14 @@ class EachConditionTest(unittest.TestCase):
 
     def test_two_streams(self):
         h = Harness()
-        out = h.poll(streams=Reading({"count": 2, "titles": ["A Film", "B Show S01E01"]}))
-        self.assertEqual(out[0]["detail"], "2 streams · A Film")
+        sessions = [{"who": "Robin", "title": "A Film"}, {"who": "Sam", "title": "B Show S01E01"}]
+        out = h.poll(
+            streams=Reading(
+                {"count": 2, "titles": ["A Film", "B Show S01E01"], "sessions": sessions}
+            )
+        )
+        self.assertEqual(out[0]["headline"], "STREAMING")
+        self.assertEqual(out[0]["detail"], "Robin · A Film · 1 of 2")
 
     def test_attack_from_a_jail_ban(self):
         h = Harness()
@@ -1006,6 +1019,63 @@ class TextLimitTest(unittest.TestCase):
             self.assertLessEqual(len(c["headline"]), 16)
             self.assertLessEqual(len(c["detail"]), 60)
         self.assertTrue(out[0]["detail"].endswith("…"))
+
+
+class StreamWordsTest(unittest.TestCase):
+    """The words for streaming in each of the setting show's modes, and the words held through
+    its clearing period after the setting changes."""
+
+    KEY: ClassVar[dict] = {"KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-example"}
+    FACTS: ClassVar[dict] = {
+        "count": 3,
+        "titles": ["The Lantern Keepers S01E03", "Harbour of Glass", "Fen Owls - Low Tide"],
+        "sessions": [
+            {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+            {"who": "Sam", "title": "Harbour of Glass"},
+            {"who": "Alex", "title": "Fen Owls - Low Tide"},
+        ],
+    }
+
+    def config(self, show):
+        streams = {"url": "http://192.0.2.20:8181", "show": show}
+        return make_config({"sources": {"streams": streams}}, self.KEY)
+
+    def detail(self, facts):
+        c = Conditions(self.config("names"))
+        return c.evaluate({"streams": Reading(facts)}, T0)[0]["detail"]
+
+    def test_names_titles_and_count(self):
+        self.assertEqual(self.detail(self.FACTS), "Robin · The Lantern Keepers S01E03 · 1 of 3")
+        self.assertEqual(
+            self.detail(streams_source.shown(self.FACTS, "titles")),
+            "The Lantern Keepers S01E03 · 1 of 3",
+        )
+        self.assertEqual(self.detail(streams_source.shown(self.FACTS, "count")), "3 streams")
+        one = {"count": 1, "titles": ["Harbour of Glass"], "sessions": [self.FACTS["sessions"][1]]}
+        self.assertEqual(self.detail(one), "Sam · Harbour of Glass")
+        self.assertEqual(self.detail(streams_source.shown(one, "titles")), "Harbour of Glass")
+        self.assertEqual(self.detail(streams_source.shown(one, "count")), "1 stream")
+        # streams with neither name nor title are counted
+        self.assertEqual(self.detail({"count": 2, "titles": []}), "2 streams")
+
+    def test_held_words_follow_a_change_of_the_setting(self):
+        c = Conditions(self.config("names"))
+        out = c.evaluate({"streams": Reading(self.FACTS)}, T0)
+        self.assertEqual(out[0]["detail"], "Robin · The Lantern Keepers S01E03 · 1 of 3")
+        # the source restarts on the change and has no reading yet: the words are held
+        c.reconfigure(self.config("titles"))
+        out = c.evaluate({}, at(10))
+        self.assertEqual(ids(out), ["streaming"])
+        self.assertEqual(out[0]["detail"], "The Lantern Keepers S01E03 · 1 of 3")
+        c.reconfigure(self.config("count"))
+        out = c.evaluate({}, at(20))
+        self.assertEqual(out[0]["detail"], "3 streams")
+        # the source turned off: the held words keep only the count
+        c = Conditions(self.config("names"))
+        c.evaluate({"streams": Reading(self.FACTS)}, T0)
+        c.reconfigure(make_config({}, self.KEY))
+        self.assertEqual(c.evaluate({}, at(10))[0]["detail"], "3 streams")
+        self.assertEqual(ids(c.evaluate({}, at(40))), [])
 
 
 if __name__ == "__main__":

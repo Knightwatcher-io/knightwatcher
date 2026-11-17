@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 
 ELLIPSIS = "…"
 
@@ -12,6 +13,16 @@ QUIET_LINE_MAX = 52
 EVENT_TEXT_MAX = 44
 
 SEP = " · "
+
+# Control characters, and the marks that reorder text from right to left, which a name or a title
+# from another service may carry.
+_CONTROL = re.compile("[\x00-\x1f\x7f-\x9f‎‏‪-‮⁦-⁩]")
+
+
+def clean(value: object) -> str:
+    """Text from another service, fit to show: its control characters made spaces, and its runs
+    of white space one space."""
+    return " ".join(_CONTROL.sub(" ", str(value)).split())
 
 
 def clip(text: str, limit: int) -> str:
