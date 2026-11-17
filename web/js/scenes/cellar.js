@@ -45,12 +45,12 @@
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
     pie: { cls: 'pie', kind: 'surface', x: 480, y: 463, w: 88, h: 112 },
-    h1: { cls: 'high', kind: 'surface', x: 450, y: 320, w: 88, h: 112 },
-    h2: { cls: 'high', kind: 'surface', x: 830, y: 300, w: 88, h: 112, pole: 280 },
+    h1: { cls: 'high', kind: 'surface', x: 470, y: 320, w: 88, h: 112 },
+    h2: { cls: 'high', kind: 'surface', x: 850, y: 300, w: 88, h: 112, pole: 280 },
     h3: { cls: 'high', kind: 'surface', x: 139, y: 300, w: 88, h: 112, flip: true, pole: 280 },
-    g1: { cls: 'ground', kind: 'floor', x: 890, y: 568, w: 88, h: 112, front: true },
-    g2: { cls: 'ground', kind: 'floor', x: 400, y: 568, w: 88, h: 112, front: true },
-    g3: { cls: 'ground', kind: 'floor', x: 200, y: 568, w: 88, h: 112, front: true }
+    g1: { cls: 'ground', kind: 'floor', x: 883, y: 594, w: 132, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 218, y: 594, w: 132, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 70, y: 594, w: 132, h: 112, front: true }
   };
 
   KW.scenes.cellar = {

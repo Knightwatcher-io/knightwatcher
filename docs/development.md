@@ -183,7 +183,12 @@ the house, leaping at night, in the smithy and at court, catching a fly that cam
 or the crate outdoors, three flies at most, none in the cellar, and the settings screen's Pet page
 ([page.md](./page.md#checks)). Against a reference from before the cat every shot differs: the
 scenes where the cat rests, the `cat-` shots in what they show, and the settings shots in the rail
-too, where the pet's page was added. A headless browser has no saved choices, so every shot shows what its address asks for.
+too, where the pet's page was added. Against a reference from before the redesign of the scenes
+and devices of 17 November 2026 (the crystal in place of the cauldron, the ground places along the
+front of the floor, the question mark over every down device), every shot that draws a scene
+differs: the scenes were recomposed, the devices redrawn and recoloured, and the cat moved to its
+new spots. The goblin's bonk shots are timed to the new hits, since the goblin now comes left of the
+knight. A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.
 
 `node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
@@ -296,10 +301,12 @@ each scene the medieval world's pack holds (today every scene, 1 782 records) a 
 from the pack and with the devices from its prop set and the monarchs from its cast, against the
 same stored records, and the rest of the cast the pack gives against `cast.json`; checks that the compiled scene's backdrop key tells
 the recorded states apart exactly as the code scene's does; and checks that it gives the code scene's
-interface. All of it takes about 80 seconds. A failure names the scene, the state, the size, the record and the first call that
+interface, the crate's stretch among it. All of it takes about 80 seconds. A failure names the scene, the state, the size, the record and the first call that
 differs, with what `HEAD` draws there and what was drawn; without git, the block of 1 024 calls
 where the difference lies. Store the records again only when a scene is meant to change, from code
-whose drawing is known to be right:
+whose drawing is known to be right, as the redesign of the scenes and devices of 17 November 2026
+did, and the knight's records (`KNIGHT_LOG=write`) too when the house or the smithy change, since
+the knight test draws them:
 
 ```bash
 SCENES_LOG=write node --test tests/web/scenes.test.js      # stores the records of the code as it is, never the pack's
@@ -312,7 +319,7 @@ SCENES_WEB=DIR node --test tests/web/scenes.test.js        # draws a copy of web
 `tests/web/world.test.js` checks the scene compiler and the medieval world's pack: that the pack
 reads clean, where a `dev` and a deployed page draw every scene from, a refused, missing or unreadable pack and a compile that throws, each leaving
 the scenes concerned the code scenes with its console line, the predicates and the backdrop's key,
-`outdoors` and the foe's zone, the target's and the anvil's acts, the bed and the screen, the
+`outdoors`, the foe's zone and the crate's stretch, the target's and the anvil's acts, the bed and the screen, the
 keyframes' tracks, the rests, the rest mark and the pegs, and
 that what the compiler does not build yet is refused by name.
 
@@ -365,7 +372,7 @@ Version 0.3.0, which adds the devices, was signed the same way on 16 November, a
 which adds the cast, the same day, as was version 0.5.0, which adds the words and the overlay.
 Version 0.6.0, which lights the pie through its lattice in place of the raspberry and draws the
 other devices as an owl, a cauldron, a flask and a chest, was signed the same day. Version 0.7.0,
-which adds the mouser cat, ships unsigned until its signing run, and a deployed page draws the cat
+which adds the mouser cat and the redesigned scenes and devices, ships unsigned until its signing run, and a deployed page draws the cat
 from code meanwhile, with every scene, device and the rest of the cast. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed

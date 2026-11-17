@@ -49,9 +49,10 @@
     E.bricks.draw({ p: [HL, HT], w: HR - HL, h: HFL - HT, size: [62, 28], of: WALL, mortar: '#0d0807', seed: 7 });
     rrect(HL - 4, 128, HR - HL + 8, 26, 2, C.K); Rv(HL, 131, HR - HL, 20, [[.2, '#4a301a'], [.6, '#3a2514'], [1, '#26180c']]);
     tools();
-    // the quench barrel, and the small table with the pie
+    // the quench barrel, and the workbench with the pie, tall enough for the pie to stand clear over
+    // the devices, beside the anvil
     P.barrelHD(100, 448, 90, 82, [[.2, C.B1], [.7, C.B2], [1, C.B3]]); Rh(126, 452, 20, 2, C.B0);
-    P.tableHD(240, 470, 80, 60);
+    P.tableHD(302, 448, 78, 82);
     // the forge: its hood and chimney, its brick hearth, the mouth of the fire
     poly([[762, HT - 2], [930, HT - 2], [930, 246], [976, 292], [716, 292], [762, 246]], C.K);
     E.bricks.draw({ p: [766, HT], w: 160, h: 248 - HT, size: [40, 16], of: BRICK, mortar: '#1e0e0a', seed: 3 }); poly([[764, 246], [928, 246], [970, 288], [722, 288]], [[.2, '#3a1d16'], [.7, '#2a140f'], [1, '#1c0d0a']]);
@@ -98,13 +99,13 @@
   /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
-    pie: { cls: 'pie', kind: 'surface', x: 280, y: 475, w: 88, h: 112 },
-    h1: { cls: 'high', kind: 'surface', x: 560, y: 300, w: 88, h: 112 },
-    h2: { cls: 'high', kind: 'surface', x: 660, y: 300, w: 88, h: 112 },
+    pie: { cls: 'pie', kind: 'surface', x: 341, y: 453, w: 88, h: 112 },
+    h1: { cls: 'high', kind: 'surface', x: 600, y: 300, w: 88, h: 112 },
+    h2: { cls: 'high', kind: 'surface', x: 676, y: 300, w: 88, h: 112 },
     h3: { cls: 'high', kind: 'surface', x: 40, y: 300, w: 88, h: 112, flip: true },
-    g1: { cls: 'ground', kind: 'floor', x: 140, y: 568, w: 88, h: 112, front: true },
-    g2: { cls: 'ground', kind: 'floor', x: 820, y: 568, w: 88, h: 112, front: true },
-    g3: { cls: 'ground', kind: 'floor', x: 40, y: 568, w: 88, h: 112, front: true }
+    g1: { cls: 'ground', kind: 'floor', x: 70, y: 594, w: 132, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 883, y: 594, w: 132, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 218, y: 594, w: 132, h: 112, front: true }
   };
 
   KW.scenes.smithy = {

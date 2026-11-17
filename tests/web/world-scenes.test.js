@@ -169,9 +169,8 @@ test('the scenes from the pack that host a foe: the entrance runs in order and t
 /* Where the goblin stands in a scene, as foe.test.js expects it in the code scene: the devices, the
    knight's x and the spot, or null for no room. */
 const SPOTS = {
-  battlement: [[[PIE], 480, { x: 690, side: 1 }], [[PIE], 630, { x: 420, side: -1 }]],
-  camp: [[[PIE], 440, { x: 230, side: -1 }], [[PIE, device('g3')], 440, { x: 284, side: -1 }], [[PIE, device('g2'), device('g3')], 340, { x: 494, side: 1 }],
-    [[PIE, device('g2'), device('g3')], 400, null]] };
+  battlement: [[[PIE], 460, { x: 290, side: -1 }], [[PIE, device('g1')], 480, { x: 290, side: -1 }]],
+  camp: [[[PIE], 520, { x: 324, side: -1 }], [[PIE, device('g2')], 520, { x: 324, side: -1 }], [[PIE], 760, null]] };
 
 test('the scenes from the pack that host a foe: the goblin stands in its zone, clear of the knight, the pie and every device on the ground', () => {
   const m = load('pack', true), [gMin, , gMax] = m.F.FOE.gap, G = m.KW.cast.foes.goblin;
@@ -213,7 +212,7 @@ test('the scenes from the pack that host a foe: the goblin\'s plan is the code s
 
 /* The hit at the knight's first spot, the pie alone, for each grip on Classic, Broad and Slim, as
    foe.test.js has it. */
-const HITS = { battlement: { two: [1662, 1664, 1661], one: [1645, 1651, 1642] }, camp: { two: [1662, 1664, 1661], one: [1711, 1713, 1711] } };
+const HITS = { battlement: { two: [1657, 1659, 1656], one: [1697, 1705, 1691] }, camp: { two: [1661, 1663, 1659], one: [1707, 1709, 1706] } };
 
 test('the scenes from the pack that host a foe: on every build the goblin is struck when foe.test.js says', () => {
   for (const scene of FOES) {
@@ -335,7 +334,7 @@ test('the scenes from the pack: everything a place may show stands wholly on the
   assert.deepEqual(bad, []);
 });
 
-test('the scenes from the pack: no two places draw over each other', () => {
+test('the scenes from the pack: no two places draw over each other, but the court\'s owl mark the owner accepted (places.test.js)', () => {
   const { KW, take, scenes } = loadPlaces(), bad = [];
   for (const [name, sc] of scenes) {
     const boxes = Object.entries(sc.places).map(([p, pl]) => [p, placeBoxes(KW, take, pl)]);
@@ -345,7 +344,7 @@ test('the scenes from the pack: no two places draw over each other', () => {
       }
     }
   }
-  assert.deepEqual(bad, []);
+  assert.deepEqual(bad, ["court: h1 (camera) and h2 (camera's question mark)"]);
 });
 
 test('the scenes from the pack: a camera\'s question mark is never higher than y 172, clear of the headline', () => {

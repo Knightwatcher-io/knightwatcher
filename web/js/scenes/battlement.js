@@ -26,47 +26,53 @@
     // the walkway
     Rh(HL, HFL, HR - HL, HH - HFL + 20, '#3b3247'); Rh(HL, HFL, HR - HL, 3, '#5d5670');
     for (let j = 0; j < 4; j++) { const y = HFL + 3 + j * 22; Rh(HL, y + 20, HR - HL, 2, '#241d2c'); for (let x = Math.floor(HL / 110) * 110 + (j % 2) * 55; x < HR; x += 110) { Rh(x, y, 2, 20, '#241d2c'); Rh(x + 2, y, 1, 20, '#463c54'); } }
-    // the torch on its merlon
-    Rh(156, HFL - 162, 8, 44, C.N2); Rh(156, HFL - 162, 3, 44, C.N1); rrect(148, HFL - 171, 24, 11, 3, C.K); rrect(150, HFL - 169, 20, 7, 2, STEEL3);
+    // the torch on its merlon, moved right so the cat has the merlon at the left to itself
+    Rh(656, HFL - 162, 8, 44, C.N2); Rh(656, HFL - 162, 3, 44, C.N1); rrect(648, HFL - 171, 24, 11, 3, C.K); rrect(650, HFL - 169, 20, 7, 2, STEEL3);
     if (wan) {
       strip(750, V.HT, 750, 262, 4, 4, [[.4, C.N0], [1, C.N2]]); for (const dx of [-5, 0, 5]) strip(750, 262, 750 + dx, 282 + Math.abs(dx), 1, 1, C.N1);
-      strip(610, HFL - 5, 770, HFL - 5, 4, 4, [[.4, C.N0], [1, C.N2]]); ell(774, HFL - 9, 7, 6, C.N1);
+      // the length of rope on the walkway, between the knight and the devices at the right
+      strip(530, HFL - 5, 646, HFL - 5, 4, 4, [[.4, C.N0], [1, C.N2]]); ell(650, HFL - 9, 7, 6, C.N1);
     }
   }
 
   function draw(t, s) {
     const { HL, HR, HT, HFL } = V;
     E.twinkle.draw({ p: [HL, HT], w: HR - HL, h: 300 }, t);
-    glow(160, HFL - 190, 86, '#ffb000', .1 + .03 * Math.sin(t / 140)); E.flame.draw({ p: [160, HFL - 170], size: .9 }, t);
+    glow(660, HFL - 190, 86, '#ffb000', .1 + .03 * Math.sin(t / 140)); E.flame.draw({ p: [660, HFL - 170], size: .9 }, t);
     KW.devices.draw(t, s);
     if (s.w.id === 'wan_down' && Math.floor(t / 150) % 3 === 0) { Rh(740, 290, 4, 4, '#fff3a0'); Rh(760, 300, 3, 3, '#fff3a0'); Rh(748, 306, 3, 3, C.W); }
   }
 
-  /* A foe climbs over a merlon where one stands at x, and over the parapet between them. It may
-     stand anywhere along the walkway, right of the knight by choice. */
-  const FOE_ZONE = { side: 1, spans: [[70, 890]] };
+  /* A foe climbs over a merlon where one stands at x, and over the parapet between them. It comes
+     up left of the knight by choice, in the clear stretch of walkway between the device at the left
+     edge and the knight, where the crate lands too, and right of 290, clear of the cat on its
+     merlon. */
+  const FOE_ZONE = { side: -1, spans: [[290, 470]] };
   function wallAt(x) { return ((((x + 70) % 160) + 160) % 160 < 80 ? V.HFL - 119 : V.HFL - 66); }
 
   /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
-    pie: { cls: 'pie', kind: 'surface', x: 800, y: 416, w: 88, h: 112 },
+    pie: { cls: 'pie', kind: 'surface', x: 806, y: 416, w: 88, h: 112 },
     h1: { cls: 'high', kind: 'surface', x: 926, y: 300, w: 88, h: 112, pole: 413 },
-    h2: { cls: 'high', kind: 'surface', x: 858, y: 300, w: 88, h: 112, pole: 466 },
+    h2: { cls: 'high', kind: 'surface', x: 636, y: 300, w: 88, h: 112, flip: true, pole: 413 },
     h3: { cls: 'high', kind: 'surface', x: 37, y: 300, w: 88, h: 112, flip: true, pole: 413 },
-    g1: { cls: 'ground', kind: 'floor', x: 150, y: 566, w: 88, h: 112, front: true },
-    g2: { cls: 'ground', kind: 'floor', x: 820, y: 566, w: 88, h: 112, front: true },
-    g3: { cls: 'ground', kind: 'floor', x: 60, y: 566, w: 88, h: 112, front: true }
+    g1: { cls: 'ground', kind: 'floor', x: 70, y: 594, w: 132, h: 112, front: true },
+    g2: { cls: 'ground', kind: 'floor', x: 735, y: 594, w: 132, h: 112, front: true },
+    g3: { cls: 'ground', kind: 'floor', x: 883, y: 594, w: 132, h: 112, front: true }
   };
 
   KW.scenes.battlement = {
-    spot: 96, places: PLACES, outdoors: true,
+    spot: 92, places: PLACES, outdoors: true,
     // The conditions this scene can act out (docs/page.md): the attack with the weapon raised, the
     // WAN's cut rope, which only it has, hunger, the stare at the empty dish to the knight's right,
     // and running hot; and, as a quiet scene, a device down and memory running tight. Kept as plain
     // data for the world format being drafted to take over.
     can: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
-    rounds: [{ x: 96, act: 'guard', dur: 18 }, { x: 66, act: 'look', dur: 16 }, { x: 126, act: 'sniff', dur: 12 }],
-    key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt, foeZone: FOE_ZONE
+    rounds: [{ x: 92, act: 'guard', dur: 18 }, { x: 88, act: 'look', dur: 16 }, { x: 96, act: 'sniff', dur: 12 }],
+    key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt, foeZone: FOE_ZONE,
+    // where the crate may land (docs/worlds.md): the stretch of walkway between the device at the left
+    // edge and the knight's boots at its leftmost spot
+    crate: { span: [150, 384] }
   };
 })(window.KW);

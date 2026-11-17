@@ -430,21 +430,23 @@
      scene with a bed. Each spot is clear of the knight's walk and swing, of every place for a
      device and of what the scene's acts draw. */
   const SPOTS = {
-    // the crenel by the torch
-    battlement: { rest: [48, 464], face: 1, floors: [[10, 89, 464], [90, 169, 411], [170, 250, 464]], lane: 530, fly: [190, 340] },
-    // the log by the fire
-    camp: { rest: [800, 493], face: -1, floors: [[764, 912, 493]], lane: 530, fly: [914, 392] },
-    // the top bale of hay
-    yard: { rest: [904, 425], face: -1, floors: [[858, 922, 425], [830, 857, 474], [923, 954, 474]], lane: 530, fly: [788, 300] },
-    // the floor in front of the hearth; with the knight in bed, the foot of the bed
-    house: { rest: [892, 590], face: -1, floors: [], lane: 590, fly: [770, 456],
-      bed: { rest: [332, 405], face: -1, floors: [[165, 386, 405]], lane: 578, fly: [214, 330] } },
-    // the low stack of crates
-    cellar: { rest: [322, 430], face: 1, floors: [[292, 354, 430]], lane: 530, fly: [432, 366] },
+    // the merlon at the left; it leaps to the next merlon, over the stretch where the goblin climbs
+    // and the crate lands
+    battlement: { rest: [160, 411], face: 1, floors: [[40, 119, 464], [120, 199, 411], [200, 279, 464], [280, 360, 411]], lane: 530, fly: [299, 290] },
+    // the bough of the right-hand tree, over the fire; it leaps along the bough, never down
+    camp: { rest: [830, 401], face: -1, floors: [[700, 850, 401]], lane: 530, fly: [704, 300] },
+    // the curtain wall's walk, between two merlons; the catch is in the sky over the wall
+    yard: { rest: [876, 221], face: -1, floors: [[560, 958, 221]], lane: 530, fly: [767, 150] },
+    // the floor in front of the hearth, the catch over the rug; with the knight in bed, the foot of
+    // the bed
+    house: { rest: [895, 590], face: -1, floors: [], lane: 590, fly: [790, 460],
+      bed: { rest: [312, 405], face: -1, floors: [[165, 386, 405]], lane: 578, fly: [194, 330] } },
+    // the lower shelf, among the jars, left of the barrel and the pie
+    cellar: { rest: [352, 380], face: -1, floors: [[0, 960, 380]], lane: 530, fly: [232, 320] },
     // the ledge of the forge
     smithy: { rest: [884, 318], face: -1, floors: [[724, 958, 318]], lane: 530, fly: [760, 262] },
-    // the lowest step of the dais
-    court: { rest: [668, 512], face: -1, floors: [[636, 712, 512]], lane: 530, fly: [596, 410] }
+    // the lowest step of the dais, the catch over the floor between the knight and the dais
+    court: { rest: [620, 512], face: -1, floors: [[600, 958, 512]], lane: 530, fly: [532, 420] }
   };
 
   /* The cat as the engine draws it, with the interface the compiler gives a pet of a pack

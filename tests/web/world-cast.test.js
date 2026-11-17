@@ -389,7 +389,7 @@ test('the court, from the pack and from code, draws the patron KW.cast gives, an
   const frame = { w: s.KW.state.IDLE, devices: [], places: null, tv: false, kx: 360, o: s.KW.knight.pose('ssh_session', 100), here: null, inBed: false, helmOff: false, strike: false,
     patron: { id: 'b', skin: null, hair: hairOf('silver'), robe: null } };
   record(s.KW, () => { s.KW.scenes.court.paint(frame); s.KW.scenes.court.draw(3300, frame); });
-  assert.deepEqual(seen, [['draw', 820, 505, 'silver'], ['mouth', false]]);
+  assert.deepEqual(seen, [['draw', 770, 490, 'silver'], ['mouth', false]]);
   // drawn, for the settings' "As drawn", is the patron's
   assert.deepEqual(plain(sc.drawn('c')), plain(PACK.KW.cast.patrons.c.drawn));
 });

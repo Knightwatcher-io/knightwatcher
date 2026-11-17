@@ -571,7 +571,8 @@ Each `[[device]]` table, at the top level of `config.toml`, is one machine on th
 watch: a NAS, a camera, a laptop, a virtual machine. Each is checked at its own pace and counts as
 down once it has been silent for its `down_after_s`. The collector lists them in the state file,
 in the order of the tables, for the page to draw in the scene, with the prop of a device that is
-down changed. A device that alerts also raises `device_down` while it is down. There can be 32
+down changed and a question mark blinking over it, whether or not it alerts. A device that alerts
+also raises `device_down` while it is down. There can be 32
 devices, the Pi of `[sources.pi]` included, and those the page does not draw are checked and alert
 as usual.
 

@@ -127,14 +127,14 @@ weapon (the cellar's crates, the house), the shield is put away with it.
 The Raspberry Pi that watches the main host is a steaming raspberry pie, present in every scene.
 It is a fruit pie in a white dish, with a crimped lattice crust over raspberry filling, and the
 steam rises from the top of its crust. The pie's lamp is its filling, which lights through the gaps
-of the lattice: while the Pi is up it fades slowly from green to near black and back, on the same
-loop and in the same green as every other device's lamp, so the pie speaks the colour language the
-rest of the devices speak. Until 16 November 2026 a large raspberry stood on top and was the lamp,
+of the lattice: while the Pi is up it glows red and pulses slowly to a dimmer red and back, never
+unlit, on the same loop as every other device's light (until 17 November 2026 it faded from green
+to near black, in the green every device's lamp then shared). Until 16 November 2026 a large raspberry stood on top and was the lamp,
 glowing in its own crimson because a green raspberry would have read as unripe; the owner chose to
 take it off and let the light come from under the lattice, where green reads as light rather than
 as fruit. When the Pi is judged down, silent for its `down_after_s`, the pie is gone and the empty
-dish is left, with a few crumbs and the last slice lying in it. The slice's filling is the lamp,
-and it blinks slowly from red to black like any other lamp of a down machine. A collector from
+dish is left, with a few crumbs and the last slice lying in it, unlit and without steam, as every
+down device is unlit. A collector from
 before devices gives no judgement, and with it the dish empties at the first missed check, as it
 always did.
 
@@ -143,10 +143,11 @@ always did.
 A mouser cat lives in the knight's world, the first pet, by the owner's decision of 16 November
 2026 from a mock-up. It catches the flies the knight cannot, so that a blocked advert indoors is
 caught rather than left buzzing. It is always present, resting at a spot of its own in every
-scene: on the battlement's crenel by the torch, the camp's log by the fire, the yard's top bale of
-hay, the house's floor in front of the hearth (at the foot of the bed while the knight is in bed),
-the cellar's low stack of crates, the smithy's forge ledge and the court's lowest dais step. Each
-spot is clear of the knight's walk and swing and of every place for a device.
+scene: on the battlement's left merlon, the bough over the camp's fire, the top of the yard's
+curtain wall, the house's floor in front of the hearth (at the foot of the bed while the knight is
+in bed), the cellar's lower shelf among the jars, the smithy's forge ledge and the court's lowest
+dais step. Each spot is clear of the knight's walk and swing, of every place for a device and of
+every question mark.
 
 A fly of the cat's buzzes round the knight for 10 to 20 seconds. In the last 2.5 seconds of its
 buzz the cat sits up, alert, and the fly comes down to a catch point near the cat's spot, so the
@@ -170,37 +171,43 @@ Besides the Pi, a user may list other machines to watch (a NAS, a camera, a lapt
 machine), each with a kind. In the medieval world each kind is drawn as a medieval thing that
 stands for it, by the owner's decision of 16 November 2026. Until then each kind was drawn as the
 device it is (a white bullet camera, a grey tower case, the same case in dots, a plain grey box),
-which sat oddly in a medieval scene. Together the four make a small workshop:
+which sat oddly in a medieval scene. On 17 November 2026 the owner chose a redesign from a
+mock-up: the scrying crystal in place of the cauldron, which is gone entirely, the crystal and the
+chest at twice their first size and the flask at 1.4 times, and lights in colours of their own with
+no green left. Together the four make a small workshop:
 
 - **Camera:** a pale barn owl on an iron wall bracket, keeping watch, its eyes the lamp. Its wall
   plate stands where the camera's did, so the poles of the high places still meet it.
-- **Machine** (any physical computer: a server, a NAS, a laptop): an iron cauldron on short legs over
-  a small log fire, its brew the lamp, with bubbles that show as it brightens. A host brews what
+- **Machine** (any physical computer: a server, a NAS, a laptop): a scrying crystal in a gilt claw
+  stand on a wooden foot, the whole ball the lamp, glowing pale blue-white. A host sees into what
   runs on it.
-- **Virtual machine:** a corked glass flask with a paper tag, its potion the lamp: what the cauldron
-  brews, held in a smaller vessel.
-- **Any other kind**, one the page does not know: a small iron-bound chest, the engine's lamp the
-  jewel in its lock plate.
+- **Virtual machine:** a corked glass flask with a paper tag, its blue potion the lamp.
+- **Any other kind**, one the page does not know: an iron-bound chest, the jewel in its lock plate
+  the lamp, glowing gold.
 
 They are drawn as plainly as the rest of the display, in hard pixels and the palette's colours.
 
 Every scene has places for them where such devices would be. Cameras are mounted high, at or above
 the knight's head, on a wall, a tree, a pier or a pole; the other devices stand on the ground, by
-the owner's choice. Each scene has three high places and three ground places, besides the pie's,
-and they fill in the order of the list, so a device keeps its place whether it is up or down. A
-device with no place left is not drawn but is still watched.
+the owner's choice, along the front edge of the floor, in front of the knight and never under its
+boots. Each scene has three high places and three ground places, besides the pie's, and they fill
+in the order of the list, so a device keeps its place whether it is up or down. A device with no
+place left is not drawn but is still watched. Where a scene hosts the goblin or the crate, a
+stretch of floor is kept clear left of the knight for them.
 
-Every device carries one lamp that never stops: while the machine is up it fades slowly from green
-to black and back, and while it is down it blinks slowly from red to black. The pie's lamp is its
-filling, green through the gaps of its lattice while the Pi is up, and the last slice's filling,
-blinking red, while it is down. A down device also
-looks broken from across the room: the owl hangs upside down from its bracket by its talons, wings
-drooping, with dazed red spirals for eyes and two feathers drifting down; the cauldron lies tipped
-on its side, empty and cold, its fire out, and the last ember among the cold logs blinks; the flask
-lies on its side with its cork out beside it, and the last of the potion blinks; the chest stands
-on its end with its lid knocked off beside it and three coins spilt. A question mark blinks over a down device that alerts; a device set not
-to alert, such as a laptop that sleeps, keeps only its red lamp. Names are never written in the
-scene: a device's name shows in the headline while it alerts.
+While a machine is up its light pulses slowly between its full colour and a dimmer one of the same
+hue, and is never unlit, so a device that is up never reads as down: the pie's filling red through
+the gaps of its lattice, with its steam, the owl's eyes amber, the crystal pale blue-white, the
+potion blue and the chest's jewel gold. One rule holds for every device that is down, by the
+owner's decision of 17 November 2026: it is unlit, nothing of it blinks, and it looks broken from
+across the room. The pie's dish holds only the last slice, without steam; the owl hangs upside
+down from its bracket by its talons, wings drooping, with dazed spirals for eyes and two feathers
+drifting down; the crystal's stand has toppled and the ball lies beside it, dark, with a crack
+across it; the flask lies on its side with its cork out beside it, the last of the potion spilt
+and dark; the chest stands on its end with its lid knocked off beside it, three coins spilt and its
+jewel dark. A question mark blinks over every down device, whether or not it alerts, and carries
+the alert; whether the device alerts decides only whether the knight is told. Names are never written in the scene: a device's name shows in the headline while
+it alerts.
 
 ## Conditions and scenes
 

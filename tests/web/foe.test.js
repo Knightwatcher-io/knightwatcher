@@ -148,13 +148,13 @@ test('where the goblin stands: in its zone, clear of the knight, the pie and eve
   // the usual case, the pie alone: room at every spot the knight strolls to
   for (const scene of ['battlement', 'camp']) for (const r of m.KW.scenes[scene].rounds) assert.ok(seen[scene].has('pie|' + r.x * m.V.U), `${scene} ${r.x}`);
   const camp = m.KW.scenes.camp, bat = m.KW.scenes.battlement, G = m.P.FOES.goblin;
-  // the sides chosen: right on the battlement, left at the camp, and the other side when the first has no room
-  assert.deepEqual(plain(m.F.spot(G, bat, [PIE], bat.places, 480)), { x: 690, side: 1 });
-  assert.deepEqual(plain(m.F.spot(G, bat, [PIE], bat.places, 630)), { x: 420, side: -1 }, 'not among the pie and the cameras');
-  assert.deepEqual(plain(m.F.spot(G, camp, [PIE], camp.places, 440)), { x: 230, side: -1 });
-  assert.deepEqual(plain(m.F.spot(G, camp, [PIE, device('g3')], camp.places, 440)), { x: 284, side: -1 }, 'beside the device in g3, not over it');
-  assert.deepEqual(plain(m.F.spot(G, camp, [PIE, device('g2'), device('g3')], camp.places, 340)), { x: 494, side: 1 }, 'between the knight and the pie');
-  assert.equal(m.F.spot(G, camp, [PIE, device('g2'), device('g3')], camp.places, 400), null, 'no room: the goblin does not come');
+  // left of the knight in both, in the clear stretch the crate lands on too: on the battlement from
+  // 290, clear of the cat's merlon, at the camp from 324, clear of the whole class box of g2
+  assert.deepEqual(plain(m.F.spot(G, bat, [PIE], bat.places, 460)), { x: 290, side: -1 });
+  assert.deepEqual(plain(m.F.spot(G, bat, [PIE, device('g1')], bat.places, 480)), { x: 290, side: -1 });
+  assert.deepEqual(plain(m.F.spot(G, camp, [PIE], camp.places, 520)), { x: 324, side: -1 });
+  assert.deepEqual(plain(m.F.spot(G, camp, [PIE, device('g2')], camp.places, 520)), { x: 324, side: -1 }, 'beside the device in g2, clear of its class box');
+  assert.equal(m.F.spot(G, camp, [PIE], camp.places, 760), null, 'no room: the goblin does not come');
   assert.equal(m.F.spot(G, m.KW.scenes.house, [PIE], m.KW.scenes.house.places, 480), null, 'a scene without foeZone hosts no foe');
 });
 
@@ -292,19 +292,19 @@ for (const [name, pack, opts] of WEAPONS.concat(BUILT)) {
    sword is but met by its drawn head. The poses are the present knight's, raised and lowered with
    each build's shoulders, so the hit moves by a few ms at most. */
 const HITS = {
-  two: { battlement: [1662, 1664, 1661], camp: [1662, 1664, 1661] },
-  one: { battlement: [1645, 1651, 1642], camp: [1711, 1713, 1711] },
-  mace: { battlement: [1644, 1649, 1641], camp: [1709, 1712, 1708] } };
+  two: { battlement: [1657, 1659, 1656], camp: [1661, 1663, 1659] },
+  one: { battlement: [1697, 1705, 1691], camp: [1707, 1709, 1706] },
+  mace: { battlement: [1698, 1709, 1684], camp: [1706, 1710, 1703] } };
 
 test('on every build, with each weapon, the goblin comes wherever it does on Classic, and is struck within a few ms of Classic\'s hit', () => {
-  // The mace is struck within 16 ms of Classic's hit rather than 12: beside a device in g3 at the
-  // camp it meets the goblin at the end of its reach, by the near ear, and each build's shoulder
-  // line changes which point of a flange meets it first (14 ms at most, Slim at 460).
+  // The mace is struck within 16 ms of Classic's hit rather than 12: it meets the goblin at the end
+  // of its reach, by the near ear, and each build's shoulder line changes which point of a flange
+  // meets it first (14 ms at most, Slim on the battlement).
   const ITEMS = { one: ONE.look.items, mace: MACE.look.items };
   for (const grip of ['two', 'one', 'mace']) {
     const looks = ['build.a', 'build.b', 'build.c'].map(b => ({ look: Object.assign({ build: 'kw.base/' + b }, ITEMS[grip] ? { items: ITEMS[grip] } : {}) }));
     const [a, ...others] = looks.map(o => load(true, o));
-    for (const [scene, kx0] of [['battlement', 480], ['camp', 440]]) {
+    for (const [scene, kx0] of [['battlement', 460], ['camp', 520]]) {
       const got = [a, ...others].map(m => planFor(m, scene, kx0, [PIE]).hit);
       assert.deepEqual(got, HITS[grip][scene], `${grip} ${scene}`);
       for (const kx of spots(a, scene)) for (const devices of [[PIE], [PIE, device('g3')]]) {
@@ -365,11 +365,11 @@ test('the greatsword keeps the gaps of the table, and the arming sword and the m
 });
 
 test('the knight glares from 500 ms, strikes towards the goblin and is pleased once it has gone', () => {
-  const m = load(true), pl = planFor(m, 'camp', 440, [PIE]);
+  const m = load(true), pl = planFor(m, 'camp', 520, [PIE]);
   assert.equal(pl.side, -1);
-  const o = pose(m.K, m.V, 440, 1400); m.F.strike(o, 1400, pl);
+  const o = pose(m.K, m.V, 520, 1400); m.F.strike(o, 1400, pl);
   assert.ok(o.wang > m.K.pose('idle', 0).wang, 'winding up over the right shoulder to cut to the left');
-  const back = pose(m.K, m.V, 440, 3000), base = { gx: back.gx, gy: back.gy, wang: back.wang };
+  const back = pose(m.K, m.V, 520, 3000), base = { gx: back.gx, gy: back.gy, wang: back.wang };
   m.F.strike(back, 3000, pl);
   assert.deepEqual({ gx: back.gx, gy: back.gy, wang: back.wang }, base, 'back in the stance');
   assert.ok(pl.hit + pl.exit.pleased < 3400);

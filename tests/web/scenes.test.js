@@ -420,7 +420,7 @@ if (MODE === 'write') {
     test(`${name} from kw.medieval has the code scene's interface: the same data, and the same parts drawn`, () => {
       const code = load(SRC).KW.scenes[name], pack = load(SRC, undefined, 'pack').KW.scenes[name];
       assert.notEqual(code, pack);
-      const DATA = ['spot', 'places', 'rests', 'rounds', 'can', 'outdoors', 'bed', 'helmet', 'sword', 'foeZone'];
+      const DATA = ['spot', 'places', 'rests', 'rounds', 'can', 'outdoors', 'bed', 'helmet', 'sword', 'foeZone', 'crate'];
       for (const k of DATA) assert.deepEqual(plain(pack[k]), plain(code[k]), `${name}.${k}`);
       // key may be given by either, since a scene without one keeps one backdrop
       // drawn, the court's colours of each patron for the settings' "As drawn", in the court alone

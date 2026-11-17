@@ -667,16 +667,18 @@ keys or ease. No two tracks of a layer drive one thing.
 **Places.** `things` holds exactly `pie`, `h1` to `h3` and `g1` to `g3`, each `{ cls, kind, x, y,
 w, h }` with optional `front`, `flip` (booleans) and `pole` (0 to 600). `cls` is the place's class,
 `pie` for the pie, `high` for `h1` to `h3` and `ground` for `g1` to `g3`; `kind` is `hang`,
-`surface` or `floor`; `x` and `y` are whole numbers on the grid; and every place is 88 by 112. At
-`rules` each place's class box, mirrored by `flip`, must lie on the 960 by 600 grid, no two may
-overlap (touching is allowed), a high place's base must be at y 300 or lower and a ground place's
-from 500 to 598. The class boxes, from the base, measured on today's drawings:
+`surface` or `floor`; `x` and `y` are whole numbers on the grid; a ground place is 132 by 112, and
+the pie's place and a high place 88 by 112. At `rules` each place's class box, mirrored by `flip`,
+must lie on the 960 by 600 grid, no two may overlap (touching is allowed), a high place's base must
+be at y 300 or lower and a ground place's from 500 to 598. The class boxes, from the base, measured
+on the medieval world's drawings (the ground class on the scrying crystal and the chest, its two
+largest):
 
 | Class | x | y |
 |---|---|---|
 | `pie` | -46 to 45 | -107 to 33 |
 | `high` | -34 to 32 | -64 to 0 |
-| `ground` | -36 to 41 | -58 to 2 |
+| `ground` | -66 to 56 | -93 to 2 |
 
 `rests` holds up to 8: a place `{ kind, x, y, w, h }` (`w` and `h` 1 to 240) for a rest view, or a
 frame `{ x, y, a }` for the weapon, `a` being `upright`, `flat` or a number of radians from -3.142 to
@@ -692,7 +694,12 @@ optional, reserved and not read: the television's light and the hammer's sparks 
 `glow` and `burst`; `target` `{ group, hitAt, every }`, `hitAt`
 before `every`. `foe` is `{ side, spans, wall }`: `side` 1 or -1, 1 to 4 spans `[from, to]` on the
 grid with `from` below `to`, and an optional `wall` `{ period, offset, high: [width, y], low }` whose
-width is less than its period. A target's `aim` is format 1.2 and refused here.
+width is less than its period. `crate` is `{ span: [from, to] }`, the stretch of floor an import's
+crate may land on: whole numbers with `0 <= from`, `to <= 960` and `to - from >= 60`, the crate's
+width. The engine lands the crate's middle at `clamp(kx - 160, from + 30, to - 30)`, `kx` the
+knight's x, so as near 160 left of the knight as the stretch allows. At `rules` the span must lie
+clear of the class boxes of the pie's place and the ground places (touching is allowed). A target's
+`aim` is format 1.2 and refused here.
 
 **What a scene can act.** At `rules` a scene that lists a condition in `can` must meet its needs:
 
@@ -709,7 +716,7 @@ width is less than its period. A target's `aim` is format 1.2 and refused here.
 | `streaming` | `screen` |
 | `backup_overdue`, `cpu_hot` | nothing |
 
-A scene that hosts `foe` needs a `foe` zone.
+A scene that hosts `foe` needs a `foe` zone, and one that hosts `crate` needs a `crate` span.
 
 ### The cast
 
@@ -763,12 +770,14 @@ worked out from the user's colours once they do, as the medieval world's monarch
 ### Props
 
 A prop set is `{ name, kinds }`, `kinds` giving one or more of `pi`, `camera`, `machine`, `vm` and
-`box`. A kind has `name`, `mark` (1 to 128) and the two states `up` and `gone`, each `{ still,
-moving, lamp }` with `still` and `lamp` required. A lamp is a pair, where the engine draws its own
+`box`. A kind has `name`, `mark` (1 to 160) and the two states `up` and `gone`, each `{ still,
+moving, lamp }` with `still` required. A state with no `lamp` shows no light, as every medieval
+kind does when down. A lamp is a pair, where the engine draws its own
 lamp, or a lamp of the kind's own `{ at, box, lit, dark, light }`: `box` 1 to 64 each way around `at`,
 `lit` and `dark` stamps of pix shapes only, `light` a hex colour, which a gone lamp may not give. A
 gone lamp's `lit` drawing uses only `@lamp.down`, `@lamp.downLo` and `@lamp.downHi`, so a device that
-is down blinks red in every world.
+is down and keeps a lamp blinks only red in any world. The medieval world gives no kind a lamp
+while down, so its devices are unlit when down and the question mark carries the alert.
 
 At `rules` every drawing of a kind, in both states and both parts, lies inside its class box (the
 pie's for `pi`, the high one for `camera`, the ground one for the rest), worked out from each shape's
@@ -1390,17 +1399,17 @@ base pack's items falls back on any build.
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
 `[1, 1]`, version 0.7.0. Versions 0.1.0 (the cellar alone) to 0.6.0 are signed with `kw1`; 0.7.0,
-which adds the mouser cat, ships unsigned until its signing run. It holds every scene as data, the three monarchs, the goblin,
+which adds the mouser cat and the redesigned scenes and devices, ships unsigned until its signing run. It holds every scene as data, the three monarchs, the goblin,
 the fly and the mouser cat as its cast, the devices as the prop set `props.medieval`, the word set
 `words.medieval`, the overlay `overlay.phosphor`, the preset `world.medieval`, the stamps the scenes and devices use (the sconce,
-the barrel, the house's peg and the lamps of the pie, the owl, the cauldron and the flask), the
+the barrel, the house's peg and the lamps of the pie, the owl, the crystal, the flask and the chest), the
 cat's twenty-two poses as stamps of pix shapes in runs, and one
 palette entry, `house.screen`, the television's colour. The page draws those scenes, devices and
 the cast from it, builds the quiet line and the captions in its words and takes the colours of the
 words over the scene from its overlay, on a `dev` page, and on a deployed page once it is signed;
 until then a deployed page refuses it and shows the collector's own words in `display.css`'s
 colours. Its preset is the page's own level of the settings ([page.md](./page.md#worlds)). It
-weighs 335 KB of the 512 KiB a pack may, 106 KB of it the cat's stamps.
+weighs 346 KB of the 512 KiB a pack may, 106 KB of it the cat's stamps and 15 KB the lamps' stamps.
 [worlds.md](./worlds.md) describes it, the scene compiler that reads it, and how its scenes are held
 equal to the code's.
 

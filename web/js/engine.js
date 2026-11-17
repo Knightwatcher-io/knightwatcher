@@ -301,18 +301,32 @@
     }
   };
   const segQ = (el, a, b) => clamp01((el - a) / (b - a));
+  /* Where the crate of an import lands, its left edge: in a scene that gives the stretch of floor
+     it may land on (crate.span, docs/worlds.md), its middle as near 160 left of the knight as the
+     stretch allows; elsewhere 320 left of the knight, and never past the screen's left edge. */
+  function crateX(sc, kx) {
+    const sp = sc && sc.crate && sc.crate.span;
+    if (!sp) return Math.max(V.HL + 70, kx - 320);
+    return Math.min(sp[1] - 30, Math.max(sp[0] + 30, kx - 160)) - 30;
+  }
   const foesNow = () => (KW.cast ? KW.cast.foes : P.FOES);
 
+  /* Each class of place's box, as pack.js's CLASS_BOX gives it ([x0, y0, x1, y1] from the base):
+     what any device of the class may paint. */
+  const CLASS_BOX = { pie: [-46, -107, 45, 33], high: [-34, -64, 32, 0], ground: [-66, -93, 56, 2] };
   /* Where the foe F stands with the knight at kx in scene sc, as { x, side }, or null when there is
      no room. The scene's foeZone gives the side tried first and the spans of ground clear of its
-     own props; the places that hold a device on the ground or the pie's are kept clear too.
+     own props; the places that hold a device on the ground or the pie's are kept clear too, each
+     across the whole of its class box and its place's width, mirrored where the place is flipped.
      The spot is the one nearest the wanted gap on the first side that has room. */
   function foeSpot(F, sc, devices, places, kx, gaps) {
     const z = sc.foeZone; if (!z) return null;
     const m = F.w + FOE.clear, blocked = [];
     for (const dv of devices || []) {
       const pl = dv && places && places[dv.place];
-      if (pl && (pl.cls === 'pie' || pl.cls === 'ground')) blocked.push([pl.x - pl.w / 2 - m, pl.x + pl.w / 2 + m]);
+      if (!pl || !(pl.cls === 'pie' || pl.cls === 'ground')) continue;
+      const b = CLASS_BOX[pl.cls], x0 = pl.flip ? -b[2] : b[0], x1 = pl.flip ? -b[0] : b[2];
+      blocked.push([pl.x + Math.min(-pl.w / 2, x0) - m, pl.x + Math.max(pl.w / 2, x1) + m]);
     }
     const first = z.side < 0 ? -1 : 1;
     for (const side of [first, -first]) {
@@ -504,8 +518,9 @@
      painted once into a small canvas of its own, kept by place, kind and state, and drawn with one
      call where the scene's draw reaches its places, so the scene's drawing order stays as it was.
      Only what moves is drawn each frame: the pie's steam and a device's lamp, whose loop starts at
-     a different moment in each place. The question mark over a gone device that alerts blinks, and
-     is kept in a canvas of its own too. A place in front of the ground line (front) is drawn by the
+     a different moment in each place. The question mark over every gone device blinks, whether or not
+     it alerts, and is kept in a canvas of its own too. The still part's canvas is 144 wide with 136
+     above the base and 32 below it, room for the ground class's box, [-66, -93, 56, 2]. A place in front of the ground line (front) is drawn by the
      engine after the knight, and a place with flip shows its device the other way round. */
   const ORDER = ['pie', 'h1', 'h2', 'h3', 'g1', 'g2', 'g3'], PHASE_MS = 523;
   const SPRITES = new Map(), SPRITE_MAX = 64;
@@ -539,9 +554,9 @@
 
   function placeHD(name, pl, dv, t) {
     const kind = kindName(dv.kind), k = kindsNow()[kind], ctx = D.getCtx(), foot = pl.pole || 0;
-    const ox = pl.x - 64, oy = pl.y - 136, h = Math.max(168, foot - oy + 8);
+    const ox = pl.x - 72, oy = pl.y - 136, h = Math.max(168, foot - oy + 8);
     // a kind from a pack is kept apart from the code's drawing of it, and from another compile's
-    const sp = cached([pl.x, pl.y, pl.flip ? 'flip' : '', foot, k.from ? kind + '@' + k.from : kind, dv.ok ? 'up' : 'gone'].join('|'), ox, oy, 128, h, pl.flip, pl.x, () => {
+    const sp = cached([pl.x, pl.y, pl.flip ? 'flip' : '', foot, k.from ? kind + '@' + k.from : kind, dv.ok ? 'up' : 'gone'].join('|'), ox, oy, 144, h, pl.flip, pl.x, () => {
       if (foot) poleHD(pl.x, pl.y, foot);
       k.draw(pl.x, pl.y, 0, dv.ok, 'still');
     });
@@ -549,7 +564,7 @@
     const tt = t + Math.max(0, ORDER.indexOf(name)) * PHASE_MS;
     if (pl.flip) { ctx.save(); ctx.transform(-1, 0, 0, 1, 2 * pl.x, 0); k.draw(pl.x, pl.y, tt, dv.ok, 'moving'); ctx.restore(); }
     else k.draw(pl.x, pl.y, tt, dv.ok, 'moving');
-    if (!dv.ok && dv.alert && Math.floor(t / 400) % 2) {
+    if (!dv.ok && Math.floor(t / 400) % 2) {
       const my = pl.y - k.mark, m = cached('mark|' + pl.x + ',' + my, pl.x - 32, my - 8, 64, 80, false, pl.x, () => SP.mark(pl.x, my, '?'));
       ctx.drawImage(m.cv, m.ox, m.oy);
     }
@@ -566,8 +581,8 @@
   }
 
   /* The address's pl=1: every place's box outlined and named, for reviewing where they stand.
-     The outer box is the place's, 88 by 112 above the base; the inner one, 80 by 64, is what a
-     device may fill; the base is the white line. The pie's place is white, high places blue and
+     The outer box is the place's, its w by h above the base; the inner one is its class's box,
+     what a device may fill; the base is the white line. The pie's place is white, high places blue and
      ground places amber; a place in front of the knight has a broken outline. */
   const GLYPHS = { P: '111101111100100', H: '101101111101101', G: '111100101101111', 1: '010110010010111', 2: '111001111100111', 3: '111001111001111' };
   const CLASS_COLOUR = { pie: C.W, high: '#7fe9ff', ground: '#ffb000' };
@@ -578,7 +593,8 @@
       const c = CLASS_COLOUR[pl.cls] || C.W, x0 = pl.x - pl.w / 2, y0 = pl.y - pl.h;
       const line = (x, y, w, h) => { if (!pl.front) { Rh(x, y, w, h, c); return; } for (let k = 0; k < Math.max(w, h); k += 12) Rh(x + (w > h ? k : 0), y + (w > h ? 0 : k), w > h ? Math.min(6, w - k) : w, w > h ? h : Math.min(6, h - k), c); };
       const box = (x, y, w, h, k) => { line(x, y, w, k); line(x, y + h - k, w, k); line(x, y, k, h); line(x + w - k, y, k, h); };
-      box(x0, y0, pl.w, pl.h, 2); box(pl.x - 40, pl.y - 64, 80, 64, 1); Rh(x0 - 6, pl.y - 1, pl.w + 12, 3, C.W);
+      const cb = CLASS_BOX[pl.cls] || CLASS_BOX.ground, cx0 = pl.flip ? -cb[2] : cb[0], cx1 = pl.flip ? -cb[0] : cb[2];
+      box(x0, y0, pl.w, pl.h, 2); box(pl.x + cx0, pl.y + cb[1], cx1 - cx0, cb[3] - cb[1], 1); Rh(x0 - 6, pl.y - 1, pl.w + 12, 3, C.W);
       const label = name === 'pie' ? 'P' : name.toUpperCase();
       Rh(x0 + 3, y0 + 3, 4 + label.length * 12, 19, C.K);
       for (let n = 0; n < label.length; n++) for (let j = 0; j < 15; j++) if (GLYPHS[label[n]][j] === '1') Rh(x0 + 5 + n * 12 + (j % 3) * 3, y0 + 5 + Math.floor(j / 3) * 3, 3, 3, c);
@@ -665,7 +681,7 @@
     } else if (!freeze && funOK && !ev && flies.some(f => !f.dead && t - f.born > 1300) && t - lastSwat > 30000) startSwat(t);
     let p = 0; const type = ev && ev.type;
     if (ev) { p = (t - ev.t0) / ev.dur; if (p >= 1) ev = null; }
-    const live = ev ? type : null, el = ev ? t - ev.t0 : 0, crX = Math.max(HL + 70, kx - 320);
+    const live = ev ? type : null, el = ev ? t - ev.t0 : 0, crX = crateX(sc, kx);
     // a foe comes up from behind whatever the scene puts in its way, or out of the ground; the
     // knight stands still for it (no bob), glares, strikes and is pleased when it has gone
     const plan = ev ? ev.plan : null, foe = plan ? foeAt(el, plan) : null;
@@ -728,6 +744,7 @@
     EVENTS, TURNS, sceneOf,
     /* The foe player's parts, for the tests: the tables, where a foe stands, when the blade meets
        it, the plan of an event, the strike on a pose and the foe at a moment. */
+    crateX, CLASS_BOX,
     foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bladeGap, crownNear, plan: foePlan, strike, at: foeAt },
     init(ctx) { main = ctx; D.setCtx(ctx); },
     draw, addFly, startSwat, fireEvent,

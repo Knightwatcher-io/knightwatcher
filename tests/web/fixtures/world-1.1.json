@@ -86,15 +86,16 @@
         ],
         "over": [],
         "things": {
-          "pie": {"cls":"pie","kind":"surface","x":800,"y":416,"w":88,"h":112},
+          "pie": {"cls":"pie","kind":"surface","x":806,"y":416,"w":88,"h":112},
           "h1": {"cls":"high","kind":"surface","x":926,"y":300,"w":88,"h":112,"pole":413},
-          "h2": {"cls":"high","kind":"surface","x":858,"y":300,"w":88,"h":112,"pole":466},
+          "h2": {"cls":"high","kind":"surface","x":636,"y":300,"w":88,"h":112,"flip":true,"pole":413},
           "h3": {"cls":"high","kind":"surface","x":37,"y":300,"w":88,"h":112,"flip":true,"pole":413},
-          "g1": {"cls":"ground","kind":"floor","x":150,"y":566,"w":88,"h":112,"front":true},
-          "g2": {"cls":"ground","kind":"floor","x":820,"y":566,"w":88,"h":112,"front":true},
-          "g3": {"cls":"ground","kind":"floor","x":60,"y":566,"w":88,"h":112,"front":true}
+          "g1": {"cls":"ground","kind":"floor","x":70,"y":594,"w":132,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":735,"y":594,"w":132,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":883,"y":594,"w":132,"h":112,"front":true}
         },
-        "foe": {"side":1,"spans":[[70,890]],"wall":{"period":160,"offset":70,"high":[80,411],"low":464}}
+        "foe": {"side":-1,"spans":[[290,470]],"wall":{"period":160,"offset":70,"high":[80,411],"low":464}},
+        "crate": {"span":[150,384]}
       },
       "scene.camp": {
         "name": "Camp",
@@ -124,15 +125,16 @@
         "moving": [{"shapes":[{"k":"fx","fx":"flame","p":[700,500],"size":1,"dt":0},{"k":"things"}]}],
         "over": [],
         "things": {
-          "pie": {"cls":"pie","kind":"surface","x":580,"y":517,"w":88,"h":112},
-          "h1": {"cls":"high","kind":"surface","x":852,"y":312,"w":88,"h":112},
+          "pie": {"cls":"pie","kind":"surface","x":674,"y":517,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":926,"y":312,"w":88,"h":112,"flip":true},
           "h2": {"cls":"high","kind":"surface","x":80,"y":312,"w":88,"h":112,"flip":true},
           "h3": {"cls":"high","kind":"surface","x":227,"y":312,"w":88,"h":112,"flip":true,"pole":366},
-          "g1": {"cls":"ground","kind":"floor","x":830,"y":566,"w":88,"h":112,"front":true},
-          "g2": {"cls":"ground","kind":"floor","x":120,"y":566,"w":88,"h":112,"front":true},
-          "g3": {"cls":"ground","kind":"floor","x":200,"y":530,"w":88,"h":112}
+          "g1": {"cls":"ground","kind":"floor","x":70,"y":594,"w":132,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":218,"y":594,"w":132,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":904,"y":594,"w":132,"h":112,"front":true}
         },
-        "foe": {"side":-1,"spans":[[70,494]]},
+        "foe": {"side":-1,"spans":[[324,470]]},
+        "crate": {"span":[298,436]},
         "sound": {"ambience":"reserved"}
       },
       "scene.house": {
@@ -211,12 +213,12 @@
         "over": [{"when":["!tv"],"shapes":[{"k":"fx","fx":"flame","p":[258,300],"size":0.5,"dt":0}]}],
         "things": {
           "pie": {"cls":"pie","kind":"surface","x":688,"y":435,"w":88,"h":112},
-          "h1": {"cls":"high","kind":"surface","x":406,"y":300,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":430,"y":300,"w":88,"h":112},
           "h2": {"cls":"high","kind":"surface","x":926,"y":300,"w":88,"h":112},
           "h3": {"cls":"high","kind":"surface","x":70,"y":300,"w":88,"h":112,"flip":true},
-          "g1": {"cls":"ground","kind":"floor","x":120,"y":594,"w":88,"h":112,"front":true},
-          "g2": {"cls":"ground","kind":"floor","x":300,"y":594,"w":88,"h":112,"front":true},
-          "g3": {"cls":"ground","kind":"floor","x":760,"y":530,"w":88,"h":112}
+          "g1": {"cls":"ground","kind":"floor","x":68,"y":594,"w":132,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":213,"y":594,"w":132,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":358,"y":594,"w":132,"h":112,"front":true}
         },
         "rests": {
           "stool": {"kind":"surface","x":460,"y":476,"w":76,"h":80},
@@ -266,15 +268,16 @@
         ],
         "over": [],
         "things": {
-          "pie": {"cls":"pie","kind":"surface","x":280,"y":463,"w":88,"h":112},
-          "h1": {"cls":"high","kind":"surface","x":905,"y":300,"w":88,"h":112},
+          "pie": {"cls":"pie","kind":"surface","x":144,"y":463,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":926,"y":360,"w":88,"h":112},
           "h2": {"cls":"high","kind":"surface","x":250,"y":310,"w":88,"h":112,"flip":true},
           "h3": {"cls":"high","kind":"surface","x":40,"y":300,"w":88,"h":112,"flip":true},
-          "g1": {"cls":"ground","kind":"floor","x":160,"y":568,"w":88,"h":112,"front":true},
-          "g2": {"cls":"ground","kind":"floor","x":870,"y":568,"w":88,"h":112,"front":true},
-          "g3": {"cls":"ground","kind":"floor","x":40,"y":568,"w":88,"h":112,"front":true}
+          "g1": {"cls":"ground","kind":"floor","x":70,"y":594,"w":132,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":218,"y":594,"w":132,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":883,"y":594,"w":132,"h":112,"front":true}
         },
-        "target": {"group":"dummy","hitAt":420,"every":5600}
+        "target": {"group":"dummy","hitAt":420,"every":5600},
+        "crate": {"span":[298,436]}
       },
       "scene.cellar": {
         "name": "Cellar",
@@ -332,12 +335,12 @@
         "over": [],
         "things": {
           "pie": {"cls":"pie","kind":"surface","x":480,"y":463,"w":88,"h":112},
-          "h1": {"cls":"high","kind":"surface","x":450,"y":320,"w":88,"h":112},
-          "h2": {"cls":"high","kind":"surface","x":830,"y":300,"w":88,"h":112,"pole":280},
+          "h1": {"cls":"high","kind":"surface","x":470,"y":320,"w":88,"h":112},
+          "h2": {"cls":"high","kind":"surface","x":850,"y":300,"w":88,"h":112,"pole":280},
           "h3": {"cls":"high","kind":"surface","x":139,"y":300,"w":88,"h":112,"flip":true,"pole":280},
-          "g1": {"cls":"ground","kind":"floor","x":890,"y":568,"w":88,"h":112,"front":true},
-          "g2": {"cls":"ground","kind":"floor","x":400,"y":568,"w":88,"h":112,"front":true},
-          "g3": {"cls":"ground","kind":"floor","x":200,"y":568,"w":88,"h":112,"front":true}
+          "g1": {"cls":"ground","kind":"floor","x":883,"y":594,"w":132,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":218,"y":594,"w":132,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":70,"y":594,"w":132,"h":112,"front":true}
         }
       },
       "scene.smithy": {
@@ -380,13 +383,13 @@
         ],
         "over": [],
         "things": {
-          "pie": {"cls":"pie","kind":"surface","x":280,"y":475,"w":88,"h":112},
-          "h1": {"cls":"high","kind":"surface","x":560,"y":300,"w":88,"h":112},
-          "h2": {"cls":"high","kind":"surface","x":660,"y":300,"w":88,"h":112},
+          "pie": {"cls":"pie","kind":"surface","x":341,"y":453,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":600,"y":300,"w":88,"h":112},
+          "h2": {"cls":"high","kind":"surface","x":676,"y":300,"w":88,"h":112},
           "h3": {"cls":"high","kind":"surface","x":40,"y":300,"w":88,"h":112,"flip":true},
-          "g1": {"cls":"ground","kind":"floor","x":140,"y":568,"w":88,"h":112,"front":true},
-          "g2": {"cls":"ground","kind":"floor","x":820,"y":568,"w":88,"h":112,"front":true},
-          "g3": {"cls":"ground","kind":"floor","x":40,"y":568,"w":88,"h":112,"front":true}
+          "g1": {"cls":"ground","kind":"floor","x":70,"y":594,"w":132,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":883,"y":594,"w":132,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":218,"y":594,"w":132,"h":112,"front":true}
         },
         "rests": {"anvil":{"from":"spot","x":50,"y":425,"a":"flat"},"wall":{"kind":"hang","x":145,"y":312,"w":100,"h":132}},
         "anvil": {"rest":"anvil","spark":[132,418]}
@@ -404,13 +407,13 @@
         "moving": [{"shapes":[{"k":"patron"},{"k":"bubble"},{"k":"things"}]}],
         "over": [],
         "things": {
-          "pie": {"cls":"pie","kind":"surface","x":154,"y":475,"w":88,"h":112},
-          "h1": {"cls":"high","kind":"surface","x":620,"y":300,"w":88,"h":112},
-          "h2": {"cls":"high","kind":"surface","x":700,"y":355,"w":88,"h":112},
+          "pie": {"cls":"pie","kind":"surface","x":144,"y":463,"w":88,"h":112},
+          "h1": {"cls":"high","kind":"surface","x":610,"y":300,"w":88,"h":112},
+          "h2": {"cls":"high","kind":"surface","x":634,"y":368,"w":88,"h":112},
           "h3": {"cls":"high","kind":"surface","x":132,"y":300,"w":88,"h":112,"flip":true},
-          "g1": {"cls":"ground","kind":"floor","x":40,"y":592,"w":88,"h":112,"front":true},
-          "g2": {"cls":"ground","kind":"floor","x":900,"y":592,"w":88,"h":112,"front":true},
-          "g3": {"cls":"ground","kind":"floor","x":555,"y":511,"w":88,"h":112}
+          "g1": {"cls":"ground","kind":"floor","x":70,"y":594,"w":132,"h":112,"front":true},
+          "g2": {"cls":"ground","kind":"floor","x":904,"y":594,"w":132,"h":112,"front":true},
+          "g3": {"cls":"ground","kind":"floor","x":218,"y":594,"w":132,"h":112,"front":true}
         },
         "seat": {"x":820,"y":505,"bubble":[672,180],"turn":3200,"mouth":230}
       }
