@@ -170,6 +170,7 @@ class CollectorAgreesTest(unittest.TestCase):
             {"look.world", "look.monarch", "look.pet", "look.foe", "look.critter", "look.props"}
             | {"look.overlay", "look.build", "look.skin", "look.hair", "look.tabard", "look.plume"}
             | {"look.words", "look.items", "look.devices", "quiet.scenes"}
+            | {"look.monarch_skin", "look.monarch_hair", "look.monarch_robe", "look.pet_coat"}
             | scenes,
         )
         self.assertEqual(dict(config.LOOK_TABLES), {

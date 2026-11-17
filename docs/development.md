@@ -138,6 +138,9 @@ tools/capped.sh node --test --test-concurrency=2 tests/tools/
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-ref    # before a change
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-new    # after it
 tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
+# the settings screen with the test world loaded, from a copy of web/ the script makes and removes
+CHROME=/path/to/chrome-headless-shell tools/shots.sh worlds /tmp/kw-worlds-new
+tools/shots.sh compare-worlds /tmp/kw-worlds-ref /tmp/kw-worlds-new
 ```
 
 The screenshots compare the page with itself before and after a change that should not alter how
@@ -182,7 +185,7 @@ and in the 22 shots that place devices with the address's `dv=`, the devices in 
 the lights of their lamps reaching up to 24 pixels past a place's box. The 28 `cat-` shots
 show the mouser cat: in its ginger coat at each of its eight spots, through a catch in
 the house, leaping at night, in the smithy and at court, catching a fly that came with the goblin
-or the crate outdoors, three flies at most, none in the cellar, and the settings screen's Pet page
+or the crate outdoors, three flies at most, none in the cellar, and the settings screen's cast page
 ([page.md](./page.md#checks)). Against a reference from before the cat every shot differs: the
 scenes where the cat rests, the `cat-` shots in what they show, and the settings shots in the rail
 too, where the pet's page was added. Against a reference from before the redesign of the scenes
@@ -284,7 +287,13 @@ prop set is loaded and what a choice there saves, every fallback the status page
 reason, the labels from the world's words, World first in the rail and the screen opening on the
 knight.
 `tests/web/orbit.test.js` checks the test world and any loaded world drawn through the settings
-([The test world](#the-test-world)).
+([The test world](#the-test-world)). `tests/web/world-mix.test.js` checks mixing parts across worlds
+with the test world loaded: the long names of the monarch's colours and the pet's coat, a slot's
+item giving way to its key, the pet's coat fitted to the pet in use, the weapon's grip from its item
+and what it greys, the store's one-write choice of a part, the rows every part page lists (each
+world's choices grouped, the marks of a part changed from the world, the amber lines, the roles'
+labels, Coming for a body that cannot be drawn), the quiet scenes' names in a sentence, and the
+admin page's household look built on the same rows.
 `tests/web/state.test.js` also checks that `quiet_parts` and an event's `parts` are read as strings,
 or not at all. `tests/web/streams.test.js` checks the streams' detail line and badge: the stream
 shown at each moment by the clock, the clipping, each line held to the collector's `line()` through
@@ -372,7 +381,8 @@ sed -i 's#<script src="packs/medieval.pack.js"></script>#&\n<script src="packs/t
 # then open /tmp/kw-orbit/index.html#wd=test.orbit/world.orbit, or shoot it with PAGE=
 ```
 
-The address's `wd=` chooses the world.
+The address's `wd=` chooses the world. `tools/shots.sh worlds DIR` makes the same copy in a folder of
+its own, takes the `worldmix-` shots of the settings screen from it and removes it.
 
 ## The logo and the icons
 

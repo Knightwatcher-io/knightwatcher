@@ -305,8 +305,9 @@ and `sources` the parts come from are shown:
     `brown`, `auburn`, `blonde` or `silver`; `hair_style` is `short`, `tied`, `curls`, `long` or
     `close`; `tabard` and `monarch_robe` are `blue`, `forest`, `violet`, `wine`, `teal` or
     `sable`; `plume` is `red`, `white`, `gold`, `royal`, `green` or `violet`; `skin`, `hair`,
-    `tabard` and `plume` each also take the long name of a swatch of that set from a world pack
-    (`monarch_skin`, `monarch_hair` and `monarch_robe` do not). The gear: `shield`
+    `tabard` and `plume` each also take the long name of a swatch of that set from a world pack,
+    and so do `monarch_skin`, `monarch_hair` and `monarch_robe`, of the skin, hair and tabard
+    sets. The gear: `shield`
     is `heater`, `round` or `kite`, carried only with `sword_and_shield` or `mace_and_shield`;
     `helmet` is `open`, `kettle`, `coif` or `bascinet`; `plume_style` is `crest`, `feather` or
     `horsehair`; `body` is `tabard`, `cuirass` or `gambeson`; `shoulders` is `plate`, `lames` or
@@ -315,7 +316,9 @@ and `sources` the parts come from are shown:
     `none`, `cloak` or `cape`. `monarch_hair` and `monarch_robe` left out mean each monarch
     keeps the colours the court draws them in; there is no value for that. The cast and the rest
     of the world: `pet` is `cat`, `foe` is `goblin`, `critter` is `fly`, and `props`, `overlay`
-    and `words` are `medieval`, each or a long name; `pet_coat` is `calico` or `ginger`. `items`
+    and `words` are `medieval`, each or a long name; `pet_coat` is `calico` or `ginger`, or the
+    long name of a coat of a world pack's pet, `"<pack>/<coat>"`, which counts while that pet is in
+    use (a coat the pet in use does not have gives its first). `items`
     is an object from a slot (`main`, `off`, `helmet`,
     `plume`, `hair`, `torso`, `pauldrons`, `arms`, `gauntlets`, `legs`, `boots` or `back`) to an
     item's long name, and `devices` an object from a kind of device (`pi`, `camera`, `machine`,
@@ -347,7 +350,8 @@ and `sources` the parts come from are shown:
   before worlds ignores `world`, the part keys, `items` and `devices` as keys it does not know,
   and a long name in `quiet.scenes` or `scenes` as a value it does not know; a page from before
   other worlds could be drawn ignores a long name in `build`, `skin`, `hair`, `tabard` and
-  `plume` the same way.
+  `plume` the same way, and a page from before parts could be mixed on the screen one in
+  `monarch_skin`, `monarch_hair`, `monarch_robe` and `pet_coat`.
 
 - **`config`** says which settings the collector is using, for the bundled server's admin page:
   - `admin`: the version of the admin page's `admin.json` laid over `config.toml` (20 hex

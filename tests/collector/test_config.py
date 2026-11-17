@@ -704,18 +704,26 @@ class DefaultsConfigTest(unittest.TestCase):
         self.assertProblems(
             {"look": {"monarch": "A", "monarch_skin": "Warm"}},
             'look.monarch: unknown value "A"; use a, b or c, or a long name, "<pack>/<id>"',
-            'look.monarch_skin: unknown value "Warm"; use fair, warm, golden, tan, brown or deep',
+            'look.monarch_skin: unknown value "Warm"; use fair, warm, golden, tan, brown or deep, '
+            + long,
         )
         self.assertProblems(
             {"look": {"monarch_hair": "drawn", "monarch_robe": "red"}},
             'look.monarch_hair: unknown value "drawn"; use black, dark, brown, auburn, blonde or '
-            "silver",
-            'look.monarch_robe: unknown value "red"; use blue, forest, violet, wine, teal or sable',
+            "silver, " + long,
+            'look.monarch_robe: unknown value "red"; use blue, forest, violet, wine, teal or '
+            "sable, " + long,
+        )
+        # the pet's coat: the cat's two, or a coat of a loaded pack's pet by its long name
+        self.assertProblems(
+            {"look": {"pet_coat": "tweed"}},
+            f'look.pet_coat: unknown value "tweed"; use calico or ginger, {long}',
         )
         # "As drawn" is the key left out, never a value.
         self.assertProblems(
             {"look": {"monarch_hair": ""}},
-            'look.monarch_hair: unknown value ""; use black, dark, brown, auburn, blonde or silver',
+            'look.monarch_hair: unknown value ""; use black, dark, brown, auburn, blonde or '
+            "silver, " + long,
         )
         self.assertProblems(
             {"look": {"build": 1, "skin": ["warm"]}},

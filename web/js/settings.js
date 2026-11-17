@@ -38,11 +38,11 @@
       feet: { values: ['leather', 'sabatons', 'shoes'], page: 'leather' },
       back: { values: ['none', 'cloak', 'cape'], page: 'none' },
       monarch: { values: ['a', 'b', 'c'], long: true, page: 'a' },
-      monarch_skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], page: 'warm' },
-      monarch_hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], page: null },
-      monarch_robe: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], page: null },
+      monarch_skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], long: true, page: 'warm' },
+      monarch_hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], long: true, page: null },
+      monarch_robe: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], long: true, page: null },
       pet: { values: ['cat'], long: true, page: 'cat' },
-      pet_coat: { values: ['calico', 'ginger'], page: 'calico' },
+      pet_coat: { values: ['calico', 'ginger'], long: true, page: 'calico' },
       foe: { values: ['goblin'], long: true, page: 'goblin' },
       critter: { values: ['fly'], long: true, page: 'fly' },
       props: { values: ['medieval'], long: true, page: 'medieval' },
@@ -143,7 +143,7 @@
                without it
        quiet   the base world's quiet scenes, in the order they take turns: the medieval preset's,
                or SCENES without it
-       scenes  each scene of a loaded pack by its long name, { can, quiet }
+       scenes  each scene of a loaded pack by its long name, { can, quiet, hosts }
        names   for each kind of part (PART_KINDS, and scene), the long names the page has loaded and
                the name each stands for: kw.medieval/props.medieval stands for 'medieval'. The
                schema's short names are always loaded, and so is every long name in scenes, worlds
@@ -160,17 +160,26 @@
        builds  each build of a pack other than the base pack, by its long name, and its name
        swatches  for each of the user's sets (skin, hair, tabard, plume), each swatch of a pack
                other than the base pack by its long name, and its name
-       titles  the name of each part of another pack, by its long name, for the screen */
+       titles  the name of each part of another pack, by its long name, for the screen
+       coats   each pet of another pack by its long name, and its coats, each "<pack>/<coat>"
+               and its name, the pet's default first
+       binds   each patron of another pack by its long name, and the sets it binds: skin, hair
+               and robe, or fewer; one that binds none is drawn in its own colours
+       gear    each item by its long name, { grip, plume, rest }: grip 'one' or 'two' for a
+               weapon, null otherwise; whether it has a plume mount; and whether it has a rest
+               view. The base pack's are added by the store (see gearOf)
+       hosts   each of the base world's scenes and the events it hosts (KW.scenes' hosts: the
+               flies, the crate, the feast, the foe); another world's scene gives its own in scenes */
   function worldOf(w) {
     const src = isObj(w) ? w : {};
     if (src.normal === true) return src;
-    const out = { normal: true, can: {}, homes: {}, quiet: SCENES.slice(), scenes: {}, names: {}, worlds: {}, sets: {}, items: {}, builds: {}, swatches: {}, titles: {} };
+    const out = { normal: true, can: {}, homes: {}, quiet: SCENES.slice(), scenes: {}, names: {}, worlds: {}, sets: {}, items: {}, builds: {}, swatches: {}, titles: {}, coats: {}, binds: {}, gear: {}, hosts: {} };
     if (isObj(src.can)) for (const k of ALL_SCENES) if (Array.isArray(src.can[k])) out.can[k] = src.can[k].filter(c => typeof c === 'string');
     if (isObj(src.homes)) for (const c of Object.keys(src.homes)) out.homes[c] = typeof src.homes[c] === 'string' ? src.homes[c] : null;
     if (Array.isArray(src.quiet) && src.quiet.some(s => typeof s === 'string')) out.quiet = src.quiet.filter(s => typeof s === 'string');
     if (isObj(src.scenes)) for (const n of Object.keys(src.scenes)) {
       const s = src.scenes[n];
-      if (isLong(n) && isObj(s) && Array.isArray(s.can)) out.scenes[n] = { can: s.can.filter(c => typeof c === 'string'), quiet: s.quiet === true };
+      if (isLong(n) && isObj(s) && Array.isArray(s.can)) out.scenes[n] = { can: s.can.filter(c => typeof c === 'string'), quiet: s.quiet === true, hosts: Array.isArray(s.hosts) ? s.hosts.filter(h => typeof h === 'string') : null };
     }
     for (const kind of PART_KINDS.concat('scene')) {
       const m = out.names[kind] = {};
@@ -202,10 +211,37 @@
       for (const n of Object.keys(g)) if (isLong(n) && typeof g[n] === 'string') out.swatches[set][n] = g[n];
     }
     if (isObj(src.titles)) for (const n of Object.keys(src.titles)) if (isLong(n) && typeof src.titles[n] === 'string') out.titles[n] = src.titles[n];
+    if (isObj(src.coats)) for (const n of Object.keys(src.coats)) {
+      if (!(isLong(n) && isObj(src.coats[n]))) continue;
+      out.coats[n] = {};
+      for (const c of Object.keys(src.coats[n])) if (isLong(c) && typeof src.coats[n][c] === 'string') out.coats[n][c] = src.coats[n][c];
+    }
+    if (isObj(src.binds)) for (const n of Object.keys(src.binds)) if (isLong(n) && Array.isArray(src.binds[n])) out.binds[n] = src.binds[n].filter(b => ['skin', 'hair', 'robe'].includes(b));
+    if (isObj(src.gear)) for (const n of Object.keys(src.gear)) {
+      const g = src.gear[n];
+      if (isLong(n) && isObj(g)) out.gear[n] = { grip: g.grip === 'one' || g.grip === 'two' ? g.grip : null, plume: g.plume === true, rest: g.rest === true };
+    }
+    // the events each of the base world's scenes hosts, where the page knows it (KW.scenes' hosts)
+    if (isObj(src.hosts)) for (const k of ALL_SCENES) if (Array.isArray(src.hosts[k])) out.hosts[k] = src.hosts[k].filter(h => typeof h === 'string');
     return out;
   }
-  /* The look's keys that choose one of the user's swatches, each its own set. */
+  /* The look's keys that choose one of the user's swatches, each its own set; and the monarch's,
+     each the set it takes its colours from. */
   const SWATCH_KEYS = ['skin', 'hair', 'tabard', 'plume'];
+  const PATRON_SETS = { monarch_skin: 'skin', monarch_hair: 'hair', monarch_robe: 'tabard' };
+  /* The coats of a pet: the code's cat's by their short names, another pack's pet's by their long
+     names (see worldOf), the default first; empty for a pet the page has not loaded. */
+  const coatsOf = (W, pet) => (isLong(pet) ? Object.keys(W.coats[pet] || {}) : pet === 'cat' ? ONE_OF.look.pet_coat.slice() : []);
+  /* Each base pack item's grip, plume mount and rest view, by its long name (see worldOf, gear). */
+  function gearOf(pack) {
+    const out = {}, items = isObj(pack) && isObj(pack.items) ? pack.items : {};
+    for (const id of Object.keys(items)) {
+      const it = items[id];
+      if (!isObj(it)) continue;
+      out['kw.base/' + id] = { grip: isObj(it.grip) && (it.grip.kind === 'one' || it.grip.kind === 'two') ? it.grip.kind : null, plume: isObj(it.mounts) && !!it.mounts.plume, rest: isObj(it.rest) };
+    }
+    return out;
+  }
   /* The items of a base pack, by their long names, and the slot each fills. */
   function itemsOf(pack) {
     const out = {}, items = isObj(pack) && isObj(pack.items) ? pack.items : {};
@@ -215,12 +251,15 @@
   /* The conditions whose scene may be chosen, in the order of homes (the conditions' priority),
      each with the scenes that can act it, in the order of ALL_SCENES. A condition takes part when
      it has a scene of its own and more than one scene can act it; night never does, since only the
-     house has the bed and the knight sleeps where the bed is. */
-  function offered(w) {
-    const W = worldOf(w), out = {};
+     house has the bed and the knight sleeps where the bed is. These are the base world's, which
+     the page's own level holds a scene for (builtIn); with all set to true, the scenes of every
+     other loaded world count too, by their long names after the base world's, which is what the
+     settings screen offers and what a level may choose (clean). */
+  function offered(w, all) {
+    const W = worldOf(w), out = {}, more = all ? Object.keys(W.scenes).filter(n => W.names.scene[n] === n) : [];
     for (const c of Object.keys(W.homes)) {
       if (c === 'night' || !W.homes[c]) continue;
-      const list = ALL_SCENES.filter(k => W.can[k] && W.can[k].includes(c));
+      const list = ALL_SCENES.filter(k => W.can[k] && W.can[k].includes(c)).concat(more.filter(n => W.scenes[n].can.includes(c)));
       if (list.length > 1 && list.includes(W.homes[c])) out[c] = list;
     }
     return out;
@@ -327,6 +366,9 @@
       const c = name(k, n);
       if (c === null) fault('look.' + k, longOf(pack, n), 'not loaded'); else out.look[k] = c;
     }
+    // the pet's coat: its first, the world naming the pet and not the coat
+    const coats = coatsOf(W, out.look.pet);
+    if (coats.length && !coats.includes(out.look.pet_coat)) out.look.pet_coat = coats[0];
     // the scenes: the quiet scenes in turn, and the scene of each condition
     const sc = isObj(p.scenes) ? p.scenes : {};
     if (Array.isArray(sc.quiet)) {
@@ -363,7 +405,7 @@
     const W = worldOf(world), named = (kind, v) => (typeof v === 'string' && has(W.names[kind], v) ? W.names[kind][v] : null);
     const unknown = (v, what) => (isLong(v) ? 'no pack the page has loaded gives ' + what : 'not ' + (what === 'it' ? 'a value' : what.replace(/^that/, 'a')) + ' the page knows');
     if (section === 'scenes') {
-      const offer = offered(W);
+      const offer = offered(W, true);
       for (const k of Object.keys(raw)) {
         const v = raw[k], s = named('scene', v), other = s !== null && isLong(s) && has(W.scenes, s);
         if (!has(W.homes, k)) no(k, v, 'not a condition the page knows');
@@ -410,10 +452,15 @@
         const c = named(k, v);
         if (c === null) no(k, v, unknown(v, 'it'));
         else out[k] = c;
-      } else if (section === 'look' && (k === 'build' || SWATCH_KEYS.includes(k)) && isLong(v)) {
-        // a body or a swatch of another pack, by its long name, once the page has loaded it
-        if (k === 'build' ? has(W.builds, v) : has(W.swatches[k], v)) out[k] = v;
+      } else if (section === 'look' && (k === 'build' || SWATCH_KEYS.includes(k) || has(PATRON_SETS, k)) && isLong(v)) {
+        // a body or a swatch of another pack, by its long name, once the page has loaded it; the
+        // monarch's colours from the set each takes them from
+        if (k === 'build' ? has(W.builds, v) : has(W.swatches[PATRON_SETS[k] || k], v)) out[k] = v;
         else no(k, v, unknown(v, k === 'build' ? 'that build' : 'that swatch'));
+      } else if (section === 'look' && k === 'pet_coat' && isLong(v)) {
+        // a coat of another pack's pet, which counts while that pet is in use (see resolve)
+        if (Object.keys(W.coats).some(n => has(W.coats[n], v))) out[k] = v;
+        else no(k, v, unknown(v, 'that coat'));
       } else if (!ONE_OF[section][k].includes(v)) no(k, v, 'not a value the page knows');
       else if (section === 'look' && k === 'build' && !(ready || []).includes(v)) no(k, v, 'no pack draws that build');
       else out[k] = v;
@@ -432,7 +479,16 @@
      way to the world's, and is listed in masked as { section, key, level, value }. With no level
      choosing a world, the base world is the page's own, and every part is as before. world says
      { id, from, homes }: the world in use, the level it was chosen at, and its scene for each
-     condition. faults lists the world's parts the page could not use (see worldParts). */
+     condition. faults lists the world's parts the page could not use (see worldParts).
+
+     Two rules fit the parts together. A slot's item named in items gives way to the key that
+     chooses that slot's item (helmet for the helmet, weapon for main) when a level above the
+     item's sets the key, or the item is the world's and the key is set at the world's level or
+     above: so the open helm chosen on a display is drawn in a world whose preset names another
+     helmet. And the pet's coat is a coat of the pet in use: one that is not, from another pet, gives
+     the pet's first, counted from where the pet is. grip says how the weapon in use is held, 'one'
+     or 'two': from the item in items.main when it names one the page knows, from the weapon key
+     otherwise. */
   function resolve(levels, base, world) {
     const values = {}, from = {}, masked = [];
     const at = (sec, k, sub) => LEVELS.find(l => levels[l] && isObj(levels[l][sec]) && has(levels[l][sec], k) && (sub === undefined || (isObj(levels[l][sec][k]) && has(levels[l][sec][k], sub))));
@@ -468,7 +524,23 @@
         }
       }
     }
-    return { values, from, world: { id, from: wl || 'built-in', homes: parts.homes }, masked, faults: parts.faults };
+    // a key set above a slot's item, or at or above the world's level for the world's item, wins
+    const W = worldOf(world), rankOf = f => (f === 'world' ? wr : has(RANK, f) ? RANK[f] : RANK['built-in']);
+    for (const k of Object.keys(SLOT_KEY).map(sl => [SLOT_KEY[sl], sl])) {
+      const [key, slot] = k;
+      if (!has(values.look.items, slot) || !LEVELS.includes(from.look[key])) continue;
+      const f = from.look.items[slot], rk = RANK[from.look[key]], ri = rankOf(f);
+      if (rk < ri || (f === 'world' && rk <= ri)) { delete values.look.items[slot]; delete from.look.items[slot]; }
+    }
+    // the coat of the pet in use
+    const coats = coatsOf(W, values.look.pet);
+    if (coats.length && !coats.includes(values.look.pet_coat)) {
+      values.look.pet_coat = coats.includes(base.look.pet_coat) ? base.look.pet_coat : coats[0];
+      from.look.pet_coat = from.look.pet;
+    }
+    const main = values.look.items.main, g = typeof main === 'string' && has(W.gear, main) ? W.gear[main].grip : null;
+    const grip = g || (ONE_HANDED.includes(values.look.weapon) ? 'one' : 'two');
+    return { values, from, world: { id, from: wl || 'built-in', homes: parts.homes }, masked, faults: parts.faults, grip };
   }
 
   /* The look for KW.knight.look(), in the shape the pack library resolves: only what a level above
@@ -484,9 +556,14 @@
     const named0 = (x, short) => (isLong(x) ? x : B + short);
     if (set('build') && v.build) look.build = named0(v.build, 'build.' + v.build);
     // a weapon set carries its shield, the one the shield key gives, when it is one-handed; a shield
-    // set alone matters only beside a one-handed weapon
-    const one = ONE_HANDED.includes(v.weapon);
-    if (set('weapon')) { item('main', WEAPONS[v.weapon]); if (one) item('off', itemId('shield', v.shield)); }
+    // set alone matters only beside a one-handed weapon. A weapon named in items, chosen on a level,
+    // is held as its grip says (r.grip), and carries the shield as the weapon key's would; a world's
+    // own weapon carries one only where a level sets the shield
+    const mainIt = isObj(v.items) && typeof v.items.main === 'string' && (F.items.main !== 'world' || other) ? F.items.main : null;
+    const one = mainIt && (r.grip === 'one' || r.grip === 'two') ? r.grip === 'one' : ONE_HANDED.includes(v.weapon);
+    const armed = mainIt ? mainIt !== 'world' : set('weapon');
+    if (set('weapon') && !mainIt) item('main', WEAPONS[v.weapon]);
+    if (armed && one) item('off', itemId('shield', v.shield));
     else if (set('shield') && one) item('off', itemId('shield', v.shield));
     for (const k of SWATCH_KEYS) if (set(k)) (look.swatches = look.swatches || {})[k] = named0(v[k], v[k]);
     for (const k of Object.keys(ITEMS)) if (k !== 'shield' && set(k) && v[k] !== 'none') item(ITEMS[k][0], itemId(k, v[k]));
@@ -495,15 +572,22 @@
     return look;
   }
   /* What the settings screen greys, from what the look shows: the shield with a two-handed weapon,
-     which carries none; and the plume with a helmet the base pack gives no plume mount, the mail
-     coif, its colour too unless the long cloak, which takes the plume's colours, is worn. Each is
-     the line said when a greyed choice is tapped, or '' when the row is live. */
-  function greyed(v, pack) {
-    const out = { shield: '', plume_style: '', plume: '' };
-    if (!ONE_HANDED.includes(v.weapon)) out.shield = 'A shield is carried only with a one-handed weapon: the sword and shield or the mace and shield.';
-    const helm = isObj(pack) && isObj(pack.items) ? pack.items[itemId('helmet', v.helmet)] : null;
-    if (isObj(helm) && !(isObj(helm.mounts) && helm.mounts.plume)) {
-      out.plume_style = 'The ' + helm.name.toLowerCase() + ' has no plume mount, so no plume is drawn with it.';
+     which carries none; and the plume with a helmet that has no plume mount, such as the mail coif,
+     its colour too unless the long cloak, which takes the plume's colours, is worn. The weapon and
+     the helmet are those drawn: an item named in items.main or items.helmet over the key, its grip
+     and mount from cat (what the page has loaded, see worldOf: gear and titles) where it is not the
+     base pack's. Each is the line said when a greyed choice is tapped, or '' when the row is live. */
+  function greyed(v, pack, cat) {
+    const out = { shield: '', plume_style: '', plume: '' }, C = isObj(cat) ? cat : {}, items = isObj(v.items) ? v.items : {}, B = 'kw.base/';
+    const base = id => (isObj(pack) && isObj(pack.items) && typeof id === 'string' && id.startsWith(B) && isObj(pack.items[id.slice(B.length)]) ? pack.items[id.slice(B.length)] : null);
+    const nameOf = id => { const b = base(id); return b ? b.name : isObj(C.titles) && typeof C.titles[id] === 'string' ? C.titles[id] : id; };
+    const gear = id => (base(id) ? { grip: isObj(base(id).grip) ? base(id).grip.kind : null, plume: isObj(base(id).mounts) && !!base(id).mounts.plume } : isObj(C.gear) && isObj(C.gear[id]) ? C.gear[id] : null);
+    const main = typeof items.main === 'string' ? gear(items.main) : null;
+    if (main && main.grip) { if (main.grip !== 'one') out.shield = 'The ' + nameOf(items.main).toLowerCase() + ' is held in both hands, so no shield is carried.'; }
+    else if (!ONE_HANDED.includes(v.weapon)) out.shield = 'A shield is carried only with a one-handed weapon: the sword and shield or the mace and shield.';
+    const hid = typeof items.helmet === 'string' ? items.helmet : B + itemId('helmet', v.helmet), helm = gear(hid);
+    if (helm && !helm.plume) {
+      out.plume_style = 'The ' + nameOf(hid).toLowerCase() + ' has no plume mount, so no plume is drawn with it.';
       if (v.back !== 'cloak') out.plume = out.plume_style;
     }
     return out;
@@ -520,16 +604,19 @@
   /* What the engine takes from the settings (docs/page.md): the quiet scenes in turn and how long
      each lasts, ownMs while no level above the page's own sets the length (the demo's minute, or
      live mode's ten); the patron, the monarch, as { id, skin, hair, robe }, the skin, hair and robe
-     from the base pack's skin, hair and tabard swatches, each null for the court's own while
-     nothing sets it or there is no base pack; the pet, as { id, coat }; the scene chosen for each
-     condition, holding only what a level above the page's own sets; homes, the world's own scene
+     from the base pack's skin, hair and tabard swatches, or another pack's by its long name from
+     swatchOf(set, name) (KW.world.swatchOf when it is left out), each null for the court's own while
+     nothing sets it or there is no base pack; the pet, as { id, coat }, the coat by its own id
+     within the pet (a long name's part after the slash); the scene chosen for each condition, holding only what a level above the page's own sets; homes, the world's own scene
      for each condition; kinds, the prop set each kind of device is drawn from; the foe and the
      critter, each by the name KW.cast knows it by (a long name for another pack's); and the words
      and the overlay in use, 'medieval' or a long name, which main.js puts in use
      (KW.world.useWords, useOverlay). */
-  function engineInput(r, pack, ownMs) {
+  function engineInput(r, pack, ownMs, swatchOf) {
     const q = r.values.quiet, L = r.values.look;
-    const swatch = (set, id) => { const sw = isObj(pack) && isObj(pack.swatches) && isObj(pack.swatches[set]) ? pack.swatches[set][id] : null; return isObj(sw) && isObj(sw.entries) ? sw.entries : null; };
+    // a swatch of another pack by its long name, from what the world has read (KW.world.swatchOf)
+    const other = typeof swatchOf === 'function' ? swatchOf : KW.world && typeof KW.world.swatchOf === 'function' ? KW.world.swatchOf : () => null;
+    const swatch = (set, id) => { if (isLong(id)) { const e = other(set, id); return isObj(e) ? e : null; } const sw = isObj(pack) && isObj(pack.swatches) && isObj(pack.swatches[set]) ? pack.swatches[set][id] : null; return isObj(sw) && isObj(sw.entries) ? sw.entries : null; };
     const set = k => r.from.look[k] !== 'built-in' && r.from.look[k] !== 'world' && L[k] !== null;
     const sk = set('monarch_skin') ? swatch('skin', L.monarch_skin) : null, hr = set('monarch_hair') ? swatch('hair', L.monarch_hair) : null, rb = set('monarch_robe') ? swatch('tabard', L.monarch_robe) : null;
     const patron = { id: L.monarch, skin: sk ? { id: L.monarch_skin, face: sk.face, cheek: sk.cheek } : null,
@@ -540,7 +627,7 @@
     const kinds = {}, by = isObj(L.devices) ? L.devices : {};
     for (const k of KINDS) kinds[k] = typeof by[k] === 'string' ? by[k] : typeof L.props === 'string' ? L.props : BASE_WORLD;
     const homes = isObj(r.world) && isObj(r.world.homes) ? Object.assign({}, r.world.homes) : {};
-    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, patron, pet: { id: L.pet, coat: L.pet_coat }, scenes, homes, kinds,
+    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, patron, pet: { id: L.pet, coat: isLong(L.pet_coat) ? L.pet_coat.slice(L.pet_coat.indexOf('/') + 1) : L.pet_coat }, scenes, homes, kinds,
       foe: L.foe, critter: L.critter, words: L.words, overlay: L.overlay };
   }
 
@@ -621,7 +708,7 @@
        (through the function sending() was given) with one, naming the sections it changed. */
     const commit = secs => { if (src === 'local') save(storage, saved, say); else if (sender) sender(secs); };
     /* What the page has loaded (see worldOf), with the base pack's items. */
-    const loaded = () => { const w = worldOf(world()); return Object.assign({}, w, { items: Object.assign(itemsOf(pack()), w.items) }); };
+    const loaded = () => { const w = worldOf(world()); return Object.assign({}, w, { items: Object.assign(itemsOf(pack()), w.items), gear: Object.assign(gearOf(pack()), w.gear) }); };
     const levelOf = (raw, where, ready, w, note) => {
       const out = {};
       for (const sec of SECTIONS) out[sec] = clean(sec, isObj(raw) ? raw[sec] : undefined, where, ready, note, w);
@@ -679,6 +766,36 @@
         commit(['look', 'quiet', 'scenes']); changed();
         return cleared;
       },
+      /* Saves the part id for the key k on this display, in one write naming the look: an item of
+         any loaded pack for the slot k chooses (helmet, weapon for main and the rest) goes into
+         items for that slot, and the key's own choice leaves it, so that what is chosen is what is
+         drawn. Returns false, saving nothing, for a value the page does not know. */
+      choosePart(k, id) {
+        const slot = k === 'weapon' ? 'main' : has(ITEMS, k) ? ITEMS[k][0] : null, w = loaded();
+        const look = Object.assign({}, cleanSaved('look', saved.look, true)), items = Object.assign({}, look.items || {});
+        if (slot && isLong(id) && w.items[id] === slot) { items[slot] = id; delete look[k]; }
+        else {
+          const one = cleanSaved('look', { [k]: id });
+          if (!has(one, k)) return false;
+          look[k] = one[k];
+          if (slot) delete items[slot];
+        }
+        if (Object.keys(items).length) look.items = items; else delete look.items;
+        saved = Object.assign({}, saved, { look });
+        commit(['look']); changed();
+        return true;
+      },
+      /* Clears what this display chose for the key k and, for a key that chooses an item, the
+         item it named for that slot, in one write: the part is the world's again. */
+      clearPart(k) {
+        const slot = k === 'weapon' ? 'main' : has(ITEMS, k) ? ITEMS[k][0] : null, look = Object.assign({}, isObj(saved.look) ? saved.look : {});
+        const had = has(look, k) || (slot && isObj(look.items) && has(look.items, slot));
+        if (!had) return;
+        delete look[k];
+        if (slot && isObj(look.items)) { const items = Object.assign({}, look.items); delete items[slot]; if (Object.keys(items).length) look.items = items; else delete look.items; }
+        saved = Object.assign({}, saved, { look });
+        commit(['look']); changed();
+      },
       /* Clears this display's choice for one key, which then falls back to the defaults: the
          monarch's hair and robe "As drawn". */
       clear(section, k) {
@@ -696,7 +813,7 @@
       /* Whether this display has choices of its own in a section. */
       own: section => isObj(saved[section]) && Object.keys(cleanSaved(section, saved[section], true)).length > 0,
       /* The conditions whose scene may be chosen, each with the scenes that can act it. */
-      offered: () => offered(loaded()),
+      offered: () => offered(loaded(), true),
       /* What the page has loaded: the worlds, the prop sets, the scenes and the names (see worldOf). */
       catalogue: loaded,
       /* What the world id sets, in the contract's names (see worldParts). */
@@ -840,16 +957,16 @@
     return { poll, state: () => ({ answered: st.answered, stopped: st.stopped, mode: store.mode() }) };
   }
 
-  /* What the page has loaded (see worldOf): each loaded scene's can, and each condition's own scene
+  /* What the page has loaded (see worldOf): each loaded scene's can and hosts, and each condition's own scene
      from KW.state.CONDITIONS; over them what KW.world has loaded (KW.world.catalogue), the base
      world's homes and quiet scenes among it when kw.medieval gives its preset. Empty under Node,
      where KW holds none of them. */
   function pageWorld() {
-    const can = {}, homes = {}, sc = isObj(KW.scenes) ? KW.scenes : {}, cond = isObj(KW.state) && isObj(KW.state.CONDITIONS) ? KW.state.CONDITIONS : {};
-    for (const k of Object.keys(sc)) if (isObj(sc[k]) && Array.isArray(sc[k].can)) can[k] = sc[k].can;
+    const can = {}, hosts = {}, homes = {}, sc = isObj(KW.scenes) ? KW.scenes : {}, cond = isObj(KW.state) && isObj(KW.state.CONDITIONS) ? KW.state.CONDITIONS : {};
+    for (const k of Object.keys(sc)) if (isObj(sc[k]) && Array.isArray(sc[k].can)) { can[k] = sc[k].can; if (Array.isArray(sc[k].hosts)) hosts[k] = sc[k].hosts; }
     for (const c of Object.keys(cond)) homes[c] = cond[c].scene;
     const cat = isObj(KW.world) && typeof KW.world.catalogue === 'function' ? KW.world.catalogue() : {};
-    return Object.assign({ can, homes }, cat);
+    return Object.assign({ can, hosts, homes }, cat);
   }
 
   const api = { SCHEMA, KEY, SHARED_KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, WEAPONS, ONE_HANDED, WEAPON_CHIPS, ITEMS, TABLES, KINDS, BASE_WORLD, LONG,
@@ -903,22 +1020,32 @@
     const ls = Object.values(f);
     return LEVELS.find(l => ls.includes(l)) || (ls.includes('world') ? 'world' : 'built-in');
   }
+  /* The slot each key that chooses an item fills, the weapon's main among them, and what is drawn
+     there: the item items names for the slot, over the key's own choice. */
+  const slotOf = k => (k === 'weapon' ? 'main' : has(ITEMS, k) ? ITEMS[k][0] : null);
+  function drawnValue(look, k) {
+    const slot = slotOf(k);
+    return slot && isObj(look.items) && typeof look.items[slot] === 'string' ? look.items[slot] : look[k];
+  }
   /* The parts the World page compares with the world's own, [section, key]: the look's keys but
-     the world and the devices, which have rows of their own, the quiet scenes, and each condition
-     offered. */
+     the world, the devices, which have rows of their own, and items, whose slots are compared
+     under the keys that choose them; the quiet scenes; and each condition with a scene. */
   function partKeys(r) {
-    const out = KEYS.look.filter(k => k !== 'world' && k !== 'devices').map(k => ['look', k]);
+    const out = KEYS.look.filter(k => k !== 'world' && k !== 'devices' && k !== 'items').map(k => ['look', k]);
     out.push(['quiet', 'scenes']);
     for (const c of Object.keys(r.values.scenes)) out.push(['scenes', c]);
     return out;
   }
   /* The parts whose value differs from the world's own (own, as the store's parts() gives it):
-     each { sec, k, v, own, from }. */
+     each { sec, k, v, own, from }, an item key by what its slot draws, so another pack's helmet
+     shows as the helmet it is. */
   function changedParts(r, own) {
     const out = [];
     for (const [sec, k] of partKeys(r)) {
-      const v = r.values[sec][k], w = own[sec][k];
-      if (!same(v, w)) out.push({ sec, k, v, own: w, from: fromOf(r, sec, k) });
+      const slot = sec === 'look' ? slotOf(k) : null, item = slot && isObj(r.values.look.items) && typeof r.values.look.items[slot] === 'string';
+      const v = slot ? drawnValue(r.values.look, k) : r.values[sec][k], w = slot ? drawnValue(own.look, k) : own[sec][k];
+      if (v === undefined && sec === 'scenes') continue;
+      if (!same(v, w)) out.push({ sec, k, v, own: w, from: item ? r.from.look.items[slot] : fromOf(r, sec, k) });
     }
     return out;
   }
@@ -944,7 +1071,8 @@
     const name = n => (typeof n === 'string' && n ? n.charAt(0).toUpperCase() + n.slice(1) : String(n));
     // a part of another pack by its long name: its own name, as the catalogue gives it
     const title = x => (isLong(x) && isObj(cat) && isObj(cat.titles) && typeof cat.titles[x] === 'string' ? cat.titles[x] : null);
-    if (sec === 'quiet') return k === 'minutes' ? v + ' minutes' : same(v, SCENES) ? 'All four' : listed(v.map(x => SCENE_NAMES[x] || title(x) || x));
+    // the quiet scenes in a sentence: the first's name as it is, the rest's in lower case
+    if (sec === 'quiet') return k === 'minutes' ? v + ' minutes' : same(v, SCENES) ? 'All four' : listed(v.map((x, i) => { const n = SCENE_NAMES[x] || title(x) || x; return i ? lowerFirst(n) : n; }));
     if (sec === 'scenes') return SCENE_NAMES[v] || title(v) || v;
     if (v === null) return 'As drawn';
     if (typeof v === 'string' && k !== 'world' && k !== 'props' && title(v)) return title(v);
@@ -952,7 +1080,12 @@
     if (k === 'weapon') return WEAPON_CHIPS[v] ? WEAPON_CHIPS[v][0] : v;
     if (k === 'monarch') return /^[abc]$/.test(v) ? 'Monarch ' + v.toUpperCase() : v;
     if (k === 'pet') return has(PET_NAMES, v) ? PET_NAMES[v] : v;
-    if (k === 'pet_coat') return has(COAT_NAMES, v) ? COAT_NAMES[v] : name(v);
+    if (k === 'pet_coat') {
+      if (has(COAT_NAMES, v)) return COAT_NAMES[v];
+      // a coat of another pack's pet, by the pet's coats in the catalogue
+      const pet = isObj(cat) && isObj(cat.coats) ? Object.keys(cat.coats).find(n => isObj(cat.coats[n]) && typeof cat.coats[n][v] === 'string') : null;
+      return pet ? cat.coats[pet][v] : name(v);
+    }
     if (k === 'world') return isObj(cat) && isObj(cat.worlds[v]) ? cat.worlds[v].name : v;
     if (k === 'props') return isObj(cat) && isObj(cat.sets[v]) ? cat.sets[v].name : v;
     if (k === 'items') return Object.keys(v).length ? listed(Object.keys(v).map(s => v[s])) : 'Nothing named';
@@ -1006,7 +1139,8 @@
       const what = f.key === null ? f.section : partLabel(f.section, f.key, labels), asks = ASKS[f.where] || f.where;
       if (f.section === 'scenes' && f.why === 'that scene cannot act it' && has(r.values.scenes, f.key)) {
         const now = r.values.scenes[f.key], whose = r.from.scenes[f.key] === 'world' || r.from.scenes[f.key] === 'built-in' ? ', the world\'s own' : '';
-        out.push([what, ': ' + asks + ' asks for the ' + lowerFirst(SCENE_NAMES[f.value] || String(f.value)) + ', which cannot act it. Shown in the ' + lowerFirst(SCENE_NAMES[now] || now) + whose + '.']);
+        const sn = x => lowerFirst(valueName('scenes', f.key, x, pack, cat)) + (isLong(x) ? ' of ' + x.slice(0, x.indexOf('/')) : '');
+        out.push([what, ': ' + asks + ' asks for the ' + sn(f.value) + ', which cannot act it. Shown in the ' + sn(now) + whose + '.']);
       } else out.push([what, ': ' + asks + ' asks for ' + show2(f.value) + ', which is ignored: ' + f.why + '.']);
     }
     for (const f of Array.isArray(r.faults) ? r.faults : []) {
@@ -1032,7 +1166,166 @@
     }
     return out;
   }
-  api.screen = { DEVICE_KINDS, partKeys, changedParts, partLabel, valueName, chosenLine, deviceRows, devicesAfter, fallbackLines };
+
+  /* ---- Parts from every loaded world -----------------------------------------------------------
+     The part pages (the knight, the monarch, the cast, the scenes and the quiet scenes) and the admin
+     page's household look list every loaded world's parts, the world in use's first and each other
+     world's after its name. What they list is worked out here, apart from the drawing, as rows:
+     { key, sec, k, label, groups, cur, curName, own, ownName, changed, warn }. groups is each world's
+     choices, [{ world, name, choices }], the world in use's first; a choice is { id, name, chip,
+     sub, kind, set, off, offNote }, kind saying how it is drawn ('swatch' with the user's set it
+     comes from, 'text', 'wide', 'pic' for a patron, 'pet', 'foe', 'critter', 'scene'). cur is what
+     is drawn, own the world in use's own (own as the store's parts() gives it), and changed whether
+     they differ; warn is the line said in amber when the part cannot be used where it is chosen, or
+     ''. cat is what the page has loaded (the store's catalogue()). */
+  /* The world a part comes from: the world of the pack another pack's part is named in, or the
+     base world for a short name and for kw.base's and kw.medieval's parts; a pack with parts and
+     no world of its own stands for itself. */
+  function worldOfValue(v, cat) {
+    if (!isLong(v)) return BASE_WORLD;
+    const p = v.slice(0, v.indexOf('/')), W = isObj(cat) && isObj(cat.worlds) ? cat.worlds : {};
+    if (p === 'kw.base' || p === 'kw.medieval') return BASE_WORLD;
+    return Object.keys(W).find(id => id !== BASE_WORLD && W[id].pack === p) || p;
+  }
+  const worldTitle = (id, cat) => (isObj(cat) && isObj(cat.worlds) && isObj(cat.worlds[id]) ? cat.worlds[id].name : id === BASE_WORLD ? 'Medieval' : id);
+  /* The roles' labels as the screen shows them: the words in use's own while the part in that
+     role comes from the words' world, and the plain name of the role otherwise, so that another
+     world's patron is never called the monarch. */
+  const PLAIN = { patron: 'The patron', pet: 'The pet', foe: 'Foe', critter: 'Pest' }, ROLE_KEYS = { patron: 'monarch', pet: 'pet', foe: 'foe', critter: 'critter' };
+  function roleLabels(labels, look, cat) {
+    const out = Object.assign({}, isObj(labels) ? labels : {}), words = worldOfValue(look.words, cat);
+    for (const role of Object.keys(PLAIN)) if (worldOfValue(look[ROLE_KEYS[role]], cat) !== words) out[role] = PLAIN[role];
+    return out;
+  }
+  /* Choices grouped by world, the world in use's first, then the base world's, then the rest in
+     the catalogue's order; a world with no choice is left out. */
+  function grouped(choices, cat, cur) {
+    const by = new Map(), order = [cur, BASE_WORLD].concat(Object.keys(isObj(cat) && isObj(cat.worlds) ? cat.worlds : {}));
+    for (const c of choices) { const w = c.id === null ? BASE_WORLD : worldOfValue(c.id, cat); if (!by.has(w)) by.set(w, []); by.get(w).push(c); }
+    for (const w of by.keys()) if (!order.includes(w)) order.push(w);
+    return order.filter((w, i) => order.indexOf(w) === i && by.has(w)).map(w => ({ world: w, name: worldTitle(w, cat), choices: by.get(w) }));
+  }
+  /* One row: its groups, what is drawn and the world's own, and whether they differ. */
+  function partRow(o, cat, r, pack) {
+    const cur = o.cur, own = o.own, nm = v => (o.nameOf ? o.nameOf(v) : valueName(o.sec, o.k, v, pack, cat));
+    const choices = o.warn ? o.choices.map(c => Object.assign({}, c, { off: true, offNote: o.warn })) : o.choices;
+    return { key: o.key, sec: o.sec, k: o.k, label: o.label, groups: grouped(choices, cat, r.values.look.world), cur, curName: nm(cur),
+      own, ownName: own === undefined ? '' : nm(own), changed: own !== undefined && !same(cur, own), warn: o.warn || '' };
+  }
+  /* The line under a row whose part differs from the world in use's own. */
+  const changedLine = (row, r, cat) => 'Changed from the ' + worldTitle(r.values.look.world, cat) + ' world\'s own: ' + lowerFirst(row.ownName) + '.';
+  const titleOf = (cat, id) => (isObj(cat) && isObj(cat.titles) && typeof cat.titles[id] === 'string' ? cat.titles[id] : id);
+  const listOf = (o, f) => Object.keys(isObj(o) ? o : {}).filter(f || (() => true));
+  /* The knight page's rows: the build, the weapon, the swatches, the hair style and the armour,
+     each with every loaded pack's choices. kn is KW.knight.status: a build of another pack the
+     knight could not draw (its pack refused, or a part of it failing) is greyed "Coming". */
+  function knightRows(r, own, pack, cat, kn) {
+    const v = r.values.look, C = isObj(cat) ? cat : {}, grey = greyed(v, pack, C), out = [];
+    const fell = isObj(kn) && Array.isArray(kn.fallbacks) ? kn.fallbacks.filter(f => f.reason !== 'not set').map(f => f.wanted) : [];
+    const builds = (pack ? buildChoices(pack, v.build) : ONE_OF.look.build.map(id => ({ id, chip: 'BUILD ' + id.toUpperCase(), kind: 'wide' }))).concat(listOf(C.builds).map(id => {
+      const name = titleOf(C, id), off = fell.includes(id);
+      return off ? { id, chip: name.toUpperCase(), name: 'Coming', kind: 'wide', off: true, offNote: name + ' is not drawn yet.' + (v.build ? ' The knight stays as ' + valueName('look', 'build', v.build, pack, C) + '.' : '') }
+        : { id, chip: name.toUpperCase(), name: 'Ready', kind: 'wide' };
+    }));
+    const others = (slot, k) => listOf(C.items, id => C.items[id] === slot && !id.startsWith('kw.base/')).map(id => {
+      const g = isObj(C.gear) && isObj(C.gear[id]) ? C.gear[id].grip : null;
+      return { id, chip: titleOf(C, id), name: k === 'weapon' ? (g === 'one' ? 'One hand' : 'Two hands') : undefined, kind: 'text' };
+    });
+    // with no base pack (a deployed copy whose pack is unsigned) the base world's values by name,
+    // as the admin page lists them while the knight is drawn from code
+    const byName = k => ONE_OF.look[k].map(id => (k === 'weapon' ? { id, chip: WEAPON_CHIPS[id][0], name: WEAPON_CHIPS[id][1], kind: 'text' } : { id, chip: id.charAt(0).toUpperCase() + id.slice(1), kind: 'text' }));
+    const sw = k => (pack ? ONE_OF.look[k].filter(id => pack.swatches[SETS[k]] && pack.swatches[SETS[k]][id]).map(id => ({ id, name: pack.swatches[SETS[k]][id].name, set: SETS[k], kind: 'swatch' })) : byName(k))
+      .concat(listOf(C.swatches && C.swatches[SETS[k]]).map(id => ({ id, name: C.swatches[SETS[k]][id], set: SETS[k], kind: 'swatch' })));
+    const add = (k, label, choices, warn) => out.push(partRow({ key: k, sec: 'look', k, label, choices, cur: drawnValue(v, k), own: drawnValue(own.look, k), warn: warn || '' }, C, r, pack));
+    add('build', 'Build', builds);
+    add('weapon', 'Weapon', (pack ? itemChoices(pack, 'weapon').map(c => ({ id: c.id, chip: c.name, name: c.sub, kind: 'text' })) : byName('weapon')).concat(others('main', 'weapon')));
+    add('skin', 'Skin tone', sw('skin'));
+    add('hair', 'Hair colour', sw('hair'));
+    add('hair_style', 'Hair style', (pack ? itemChoices(pack, 'hair_style').map(c => ({ id: c.id, chip: c.name, kind: 'text' })) : byName('hair_style')).concat(others('hair')));
+    add('tabard', 'Tabard', sw('tabard'));
+    add('plume', 'Plume', sw('plume'), grey.plume);
+    out.push({ intro: 'Armour: each piece from its world\'s pack, worn on every build.' });
+    for (const [k, label] of ARMOUR) add(k, label, (pack ? itemChoices(pack, k).map(c => ({ id: c.id, chip: c.name, kind: 'text' })) : byName(k)).concat(others(slotOf(k))), grey[k]);
+    return out;
+  }
+  /* The monarch's page's rows: every loaded world's patrons, and the patron's skin, hair and robe
+     from every loaded pack's swatches, "As drawn" first. A patron that binds a set draws it in the
+     colours chosen; one that does not is drawn in its own, and that row is greyed. */
+  function patronRows(r, own, pack, cat, labels) {
+    const v = r.values.look, C = isObj(cat) ? cat : {}, L = roleLabels(labels, v, C), out = [];
+    const pats = ONE_OF.look.monarch.map(id => ({ id, name: 'Monarch ' + id.toUpperCase(), kind: 'pic' }))
+      .concat(listOf(C.names && C.names.monarch, n => isLong(n) && C.names.monarch[n] === n).map(id => ({ id, name: titleOf(C, id), kind: 'pic' })));
+    out.push(partRow({ key: 'monarch', sec: 'look', k: 'monarch', label: partLabel('look', 'monarch', L), choices: pats, cur: v.monarch, own: own.look.monarch }, C, r, pack));
+    const binds = isLong(v.monarch) && isObj(C.binds) && Array.isArray(C.binds[v.monarch]) ? C.binds[v.monarch] : ['skin', 'hair', 'robe'];
+    const own0 = 'The ' + lowerFirst(valueName('look', 'monarch', v.monarch, pack, C)) + ' is drawn in its own colours, so none is chosen for it.';
+    const sw = (k, asDrawn) => (asDrawn ? [{ id: null, name: 'As drawn', kind: 'swatch', set: SETS[k], drawn: true }] : [])
+      .concat(pack ? ONE_OF.look[k].filter(id => pack.swatches[SETS[k]] && pack.swatches[SETS[k]][id]).map(id => ({ id, name: pack.swatches[SETS[k]][id].name, set: SETS[k], kind: 'swatch' }))
+        : ONE_OF.look[k].map(id => ({ id, chip: id.charAt(0).toUpperCase() + id.slice(1), kind: 'text' })))
+      .concat(listOf(C.swatches && C.swatches[SETS[k]]).map(id => ({ id, name: C.swatches[SETS[k]][id], set: SETS[k], kind: 'swatch' })));
+    for (const [k, label, bind, asDrawn] of [['monarch_skin', 'Skin tone', 'skin', false], ['monarch_hair', 'Hair colour', 'hair', true], ['monarch_robe', 'Robe', 'robe', true]])
+      out.push(partRow({ key: k, sec: 'look', k, label, choices: sw(k, asDrawn), cur: v[k], own: own.look[k], warn: binds.includes(bind) ? '' : own0 }, C, r, pack));
+    return out;
+  }
+  /* Whether a scene hosts a foe: the base world's by its hosts (worldOf's hosts), another world's
+     by its own in scenes; a scene the page does not know is taken to. */
+  function hostsFoe(W, s) {
+    if (isLong(s) && isObj(W.scenes) && isObj(W.scenes[s]) && Array.isArray(W.scenes[s].hosts)) return W.scenes[s].hosts.includes('foe');
+    if (isObj(W.hosts) && Array.isArray(W.hosts[s])) return W.hosts[s].includes('foe');
+    return true;
+  }
+  /* The scene the knight acts an attack in: the one a level chose, or the world's own. */
+  const attackScene = r => (r.values.scenes && typeof r.values.scenes.attack === 'string' ? r.values.scenes.attack : r.world && r.world.homes ? r.world.homes.attack : null);
+  /* The amber line for a foe that cannot come where attacks play, or ''. */
+  function noFoeLine(r, cat, pack) {
+    const at = attackScene(r);
+    if (!at || hostsFoe(worldOf(cat), at)) return '';
+    return 'Attacks play in the ' + lowerFirst(valueName('scenes', 'attack', at, pack, cat)) + ', which has no room for a foe, so none comes there and the caption shows alone. The Scenes page chooses where attacks play.';
+  }
+  /* The cast page's rows: the pet and the pet's coats, the foe and the pest, each with every loaded
+     world's members. The coats are the pet in use's, and the coat row has no world of its own. */
+  function castRows(r, own, pack, cat, labels) {
+    const v = r.values.look, C = isObj(cat) ? cat : {}, L = roleLabels(labels, v, C), out = [];
+    const members = (kind, base, nameOf, k) => base.map(id => ({ id, name: nameOf(id), kind: k }))
+      .concat(listOf(C.names && C.names[kind], n => isLong(n) && C.names[kind][n] === n).map(id => ({ id, name: titleOf(C, id), kind: k })));
+    const role = k => partLabel('look', k, L);
+    out.push(partRow({ key: 'pet', sec: 'look', k: 'pet', label: role('pet'), choices: members('pet', ONE_OF.look.pet, id => PET_NAMES[id] || id, 'pet'), cur: v.pet, own: own.look.pet }, C, r, pack));
+    const coats = isLong(v.pet) ? listOf(C.coats && C.coats[v.pet]).map(id => ({ id, name: C.coats[v.pet][id], kind: 'pet' })) : ONE_OF.look.pet_coat.map(id => ({ id, name: COAT_NAMES[id] || id, kind: 'pet' }));
+    const coat = partRow({ key: 'pet_coat', sec: 'look', k: 'pet_coat', label: 'Coat', choices: coats, cur: v.pet_coat }, C, r, pack);
+    coat.groups = [{ world: null, name: '', choices: coats }];
+    out.push(coat);
+    out.push(partRow({ key: 'foe', sec: 'look', k: 'foe', label: role('foe'), choices: members('foe', ONE_OF.look.foe, id => (id === 'goblin' ? 'Goblin' : id), 'foe'), cur: v.foe, own: own.look.foe }, C, r, pack));
+    out[out.length - 1].warn = noFoeLine(r, C, pack);
+    out.push(partRow({ key: 'critter', sec: 'look', k: 'critter', label: role('critter'), choices: members('critter', ONE_OF.look.critter, id => (id === 'fly' ? 'Fly' : id), 'critter'), cur: v.critter, own: own.look.critter }, C, r, pack));
+    return out;
+  }
+  /* The scenes page's rows: for each condition any loaded world offers a choice of scene for, every
+     world's scenes that can act it. dflt is the scene each falls back to (the store's fallback()).
+     A scene a level asked for that cannot act it is named in amber, with the scene shown instead,
+     and so is an attack's scene with no room for a foe. */
+  function sceneRows(r, own, offer, dflt, pack, cat) {
+    const C = isObj(cat) ? cat : {}, out = [];
+    for (const c of Object.keys(offer)) {
+      const cur = typeof r.values.scenes[c] === 'string' ? r.values.scenes[c] : r.world.homes[c], mine = typeof own.scenes[c] === 'string' ? own.scenes[c] : own.homes[c];
+      const warn = [], ig = (r.ignored || []).find(f => f.section === 'scenes' && f.key === c);
+      const sn = x => lowerFirst(valueName('scenes', c, x, pack, C)) + (isLong(x) ? ', from ' + worldTitle(worldOfValue(x, C), C) + ',' : '');
+      if (ig) warn.push((ASKS[ig.where] || ig.where) + ' asks for the ' + sn(ig.value).replace(/,$/, '') + (ig.why === 'that scene cannot act it' ? ', which cannot act it' : ', which is ignored: ' + ig.why) + '. Shown in the ' + lowerFirst(valueName('scenes', c, cur, pack, C)) + '.');
+      if (c === 'attack' && !hostsFoe(worldOf(C), cur)) warn.push('The ' + lowerFirst(valueName('scenes', c, cur, pack, C)) + ' has no room for a foe, so none comes and the caption shows alone.');
+      const row = partRow({ key: 'scene:' + c, sec: 'scenes', k: c, label: CONDITION_NAMES[c] || c,
+        choices: offer[c].map(k => ({ id: k, name: valueName('scenes', c, k, pack, C), sub: k === dflt[c] ? 'Default' : '', kind: 'scene' })), cur, own: mine }, C, r, pack);
+      row.warn = warn.join(' ');
+      out.push(row);
+    }
+    return out;
+  }
+  /* The quiet scenes of every loaded world, grouped by world, the world in use's first: [{ world,
+     name, scenes }]. */
+  function quietGroups(r, cat) {
+    const C = isObj(cat) ? cat : {}, W = worldOf(C), base = SCENES.slice();
+    const more = listOf(W.scenes, n => W.names.scene[n] === n && W.scenes[n].quiet);
+    return grouped(base.concat(more).map(id => ({ id })), C, r.values.look.world).map(g => ({ world: g.world, name: g.name, scenes: g.choices.map(c => c.id) }));
+  }
+  api.screen = { DEVICE_KINDS, partKeys, changedParts, partLabel, valueName, chosenLine, deviceRows, devicesAfter, fallbackLines,
+    slotOf, drawnValue, worldOfValue, roleLabels, grouped, changedLine, knightRows, patronRows, castRows, sceneRows, quietGroups, noFoeLine, hostsFoe };
 
   function mount(o) {
     const store = o.store, K = KW.knight, D = KW.draw, V = KW.view, P = KW.props, U = V.U;
@@ -1092,8 +1385,10 @@
     }
     /* A pet sitting up, alert, in a coat, cropped about its drawing from the feet, for a card. */
     const PET_CROP = { x: -54, y: -94, w: 108, h: 100 };
-    function petPicture(id, coat) {
-      const key = 'pet|' + id + '|' + coat;
+    /* A coat by its id within the pet: another pack's coat, "<pack>/<coat>", by the part after the slash. */
+    const coatId = c => (isLong(c) ? c.slice(c.indexOf('/') + 1) : c);
+    function petPicture(id, coat0) {
+      const coat = coatId(coat0), key = 'pet|' + id + '|' + coat;
       if (!pics.has(key)) {
         const pet = petOf(id), cv = document.createElement('canvas'); cv.width = PET_CROP.w; cv.height = PET_CROP.h;
         if (pet) { const [ax, ay] = pet.anchor; cv.getContext('2d').drawImage(pet.pose(coat, 'alert0'), ax + PET_CROP.x, ay + PET_CROP.y, PET_CROP.w, PET_CROP.h, 0, 0, PET_CROP.w, PET_CROP.h); }
@@ -1102,25 +1397,29 @@
       return pics.get(key);
     }
     /* The pet resting at its spot in the house, beside the hearth, cropped from the scene drawn with
-       the knight at its arrival spot. */
+       the knight at its arrival spot; a pet with no spot in the house, another world's, at its spot
+       in the first of its own world's scenes it has one in, cropped about its spot. */
     const HOME_CROP = { x: 700, y: 400, w: 260, h: 200 };
-    function petHome(id, coat, helmetIndoors) {
-      const key = 'pethome|' + id + '|' + coat + '|' + helmetIndoors;
+    function petHome(id, coat0, helmetIndoors) {
+      const coat = coatId(coat0), key = 'pethome|' + id + '|' + coat + '|' + helmetIndoors;
       if (!pics.has(key)) {
-        const big = document.createElement('canvas'); big.width = V.HW; big.height = V.HH;
-        const pet = petOf(id), sc = KW.scenes.house, o2 = K.pose('idle', 2300);
+        const big = document.createElement('canvas'), pet0 = petOf(id); big.width = V.HW; big.height = V.HH;
+        const home = pet0 && pet0.spots && !has(pet0.spots, 'house') ? Object.keys(pet0.spots).find(n => KW.scenes[n]) : null, at = home || 'house';
+        const pet = pet0, sc = KW.scenes[at], o2 = K.pose('idle', 2300);
         o2.x = sc.spot * U; o2.floor = V.HFL; o2.helmet = helmetIndoors ? true : sc.helmet !== false; if (sc.sword === false) o2.sword = false;
         onGrid(big.getContext('2d'), () => {
           const s = sceneState(sc, o2, { id: 'a', skin: null, hair: null, robe: null });
           if (sc.paint) sc.paint(s); sc.draw(2300, s); K.draw(o2);
-          const sp = pet && pet.spots && has(pet.spots, 'house') ? pet.spots.house : null;
+          const sp = pet && pet.spots && has(pet.spots, at) ? pet.spots[at] : null;
           if (sp) {
             const c = D.getCtx(), [ax, ay] = pet.anchor;
             c.save(); c.translate(sp.rest[0], sp.rest[1]); if (sp.face < 0) c.scale(-1, 1); c.drawImage(pet.pose(coat, 'rest'), -ax, -ay); c.restore();
           }
         });
         const out = document.createElement('canvas'); out.width = HOME_CROP.w; out.height = HOME_CROP.h;
-        out.getContext('2d').drawImage(big, HOME_CROP.x, HOME_CROP.y, HOME_CROP.w, HOME_CROP.h, 0, 0, HOME_CROP.w, HOME_CROP.h);
+        const sp = home ? pet.spots[home].rest : null, cx = sp ? Math.max(0, Math.min(V.HW - HOME_CROP.w, Math.round(sp[0] - HOME_CROP.w / 2))) : HOME_CROP.x;
+        const cy = sp ? Math.max(0, Math.min(V.HH - HOME_CROP.h, Math.round(sp[1] - HOME_CROP.h + 10))) : HOME_CROP.y;
+        out.getContext('2d').drawImage(big, cx, cy, HOME_CROP.w, HOME_CROP.h, 0, 0, HOME_CROP.w, HOME_CROP.h);
         pics.set(key, out);
       }
       return pics.get(key);
@@ -1231,8 +1530,8 @@
       const dress = mh && mr ? mh + ', ' + mr : mh ? mh + ', the robe as drawn' : mr ? 'the hair as drawn, ' + mr : 'hair and robe as drawn';
       return (v.build ? 'the ' + (title(v.build) || buildName(pack, v.build)) + ' build, ' : '') + 'the ' + arm + ', ' + sw('skin', v.skin) + ' skin, ' +
         sw('hair', v.hair) + ' hair (' + style + '), a ' + sw('tabard', v.tabard) + ' tabard, a ' + sw('plume', v.plume) + ' plume' + (gear.length ? ', with ' + gear.join(', ') : '') +
-        '; monarch ' + v.monarch.toUpperCase() + ', ' + sw('skin', v.monarch_skin) + ' skin, ' + dress +
-        '; the ' + lower(PET_NAMES[v.pet] || v.pet) + ', ' + lower(COAT_NAMES[v.pet_coat] || v.pet_coat);
+        '; ' + (title(v.monarch) ? 'the ' + lower(title(v.monarch)) : 'monarch ' + v.monarch.toUpperCase()) + ', ' + sw('skin', v.monarch_skin) + ' skin, ' + dress +
+        '; the ' + lower(title(v.pet) || PET_NAMES[v.pet] || v.pet) + ', ' + lower(valueName('look', 'pet_coat', v.pet_coat, pack, cat));
     }
     /* What a section falls back to when this display's choices are cleared, the defaults in the
        state file over the page's own, and whether any of it comes from config.toml. */
@@ -1248,19 +1547,22 @@
        devices kind by kind once a second prop set is loaded; and the reset of the look. Choosing a
        world saves it and clears every part chosen on this display (the store's chooseWorld), and
        the line under the cards names what was cleared. */
-    const wordLabels = () => { const w = KW.world && KW.world.words; return w && w.source === 'pack' ? w.labels : null; };
+    /* The words in use's labels, each role's plain name where the part in that role comes from
+       another world (KW.settings.screen.roleLabels). */
+    const wordLabels = () => { const w = KW.world && KW.world.words; return roleLabels(w && w.source === 'pack' ? w.labels : null, store.now().values.look, store.catalogue()); };
     const PAGE_LABELS = { knight: ['watcher', 'The knight'], monarch: ['patron', 'The monarch'], pet: ['pet', 'The pet'] };
     const pageLabel = k => labelOf(wordLabels(), PAGE_LABELS[k][0], PAGE_LABELS[k][1]);
     const worldNamed = id => valueName('look', 'world', id, null, store.catalogue());
     const named = (sec, k, v) => valueName(sec, k, v, K.basePack(), store.catalogue());
     /* The page a part is chosen on, as the line under a changed part names it. */
     const pageOf = (sec, k) => (sec === 'quiet' ? 'quiet scenes' : sec === 'scenes' ? 'scenes' : /^monarch/.test(k) ? lower(pageLabel('monarch').replace(/^The /, ''))
-      : /^pet/.test(k) ? lower(pageLabel('pet').replace(/^The /, '')) : sec === 'look' && ['foe', 'critter', 'props', 'overlay', 'words'].includes(k) ? 'world' : lower(pageLabel('knight').replace(/^The /, '')));
+      : /^pet/.test(k) || k === 'foe' || k === 'critter' ? 'cast' : sec === 'look' && ['props', 'overlay', 'words'].includes(k) ? 'world' : lower(pageLabel('knight').replace(/^The /, '')));
     function worldTap(id) {
-      const before = store.sections(), cat = store.catalogue(), shared = store.mode() === 'server';
+      // the parts cleared are named as they were named before the choice, in the words then in use
+      const before = store.sections(), cat = store.catalogue(), shared = store.mode() === 'server', labels = wordLabels();
       const cleared = store.chooseWorld(id);
       if (cleared === null) return;
-      const r = store.now(), own = store.parts(id), pack = K.basePack(), labels = wordLabels();
+      const r = store.now(), own = store.parts(id), pack = K.basePack();
       const was = cleared.map(p => { const [sec, k] = p.split('.'); return { sec, k, v: before[sec][k] }; });
       const under = r.masked.filter(m => m.level === 'defaults' && m.key.indexOf('.') < 0 && !same(m.value, own[m.section][m.key])).map(m => ({ sec: m.section, k: m.key, v: m.value }));
       st.notes.world = chosenLine(worldNamed(id), was, under, shared, pack, cat, labels);
@@ -1269,6 +1571,13 @@
     /* Puts one part back to the world's: clears what this display saved for it, and saves the
        world's own over a level below that still sets it. */
     function backToWorld(sec, k) {
+      // a key that chooses an item: what this display chose for it and for its slot go, together
+      if (sec === 'look' && slotOf(k)) {
+        store.clearPart(k);
+        const r0 = store.now(), own0 = drawnValue(store.parts(r0.world.id).look, k);
+        if (!same(drawnValue(r0.values.look, k), own0) && fromOf(r0, sec, k) !== 'hook' && own0 !== null) store.choosePart(k, own0);
+        return;
+      }
       const own = store.parts(store.now().world.id)[sec][k];
       if (fromOf(store.now(), sec, k) === 'saved') store.clear(sec, k);
       const r = store.now();
@@ -1278,7 +1587,7 @@
     function chipOf(sec, k, v, extra) {
       const pack = K.basePack(), name = named(sec, k, v);
       if (sec === 'scenes') { const cv = el('canvas'); cv.dataset.scene = v; return Object.assign({ node: cv, name, kind: 'scene' }, extra); }
-      if (SETS[k] && v !== null && pack) { const s = swatches(pack, k).find(x => x.id === v); if (s) return Object.assign({ fill: s.fill, name }, extra); }
+      if (SETS[k] && v !== null) { const fill = swatchFill(SETS[k], v); if (fill) return Object.assign({ fill, name }, extra); }
       if (SETS[k] && v === null) { const drawn = KW.scenes.court.drawn(store.now().values.look.monarch)[k === 'monarch_hair' ? 'hair' : 'robe']; return Object.assign({ fill: bandsCss(Object.assign({}, drawn)), name }, extra); }
       return Object.assign({ chip: name, kind: 'text' }, extra);
     }
@@ -1358,28 +1667,75 @@
       list.appendChild(reset('look', 'look', words, KEYS.look.some(k => fromOf(f, 'look', k) === 'defaults'), hooked(r, 'look')));
     }
 
+    /* ---- A part row from every loaded world
+       The row of a part as knightRows and the others give it (KW.settings.screen): each world's
+       choices after the world's name, the world in use's first and with no name; a mark by the
+       label and a line in blue when the part is not the world in use's own; and the amber line of
+       a part that cannot be used where it is chosen, or the address's note. */
+    /* A swatch's colours: the base pack's by its short name, another pack's by its long name. */
+    function swatchFill(set, id) {
+      const pack = K.basePack(), e = isLong(id) ? (KW.world && KW.world.swatchOf ? KW.world.swatchOf(set, id) : null)
+        : pack && pack.swatches[set] && pack.swatches[set][id] ? pack.swatches[set][id].entries : null;
+      return e ? bandsCss(e) : '';
+    }
+    function partRowEl(x, r, pick, note) {
+      const v = r.values.look, flat = [];
+      for (const g of x.groups) for (const c of g.choices) {
+        const o = { id: c.id, name: c.name, sub: c.sub, off: c.off, offNote: c.offNote };
+        if (c.kind === 'swatch') {
+          if (c.drawn) { const own = KW.scenes.court.drawn(v.monarch)[x.k === 'monarch_hair' ? 'hair' : 'robe']; o.fill = own.length ? bandsCss(Object.assign({}, own)) : ''; }
+          else o.fill = swatchFill(c.set, c.id);
+        } else if (c.kind === 'pic') { const cv = el('canvas'); cv.dataset.mon = c.id; Object.assign(o, { node: cv, kind: 'pic' }); }
+        else if (c.kind === 'pet') { const cv = el('canvas'); cv.dataset.pet = x.k === 'pet_coat' ? v.pet + '|' + c.id : c.id + '|' + (c.id === v.pet ? v.pet_coat : ''); Object.assign(o, { node: cv, kind: 'pet' }); }
+        else if (c.kind === 'foe' || c.kind === 'critter') { const cv = el('canvas'); cv.dataset[c.kind] = c.id; Object.assign(o, { node: cv, kind: c.kind }); }
+        else if (c.kind === 'scene') { const cv = el('canvas'); cv.dataset.scene = c.id; Object.assign(o, { node: cv, kind: 'scene' }); }
+        else Object.assign(o, { chip: c.chip, kind: c.kind });
+        flat.push(o);
+      }
+      const rr = row(x.key, x.label, flat, x.cur, pick, x.warn || note);
+      // each other world's choices after its name
+      for (const g of x.groups) {
+        if (g.world === null || g.world === v.world || !g.choices.length) continue;
+        const b = rr.querySelector('[data-focus="' + x.key + '=' + g.choices[0].id + '"]');
+        if (b) b.parentNode.insertBefore(el('span', 'kws-wtag', g.name), b);
+      }
+      if (x.changed) { rr.classList.add('kws-changed'); rr.appendChild(el('div', 'kws-note kws-differs', changedLine(x, r, store.catalogue()))); }
+      return rr;
+    }
+    /* A foe standing and a pest hovering, from the cast, for their rows. */
+    function foePicture(id) {
+      const key = 'foe|' + id;
+      if (!pics.has(key)) {
+        const set = (KW.cast && KW.cast.foes) || P.FOES || {}, f = set[id] || set.goblin, cv = document.createElement('canvas'); cv.width = 160; cv.height = 240;
+        if (f) { const sp = f.pose('stand'); cv.getContext('2d').drawImage(sp, 80 - f.anchor[0], 232 - f.anchor[1]); }
+        pics.set(key, cv);
+      }
+      return pics.get(key);
+    }
+    function critterPicture(id) {
+      const key = 'critter|' + id;
+      if (!pics.has(key)) {
+        const set = (KW.cast && KW.cast.critters) || P.CRITTERS || {}, c = set[id] || set.fly, cv = document.createElement('canvas'); cv.width = 40; cv.height = 30;
+        if (c) onGrid(cv.getContext('2d'), () => c.draw(20, 17, 0));
+        pics.set(key, cv);
+      }
+      return pics.get(key);
+    }
+
     /* ---- The pages ---------------------------------------------------------------------------------- */
     const choose = (sec, k) => v => store.choose(sec, k, v);
     /* Each page, in the rail's order; a label as a function takes the words of the world in use. */
     const PAGES = {
       world: { label: 'World', build: buildWorld },
       knight: { label: () => pageLabel('knight'), build(list, prev, r) {
-        const pack = K.basePack(), v = r.values.look;
+        const pack = K.basePack(), cat = store.catalogue();
         if (!pack) list.appendChild(el('p', 'kws-line', 'The knight is drawn from code, which has only the default look: the base pack could not be used (see Status). Choices made here are kept and show once it can.'));
         else {
-          list.appendChild(row('build', 'Build', buildChoices(pack, v.build), v.build, choose('look', 'build'), hookNote(r, 'look', 'build')));
-          list.appendChild(row('weapon', 'Weapon', itemChoices(pack, 'weapon').map(c => ({ id: c.id, chip: c.name, name: c.sub, kind: 'text' })), v.weapon, choose('look', 'weapon'), hookNote(r, 'look', 'weapon')));
-          list.appendChild(row('skin', 'Skin tone', swatches(pack, 'skin'), v.skin, choose('look', 'skin'), hookNote(r, 'look', 'skin')));
-          list.appendChild(row('hair', 'Hair colour', swatches(pack, 'hair'), v.hair, choose('look', 'hair'), hookNote(r, 'look', 'hair')));
-          list.appendChild(row('hair_style', 'Hair style', itemChoices(pack, 'hair_style').map(c => ({ id: c.id, chip: c.name, kind: 'text' })),
-            v.hair_style, choose('look', 'hair_style'), hookNote(r, 'look', 'hair_style')));
-          list.appendChild(row('tabard', 'Tabard', swatches(pack, 'tabard'), v.tabard, choose('look', 'tabard'), hookNote(r, 'look', 'tabard')));
-          // a row the look does not show is greyed, each choice saying why when tapped
-          const grey = greyed(v, pack), off = (choices, why) => (why ? choices.map(c => Object.assign(c, { off: true, offNote: why })) : choices);
-          list.appendChild(row('plume', 'Plume', off(swatches(pack, 'plume'), grey.plume), v.plume, choose('look', 'plume'), grey.plume || hookNote(r, 'look', 'plume')));
-          list.appendChild(el('p', 'kws-intro', 'Armour: each piece from the base pack, worn on every build.'));
-          for (const [k, label] of ARMOUR) {
-            list.appendChild(row(k, label, off(itemChoices(pack, k).map(c => ({ id: c.id, chip: c.name, kind: 'text' })), grey[k]), v[k], choose('look', k), grey[k] || hookNote(r, 'look', k)));
+          const rows = knightRows(r, store.parts(r.values.look.world), pack, cat, K.status), many = Object.keys(cat.worlds).length > 1;
+          for (const x of rows) {
+            // the armour's line says where its pieces come from: the base pack alone, or each world's
+            if (x.intro) { list.appendChild(el('p', 'kws-intro', many ? x.intro : 'Armour: each piece from the base pack, worn on every build.')); continue; }
+            list.appendChild(partRowEl(x, r, id => store.choosePart(x.k, id), hookNote(r, 'look', x.k)));
           }
         }
         const d = defaultsOf('look');
@@ -1389,38 +1745,33 @@
         const caps = el('div', 'caps'); caps.appendChild(el('span', '', 'Helmet on')); caps.appendChild(el('span', '', 'Helmet off')); prev.appendChild(caps);
         prev.appendChild(el('h2', 'home', 'At home, gear at rest'));
         const home = el('canvas', 'scene'); home.dataset.scene = 'house'; prev.appendChild(home);
+        // a helmet with no rest view is not drawn at rest, and the line under the house says so
+        const helm = drawnValue(r.values.look, 'helmet'), hid = isLong(helm) ? helm : 'kw.base/' + itemId('helmet', helm), g = cat.gear[hid];
+        if (g && !g.rest) prev.appendChild(el('p', 'kws-prevnote home', 'The ' + lower(named('look', 'helmet', helm)) + ' has no resting place drawn, so the stool stays bare.'));
       } },
       monarch: { label: () => pageLabel('monarch'), build(list, prev, r) {
-        const pack = K.basePack(), v = r.values.look, e = monOf(r);
-        list.appendChild(row('monarch', 'Monarch', ONE_OF.look.monarch.map(m => {
-          const cv = el('canvas'); cv.dataset.mon = m;
-          return { id: m, node: cv, name: 'Monarch ' + m.toUpperCase(), kind: 'pic' };
-        }), v.monarch, choose('look', 'monarch'), hookNote(r, 'look', 'monarch')));
+        const pack = K.basePack(), v = r.values.look, e = monOf(r), cat = store.catalogue();
+        const rows = patronRows(r, store.parts(v.world), pack, cat, wordLabels());
+        list.appendChild(partRowEl(rows[0], r, choose('look', 'monarch'), hookNote(r, 'look', 'monarch')));
         if (pack) {
-          list.appendChild(row('monarch_skin', 'Skin tone', swatches(pack, 'monarch_skin'), v.monarch_skin, choose('look', 'monarch_skin'), hookNote(r, 'look', 'monarch_skin')));
-          // the first choice of each is the monarch's own colours, which saves nothing for the key
-          const own = KW.scenes.court.drawn(v.monarch), asDrawn = cols => ({ id: null, name: 'As drawn', fill: bandsCss(Object.assign({}, cols)) });
+          // the first choice of hair and robe is the monarch's own colours, which saves nothing for the key
           const pickOr = k => id => (id === null ? store.clear('look', k) : store.choose('look', k, id));
-          list.appendChild(row('monarch_hair', 'Hair colour', [asDrawn(own.hair)].concat(swatches(pack, 'monarch_hair')), v.monarch_hair, pickOr('monarch_hair'), hookNote(r, 'look', 'monarch_hair')));
-          list.appendChild(row('monarch_robe', 'Robe', [asDrawn(own.robe)].concat(swatches(pack, 'monarch_robe')), v.monarch_robe, pickOr('monarch_robe'), hookNote(r, 'look', 'monarch_robe')));
+          for (const x of rows.slice(1)) list.appendChild(partRowEl(x, r, x.k === 'monarch_skin' ? choose('look', x.k) : pickOr(x.k), hookNote(r, 'look', x.k)));
         } else list.appendChild(el('p', 'kws-line', 'The monarch\'s skin tones and colours come from the base pack, which could not be used (see Status), so the monarch keeps the court\'s own.'));
         const d = defaultsOf('look');
         list.appendChild(reset('look', 'look', lookWords(d.values, pack), d.fromConfig, hooked(r, 'look')));
         prev.appendChild(el('h2', '', 'At court'));
         const cv = el('canvas', 'court'); cv.id = 'kws-court'; cv.dataset.skin = e.patron.skin ? e.patron.skin.id : ''; prev.appendChild(cv);
       } },
-      pet: { label: () => pageLabel('pet'), build(list, prev, r) {
-        const v = r.values.look, pet = petOf(v.pet), name = lower(pageLabel('pet').replace(/^The /, ''));
-        list.appendChild(el('p', 'kws-intro', 'The ' + name + ' catches the flies the knight cannot: indoors, and outdoors while the knight is busy.'));
-        list.appendChild(row('pet', pageLabel('pet').replace(/^The (.)/, (m, c) => c.toUpperCase()), ONE_OF.look.pet.map(id => {
-          const cv = el('canvas'); cv.dataset.pet = id + '|' + v.pet_coat;
-          return { id, node: cv, name: valueName('look', 'pet', id), kind: 'pet' };
-        }), v.pet, choose('look', 'pet'), hookNote(r, 'look', 'pet')));
-        const coats = pet ? ONE_OF.look.pet_coat.filter(c => has(pet.coats, c)) : [];
-        list.appendChild(row('pet_coat', 'Coat', coats.map(c => {
-          const cv = el('canvas'); cv.dataset.pet = v.pet + '|' + c;
-          return { id: c, node: cv, name: pet.coats[c], sub: c === store.fallback().values.look.pet_coat ? 'Default' : '', kind: 'pet' };
-        }), v.pet_coat, choose('look', 'pet_coat'), hookNote(r, 'look', 'pet_coat')));
+      /* The cast: the pet and its coat, the foe and the pest, from every loaded world. */
+      pet: { label: 'The cast', build(list, prev, r) {
+        const cat = store.catalogue(), rows = castRows(r, store.parts(r.values.look.world), K.basePack(), cat, wordLabels());
+        list.appendChild(el('p', 'kws-intro', 'Who shares the scenes with the knight: the pet that catches the flies the knight cannot, indoors and while the knight is busy; the foe that comes when an address is banned; and the pest a blocked advert turns into.'));
+        const dcoat = store.fallback().values.look.pet_coat;
+        for (const x of rows) {
+          if (x.k === 'pet_coat') for (const c of x.groups[0].choices) c.sub = c.id === dcoat ? 'Default' : '';
+          list.appendChild(partRowEl(x, r, choose('look', x.k), hookNote(r, 'look', x.k)));
+        }
         const d = defaultsOf('look');
         list.appendChild(reset('look', 'look', lookWords(d.values, K.basePack()), d.fromConfig, hooked(r, 'look')));
         prev.appendChild(el('h2', '', 'At home'));
@@ -1441,40 +1792,42 @@
         list.appendChild(reset('display', 'choices', dw, defaultsOf('display').fromConfig, hooked(r, 'display')));
       } },
       quiet: { label: 'Quiet scenes', build(list, prev, r) {
-        const on = r.values.quiet.scenes, mins = r.values.quiet.minutes;
-        for (const k of SCENES) {
-          const inIt = on.includes(k), row2 = el('div', 'kws-scene' + (inIt ? '' : ' out')), cv = el('canvas'); cv.dataset.scene = k;
-          const nm = el('div', 'sname', SCENE_NAMES[k]); nm.appendChild(el('small', '', inIt ? (on.length === 1 ? 'The only scene: it stays on screen' : 'In the rotation') : 'Left out'));
-          row2.appendChild(cv); row2.appendChild(nm);
-          row2.appendChild(toggle(SCENE_NAMES[k] + ' in the rotation', inIt, () => {
-            if (inIt && on.length === 1) { st.notes.quiet = 'One scene at least stays in the rotation.'; render(); return; }
-            st.notes.quiet = '';
-            // a scene switched back on joins the end of the rotation
-            store.choose('quiet', 'scenes', inIt ? on.filter(x => x !== k) : on.concat(k));
-          }, 'scene|' + k));
-          list.appendChild(row2);
+        const on = r.values.quiet.scenes, mins = r.values.quiet.minutes, cat = store.catalogue(), groups = quietGroups(r, cat), sn = k => named('scenes', '', k);
+        for (const g of groups) {
+          // the scenes under their world's name once another world gives quiet scenes
+          if (groups.length > 1) list.appendChild(el('p', 'kws-intro kws-head2', g.name));
+          for (const k of g.scenes) {
+            const inIt = on.includes(k), row2 = el('div', 'kws-scene' + (inIt ? '' : ' out')), cv = el('canvas'); cv.dataset.scene = k;
+            const nm = el('div', 'sname', sn(k)); nm.appendChild(el('small', '', inIt ? (on.length === 1 ? 'The only scene: it stays on screen' : 'In the rotation') : 'Left out'));
+            row2.appendChild(cv); row2.appendChild(nm);
+            row2.appendChild(toggle(sn(k) + ' in the rotation', inIt, () => {
+              if (inIt && on.length === 1) { st.notes.quiet = 'One scene at least stays in the rotation.'; render(); return; }
+              st.notes.quiet = '';
+              // a scene switched back on joins the end of the rotation
+              store.choose('quiet', 'scenes', inIt ? on.filter(x => x !== k) : on.concat(k));
+            }, 'scene|' + k));
+            list.appendChild(row2);
+          }
         }
+        const ownQ = store.parts(r.values.look.world).quiet.scenes;
+        if (!same(on, ownQ)) list.appendChild(el('div', 'kws-note kws-differs kws-wide', 'Changed from the ' + worldNamed(r.values.look.world) + ' world\'s own: ' + lower(named('quiet', 'scenes', ownQ)) + '.'));
         if (st.notes.quiet) list.appendChild(el('div', 'kws-note kws-wide', st.notes.quiet));
         const choices = MINUTE_CHOICES.includes(mins) ? MINUTE_CHOICES : MINUTE_CHOICES.concat(mins).sort((a, b) => a - b);
         list.appendChild(row('minutes', 'Each shows for', choices.map(m => ({ id: m, chip: String(m), name: 'min', kind: 'text', label: m + ' minutes' })), mins, choose('quiet', 'minutes'),
           (r.from.quiet.minutes === 'built-in' && o.info().mode === 'demo' ? 'The demo shows each scene for a minute until a length is chosen here or in config.toml.' : hookNote(r, 'quiet', 'minutes'))));
         const d = defaultsOf('quiet').values, n = d.scenes.length;
-        const dw = (n === SCENES.length ? 'all four scenes' : n === 1 ? 'the ' + lower(SCENE_NAMES[d.scenes[0]]) + ' alone' : d.scenes.map(x => lower(SCENE_NAMES[x])).join(', ').replace(/, ([^,]*)$/, ' and $1')) + ', ' + d.minutes + (d.minutes === 1 ? ' minute' : ' minutes') + ' each';
+        const dw = (same(d.scenes, SCENES) ? 'all four scenes' : n === 1 ? 'the ' + lower(sn(d.scenes[0])) + ' alone' : d.scenes.map(x => lower(sn(x))).join(', ').replace(/, ([^,]*)$/, ' and $1')) + ', ' + d.minutes + (d.minutes === 1 ? ' minute' : ' minutes') + ' each';
         list.appendChild(reset('quiet', 'choices', dw + '. These scenes show only while all is quiet; anything the knight has to act out comes first', defaultsOf('quiet').fromConfig, hooked(r, 'quiet')));
       } },
       scenes: { label: 'Scenes', build(list, prev, r) {
-        const offer = store.offered(), conds = Object.keys(offer), dflt = store.fallback().values.scenes;
+        const offer = store.offered(), conds = Object.keys(offer), f = store.fallback(), cat = store.catalogue(), dflt = {};
+        for (const c of conds) dflt[c] = typeof f.values.scenes[c] === 'string' ? f.values.scenes[c] : f.world.homes[c];
         list.appendChild(el('p', 'kws-intro', 'Where the knight acts out each of these. ' +
           'A condition only one scene can act, and the night, which needs the bed, keep their own scene.'));
         if (!conds.length) list.appendChild(el('p', 'kws-line', 'No condition has more than one scene that can act it.'));
-        for (const c of conds) {
-          list.appendChild(row('scene:' + c, CONDITION_NAMES[c] || c, offer[c].map(k => {
-            const cv = el('canvas'); cv.dataset.scene = k;
-            return { id: k, node: cv, name: SCENE_NAMES[k] || k, sub: k === dflt[c] ? 'Default' : '', kind: 'scene' };
-          }), r.values.scenes[c], choose('scenes', c), hookNote(r, 'scenes', c)));
-        }
-        const f = store.fallback(), set = conds.filter(c => f.from.scenes[c] === 'defaults');
-        const dw = set.length ? set.map(c => lower(CONDITION_NAMES[c] || c) + ' in the ' + lower(SCENE_NAMES[f.values.scenes[c]] || f.values.scenes[c])).join(', ').replace(/, ([^,]*)$/, ' and $1') + ', and the rest in their own scenes'
+        for (const x of sceneRows(r, store.parts(r.values.look.world), offer, dflt, K.basePack(), cat)) list.appendChild(partRowEl(x, r, choose('scenes', x.k), hookNote(r, 'scenes', x.k)));
+        const set = conds.filter(c => f.from.scenes[c] === 'defaults');
+        const dw = set.length ? set.map(c => lower(CONDITION_NAMES[c] || c) + ' in the ' + lower(named('scenes', c, f.values.scenes[c]))).join(', ').replace(/, ([^,]*)$/, ' and $1') + ', and the rest in their own scenes'
           : 'each condition in its own scene';
         list.appendChild(reset('scenes', 'choices', dw, set.length > 0, hooked(r, 'scenes')));
       } },
@@ -1618,6 +1971,8 @@
       main.querySelectorAll('canvas[data-world]').forEach(cv => blit(cv, worldPicture(cv.dataset.world, r.values.display.helmet_indoors), true));
       main.querySelectorAll('canvas[data-device]').forEach(cv => { const [set, kind] = cv.dataset.device.split('|'); blit(cv, devicePicture(set, kind), false); });
       const ct = $('kws-court'); if (ct) blit(ct, monarchPicture(r.values.look.monarch, e), false);
+      main.querySelectorAll('canvas[data-foe]').forEach(cv => blit(cv, foePicture(cv.dataset.foe), false));
+      main.querySelectorAll('canvas[data-critter]').forEach(cv => blit(cv, critterPicture(cv.dataset.critter), false));
       main.querySelectorAll('canvas[data-pet]').forEach(cv => { const [id, coat] = cv.dataset.pet.split('|'); blit(cv, petPicture(id, coat), false); });
       const ph = $('kws-pethome'); if (ph) blit(ph, petHome(r.values.look.pet, r.values.look.pet_coat, r.values.display.helmet_indoors), false);
     }

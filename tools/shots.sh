@@ -3,6 +3,8 @@
 #
 #   CHROME=/path/to/chrome-headless-shell tools/shots.sh take DIR
 #   tools/shots.sh compare REFERENCE_DIR RESULT_DIR
+#   CHROME=/path/to/chrome-headless-shell tools/shots.sh worlds DIR
+#   tools/shots.sh compare-worlds REFERENCE_DIR RESULT_DIR
 #
 # take opens web/index.html from disk once per entry in SHOTS, with time frozen by the address's
 # t= hook, and writes DIR/<name>.png at 960 by 600, or at the size an entry names after a second |. PAGE names another copy of the page to shoot,
@@ -12,6 +14,11 @@
 #
 # With time frozen each shot depends only on its address, however many frames the browser paints,
 # so a single DIFF is a real difference.
+#
+# worlds takes the shots of WORLD_SHOTS, the settings screen with the test world, test.orbit, loaded
+# beside the medieval one, from a copy of web/ made outside the repository with the test world's
+# carrier added (docs/development.md, The test world), which it removes afterwards: the test world
+# never goes under web/. compare-worlds compares two such sets.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -342,8 +349,26 @@ SHOTS=(
   "streams-badge-court|bar=0&t=3450&on=ssh,plex&st=2"
 )
 
+# The settings screen with the test world loaded (see worlds above): the knight's page with the
+# test world's body, skin and items beside the medieval world's, its own world in use with the open
+# helm and a wine tabard over it, the monarch's page with its Captain, the cast, the scenes with a
+# condition only the test world gives a second scene for, and the World page with the open helm
+# changed from the world.
+WORLD_SHOTS=(
+  "worldmix-knight|bar=0&t=2300&is=battlement&set=knight&bd=test.orbit/body.unit&sk=test.orbit/chrome|1480,924"
+  "worldmix-knight-orbit|bar=0&t=2300&is=battlement&set=knight&wd=test.orbit/world.orbit&hm=open&tb=wine|1480,924"
+  "worldmix-monarch|bar=0&t=2300&is=battlement&set=monarch&mon=test.orbit/patron.captain|1480,924"
+  "worldmix-cast|bar=0&t=2300&is=house&set=pet&wd=test.orbit/world.orbit|1480,924"
+  "worldmix-scenes|bar=0&t=2300&is=battlement&set=scenes&sc=wan_down:test.orbit/deck|1480,924"
+  "worldmix-world|bar=0&t=2300&is=battlement&set=world&wd=test.orbit/world.orbit&hm=open|1480,924"
+  "worldmix-knight-small|bar=0&t=2300&is=battlement&set=knight&bd=test.orbit/body.unit&sk=test.orbit/chrome"
+)
+
 take() {
   local dir="$1"
+  shift
+  local list=("$@")
+  [[ ${#list[@]} -gt 0 ]] || list=("${SHOTS[@]}")
   if [[ -z "${CHROME:-}" || ! -x "$CHROME" ]]; then
     echo "shots: set CHROME to a headless Chromium binary" >&2
     exit 2
@@ -351,7 +376,7 @@ take() {
   local page="${PAGE:-$root/web/index.html}"
   mkdir -p "$dir"
   local entry name hash size
-  for entry in "${SHOTS[@]}"; do
+  for entry in "${list[@]}"; do
     name="${entry%%|*}"
     hash="${entry#*|}"
     size=960,600
@@ -362,9 +387,25 @@ take() {
   done
 }
 
+# A copy of web/ outside the repository with the test world's carrier added after the medieval
+# world's, as docs/development.md does it by hand; the shots of WORLD_SHOTS are taken from it, and it
+# is removed afterwards.
+worlds() {
+  local dir="$1" tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+  cp -r "$root/web" "$tmp/web"
+  cp "$root/tests/web/fixtures/worlds/test.orbit.pack.json" "$tmp/web/packs/"
+  node "$root/tools/pack-carrier.js" "$tmp/web/packs/test.orbit.pack.json" >/dev/null
+  sed -i 's#<script src="packs/medieval.pack.js"></script>#&\n<script src="packs/test.orbit.pack.js"></script>#' "$tmp/web/index.html"
+  grep -q 'packs/test.orbit.pack.js' "$tmp/web/index.html" || { echo "shots: the test world's carrier was not added" >&2; exit 2; }
+  PAGE="$tmp/web/index.html" take "$dir" "${WORLD_SHOTS[@]}"
+}
+
 compare() {
-  local names=() entry
-  for entry in "${SHOTS[@]}"; do names+=("${entry%%|*}"); done
+  local names=() entry list=("${SHOTS[@]}")
+  [[ "${WHICH:-}" == worlds ]] && list=("${WORLD_SHOTS[@]}")
+  for entry in "${list[@]}"; do names+=("${entry%%|*}"); done
   python3 -I - "$1" "$2" "${names[@]}" <<'PY'
 import struct, sys, zlib
 
@@ -441,5 +482,7 @@ PY
 case "${1:-}" in
   take) [[ $# -eq 2 ]] || { echo "usage: $0 take DIR" >&2; exit 2; }; take "$2" ;;
   compare) [[ $# -eq 3 ]] || { echo "usage: $0 compare REFERENCE_DIR RESULT_DIR" >&2; exit 2; }; compare "$2" "$3" ;;
-  *) echo "usage: $0 take DIR | compare REFERENCE_DIR RESULT_DIR" >&2; exit 2 ;;
+  worlds) [[ $# -eq 2 ]] || { echo "usage: $0 worlds DIR" >&2; exit 2; }; worlds "$2" ;;
+  compare-worlds) [[ $# -eq 3 ]] || { echo "usage: $0 compare-worlds REFERENCE_DIR RESULT_DIR" >&2; exit 2; }; WHICH=worlds compare "$2" "$3" ;;
+  *) echo "usage: $0 take DIR | compare REFERENCE_DIR RESULT_DIR | worlds DIR | compare-worlds REFERENCE_DIR RESULT_DIR" >&2; exit 2 ;;
 esac

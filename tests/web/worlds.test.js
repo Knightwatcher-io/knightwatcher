@@ -142,7 +142,7 @@ test('a page that reads kw.medieval lists its world, the other packs\' worlds an
   assert.deepEqual([CAT.names.foe, CAT.names.critter, CAT.names.pet, CAT.names.words, CAT.names.overlay],
     [{ 'kw.medieval/foe.goblin': 'goblin' }, { 'kw.medieval/critter.fly': 'fly' }, { 'kw.medieval/pet.cat': 'cat' }, { 'kw.medieval/words.medieval': 'medieval' }, { 'kw.medieval/overlay.phosphor': 'medieval' }]);
   assert.equal(CAT.names.scene['kw.medieval/cellar'], 'cellar');
-  assert.deepEqual(CAT.scenes['kw.medieval/camp'], { can: MED.scenes.camp.can, quiet: true });
+  assert.deepEqual(CAT.scenes['kw.medieval/camp'], { can: MED.scenes.camp.can, quiet: true, hosts: MED.scenes.camp.hosts });
   // the base world's scenes come from its preset
   assert.deepEqual(CAT.quiet, SET.SCENES);
   assert.deepEqual(Object.fromEntries(Object.entries(CAT.homes).filter(([, s]) => s)), HOMES);
@@ -474,8 +474,8 @@ test('the pages take the world\'s labels; World is first in the rail, and the sc
   assert.match(SETTINGS_JS, /hold\.done = true; swallow = true; open\('knight'\);/);
   assert.match(SETTINGS_JS, /const PAGE_LABELS = \{ knight: \['watcher', 'The knight'\], monarch: \['patron', 'The monarch'\], pet: \['pet', 'The pet'\] \};/);
   assert.match(SETTINGS_JS, /const pageLabel = k => labelOf\(wordLabels\(\), PAGE_LABELS\[k\]\[0\], PAGE_LABELS\[k\]\[1\]\);/);
-  // the pet's page comes right after the monarch's
-  assert.match(SETTINGS_JS, /\n      monarch: \{ label: \(\) => pageLabel\('monarch'\)[\s\S]*?\n      \} \},\n      pet: \{ label: \(\) => pageLabel\('pet'\)/);
+  // the cast's page, with the pet, the foe and the pest, comes right after the monarch's
+  assert.match(SETTINGS_JS, /\n      monarch: \{ label: \(\) => pageLabel\('monarch'\)[\s\S]*?\n      \} \},\n(      \/\*[^\n]*\*\/\n)?      pet: \{ label: 'The cast'/);
   assert.equal(SCR.partLabel('look', 'pet_coat', MED.words['words.medieval'].labels), 'Cat\'s coat');
   assert.equal(SCR.partLabel('look', 'pet', null), 'Pet');
 });

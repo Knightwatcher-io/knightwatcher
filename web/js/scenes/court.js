@@ -305,13 +305,14 @@
     PATRONS[id] = Object.freeze({ draw: (x, by, look) => monarch(x, by, dressed(m, look), skinOf(look)), mouth, drawn: Object.freeze({ hair: m.hair.map(b => b[1]), robe: m.robe.map(b => b[1]) }) });
   }
   P.PATRONS = Object.freeze(PATRONS);
-  /* The patron s.patron names, 'a' when it names none of the monarchs: from KW.cast where the world
-     gives it, from the code's own otherwise. */
-  const idOf = s => (Object.prototype.hasOwnProperty.call(PATRONS, stateOf(s).id) ? stateOf(s).id : 'a');
+  /* The patron s.patron names, 'a' when it names none the cast has: from KW.cast where the world
+     gives it, another world's patron by its long name among them, from the code's own otherwise. */
+  const known = id => typeof id === 'string' && (Object.prototype.hasOwnProperty.call(PATRONS, id) || !!(KW.cast && KW.cast.patrons && Object.prototype.hasOwnProperty.call(KW.cast.patrons, id)));
+  const idOf = s => (known(stateOf(s).id) ? stateOf(s).id : 'a');
   const patronFor = id => { const set = KW.cast && KW.cast.patrons; return (set && set[id]) || PATRONS[id]; };
   const patronOf = s => patronFor(idOf(s));
   /* The colours each monarch is drawn in, for the settings screen's "As drawn" choices. */
-  const drawn = mon => { const p = patronFor(Object.prototype.hasOwnProperty.call(PATRONS, mon) ? mon : 'a'); return { hair: p.drawn.hair.slice(), robe: p.drawn.robe.slice() }; };
+  const drawn = mon => { const p = patronFor(known(mon) ? mon : 'a'); return { hair: p.drawn.hair.slice(), robe: p.drawn.robe.slice() }; };
   /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
