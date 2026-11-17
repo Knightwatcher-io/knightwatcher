@@ -1099,7 +1099,9 @@ A look says what the knight wears:
   "swatches": { "tabard": "kw.extra/red" } }
 ```
 
-Every name is `<pack id>/<local id>`. Builds come only from the base pack. `items` takes the slots
+Every name is `<pack id>/<local id>`. A build comes from any loaded pack that carries it (from
+format 1.1 any pack may), with that build's own head item; the base pack's default build is the
+fallback. `items` takes the slots
 `back`, `legs`, `boots`, `torso`, `hair`, `plume`, `helmet`, `pauldrons`, `arms`, `gauntlets`,
 `main` and `off`; a `head` key, a `companion` key or an unknown key is ignored and reported. The
 head is the build's.
@@ -1460,7 +1462,9 @@ rest of the gear the item of its slot by the same rule (`plume_style` `plume.`, 
 `shoulders` `pauldrons.`, `arms` `arms.`, `hands` `gauntlets.`, `legs` `legs.`, `feet` `boots.`,
 `back` `back.`, its `none` filling nothing); and a build `kw.base/build.<letter>`, of
 which the base pack declares `build.a`, `build.b` and `build.c`, shown by the names the pack gives
-them, Classic, Broad and Slim. The address's look hooks give the same
+them, Classic, Broad and Slim. A world pack's body and swatches, and any pack's items, are named by
+their long names: `build`, `skin`, `hair`, `tabard` and `plume` take one as it is, and `[look.items]`
+names a slot's item ([worlds.md](./worlds.md#other-worlds)). The address's look hooks give the same
 values: `bd=` the build, `arm=one` and `arm=two` the weapon (or any weapon by its contract name), `sk=`, `hc=`, `tb=` and `pm=` the swatches, `hy=`
 the hair style, and `sh=`, `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=` the gear (see [page.md](./page.md#the-address)). When the downloaded packs arrive, `KW.knight.add()` reads them with
 the same options and resolves the look again (see [Downloaded packs](#downloaded-packs)):

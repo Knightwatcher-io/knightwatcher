@@ -242,6 +242,8 @@ class DefaultsContractTest(unittest.TestCase):
                     look={
                         "world": "kw.cyber/world.neon",
                         "foe": "kw.cyber/foe.drone",
+                        "build": "kw.cyber/body.courier",
+                        "skin": "kw.cyber/chrome",
                         "items": {"main": "kw.base/main.arming"},
                         "devices": {"camera": "medieval", "pi": "kw.cyber/props.neon"},
                     },
@@ -255,7 +257,7 @@ class DefaultsContractTest(unittest.TestCase):
             broken(given(look={"skin": "pale"}, quiet={"minutes": 0, "pace": 3})),
             [
                 'defaults.look.skin: unknown value "pale"; use fair, warm, golden, tan, brown '
-                "or deep",
+                'or deep, or a long name, "<pack>/<id>"',
                 "defaults.quiet.pace: unknown setting",
                 "defaults.quiet.minutes: must be a whole number from 1 to 240",
             ],

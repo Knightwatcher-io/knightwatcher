@@ -241,7 +241,7 @@ test('a part of a world the page has not loaded keeps the base world\'s, with th
   assert.deepEqual([r.values.look.monarch, r.values.look.props, r.values.look.tabard, r.values.quiet.scenes, r.values.scenes.attack, r.world.homes.attack],
     ['a', 'medieval', 'blue', ['yard'], 'battlement', 'battlement']);
   assert.deepEqual(plain(r.faults), [
-    { part: 'look.tabard', value: 'kw.gone/neon', why: 'only the base pack\'s swatches are drawn' },
+    { part: 'look.tabard', value: 'kw.gone/neon', why: 'not loaded' },
     { part: 'look.monarch', value: 'kw.gone/patron.z', why: 'not loaded' },
     { part: 'look.props', value: 'kw.test/props.gone', why: 'not loaded' },
     { part: 'quiet.scenes', value: 'kw.gone/park', why: 'not loaded' },

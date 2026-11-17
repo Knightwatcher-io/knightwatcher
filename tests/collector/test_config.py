@@ -650,19 +650,23 @@ class DefaultsConfigTest(unittest.TestCase):
             self.assertEqual(build({"quiet": quiet}).defaults["quiet"], quiet)
 
     def test_each_bad_look_value(self):
+        long = 'or a long name, "<pack>/<id>"'
         self.assertProblems(
             {"look": {"build": "d", "weapon": "axe", "skin": "pale", "hair": "green"}},
-            'look.build: unknown value "d"; use a, b or c',
+            f'look.build: unknown value "d"; use a, b or c, {long}',
             'look.weapon: unknown value "axe"; use greatsword, sword_and_shield, longsword or '
             "mace_and_shield",
-            'look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep',
-            'look.hair: unknown value "green"; use black, dark, brown, auburn, blonde or silver',
+            f'look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep, {long}',
+            'look.hair: unknown value "green"; use black, dark, brown, auburn, blonde or silver, '
+            + long,
         )
         self.assertProblems(
             {"look": {"hair_style": "bald", "tabard": "red", "plume": "blue"}},
             'look.hair_style: unknown value "bald"; use short, tied, curls, long or close',
-            'look.tabard: unknown value "red"; use blue, forest, violet, wine, teal or sable',
-            'look.plume: unknown value "blue"; use red, white, gold, royal, green or violet',
+            'look.tabard: unknown value "red"; use blue, forest, violet, wine, teal or sable, '
+            + long,
+            'look.plume: unknown value "blue"; use red, white, gold, royal, green or violet, '
+            + long,
         )
         self.assertProblems(
             {
@@ -715,8 +719,8 @@ class DefaultsConfigTest(unittest.TestCase):
         )
         self.assertProblems(
             {"look": {"build": 1, "skin": ["warm"]}},
-            "look.build: expected text; use a, b or c",
-            "look.skin: expected text; use fair, warm, golden, tan, brown or deep",
+            "look.build: expected text; use a, b or c, " + long,
+            "look.skin: expected text; use fair, warm, golden, tan, brown or deep, " + long,
         )
 
     def test_each_bad_display_value(self):
@@ -803,7 +807,8 @@ class DefaultsConfigTest(unittest.TestCase):
         # The load fails, so nothing is written; the check still names every problem at once.
         self.assertProblems(
             {"look": {"skin": "warm", "plume": "pink"}, "quiet": {"scenes": [], "minutes": 5}},
-            'look.plume: unknown value "pink"; use red, white, gold, royal, green or violet',
+            'look.plume: unknown value "pink"; use red, white, gold, royal, green or violet, '
+            'or a long name, "<pack>/<id>"',
             "quiet.scenes: list one or more of battlement, camp, house or yard, or long names",
         )
 
@@ -842,6 +847,21 @@ class DefaultsConfigTest(unittest.TestCase):
             )
         for good in ("kw/x", "kw.a.b.c/x", "kw/" + "x" * 48, "kw-1.x2/a.b-c"):
             self.assertEqual(build({"look": {"overlay": good}}).defaults["look"], {"overlay": good})
+        # the knight's body and swatches of another pack, by long names checked for their form alone
+        body = {
+            "build": "test.orbit/body.unit",
+            "skin": "test.orbit/chrome",
+            "hair": "test.orbit/wire",
+            "tabard": "test.orbit/panel",
+            "plume": "test.orbit/beacon",
+        }
+        self.assertEqual(build({"look": body}).defaults["look"], body)
+        self.assertProblems(
+            {"look": {"build": "test.orbit/Unit", "skin": "orbit/"}},
+            f'look.build: unknown value "test.orbit/Unit"; use a, b or c, {long}',
+            'look.skin: unknown value "orbit/"; use fair, warm, golden, tan, brown or deep, '
+            + long,
+        )
 
     def test_the_items_and_devices_tables(self):
         items = {"main": "kw.base/main.arming", "helmet": "kw.cyber/helm.visor"}

@@ -20,13 +20,13 @@
   const SCHEMA = {
     look: {
       world: { values: ['medieval'], long: true, page: 'medieval' },
-      build: { values: ['a', 'b', 'c'], page: null },
+      build: { values: ['a', 'b', 'c'], long: true, page: null },
       weapon: { values: ['greatsword', 'sword_and_shield', 'longsword', 'mace_and_shield'], page: 'greatsword' },
-      skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], page: 'warm' },
-      hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], page: 'brown' },
+      skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], long: true, page: 'warm' },
+      hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], long: true, page: 'brown' },
       hair_style: { values: ['short', 'tied', 'curls', 'long', 'close'], page: 'short' },
-      tabard: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], page: 'blue' },
-      plume: { values: ['red', 'white', 'gold', 'royal', 'green', 'violet'], page: 'red' },
+      tabard: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], long: true, page: 'blue' },
+      plume: { values: ['red', 'white', 'gold', 'royal', 'green', 'violet'], long: true, page: 'red' },
       shield: { values: ['heater', 'round', 'kite'], page: 'heater' },
       helmet: { values: ['open', 'kettle', 'coif', 'bascinet'], page: 'open' },
       plume_style: { values: ['crest', 'feather', 'horsehair'], page: 'crest' },
@@ -156,11 +156,15 @@
        sets    each loaded prop set by its name, { name, kinds }; the base world's, 'medieval',
                draws every kind
        items   each item the knight can wear by its long name, and the slot it fills: the base
-               pack's, see itemsOf */
+               pack's, see itemsOf, and those of the other packs the page has loaded
+       builds  each build of a pack other than the base pack, by its long name, and its name
+       swatches  for each of the user's sets (skin, hair, tabard, plume), each swatch of a pack
+               other than the base pack by its long name, and its name
+       titles  the name of each part of another pack, by its long name, for the screen */
   function worldOf(w) {
     const src = isObj(w) ? w : {};
     if (src.normal === true) return src;
-    const out = { normal: true, can: {}, homes: {}, quiet: SCENES.slice(), scenes: {}, names: {}, worlds: {}, sets: {}, items: {} };
+    const out = { normal: true, can: {}, homes: {}, quiet: SCENES.slice(), scenes: {}, names: {}, worlds: {}, sets: {}, items: {}, builds: {}, swatches: {}, titles: {} };
     if (isObj(src.can)) for (const k of ALL_SCENES) if (Array.isArray(src.can[k])) out.can[k] = src.can[k].filter(c => typeof c === 'string');
     if (isObj(src.homes)) for (const c of Object.keys(src.homes)) out.homes[c] = typeof src.homes[c] === 'string' ? src.homes[c] : null;
     if (Array.isArray(src.quiet) && src.quiet.some(s => typeof s === 'string')) out.quiet = src.quiet.filter(s => typeof s === 'string');
@@ -191,8 +195,17 @@
       out.names.props[n] = n;
     }
     if (isObj(src.items)) for (const n of Object.keys(src.items)) if (isLong(n) && TABLES.items.includes(src.items[n])) out.items[n] = src.items[n];
+    if (isObj(src.builds)) for (const n of Object.keys(src.builds)) if (isLong(n) && typeof src.builds[n] === 'string') out.builds[n] = src.builds[n];
+    for (const set of SWATCH_KEYS) {
+      out.swatches[set] = {};
+      const g = isObj(src.swatches) && isObj(src.swatches[set]) ? src.swatches[set] : {};
+      for (const n of Object.keys(g)) if (isLong(n) && typeof g[n] === 'string') out.swatches[set][n] = g[n];
+    }
+    if (isObj(src.titles)) for (const n of Object.keys(src.titles)) if (isLong(n) && typeof src.titles[n] === 'string') out.titles[n] = src.titles[n];
     return out;
   }
+  /* The look's keys that choose one of the user's swatches, each its own set. */
+  const SWATCH_KEYS = ['skin', 'hair', 'tabard', 'plume'];
   /* The items of a base pack, by their long names, and the slot each fills. */
   function itemsOf(pack) {
     const out = {}, items = isObj(pack) && isObj(pack.items) ? pack.items : {};
@@ -281,17 +294,29 @@
     const name = (kind, n) => { const l = longOf(pack, n); return has(W.names[kind], l) ? W.names[kind][l] : null; };
     // the knight: the base pack's build, items and swatches by the contract's keys, other items by name
     const o = isObj(p.outfit) ? p.outfit : {}, d = { items: {}, swatches: {} }, B = 'kw.base/';
-    if (typeof p.body === 'string') { if (p.body.startsWith(B)) d.build = p.body.slice(B.length); else fault('look.build', p.body, 'only the base pack\'s builds are drawn'); }
+    // the body and the swatches of another pack by their long names, once the page has loaded them
+    let body = null;
+    const sw0 = {};
+    if (typeof p.body === 'string') {
+      const l = longOf(pack, p.body);
+      if (l.startsWith(B)) d.build = l.slice(B.length); else if (has(W.builds, l)) body = l; else fault('look.build', l, 'not loaded');
+    }
     const items = isObj(o.items) ? o.items : {}, sw = isObj(o.swatches) ? o.swatches : {};
     for (const s of Object.keys(items)) { const l = longOf(pack, items[s]); if (l.startsWith(B)) d.items[s] = l.slice(B.length); }
-    for (const s of Object.keys(sw)) { const l = longOf(pack, sw[s]); if (l.startsWith(B)) d.swatches[s] = l.slice(B.length); else fault('look.' + s, l, 'only the base pack\'s swatches are drawn'); }
+    for (const s of Object.keys(sw)) {
+      const l = longOf(pack, sw[s]);
+      if (l.startsWith(B)) d.swatches[s] = l.slice(B.length); else if (SWATCH_KEYS.includes(s) && has(W.swatches[s], l)) sw0[s] = l; else fault('look.' + s, l, 'not loaded');
+    }
     if (!has(d, 'build')) d.build = 'build.' + base.look.build;
     const L = lookOf(d);
     for (const k of Object.keys(L)) if (L[k] !== null) out.look[k] = L[k];
+    if (body) out.look.build = body;
+    Object.assign(out.look, sw0);
     // an item no key names: the base pack's with a value the contract lacks, or another pack's
     for (const s of Object.keys(items)) {
       const k = SLOT_KEY[s], l = longOf(pack, items[s]);
-      if (!(k && has(L, k) && l.startsWith(B))) out.look.items[s] = l;
+      if (k && has(L, k) && l.startsWith(B)) continue;
+      if (has(W.items, l)) out.look.items[s] = l; else fault('look.items.' + s, l, 'not loaded');
     }
     // the cast, the devices, the overlay and the words
     const parts = [['monarch', isObj(p.cast) ? p.cast.patron : undefined], ['pet', isObj(p.cast) ? p.cast.pet : undefined], ['foe', isObj(p.cast) ? p.cast.foe : undefined],
@@ -340,11 +365,12 @@
     if (section === 'scenes') {
       const offer = offered(W);
       for (const k of Object.keys(raw)) {
-        const v = raw[k], s = named('scene', v);
+        const v = raw[k], s = named('scene', v), other = s !== null && isLong(s) && has(W.scenes, s);
         if (!has(W.homes, k)) no(k, v, 'not a condition the page knows');
-        else if (!has(offer, k)) no(k, v, 'the page offers no choice of scene for it');
+        // a scene of another world may be given any condition with a scene of its own, offered or not
+        else if (!has(offer, k) && !(other && W.homes[k])) no(k, v, 'the page offers no choice of scene for it');
         else if (s === null) no(k, v, unknown(v, 'that scene'));
-        else if (!(offer[k].includes(s) || (has(W.scenes, s) && W.scenes[s].can.includes(k)))) no(k, v, 'that scene cannot act it');
+        else if (!((has(offer, k) && offer[k].includes(s)) || (has(W.scenes, s) && W.scenes[s].can.includes(k)))) no(k, v, 'that scene cannot act it');
         else out[k] = s;
       }
       return out;
@@ -384,6 +410,10 @@
         const c = named(k, v);
         if (c === null) no(k, v, unknown(v, 'it'));
         else out[k] = c;
+      } else if (section === 'look' && (k === 'build' || SWATCH_KEYS.includes(k)) && isLong(v)) {
+        // a body or a swatch of another pack, by its long name, once the page has loaded it
+        if (k === 'build' ? has(W.builds, v) : has(W.swatches[k], v)) out[k] = v;
+        else no(k, v, unknown(v, k === 'build' ? 'that build' : 'that swatch'));
       } else if (!ONE_OF[section][k].includes(v)) no(k, v, 'not a value the page knows');
       else if (section === 'look' && k === 'build' && !(ready || []).includes(v)) no(k, v, 'no pack draws that build');
       else out[k] = v;
@@ -417,15 +447,20 @@
     };
     for (const sec of SECTIONS) {
       values[sec] = {}; from[sec] = {};
-      // the scenes section has a key for each condition that takes part, which the page's own holds
-      for (const k of sec === 'scenes' ? Object.keys(base.scenes || {}) : KEYS[sec]) {
+      // the scenes section has a key for each condition that takes part, which the page's own holds,
+      // and for each a level gives another world's scene
+      const extra = sec === 'scenes' ? LEVELS.reduce((a, l) => a.concat(levels[l] && isObj(levels[l].scenes) ? Object.keys(levels[l].scenes) : []), []).filter(k => !has(base.scenes || {}, k)) : [];
+      for (const k of sec === 'scenes' ? Object.keys(base.scenes || {}).concat(extra.filter((k, i) => extra.indexOf(k) === i)) : KEYS[sec]) {
         if (sec === 'look' && has(TABLES, k)) {
           values.look[k] = {}; from.look[k] = {};
           for (const sub of TABLES[k]) {
             const [v, f] = pick('look', k, sub, undefined, parts.look[k][sub]);
             if (v !== undefined) { values.look[k][sub] = v; from.look[k][sub] = f; }
           }
-        } else if (isPart(sec, k)) [values[sec][k], from[sec][k]] = pick(sec, k, undefined, base[sec][k], parts[sec][k]);
+        } else if (isPart(sec, k)) {
+          const [v, f] = pick(sec, k, undefined, base[sec][k], parts[sec][k]);
+          if (v !== undefined) { values[sec][k] = v; from[sec][k] = f; }
+        }
         else {
           const lv = at(sec, k);
           values[sec][k] = lv ? levels[lv][sec][k] : base[sec][k];
@@ -445,13 +480,15 @@
     const v = r.values.look, F = r.from.look, other = isObj(r.world) && r.world.id !== BASE_WORLD;
     const set = k => F[k] !== 'built-in' && (F[k] !== 'world' || other), B = 'kw.base/', look = {};
     const item = (slot, id) => { (look.items = look.items || {})[slot] = B + id; };
-    if (set('build') && v.build) look.build = B + 'build.' + v.build;
+    // a build or a swatch of another pack is named by its long name, the base pack's by its short one
+    const named0 = (x, short) => (isLong(x) ? x : B + short);
+    if (set('build') && v.build) look.build = named0(v.build, 'build.' + v.build);
     // a weapon set carries its shield, the one the shield key gives, when it is one-handed; a shield
     // set alone matters only beside a one-handed weapon
     const one = ONE_HANDED.includes(v.weapon);
     if (set('weapon')) { item('main', WEAPONS[v.weapon]); if (one) item('off', itemId('shield', v.shield)); }
     else if (set('shield') && one) item('off', itemId('shield', v.shield));
-    for (const k of ['skin', 'hair', 'tabard', 'plume']) if (set(k)) (look.swatches = look.swatches || {})[k] = B + v[k];
+    for (const k of SWATCH_KEYS) if (set(k)) (look.swatches = look.swatches || {})[k] = named0(v[k], v[k]);
     for (const k of Object.keys(ITEMS)) if (k !== 'shield' && set(k) && v[k] !== 'none') item(ITEMS[k][0], itemId(k, v[k]));
     const named = isObj(v.items) ? v.items : {};
     for (const slot of Object.keys(named)) if (F.items[slot] !== 'world' || other) (look.items = look.items || {})[slot] = named[slot];
@@ -486,7 +523,10 @@
      from the base pack's skin, hair and tabard swatches, each null for the court's own while
      nothing sets it or there is no base pack; the pet, as { id, coat }; the scene chosen for each
      condition, holding only what a level above the page's own sets; homes, the world's own scene
-     for each condition; and kinds, the prop set each kind of device is drawn from. */
+     for each condition; kinds, the prop set each kind of device is drawn from; the foe and the
+     critter, each by the name KW.cast knows it by (a long name for another pack's); and the words
+     and the overlay in use, 'medieval' or a long name, which main.js puts in use
+     (KW.world.useWords, useOverlay). */
   function engineInput(r, pack, ownMs) {
     const q = r.values.quiet, L = r.values.look;
     const swatch = (set, id) => { const sw = isObj(pack) && isObj(pack.swatches) && isObj(pack.swatches[set]) ? pack.swatches[set][id] : null; return isObj(sw) && isObj(sw.entries) ? sw.entries : null; };
@@ -500,7 +540,8 @@
     const kinds = {}, by = isObj(L.devices) ? L.devices : {};
     for (const k of KINDS) kinds[k] = typeof by[k] === 'string' ? by[k] : typeof L.props === 'string' ? L.props : BASE_WORLD;
     const homes = isObj(r.world) && isObj(r.world.homes) ? Object.assign({}, r.world.homes) : {};
-    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, patron, pet: { id: L.pet, coat: L.pet_coat }, scenes, homes, kinds };
+    return { turns: q.scenes.slice(), turnMs: r.from.quiet.minutes === 'built-in' ? ownMs : q.minutes * 60000, patron, pet: { id: L.pet, coat: L.pet_coat }, scenes, homes, kinds,
+      foe: L.foe, critter: L.critter, words: L.words, overlay: L.overlay };
   }
 
   /* The clock's words for a time: { time, half }. On the 24-hour clock '09:42' and no half; on the
@@ -901,9 +942,12 @@
      store's catalogue() gives it). */
   function valueName(sec, k, v, pack, cat) {
     const name = n => (typeof n === 'string' && n ? n.charAt(0).toUpperCase() + n.slice(1) : String(n));
-    if (sec === 'quiet') return k === 'minutes' ? v + ' minutes' : same(v, SCENES) ? 'All four' : listed(v.map(x => SCENE_NAMES[x] || x));
-    if (sec === 'scenes') return SCENE_NAMES[v] || v;
+    // a part of another pack by its long name: its own name, as the catalogue gives it
+    const title = x => (isLong(x) && isObj(cat) && isObj(cat.titles) && typeof cat.titles[x] === 'string' ? cat.titles[x] : null);
+    if (sec === 'quiet') return k === 'minutes' ? v + ' minutes' : same(v, SCENES) ? 'All four' : listed(v.map(x => SCENE_NAMES[x] || title(x) || x));
+    if (sec === 'scenes') return SCENE_NAMES[v] || title(v) || v;
     if (v === null) return 'As drawn';
+    if (typeof v === 'string' && k !== 'world' && k !== 'props' && title(v)) return title(v);
     if (k === 'build') return isObj(pack) ? buildName(pack, v) : 'Build ' + v.toUpperCase();
     if (k === 'weapon') return WEAPON_CHIPS[v] ? WEAPON_CHIPS[v][0] : v;
     if (k === 'monarch') return /^[abc]$/.test(v) ? 'Monarch ' + v.toUpperCase() : v;
@@ -979,6 +1023,8 @@
     for (const f of (W.cast || {}).faults || []) out.push([f.member, ': drawn from code. ' + why(f)]);
     for (const f of (W.words || {}).faults || []) out.push([f.set, ': the collector\'s words are shown. ' + why(f)]);
     for (const f of (W.overlay || {}).faults || []) out.push([f.overlay, ': display.css\'s colours are shown. ' + f.reason]);
+    // a part of another world that could not be compiled, or threw while drawing
+    for (const f of (W.others || {}).faults || []) out.push([f.part, ': not drawn, so the base world\'s is used. ' + why(f)]);
     if (st.refused) out.push([st.refused.id, ': refused at the ' + st.refused.step + ' step, so every scene, device and member of the cast is drawn from code.']);
     for (const f of (isObj(kn) && Array.isArray(kn.fallbacks) ? kn.fallbacks : [])) {
       if (f.reason === 'not set' || f.wanted === null) continue;
@@ -1173,7 +1219,8 @@
     const lower = s => s.charAt(0).toLowerCase() + s.slice(1);
     /* The look in words, from the base pack's names. */
     function lookWords(v, pack) {
-      const sw = (set, id) => (pack && pack.swatches[set] && pack.swatches[set][id] ? lower(pack.swatches[set][id].name) : id);
+      const cat = store.catalogue(), title = id => (isLong(id) && cat.titles[id] ? cat.titles[id] : null);
+      const sw = (set, id) => (title(id) ? lower(title(id)) : pack && pack.swatches[set] && pack.swatches[set][id] ? lower(pack.swatches[set][id].name) : id);
       const style = pack && pack.items['hair.' + v.hair_style] ? lower(pack.items['hair.' + v.hair_style].name) : v.hair_style;
       const name = (k, id) => (pack && pack.items[itemId(k, id)] ? lower(pack.items[itemId(k, id)].name) : id);
       // the weapon, with its shield when it is one-handed; the heater shield as it always read
@@ -1182,7 +1229,7 @@
       const own = builtIn(pack).look, gear = ARMOUR.map(([k]) => k).filter(k => k !== 'shield' && v[k] !== own[k] && v[k] !== 'none').map(k => 'a ' + name(k, v[k]));
       const mh = v.monarch_hair ? sw('hair', v.monarch_hair) + ' hair' : '', mr = v.monarch_robe ? 'a ' + sw('tabard', v.monarch_robe) + ' robe' : '';
       const dress = mh && mr ? mh + ', ' + mr : mh ? mh + ', the robe as drawn' : mr ? 'the hair as drawn, ' + mr : 'hair and robe as drawn';
-      return (v.build ? 'the ' + buildName(pack, v.build) + ' build, ' : '') + 'the ' + arm + ', ' + sw('skin', v.skin) + ' skin, ' +
+      return (v.build ? 'the ' + (title(v.build) || buildName(pack, v.build)) + ' build, ' : '') + 'the ' + arm + ', ' + sw('skin', v.skin) + ' skin, ' +
         sw('hair', v.hair) + ' hair (' + style + '), a ' + sw('tabard', v.tabard) + ' tabard, a ' + sw('plume', v.plume) + ' plume' + (gear.length ? ', with ' + gear.join(', ') : '') +
         '; monarch ' + v.monarch.toUpperCase() + ', ' + sw('skin', v.monarch_skin) + ' skin, ' + dress +
         '; the ' + lower(PET_NAMES[v.pet] || v.pet) + ', ' + lower(COAT_NAMES[v.pet_coat] || v.pet_coat);
@@ -1477,24 +1524,29 @@
           const part = (label, src, rest) => { const p = el('div', 'kws-part'); p.appendChild(el('span', 'pl', label + ': ')); code(p, src); if (rest) txt(p, rest); dd.appendChild(p); return p; };
           const changed = ds => (ds.length ? '; ' + listed(ds.map(d => partWords(d, pack, cat, labels) + (d.from === 'defaults' ? ' from config.toml' : d.from === 'hook' ? ' from the address' : ' chosen here'))) : '') + '.';
           const kb = s.base;
+          // a part of another pack named by its long name comes from that pack, as the world reads it
+          const OP = (WK.others && WK.others.packs) || [], packOf = n => (isLong(n) ? OP.find(x => x.id === n.split('/')[0]) || null : null);
+          const srcOf = (names, own) => { const ps = names.map(packOf).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i); return ps.length ? ps.map(packTxt).join(', ') : own; };
           if (!kb) line(dd, 'warn', pageLabel('knight') + ' is drawn from code: ' + (String(s.note).split('drawn from code: ')[1] || 'the base pack could not be used') + '.');
-          part(pageLabel('knight'), kb ? kb.id + ' ' + kb.version : 'code', ', as the world has it' + changed(mine(d => d.sec === 'look' && !/^(monarch|pet)/.test(d.k) && !['foe', 'critter', 'props', 'overlay', 'words'].includes(d.k))));
+          const L0 = r.values.look, gear = [L0.build, L0.skin, L0.hair, L0.tabard, L0.plume].concat(Object.values(L0.items || {}));
+          part(pageLabel('knight'), kb ? srcOf(gear, kb.id + ' ' + kb.version) : 'code', ', as the world has it' + changed(mine(d => d.sec === 'look' && !/^(monarch|pet)/.test(d.k) && !['foe', 'critter', 'props', 'overlay', 'words'].includes(d.k))));
           const masked = r.masked.filter(m => m.key.indexOf('.') < 0 && m.level === 'defaults');
           if (masked.length) line(dd, 'quiet kws-sub', listed(masked.map(m => partWords({ sec: m.section, k: m.key, v: m.value }, pack, cat, labels))).replace(/^the/, 'The') +
             ' in config.toml ' + (masked.length === 1 ? 'gives' : 'give') + ' way to the world chosen ' + (r.world.from === 'hook' ? 'by the address.' : 'here.'));
           const cast = WK.cast && WK.cast.source === 'pack' ? packTxt(med) : 'code';
-          part(pageLabel('monarch'), cast, ', ' + lower(named('look', 'monarch', r.values.look.monarch)) + changed(mine(d => d.sec === 'look' && /^monarch/.test(d.k))));
+          part(pageLabel('monarch'), srcOf([r.values.look.monarch], cast), ', ' + lower(named('look', 'monarch', r.values.look.monarch)) + changed(mine(d => d.sec === 'look' && /^monarch/.test(d.k))));
           const sc = WK.status ? WK.status.scenes : {}, fromCode = Object.keys(sc).filter(k => sc[k] === 'code'), n = Object.keys(sc).length;
           const NUM = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
-          part('Scenes', WK.status && WK.status.source === 'pack' ? packTxt(med) : 'code', (fromCode.length ? ', ' + listed(fromCode.map(k => 'the ' + lower(SCENE_NAMES[k] || k))) + ' from code' : ', all ' + (NUM[n] || n)) +
+          const inUse = r.values.quiet.scenes.concat(Object.values(r.world.homes || {}), Object.values(r.values.scenes || {}));
+          part('Scenes', srcOf(inUse, WK.status && WK.status.source === 'pack' ? packTxt(med) : 'code'), (fromCode.length ? ', ' + listed(fromCode.map(k => 'the ' + lower(SCENE_NAMES[k] || k))) + ' from code' : ', all ' + (NUM[n] || n)) +
             changed(mine(d => d.sec === 'quiet' || d.sec === 'scenes')));
-          part('Cast', cast, ', the ' + lower(named('look', 'foe', r.values.look.foe)) + ', the ' + lower(named('look', 'critter', r.values.look.critter)) + ' and the ' +
+          part('Cast', srcOf([r.values.look.foe, r.values.look.critter, r.values.look.pet], cast), ', the ' + lower(named('look', 'foe', r.values.look.foe)) + ', the ' + lower(named('look', 'critter', r.values.look.critter)) + ' and the ' +
             lower(named('look', 'pet', r.values.look.pet)) + ', ' + lower(named('look', 'pet_coat', r.values.look.pet_coat)) + changed(mine(d => d.k === 'foe' || d.k === 'critter' || /^pet/.test(d.k))));
           const dv = WK.devices || { kinds: {} }, setName = id => named('look', 'props', id), props = r.values.look.props, others = Object.keys(dv.kinds).filter(k => dv.kinds[k] !== props);
           const KIND_WORDS = { pi: 'the Pi', camera: 'the cameras', machine: 'the hosts', vm: 'the VMs', box: 'the other devices' };
           const src = props === BASE_WORLD ? (WK.props && WK.props.source === 'pack' ? packTxt(med) : 'code') : props.split('/')[0];
           part('Devices', src, ', ' + setName(props) + (others.length ? '; ' + listed(others.map(k => (KIND_WORDS[k] || k) + ' from ' + setName(dv.kinds[k]))) : '') + '.');
-          part('Words', WK.words && WK.words.source === 'pack' ? packTxt(med) : 'the collector\'s', WK.overlay && WK.overlay.source === 'pack' ? ', with the ' + WK.overlay.name + ' overlay.' : '.');
+          part('Words', WK.words && WK.words.source === 'pack' ? srcOf([WK.words.set], packTxt(med)) : 'the collector\'s', WK.overlay && WK.overlay.source === 'pack' ? ', with the ' + WK.overlay.name + ' overlay.' : '.');
         });
         stat('Fallbacks', dd => {
           const out = fallbackLines(r, WK, s, pack, cat, labels);

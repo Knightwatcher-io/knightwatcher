@@ -120,6 +120,8 @@
     // at the empty dish: the pie stands to the knight's left. Kept as plain data for the world
     // format being drafted to take over.
     can: ['attack', 'disk_full', 'backup_overdue', 'device_down', 'cpu_hot', 'memory_tight'],
+    // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
+    hosts: ['flies', 'crate', 'feast'],
     rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 98, act: 'look', dur: 14 }],
     act, paint, draw,
     // where the crate may land (docs/worlds.md): the beaten earth in front of the door, between the

@@ -2757,15 +2757,15 @@
       if (!p) return 'pack not loaded';
       return find(p, s[1]);
     };
-    // the build
-    let build = null;
+    // the build: the base pack's, or from format 1.1 a body of any loaded pack, with its own head
+    let build = null, bp = base;
     const wantB = asked(look, 'build');
     const rb = why(wantB, (p, b) => {
-      if (p !== base || !has(base.data.builds, b)) return 'no such build';
-      build = b;
+      if (!(isObj(p.data.builds) && has(p.data.builds, b))) return 'no such build';
+      build = b; bp = p;
       return '';
     });
-    if (rb) { build = D.build; fallbacks.push({ kind: 'build', key: 'build', wanted: wantB === undefined ? null : wantB, used: BASE_ID + '/' + build, reason: rb }); }
+    if (rb) { build = D.build; bp = base; fallbacks.push({ kind: 'build', key: 'build', wanted: wantB === undefined ? null : wantB, used: BASE_ID + '/' + build, reason: rb }); }
     // the items
     const chosen = {}, defaults = {};
     for (const slot of LOOK_SLOTS) {
@@ -2804,12 +2804,12 @@
     const same = (a, b) => !!(a && b && a.pack === b.pack && a.id === b.id);
     const name = c => (c ? c.pack.id + '/' + c.id : null);
     const diffsOf = () => {
-      const b = base.data.builds[build], diffs = {};
+      const b = bp.data.builds[build], diffs = {};
       MEASURES.forEach((m, i) => { diffs[DIFFS[i]] = b.m[m[0]] - m[1]; });
       return diffs;
     };
     const totals = () => lookTotals({ items: s => (chosen[s] ? { item: itemOf(chosen[s]), sum: chosen[s].pack.sums[chosen[s].id] } : null),
-      head: { item: base.data.items[base.data.builds[build].head], sum: base.sums[base.data.builds[build].head] } });
+      head: { item: bp.data.items[bp.data.builds[build].head], sum: bp.sums[bp.data.builds[build].head] } });
     const drop = (slot, reason) => {
       fallbacks.push({ kind: 'item', key: slot, wanted: name(chosen[slot]), used: name(defaults[slot]), reason });
       chosen[slot] = defaults[slot];
@@ -2835,16 +2835,16 @@
       if (!over) break;
       const slot = LOOK_SLOTS.find(s => chosen[s] && !same(chosen[s], defaults[s]));
       if (slot) { drop(slot, over); continue; }
-      if (build === D.build) break;
-      fallbacks.push({ kind: 'build', key: 'build', wanted: BASE_ID + '/' + build, used: BASE_ID + '/' + D.build, reason: over });
-      build = D.build;
+      if (build === D.build && bp === base) break;
+      fallbacks.push({ kind: 'build', key: 'build', wanted: bp.id + '/' + build, used: BASE_ID + '/' + D.build, reason: over });
+      build = D.build; bp = base;
     }
     t = totals();
-    const b = base.data.builds[build], diffs = diffsOf(), items = {};
+    const b = bp.data.builds[build], diffs = diffsOf(), items = {};
     for (const slot of LOOK_SLOTS) if (chosen[slot]) items[slot] = { pack: chosen[slot].pack.data, item: itemOf(chosen[slot]), id: chosen[slot].pack.id };
     const byId = new Map(Array.from(packs.values()).map(p => [p.data, p]));
-    const lists = compileLists({ diffs, build: { pack: base.data, b }, items, pal: data => pal(byId.get(data)) });
-    const used = { build: BASE_ID + '/' + build, items: {}, swatches: swName };
+    const lists = compileLists({ diffs, build: { pack: bp.data, b }, items, pal: data => pal(byId.get(data)) });
+    const used = { build: bp.id + '/' + build, items: {}, swatches: swName };
     for (const slot of LOOK_SLOTS) if (chosen[slot]) used.items[slot] = name(chosen[slot]);
     const main = items.main ? items.main.item : null, m = {};
     MEASURES.forEach(x => { m[x[0]] = b.m[x[0]]; });

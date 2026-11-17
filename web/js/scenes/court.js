@@ -340,6 +340,8 @@
     // monarch taking turns to talk, whatever else is up, so it acts the SSH session alone. Kept
     // as plain data for the world format being drafted to take over.
     can: ['ssh_session'],
+    // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
+    hosts: [],
     key: keyOf, paint, draw, drawn
   };
 })(window.KW);

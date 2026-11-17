@@ -65,6 +65,8 @@
     // scene, a device down and memory running tight. Kept as plain data for the world format being
     // drafted to take over.
     can: ['attack', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
+    // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
+    hosts: ['flies', 'crate', 'feast', 'foe'],
     rounds: [{ x: 104, act: 'sniff', dur: 22 }, { x: 98, act: 'yawn', dur: 14 }, { x: 101, act: 'look', dur: 16 }],
     paint, draw, foeZone: FOE_ZONE,
     // where the crate may land (docs/worlds.md): the ground between the devices before the tent and

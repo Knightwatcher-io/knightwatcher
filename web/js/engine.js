@@ -11,7 +11,7 @@
      tv      whether the television in the house is on
      helmet  'auto' (off indoors), 'on' or 'off'
      patron  the patron at court, the monarch: { id, skin, hair, robe }. id is 'a', 'b' or 'c',
-             'a' when it is left out; skin is { id, face, cheek } from one of the base pack's skin
+             or another world's patron by its long name, 'a' when it is left out; skin is { id, face, cheek } from one of the base pack's skin
              swatches, or null for the skin the court draws by default; hair is { id, bands, brow }
              from one of its hair swatches, or null for the hair each monarch is drawn with; robe
              is { id, bands } from one of its tabard swatches, or null for the robe each monarch
@@ -23,7 +23,11 @@
              scene the page has not loaded or that cannot act it, plays in the scene KW.state gives
              it, the code's own
      pet     the pet, the mouser cat: { id, coat }. id names a pet of KW.cast.pets, the first when
-             it is left out or names none; coat one of its coats, its first when it names none */
+             it is left out or names none; coat one of its coats, its first when it names none
+     foe     the foe of the event with one (the banned address's), by its name in KW.cast.foes or
+             another world's by its long name; the event's own (the goblin) when it names none
+     critter what a blocked advert becomes, by its name in KW.cast.critters or another world's by
+             its long name; the fly when it names none */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, K = KW.knight, P = KW.props, SP = KW.sprites, C = D.C, U = V.U;
@@ -47,6 +51,16 @@
     goblin: { dur: 3400, where: ['battlement', 'camp'], foe: 'goblin', exit: 'poof' },
     crate:  { dur: 4200, where: OUTDOORS },
     feast:  { dur: 3600, where: ['battlement', 'camp', 'yard', 'house'] } };
+  /* Whether the scene name plays the event type: by the scene's hosts, which name the flies, the
+     crate, the feast and the foe (an event with a foe is hosted as 'foe'), so that a scene of any
+     world says what it plays; a scene that gives no hosts plays the events whose where names it,
+     the medieval world's lists, which its scenes' hosts repeat. */
+  const hostOf = type => (EVENTS[type].foe ? 'foe' : type);
+  function hosts(name, type) {
+    if (!Object.prototype.hasOwnProperty.call(EVENTS, type)) return false;
+    const sc = name ? KW.scenes[name] : null;
+    return sc && Array.isArray(sc.hosts) ? sc.hosts.includes(hostOf(type)) : EVENTS[type].where.includes(name);
+  }
 
   let main = null, kx = 96 * U, ev = null, curScene = '', fadeAt = -1e9, sceneT0 = 0, round = { i: 0, arr: 0 };
   const flies = []; let swat = null, lastSwat = -1e9, pendingFlies = 0;
@@ -82,6 +96,11 @@
      fall; the fly's drawing is the critter's, from KW.cast, which the world's cast fills
      (world.js), or from the code's own, KW.props.CRITTERS, on a page without the compiler. */
   const critters = () => (KW.cast ? KW.cast.critters : P.CRITTERS);
+  /* The critter the input names (by its name or long name), else the fly. */
+  function critterNow() {
+    const C = critters(), want = E.input.critter;
+    return typeof want === 'string' && Object.prototype.hasOwnProperty.call(C, want) ? C[want] : C.fly;
+  }
   const flyOf = (list, t, salt) => {
     const live = list.filter(f => !f.dead), side = live.filter(f => f.side > 0).length <= live.filter(f => f.side < 0).length ? 1 : -1, h = hash(list.length * 13 + salt + Math.floor(t));
     return { side, r: 130 + (h % 110), th: .35 + ((h >> 5) % 100) / 100 * 1.1, ph: (h >> 9) % 7, born: t, dead: 0, h };
@@ -260,7 +279,7 @@
   function fireEvent(type, text) {
     const e = EVENTS[type], w = E.input.w; if (!e) return;
     if (text) KW.ui.caption(text, e.dur + 1500);
-    if (w.lv >= 3 || !e.where.includes(sceneOf(w, frozen() ? KW.hooks.t : performance.now())) || swat) return;
+    if (w.lv >= 3 || !hosts(sceneOf(w, frozen() ? KW.hooks.t : performance.now()), type) || swat) return;
     ev = { type, t0: frozen() ? 0 : performance.now(), dur: e.dur };
   }
 
@@ -310,6 +329,12 @@
     return Math.min(sp[1] - 30, Math.max(sp[0] + 30, kx - 160)) - 30;
   }
   const foesNow = () => (KW.cast ? KW.cast.foes : P.FOES);
+  /* The foe of the event e: the one the input names (a foe of KW.cast.foes, by its name or long
+     name), else the event's own. */
+  function foeFor(e) {
+    const F = foesNow(), want = E.input.foe;
+    return typeof want === 'string' && Object.prototype.hasOwnProperty.call(F, want) ? F[want] : F[e.foe];
+  }
 
   /* Each class of place's box, as pack.js's CLASS_BOX gives it ([x0, y0, x1, y1] from the base):
      what any device of the class may paint. */
@@ -420,7 +445,7 @@
      line it comes over, and when the blade meets it. null when it has no room within the weapon's
      reach, so a foe never plays a hit the blade did not give. */
   function foePlan(type, sc, s, o) {
-    const e = EVENTS[type], F = foesNow()[e.foe]; if (!F) return null;
+    const e = EVENTS[type], F = foeFor(e); if (!F) return null;
     const gaps = { 1: foeGaps(F, o, 1), '-1': foeGaps(F, o, -1) }, spot = foeSpot(F, sc, s.devices, s.places, o.x, gaps);
     if (!spot) return null;
     const q = contactQ(F, spot.x, spot.side, o), S = FOE.strike; if (q >= 1) return null;
@@ -647,7 +672,7 @@
     const o = K.pose(w.id, t); o.floor = HFL;
     o.helmet = inp.helmet === 'on' ? true : inp.helmet === 'off' ? false : sc.helmet !== false;
     if (sc.sword === false) o.sword = false;
-    if (ev && (serious || !EVENTS[ev.type].where.includes(scene))) ev = null;
+    if (ev && (serious || !hosts(scene, ev.type))) ev = null;
 
     // strolling, and what each spot is for
     const free = w.lv < 3 || w.id === 'memory_tight' || w.id === 'disk_full';
@@ -712,7 +737,7 @@
     if (!inBed) K.draw(o);
     if (spot) petHD(pet, E.input.pet && E.input.pet.coat, petAt(spot, t));
     placesHD(t, s, true);
-    const fly = critters().fly;
+    const fly = critterNow();
     for (const f of flies) {
       if (!f.dead) { const [x, y] = flyPos(f, t); fly.draw(x, y, Math.floor(t / 90 + f.ph) % 2); }
       else { const a = t - f.dead; if (a < 260) P.poofHD(f.at[0], f.at[1]); if (a < 900) fly.dead(f.at[0], f.at[1] + a * a / 900); }
@@ -745,7 +770,7 @@
   }
 
   Object.assign(E, {
-    EVENTS, TURNS, sceneOf,
+    EVENTS, TURNS, sceneOf, hosts,
     /* The foe player's parts, for the tests: the tables, where a foe stands, when the blade meets
        it, the plan of an event, the strike on a pose and the foe at a moment. */
     crateX, CLASS_BOX,

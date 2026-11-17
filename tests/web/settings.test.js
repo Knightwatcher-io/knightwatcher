@@ -70,7 +70,8 @@ test('with nothing set, every value is the page\'s own and the knight\'s look is
   assert.deepEqual([r.masked, r.faults, r.ignored], [[], [], []]);
   assert.deepEqual(SET.knightLook(r), {});
   assert.deepEqual(plain(SET.engineInput(r, PACK, 60000)), { turns: ['battlement', 'camp', 'house', 'yard'], turnMs: 60000, patron: { id: 'a', skin: null, hair: null, robe: null }, pet: { id: 'cat', coat: 'calico' }, scenes: {},
-    homes: HOMES, kinds: { pi: 'medieval', camera: 'medieval', machine: 'medieval', vm: 'medieval', box: 'medieval' } });
+    homes: HOMES, kinds: { pi: 'medieval', camera: 'medieval', machine: 'medieval', vm: 'medieval', box: 'medieval' },
+    foe: 'goblin', critter: 'fly', words: 'medieval', overlay: 'medieval' });
   assert.deepEqual(lines, []);
 });
 
@@ -325,7 +326,7 @@ test('the engine\'s input: the rotation\'s scenes, its length only when set, the
   const e = SET.engineInput(s.now(), PACK, 60000);
   assert.deepEqual(plain(e), { turns: ['camp', 'house'], turnMs: 300000, patron: { id: 'c',
     skin: { id: 'deep', face: PACK.swatches.skin.deep.entries.face, cheek: PACK.swatches.skin.deep.entries.cheek }, hair: null, robe: null }, pet: { id: 'cat', coat: 'ginger' }, scenes: {}, homes: HOMES,
-    kinds: { pi: 'medieval', camera: 'medieval', machine: 'medieval', vm: 'medieval', box: 'medieval' } });
+    kinds: { pi: 'medieval', camera: 'medieval', machine: 'medieval', vm: 'medieval', box: 'medieval' }, foe: 'goblin', critter: 'fly', words: 'medieval', overlay: 'medieval' });
   assert.equal(SET.engineInput(s.now(), null, 60000).patron.skin, null, 'no base pack, the court\'s own skin');
 });
 

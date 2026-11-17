@@ -415,8 +415,11 @@ Each file in `js/scenes/` registers one object on `KW.scenes` under the scene's 
 nothing outside it. The engine reads only what is listed here, and sets the grid's transform
 before it calls `paint`, `draw` and `over`. A scene may also come from a world pack: the scene
 compiler (`js/world.js`) builds an object with this same interface from the pack's data and puts it
-in the code scene's place, which a `dev` page does today for every scene ([worlds.md](./worlds.md)). The compiled scene works out its own `key`, gives `outdoors` from the
-pack's `hosts`, `foeZone` and, where the foe has a wall, `wallAt` from its `foe`, and `crate` from its `crate`.
+in the code scene's place, which a `dev` page does today for every scene ([worlds.md](./worlds.md)),
+and puts another world's scenes beside them under their long names, `<pack>/<scene>`
+([worlds.md](./worlds.md#other-worlds)). The compiled scene works out its own `key`, gives `hosts`
+and `outdoors` from the pack's `hosts`, `foeZone` and, where the foe has a wall, `wallAt` from its
+`foe`, and `crate` from its `crate`.
 
 | Field | Required | Meaning |
 |---|---|---|
@@ -431,6 +434,7 @@ pack's `hosts`, `foeZone` and, where the foe has a wall, `wallAt` from its `foe`
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
 | `wallAt(x)` | no | the y of the top of whatever a foe climbs over at grid x; without it a foe digs up out of the ground |
 | `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a device on the ground or the pie, and 150 to 240 pixels from the knight's middle, within the reach of the weapon the knight holds; with no room the event shows its caption alone. A scene without it hosts no foe |
+| `hosts` | no | the events the scene plays, each of `flies`, `crate`, `feast` and `foe` (the event with a foe, the banned address's): `['flies', 'crate', 'feast', 'foe']` at the battlement and the camp, `['flies', 'crate', 'feast']` in the yard, `['feast']` in the house and `[]` elsewhere. The engine plays an event only in a scene that hosts it (`KW.engine.hosts(name, type)`); a scene without `hosts` plays the events whose `where` in `EVENTS` names it, the medieval world's lists, which the medieval scenes' `hosts` repeat |
 | `outdoors` | no | `true` where flies are swatted and the crate may land |
 | `crate` | where the crate lands | `{ span: [from, to] }`, the stretch of floor the crate may land on, at least 60 wide. The engine (`crateX`) lands the crate's middle at `clamp(kx - 160, from + 30, to - 30)`, as near 160 left of the knight as the stretch allows; the stretch lies clear of the ground places and the pie. The battlement gives `[150, 384]`, the camp and the yard `[298, 436]`. Without it the crate's left edge lands 320 left of the knight, and at least 70 inside the view's left edge, as it did before scenes gave one |
 | `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy` |
@@ -452,7 +456,7 @@ pack's `hosts`, `foeZone` and, where the foe has a wall, `wallAt` from its `foe`
 | `inBed`, `helmOff` | whether the knight is in bed, and whether the helmet is off |
 | `strike` | free for a scene's `act` to pass to its `draw` (the smithy's hammer blow) |
 | `patron` | the patron at court, the monarch, from the engine's input (the settings): `{ id, skin, hair, robe }` |
-| `patron.id` | `a`, `b` or `c` |
+| `patron.id` | `a`, `b` or `c`, or the long name of another world's patron, `<pack>/<patron>` |
 | `patron.skin` | the monarch's skin, `{ id, face, cheek }` from one of the base pack's skin swatches, or `null` for the court's own, which is the warm swatch's colours |
 | `patron.hair` | the monarch's hair, `{ id, bands, brow }` from one of the base pack's hair swatches (its three bands and its brow), or `null` for each monarch's own |
 | `patron.robe` | the monarch's robe, `{ id, bands }` from one of the base pack's tabard swatches (its four bands), or `null` for each monarch's own |
@@ -619,8 +623,10 @@ hides the review bar and drives the display:
   ([The cast](#the-cast)) and played by the engine's foe player from its tables
   (`KW.engine.foe.FOE`), so a later foe reuses the entrance, the strike and the exit. A `seq` lower than the
   highest played means the collector started again, and its events are adopted unplayed. Events
-  act out only while nothing at warning or above is up and in the scenes that suit them; the
-  caption shows regardless.
+  act out only while nothing at warning or above is up and in the scenes that host them (each
+  scene's `hosts`, [The scene interface](#the-scene-interface)); the caption shows regardless. The
+  foe and the critter are the ones the settings choose, the goblin and the fly unless a world or a
+  level names another (`foe`, `critter` in [The engine's input](#the-engines-input)).
 
 **Holding on.** Once the page has had a valid file, a fetch that fails or a file that cannot be
 read changes nothing on screen while that last valid file is no older than three of its own
@@ -1058,20 +1064,35 @@ resolved key by key the same way. What `now()` gives besides `values` and `from`
   `config.toml` the tabard `forest`, under a world chosen on the display, is `{ section: 'look',
   key: 'tabard', level: 'defaults', value: 'forest' }`.
 - `faults`: each part of the world that the page could not use and so gave the base world's,
-  `{ part, value, why }`: a patron, prop set or scene it has not loaded, a quiet scene that is not
-  quiet, a scene that cannot act its condition, a body or a swatch from a pack other than the base
-  pack.
+  `{ part, value, why }`: a body, swatch, item, patron, prop set or scene it has not loaded (`'not
+  loaded'`), a quiet scene that is not quiet, a scene that cannot act its condition.
 - `ignored`: see above.
 
 The page lists what it has loaded in `KW.settings.pageWorld()`, from the loaded scenes, `KW.state`
 and `KW.world.catalogue()`: the worlds by name, with each preset; the prop sets by name, with the
-kinds each draws; the scenes of a pack by their long names; and the long names of kw.medieval's
-parts with the short name each stands for. A world of another pack, called by its long name
-(`kw.example/world.neon`), is read part by part (`KW.settings.worldParts`): its outfit as the
-look's keys, an item no key can name in `items`; its patron, foe, critter, props, overlay and words
-by the names the page has loaded; its quiet scenes and its scene for each condition. Today the page
-draws only kw.medieval's scenes and cast, so another world's own scenes and cast fall back to the
-base world's, listed in `faults`; its prop set is drawn.
+kinds each draws; the scenes of a pack by their long names; the long names of kw.medieval's
+parts with the short name each stands for, and those of every other world pack's scenes, cast,
+words and overlays, each standing for itself; the bodies (`builds`), the swatches of each of the
+user's sets (`swatches`) and the items (`items`) of packs other than the base pack, by their long
+names; and the name of each such part (`titles`), which the screen shows. A world of another pack,
+called by its long name (`kw.example/world.neon`), is read part by part
+(`KW.settings.worldParts`): its body and swatches as the look's `build`, `skin`, `hair`, `tabard`
+and `plume`, by their short names when they are the base pack's and by their long names otherwise;
+its items as the look's keys where a key names them, and in `items` where none can; its patron,
+pet, foe, critter, props, overlay and words, its quiet scenes and its scene for each condition by
+the names the page has loaded. Every part the page has loaded is drawn: its scenes and cast from
+`KW.scenes` and `KW.cast` under their long names, its words and overlay put in use by
+`KW.world.useWords` and `useOverlay`, its body and outfit by the knight
+([worlds.md](./worlds.md#other-worlds)). A part it has not loaded falls back to the base world's,
+listed in `faults`.
+
+`build`, `skin`, `hair`, `tabard` and `plume` take the long name of a body or a swatch of a loaded
+pack at any level, as `world` and the cast's keys do; `knightLook()` passes a long name as it is
+and a short one as the base pack's, so `build = "kw.example/body.courier"` draws the knight on that
+body, with its own head. A long name the page has not loaded is left out, with `no pack the page
+has loaded gives that build` (or `swatch`). In `scenes`, a loaded world's scene by its long name may
+be given any condition with a scene of its own when it can act it, even one the page offers no
+choice for, such as `night`; a short name keeps to the conditions offered.
 
 The store's `chooseWorld(id)` saves a world on this display and clears every part this display has
 chosen, the look's other keys, the quiet scenes and the scene of each condition, in one write
@@ -1277,7 +1298,10 @@ refused, each with its step and reason. The world's entries:
 - **Parts**: where each part comes from, a line each: the knight with the base pack's id and
   version (or why it is drawn from code), the monarch, the scenes, the cast (the goblin, the fly and
   the cat in its coat), the devices (with any
-  kind drawn from another set) and the words with the overlay. Each line names the parts that
+  kind drawn from another set) and the words with the overlay. A part of another world names that
+  world's pack and version in place of the medieval world's: the knight on another pack's body or
+  in its swatches or items, the patron, a scene in use (in the quiet scenes, the world's scene of a
+  condition or one chosen for it), a member of the cast, and the words. Each line names the parts that
   differ from the world's and where they were set ("; the tabard (forest) chosen here."), and under
   the knight a line names the parts `config.toml` sets that give way to a world chosen above it.
 - **Fallbacks**: every fallback with its reason (`KW.settings.screen.fallbackLines`): what a level
@@ -1286,7 +1310,9 @@ refused, each with its step and reason. The world's entries:
   (`faults`); a scene, a kind of device or a member of the cast drawn from code, because it failed
   to compile or because it threw while drawing ("Camp: drawn from code. The scene camp threw while
   drawing: ..."), a kind of device drawn from the base world's set, the word set given way to the
-  collector's words, and the knight's items that fell back. "None. Every part is
+  collector's words, a part of another world not drawn because it failed to compile or threw
+  ("test.orbit/deck: not drawn, so the base world's is used. The scene test.orbit/deck threw while
+  drawing: ..."), and the knight's items that fell back. "None. Every part is
   drawn from where it is set." when there are none.
 
 **Where choices are kept.** Under the title, each editable page says where its choices go: "Saved
@@ -1333,7 +1359,13 @@ that take turns, in order (all four, `TURNS`, when it is left out or empty), `tu
 each lasts, `patron`, the monarch as `{ id, skin, hair, robe }`, its id and its skin, hair and
 robe, which the engine passes to the scenes in `s.patron`, `pet`, the pet and its coat as
 `{ id, coat }`, `scenes`, the scene chosen for a condition
-by its id, and `homes`, the world's own scene for each condition. `KW.engine.sceneOf(w, t)` gives the scene the winning condition `w` plays in: the one
+by its id, `homes`, the world's own scene for each condition, and `foe` and `critter`, the foe of
+the banned address's event and the critter a blocked advert becomes, each by the name `KW.cast`
+knows it by (`goblin`, `fly`, or another world's member by its long name). The engine draws the foe
+and the critter the input names when `KW.cast` has them, and the goblin and the fly otherwise; the
+patron and the pet likewise by `patron.id` and `pet.id`. The words and the overlay the settings
+choose (`words`, `overlay`) are not the engine's: `main.js` puts them in use with
+`KW.world.useWords` and `useOverlay` and sets the overlay's properties on the display again. `KW.engine.sceneOf(w, t)` gives the scene the winning condition `w` plays in: the one
 `scenes` names for it when that scene lists the condition in its `can`, else the one `homes` names
 under the same rule, else the condition's own in code (`w.scene`, from `KW.state.CONDITIONS`), else
 the quiet scene of the moment. A condition with no scene of its own follows the quiet scenes
@@ -1344,7 +1376,7 @@ build the input.
 ## The address
 
 The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `pl=`,
-`set=` and the settings hooks (`bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
+`set=` and the settings hooks (`wd=`, `bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
 `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`, `pc=`,
 `ck=`, `sc=`) also work in live mode. `f=`, `fa=`, `e=`, `sw=`, `dv=`, `st=` and `sm=` act in the demo and do nothing elsewhere. The
 settings hooks, `h=` and `hs=` are the highest of the settings' levels (see [Settings](#settings)):
@@ -1376,7 +1408,8 @@ down is used.
 | `ck=` | the clock: `24`, or `12` for 9:42 with a small PM |
 | `set=` | opens the settings screen at load on a page: `world`, `knight`, `monarch`, `pet`, `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
 | `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `device_down` on, the knight looks towards the first device that is down and alerts |
-| `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`. A page that cannot draw from the base pack draws Classic whatever the hook says |
+| `wd=` | the world: `medieval`, or a loaded world by its long name, such as `wd=kw.example/world.neon`, chosen at the address's level, so that it sets every part the address leaves alone. A hook's value may hold the slash of a long name, as `bd=kw.example/body.courier` or `sk=kw.example/chrome` |
+| `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`, or a loaded body by its long name. A page that cannot draw from the base pack draws Classic whatever the hook says |
 | `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its shield in the other, `two` the greatsword, or any weapon by its contract name: `longsword`, `mace_and_shield`. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
 | `sh=`, `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=`, `bk=` | the knight's gear by its contract value: the shield (`sh=round`), the helmet (`hm=coif`), the plume's style (`ps=feather`), the body (`bo=cuirass`), the shoulders (`so=lames`), the arms (`am=mail`), the hands (`hn=leather`), the legs (`lg=hose`), the feet (`ft=sabatons`) and the back (`bk=cloak`, or `bk=none`); the values are in [state.md](./state.md) |
 | `sk=`, `hc=`, `tb=`, `pm=` | the knight's skin, hair colour, tabard and plume: the id of one of the base pack's swatches, such as `sk=deep&hc=black&tb=sable&pm=gold` (the ids are in [packs.md](./packs.md#the-base-pack)) |
