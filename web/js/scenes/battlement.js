@@ -69,6 +69,8 @@
     // and running hot; and, as a quiet scene, a device down and memory running tight. Kept as plain
     // data for the world format being drafted to take over.
     can: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
+    // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
+    hosts: ['flies', 'crate', 'feast', 'foe'],
     rounds: [{ x: 92, act: 'guard', dur: 18 }, { x: 88, act: 'look', dur: 16 }, { x: 96, act: 'sniff', dur: 12 }],
     key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt, foeZone: FOE_ZONE,
     // where the crate may land (docs/worlds.md): the stretch of walkway between the device at the left

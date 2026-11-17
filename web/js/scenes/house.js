@@ -189,6 +189,8 @@
     // tight. Not the attack: the weapon is put away here. Kept as plain data for the world format
     // being drafted to take over.
     can: ['container_unhealthy', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming', 'night'],
+    // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
+    hosts: ['feast'],
     rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 108, act: 'yawn', dur: 14 }, { x: 111, act: 'look', dur: 14 }],
     key: s => (s.tv ? 'tv' : '') + '|' + K.rest.key('main') + offKey(), paint, draw, over
   };

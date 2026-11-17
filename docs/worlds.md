@@ -17,7 +17,10 @@ and is signed: a deployed page and a `dev` page alike draw everything from it. S
 loading and failure: a part that throws while drawing gives way to its code copy alone ([When a
 part throws](#when-a-part-throws)), the world packs the collector downloads are read as the knight's
 are ([Downloaded world packs](#downloaded-world-packs)), and the admin page draws its previews from
-the pack, as a wall does.
+the pack, as a wall does. Step W10b draws any loaded world: another world pack's scenes, cast,
+words, overlay, body, swatches and items reach the wall through the settings, under their long
+names ([Other worlds](#other-worlds)), the events play where each scene's `hosts` says, and a
+small world made for the tests, `test.orbit`, proves it ([The test world](#the-test-world)).
 
 ## The medieval world's pack
 
@@ -207,8 +210,8 @@ whose `kw-version` meta tag says `dev`. A `dev` page reads `kw.medieval` signed 
 page reads it only when it carries a signature that verifies against a key in `KEYS`.
 
 Each scene of `kw.medieval` whose id names a code scene (today every scene) is compiled and takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
-which is not enumerable, so the engine and the settings, which list the scenes by their short names
-until worlds can be chosen, see the same seven scenes as before. The code scenes stay where they
+which is not enumerable, so the engine and the settings, which list the base world's scenes by
+their short names, see the same seven scenes as before. The code scenes stay where they
 are, in `js/scenes/`, and are the fallback: the owner decided that the medieval world keeps a copy
 drawn from code, as the knight does.
 
@@ -278,9 +281,10 @@ compiled. A member that fails to compile is drawn from code, with a line of its 
 | `members` | for each member compiled or tried, by its id, `'pack'` or `'code'` |
 | `faults` | `{ member, reason }` for each member that failed to compile, and `{ member, reason, step: 'draw' }` for each that threw while drawing |
 
-The words and the overlay are read in the same call, each by its name until worlds can be chosen:
-the word set `words.medieval` and the overlay `overlay.phosphor` ([The words and the
-overlay](#the-words-and-the-overlay)). With the pack refused, missing or giving neither, the page
+The words and the overlay are read in the same call, the base world's by their names, the word set
+`words.medieval` and the overlay `overlay.phosphor`, and another pack's put in use when the settings
+choose it ([The words and the overlay](#the-words-and-the-overlay), [Other
+worlds](#other-worlds)). With the pack refused, missing or giving neither, the page
 shows the collector's own quiet line and captions and keeps the colours and the font `display.css`
 writes out, which are the overlay's own; that adds no line of its own. One that fails to compile is
 left out the same way, with a line, `knightwatcher: the words are the collector's: the word set
@@ -399,7 +403,7 @@ every text ([page.md](./page.md#the-admin-page)).
 | Name | Is |
 |---|---|
 | `compile(pack, id)` | the scene `id` of a loaded pack (a `read()` result of format 1.1) as an object with the scene interface; throws when the scene names something the compiler does not build |
-| `start(texts, allowUnsigned, opts)` | reads `kw.medieval` from `texts` and puts its scenes in place, as above, each behind a guard ([When a part throws](#when-a-part-throws)); `opts.keys` replaces `KEYS` in `read()`, for the tests only |
+| `start(texts, allowUnsigned, opts)` | reads `kw.medieval` from `texts` and puts its scenes in place, as above, each behind a guard ([When a part throws](#when-a-part-throws)), and every other world pack's parts under their long names ([Other worlds](#other-worlds)); `opts.keys` replaces `KEYS` in `read()`, for the tests only |
 | `compileKind(pack, set, kind)` | the kind of device `kind` of the prop set `set` of a loaded pack, as an entry of `KW.kinds` ([The devices](#the-devices)); throws when it names something the compiler does not build |
 | `compileMember(pack, id)` | the cast member `id` of a loaded pack, as an entry of `KW.cast` ([The cast](#the-cast)); throws when it names something the compiler does not build |
 | `status` | what the last `start` found, with any fault since, or `null` before it |
@@ -409,7 +413,9 @@ every text ([page.md](./page.md#the-admin-page)).
 | `compileWords(pack, id)`, `compileOverlay(pack, id)` | the word set or the overlay `id` of a loaded pack, compiled ([The words and the overlay](#the-words-and-the-overlay)); each throws when it names something the compiler does not build |
 | `join(parts, sets, limit)` | the line a list of parts makes in a set of templates, within `limit` characters, or `null` (below) |
 | `quietLine(parts, text)`, `caption(type, parts, text)` | the quiet line and an event's caption the page shows: built from the parts in the words in use, or `text` as it is |
-| `words`, `overlay` | what the last `start` found for the words and the overlay, or `null` before it |
+| `words`, `overlay` | the word set and the overlay in use: what the last `start` found, or the one `useWords` or `useOverlay` put in use since, or `null` before it |
+| `useWords(name)`, `useOverlay(name)` | put in use the word set or the overlay the settings choose: `'medieval'` for the base world's, or another pack's by its long name ([Other worlds](#other-worlds)) |
+| `others` | what the last `start` found of the other world packs, `{ packs, parts, faults }`, or `null` before it |
 | `MEDIEVAL`, `PROPS`, `WORDS`, `OVERLAY` | `'kw.medieval'`, `'props.medieval'`, `'words.medieval'`, `'overlay.phosphor'` |
 | `QUIET_MAX`, `CAPTION_MAX` | 52 and 44, the longest quiet line and caption, as the collector's |
 
@@ -426,7 +432,7 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 
 | Interface | From |
 |---|---|
-| `spot`, `can` | the same fields |
+| `spot`, `can`, `hosts` | the same fields |
 | `rounds` | the same field, but in a scene with an `anvil` or a `seat`, below |
 | `places` | `things`, each place copied as it is |
 | `rests` | `rests`, below; only when there are any |
@@ -444,13 +450,13 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 | `key(s)` | worked out by the compiler, below |
 | `drawn(mon)` | `seat`: each patron's own hair and robe colours, from `KW.cast.patrons`, as `court.js` gives them for the settings' "As drawn" |
 
-`name` and `quiet` are not read yet: the engine's own lists say which scenes take turns while all is
-quiet, until worlds can be chosen. Of `hosts`, only the flies and the crate are read, as `outdoors`,
-the one flag the engine lets both in by; it is computed into the engine's list of the crate's scenes
-when `engine.js` loads, before `start` swaps the scenes, so a compiled scene must give the code
-scene's. The feast and the foe play where `EVENTS` in `engine.js` says. `tests/web/world-scenes.test.js`
-holds every scene's `quiet` and `hosts` to those lists and the settings' quiet scenes, so the data is
-right when the engine comes to read it. `decor` is not read, since nothing draws decorations yet.
+`name` and `quiet` are not read by the engine: the settings take the quiet scenes in turn from the
+world's preset. `hosts` is given as it is, and the engine plays an event only in a scene that hosts
+it (`KW.engine.hosts`); the flies and the crate also give `outdoors`, the one flag the engine lets
+both in by. The code scenes give the same `hosts` as their data, and `EVENTS` in `engine.js` keeps
+the medieval world's lists for a scene that gives none. `tests/web/world-scenes.test.js` holds every
+scene's `quiet` and `hosts` to those lists and the settings' quiet scenes. `decor` is not read, since
+nothing draws decorations yet.
 
 **Terms.** A scalar is a number, or a term object whose keys are added up in the order they are
 written: `c`, the named values `L`, `R`, `T` and `W` (the canvas's edges and width on the grid,
@@ -646,7 +652,18 @@ the backdrop's key goes on with `'|'` and the court's own key of the patron: its
 where it comes from for a patron from a pack, and the ids of its skin, hair and robe, so a change of
 monarch or of colours paints the backdrop again. The act holds the watcher at its spot, so a scene
 with a `seat` gives no `rounds`, as `court.js` gives none, and it gives `drawn(mon)` for the
-settings.
+settings. The patron may be another world's, by its long name: the mark draws whichever patron
+`KW.cast.patrons` holds under `s.patron.id`.
+
+**Each act in its own condition.** The court and the smithy each act one condition, so their acts
+play whatever else is up. A scene of another world may hold more than one act, as Orbit's Bridge
+holds a seat and an anvil and acts both a shell open and an update. So an act plays while its own
+condition is up (the seat's while `ssh_session` is, the anvil's while `updating` is), and always in a
+scene whose `can` lists nothing else. While the seat's act does not play the patron sits silent,
+mouth shut, with no bubble, and the watcher's mouth is its own; while the anvil's does not, the
+hammer is still, `strike` never holds, the blade shows no hot tip and the weapon stays as the
+scene's `weapon` says. The court
+and the smithy play exactly as before.
 
 **What it does not build yet,** it refuses by name: the scene does not compile, the reason says
 `<field>: <what> is not built in this engine yet`, and the scene is drawn from code. That covers
@@ -881,7 +898,9 @@ eye the same in both. What falls is the 6 by 5 rect the engine drew itself befor
 in the pack's order (`{ calico: 'Calico', ginger: 'Ginger tabby' }`); `poses`, the eleven the
 engine's catch asks for; `size` and `anchor`, its sprite's `size` and `feet`; `pose(coat, name)`, a
 canvas of the sprite's size with the pose painted once from its stamp, the first time it is asked
-for, a coat or a pose the pet lacks giving its first; `spots`, its spot in each scene; and the
+for, a coat or a pose the pet lacks giving its first; `spots`, its spot in each scene, by the name
+the engine knows the scene by (kw.medieval's by their short names, `camp`, and another pack's by
+their long names, `test.orbit/deck`, as its scenes are put in `KW.scenes`); and the
 measures of its pounce, `paw`, `take`, `land` and `lift`. A pose's stamp is pix shapes alone, at
 whole points inside the sprite (the reader checks this), so the compiler works each pose out into
 cells, a colour or nothing for each pixel of the sprite, at start, and paints the canvas from them
@@ -1002,8 +1021,9 @@ the preset, `KW.settings.pageWorld()` takes the base world's scenes from it; wit
 the code, so with nothing set the display is the same either way.
 
 `start()` reads every pack among the texts but the base pack, which the knight reads, with the same
-rule for signatures. Besides kw.medieval, it keeps each pack read cleanly that holds presets or prop
-sets; a refusal of one of them is the knight's to report, as it reads the same texts. Today the page
+rule for signatures. Besides kw.medieval, it keeps every pack read cleanly, for its presets, prop
+sets, scenes, cast, words, overlays, bodies, swatches and items; a refusal of one of them is the
+knight's to report, as it reads the same texts. Today the page
 ships no other world pack; one the collector downloads into `data/packs/` joins them when the world
 starts again with it ([Downloaded world packs](#downloaded-world-packs)). `catalogue()` lists for
 the settings what is loaded:
@@ -1021,11 +1041,16 @@ the settings what is loaded:
   `kw.medieval/foe.goblin`, `kw.medieval/critter.fly`, `kw.medieval/pet.cat` for `cat`, `kw.medieval/props.medieval`,
   `kw.medieval/overlay.phosphor`, `kw.medieval/words.medieval` and each scene's long name;
 - `homes` and `quiet`: the base world's scene for each condition and its quiet scenes, from
-  `world.medieval`.
+  `world.medieval`;
+- for every other pack ([Other worlds](#other-worlds)): in `scenes` and `names.scene` each of its
+  scenes in use by its long name, standing for itself, and in `names` each member of its cast in
+  use (patrons under `monarch`), each word set and each overlay the same way; `builds`, each body
+  by its long name with its name; `swatches`, for each of the user's sets, each swatch by its long
+  name with its name; `items`, each item by its long name with its slot; and `titles`, the name of
+  each of these parts and of each prop set, which the settings screen shows.
 
-Only kw.medieval's scenes, cast, words and overlay are drawn. Another world's own scenes and cast
-are listed in what the settings resolve as parts the page cannot use, and the base world's are
-drawn in their place, as for a part not loaded at all.
+Every other world pack's scenes, cast, words and overlay are drawn too, under their long names, and
+`catalogue()` lists them: see [Other worlds](#other-worlds).
 
 **The devices per kind.** The prop set `props` names draws every kind; `[look.devices]` names a set
 for one kind over it. `useKinds(choice)`, given `{ pi: name, camera: name, ... }` as the settings
@@ -1041,6 +1066,102 @@ kind's `from` names its pack and the compile, so the engine's still-part canvase
 drawing apart from another's. `drawingOf(name, kind)` gives one set's drawing of one kind, or the
 reason it cannot, without touching `KW.kinds`: the settings screen draws its device rows from it
 ([page.md](./page.md#the-settings-screen)).
+
+## Other worlds
+
+A world pack other than `kw.medieval`, shipped with the page or downloaded into `data/packs/`, is
+drawn whole once the settings choose its world or any of its parts. `start()` reads it under the
+knight's rule for signatures and puts its parts in place under their long names, `<pack>/<id>`:
+
+| Part | Where it goes | Chosen by |
+|---|---|---|
+| each scene | `KW.scenes['<pack>/<scene>']`, compiled and guarded as kw.medieval's are, not enumerable | the preset's `scenes.quiet` and `scenes.for`, `[quiet] scenes`, `[scenes]` |
+| each member of the cast | `KW.cast.<role set>['<pack>/<member>']` (`patrons`, `foes`, `critters`, `pets`), not enumerable | the preset's `cast`, the look's `monarch`, `foe`, `critter` and `pet` |
+| each word set and overlay | compiled and kept, for `useWords()` and `useOverlay()` | the preset's `words` and `overlay`, the look's keys of those names |
+| each prop set | compiled kind by kind when first chosen, as before | the preset's `props`, `[look.devices]` |
+| its bodies, swatches and items | read by the knight, which reads the same texts | the preset's `body` and `outfit`, the look's `build`, `skin`, `hair`, `tabard` and `plume`, `[look.items]` |
+
+Not enumerable means the engine and the settings, which list the base world's scenes and cast by
+their short names (the quiet scenes in turn, the first pet when none is named), see no more of them
+than before; a long name reaches its part all the same. With nothing set the display is exactly as
+it is without the pack, which `tests/web/orbit.test.js` checks frame by frame.
+
+The engine plays what the settings resolve. The quiet scenes in turn and each condition's scene
+come from `turns`, `scenes` and `homes` as before, long names among them. The foe of the banned
+address's event is the one the input's `foe` names, the critter a blocked advert becomes the one
+its `critter` names, the patron on a seat and the pet the ones `patron.id` and `pet.id` name; each
+the base world's (the goblin, the fly, monarch A, the cat) when `KW.cast` does not hold the one
+named. An event plays in a scene that hosts it, by the scene's `hosts`. A pet's spots are keyed by
+the long names of its pack's scenes, so another world's pet rests and catches in its own world's
+scenes and gives its flies to the watcher in a scene where it has no spot, as the cat does in the
+cellar. `main.js` puts the chosen words and overlay in use with `useWords()` and `useOverlay()`
+whenever the settings change them, and sets the overlay's properties on the display again; a set
+not loaded, or `'medieval'`, gives the base world's.
+
+The knight's body may be another pack's: `KW.pack.resolve` takes a build from any loaded pack
+(format 1.1 lets any pack carry builds), with that build's own head item, and items and swatches
+from any loaded pack as before. A throw in the head's list is put down to the pack that gave the
+build.
+
+`KW.world.others` holds what `start()` found: `packs`, each `{ id, version, signed }`; `parts`, each
+part by its long name, `'pack'`, or `'code'` once it has failed or given way; and `faults`, each `{
+part, reason }`, with `step: 'draw'` for one that threw. A part that fails to compile is left out,
+with a line, `knightwatcher: the scene test.orbit/deck is not drawn, and the base world's is used:
+it could not be compiled: <reason>` (`console.warn`), so the settings find it not loaded and give the
+base world's part, listed in their `faults`. A part that throws while drawing is caught for that
+frame as a part of kw.medieval is ([When a part throws](#when-a-part-throws)) and taken out from
+the next, with the line `knightwatcher: the scene test.orbit/deck is not drawn, and the base world's
+is used: it threw while drawing: <message>`; on the call that throws, a value the engine uses (a
+foe's pose) is the base world's member's. It is remembered by its pack's id and version, so a
+restart with the same version keeps it out. The status page lists each under Fallbacks, "test.orbit/deck:
+not drawn, so the base world's is used. ...", and its Parts entry names the other pack where a part
+in use comes from it.
+
+Of 9.3's meetings of parts from different worlds, what holds today: a body and items from
+different packs are drawn together, as every item fits every build's ranges; props stand in
+another world's places, and a kind the chosen set lacks takes the base world's drawing; a patron
+sits on any seat; a foe plays in any scene that hosts it and gives it room, over its wall or out of
+its ground; a scene from another world may be given a condition it can act, by `[scenes]` or by a
+world's preset, and a condition with no scene in the chosen world plays in the base world's own; a
+part not loaded takes the base world's; and words without a template for a part show the
+collector's own line.
+
+## The test world
+
+`test.orbit` ("Orbit") is a small world made unlike the medieval one, so that anything the engine
+still assumes about the medieval world shows at once. It lives in
+`tests/web/fixtures/worlds/test.orbit.pack.json`, outside `web/`, so `tools/deploy.sh` never copies
+it; it is never signed, and the tests read it on `dev` terms. `tests/web/fixtures/worlds/orbit.js`
+writes it, and checks it with `--check` ([development.md](./development.md#the-test-world)). What it
+holds:
+
+| Part | What | Proves |
+|---|---|---|
+| body | `body.unit`, "Unit", a box-headed robot at an end of every measurement's range (shoulder 40, chest 32, waist 28, hip 32, stance 16, leg 100, height 160, head 42), with its own head item `head.unit` | the knight drawn on another pack's body, with its head |
+| outfit | the base pack's gear in flat panels, one item in every slot but `back` and `off` (`main.bar`, `helm.dome`, `plume.aerial`, `hair.wire` and the rest), and a swatch of each set: `chrome` skin with its `sick` and `hot` ramps, `wire` hair, `panel` tabard, `beacon` plume | items and swatches from another pack; the face on a metal skin |
+| scenes | `deck`, quiet, acting every condition but `ssh_session` and `updating`, with a bunk as its `bed`, a wall panel as its `screen`, a layer while the WAN is down, three ground places, the effects `stars`, `twinkle` and `drift` falling, a keyframe clock in ms, and a foe zone with no wall; `bridge`, with a `seat` for the Captain and a workbench as its `anvil`, acting `ssh_session` and `updating`; `airlock`, acting `cpu_hot` alone | another world's scenes in turn and for conditions; each act in its own condition; the Airlock offered for running hot alone |
+| cast | `patron.captain`, `foe.glitch` (out of the floor), `critter.moth` (the Spark moth), `pet.drone` (a hover drone with a resting spot in each scene, which catches the moths) | the cast on rigs of their own; a foe in a scene without a wall; the pet role on art that is not a cat |
+| props | `props.orbit`: `pi` (a pie tin with an aerial), `camera` (a dome) and `machine` (a rack), each with the engine's own lamp; no `vm` or `box` | the per-kind fallback to the base world's drawing |
+| words | `words.orbit`: `ALL CLEAR`, `{n} ads zapped`, captions `EJECTED {addr}`, `DOCKED`, `LOGGED` | another world's words |
+| overlay | `overlay.orbit`, each level's colours near the edges of its band, the font `vt323` | another world's overlay |
+| reserved | junk in `sounds`, a scene's `sound` and `companion`, the preset's `sound` and `companion` | read and ignored |
+| preset | `world.orbit`, Orbit whole | a world chosen whole draws only its own parts |
+
+Its Deck's still layers cost 185 308 fills at the widest screen, within 10 percent of the 200 000 a
+scene may, which shows the cap is reachable and holds. A second preset, "Orbit (broken)", whose
+quiet scene cannot act a device going down, is made by the generator's `broken()` and refused at
+`rules`; it is not in the file, since a refused preset refuses its whole pack.
+
+`tests/web/orbit.test.js` reads it: the fixture is the generator's, unsigned, and no pack under
+`web/packs/` has an id starting `test.`; it reads clean on `dev` terms and a deployed page refuses
+it unsigned, here and downloaded through `data/packs/`; every part compiles and is put in place
+under its long name; Orbit chosen whole sets every part to its own and the knight wears its body
+and outfit; its words and overlay are put in use; its props draw three kinds and the base world's
+the other two; the engine plays its scenes for each condition, its foe out of the Deck's floor, its
+moth and its drone catching the moths in the Deck and the Bridge and resting in every scene; its
+parts mixed into the medieval world, the Airlock refused for an attack; the level rule of a world;
+a scene and a foe that throw giving way to the base world's; and with Orbit loaded and nothing
+chosen, the medieval world frame for frame as without it.
 
 ## Writing a scene as data
 

@@ -120,12 +120,16 @@ test('the world sections are kept as data and nothing is compiled from them', ()
   // what the counts step found, and nothing else
   assert.deepEqual(Object.keys(r.world), ['scenes', 'cast', 'props', 'stamps']);
   assert.deepEqual(r.decorations, {});
-  // the world's own body and its head item are read like any build, and a look still resolves from
-  // the base pack alone: the world's pack changes nothing the knight draws
+  // the world's own body and its head item are read like any build: a look that names neither
+  // resolves from the base pack alone, so the world's pack changes nothing the knight draws, and a
+  // look that names the body is drawn on it, with its own head
   const base = PK.read(BASE_TEXT, { allowUnsigned: true });
   assert.equal(base.ok, true, base.reason);
   assert.deepEqual(JSON.parse(JSON.stringify(PK.resolve([base, r], {}))), JSON.parse(JSON.stringify(PK.resolve([base], {}))));
-  assert.equal(PK.resolve([base, r], { build: 'test.world/body.courier' }).fallbacks[0].reason, 'no such build');
+  const body = PK.resolve([base, r], { build: 'test.world/body.courier' });
+  assert.equal(body.look.build, 'test.world/body.courier');
+  assert.equal(body.fallbacks.filter(f => f.kind === 'build').length, 0);
+  assert.equal(PK.resolve([base, r], { build: 'test.world/body.none' }).fallbacks[0].reason, 'no such build');
 });
 
 test('the counts step\'s costs for the fixture, worked by hand', () => {

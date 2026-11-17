@@ -454,13 +454,13 @@ The world, and the parts it sets: the knight, the monarch at court, the cast, th
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `world` | `"medieval"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"medieval"` | display | The world the display shows, which sets every part below at once: medieval, the world the page ships with, or a world of a loaded pack by its long name, "<pack>/<world>". A part set beside the world in this table, or chosen on a display, is kept over the world's; a display that chooses a world takes it whole, over the parts this table sets. |
-| `build` | `"a"`, `"b"` or `"c"` | none | display | The knight's build, by the base pack's names: Classic (a), the present knight, Broad (b) and Slim (c). The page's own is the base pack's default build, and only a build the packs in use declare is shown. |
+| `build` | `"a"`, `"b"` or `"c"`, or a long name, `"<pack>/<id>"` | none | display | The knight's build, by the base pack's names: Classic (a), the present knight, Broad (b) and Slim (c), or a body of a loaded pack by its long name, "<pack>/<build>". The page's own is the base pack's default build, and only a build the packs in use declare is shown. |
 | `weapon` | `"greatsword"`, `"sword_and_shield"`, `"longsword"` or `"mace_and_shield"` | none; the page's own is `"greatsword"` | display | What the knight carries: the greatsword or the longsword in both hands, or the arming sword (sword_and_shield) or the flanged mace (mace_and_shield) in one hand with the shield in the other. |
-| `skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"` | none; the page's own is `"warm"` | display | The knight's skin tone. |
-| `hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"` or `"silver"` | none; the page's own is `"brown"` | display | The knight's hair colour. |
+| `skin` | `"fair"`, `"warm"`, `"golden"`, `"tan"`, `"brown"` or `"deep"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"warm"` | display | The knight's skin tone, or a skin swatch of a loaded pack by its long name, "<pack>/<swatch>". |
+| `hair` | `"black"`, `"dark"`, `"brown"`, `"auburn"`, `"blonde"` or `"silver"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"brown"` | display | The knight's hair colour, or a hair swatch of a loaded pack by its long name, "<pack>/<swatch>". |
 | `hair_style` | `"short"`, `"tied"`, `"curls"`, `"long"` or `"close"` | none; the page's own is `"short"` | display | The knight's hair. |
-| `tabard` | `"blue"`, `"forest"`, `"violet"`, `"wine"`, `"teal"` or `"sable"` | none; the page's own is `"blue"` | display | The tabard's colour, which the shields' fields, the coat under the breastplate, the gambeson, the padded sleeves and the short cape take too. |
-| `plume` | `"red"`, `"white"`, `"gold"`, `"royal"`, `"green"` or `"violet"` | none; the page's own is `"red"` | display | The plume's colour, which the long cloak takes too. |
+| `tabard` | `"blue"`, `"forest"`, `"violet"`, `"wine"`, `"teal"` or `"sable"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"blue"` | display | The tabard's colour, which the shields' fields, the coat under the breastplate, the gambeson, the padded sleeves and the short cape take too; or a tabard swatch of a loaded pack by its long name, "<pack>/<swatch>". |
+| `plume` | `"red"`, `"white"`, `"gold"`, `"royal"`, `"green"` or `"violet"`, or a long name, `"<pack>/<id>"` | none; the page's own is `"red"` | display | The plume's colour, which the long cloak takes too; or a plume swatch of a loaded pack by its long name, "<pack>/<swatch>". |
 | `shield` | `"heater"`, `"round"` or `"kite"` | none; the page's own is `"heater"` | display | The shield carried with a one-handed weapon: the heater shield of the watch, a round shield or a kite shield. With a two-handed weapon no shield is carried. |
 | `helmet` | `"open"`, `"kettle"`, `"coif"` or `"bascinet"` | none; the page's own is `"open"` | display | The helmet: the open helm, a kettle hat, a mail coif or a bascinet. The mail coif carries no plume. |
 | `plume_style` | `"crest"`, `"feather"` or `"horsehair"` | none; the page's own is `"crest"` | display | The plume on the helmet: the crest, a tall feather or horsehair. None is drawn on the mail coif. |
@@ -689,7 +689,9 @@ setting out is how a display keeps the monarch's own colours.
 `pet_coat` is the mouser cat's coat, `calico` or `ginger`; the cat itself cannot be turned off.
 
 `world`, `monarch`, `pet`, `foe`, `critter`, `props`, `overlay` and `words` take a short name, the medieval
-world's, or the long name of something in a world pack, `"<pack>/<id>"`. Two tables inside
+world's, or the long name of something in a world pack, `"<pack>/<id>"`. So do the knight's body
+and colours: `build` takes a body of a world pack, and `skin`, `hair`, `tabard` and `plume` a
+swatch of that set from one, as `build = "kw.cyber/body.courier"`. Two tables inside
 `[look]` name parts directly: `[look.items]` gives a slot's item by its long name, over the key that
 would choose the item for that slot, and `[look.devices]` gives the prop set one kind of device
 (`pi`, `camera`, `machine`, `vm` or `box`) is drawn from, over `props` for that kind:
@@ -706,9 +708,12 @@ main = "kw.base/main.arming"
 camera = "medieval"
 ```
 
-The page ships one world, `medieval`, whose pack is `kw.medieval`, so today the long names it
-loads are that pack's own (`kw.medieval/patron.b` is monarch `b`) and the base pack's items. A kind
-the chosen prop set does not draw takes the medieval drawing.
+The page ships one world, `medieval`, whose pack is `kw.medieval`, so the long names it loads by
+itself are that pack's own (`kw.medieval/patron.b` is monarch `b`) and the base pack's items. A
+world pack the collector downloads into `data/packs/` adds its own: its world, its scenes, its
+cast, its words and overlay, its bodies, swatches and items, each by its long name
+([worlds.md](./worlds.md#other-worlds)). A kind the chosen prop set does not draw takes the
+medieval drawing.
 
 `[scenes]` maps a condition id to one of the page's scenes. Each scene can act only some
 conditions (see [design.md](./design.md#scenes-chosen-per-condition)), and the page offers a
@@ -716,7 +721,8 @@ choice for five; the reference above lists the scenes that can act each. The oth
 are not offered: `wan_down` (only the battlement has the bell rope), `container_unhealthy` and
 `night` (the bed is in the house), `streaming` (so is the television), `ssh_session` (the court),
 `updating` (the smithy), and `device_down` and `memory_tight`, which play in whichever quiet scene
-is showing. The collector checks each key against its own condition ids and each value against
+is showing. A loaded world's scene, by its long name, may be given any condition that has a scene
+of its own, offered or not, when it can act it. The collector checks each key against its own condition ids and each value against
 the page's scenes, or a long name by its form, but it cannot know which scene can act what. A known condition paired with a
 known scene that cannot act it, such as `night = "camp"`, is therefore accepted and written, and
 the page ignores it, with a line in the browser's console, and plays the condition in its own
@@ -731,7 +737,7 @@ knows nothing of packs, so it checks a long name only for its form,
 display that has not loaded it ignores it and uses the next level down:
 
 ```
-config: look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep
+config: look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep, or a long name, "<pack>/<id>"
 config: look.world: unknown value "neon"; use medieval, or a long name, "<pack>/<id>"
 config: look.devices.tv: unknown key; use pi, camera, machine, vm or box
 config: quiet.scenes: "camp" listed twice

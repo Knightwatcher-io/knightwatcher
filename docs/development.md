@@ -31,6 +31,8 @@ tests/
     fixtures/knight/ the stored call record of the knight's drawing
     fixtures/scenes/ the stored call records of the scenes, and of the props the engine draws over
                      them
+    fixtures/worlds/ the test world, test.orbit.pack.json, and orbit.js, which writes it (never
+                     signed, never under web/; see The test world below)
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
                      shield as approved (base-onehand.items.json), its free options as
                      approved (base-options.json), its three builds and the items fitted to
@@ -281,6 +283,8 @@ card as it comes, the line naming what choosing a world cleared, the device rows
 prop set is loaded and what a choice there saves, every fallback the status page lists with its
 reason, the labels from the world's words, World first in the rail and the screen opening on the
 knight.
+`tests/web/orbit.test.js` checks the test world and any loaded world drawn through the settings
+([The test world](#the-test-world)).
 `tests/web/state.test.js` also checks that `quiet_parts` and an event's `parts` are read as strings,
 or not at all. `tests/web/streams.test.js` checks the streams' detail line and badge: the stream
 shown at each moment by the clock, the clipping, each line held to the collector's `line()` through
@@ -341,6 +345,34 @@ and the scene test check both paths. A deployed copy draws from each pack while 
 from code otherwise; to shoot the code path as well, take a second pair of sets from a copy of
 `web/` whose `kw-version` is not `dev` and whose packs carry no signature; [page.md](./page.md#checks)
 shows how.
+
+## The test world
+
+`tests/web/fixtures/worlds/test.orbit.pack.json` is `test.orbit`, a small world made unlike the
+medieval one to show what the engine still assumes about it ([worlds.md](./worlds.md#the-test-world)).
+It is written by a generator beside it, never by hand:
+
+```bash
+node tests/web/fixtures/worlds/orbit.js           # writes the file
+node tests/web/fixtures/worlds/orbit.js --check   # exits 1 when the file is not what it writes
+```
+
+`tests/web/orbit.test.js` fails while the two differ, so change the generator and run it, then
+commit both. The pack is never signed, with `kw1` or any key, and never goes under `web/`, so
+`tools/deploy.sh` never copies it; the same test fails if any pack under `web/packs/` has an id
+starting `test.`. It is read only on `dev` terms. To look at it on a wall, from a copy of `web/`
+outside the repository with its carrier added, the way [page.md](./page.md#checks) shoots the code
+path:
+
+```bash
+cp -r web /tmp/kw-orbit
+cp tests/web/fixtures/worlds/test.orbit.pack.json /tmp/kw-orbit/packs/
+node tools/pack-carrier.js /tmp/kw-orbit/packs/test.orbit.pack.json
+sed -i 's#<script src="packs/medieval.pack.js"></script>#&\n<script src="packs/test.orbit.pack.js"></script>#' /tmp/kw-orbit/index.html
+# then open /tmp/kw-orbit/index.html#wd=test.orbit/world.orbit, or shoot it with PAGE=
+```
+
+The address's `wd=` chooses the world.
 
 ## The logo and the icons
 

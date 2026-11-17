@@ -336,8 +336,10 @@ the cat and the props are drawn by code on one grid of 960 by 600 with the groun
 scaled by a whole number of device pixels where the screen allows (three on the target tablet).
 The still part of a scene is painted once and kept. Only what moves is drawn each frame.
 
-A different set of art would replace the code-drawn art as one complete set and never piecemeal,
-so that two styles never share a screen.
+Another world's art comes as a world pack ([worlds.md](./worlds.md#other-worlds)). A world chosen
+whole draws only its own parts. Parts of different worlds may share a screen when the settings mix
+them, a foe of one world in another's scene for instance, and the settings screen's status page
+says where each part comes from.
 
 ## The collector
 

@@ -572,7 +572,7 @@
   const refusal = (r, file) => ({ id: (r && typeof r.id === 'string' && r.id) || null, file: typeof file === 'string' ? file : null,
     step: String((r && r.step) || 'size'), reason: String((r && r.reason) || '') });
   /* The slots behind each list, to put a throw down to the packs that gave them. head is the
-     build's head item, which is always the base pack's. */
+     build's head item, from the pack that gives the build. */
   const LIST_SLOTS = { body: ['back', 'legs', 'boots', 'torso'], headOn: ['hair', 'plume', 'helmet'], headOff: ['head', 'hair'], pauldrons: ['pauldrons'],
     armL: ['arms'], armR: ['arms'], gauntL: ['gauntlets'], gauntR: ['gauntlets'], main: ['main'], off: ['off'], restHelmet: ['helmet', 'plume'], restOff: ['off'] };
 
@@ -622,7 +622,8 @@
   function fault(list, err) {
     const lib = PK.lib, items = PK.look.look.items, base = PK.packs.get(lib.BASE_ID), suspects = [];
     for (const slot of LIST_SLOTS[list] || []) {
-      const n = slot === 'head' ? lib.BASE_ID + '/' : items[slot];
+      // the head is the build's own head item, from the pack that gives the build
+      const n = slot === 'head' ? PK.look.look.build : items[slot];
       const p = typeof n === 'string' ? PK.packs.get(n.slice(0, n.indexOf('/'))) : null;
       if (p && !suspects.includes(p)) suspects.push(p);
     }

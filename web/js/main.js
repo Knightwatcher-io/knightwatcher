@@ -20,7 +20,8 @@
   H0.slice(1).split('&').forEach(kv => { const [k, v] = kv.split('='); if (k in S && v != null) S[k] = given[k] = decodeURIComponent(v); });
   for (const k of Object.keys(OPTS)) if (!(S[k] in OPTS[k])) S[k] = Object.keys(OPTS[k])[0];
   const fixed = new Set(['h', 'hs'].filter(k => given[k] !== undefined && given[k] in OPTS[k]));
-  const hv = k => (H0.match(new RegExp('[#&]' + k + '=([\\w.-]+)')) || [])[1];
+  // a value may be a long name, "<pack>/<id>", so it may hold a slash
+  const hv = k => (H0.match(new RegExp('[#&]' + k + '=([\\w./-]+)')) || [])[1];
   /* t=<ms> freezes time for screenshots, t=0 included, and kx=<x> places the knight (in units of
      U). frozen says whether the address holds a t= with a number, and t is the frozen time, or 0
      without one. pl=1 outlines the scene's places for devices. dv= sets the demo's
@@ -62,7 +63,8 @@
      settings (the deployment's, shared by every display, when the Knightwatcher server serves the
      page; this browser's own otherwise), the defaults in the state file and the page's own
      (KW.settings). The
-     hooks, in the contract's names: bd= the build (a, b or c); arm=one the sword and shield and
+     hooks, in the contract's names: wd= the world ('medieval' or a loaded world's long name); bd= the
+     build (a, b or c, or a loaded build's long name); arm=one the sword and shield and
      arm=two the greatsword, or any weapon by its contract name (arm=longsword); sk=, hc=, tb= and
      pm= the skin, hair, tabard and plume swatches; hy= the hair style; the gear: sh= the shield,
      hm= the helmet, ps= the plume's style, bo= the body, so= the shoulders, am= the arms, hn= the
@@ -82,6 +84,7 @@
     return d;
   } };
   if (hv('arm') !== undefined) HOOK.look.weapon = { one: 'sword_and_shield', two: 'greatsword' }[hv('arm')] || hv('arm');
+  if (hv('wd') !== undefined) HOOK.look.world = hv('wd');
   for (const [h, k] of [['bd', 'build'], ['sk', 'skin'], ['hc', 'hair'], ['hy', 'hair_style'], ['tb', 'tabard'], ['pm', 'plume'], ['mon', 'monarch'], ['ms', 'monarch_skin'],
     ['mh', 'monarch_hair'], ['mr', 'monarch_robe'], ['pc', 'pet_coat'], ['sh', 'shield'], ['hm', 'helmet'], ['ps', 'plume_style'], ['bo', 'body'], ['so', 'shoulders'], ['am', 'arms'],
     ['hn', 'hands'], ['lg', 'legs'], ['ft', 'feet'], ['bk', 'back']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
@@ -91,13 +94,19 @@
      answers; from disk there is no server to ask. */
   const fromDisk = location.protocol === 'file:';
   const store = KW.settings.create({ hooks: HOOK, storage: () => window.localStorage, pack: () => KW.knight.basePack(), cache: !fromDisk });
-  let lookKey = '{}', kindsKey = '', twelve = false;
+  let lookKey = '{}', kindsKey = '', wordsKey = '', ovReady = false, twelve = false;
   /* Puts what the settings say into the knight, the options and the clock. Returns whether the
      knight's look changed. */
   function settle() {
     const r = store.now(), d = r.values.display, look = KW.settings.knightLook(r), key = JSON.stringify(look);
     // the devices, each kind from the prop set the settings choose for it (KW.world.useKinds)
-    if (KW.world) { const kinds = KW.settings.engineInput(r, null, 0).kinds, kk = JSON.stringify(kinds); if (kk !== kindsKey) { kindsKey = kk; KW.world.useKinds(kinds); E.invalidate(); } }
+    if (KW.world) {
+      const inp = KW.settings.engineInput(r, null, 0), kinds = inp.kinds, kk = JSON.stringify(kinds);
+      if (kk !== kindsKey) { kindsKey = kk; KW.world.useKinds(kinds); E.invalidate(); }
+      // the words and the overlay the settings choose (KW.world.useWords and useOverlay)
+      const wk = inp.words + '|' + inp.overlay;
+      if (wk !== wordsKey) { wordsKey = wk; KW.world.useWords(inp.words); KW.world.useOverlay(inp.overlay); if (ovReady) overlay(); }
+    }
     if (!fixed.has('h')) S.h = d.helmet_indoors ? 'on' : 'auto';
     if (!fixed.has('hs')) S.hs = { small: 's', medium: 'm', large: 'l' }[d.headline];
     twelve = d.clock === 12;
@@ -121,7 +130,7 @@
     ovSet = Object.keys(ovProps);
     for (const k of Object.keys(ovProps)) surface.style.setProperty(k, ovProps[k]);
   }
-  overlay();
+  overlay(); ovReady = true;
   /* The quiet line and an event's caption: built from the collector's parts in the world's words,
      or the collector's own text (KW.world.quietLine and caption). */
   const quietOf = v => (KW.world ? KW.world.quietLine(v.quietParts, v.quietLine) : v.quietLine);
@@ -349,7 +358,7 @@
     KW.knight.fetchPacks((url, init) => fetch(url, init)).then(got => {
       if (!got.files.length && !got.refused.length) return;
       KW.knight.add(got);
-      if (KW.world && got.files.length) { KW.world.start(KW.packText.concat(got.files.map(f => f.text)), ownVersion === 'dev'); overlay(); kindsKey = ''; settle(); }
+      if (KW.world && got.files.length) { KW.world.start(KW.packText.concat(got.files.map(f => f.text)), ownVersion === 'dev'); wordsKey = ''; overlay(); kindsKey = ''; settle(); }
       E.invalidate(); store.check();
     }, () => {});
   }

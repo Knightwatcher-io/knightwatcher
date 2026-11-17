@@ -168,7 +168,7 @@ class CollectorAgreesTest(unittest.TestCase):
         self.assertEqual(
             longs,
             {"look.world", "look.monarch", "look.pet", "look.foe", "look.critter", "look.props"}
-            | {"look.overlay"}
+            | {"look.overlay", "look.build", "look.skin", "look.hair", "look.tabard", "look.plume"}
             | {"look.words", "look.items", "look.devices", "quiet.scenes"}
             | scenes,
         )

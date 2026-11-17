@@ -60,6 +60,8 @@
     // dish, which stands to the knight's left. Kept as plain data for the world format being drafted
     // to take over.
     can: ['disk_full', 'backup_overdue', 'cpu_hot'],
+    // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
+    hosts: [],
     rounds: [{ x: 124, act: 'guard', dur: 7 }, { x: 146, act: 'guard', dur: 7 }],
     paint, draw
   };

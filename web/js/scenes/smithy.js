@@ -114,6 +114,8 @@
     // whatever else is up, so it acts the update alone. Kept as plain data for the world format
     // being drafted to take over.
     can: ['updating'],
+    // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
+    hosts: [],
     key: s => Math.round(s.kx) + '|' + K.rest.key('main') + offKey(), act, paint, draw
   };
 })(window.KW);

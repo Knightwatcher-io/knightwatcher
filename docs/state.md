@@ -299,12 +299,14 @@ and `sources` the parts come from are shown:
   sets, so a table the config leaves out is `{}`. The collector fills in nothing: for a setting
   that is absent the page uses its own default.
   - `look`: `world` is `medieval` or a long name; `build` and `monarch` are `a`, `b` or `c`,
-    `monarch` also a long name; `weapon` is `greatsword`,
+    each also a long name (a body of a world pack for `build`, a patron for `monarch`); `weapon` is `greatsword`,
     `sword_and_shield`, `longsword` or `mace_and_shield`; `skin` and `monarch_skin` are `fair`,
     `warm`, `golden`, `tan`, `brown` or `deep`; `hair` and `monarch_hair` are `black`, `dark`,
     `brown`, `auburn`, `blonde` or `silver`; `hair_style` is `short`, `tied`, `curls`, `long` or
     `close`; `tabard` and `monarch_robe` are `blue`, `forest`, `violet`, `wine`, `teal` or
-    `sable`; `plume` is `red`, `white`, `gold`, `royal`, `green` or `violet`. The gear: `shield`
+    `sable`; `plume` is `red`, `white`, `gold`, `royal`, `green` or `violet`; `skin`, `hair`,
+    `tabard` and `plume` each also take the long name of a swatch of that set from a world pack
+    (`monarch_skin`, `monarch_hair` and `monarch_robe` do not). The gear: `shield`
     is `heater`, `round` or `kite`, carried only with `sword_and_shield` or `mace_and_shield`;
     `helmet` is `open`, `kettle`, `coif` or `bascinet`; `plume_style` is `crest`, `feather` or
     `horsehair`; `body` is `tabard`, `cuirass` or `gambeson`; `shoulders` is `plate`, `lames` or
@@ -333,7 +335,9 @@ and `sources` the parts come from are shown:
     `battlement`, `camp`, `house`, `yard`, `cellar`, `smithy` or `court`, or a scene's long name. Which scene can act
     which condition is the page's to decide (see [design.md](./design.md#scenes-chosen-per-condition)):
     the collector writes any condition with any of these scenes, and the page ignores a pair it
-    cannot act, a condition it offers no choice for (such as `night`) among them.
+    cannot act, and a short name for a condition it offers no choice for (such as `night`). A
+    loaded world's scene by its long name may be given any condition that has a scene of its
+    own, offered or not, when it can act it.
 
   This collector writes only the values above. The page ignores a value it does not know and
   uses its own default in its place, so a later collector can offer more. A page from before
@@ -341,7 +345,9 @@ and `sources` the parts come from are shown:
   `defaults`, and the page then uses its own defaults throughout; one from a collector older than
   `scenes` has the other three, and the page plays each condition in its own scene. A page from
   before worlds ignores `world`, the part keys, `items` and `devices` as keys it does not know,
-  and a long name in `quiet.scenes` or `scenes` as a value it does not know.
+  and a long name in `quiet.scenes` or `scenes` as a value it does not know; a page from before
+  other worlds could be drawn ignores a long name in `build`, `skin`, `hair`, `tabard` and
+  `plume` the same way.
 
 - **`config`** says which settings the collector is using, for the bundled server's admin page:
   - `admin`: the version of the admin page's `admin.json` laid over `config.toml` (20 hex
