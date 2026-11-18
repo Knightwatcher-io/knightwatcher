@@ -12,11 +12,22 @@
 
   /* When the knight's sword last struck the dummy, which wobbles and sheds straw for a moment. */
   let dummyHit = -1e9;
+  /* The dummy's middle, where a shot at it aims: the middle of the box the dummy is drawn in, as the
+     medieval world's pack gives it (its target group). */
+  const TARGET = Object.freeze([710, 380]);
 
   /* The knight trains: a swing every few seconds at the training spot while all is quiet, and one
-     every second while the CPU runs hot. */
+     every second while the CPU runs hot. With a weapon that fires, a shot on the same beats from
+     where the engine puts the knight, PRACTICE short of the dummy (KW.engine.shots), the dummy
+     struck when the shot lands; running hot, once the knight has walked there. */
   function act(t, s) {
     const o = s.o, here = s.here;
+    if (K.fired()) {
+      const shot = (t0, len) => { const l = KW.engine.shots.practice(o, t, t0, len, TARGET); if (l !== null && dummyHit < l - 1) dummyHit = l; };
+      if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % 5600; if (c < 900) shot(t - c, 900); }
+      if (s.w.id === 'cpu_hot') { o.eyes = 'half'; o.bob = Math.floor(t / 170) % 2; if (!o.walk) shot(t - t % 1000, 1000); }
+      return;
+    }
     if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % 5600; if (c < 900) { K.swing(o, c / 900, 1); if (c > 420 && t - dummyHit > 2000) dummyHit = t; } }
     if (s.w.id === 'cpu_hot') { const c = t % 1000; K.swing(o, c / 1000, 1); if (c > 470 && t - dummyHit > 600) dummyHit = t; o.eyes = 'half'; o.bob = Math.floor(t / 170) % 2; }
   }
@@ -124,6 +135,10 @@
     hosts: ['flies', 'crate', 'feast'],
     rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 98, act: 'look', dur: 14 }],
     act, paint, draw,
+    // where a shot at the dummy aims, and so where the knight trains from with a weapon that fires
+    target: TARGET,
+    // the moment the dummy was last struck, for the tests
+    struck: () => dummyHit,
     // where the crate may land (docs/scenes.md): the beaten earth in front of the door, between the
     // devices by the rack and the knight's boots at its look spot
     crate: { span: [298, 436] }

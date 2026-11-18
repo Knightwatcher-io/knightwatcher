@@ -116,7 +116,7 @@ function load(from, pack, opts) {
   const KW = box.window.KW;
   KW.knight.start(pack ? KW.packText : [], true, opts || undefined);
   assert.equal(KW.knight.source, pack ? 'pack' : 'code');
-  if (opts && opts.look.items) assert.equal(KW.knight.rest.blade().to, 175, 'the arming sword is held');
+  if (opts && opts.look.items) assert.equal(KW.knight.rest.reach().to, 175, 'the arming sword is held');
   if (from === 'pack') {
     const st = KW.world.start([MEDIEVAL], true);
     for (const n of GIVEN) assert.equal(st.scenes[n], 'pack', `${n} is compiled from kw.medieval: ${st.note}`);

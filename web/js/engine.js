@@ -259,14 +259,17 @@
   }
   function startSwat(t) {
     const live = flies.filter(f => !f.dead && t - f.born > 1300); if (!live.length) return;
+    // a weapon that only fires shoots the flies, one shot each (volleyPlan, below)
+    if (firesOnly()) { swat = { t0: frozen() ? 0 : t, shots: volleyPlan(live) }; return; }
     const segs = []; if (live.some(f => f.side > 0)) segs.push(1); if (live.some(f => f.side < 0)) segs.push(-1);
     swat = { t0: frozen() ? 0 : t, segs };
   }
   /* Stroll to the next spot, stand there a while doing what the spot is for, move on. The walk
      moves the knight a step each frame, so with time frozen the knight stays where they are, in
-     mid-stride. */
-  function stroll(list, t, o, busy) {
-    const st = list[round.i % list.length], dx = st.x * U - kx;
+     mid-stride. With a weapon that fires, the spot for training stands PRACTICE short of
+     the scene's target instead (practiceX, below). */
+  function stroll(list, t, o, busy, sc) {
+    const st = list[round.i % list.length], px = st.act === 'train' ? practiceX(sc) : null, dx = (px === null ? st.x * U : px) - kx;
     if (busy) return null;
     if (Math.abs(dx) > 2) { if (!frozen()) kx += Math.sign(dx) * 1.5; o.walk = true; round.arr = 0; return null; }
     if (!round.arr) round.arr = frozen() ? 1 : t;
@@ -291,18 +294,21 @@
      SHOT.tracer ms; a beam, a line drawn at once for SHOT.beam ms. Where a shot lands the engine
      draws its burst for burst ms (poofHD), the same cartoon burst as a blade's blow. A frame draws at
      most SHOT.most shots, the oldest first. Each shot is kept by a key and made once, so that the
-     picture at a moment depends on the moment alone, and leaves once nothing of it shows. Times in
-     ms. The acts that fire call shoot() and read when a shot lands. */
+     picture at a moment depends on the moment alone, and leaves once nothing of it shows: the last
+     SPENT that have ended are remembered, so that an act asking for one again within its beat gets
+     it back rather than a second shot. Times in ms. The acts that fire call shoot() and read when a
+     shot lands. */
   const SHOT = Object.freeze({ speed: 1.6, flash: 60, tracer: 120, beam: 80, most: 8, burst: 260, streak: 26, star: 7, snap: '#eef3f9' });
   const SHOT_KINDS = ['bolt', 'tracer', 'beam'];
-  const shots = new Map();
+  const shots = new Map(), spent = new Map(), SPENT = 32;
+  const clearShots = () => { shots.clear(); spent.clear(); };
   /* The shot of key, made by make() the first time it is asked for: make returns { kind, colour,
      flash, from, to, t0, burst }, flash optional, from the muzzle and to where it lands as [x, y],
      t0 the moment it leaves and burst the ms its landing burst shows (0 for none). The shot comes
      back with lands, the moment it reaches to (at once for a tracer or a beam), and end, the moment
      nothing of it shows. */
   function shoot(key, make) {
-    let r = shots.get(key);
+    let r = shots.get(key) || spent.get(key);
     if (!r) {
       r = Object.assign({}, make());
       if (!SHOT_KINDS.includes(r.kind)) throw new Error('a shot is a bolt, a tracer or a beam, not ' + r.kind);
@@ -320,7 +326,11 @@
   function shotsHD(t) {
     let n = 0;
     for (const [k, r] of shots) {
-      if (t >= r.end) { shots.delete(k); continue; }
+      if (t >= r.end) {
+        shots.delete(k); spent.set(k, r);
+        if (spent.size > SPENT) spent.delete(spent.keys().next().value);
+        continue;
+      }
       const e = t - r.t0;
       if (e < 0 || n >= SHOT.most) continue;
       n++;
@@ -339,6 +349,73 @@
     }
   }
 
+  /* ---- The acts with a weapon that fires ----------------------------------------------------------
+     A weapon that fires (KW.knight.fired()) plays the acts by shot, and one that only swings plays
+     them as before. One that is both swung and fired (use "both") swings where a blade reaches and
+     fires where it does not: it swings at the flies and at a foe within its blade's reach (foeGaps),
+     and fires at a foe beyond it and at the practice target; in the attack it aims (knight.js).
+       the swat     one shot per settled fly, VOLLEY.gap apart after a raise of VOLLEY.raise: the
+                    flies on the oldest fly's side first, each side oldest first, so the watcher
+                    turns once; aimed up to AIM.swatAbove over level; a fly is popped when its shot
+                    reaches it. After the last, the recoil and the return (VOLLEY.after)
+       practice     the training spot stands PRACTICE short of the scene's target (sc.target, the
+                    middle of the target), and while the CPU runs hot the watcher walks there; the
+                    scene's act fires at the target on its own beats (practice(), below) and the
+                    target is struck when the shot arrives, with the burst
+       the foe      shotPlan(): the foe at the shot's gap, the watcher stepping back while it
+                    climbs in, aiming from FOE.shot.aim and firing at FOE.shot.fire (foeShot)
+     Times in ms. */
+  const VOLLEY = Object.freeze({ raise: 450, gap: 300, after: Object.freeze([80, 560]) });
+  const PRACTICE = 300;
+  const firing = () => (K.fired ? K.fired() : null);
+  /* Whether the look's weapon only fires, and so shoots the flies rather than swing at them. */
+  const firesOnly = () => { const f = firing(); return !!f && f.use === 'fire'; };
+  /* The x the watcher shoots at the target from, PRACTICE short of its middle, with a weapon that
+     fires in a scene with a target; null otherwise. The target always lies to the right, as the
+     training swing cuts to the right. */
+  const practiceX = sc => (firing() && sc && Array.isArray(sc.target) ? sc.target[0] - PRACTICE : null);
+  /* The swat's shots for the settled flies live: the oldest fly's side first, then the other, each
+     side oldest first, VOLLEY.gap apart after the raise. */
+  function volleyPlan(live) {
+    const old = live.slice().sort((a, b) => a.born - b.born), side = old[0].side;
+    return old.filter(f => f.side === side).concat(old.filter(f => f.side !== side)).map((f, i) => ({ f, dir: f.side, t: VOLLEY.raise + i * VOLLEY.gap }));
+  }
+  /* The shot of a weapon that fires, as shoot() takes it, from from to to, leaving at t0. */
+  const shotOf = (fw, from, to, t0, burst) => ({ kind: fw.shot.kind, colour: fw.shot.colour, flash: fw.shot.flash, from, to, t0, burst });
+  /* The swat by shot at t, on the knight's pose o: the pose of the volley, each shot made as its
+     moment comes, from the muzzle as the pose stood aimed at its fly, to where the fly was then, and
+     the fly popped where the shot reaches it. A fly's mark is where it is now until its shot leaves,
+     and where the shot went after. */
+  function volleyAt(o, t) {
+    const el = t - swat.t0, list = swat.shots, fw = firing();
+    const marks = list.map(s => ({ dir: s.dir, t: s.t, at: flyPos(s.f, swat.t0 + (el >= s.t ? s.t : el)) }));
+    K.volley(o, el, marks, VOLLEY.raise, VOLLEY.after);
+    list.forEach((s, i) => {
+      if (el < s.t) return;
+      const at = marks[i].at, r = shoot('fly|' + Math.round(swat.t0) + '|' + s.t, () => {
+        const p = K.aim.pose(Object.assign({}, o), s.dir, K.aim.angle(o, s.dir, at, K.aim.AIM.swatAbove));
+        return shotOf(fw, K.muzzle(p), at.slice(), swat.t0 + s.t, 0);
+      });
+      if (!s.f.dead && t >= r.lands) { s.f.dead = Math.max(1, Math.round(r.lands)); s.f.at = r.to; }
+    });
+    if (list.every(s => s.f.dead) && el > list[list.length - 1].t + 200) { o.eyes = 'happy'; o.mouth = 'smile'; }
+  }
+  /* Practice by shot, for a scene's act: the shot of the beat that began at t0 and lasts len ms, at
+     the target's middle at, with the pose of fire() at q (t - t0) / len on o, which stands at
+     o.x. The shot leaves at the middle of the beat from the muzzle as the pose stood aimed, and lands
+     on the target with the burst. Returns the moment it lands once it has, and null before. */
+  function practice(o, t, t0, len, at) {
+    const fw = firing();
+    if (!fw) return null;
+    K.fire(o, (t - t0) / len, 1, at);
+    if (t - t0 < len / 2) return null;
+    const r = shoot('practice|' + Math.round(t0), () => {
+      const p = K.aim.pose(Object.assign({}, o), 1, K.aim.angle(o, 1, at));
+      return shotOf(fw, K.muzzle(p), at.slice(), t0 + len / 2, SHOT.burst);
+    });
+    return t >= r.lands ? r.lands : null;
+  }
+
   /* ---- Foes -------------------------------------------------------------------------------------
      An event with a foe (the goblin of ip_banned) plays in three parts, each read from a table so
      that a later foe reuses them with only its own description, which gives its poses, height,
@@ -349,7 +426,8 @@
                      peek, a hop to the ground, a face pulled at the knight, a flinch;
        the strike    the knight's own swing (KW.knight.swing), stopped where the blade first meets
                      the foe's crown, then a bounce back and a return to the stance, so the blade
-                     never passes through the foe;
+                     never passes through the foe; or, with a weapon that fires, a shot from range
+                     (shotPlan and foeShot, below);
        the exit      what the foe leaves by; the one exit built is the poof.
      Times are in ms from the start of the event; an exit's are from the moment of the hit. */
   const FOE = {
@@ -368,6 +446,12 @@
       // the line a foe is clipped to while in its hole: the hole's middle, below the ground
       holeLine: 4 },
     strike: { at: 1250, dur: 900, rebound: 80, recover: 560, kick: .32, eyes: 500 },
+    // with a weapon that fires (shotPlan): the gap from the watcher's middle to the foe's, least,
+    // wanted and most, the most no more than the weapon's range or most; the least raised to keep
+    // the foe clear of the muzzle by clear; how far the watcher may step back from the foe's side for
+    // the gap, over stepMs while the foe climbs in; the aim from aim and the shot at fire. The recoil
+    // and the return are the strike's rebound and recover
+    shot: { gap: [200, 300, 320], most: 420, clear: 30, step: 160, stepMs: 900, aim: 1250, fire: 1400 },
     exits: {
       // gone in a puff of smoke: struck (squashed for 120 ms, a burst on the pot for the 80 ms the
       // blade bounces off it), the cloud at 140, the foe hidden at 170 behind it, sparkles from
@@ -376,6 +460,10 @@
     }
   };
   const segQ = (el, a, b) => clamp01((el - a) / (b - a));
+  /* Whether the scene shows the weapon at rest: one of its rests is a frame (it gives an angle a),
+     as the house's pegs, the smithy's anvil and a workbench are. Where it does not and the weapon is
+     put away, the watcher wears the weapon's stowed view (draw). */
+  const restsWeapon = sc => !!(sc && sc.rests) && Object.keys(sc.rests).some(k => sc.rests[k] && typeof sc.rests[k].a === 'number');
   /* Where the crate of an import lands, its left edge: in a scene that gives the stretch of floor
      it may land on (crate.span, docs/scenes.md), its middle as near 160 left of the knight as the
      stretch allows; elsewhere 320 left of the knight, and never past the screen's left edge. */
@@ -431,7 +519,7 @@
      KW.knight.rest.head) is measured by its drawing instead: head is the drawing's pieces and the
      circle around them, and to and half are as far as they reach along the frame and across it. */
   function bladeOf(o) {
-    const b = K.rest.blade() || { from: 34, to: 263, half: 15 }, m = K.rig(o).anchors.main, h = K.rest.head ? K.rest.head() : null;
+    const b = K.rest.reach() || { from: 34, to: 263, half: 15 }, m = K.rig(o).anchors.main, h = K.rest.head ? K.rest.head() : null;
     if (h) return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: h.to, half: h.half, head: h };
     return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: b.to + Math.round(b.half * 7 / 15), half: b.half + 4 };
   }
@@ -494,14 +582,22 @@
     if (!meets(gMin)) return null;
     let most = gMax;
     if (!meets(gMax)) { let lo = gMin, hi = gMax; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (meets(mid)) lo = mid; else hi = mid; } most = lo; }
-    const b = K.rest.blade() || { from: 34, to: 263 }, inside = Math.round(FOE.reachIn * (b.to - b.from));
+    const b = K.rest.reach() || { from: 34, to: 263 }, inside = Math.round(FOE.reachIn * (b.to - b.from));
     return [gMin, Math.max(gMin, Math.min(gWant, most - inside)), most];
   }
   /* The plan of a foe's event, worked out once on its first frame: the foe, where it stands, the
-     line it comes over, and when the blade meets it. null when it has no room within the weapon's
-     reach, so a foe never plays a hit the blade did not give. */
+     line it comes over, and when the weapon meets it. null when it has no room within the weapon's
+     reach, so a foe never plays a hit the weapon did not give. A weapon that only fires shoots
+     (shotPlan); one that is both swung and fired swings where its blade reaches the foe and shoots
+     where it does not; one that only swings swings. */
   function foePlan(type, sc, s, o) {
     const e = EVENTS[type], F = foeFor(e); if (!F) return null;
+    const fw = firing();
+    if (fw && fw.use === 'fire') return shotPlan(e, F, sc, s, o);
+    return swingPlan(e, F, sc, s, o) || (fw ? shotPlan(e, F, sc, s, o) : null);
+  }
+  /* The plan by the blade: the foe within its reach, met where the blade first touches its crown. */
+  function swingPlan(e, F, sc, s, o) {
     const gaps = { 1: foeGaps(F, o, 1), '-1': foeGaps(F, o, -1) }, spot = foeSpot(F, sc, s.devices, s.places, o.x, gaps);
     if (!spot) return null;
     const q = contactQ(F, spot.x, spot.side, o), S = FOE.strike; if (q >= 1) return null;
@@ -510,7 +606,59 @@
     const p = Object.assign({}, o, { bob: 0 }); K.swing(p, q, spot.side);
     const touch = crownNear(bladeOf(p), F, spot.x, spot.side, o.floor);
     return { F, x: spot.x, side: spot.side, burrow, lineAt, q, hit: Math.round(S.at + q * S.dur), touch: [Math.round(touch.x), Math.round(touch.y)],
-      exit: FOE.exits[typeof F.exit === 'string' && Object.prototype.hasOwnProperty.call(FOE.exits, F.exit) ? F.exit : e.exit] };
+      exit: exitOf(F, e) };
+  }
+  const exitOf = (F, e) => FOE.exits[typeof F.exit === 'string' && Object.prototype.hasOwnProperty.call(FOE.exits, F.exit) ? F.exit : e.exit];
+  /* The plan by shot. On each side the least gap is FOE.shot's or, when more, the muzzle's reach
+     from the watcher's middle aimed level plus the foe's half width and FOE.shot.clear, so that the
+     shot leaves the muzzle clear of the foe; the most is FOE.shot's, or the least when that is more
+     (a long barrel), and no more than the weapon's range or FOE.shot.most. Where the foe's zone has no room at the wanted gap from where the
+     watcher stands, the watcher steps back from the zone's side, 4 pixels at a time up to
+     FOE.shot.step, to the least step that gives the wanted gap, or else the widest gap found; never
+     nearer the screen's edge than 90. The shot is aimed at the foe's mid and the hit is where it
+     meets the foe's body, its half width short of the mid: the moment a bolt reaches it, or at once
+     for a tracer or a beam. shot holds what the event plays: the watcher's x before and after the
+     step, the point aimed at, the muzzle, and the gaps. */
+  function shotPlan(e, F, sc, s, o) {
+    const fw = firing(), S = FOE.shot, p0 = Object.assign({}, o, { bob: 0 }), gaps = {};
+    for (const side of [1, -1]) {
+      const reach = Math.abs(K.muzzle(K.aim.pose(Object.assign({}, p0), side, side * Math.PI / 2))[0] - p0.x);
+      const least = Math.max(S.gap[0], Math.ceil(reach + F.w + S.clear)), most = Math.min(Math.max(S.gap[2], least), fw.range, S.most);
+      gaps[side] = least > most ? null : [least, Math.min(most, Math.max(least, S.gap[1])), most];
+    }
+    const away = sc.foeZone && sc.foeZone.side < 0 ? 1 : -1;
+    let spot = null, kx2 = o.x;
+    for (let d = 0; d <= S.step; d += 4) {
+      const x = o.x + away * d;
+      if (x < V.HL + 90 || x > V.HR - 90) break;
+      const sp = foeSpot(F, sc, s.devices, s.places, x, gaps);
+      if (sp && (!spot || Math.abs(sp.x - x) > Math.abs(spot.x - kx2))) { spot = sp; kx2 = x; }
+      if (spot && Math.abs(spot.x - kx2) >= gaps[spot.side][1]) break;
+    }
+    if (!spot) return null;
+    const mid = [spot.x, V.HFL - F.mid], p = Object.assign({}, p0, { x: kx2 });
+    K.aim.pose(p, spot.side, K.aim.angle(p, spot.side, mid));
+    const from = K.muzzle(p), len = Math.hypot(mid[0] - from[0], mid[1] - from[1]) || 1, stop = Math.max(0, len - F.w);
+    const touch = [Math.round(from[0] + (mid[0] - from[0]) * stop / len), Math.round(from[1] + (mid[1] - from[1]) * stop / len)];
+    const burrow = !sc.wallAt, lineAt = burrow ? () => V.HFL + FOE.enter.holeLine : sc.wallAt;
+    return { F, x: spot.x, side: spot.side, burrow, lineAt, q: .5, hit: Math.round(S.fire + (fw.shot.kind === 'bolt' ? stop / SHOT.speed : 0)), touch,
+      exit: exitOf(F, e), shot: { kx0: o.x, kx: kx2, mid, from, gaps: gaps[spot.side] } };
+  }
+  /* The event by shot on the knight's pose o at el, with the plan pl: the watcher steps back while
+     the foe climbs in, over FOE.shot.stepMs, then aims from FOE.shot.aim, fires at FOE.shot.fire
+     (fire() at q .5), recoils for the strike's rebound and returns over its recover. The shot flies
+     from the muzzle to where it meets the foe; the hit's burst is the exit's. Returns the watcher's
+     x. */
+  function foeShot(o, el, pl, t0) {
+    const S = FOE.shot, R = FOE.strike, f = pl.shot, k = clamp01(el / S.stepMs);
+    const x = f.kx === f.kx0 ? f.kx : lerp(f.kx0, f.kx, ease(k));
+    o.x = x;
+    if (f.kx !== f.kx0 && k < 1) o.walk = true;
+    const q = el < S.aim ? -1 : el < S.fire ? .5 * (el - S.aim) / (S.fire - S.aim) : el < S.fire + R.rebound ? .5 + .1 * (el - S.fire) / R.rebound
+      : Math.min(1, .6 + .4 * (el - S.fire - R.rebound) / R.recover);
+    if (q >= 0) K.fire(o, q, pl.side, f.mid);
+    if (el >= S.fire) { const fw = firing(); if (fw) shoot('foe|' + Math.round(t0), () => shotOf(fw, f.from, pl.touch.slice(), t0 + S.fire, 0)); }
+    return x;
   }
 
   /* The strike on the knight's pose o at el: the swing until the hit, then the bounce back and the
@@ -707,7 +855,7 @@
     const { HL, HR, HT, HH, HFL } = V, freeze = frozen();
     const inp = E.input, w = inp.w, scene = sceneOf(w, t), sc = KW.scenes[scene], devices = inp.devices || [];
     // a new scene starts with no flies, no catch, no shot and nothing waiting, so nothing spills into it
-    if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; catches.length = 0; leaving.length = 0; pendingFlies = 0; petFree = -1e9; shots.clear(); } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
+    if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; catches.length = 0; leaving.length = 0; pendingFlies = 0; petFree = -1e9; clearShots(); } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
     const serious = w.lv >= 3, inBed = !!sc.bed && (w.id === 'night' || w.id === 'container_unhealthy');
     if (serious) leaveAll(t);
     // the pet's spot: a catch worked out from another spot in this scene (by the bed, or not) is
@@ -734,7 +882,7 @@
     const free = w.lv < 3 || w.id === 'memory_tight' || w.id === 'disk_full';
     let here = null;
     if (sc.rounds && free && !inBed && w.lv !== 2 && w.id !== 'backup_overdue' && w.id !== 'pi_silent') {
-      here = stroll(sc.rounds, t, o, !!ev || !!swat);
+      here = stroll(sc.rounds, t, o, !!ev || !!swat, sc);
       if (here) {
         const el = here.el;
         if (here.act === 'look') o.look = [0, -1, 0, 1][Math.floor(el / 2600) % 4];
@@ -748,6 +896,12 @@
     // a device down: the knight stays put and looks towards its place, or straight ahead
     // when it is not drawn
     if (w.id === 'device_down') { const px = KW.devices.placeX(s, w.place); o.look = px === null ? 0 : Math.sign(px - kx); }
+    // running hot with a weapon that fires, the watcher walks to where it shoots at the target from,
+    // and the scene's act fires once it is there
+    const hotX = w.id === 'cpu_hot' ? practiceX(sc) : null;
+    if (hotX !== null && Math.abs(hotX - kx) > 2) { if (!freeze) kx += Math.sign(hotX - kx) * 1.5; s.kx = kx; o.walk = true; }
+    // the acts aim on the rig, so the watcher stands at its x before they play
+    o.x = kx;
     if (sc.act) sc.act(t, s);
     o.x = kx;
     // a foe's event: where the foe stands and when the blade meets it, worked out on its first frame
@@ -755,7 +909,12 @@
 
     // the swat, the events. With time frozen a swat starts only from the address (sw=1), never by
     // itself, since one started by a frame would show only from the next.
-    if (swat) {
+    if (swat && swat.shots) {
+      // the swat by shot (volleyAt), over when the last shot's return has ended
+      const last = swat.shots[swat.shots.length - 1].t;
+      if (!funOK || t - swat.t0 > last + VOLLEY.after[0] + VOLLEY.after[1]) { swat = null; lastSwat = t; while (pendingFlies > 0 && flies.filter(f => !f.dead).length < 8) { pendingFlies--; addFly(t); } }
+      else { o.bob = 0; volleyAt(o, t); }
+    } else if (swat) {
       const el = t - swat.t0, i = Math.floor(el / 900);
       if (!funOK || i >= swat.segs.length) { swat = null; lastSwat = t; while (pendingFlies > 0 && flies.filter(f => !f.dead).length < 8) { pendingFlies--; addFly(t); } }
       else {
@@ -773,7 +932,7 @@
     if (plan) {
       o.bob = 0;
       if (el > FOE.strike.eyes) { o.eyes = 'angry'; o.look = plan.side; }
-      strike(o, el, plan);
+      if (plan.shot) kx = foeShot(o, el, plan, ev.t0); else strike(o, el, plan);
       if (el > plan.hit + plan.exit.pleased) { o.eyes = 'happy'; o.mouth = 'smile'; o.look = 0; }
     }
     if (live === 'crate') { o.look = -1; if (p < .6) o.eyes = 'wide'; else { o.eyes = 'happy'; o.mouth = 'smile'; } }
@@ -790,6 +949,8 @@
       const q = Math.min(1, p / .6), y = HT - 130 + (HFL - 50 - HT + 130) * q, x = crX + Math.sin(p * 14) * 15 * (1 - q);
       if (p < .9 || Math.floor(t / 110) % 2) { if (q < 1) P.chuteHD(x + 30, y); P.crateHD(x, y); }
     }
+    // the weapon put away where the scene shows it at no rest place: its stowed view on the body
+    if (o.sword === false && !restsWeapon(sc)) o.stowed = true;
     if (!inBed) K.draw(o);
     if (spot) petHD(pet, E.input.pet && E.input.pet.coat, petAt(spot, t));
     placesHD(t, s, true);
@@ -831,12 +992,14 @@
     /* The foe player's parts, for the tests: the tables, where a foe stands, when the blade meets
        it, the plan of an event, the strike on a pose and the foe at a moment. */
     crateX, CLASS_BOX,
-    foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bladeGap, crownNear, plan: foePlan, strike, at: foeAt },
+    foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bladeGap, crownNear, plan: foePlan, strike, at: foeAt, shotPlan, shot: foeShot },
     init(ctx) { main = ctx; D.setCtx(ctx); },
     draw, addFly, startSwat, fireEvent,
     /* The shots of a weapon that fires: the timings, shoot(key, make) as described above, the
        shots kept now, their drawing at t, and clear(). */
-    shots: { SHOT, shoot, live: () => Array.from(shots.values()), draw: shotsHD, clear: () => shots.clear() },
+    shots: { SHOT, shoot, live: () => Array.from(shots.values()), draw: shotsHD, clear: clearShots,
+      // the acts' timings, the swat's plan and practice, for the scenes' acts and the tests
+      VOLLEY, PRACTICE, volleyPlan, practice, practiceX, swat: () => swat },
     /* The scene on screen now. */
     scene: () => curScene,
     /* Starts the quiet scenes' turns again from the first, from time t. */
@@ -845,7 +1008,7 @@
     invalidate() { bgCache.key = ''; },
     /* Clears the flies, the swat, any event, the shots and the scene, when the page turns to live
        data, so the first live scene comes in without a fade. */
-    reset() { flies.length = 0; swat = null; ev = null; pendingFlies = 0; curScene = ''; catches.length = 0; leaving.length = 0; petFree = -1e9; shots.clear(); },
+    reset() { flies.length = 0; swat = null; ev = null; pendingFlies = 0; curScene = ''; catches.length = 0; leaving.length = 0; petFree = -1e9; clearShots(); },
     /* The pet's catches and the flies leaving, for the tests. */
     pet: { PET, catches: () => catches.slice(), leaving: () => leaving.slice(), pending: () => pendingFlies, flies: () => flies.slice(), at: petAt, prey: preyAt, plan: catchPlan, now: petNow }
   });

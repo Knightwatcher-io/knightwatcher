@@ -23,11 +23,11 @@
     pegs: { x: 618, y: 228, a: Math.PI / 2 },
     wall: { kind: 'hang', x: 844, y: 164, w: 100, h: 140 }
   };
-  /* The two pegs under the weapon, from its blade: 28 past where the blade starts and 45 short of
-     its point. For the greatsword they are at 680 and 836, where the house always had them; a
-     weapon that gives no blade gets the greatsword's. */
+  /* The two pegs under the weapon, from its reach (its blade, or the barrel of one that fires): 28
+     past where it starts and 45 short of its end. For the greatsword they are at 680 and 836, where
+     the house always had them; a weapon that gives neither gets the greatsword's. */
   function pegXs() {
-    const b = K.rest.blade() || { from: 34, to: 263 };
+    const b = K.rest.reach() || { from: 34, to: 263 };
     return [RESTS.pegs.x + b.from + 28, RESTS.pegs.x + b.to - 45];
   }
   /* What the shield on the wall adds to the backdrop key: '|' and its name when one is equipped. */

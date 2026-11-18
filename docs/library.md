@@ -89,6 +89,7 @@ draws the knight from code (see [When packs fail](#when-packs-fail)).
 | `main`, `off` | the weapon and the shield |
 | `restHelmet` | the plume's rest view on the helmet's rest mount, when the view has one, then the helmet's rest view |
 | `restOff` | the shield's rest view |
+| `bodyStowed` | only for a weapon with a `stowed` view (format 1.2): `body` with the view drawn after `back` when its layer is `back`, after `torso` when it is `body` |
 
 `sequence(mode, helmet)` returns the order of one frame for a grip mode as names: these lists and
 the engine's steps `crates`, `face`, `drumstick`, `hammer` and `effects`.
@@ -551,7 +552,7 @@ The knight never vanishes. In order:
    before packs, with the open helm, the red plume, the blue tabard and the greatsword, by
    `codeHD` in `knight.js`. The sleeper's head in the house is drawn by `bareHD`, and the gear at
    rest by code too: the helmet on the stool, the greatsword on the pegs and across the anvil, and
-   the hot tip from the greatsword's blade. `rest.blade()` is `{ from: 34, to: 263, half: 15 }` and
+   the hot tip from the greatsword's blade. `rest.reach()` is `{ from: 34, to: 263, half: 15 }` and
    `rest.key()` is `'code'`. The code path has the greatsword only, as the owner decided: a look
    with the sword and shield is drawn with the greatsword, and no shield hangs anywhere. The reason is in the status and the console. Nothing plainer than this
    knight is ever drawn.
@@ -578,9 +579,10 @@ what the look equips: the helmet on the house's stool from the look's `restHelme
 weapon on the house's pegs and across the smithy's anvil from its `main` list, the same shapes the
 knight holds, on a frame the scene fixes, and the shield, when one is equipped, on the house's wall
 beside the pegs and the smithy's wall from its `restOff` list. The house places its two pegs from
-the weapon's `blade`, 28 past where the blade starts and 45 short of its point, which keeps the
-greatsword's pegs at 680 and 836; a weapon with no `blade` gets the greatsword's pegs. The smithy draws the hot tip of the blade from the
-weapon's `blade`, and draws none for a weapon without one. A scene asks for each by the item's slot
+the weapon's reach, its `blade` or, for a weapon that only fires, its `barrel`: 28 past where it
+starts and 45 short of its end, which keeps the greatsword's pegs at 680 and 836; a weapon with
+neither gets the greatsword's pegs. The smithy draws the hot tip of the blade from the weapon's
+`blade`, and draws none for a weapon without one or for one that only fires. A scene asks for each by the item's slot
 in its own `paint` or `draw`, through `KW.knight.rest`, which draws from code on the code path, so
 no scene looks at which path is in use:
 
@@ -588,7 +590,7 @@ no scene looks at which path is in use:
 K.rest.draw('helmet', 460, 476);                // the house's draw: the helmet on the stool
 K.rest.draw('main', 618, 228, Math.PI / 2);     // the house's paint: the weapon on the pegs
 K.rest.draw('off', 844, 164);                   // the house's paint: the shield on the wall, from its nail
-const b = K.rest.blade();                       // the smithy's draw: { from, to, half } or null
+const b = K.rest.reach();                       // the smithy's draw: { from, to, half } or null
 ```
 
 The house and the smithy paint the weapon and the shield into their cached backdrop, so their

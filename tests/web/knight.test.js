@@ -499,8 +499,8 @@ if (MODE === 'write') {
 
   test('the blade and the backdrop key name the equipped weapon on the pack path, and the greatsword on the code path', () => {
     const code = PATHS.code(), pack = PATHS.pack();
-    assert.deepEqual(plain(code.K.rest.blade()), { from: 34, to: 263, half: 15 });
-    assert.deepEqual(plain(pack.K.rest.blade()), { from: 34, to: 263, half: 15 });
+    assert.deepEqual(plain(code.K.rest.reach()), { from: 34, to: 263, half: 15 });
+    assert.deepEqual(plain(pack.K.rest.reach()), { from: 34, to: 263, half: 15 });
     assert.equal(code.K.rest.key('main'), 'code');
     assert.equal(pack.K.rest.key('main'), 'kw.base/main.greatsword');
     assert.equal(pack.K.rest.key('off'), '', 'no shield is equipped');
@@ -553,7 +553,7 @@ if (MODE === 'write') {
 
   test('a weapon that gives no blade has no hot tip in the smithy', () => {
     const a = load(true), b = load(true, [editedPack(p => { delete p.items['main.greatsword'].blade; })]);
-    assert.equal(b.K.rest.blade(), null);
+    assert.equal(b.K.rest.reach(), null);
     const drawn = box => { box.log.length = 0; const s = { kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
     const with_ = drawn(a), without = drawn(b);
     assert.ok(with_.includes('s #7a2a1d') && with_.includes('s #fff3a0'));
@@ -793,7 +793,7 @@ if (MODE === 'write') {
     }));
     lib.sequence = (mode, helmet) => { seq = seq0(mode, helmet); names = seq.filter(n => !ENGINE_STEPS.includes(n)); i = 0; return seq; };
     lib.draw = (list, A, V, P, face) => { cur = names[i++]; try { return draw0(list, A, V, P, face); } finally { cur = null; } };
-    const blade = K.rest.blade(), found = [];
+    const blade = K.rest.reach(), found = [];
     const check = (label, o) => {
       for (const k of Object.keys(px)) delete px[k];
       K.draw(o);
@@ -996,7 +996,7 @@ if (MODE === 'write') {
 
   test('the gear at rest with the arming sword: the pegs under its blade, the shield on the wall, the keys', () => {
     const b = withLook(ONE_LOOK), H = b.KW.scenes.house, S = b.KW.scenes.smithy;
-    assert.deepEqual(plain(b.K.rest.blade()), { from: 34, to: 175, half: 10 });
+    assert.deepEqual(plain(b.K.rest.reach()), { from: 34, to: 175, half: 10 });
     assert.equal(b.K.rest.key('off'), 'kw.base/off.heater');
     assert.equal(H.key({ tv: false }), '|kw.base/main.arming|kw.base/off.heater');
     assert.equal(S.key({ kx: 440 }), '440|kw.base/main.arming|kw.base/off.heater');
@@ -1140,7 +1140,7 @@ if (MODE === 'write') {
        head, 34 to 136 along the frame, so the hot tip glows on the head. */
     freeTest(`${FB}: the mace's head glows on the anvil`, () => {
       const mace = withLook(look({ main: KB('main.mace'), off: KB('off.kite') })), sword = withLook(look({ main: KB('main.arming'), off: KB('off.kite') }));
-      assert.deepEqual(plain(mace.K.rest.blade()), { from: 34, to: 136, half: 16 });
+      assert.deepEqual(plain(mace.K.rest.reach()), { from: 34, to: 136, half: 16 });
       assert.equal(mace.K.rest.key('main'), 'kw.base/main.mace');
       assert.equal(mace.K.rest.key('off'), 'kw.base/off.kite');
       assert.equal(mace.KW.scenes.smithy.key({ kx: 440 }), '440|kw.base/main.mace|kw.base/off.kite');

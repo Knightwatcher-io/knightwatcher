@@ -304,8 +304,8 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   pack when, and only when, they share it from code. The keys themselves may differ. The check walks
   every scene the pack gives, so each later scene comes under it as it is added.
 - The same test checks that the compiled scene gives the code scene's interface: the same spot,
-  places, rests, rounds, `can`, weapon and helmet, `outdoors`, `foeZone` and `crate`, and the same parts
-  drawn, `wallAt` among them.
+  places, rests, rounds, `can`, weapon and helmet, `outdoors`, `foeZone`, `crate` and the `target` a
+  shot aims at, and the same parts drawn, `wallAt` and `struck` among them.
 - An act changes the knight's pose and the drawing from one moment to the next, and the target's
   keeps the time of its last blow from one frame for the next, so `tests/web/world-scenes.test.js`
   also runs every scene of the pack that has a `target`, an `anvil`, a `bed`, a `screen` or a `seat`

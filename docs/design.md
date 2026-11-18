@@ -127,9 +127,12 @@ the greatsword both arms go behind the blade, the one on the side it leans to fi
 close on the grip below the guard, the upper one far enough down that it never covers the guard.
 With the sword and shield the shield's arm goes behind the shield and the sword's arm behind the
 sword, and while the sword crosses the body both arms go behind the shield and the blade goes in
-front of it.
+front of it. A one-handed weapon that fires, turning across the body, lifts the shield over the
+weapon arm, which passes under it.
 A test draws every frame of the swings and the attack and checks this pixel by pixel, for every
-weapon, shield, sleeve and glove on every build ([rig.md](./rig.md#anchors-values-and-poses)).
+weapon, shield, sleeve and glove on every build ([rig.md](./rig.md#anchors-values-and-poses)), and
+another every frame of the aim, the shot, the swat by shot and the attack for the weapons that fire
+([rig.md](./rig.md#aiming-and-firing)).
 
 The blade always passes in front of the watcher, never behind the head. A blade that turns from one
 side of the body to the other must point past the face on the way, so the swings keep that pass

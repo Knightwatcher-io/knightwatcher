@@ -403,7 +403,7 @@ test('with no usable base pack the knight, the sleeper\'s head and the gear at r
     assert.equal(s.status.base, null, name);
     assert.equal(s.status.note, CODE + why, name);
     assert.deepEqual(s.lines[s.lines.length - 1], ['warn', s.status.note], name);
-    assert.deepEqual(plain(s.K.rest.blade()), { from: 34, to: 263, half: 15 }, name);
+    assert.deepEqual(plain(s.K.rest.reach()), { from: 34, to: 263, half: 15 }, name);
     assert.equal(s.K.rest.key('main'), 'code', name);
     drawsTheCodeKnight(s, name);
   }

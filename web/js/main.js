@@ -65,7 +65,8 @@
      (KW.settings). The
      hooks, in the contract's names: wd= the world ('medieval' or a loaded world's long name); bd= the
      build (a, b or c, or a loaded build's long name); arm=one the sword and shield and
-     arm=two the greatsword, or any weapon by its contract name (arm=longsword); sk=, hc=, tb= and
+     arm=two the greatsword, or any weapon by its contract name (arm=longsword), or a loaded pack's
+     weapon by its long name, <pack>/<item>, as sh= takes a loaded pack's shield; sk=, hc=, tb= and
      pm= the skin, hair, tabard and plume swatches; hy= the hair style; the gear: sh= the shield,
      hm= the helmet, ps= the plume's style, bo= the body, so= the shoulders, am= the arms, hn= the
      hands, lg= the legs, ft= the feet and bk= the back; mon= the monarch, ms= the monarch's skin,
@@ -84,11 +85,15 @@
     if (fixed.has('h')) d.helmet_indoors = S.h === 'on';
     return d;
   } };
-  if (hv('arm') !== undefined) HOOK.look.weapon = { one: 'sword_and_shield', two: 'greatsword' }[hv('arm')] || hv('arm');
+  // a loaded pack's weapon or shield, by its long name, is the item for its slot
+  const items = {};
+  if (hv('arm') !== undefined) { if (KW.settings.isLong(hv('arm'))) items.main = hv('arm'); else HOOK.look.weapon = { one: 'sword_and_shield', two: 'greatsword' }[hv('arm')] || hv('arm'); }
+  if (KW.settings.isLong(hv('sh'))) items.off = hv('sh');
+  if (Object.keys(items).length) HOOK.look.items = items;
   if (hv('wd') !== undefined) HOOK.look.world = hv('wd');
   for (const [h, k] of [['bd', 'build'], ['sk', 'skin'], ['hc', 'hair'], ['hy', 'hair_style'], ['tb', 'tabard'], ['pm', 'plume'], ['mon', 'monarch'], ['ms', 'monarch_skin'],
     ['mh', 'monarch_hair'], ['mr', 'monarch_robe'], ['pc', 'pet_coat'], ['sh', 'shield'], ['hm', 'helmet'], ['ps', 'plume_style'], ['bo', 'body'], ['so', 'shoulders'], ['am', 'arms'],
-    ['hn', 'hands'], ['lg', 'legs'], ['ft', 'feet'], ['bk', 'back'], ['fo', 'foe'], ['cr', 'critter'], ['pr', 'props'], ['wo', 'words'], ['ov', 'overlay']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
+    ['hn', 'hands'], ['lg', 'legs'], ['ft', 'feet'], ['bk', 'back'], ['fo', 'foe'], ['cr', 'critter'], ['pr', 'props'], ['wo', 'words'], ['ov', 'overlay']]) if (hv(h) !== undefined && !(h === 'sh' && items.off)) HOOK.look[k] = hv(h);
   const scHook = (H0.match(/[#&]sc=([^&]*)/) || [])[1];
   if (scHook !== undefined) for (const item of scHook.split(',').filter(Boolean)) { const [c, v] = item.split(':'); HOOK.scenes[c] = v === undefined ? '' : v; }
   /* Served, the page starts from its copy of the shared settings, if it has one, until the server

@@ -43,8 +43,9 @@ tests/
                      them as approved (base-builds.json), its free items of 1.4.0 as approved
                      (base-free-items.json), a world pack of format 1.1 for the library's tests
                      (world-1.1.json), the base pack's read, first stored from the library
-                     before format 1.1 (base-read.json), and a state file with the settings'
-                     defaults (state-defaults.json)
+                     before format 1.1 (base-read.json), a state file with the settings'
+                     defaults (state-defaults.json), and crossbow.js, the trial crossbow of
+                     format 1.2 that the tests of weapons that fire make in memory
   tools/             node tests for tools/deploy.sh, tools/pack-carrier.js, tools/sign-pack.js,
                      tools/settings-schema.js, tools/cat-stamps.js and tools/check-private.sh
 tools/

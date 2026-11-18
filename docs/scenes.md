@@ -195,7 +195,8 @@ optional `wall` `{ period, offset, high: [width, y], low }`: `period` from 2 to 
 `0 <= from`, `to <= 960` and `to - from >= 60`, the crate's width. The engine lands the crate's
 middle at `clamp(kx - 160, from + 30, to - 30)`, `kx` the watcher's x, so as near 160 left of the
 watcher as the stretch allows. At `rules` the span must lie clear of the class boxes of the pie's
-place and the ground places (touching is allowed). A target's `aim` is format 1.2 and refused here.
+place and the ground places (touching is allowed). A target has no `aim` field in any format: a shot
+aims at the middle of the target group's box (The target's act, below).
 
 **What a scene can act.** At `rules` a scene that lists a condition in `can` must meet its needs:
 
@@ -231,8 +232,9 @@ The last four rows, `flash`, `bolt`, `tracer` and `beam` (format 1.2), are not `
 engine draws them for a weapon or a foe that fires, in its shot's `colour` and `flash`, and a scene
 does not name them. Their timings are `SHOT` in `engine.js`. Where a shot lands the engine draws
 its burst, the cartoon burst of a blade's blow (`poofHD`), for as long as the act asks. A frame
-draws at most 8 shots, the first made first, each with its flash and burst. No act fires yet, so nothing on the wall
-draws them until the acts that fire are built.
+draws at most 8 shots, the first made first, each with its flash and burst. The acts that fire
+(the swat, practice at a target and the foe's event) make them only when the look's weapon fires,
+which no weapon of the shipped packs does yet ([page.md](./page.md#the-acts-with-a-weapon-that-fires)).
 
 | Effect | Fields (default) | Cost, at most | Drawn by |
 |---|---|---|---|
@@ -399,10 +401,10 @@ by 80, the shield's 96 by 132 the house's wall of 100 by 140 and the smithy's of
 
 A frame may name a stamp, as the house's pegs do: `{ "x": 618, "y": 228, "a": "flat", "stamp":
 "peg" }`. The mark then draws the stamp under the weapon twice, before it, at the frame's `y` and at
-the xs the engine works out from the weapon's `blade` (`KW.knight.rest.blade()`): 28 past where the
-blade starts and 45 short of its point, from the grip's middle, which is `pegXs()` in `house.js`.
-For the greatsword the pegs stand at 680 and 836, and for the arming sword at 680 and 748; a weapon
-that gives no blade gets the greatsword's. The interface leaves `stamp` out, as it does `from`.
+the xs the engine works out from the weapon's reach, its `blade` or, for a weapon that only fires,
+its `barrel` (`KW.knight.rest.reach()`): 28 past where it starts and 45 short of its end, from the
+grip's middle, which is `pegXs()` in `house.js`. For the greatsword the pegs stand at 680 and 836,
+and for the arming sword at 680 and 748; a weapon that gives neither gets the greatsword's. The interface leaves `stamp` out, as it does `from`.
 
 **Layers and the key.** A layer is drawn when every predicate of its `when` holds:
 `cond:<id>` when the winning condition is `id`, `tv`, `inBed`, `helmOff` and `strike` from the
@@ -473,6 +475,15 @@ as `yard.js` keeps `dummyHit`. The wobble cannot be keyframes: it changes value 
 in the layer; the mark `{ "k": "target" }` is reserved, and refused by name until it is given a
 use.
 
+With a weapon that fires the act shoots instead, on the same beats ([page.md](./page.md#the-acts-with-a-weapon-that-fires)):
+the watcher trains from 300 short of the target, the shot leaves at the middle of the beat (450 ms
+into a beat of 900, 500 into each second while hot) and the target is struck the moment it lands,
+with the burst on it as well as its `burst` of straw. The shot aims at the middle of the box the
+shapes of the target's group paint, which the compiler works out from the shapes at the ends of
+their values and gives as the scene's `target`: `[710, 380]` for the yard's dummy, the point the
+code yard aims at. A target's own aim point is not read: `aim` is refused at `fields` in every
+format.
+
 **The anvil's act.** A scene with an `anvil`, `{ rest, spark }`, gets the act the engine plays in
 the smithy, built beside the target's in the compiler's table of acts. It is `act()` in `smithy.js`
 with its numbers in the compiler's table `ANVIL`: whatever else is up, the weapon put away
@@ -493,9 +504,10 @@ would follow. The format asks for one round at least, so the smithy's data has o
 guarding, which is where the act keeps the watcher.
 
 The **hot tip** of the blade is part of the anvil's act, and reads the equipped weapon's `blade`,
-`KW.knight.rest.blade()`: it is drawn where a `rest` mark for the weapon at the anvil's rest stands
+`KW.knight.rest.reach()`: it is drawn where a `rest` mark for the weapon at the anvil's rest stands
 in a moving or over layer, on the weapon as that rest lays it, and only for a weapon that gives a
-blade. It is the code smithy's drawing with its numbers in the compiler's table `TIP`: from the
+blade. A weapon that only fires lies on the anvil with no hot tip; one that is both swung and fired
+has its blade's. It is the code smithy's drawing with its numbers in the compiler's table `TIP`: from the
 point, `to` along the blade, and its edges, `half` either side, a glow that flickers, a dithered
 patch 87 short of the point, three bands of red to orange starting 73, 57 and 43 short of it, the
 point white-hot, and a line of shine and one of shade. No pack can say it, since it is drawn from
