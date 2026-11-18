@@ -287,7 +287,7 @@ test('the foe\'s event by shot: the step back over 900 ms, aimed from 1250, fire
   assert.equal(E.note, 'no flies');
 });
 
-test('the prod swings at a foe its blade reaches and shoots at one beyond it; the goblin and Glitch do not fire', () => {
+test('the prod swings at a foe its blade reaches and shoots at one beyond it; the goblin does not fire, and Glitch fires first', () => {
   const m = page(PROD);
   const near = planFor(m, 'battlement', 480);
   assert.ok(near && !near.shot && near.q < 1, 'within reach: the swing');
@@ -298,12 +298,15 @@ test('the prod swings at a foe its blade reaches and shoots at one beyond it; th
   // a sword at the same place has no plan at all, as before
   const s = page(ARMING);
   assert.equal(planFor(s, 'battlement', 760), null);
-  // Glitch's fires is left alone: one shot in its event, the watcher's
-  const o = page(BLASTER, true), E = engine(o, null, 'battlement', { input: { foe: O('foe.glitch') } });
-  at(o, 0); E.fireEvent('goblin');
-  const made = new Set();
-  for (let t = 0; t < 3400; t += 25) { at(o, t); for (const r of E.shots.live()) made.add(r.t0); }
-  assert.deepEqual([...made], [1400]);
+  // the goblin gives the event one shot, the watcher's; Glitch fires its own first, at 1350
+  // (tests/web/foe-fires.test.js)
+  for (const [foe, want] of [['goblin', [1400]], [O('foe.glitch'), [1350, 1400]]]) {
+    const o = page(BLASTER, true), E = engine(o, null, 'battlement', { input: { foe } });
+    at(o, 0); E.fireEvent('goblin');
+    const made = new Set();
+    for (let t = 0; t < 3400; t += 25) { at(o, t); for (const r of E.shots.live()) made.add(r.t0); }
+    assert.deepEqual([...made], want, foe);
+  }
 });
 
 // ---- The attack ----------------------------------------------------------------------------------

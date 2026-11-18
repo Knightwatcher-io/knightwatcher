@@ -234,7 +234,8 @@ does not name them. Their timings are `SHOT` in `engine.js`. Where a shot lands 
 its burst, the cartoon burst of a blade's blow (`poofHD`), for as long as the act asks. A frame
 draws at most 8 shots, the first made first, each with its flash and burst. The acts that fire
 (the swat, practice at a target and the foe's event) make them only when the look's weapon fires,
-which no weapon of the shipped packs does yet ([page.md](./page.md#the-acts-with-a-weapon-that-fires)).
+which no weapon of the shipped packs does yet, and a foe that fires makes its own in its event,
+which no foe of the shipped packs does ([page.md](./page.md#the-acts-with-a-weapon-that-fires)).
 
 | Effect | Fields (default) | Cost, at most | Drawn by |
 |---|---|---|---|

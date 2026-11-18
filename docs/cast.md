@@ -92,7 +92,11 @@ nothing turns a critter.
 
 **A foe** compiles to the interface of `KW.props.FOES`: `pose(name)`, `poses` (the six the foe
 player asks for), `anchor` (the sprite's `feet`), `size` (its `size`), `h`, `w`, `mid`, `crown` and
-`exit`. A pose is drawn as its parts, in the order it lists them, then its own shapes, each part
+`exit`. A foe of format 1.2 that gives the pose `aim` has it compiled and painted as the six are,
+listed in `poses` after them, and one that fires also gives `fires`, `{ muzzle, shot }` as the pack
+writes them, frozen. The foe player shows `aim` in place of the taunt and fires the shot from the
+muzzle, mirrored with the foe ([page.md](./page.md#the-acts-with-a-weapon-that-fires)). A foe
+without `fires` plays as before, frame for frame, and is never asked for `aim`. A pose is drawn as its parts, in the order it lists them, then its own shapes, each part
 compiled once and shared by the poses that list it. `pose(name)` paints the pose the first time it is
 asked for into a canvas of `sprite.size`, the shapes moved to the feet, and keeps it, as `foeSprites()`
 in `props.js` does; a name that is not a pose gives `stand`. Each compile paints canvases of its own,

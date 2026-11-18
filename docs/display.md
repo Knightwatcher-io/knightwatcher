@@ -69,7 +69,11 @@ hides the review bar and drives the display:
   [The knight's rig](./rig.md#anchors-values-and-poses)); the
   burst on the pot lasts the 80 ms the blade bounces off it. A foe is described in `KW.cast.foes`
   ([The cast](./page.md#the-cast)) and played by the engine's foe player from its tables
-  (`KW.engine.foe.FOE`), so a later foe reuses the entrance, the strike and the exit. A `seq` lower than the
+  (`KW.engine.foe.FOE`), so a later foe reuses the entrance, the strike and the exit. A foe of
+  another world may fire (format 1.2, [worlds.md](./worlds.md#format-12)): it aims where the goblin
+  pulls its face and fires once before the knight strikes, and the knight is never hit; the shot
+  misses over the head, or stops at the shield with a spark, and the knight's eyes go wide for a
+  moment. A `seq` lower than the
   highest played means the collector started again, and its events are adopted unplayed. Events
   act out only while nothing at warning or above is up and in the scenes that host them (each
   scene's `hosts`, [The scene interface](./page.md#the-scene-interface)); the caption shows regardless. The

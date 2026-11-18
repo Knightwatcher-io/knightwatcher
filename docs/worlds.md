@@ -147,9 +147,13 @@ give `aim` too, and is then never asked for it.
 ```
 
 The loaded pack keeps `fires` and `aim` in its `data`, and the counts step's `world.cast` gives the
-aim pose's cost after the other six. The engine draws no foe that fires yet: the scene compiler
-compiles a foe's six poses, and a foe with `fires` plays exactly as one without until the foe
-player's shot is built.
+aim pose's cost after the other six. The scene compiler compiles `aim` and paints it once as it
+does the six, and the foe player plays it: the foe aims from 1 230 ms and fires once at 1 350,
+before the watcher strikes. The watcher is never hit. The shot misses over the watcher's head, or
+stops at the shield's face with a spark when a shield is carried and the foe is on the shield's
+side, the left; the watcher's eyes go wide for 200 ms as it passes. A foe on the right misses
+overhead even with a shield carried. [page.md](./page.md#the-acts-with-a-weapon-that-fires) gives
+the timings and [cast.md](./cast.md#the-cast-on-the-page) the compiled foe.
 
 `tests/web/fire.test.js` checks the fields and rules of 1.2, and the test world has a copy of
 format 1.2 with a weapon of each use and a foe that fires; see
