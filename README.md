@@ -108,8 +108,8 @@ For people running it:
 
 For people making packs:
 
-- [Packs](docs/packs.md): format 1.0, the rig items hang on, the checks every pack passes, and signing
-- [Worlds](docs/worlds.md): format 1.1, the words, the overlay, presets, and parts of different worlds together
+- [Packs](docs/packs.md): format 1.0, the rig items hang on, weapons that fire, the checks every pack passes, and signing
+- [Worlds](docs/worlds.md): formats 1.1 and 1.2, the words, the overlay, presets, and parts of different worlds together
 - [Scenes as data](docs/scenes.md): shapes and terms, the fields of a scene, and how a scene compiles and acts
 - [The cast and the devices](docs/cast.md): the patron, foes, critters and pets, and the drawings of the devices
 

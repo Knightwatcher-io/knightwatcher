@@ -14,6 +14,8 @@ out.
 | `tests/web/base-read.test.js` | the base pack's whole read, its signed bytes and six looks against the copy stored before format 1.1 |
 | `tests/web/ed25519.test.js` | the verifier against RFC 8032's vectors and `node:crypto` |
 | `tests/web/effects.test.js` | each effect's cost against what it draws, and `pack.js` holding effects to their tables |
+| `tests/web/fire.test.js` | format 1.2: the fields and rules of weapons and foes that fire, the aim and `fire()`, and the shot effects |
+| `tests/web/fire-barrel.test.js` | no arm or gauntlet over a barrel, frame by frame, through the aim and `fire()` |
 | `tests/web/foe.test.js` | the goblin's plan and hit on every build with each weapon, the blade meeting it and never passing through |
 | `tests/web/format-1.1.test.js` | the world sections of format 1.1: one refused copy of the world fixture for each rule |
 | `tests/web/knight.test.js` | the knight call by call against the stored record, the arm and blade checks, the gear at rest |
@@ -572,10 +574,41 @@ The test refuses one signed copy of it for each rule above, 585 of them, rows in
 exact reason it expects; accepts each limit at its edge; checks the costs the counts step reports
 against figures worked by hand; signs a 1.1 pack with a key made for the run and checks that the
 signature holds over a pretty-printed, minified or reordered copy and breaks at a changed value in
-any new section; checks that a `[1, 0]` pack still refuses every new section and that `[1, 2]` is
-refused at the format; checks the closed lists by name, the conditions against `state.js`; and feeds
+any new section; checks that a `[1, 0]` pack still refuses every new section, that its world
+fixture reads the same at `[1, 2]` and that `[1, 3]` is refused at the format; checks the closed lists by name, the conditions against `state.js`; and feeds
 the reader mangled copies and values of the wrong type, none of which may throw. It checks too that
 the world's pack changes no look: `resolve()` gives the same with it loaded as without.
+
+`tests/web/fire.test.js` checks format 1.2. On the library: the test world's copy of 1.2 is its
+generator's and reads on `dev` terms; formats 1.0 to 1.2 read and 1.3 is refused at the format;
+each field 1.2 adds on a `main` item, and a foe's `fires` and `aim`, is refused at `fields` in a
+pack of 1.0 or 1.1; each rule of `use` (what a weapon that fires or is both must give, what a swung
+one may not, the muzzle on the barrel), each field's range and kind, a stowed view's anchors, a foe
+that fires without `aim` or with its muzzle outside its sprite, each with the step and the exact
+reason it expects; a stowed view counted toward its item's cost and a look counting the larger of
+the weapon and its stowed view; `resolve()` adding the weapon's fields only for a weapon that fires,
+every swung weapon resolving with exactly the keys it had; and the flip drawing a framed point's
+`p` as `-p`. On the page, with the test world's copy loaded beside the base pack: `fired()` only
+for a weapon that fires; the aim held from 0.3 below level to 1.2 above it both ways, 1.4 for the
+swat; the line of the shot from the muzzle passing through the point aimed at, both ways, with the
+muzzle off the frame's line; `fire()`'s phases, the stance at q 0 and 1, level at .3, the recoil of
+4 pixels and 0.08 at .5 gone by .6, and the shot leaving from .5; a turn to the other side never
+nearer straight up than 0.25 and passing through straight down; the flip only for a weapon that
+fires aimed left, never in a swing; and the front hand on its station at every aimed angle. On the
+engine: `SHOT`'s numbers; a bolt's speed, landing and flash; a tracer's fade, a beam's 80 ms and the
+pale snap; and at most 8 shots a frame, the first made first, a shot not yet left taking no place.
+
+`tests/web/fire-barrel.test.js` is the barrel check. It draws, into a context that keeps the last
+list to paint each pixel of the grid, every frame of `AIM2` or `AIM1` at every 0.05 of the aim's
+range both ways and of `fire()` at every 0.01 of q both ways, aimed high, level and low, 668 frames
+for each of 40 sets: the test world's blaster with and without its deflector, its prod and a trial
+crossbow it makes in memory, on the base pack's three builds in plate, mail and padded sleeves and
+on the test world's unit. No arm or gauntlet may paint a pixel the weapon painted at or beyond its
+barrel's `from`, nor one of the shield, but in the frames of a one-handed weapon's turn across the
+body to the left, which carry the weapon arm in front of the shield and are counted apart
+([rig.md](./rig.md#aiming-and-firing)). Drawn with the barrel from the frame's origin instead, the
+same check finds the hands on the weapon, which shows it sees what it looks for. It takes about a
+minute and a half, in a process of its own.
 
 `tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
 clean, with its signature taken off, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
@@ -724,9 +757,10 @@ must verify against the shipped `KEYS` with the page's verifier.
 `test.orbit` ("Orbit") is a small world made unlike the medieval one, so that anything the engine
 still assumes about the medieval world shows at once. It lives in
 `tests/web/fixtures/worlds/test.orbit.pack.json`, outside `web/`, so `tools/deploy.sh` never copies
-it; it is never signed, and the tests read it on `dev` terms. `tests/web/fixtures/worlds/orbit.js`
-writes it, and checks it with `--check` ([below](#the-test-world)). What it
-holds:
+it; it is never signed, and the tests read it on `dev` terms. Beside it,
+`test.orbit-fire.pack.json` is a copy of format 1.2 with weapons and a foe that fire (the last row
+below). `tests/web/fixtures/worlds/orbit.js` writes both, and checks them with `--check`
+([below](#the-test-world)). What it holds:
 
 | Part | What | Proves |
 |---|---|---|
@@ -739,6 +773,12 @@ holds:
 | overlay | `overlay.orbit`, each level's colours near the edges of its band, the font `vt323` | another world's overlay; the band checks |
 | reserved | junk in `sounds`, a scene's `sound` and `companion`, the preset's `sound` and `companion` | read, covered by a signature and ignored |
 | preset | `world.orbit`, Orbit whole | a world chosen whole draws only its own parts |
+| weapons and a foe that fire, in a copy of format 1.2 | `test.orbit-fire.pack.json`, the same pack at version 1.1.0 and format `[1, 2]`: `main.blaster`, one-handed, `use` `fire`, a bolt, holstered on the right hip when stowed; `off.deflector`, the base pack's heater shield in flat panels; `main.prod`, two-handed, `use` `both`, a beam with no flash colour, slung across the back when stowed; Glitch with `fires`, a tracer, and the pose `aim`; the preset's outfit the blaster and the deflector | the fields of 1.2 on a body at the ends of the ranges; a weapon of each use; a foe that fires; a page of format 1.1 refusing the copy at `format` |
+
+The copy of format 1.2 is a file of its own, under the same id, so that the 1.1 file stays as it
+was for every test and shot that reads it, and a page of format 1.1 can be shown refusing the copy
+while reading the 1.1 file. Only the tests read the copy: no act fires yet, and the shots take the
+1.1 file.
 
 Its Deck's still layers cost 185 308 fills at the widest screen, within 10 percent of the 200 000 a
 scene may, which shows the cap is reachable and holds. A second preset, "Orbit (broken)", whose
@@ -767,7 +807,9 @@ overlay, quiet scenes, the scene of each condition), and Orbit with each of the 
 each swap changes the reads of its own part and no other, throws nothing, keeps the knight drawn
 from the packs within the look's caps, and reports no fallback but the two kinds Orbit's set lacks.
 Orbit unchosen on the display brings the medieval world back frame for frame, with nothing of
-Orbit's read, and a copy of the library of format 1.0 refuses Orbit at `format`.
+Orbit's read, and a copy of the library of format 1.0 refuses Orbit at `format`. A copy of the
+library of format 1.1 refuses the copy of format 1.2 at `format` and reads the 1.1 file exactly as
+this library does.
 
 `tests/web/orbit-body.test.js` draws Unit, at an end of every measurement's range, in every pose,
 swing and attack frame, in its own outfit and in the base pack's one-handed gear, without a throw or
@@ -783,17 +825,18 @@ made for the run, which covers its reserved fields, and draws it the same withou
 carrier added: Orbit chosen whole in every scene, condition and event, the drone's catch, the medieval
 world with Orbit's parts and Orbit with the medieval world's ([shots.md](./shots.md#taking-and-comparing-them)).
 
-The file is written by its generator, never by hand:
+The two files are written by their generator, never by hand:
 
 ```bash
-node tests/web/fixtures/worlds/orbit.js           # writes the file
-node tests/web/fixtures/worlds/orbit.js --check   # exits 1 when the file is not what it writes
+node tests/web/fixtures/worlds/orbit.js           # writes both files
+node tests/web/fixtures/worlds/orbit.js --check   # exits 1 when either is not what it writes
 ```
 
-`tests/web/orbit.test.js` fails while the two differ, so change the generator and run it, then
-commit both. The pack is never signed, with `kw1` or any key, and never goes under `web/`, so
-`tools/deploy.sh` never copies it; the same test fails if any pack under `web/packs/` has an id
-starting `test.`. It is read only on `dev` terms. To look at it on a wall, from a copy of `web/`
+`tests/web/orbit.test.js` fails while the 1.1 file differs, and `tests/web/fire.test.js` while the
+copy of 1.2 does, so change the generator and run it, then commit all three. Neither file is ever
+signed, with `kw1` or any key, and neither goes under `web/`, so `tools/deploy.sh` never copies
+them; `tests/web/orbit.test.js` fails if any pack under `web/packs/` has an id starting `test.`.
+They are read only on `dev` terms. To look at the 1.1 file on a wall, from a copy of `web/`
 outside the repository with its carrier added, the way [shots.md](./shots.md#taking-and-comparing-them)
 shoots the code path:
 

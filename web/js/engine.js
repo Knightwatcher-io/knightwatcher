@@ -283,6 +283,62 @@
     ev = { type, t0: frozen() ? 0 : performance.now(), dur: e.dur };
   }
 
+  /* ---- Shots -------------------------------------------------------------------------------------
+     The engine's effects for a weapon that fires (format 1.2), drawn in the shot's colours: the
+     flash, a small star at the muzzle for SHOT.flash ms in the shot's flash colour, or the pale snap
+     (SHOT.snap) when it gives none; and the shot itself, by its kind: a bolt, a short streak flying
+     at SHOT.speed pixels a ms; a tracer, a line from the muzzle drawn at once and fading over
+     SHOT.tracer ms; a beam, a line drawn at once for SHOT.beam ms. Where a shot lands the engine
+     draws its burst for burst ms (poofHD), the same cartoon burst as a blade's blow. A frame draws at
+     most SHOT.most shots, the oldest first. Each shot is kept by a key and made once, so that the
+     picture at a moment depends on the moment alone, and leaves once nothing of it shows. Times in
+     ms. The acts that fire call shoot() and read when a shot lands. */
+  const SHOT = Object.freeze({ speed: 1.6, flash: 60, tracer: 120, beam: 80, most: 8, burst: 260, streak: 26, star: 7, snap: '#eef3f9' });
+  const SHOT_KINDS = ['bolt', 'tracer', 'beam'];
+  const shots = new Map();
+  /* The shot of key, made by make() the first time it is asked for: make returns { kind, colour,
+     flash, from, to, t0, burst }, flash optional, from the muzzle and to where it lands as [x, y],
+     t0 the moment it leaves and burst the ms its landing burst shows (0 for none). The shot comes
+     back with lands, the moment it reaches to (at once for a tracer or a beam), and end, the moment
+     nothing of it shows. */
+  function shoot(key, make) {
+    let r = shots.get(key);
+    if (!r) {
+      r = Object.assign({}, make());
+      if (!SHOT_KINDS.includes(r.kind)) throw new Error('a shot is a bolt, a tracer or a beam, not ' + r.kind);
+      if (!(r.burst > 0)) r.burst = 0;
+      r.len = Math.hypot(r.to[0] - r.from[0], r.to[1] - r.from[1]) || 1;
+      r.u = [(r.to[0] - r.from[0]) / r.len, (r.to[1] - r.from[1]) / r.len];
+      r.lands = r.t0 + (r.kind === 'bolt' ? r.len / SHOT.speed : 0);
+      r.end = Math.max(r.t0 + SHOT.flash, r.kind === 'tracer' ? r.t0 + SHOT.tracer : r.kind === 'beam' ? r.t0 + SHOT.beam : r.lands, r.lands + r.burst);
+      shots.set(key, r);
+    }
+    return r;
+  }
+  /* Draws the shots at t: those that have left and still show, at most SHOT.most, in the order they
+     were made, and forgets those that have ended. */
+  function shotsHD(t) {
+    let n = 0;
+    for (const [k, r] of shots) {
+      if (t >= r.end) { shots.delete(k); continue; }
+      const e = t - r.t0;
+      if (e < 0 || n >= SHOT.most) continue;
+      n++;
+      const [fx, fy] = r.from, [tx, ty] = r.to;
+      if (r.kind === 'bolt' && t < r.lands) {
+        // the streak, its head in the flash colour
+        const d = e * SHOT.speed, hx = fx + r.u[0] * d, hy = fy + r.u[1] * d, tl = Math.min(SHOT.streak, d), bx = hx - r.u[0] * tl, by = hy - r.u[1] * tl;
+        strip(bx, by, hx, hy, 3, 3, C.K); strip(bx, by, hx, hy, 1.5, 1.5, r.colour); strip(hx - r.u[0] * 5, hy - r.u[1] * 5, hx, hy, 1.5, 1.5, r.flash || SHOT.snap);
+      } else if (r.kind === 'tracer' && e < SHOT.tracer) {
+        alpha(1 - e / SHOT.tracer); strip(fx, fy, tx, ty, 2.5, 2.5, C.K); strip(fx, fy, tx, ty, 1, 1, r.colour); alpha(1);
+      } else if (r.kind === 'beam' && e < SHOT.beam) {
+        strip(fx, fy, tx, ty, 4, 4, C.K); strip(fx, fy, tx, ty, 2.5, 2.5, r.colour); strip(fx, fy, tx, ty, .5, .5, C.W);
+      }
+      if (e < SHOT.flash) P.starHD(fx, fy, SHOT.star, r.flash || SHOT.snap);
+      if (r.burst && t >= r.lands && t < r.lands + r.burst) P.poofHD(tx, ty);
+    }
+  }
+
   /* ---- Foes -------------------------------------------------------------------------------------
      An event with a foe (the goblin of ip_banned) plays in three parts, each read from a table so
      that a later foe reuses them with only its own description, which gives its poses, height,
@@ -650,8 +706,8 @@
   function draw(t) {
     const { HL, HR, HT, HH, HFL } = V, freeze = frozen();
     const inp = E.input, w = inp.w, scene = sceneOf(w, t), sc = KW.scenes[scene], devices = inp.devices || [];
-    // a new scene starts with no flies, no catch and nothing waiting, so nothing spills into it
-    if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; catches.length = 0; leaving.length = 0; pendingFlies = 0; petFree = -1e9; } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
+    // a new scene starts with no flies, no catch, no shot and nothing waiting, so nothing spills into it
+    if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; catches.length = 0; leaving.length = 0; pendingFlies = 0; petFree = -1e9; shots.clear(); } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
     const serious = w.lv >= 3, inBed = !!sc.bed && (w.id === 'night' || w.id === 'container_unhealthy');
     if (serious) leaveAll(t);
     // the pet's spot: a catch worked out from another spot in this scene (by the bed, or not) is
@@ -754,6 +810,7 @@
     for (let i = catches.length - 1; i >= 0; i--) if (t >= catches[i].end && t >= catches[i].hitAt + PET.drop + 100) catches.splice(i, 1);
     for (const l of leaving) { const [x, y] = leavingPos(l, t); fly.draw(x, y, Math.floor(t / 90 + l.ph) % 2); }
     for (let i = leaving.length - 1; i >= 0; i--) if (t - leaving[i].t0 > PET.leave) leaving.splice(i, 1);
+    shotsHD(t);
     if (foe) foeFxHD(plan, foe);
     if (w.id === 'attack') { alpha(.08 + .07 * Math.sin(t / 220)); Rh(HL, HT, HR - HL, HH - HT + 20, D.C.R1); alpha(1); }
     if (w.id === 'night' && inBed) { alpha(.5); Rh(HL, HT, HR - HL, HH - HT + 20, '#000'); alpha(1); }
@@ -777,15 +834,18 @@
     foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bladeGap, crownNear, plan: foePlan, strike, at: foeAt },
     init(ctx) { main = ctx; D.setCtx(ctx); },
     draw, addFly, startSwat, fireEvent,
+    /* The shots of a weapon that fires: the timings, shoot(key, make) as described above, the
+       shots kept now, their drawing at t, and clear(). */
+    shots: { SHOT, shoot, live: () => Array.from(shots.values()), draw: shotsHD, clear: () => shots.clear() },
     /* The scene on screen now. */
     scene: () => curScene,
     /* Starts the quiet scenes' turns again from the first, from time t. */
     restartTurns(t) { sceneT0 = t; },
     /* Forgets the cached backdrop, after the screen changes shape. */
     invalidate() { bgCache.key = ''; },
-    /* Clears the flies, the swat, any event and the scene, when the page turns to live data, so
-       the first live scene comes in without a fade. */
-    reset() { flies.length = 0; swat = null; ev = null; pendingFlies = 0; curScene = ''; catches.length = 0; leaving.length = 0; petFree = -1e9; },
+    /* Clears the flies, the swat, any event, the shots and the scene, when the page turns to live
+       data, so the first live scene comes in without a fade. */
+    reset() { flies.length = 0; swat = null; ev = null; pendingFlies = 0; curScene = ''; catches.length = 0; leaving.length = 0; petFree = -1e9; shots.clear(); },
     /* The pet's catches and the flies leaving, for the tests. */
     pet: { PET, catches: () => catches.slice(), leaving: () => leaving.slice(), pending: () => pendingFlies, flies: () => flies.slice(), at: petAt, prey: preyAt, plan: catchPlan, now: petNow }
   });

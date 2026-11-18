@@ -34,7 +34,8 @@ tests/
     fixtures/knight/ the stored call record of the knight's drawing
     fixtures/scenes/ the stored call records of the scenes, and of the props the engine draws over
                      them
-    fixtures/worlds/ the test world, test.orbit.pack.json, and orbit.js, which writes it (never
+    fixtures/worlds/ the test world, test.orbit.pack.json, its format 1.2 copy with weapons that
+                     fire, test.orbit-fire.pack.json, and orbit.js, which writes both (never
                      signed, never under web/; see The test world below)
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
                      shield as approved (base-onehand.items.json), its free options as
@@ -162,7 +163,7 @@ Three files are written by a tool, and each tool has a `--check` mode that write
 ```bash
 node tools/settings-schema.js --check        # web/js/settings.js's copy and configuration.md's reference
 node tools/cat-stamps.js --check             # the cat's stamps and pet.cat in the medieval world's pack
-node tests/web/fixtures/worlds/orbit.js --check   # the test world, test.orbit.pack.json
+node tests/web/fixtures/worlds/orbit.js --check   # the test world and its 1.2 copy
 ```
 
 `tools/settings-schema.js --check` names each stale file, and exits 2 on an error or an argument it

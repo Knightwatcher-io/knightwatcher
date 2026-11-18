@@ -227,6 +227,13 @@ of the wrong kind or out of its range, and a required field left out, at `fields
 effect with its own cost function at the ends of the scene's ranges, at `counts`. An effect
 cannot be added by a pack: a world that needs one the engine lacks waits for the engine to ship it.
 
+The last four rows, `flash`, `bolt`, `tracer` and `beam` (format 1.2), are not `fx` shapes: the
+engine draws them for a weapon or a foe that fires, in its shot's `colour` and `flash`, and a scene
+does not name them. Their timings are `SHOT` in `engine.js`. Where a shot lands the engine draws
+its burst, the cartoon burst of a blade's blow (`poofHD`), for as long as the act asks. A frame
+draws at most 8 shots, the first made first, each with its flash and burst. No act fires yet, so nothing on the wall
+draws them until the acts that fire are built.
+
 | Effect | Fields (default) | Cost, at most | Drawn by |
 |---|---|---|---|
 | `sky` | `p`, `w`, `h`, `of` (1 to 8) | one fill a band, the dither between bands, one fill below | battlement, camp, yard |
@@ -257,6 +264,10 @@ cannot be added by a pack: a world that needs one the engine lacks waits for the
 | `fringe` | `p`, `colour` | a fill a row, 25 rows | monarch C's fringe in the medieval world's cast: its lower edge turns in, so no convex polygon fills its rows alike; `court.js` keeps its own polygon |
 | `fingers` | `p`, `a` (the angle, 0 up), `reach` (9), `spread` (0.65), `r`, `colour` | an ell a finger | the goblin's hands in the medieval world's cast: the fingers stand at fractions of a pixel a pack's eighths cannot give; `props.js` keeps its own loop |
 | `burst` | `p`, `n` (7), `piece` (`spark` or `straw`), `of` | sparks: a glow and 4 a spark; straw: a strip a piece | smithy (sparks), yard (straw) |
+| `flash` | the shot's `flash`, or the pale snap `#eef3f9` when it gives none | a star (`starHD`): four polygons and a fill | the engine, at the muzzle for 60 ms after each shot leaves |
+| `bolt` | the shot's `colour`, its head in the `flash` colour | three strips | the engine: a streak 26 long, outlined, flying at 1.6 pixels a ms from the muzzle to where it lands |
+| `tracer` | the shot's `colour` | two strips | the engine: an outlined line from the muzzle to where it lands, drawn at once and fading over 120 ms |
+| `beam` | the shot's `colour` | three strips | the engine: an outlined line from the muzzle to where it lands, with a white core, drawn at once for 80 ms |
 
 The fields' ranges, and the defaults the table above leaves out:
 

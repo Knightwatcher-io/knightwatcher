@@ -5,7 +5,8 @@ devices, the words and the overlay, and a preset that names one of each. The wat
 that mirrors the homelab, and in the medieval world it is the knight ([design.md](./design.md#terms)).
 This page is for anyone making a world pack. It gives format 1.1, the version of the pack format
 that carries a world as data, its sections, costs and limits, the words, the overlay and the
-presets, and what happens when the settings mix parts of different worlds. Format 1.0, the checks
+presets, and what happens when the settings mix parts of different worlds; and format 1.2, which
+adds weapons and foes that fire. Format 1.0, the checks
 and signing, which hold for every pack, are in [packs.md](./packs.md).
 
 | Part | Section | Described in |
@@ -40,9 +41,10 @@ refused or throws, is in [world-loading.md](./world-loading.md); a small world m
 
 Format 1.1 adds the sections a world needs: the scenes, the supporting cast, the drawings of the
 devices, shared shape groups, flavour words, the overlay's look and presets that name one of each.
-The library reads `[1, 1]` beside `[1, 0]` and refuses `[1, 2]` and anything newer at the `format`
-step (`pack.format: is 1.2, newer than this engine's 1.1`). It checks every new section by the same
-steps as the rest, in the same order, and keeps it as data in the loaded pack's `data`.
+The library reads `[1, 1]` beside `[1, 0]` and [`[1, 2]`](#format-12), and refuses `[1, 3]` and
+anything newer at the `format` step (`pack.format: is 1.3, newer than this engine's 1.2`). It checks
+every new section by the same steps as the rest, in the same order, and keeps it as data in the
+loaded pack's `data`.
 
 **`read()` compiles nothing of these sections:** it checks them and keeps them as data. The scene
 compiler, `web/js/world.js`, compiles a scene of a loaded pack into the scene interface, and the
@@ -111,6 +113,47 @@ must keep within it: a hash or a wave in a point of a tile's shape would sit 13 
 at the `json` step, while one in a length of a tile's shape, or in a point outside a tile, is not.
 
 `tests/web/format-1.1.test.js` checks all of this; see [tests.md](./tests.md#the-pack-librarys-tests).
+
+## Format 1.2
+
+Format 1.2 adds what a world needs for weapons that fire, on the same terms as 1.1: everything it
+adds is a field a pack of 1.0 or 1.1 does not have, refused there at `fields`, and a pack of 1.0 or
+1.1 reads exactly as before on a page of 1.2. `tests/web/base-read.test.js` holds the base pack's
+read to the copy stored before format 1.1, and `tests/web/orbit-swap.test.js` holds the test
+world's 1.1 file to the same read on a library of format 1.1 as on this one. A page of format 1.1
+refuses a pack of 1.2 at the `format` step (`pack.format: is 1.2, newer than this engine's 1.1`), and
+every part that pack would have set takes the base world's. What 1.2 adds:
+
+- on a `main` item, `use`, `barrel`, `muzzle`, `range`, `shot` and `stowed`
+  ([packs.md](./packs.md#weapons-that-fire));
+- on a foe, `fires`, and a seventh pose, `aim` (below);
+- the engine's effects `flash`, `bolt`, `tracer` and `beam`, which the engine draws for a weapon or
+  a foe that fires, in its shot's colours; a scene does not name them
+  ([scenes.md](./scenes.md#the-effects)).
+
+A foe that fires carries `fires`, `{"muzzle", "shot"}`: `muzzle` a pair in the foe's own
+coordinates as it is drawn facing left, mirrored with the foe, which must lie inside its sprite;
+`shot` as a weapon's, `{"kind", "colour", "flash"}` with `flash` optional. It must give the pose
+`aim` beside the six every foe gives, which the engine plays in place of the taunt. Both are
+checked at `rules`, and the pose is costed with the others at `counts`. A foe without `fires` may
+give `aim` too, and is then never asked for it.
+
+```json
+"foe.glitch": {
+  "role": "foe", "name": "Glitch", "...": "as every foe",
+  "fires": { "muzzle": [-76, -83], "shot": { "kind": "tracer", "colour": "#ff8fb0", "flash": "#fff3a0" } },
+  "poses": { "stand": {}, "...": "the six", "aim": { "parts": ["body"], "shapes": ["..."] } }
+}
+```
+
+The loaded pack keeps `fires` and `aim` in its `data`, and the counts step's `world.cast` gives the
+aim pose's cost after the other six. The engine draws no foe that fires yet: the scene compiler
+compiles a foe's six poses, and a foe with `fires` plays exactly as one without until the foe
+player's shot is built.
+
+`tests/web/fire.test.js` checks the fields and rules of 1.2, and the test world has a copy of
+format 1.2 with a weapon of each use and a foe that fires; see
+[tests.md](./tests.md#the-test-world).
 
 ## Words and the overlay
 

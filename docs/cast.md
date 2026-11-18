@@ -29,8 +29,9 @@ Each member has a `role` and a `name` (1 to 48 characters).
   256), `crown` (1 to 32 points, each inside the sprite from its feet), `exit` (`poof`, the engine's
   only exit), `parts` (up to 16 named lists of shapes) and `poses`, exactly `stand`, `climb`,
   `taunt0`, `taunt1`, `brace` and `hit`, each `{ parts, shapes }` naming 0 to 16 of its parts once
-  each, with 0 to 128 shapes of its own. A part holds 1 to 128 shapes. A foe's `fires` and its pose
-  `aim` are reserved for a later format and refused here.
+  each, with 0 to 128 shapes of its own. A part holds 1 to 128 shapes. A foe in a format 1.2 pack may
+  also give `fires` and the pose `aim` ([worlds.md](./worlds.md#format-12)); an older pack is
+  refused for them.
 - **A critter** has `frames` (exactly `flap0` and `flap1`) and `dead`, each 1 to 64 shapes, and
   optional `groups` (pivots within 512) and `alpha` (1 to 8 groups, each an alpha from 0 to 1, for
   a declared group).
