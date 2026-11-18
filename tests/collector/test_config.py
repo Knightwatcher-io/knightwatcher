@@ -627,6 +627,11 @@ class DefaultsConfigTest(unittest.TestCase):
 
     def test_a_full_look(self):
         self.assertEqual(build({"look": FULL_LOOK}).defaults["look"], FULL_LOOK)
+        # the fifth weapon, the crossbow, which is shot and carries no shield
+        self.assertEqual(LOOK_CHOICES["weapon"][-1], "crossbow")
+        self.assertEqual(
+            build({"look": {"weapon": "crossbow"}}).defaults["look"], {"weapon": "crossbow"}
+        )
         for key, allowed in LOOK_CHOICES.items():
             for value in allowed:
                 self.assertEqual(build({"look": {key: value}}).defaults["look"], {key: value})
@@ -654,8 +659,8 @@ class DefaultsConfigTest(unittest.TestCase):
         self.assertProblems(
             {"look": {"build": "d", "weapon": "axe", "skin": "pale", "hair": "green"}},
             f'look.build: unknown value "d"; use a, b or c, {long}',
-            'look.weapon: unknown value "axe"; use greatsword, sword_and_shield, longsword or '
-            "mace_and_shield",
+            'look.weapon: unknown value "axe"; use greatsword, sword_and_shield, longsword, '
+            "mace_and_shield or crossbow",
             f'look.skin: unknown value "pale"; use fair, warm, golden, tan, brown or deep, {long}',
             'look.hair: unknown value "green"; use black, dark, brown, auburn, blonde or silver, '
             + long,

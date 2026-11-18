@@ -21,7 +21,7 @@
     look: {
       world: { values: ['medieval'], long: true, page: 'medieval' },
       build: { values: ['a', 'b', 'c'], long: true, page: null },
-      weapon: { values: ['greatsword', 'sword_and_shield', 'longsword', 'mace_and_shield'], page: 'greatsword' },
+      weapon: { values: ['greatsword', 'sword_and_shield', 'longsword', 'mace_and_shield', 'crossbow'], page: 'greatsword' },
       skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], long: true, page: 'warm' },
       hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], long: true, page: 'brown' },
       hair_style: { values: ['short', 'tied', 'curls', 'long', 'close'], page: 'short' },
@@ -269,11 +269,11 @@
      one-handed ones with the shield the shield key chooses; and each key that chooses one item, the
      slot it fills and the prefix of the base pack's ids for it, so that hair_style "long" is
      kw.base/hair.long and feet "shoes" kw.base/boots.shoes. back "none" fills nothing. */
-  const WEAPONS = { greatsword: 'main.greatsword', sword_and_shield: 'main.arming', longsword: 'main.longsword', mace_and_shield: 'main.mace' };
+  const WEAPONS = { greatsword: 'main.greatsword', sword_and_shield: 'main.arming', longsword: 'main.longsword', mace_and_shield: 'main.mace', crossbow: 'main.crossbow' };
   const ONE_HANDED = ['sword_and_shield', 'mace_and_shield'];
   /* Each weapon as the settings screen and the admin page show it: its name and how it is held. */
   const WEAPON_CHIPS = { greatsword: ['Greatsword', 'Two hands'], sword_and_shield: ['Sword and shield', 'One hand each'], longsword: ['Longsword', 'Two hands'],
-    mace_and_shield: ['Mace and shield', 'One hand each'] };
+    mace_and_shield: ['Mace and shield', 'One hand each'], crossbow: ['Crossbow', 'Two hands'] };
   const ITEMS = { shield: ['off', 'off'], hair_style: ['hair', 'hair'], helmet: ['helmet', 'helm'], plume_style: ['plume', 'plume'], body: ['torso', 'torso'],
     shoulders: ['pauldrons', 'pauldrons'], arms: ['arms', 'arms'], hands: ['gauntlets', 'gauntlets'], legs: ['legs', 'legs'], feet: ['boots', 'boots'], back: ['back', 'back'] };
   const itemId = (k, v) => ITEMS[k][1] + '.' + v;

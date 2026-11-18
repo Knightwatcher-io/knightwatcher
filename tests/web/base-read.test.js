@@ -4,8 +4,9 @@
 // The stored read is the whole result of read() for the file signed (with a key made for the run, as
 // a signed file reads with kw1), for the file unsigned on a dev page, and for the file unsigned on a
 // deployed page; the bytes the signature covers, by their SHA-256 and length; and resolve() on each
-// build of the default look, of the sword and shield, and of three looks that wear the free items of
-// 1.4.0 between them, with every record the lists hold. The file as it ships reads as the signed read
+// build of the default look, of the sword and shield, of three looks that wear the free items of
+// 1.4.0 between them, and of the crossbow of 1.5.0 slung over the long cloak, with every record the
+// lists hold. The file as it ships reads as the signed read
 // when it carries a signature and as the deployed read when it does not, so the test holds in either
 // state. Store it again only from a library known to read the base pack right, and only when the
 // base pack itself is meant to change:
@@ -42,6 +43,9 @@ const FREE_LOOKS = {
     gauntlets: 'gauntlets.mail', legs: 'legs.hose', boots: 'boots.shoes', back: 'back.cape', hair: 'hair.close' },
   'free kite': { main: 'main.arming', off: 'off.kite', helmet: 'helm.bascinet' }
 };
+// The crossbow of 1.5.0, a weapon that fires, with the long cloak, so that its stowed view's place in
+// the body's list, after the back, is stored too.
+const CROSSBOW_LOOK = { main: 'main.crossbow', back: 'back.cloak' };
 const itemsOf = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, B(v)]));
 
 /* The file signed with a key made for the run, and read against it: what the file signed with kw1
@@ -68,6 +72,7 @@ function snapshot() {
     out.looks[b] = plain(PK.resolve(packs, { build: 'kw.base/' + b }));
     out.looks[b + ' one-handed'] = plain(PK.resolve(packs, { build: 'kw.base/' + b, items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater' } }));
     for (const [k, o] of Object.entries(FREE_LOOKS)) out.looks[b + ' ' + k] = plain(PK.resolve(packs, { build: 'kw.base/' + b, items: itemsOf(o) }));
+    out.looks[b + ' crossbow'] = plain(PK.resolve(packs, { build: 'kw.base/' + b, items: itemsOf(CROSSBOW_LOOK) }));
   }
   // the file as it ships: read on a deployed page, which takes it only signed
   out.asShipped = plain(PK.read(TEXT, { verify }));
@@ -85,19 +90,24 @@ if (process.env.BASE_READ === 'write') {
   const want = JSON.parse(fs.readFileSync(STORED, 'utf8'));
   const got = snapshot();
 
-  test('the stored read is of the base pack as it ships, version 1.4.0, format [1, 0]', () => {
+  test('the stored read is of the base pack as it ships, version 1.5.0, format [1, 2]', () => {
     assert.equal(want.dev.ok, true);
-    assert.equal(want.dev.version, '1.4.0');
-    assert.deepEqual(want.dev.format, [1, 0]);
+    assert.equal(want.dev.version, '1.5.0');
+    assert.deepEqual(want.dev.format, [1, 2]);
     assert.equal(want.shipped.signed, true);
-    assert.equal(Object.keys(want.looks).length, 15);
+    assert.equal(Object.keys(want.looks).length, 18);
     // every free item is worn in one of the stored looks, and none falls back
     const worn = new Set();
     for (const k of Object.keys(want.looks)) {
       assert.deepEqual(want.looks[k].fallbacks.filter(f => f.reason !== 'not set'), [], k);
       for (const id of Object.values(want.looks[k].look.items)) worn.add(id);
     }
-    for (const o of Object.values(FREE_LOOKS)) for (const id of Object.values(o)) assert.ok(worn.has(B(id)), id);
+    for (const o of Object.values(FREE_LOOKS).concat([CROSSBOW_LOOK])) for (const id of Object.values(o)) assert.ok(worn.has(B(id)), id);
+    // the crossbow's looks carry what a weapon that fires resolves with, and its stowed list
+    for (const b of ['build.a', 'build.b', 'build.c']) {
+      const L = want.looks[b + ' crossbow'];
+      assert.deepEqual([L.use, L.shot.kind, !!L.lists.bodyStowed], ['fire', 'bolt', true], b);
+    }
   });
 
   for (const k of ['shipped', 'dev', 'deployed']) {

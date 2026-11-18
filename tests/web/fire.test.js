@@ -153,7 +153,7 @@ test('a stowed view counts toward its item\'s caps, and a look counts the larger
   refused(small([1, 2], { 'main.x': big }), 'counts', IP + ': costs up to ' + (r.sums['main.x'].parts.cost + 8241) + ' fills in its parts and views, more than 8000');
   // the look: the stowed view is never drawn with the weapon, so the larger of the two counts
   const ED = require('../../web/js/ed25519.js');
-  const base = PK.read(BASE_TEXT, { verify: ED.verify }), costOf = it => {
+  const base = PK.read(BASE_TEXT, { allowUnsigned: true, verify: ED.verify }), costOf = it => {
     const p = read(small([1, 2], { 'main.x': it }));
     assert.equal(p.ok, true, p.reason);
     return PK.resolve(PK.gather([base, p]).packs, { items: { main: 'test.fire/main.x' } }).cost;
@@ -166,7 +166,7 @@ test('a stowed view counts toward its item\'s caps, and a look counts the larger
 
 test('resolve() gives a weapon\'s use, barrel, muzzle, range and shot only when it fires', () => {
   const ED = require('../../web/js/ed25519.js');
-  const base = PK.read(BASE_TEXT, { verify: ED.verify }), orb = read(orbit()), packs = PK.gather([base, orb]).packs;
+  const base = PK.read(BASE_TEXT, { allowUnsigned: true, verify: ED.verify }), orb = read(orbit()), packs = PK.gather([base, orb]).packs;
   const KEYS = ['ok', 'look', 'fallbacks', 'ignored', 'm', 'diffs', 'shapes', 'cost', 'colours', 'grip', 'blade', 'plumeShown', 'lists'];
   for (const main of [undefined, 'kw.base/main.arming', 'kw.base/main.mace', O('main.bar')]) assert.deepEqual(Object.keys(PK.resolve(packs, main ? { items: { main } } : {})), KEYS, String(main));
   const B = ITEMS['main.blaster'], P = ITEMS['main.prod'];
@@ -187,7 +187,7 @@ test('the frame\'s flip turns a framed point over the frame\'s line, and is off 
   const it = clone(SWORD);
   it.parts = [{ at: 'main', shapes: [{ k: 'strip', p0: { frame: 'main', s: 0, p: 10 }, p1: { frame: 'main', s: 50, p: 10 }, hw0: 1, hw1: 1, fill: '#123456' }] }];
   const ED = require('../../web/js/ed25519.js');
-  const base = PK.read(BASE_TEXT, { verify: ED.verify }), L = PK.resolve(PK.gather([base, read(small([1, 2], { 'main.x': it }))]).packs, { items: { main: 'test.fire/main.x' } });
+  const base = PK.read(BASE_TEXT, { allowUnsigned: true, verify: ED.verify }), L = PK.resolve(PK.gather([base, read(small([1, 2], { 'main.x': it }))]).packs, { items: { main: 'test.fire/main.x' } });
   const got = [], P = { strip: (x0, y0, x1, y1) => got.push([x0, y0, x1, y1].map(v => Math.round(v))) };
   A[2 * PK.ANCHOR.main] = 100; A[2 * PK.ANCHOR.main + 1] = 100; A[PK.FRAME_SX] = -1; A[PK.FRAME_SY] = 0;
   PK.draw(L.lists.main, A, PK.newValues(), P);

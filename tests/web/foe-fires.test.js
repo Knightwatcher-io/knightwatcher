@@ -7,8 +7,8 @@
 //
 // The foe is the test world's Glitch from its copy of format 1.2, which fires a tracer; the looks
 // are its blaster with the deflector (one hand and a shield, shot from range), its prod (two hands,
-// no shield, swung at a foe it reaches), the greatsword, and the arming sword with the heater
-// shield. The page's scripts run under Node into a sandbox, the knight and the worlds started from
+// no shield, swung at a foe it reaches), the greatsword, the base pack's crossbow (two hands, no
+// shield, shot from range), and the arming sword with the heater shield. The page's scripts run under Node into a sandbox, the knight and the worlds started from
 // the packs on dev terms, and time frozen.
 'use strict';
 const test = require('node:test');
@@ -34,6 +34,7 @@ const BLASTER = { items: { main: O('main.blaster'), off: O('off.deflector') } };
 const PROD = { items: { main: O('main.prod') } };
 const ARMING = { items: { main: B + 'main.arming', off: B + 'off.heater' } };
 const GREAT = { items: {} };
+const CROSSBOW = { items: { main: B + 'main.crossbow' } };
 const W = 960, H = 600;
 
 /* A context that records nothing, or with px set, every pixel a fillRect paints into px. */
@@ -163,7 +164,7 @@ test('the foe aims in place of its taunt from 1230, and braces at 1480; the gobl
 // ---- The miss ---------------------------------------------------------------------------------------
 
 test('with no shield the shot misses: 40 over the head group\'s corner nearest the foe, on off the screen, no burst', () => {
-  const cases = [[PROD, O('deck')], [PROD, 'battlement'], [GREAT, 'battlement'],
+  const cases = [[PROD, O('deck')], [PROD, 'battlement'], [GREAT, 'battlement'], [CROSSBOW, 'battlement'], [CROSSBOW, O('deck')],
     [{ items: { helmet: B + 'helm.kettle', plume: B + 'plume.horsehair' } }, 'battlement'], [{ build: B + 'build.b', items: { helmet: B + 'helm.bascinet', plume: B + 'plume.feather' } }, O('deck')],
     [{ build: O('body.unit'), items: { main: O('main.prod'), helmet: O('helm.dome'), plume: O('plume.aerial') } }, O('deck')]];
   for (const [look, scene] of cases) {
@@ -236,7 +237,7 @@ test('a foe on the right with a shield carried misses overhead, as with none: th
 // ---- The flinch -----------------------------------------------------------------------------------------
 
 test('the flinch: the eyes wide for 200 ms as the shot passes or stops, and nothing else of the watcher changes', () => {
-  for (const [look, scene] of [[PROD, O('deck')], [BLASTER, O('deck')], [ARMING, 'battlement'], [GREAT, 'battlement']]) {
+  for (const [look, scene] of [[PROD, O('deck')], [BLASTER, O('deck')], [ARMING, 'battlement'], [GREAT, 'battlement'], [CROSSBOW, 'battlement']]) {
     const m = page(look), G = m.KW.cast.foes[GLITCH], what = (look.items.main || 'greatsword') + ' ' + scene;
     // Glitch as it is, and the same with no fires, which plays as a foe that does not fire
     m.KW.cast.foes['test.still'] = Object.assign({}, G, { fires: undefined });
@@ -290,7 +291,7 @@ test('shieldFace() is the shield\'s face box on the off hand, and null with no s
   const face = JSON.parse(BASE_TEXT).pack.items['off.heater'].face, h = K.rig(o).anchors.off;
   assert.deepEqual(plain(K.shieldFace(o)), [h[0] + face[0], h[1] + face[1], face[2], face[3]]);
   assert.equal(K.shieldFace(Object.assign({}, o, { sword: false })), null, 'put away');
-  for (const look of [PROD, GREAT, { items: { main: B + 'main.arming' } }]) {
+  for (const look of [PROD, GREAT, CROSSBOW, { items: { main: B + 'main.arming' } }]) {
     const n = page(look), p = n.K.pose('idle', 0); p.x = 480; p.floor = 530;
     assert.equal(n.K.shieldFace(p), null, JSON.stringify(look.items));
   }

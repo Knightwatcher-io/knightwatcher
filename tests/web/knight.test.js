@@ -16,7 +16,7 @@
 // trees into two folders and compare the files.
 'use strict';
 /* KNIGHT_PART, set by tests/web/knight-free-*.test.js, runs only the checks of the base pack's free
-   items of 1.4.0 on one build (free:build.a, free:build.b or free:build.c), in a process of its own
+   items of 1.4.0 and its crossbow of 1.5.0 on one build (free:build.a, free:build.b or free:build.c), in a process of its own
    beside this file's; without it every other test here runs and those do not. */
 const PART = process.env.KNIGHT_PART || '';
 const test = PART ? () => {} : require('node:test');
@@ -1148,6 +1148,41 @@ if (MODE === 'write') {
       const hot = drawn(mace), cold = drawn(sword);
       assert.ok(hot.includes('s #7a2a1d') && hot.includes('s #fff3a0'), 'the hot bands and the glowing point');
       assert.notDeepEqual(hot, cold, 'the glow follows the mace\'s head, not the sword\'s point');
+    });
+
+    /* The crossbow of 1.5.0, which fires: every pose of the call record, the aim and fire() both ways,
+       and the attack, with no throw, no fallback and no broken number, each frame within the look's
+       cost; slung on the back when put away; and keyed into the house's and the smithy's backdrops,
+       on the anvil with no glow, since it has no blade. The barrel check is in fire-barrel.test.js,
+       the acts in fire-acts.test.js. */
+    freeTest(`${FB}: the crossbow draws in every pose, aimed and fired, within the look's cost, and lies on the anvil with no glow`, () => {
+      const L0 = look({ main: KB('main.crossbow') }), b = withLook(L0), lib = b.KW.pack, draw0 = lib.draw, log = b.log, L = PK.resolve(LIB, L0);
+      assert.deepEqual(plain(b.status.fallbacks).map(f => f.reason).filter(r => r !== 'not set'), [], 'drawn as chosen');
+      assert.equal(b.K.fired().use, 'fire');
+      assert.deepEqual(plain(b.K.rest.reach()), { from: 54, to: 96, half: 8 });
+      let fills = 0, inList = false;
+      lib.draw = (...a) => { inList = true; try { return draw0(...a); } finally { inList = false; } };
+      const frames = POSES(b.K, b.KW.scenes);
+      for (const dir of [1, -1]) for (let k = 0; k <= 20; k++) frames.push([`fire ${dir} q${k / 20}`, () => { const o = at(b.K, 'idle', 2300); b.K.fire(o, k / 20, dir, [X + dir * 300, FLOOR - 125]); b.K.draw(o); }]);
+      for (let t = 0; t < 1000; t += 100) frames.push([`attack t${t}`, () => b.K.draw(at(b.K, 'attack', t))]);
+      frames.push(['slung', () => b.K.draw(at(b.K, 'disk_full', 2300, { sword: false, stowed: true }))]);
+      for (const [name, fn] of frames) {
+        log.length = 0; fills = 0;
+        const fr = log.push; log.push = (...ls) => { if (inList) for (const l of ls) if (l.startsWith('r ')) fills++; return fr.apply(log, ls); };
+        fn();
+        log.push = fr;
+        assert.equal(b.K.source, 'pack', `${name}: nothing threw`);
+        assert.deepEqual(plain(b.K.status.refused), [], name);
+        assert.ok(fills <= L.cost, `${name}: ${fills} fills, more than the cost of ${L.cost}`);
+        assert.ok(!log.some(l => /NaN|undefined/.test(l)), `${name}: no broken number or colour`);
+      }
+      lib.draw = draw0;
+      assert.equal(b.K.rest.key('main'), 'kw.base/main.crossbow');
+      assert.equal(b.KW.scenes.smithy.key({ kx: 440 }), '440|kw.base/main.crossbow');
+      b.log.length = 0;
+      const s = { kx: 440, o: at(b.K, 'updating', 300), strike: false };
+      b.KW.scenes.smithy.act(300, s); b.KW.scenes.smithy.draw(300, s);
+      assert.ok(!b.log.includes('s #7a2a1d'), 'no hot bands on the anvil');
     });
   }
 }

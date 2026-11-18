@@ -222,7 +222,9 @@ foe's event by shot, and the attack aims ([rig.md](./rig.md#aiming-and-firing));
 swings plays them as before, frame for frame. A weapon that is both swung and fired swings at the
 flies and at a foe within its blade's reach (`foeGaps()`), and fires at a foe beyond it and at the
 practice target. Times are in ms; `KW.engine.shots` gives `VOLLEY`, `PRACTICE`, `volleyPlan`,
-`practice`, `practiceX` and the swat in play, and `KW.engine.foe` gives `shotPlan` and `shot`.
+`practice`, `practiceX` and the swat in play, and `KW.engine.foe` gives `shotPlan` and `shot`. The
+base pack's crossbow (`arm=crossbow`) is the shipped weapon that fires, two-handed and with no
+shield; the test world's blaster and prod are the others the tests and the screenshots play.
 
 | Act | By shot |
 |---|---|

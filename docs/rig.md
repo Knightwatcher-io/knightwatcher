@@ -292,10 +292,10 @@ reaches, fires at a foe beyond that and at the practice target, and aims in the 
 range both ways, of `fire()` at every 0.01 of q both ways, aimed high, level and low, of two volleys
 of the swat every 10 ms, which turn across the body six times between them, and of the attack every 100 ms,
 and checks that no arm or gauntlet is drawn over a pixel of the weapon from its barrel's `from`, nor
-over the shield's face, in any of them. It does so for the test world's blaster with and without its
-deflector, its prod and a trial crossbow made in memory (its front hand 38 along the frame, its
-barrel from 54), on the base pack's three builds in plate, mail and padded sleeves and on the test
-world's unit: 40 sets of 1 089 frames. With its front hand at 40 the crossbow's gauntlet covers up
+over the shield's face, in any of them. It does so for the base pack's crossbow, the test world's
+blaster with and without its deflector, its prod and a trial crossbow made in memory (each crossbow
+with its front hand 38 along the frame and its barrel from 54), on the base pack's three builds in
+plate, mail and padded sleeves and on the test world's unit: 50 sets of 1 089 frames. With its front hand at 40 the crossbow's gauntlet covers up
 to 8 pixels of a barrel from 54 in a frame.
 
 ### A foe's shot
@@ -453,7 +453,9 @@ place the medieval scenes give. The house's two pegs sit under the weapon's reac
 28 past where it starts and 45 short of its end, from `reach()`: for the greatsword at 680 and
 836, where they always were, for the arming sword at 680 and 748, for the mace, whose `blade`
 names its haft and head, at 680 and 709, and for a weapon that only fires, from its barrel: the
-test world's blaster, whose barrel runs from 22 to 64, at 637 and 668. A weapon with neither gets
+base pack's crossbow, whose barrel runs from 54 to 96, at 669 and 700, under its prod, and the
+test world's blaster, whose barrel runs from 22 to 64, at 637 and 668. A barrel shorter than 73
+puts the end's peg left of the start's. A weapon with neither gets
 the greatsword's pegs. The house's shield clears the arming sword's point on the pegs, the jug on
 the mantel and a camera at the house's high place `h2`, which stays where it was, at 926; a test
 draws that camera and its question mark and checks them against both swords on the pegs, the
@@ -489,5 +491,6 @@ draws the look's `bodyStowed` list in place of `body`: the body with the view dr
 slot (layer `back`) or after the torso (layer `body`). A scene shows the weapon at rest when one of
 its `rests` is a frame, a place with an angle `a`, as the house's pegs, the smithy's anvil and the
 test world's workbench are; so the view shows in the cellar and wherever a full disk's crate is
-carried, and not in the house or the smithy. In bed the knight is not drawn, and nothing is. A
-weapon with no stowed view, every weapon of `kw.base` among them, draws as before.
+carried, and not in the house or the smithy. In bed the knight is not drawn, and nothing is. The
+base pack's crossbow is slung across the back this way. A weapon with no stowed view, every other
+weapon of `kw.base` among them, draws as before.

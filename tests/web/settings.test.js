@@ -690,8 +690,8 @@ test('every combination renders: weapon by skin by hair by hair style, the build
     most = Math.max(most, L.cost);
     n++;
   }
-  assert.equal(n, 4 * 6 * 6 * 5);
-  assert.equal(seen.size, 3 * (4 + 6 + 6 + 5), 'every build with every weapon, skin, hair colour and hair style');
+  assert.equal(n, 5 * 6 * 6 * 5);
+  assert.equal(seen.size, 3 * (5 + 6 + 6 + 5), 'every build with every weapon, skin, hair colour and hair style');
   assert.ok(most <= PK.LIMITS.lookCost);
 });
 
@@ -757,10 +757,12 @@ test('the look carries each gear choice to its slot, the shield only beside a on
   assert.deepEqual(look({ weapon: 'mace_and_shield', shield: 'round' }), { items: { main: B + 'main.mace', off: B + 'off.round' } });
   assert.deepEqual(look({ weapon: 'sword_and_shield', shield: 'kite' }), { items: { main: B + 'main.arming', off: B + 'off.kite' } });
   assert.deepEqual(look({ weapon: 'sword_and_shield' }), { items: { main: B + 'main.arming', off: B + 'off.heater' } });
+  assert.deepEqual(look({ weapon: 'crossbow' }), { items: { main: B + 'main.crossbow' } });
   // a shield chosen beside a two-handed weapon is kept, carried nowhere, and carried again once the
   // weapon is one-handed
   assert.deepEqual(look({ shield: 'kite' }), {});
   assert.deepEqual(look({ weapon: 'longsword', shield: 'kite' }), { items: { main: B + 'main.longsword' } });
+  assert.deepEqual(look({ weapon: 'crossbow', shield: 'kite' }), { items: { main: B + 'main.crossbow' } });
   assert.deepEqual(look({ shield: 'kite' }, { look: { weapon: 'mace_and_shield' } }), { items: { main: B + 'main.mace', off: B + 'off.kite' } });
   // a value the page does not know is refused, and a hook's is ignored with its line
   const { s, lines } = store({ hooks: { look: { helmet: 'great', back: 'wings' } } });
@@ -776,7 +778,7 @@ test('the settings screen greys the shield beside a two-handed weapon, and the p
   assert.deepEqual(SET.greyed(v({ weapon: 'sword_and_shield' }), PACK), { shield: '', plume_style: '', plume: '' });
   assert.deepEqual(SET.greyed(v({ weapon: 'mace_and_shield', helmet: 'kettle' }), PACK), { shield: '', plume_style: '', plume: '' });
   const SHIELD = 'A shield is carried only with a one-handed weapon: the sword and shield or the mace and shield.';
-  for (const weapon of ['greatsword', 'longsword']) assert.equal(SET.greyed(v({ weapon }), PACK).shield, SHIELD);
+  for (const weapon of ['greatsword', 'longsword', 'crossbow']) assert.equal(SET.greyed(v({ weapon }), PACK).shield, SHIELD);
   for (const helmet of ['open', 'kettle', 'bascinet']) assert.equal(SET.greyed(v({ helmet }), PACK).plume_style, '', helmet);
   const COIF = 'The mail coif has no plume mount, so no plume is drawn with it.';
   assert.deepEqual(SET.greyed(v({ weapon: 'mace_and_shield', helmet: 'coif' }), PACK), { shield: '', plume_style: COIF, plume: COIF });
@@ -788,7 +790,7 @@ test('the settings screen greys the shield beside a two-handed weapon, and the p
 
 test('the screen\'s and the admin page\'s choices of gear are the base pack\'s, named as it names them', () => {
   assert.deepEqual(SET.itemChoices(PACK, 'weapon'), [{ id: 'greatsword', name: 'Greatsword', sub: 'Two hands' }, { id: 'sword_and_shield', name: 'Sword and shield', sub: 'One hand each' },
-    { id: 'longsword', name: 'Longsword', sub: 'Two hands' }, { id: 'mace_and_shield', name: 'Mace and shield', sub: 'One hand each' }]);
+    { id: 'longsword', name: 'Longsword', sub: 'Two hands' }, { id: 'mace_and_shield', name: 'Mace and shield', sub: 'One hand each' }, { id: 'crossbow', name: 'Crossbow', sub: 'Two hands' }]);
   const names = k => SET.itemChoices(PACK, k).map(c => c.name);
   assert.deepEqual(names('shield'), ['Heater shield of the watch', 'Round shield', 'Kite shield']);
   assert.deepEqual(names('helmet'), ['Open helm', 'Kettle hat', 'Mail coif', 'Bascinet']);
@@ -804,7 +806,7 @@ test('the screen\'s and the admin page\'s choices of gear are the base pack\'s, 
   // a base pack without an item offers only what it draws, as a fork's might
   const fewer = JSON.parse(JSON.stringify(PACK)); delete fewer.items['helm.coif']; delete fewer.items['main.mace'];
   assert.deepEqual(SET.itemChoices(fewer, 'helmet').map(c => c.id), ['open', 'kettle', 'bascinet']);
-  assert.deepEqual(SET.itemChoices(fewer, 'weapon').map(c => c.id), ['greatsword', 'sword_and_shield', 'longsword']);
+  assert.deepEqual(SET.itemChoices(fewer, 'weapon').map(c => c.id), ['greatsword', 'sword_and_shield', 'longsword', 'crossbow']);
   assert.deepEqual(SET.itemChoices(null, 'back').map(c => c.id), ['none']);
 });
 

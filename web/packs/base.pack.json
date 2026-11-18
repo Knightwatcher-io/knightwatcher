@@ -3,8 +3,8 @@
   "pack": {
     "id": "kw.base",
     "name": "Knightwatcher knight",
-    "version": "1.4.0",
-    "format": [1, 0],
+    "version": "1.5.0",
+    "format": [1, 2],
     "licence": "Part of Knightwatcher, on the same terms as the rest of the project.",
     "provides": ["builds", "items", "palettes", "swatches"],
     "palettes": {
@@ -1611,8 +1611,79 @@
             ]
           }
         ]
+      },
+      "main.crossbow": {
+        "slot": "main",
+        "name": "Crossbow",
+        "use": "fire",
+        "grip": { "kind": "two", "hands": [38, 0] },
+        "barrel": { "from": 54, "to": 96, "half": 8 },
+        "muzzle": { "s": 96, "p": 0 },
+        "range": 420,
+        "shot": { "kind": "bolt", "colour": "#d9b77a" },
+        "stowed": {
+          "layer": "back",
+          "parts": [
+            {
+              "at": "neck",
+              "shapes": [
+                { "k": "strip", "p0": [{ "c": -38, "dShoulder": -1 }, -4], "p1": [{ "c": 44, "dShoulder": 1 }, { "c": 92, "dHeight": 1 }], "hw0": 5, "hw1": 5, "fill": "@base.k" },
+                { "k": "strip", "p0": [{ "c": 65, "dShoulder": 0.5 }, { "c": 113, "dHeight": 1 }], "p1": [{ "c": -95, "dShoulder": -1 }, { "c": -29, "dHeight": 0 }], "hw0": 8, "hw1": 7, "fill": "@base.k" },
+                { "k": "strip", "p0": [{ "c": -83, "dShoulder": -0.875 }, { "c": -18, "dHeight": 0 }], "p1": [{ "c": -72, "dShoulder": -1 }, { "c": -56, "dHeight": 0 }], "hw0": 6.5, "hw1": 4.25, "fill": "@base.k" },
+                { "k": "strip", "p0": [{ "c": -83, "dShoulder": -0.875 }, { "c": -18, "dHeight": 0 }], "p1": [{ "c": -119, "dShoulder": -1 }, { "c": -2, "dHeight": 0 }], "hw0": 6.5, "hw1": 4.25, "fill": "@base.k" },
+                { "k": "strip", "p0": [{ "c": -38, "dShoulder": -1 }, -4], "p1": [{ "c": 44, "dShoulder": 1 }, { "c": 92, "dHeight": 1 }], "hw0": 2.5, "hw1": 2.5, "fill": "@base.n2" },
+                { "k": "strip", "p0": [{ "c": 65, "dShoulder": 0.5 }, { "c": 113, "dHeight": 1 }], "p1": [{ "c": -95, "dShoulder": -1 }, { "c": -29, "dHeight": 0 }], "hw0": 5.5, "hw1": 4.5, "fill": [[0.2, "@base.n0"], [0.65, "@base.n1"], [1, "@base.n2"]] },
+                { "k": "strip", "p0": [{ "c": -83, "dShoulder": -0.875 }, { "c": -18, "dHeight": 0 }], "p1": [{ "c": -72, "dShoulder": -1 }, { "c": -56, "dHeight": 0 }], "hw0": 4, "hw1": 1.75, "fill": [[0.45, "@base.s1"], [1, "@base.s3"]] },
+                { "k": "strip", "p0": [{ "c": -83, "dShoulder": -0.875 }, { "c": -18, "dHeight": 0 }], "p1": [{ "c": -119, "dShoulder": -1 }, { "c": -2, "dHeight": 0 }], "hw0": 4, "hw1": 1.75, "fill": [[0.45, "@base.s1"], [1, "@base.s3"]] },
+                { "k": "strip", "p0": [{ "c": -72, "dShoulder": -1 }, { "c": -56, "dHeight": 0 }], "p1": [{ "c": -46, "dShoulder": -0.5 }, { "c": 15, "dHeight": 0.25 }], "hw0": 0.75, "hw1": 0.75, "fill": "#eae2cc" },
+                { "k": "strip", "p0": [{ "c": -119, "dShoulder": -1 }, { "c": -2, "dHeight": 0 }], "p1": [{ "c": -46, "dShoulder": -0.5 }, { "c": 15, "dHeight": 0.25 }], "hw0": 0.75, "hw1": 0.75, "fill": "#eae2cc" },
+                { "k": "ell", "p": [{ "c": -83, "dShoulder": -0.875 }, { "c": -18, "dHeight": 0 }], "rx": 7, "ry": 7, "fill": "@base.k" },
+                { "k": "ell", "p": [{ "c": -83, "dShoulder": -0.875 }, { "c": -18, "dHeight": 0 }], "rx": 4.5, "ry": 4.5, "fill": "@base.gold" }
+              ]
+            }
+          ]
+        },
+        "parts": [
+          {
+            "at": "main",
+            "shapes": [
+              { "k": "strip", "p0": { "frame": "main", "s": -40, "p": 0 }, "p1": { "frame": "main", "s": 76, "p": 0 }, "hw0": 8, "hw1": 7.5, "fill": "@base.k" },
+              { "k": "poly", "dir": "frame", "pts": [{ "frame": "main", "s": -44, "p": -9 }, { "frame": "main", "s": -22, "p": -7 }, { "frame": "main", "s": -22, "p": 7 }, { "frame": "main", "s": -44, "p": 9 }], "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 70, "p": 0 }, "p1": { "frame": "main", "s": 65.25, "p": -21.625 }, "hw0": 8, "hw1": 6.375, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 65.25, "p": -21.625 }, "p1": { "frame": "main", "s": 56.875, "p": -36 }, "hw0": 6.375, "hw1": 4.75, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 70, "p": 0 }, "p1": { "frame": "main", "s": 65.25, "p": 21.625 }, "hw0": 8, "hw1": 6.375, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 65.25, "p": 21.625 }, "p1": { "frame": "main", "s": 56.875, "p": 36 }, "hw0": 6.375, "hw1": 4.75, "fill": "@base.k" },
+              { "k": "ell", "p": { "frame": "main", "s": 86, "p": 0 }, "rx": 9.5, "ry": 9.5, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": -40, "p": 0 }, "p1": { "frame": "main", "s": 76, "p": 0 }, "hw0": 5.5, "hw1": 5, "fill": [[0.2, "@base.n0"], [0.65, "@base.n1"], [1, "@base.n2"]] },
+              { "k": "poly", "dir": "frame", "pts": [{ "frame": "main", "s": -42, "p": -6.5 }, { "frame": "main", "s": -24, "p": -5 }, { "frame": "main", "s": -24, "p": 5 }, { "frame": "main", "s": -42, "p": 6.5 }], "fill": [[0.3, "@base.n1"], [1, "@base.n3"]] },
+              { "k": "strip", "p0": { "frame": "main", "s": 70, "p": 0 }, "p1": { "frame": "main", "s": 65.25, "p": -21.625 }, "hw0": 5.5, "hw1": 3.875, "fill": [[0.45, "@base.s1"], [1, "@base.s3"]] },
+              { "k": "strip", "p0": { "frame": "main", "s": 65.25, "p": -21.625 }, "p1": { "frame": "main", "s": 56.875, "p": -36 }, "hw0": 3.875, "hw1": 2.25, "fill": [[0.45, "@base.s1"], [1, "@base.s3"]] },
+              { "k": "strip", "p0": { "frame": "main", "s": 70, "p": 0 }, "p1": { "frame": "main", "s": 65.25, "p": 21.625 }, "hw0": 5.5, "hw1": 3.875, "fill": [[0.45, "@base.s1"], [1, "@base.s3"]] },
+              { "k": "strip", "p0": { "frame": "main", "s": 65.25, "p": 21.625 }, "p1": { "frame": "main", "s": 56.875, "p": 36 }, "hw0": 3.875, "hw1": 2.25, "fill": [[0.45, "@base.s1"], [1, "@base.s3"]] },
+              { "k": "ell", "p": { "frame": "main", "s": 86, "p": 0 }, "rx": 7, "ry": 7, "fill": "@base.steel3" },
+              { "k": "ell", "p": { "frame": "main", "s": 86, "p": 0 }, "rx": 3.5, "ry": 3.5, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": -14, "p": -7.5 }, "p1": { "frame": "main", "s": -14, "p": 7.5 }, "hw0": 1.5, "hw1": 1.5, "fill": "@base.s3" },
+              { "k": "strip", "p0": { "frame": "main", "s": 26, "p": -7.5 }, "p1": { "frame": "main", "s": 26, "p": 7.5 }, "hw0": 1.5, "hw1": 1.5, "fill": "@base.s3" },
+              { "k": "strip", "p0": { "frame": "main", "s": 67, "p": -8 }, "p1": { "frame": "main", "s": 67, "p": 8 }, "hw0": 5, "hw1": 5, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 67, "p": -8 }, "p1": { "frame": "main", "s": 67, "p": 8 }, "hw0": 2.5, "hw1": 2.5, "fill": "@base.s2" },
+              { "k": "strip", "p0": { "frame": "main", "s": 56.875, "p": -36 }, "p1": { "frame": "main", "s": 5, "p": 0 }, "hw0": 2, "hw1": 2, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 56.875, "p": 36 }, "p1": { "frame": "main", "s": 5, "p": 0 }, "hw0": 2, "hw1": 2, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 56.875, "p": -36 }, "p1": { "frame": "main", "s": 5, "p": 0 }, "hw0": 0.75, "hw1": 0.75, "fill": "#eae2cc" },
+              { "k": "strip", "p0": { "frame": "main", "s": 56.875, "p": 36 }, "p1": { "frame": "main", "s": 5, "p": 0 }, "hw0": 0.75, "hw1": 0.75, "fill": "#eae2cc" },
+              { "k": "strip", "p0": { "frame": "main", "s": 6, "p": 0 }, "p1": { "frame": "main", "s": 88, "p": 0 }, "hw0": 3, "hw1": 3, "fill": "@base.k" },
+              { "k": "poly", "dir": "frame", "pts": [{ "frame": "main", "s": 86, "p": -5 }, { "frame": "main", "s": 96, "p": 0 }, { "frame": "main", "s": 86, "p": 5 }], "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 6, "p": -1 }, "p1": { "frame": "main", "s": 15, "p": -5 }, "hw0": 2, "hw1": 1.5, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 6, "p": 1 }, "p1": { "frame": "main", "s": 15, "p": 5 }, "hw0": 2, "hw1": 1.5, "fill": "@base.k" },
+              { "k": "strip", "p0": { "frame": "main", "s": 6, "p": 0 }, "p1": { "frame": "main", "s": 88, "p": 0 }, "hw0": 1.5, "hw1": 1.5, "fill": "@base.n0" },
+              { "k": "poly", "dir": "frame", "pts": [{ "frame": "main", "s": 87, "p": -3 }, { "frame": "main", "s": 94, "p": 0 }, { "frame": "main", "s": 87, "p": 3 }], "fill": "@base.s1" },
+              { "k": "strip", "p0": { "frame": "main", "s": 7, "p": -1 }, "p1": { "frame": "main", "s": 14, "p": -4 }, "hw0": 0.75, "hw1": 0.75, "fill": "@base.r1" },
+              { "k": "strip", "p0": { "frame": "main", "s": 7, "p": 1 }, "p1": { "frame": "main", "s": 14, "p": 4 }, "hw0": 0.75, "hw1": 0.75, "fill": "@base.r1" },
+              { "k": "ell", "p": { "frame": "main", "s": 5, "p": 0 }, "rx": 6.5, "ry": 6.5, "fill": "@base.k" },
+              { "k": "ell", "p": { "frame": "main", "s": 5, "p": 0 }, "rx": 4, "ry": 4, "fill": "@base.gold" }
+            ]
+          }
+        ]
       }
     }
-  },
-  "sig": { "alg": "ed25519", "kid": "kw1", "value": "XB4G3f51qZ7AN379V9BLoPoXTPL9gmcV42IwReCd3gFNZnh3V1WpXHmCizLfq8xS19RajagzpA/gYJCZzTr7Dg==" }
+  }
 }
