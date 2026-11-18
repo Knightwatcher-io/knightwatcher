@@ -7,10 +7,12 @@
 #   tools/shots.sh compare-worlds REFERENCE_DIR RESULT_DIR
 #
 # take opens web/index.html from disk once per entry in SHOTS, with time frozen by the address's
-# t= hook, and writes DIR/<name>.png at 960 by 600, or at the size an entry names after a second |. PAGE names another copy of the page to shoot,
-# such as an older version kept outside the repository. compare decodes each pair of PNGs and counts
-# the pixels that differ outside the clock, whose digits change with the minute. It exits 1 when
-# any pair differs or is missing. Keep both directories outside the repository.
+# t= hook, and writes DIR/<name>.png at 960 by 600, or at the size an entry names after a second |.
+# It exits 1, naming each shot, when the browser wrote no file for one. PAGE names another copy of
+# the page to shoot, such as an older version kept outside the repository. compare decodes each
+# pair of PNGs and counts the pixels that differ outside the clock, whose digits change with the
+# minute. It exits 1 when any pair differs or is missing. Keep both directories outside the
+# repository.
 #
 # With time frozen each shot depends only on its address, however many frames the browser paints,
 # so a single DIFF is a real difference.
@@ -18,7 +20,7 @@
 # worlds takes the shots of WORLD_SHOTS, with the test world, test.orbit, loaded beside the
 # medieval one: the settings screen (worldmix-), and the wall in the test world, in a mix of the two
 # worlds' parts and in the test world with medieval parts (orbit-). It shoots a copy of web/ made
-# outside the repository with the test world's carrier added (docs/development.md, The test world),
+# outside the repository with the test world's carrier added (docs/tests.md, The test world),
 # which it removes afterwards: the test world never goes under web/. compare-worlds compares two
 # such sets.
 set -euo pipefail
@@ -430,25 +432,32 @@ take() {
   fi
   local page="${PAGE:-$root/web/index.html}"
   mkdir -p "$dir"
-  local entry name hash size
+  local entry name hash size missed=()
   for entry in "${list[@]}"; do
     name="${entry%%|*}"
     hash="${entry#*|}"
     size=960,600
     if [[ "$hash" == *"|"* ]]; then size="${hash#*|}"; hash="${hash%%|*}"; fi
+    # a file left from an earlier run must not pass for this one's
+    rm -f "$dir/$name.png"
     "$CHROME" --no-sandbox --hide-scrollbars --window-size="$size" --virtual-time-budget=1500 \
-      --screenshot="$dir/$name.png" "file://$page#$hash" </dev/null >/dev/null 2>&1
-    echo "took $name"
+      --screenshot="$dir/$name.png" "file://$page#$hash" </dev/null >/dev/null 2>&1 || true
+    if [[ -s "$dir/$name.png" ]]; then echo "took $name"; else echo "shots: the browser wrote no screenshot for $name" >&2; missed+=("$name"); fi
   done
+  if [[ ${#missed[@]} -gt 0 ]]; then
+    echo "shots: ${#missed[@]} of ${#list[@]} shots were not written: ${missed[*]}" >&2
+    exit 1
+  fi
 }
 
 # A copy of web/ outside the repository with the test world's carrier added after the medieval
-# world's, as docs/development.md does it by hand; the shots of WORLD_SHOTS are taken from it, and it
+# world's, as docs/tests.md does it by hand; the shots of WORLD_SHOTS are taken from it, and it
 # is removed afterwards.
 worlds() {
   local dir="$1" tmp
   tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' RETURN
+  # removed on return, and on an exit from take when a shot was not written
+  trap 'rm -rf "${tmp:-}"' RETURN EXIT
   cp -r "$root/web" "$tmp/web"
   cp "$root/tests/web/fixtures/worlds/test.orbit.pack.json" "$tmp/web/packs/"
   node "$root/tools/pack-carrier.js" "$tmp/web/packs/test.orbit.pack.json" >/dev/null
