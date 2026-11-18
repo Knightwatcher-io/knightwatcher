@@ -12,7 +12,7 @@ name), in byte order of the names and leaving data/ out. Then, in the copy:
   - ?v=<hash> is appended to every local script and stylesheet address in index.html.
 
 The rules are those of tools/deploy.sh, line by line, and tests/server/test_stamp.py checks that
-both give the same bytes. docs/page.md describes how the page checks its version.
+both give the same bytes. docs/display.md describes how the page checks its version.
 """
 
 from __future__ import annotations

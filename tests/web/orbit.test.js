@@ -6,7 +6,7 @@
 // Run with: node --test tests/web/
 //
 // Orbit is never under web/ and never signed: it is read here, on dev terms, and shot from a copy
-// of web/ outside the repository (docs/development.md, The test world).
+// of web/ outside the repository (docs/tests.md, The test world).
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

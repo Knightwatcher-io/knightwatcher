@@ -14,6 +14,27 @@ The split is the whole design. The collector knows nothing of knights, and the p
 of Docker or DNS, so either can be replaced without touching the other. The contract between them
 is [state.md](./state.md).
 
+## Terms
+
+- **The watcher** is the figure in the middle of the scene that mirrors the homelab: it sweats,
+  takes to bed, swats the flies and talks with the patron. A world gives the watcher a body and
+  an outfit, and the medieval world's watcher is the knight. These docs say "the watcher" where
+  any world's figure is meant, and "the knight" where they mean the medieval one, or the code
+  that is named after it (`knight.js`, `KW.knight`).
+- **A world** is the watcher's surroundings as one set: the scenes, the supporting cast, the
+  drawings of the devices, the words, the overlay, and a preset that names one of each, carried in
+  a world pack ([worlds.md](./worlds.md)).
+- **The base world** is the medieval world, which ships with the page. Any part the page cannot
+  take from the world in use comes from it.
+- **A part** is one piece of a world, which the settings may choose apart from the world: a
+  scene, a member of the cast, a prop set, the words, the overlay, the body, an item or a colour.
+- **The cast** is the supporting cast: **the patron**, whom the watcher talks with while someone
+  has a shell open (the monarch, in the medieval world; `config.toml` keeps the names `monarch`,
+  `monarch_skin`, `monarch_hair` and `monarch_robe`), **foes** (the goblin), **critters** (the
+  fly) and **pets** (the mouser cat).
+- **A pack** is a JSON file that carries the watcher's gear or a world's parts as data
+  ([packs.md](./packs.md)).
+
 ## What the display is for
 
 It is read from 3 to 4 metres across a room, on a 14.6 inch tablet. At that distance the screen
@@ -26,7 +47,7 @@ Rules that follow from this, each decided by the owner:
   saying, and only the clock and one small line when all is quiet.
 - Text colour is the status: green when quiet, amber for a warning, red when critical, blue while
   something is at work. A world's overlay may give its own shade of each, within a band of hue and
-  contrast on black that keeps the meaning ([packs.md](./packs.md#words-and-the-overlay)); the
+  contrast on black that keeps the meaning ([worlds.md](./worlds.md#words-and-the-overlay)); the
   medieval world's overlay gives the colours above.
 - Movement is kept small. A fire flickers, the knight strolls to another spot every 12 to 22
   seconds in the quiet scenes. There is enough movement to spare an OLED panel and not enough to
@@ -107,7 +128,7 @@ With the sword and shield the shield's arm goes behind the shield and the sword'
 sword, and while the sword crosses the body both arms go behind the shield and the blade goes in
 front of it.
 A test draws every frame of the swings and the attack and checks this pixel by pixel, for every
-weapon, shield, sleeve and glove on every build ([page.md](./page.md#the-knights-rig)).
+weapon, shield, sleeve and glove on every build ([rig.md](./rig.md#anchors-values-and-poses)).
 
 The blade always passes in front of the watcher, never behind the head. A blade that turns from one
 side of the body to the other must point past the face on the way, so the swings keep that pass
@@ -115,7 +136,7 @@ short and low: the blade turns past the face in about a frame, and the swings to
 low, across the waist, instead of turning back over the face. The two-handed wind-up holds the
 hands out past the far shoulder, so the guard stays clear of the chin. A test holds the time the
 blade spends over the eyes in a swing to the left under a ceiling, and keeps the guard off the face
-in the wind-up ([page.md](./page.md#the-knights-rig)). The helmet comes off in the house and the
+in the wind-up ([rig.md](./rig.md#anchors-values-and-poses)). The helmet comes off in the house and the
 smithy. Gear is drawn in slots over one body so that new items can be added later; the slots are
 listed in [packs.md](./packs.md#slots-and-the-drawing-order).
 
@@ -251,7 +272,7 @@ or from its lightest where that stands out more from the skin (light hair on a d
 tabard colour's four bands become the robe's, the far sleeve taking its darker two. The crowns,
 the ermine and what each holds keep their colours. The settings choose all of this (see below),
 and the address's `mon=`, `ms=`, `mh=` and `mr=` choose it for screenshots (see
-[page.md](./page.md#the-address)).
+[display.md](./display.md#the-address)).
 
 ## Scenes chosen per condition
 
@@ -323,23 +344,30 @@ collector's own rules before it is kept, and the collector takes it up at its ne
 restart. The admin page also writes the look, display, quiet scenes and scenes through the same
 store as the walls' screens, so the two never disagree. Credentials stay in `.env`: the page says
 which are there, by name, and never shows or takes one. It is described in
-[page.md](./page.md#the-admin-page) and [server.md](./server.md#the-admin-page).
+[display.md](./display.md#the-admin-page) and [server.md](./server.md#the-admin-page).
 Without the server (opened from disk, the website's demo, or served by another web server) each
 browser keeps its own choices. The demo has the same screen.
-The builds are shown by their names, Classic, Broad and Slim, all three ready. [page.md](./page.md#settings)
+The builds are shown by their names, Classic, Broad and Slim, all three ready. [display.md](./display.md#settings)
 describes the screen and the levels in full.
 
 ## Art
 
 All seven scenes (battlement, camp, house, training yard, cellar, smithy and court), the knight,
-the cat and the props are drawn by code on one grid of 960 by 600 with the ground at 530, in whole pixels,
+the cat and the props are drawn on one grid of 960 by 600 with the ground at 530, in whole pixels,
 scaled by a whole number of device pixels where the screen allows (three on the target tablet).
-The still part of a scene is painted once and kept. Only what moves is drawn each frame.
+The still part of a scene is painted once and kept. Only what moves is drawn each frame. The
+knight is drawn from the base pack and the rest of the medieval world from its own pack, and each
+keeps a copy drawn by code, which the page falls back on when a pack
+cannot be used ([world-loading.md](./world-loading.md#two-copies-held-equal)).
 
 Another world's art comes as a world pack ([worlds.md](./worlds.md#other-worlds)). A world chosen
-whole draws only its own parts. Parts of different worlds may share a screen when the settings mix
-them, a foe of one world in another's scene for instance, and the settings screen's status page
-says where each part comes from.
+whole draws only its own parts, since its preset names a part of every kind and a scene for every
+condition, so a world chosen whole never shows two styles. Two styles may share a screen when the
+settings mix parts: a condition with no scene in the chosen world, or given a scene from another
+world, plays in that other world's scene, and a foe, a pet or the devices of one world may stand in
+another's scene. The settings screen's status page says so: it names the world each part comes
+from, and each part shown in place of another
+([worlds.md](./worlds.md#when-parts-of-different-worlds-meet)).
 
 ## The collector
 

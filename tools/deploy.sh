@@ -15,7 +15,7 @@
 #   - appends ?v=<hash> to every local script and stylesheet address in index.html, so that a new
 #     version is fetched under addresses no cache has seen.
 #
-# Nothing under web/ in the repository changes. docs/page.md describes how the page checks.
+# Nothing under web/ in the repository changes. docs/display.md describes how the page checks.
 set -euo pipefail
 
 usage() { echo "usage: $0 TARGET_DIR" >&2; exit 2; }

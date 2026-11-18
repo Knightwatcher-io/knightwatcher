@@ -10,7 +10,7 @@
 //
 // Each pose is worked out into cells, trimmed to the pixels it paints, cut into tiles of at most 64
 // by 64 (a pix shape's largest), and each tile trimmed again and written as a pix shape at its
-// place from the feet, its rows in runs ("runs": true, docs/packs.md): a character repeated three
+// place from the feet, its rows in runs ("runs": true, docs/scenes.md): a character repeated three
 // times or more is written as a count and the character. Its key maps the colours of that tile in
 // the order they first appear, to a to z and then A to Z. The tool owns every stamp whose name
 // starts with "cat." and the member pet.cat, and leaves the rest of the file as it is; the preset's

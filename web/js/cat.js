@@ -1,4 +1,4 @@
-/* Knightwatcher: the mouser cat, the first pet (docs/worlds.md, The cast). A cast member of the
+/* Knightwatcher: the mouser cat, the first pet (docs/cast.md, The cast). A cast member of the
    medieval world who catches the flies the knight cannot: in every indoor scene, and outdoors while
    the knight is busy. The engine keeps the catch (engine.js); this file gives the cat's drawing in
    code, KW.props.PETS.cat, which the medieval world's pack carries as stamps of pix shapes made from
@@ -398,7 +398,7 @@
     leg([p(8, -33), p(20, -35.5), p(34, -44), p(42, -50)], FRONT, c.fur, c, { toes: false, into: trunk }); paw(x + 43, y - 51, c, c.cream);
   }
 
-  /* Each pose by the name the pet role gives it (docs/packs.md, The cast), its drawing and its
+  /* Each pose by the name the pet role gives it (docs/cast.md, The cast), its drawing and its
      frame. */
   const POSES = {
     rest: [restCurl, 0], settle: [settle, 0], alert0: [alert, 0], alert1: [alert, 1], stalk0: [stalk, 0], stalk1: [stalk, 1],

@@ -10,7 +10,8 @@
   /* ---- The format's constants -------------------------------------------------------------- */
 
   /* The newest format this library reads. It reads [1, 0] and [1, 1]: 1.1 adds the world sections
-     (docs/packs.md, Format 1.1), which are checked and kept as data, and nothing draws from yet. */
+     (docs/worlds.md, Format 1.1), which are checked and kept as data; the scene compiler,
+     world.js, draws from them. */
   const FORMAT = Object.freeze([1, 1]);
   /* Signed ahead of the pack's canonical form, so that a signature made for anything else cannot
      pass as a pack's. */
@@ -1081,17 +1082,17 @@
   /* ---- Format 1.1: the world sections ----------------------------------------------------------
 
      Scenes, the cast, props, stamps, words, overlays, presets (worlds) and the reserved sounds,
-     checked by the same steps as the rest and kept as data. Nothing compiles them yet and nothing
-     draws from them: the engine's acts and the scene compiler come in later steps. Until then the
-     closed lists those parts of the engine will own are fixed here, under the names the format
-     gives them; the engine takes them over when it is built. An effect is checked against its table
-     and costed by its cost function from the effects library, which is built. */
+     checked by the same steps as the rest and kept as data. read() compiles none of them: the scene
+     compiler, world.js, compiles the scenes, the cast, the props, the words and the overlays of a
+     loaded pack and draws from them. The closed lists those parts own are fixed here, under the
+     names the format gives them, and exported as WORLD_LISTS. An effect is checked against its
+     table and costed by its cost function from the effects library. */
 
   /* The contract's condition ids. device_down and memory_tight have no scene of their own: they
      are acted in the quiet scene of the moment. */
   const CONDITIONS = ['attack', 'wan_down', 'container_unhealthy', 'disk_full', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'ssh_session', 'updating', 'streaming', 'night'];
   const QUIET_CONDITIONS = ['device_down', 'memory_tight'];
-  /* The acts (the engine's, from a later step): what a round does, the events a scene can host,
+  /* The acts (the engine's): what a round does, the events a scene can host,
      the predicates a layer can wait on, the marks where the engine draws in a scene's order, and
      the two moments a clock can start from. */
   const ROUND_ACTS = ['guard', 'look', 'sniff', 'yawn', 'train'];

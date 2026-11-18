@@ -1,14 +1,14 @@
 # The server
 
 Knightwatcher comes with a small web server of its own, run beside the collector by
-`docker compose up`. It serves the page, the collector's `state.json` and the packs the collector
-downloaded, keeps the settings chosen on the displays' settings screens for the whole deployment,
+`docker compose up`. It serves the page, the collector's `state.json` and the downloaded packs in
+`data/packs/`, keeps the settings chosen on the displays' settings screens for the whole deployment,
 so that every display shows the same knight, and serves the admin page, where the household's
 sources, thresholds and devices are set behind a password. It is written in Python with the
 standard library alone, in `server/`, and runs from the same image as the collector.
 
 The server is optional. The page still works from any web server of your own (see
-[page.md](./page.md#deploying)); each browser then keeps its own settings, and there is no admin
+[display.md](./display.md#deploying)); each browser then keeps its own settings, and there is no admin
 page.
 
 ## What it serves
@@ -19,7 +19,7 @@ page.
 | `/version.json` | the page's version, which open displays check every five minutes | `no-cache` |
 | the page's other files | scripts, styles, the font, the icons, the packs that ship with the page | a year when the address carries `?v=`, as the stamped page's addresses do; `no-cache` otherwise |
 | `/data/state.json` | the collector's latest state file | `no-cache` |
-| `/data/packs/<name>.json` | the packs the collector downloaded, each by a plain name | `no-cache` |
+| `/data/packs/<name>.json` | the downloaded packs, in the `packs` folder of the collector's output folder, each by a plain name | `no-cache` |
 | `/api/settings` | the shared settings: `GET` and `PUT` | `no-cache` |
 | `/admin` | sends the browser on to `admin/`, the admin page | `no-cache` |
 | `/admin/` | the admin page, stamped with the page's version | `no-cache` |
@@ -72,7 +72,7 @@ the part keys among them, the `items` and `devices` tables as objects inside `lo
 `"<pack>/<id>"`, wherever the table takes one, checked for its form alone. A store with
 nothing saved gives four empty sections. A display that chooses a world sends `look`, `quiet` and
 `scenes` in one write, the world alone in `look` and the parts it cleared left out
-([page.md](./page.md#worlds)).
+([display.md](./display.md#worlds)).
 
 ### PUT /api/settings
 
@@ -129,7 +129,7 @@ display, quiet scenes and scenes that the walls' settings screens also change. I
 setting comes from one of three levels, highest first: what is set on the page, `config.toml`, and
 the default ([configuration.md](./configuration.md#where-the-collectors-settings-come-from)).
 Credentials are never typed or shown there: the page says, by name, which ones `.env` holds. The
-page itself is described in [page.md](./page.md#the-admin-page).
+page itself is described in [display.md](./display.md#the-admin-page).
 
 It is behind the admin password, `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env`, which `compose.yaml`
 gives to the server alone. While it is missing, or shorter than 12 characters, the page is off and
@@ -305,7 +305,7 @@ The page tells the server is there by asking `api/settings` when it starts. With
 form above, the settings saved there are the level the settings screen writes to, for every
 display; with a `404`, or anything else, the page keeps choices in its own browser, as it does
 from disk. The levels, the carry-over of a browser's earlier choices and the rest are in
-[page.md](./page.md#settings).
+[display.md](./display.md#settings).
 
 ## Running it
 

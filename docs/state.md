@@ -194,7 +194,7 @@ and `sources` the parts come from are shown:
   - The `detail` of `streaming` is the first stream in `facts.streams.sessions` as one line,
     `Robin · The Night Shift S02E04 · 1 of 3`, with no `1 of 1` when one stream plays; without
     sessions it is the count, `3 streams`. A page from before the sessions shows it as it is, and
-    a newer page takes each stream in turn from the sessions ([page.md](./page.md#modes)).
+    a newer page takes each stream in turn from the sessions ([display.md](./display.md#modes)).
 - **`quiet_line`** is shown when `conditions` is empty. At most 52 characters. The collector
   shortens the blocked count to fit (`11.3k ads blocked`, then `11.3k blocked`) before it drops
   a part from the end.
@@ -326,7 +326,7 @@ and `sources` the parts come from are shown:
     sets. A long name is `"<pack>/<id>"`, which the collector checks only for its form
     ([configuration.md](./configuration.md#the-settings-screens-defaults)); the page ignores one it
     has not loaded. A `world` counts as setting every other key of `look`, the quiet `scenes` and
-    every key of `scenes` at the level it is set at ([page.md](./page.md#worlds)), so beside it in
+    every key of `scenes` at the level it is set at ([display.md](./display.md#worlds)), so beside it in
     `defaults` a key set here keeps its value.
   - `display`: `headline` is `small`, `medium` or `large`; `clock` is the number `24` or `12`;
     `helmet_indoors` is `true` or `false`.

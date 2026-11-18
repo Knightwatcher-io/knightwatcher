@@ -4,8 +4,8 @@
    the knight is drawn on, and draw() draws it there: from the base pack when start() found one it
    can use (packHD), and otherwise from the code below (codeHD), which draws the same knight as it
    shipped before packs. rest.draw() draws the knight's gear where a scene sets it down, from the
-   same source. start() and add() load the packs, fetchPacks() fetches the ones the collector
-   downloaded, and look() draws another look from the packs already loaded. */
+   same source. start() and add() load the packs, fetchPacks() fetches the downloaded ones in
+   data/packs/, and look() draws another look from the packs already loaded. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view, SP = KW.sprites, P = KW.props, C = D.C, U = V.U;
@@ -554,7 +554,7 @@
      start() reads the packs that ship with the page, add() the ones fetchPacks() fetched, and each
      time the packs in use are gathered again and the look resolved (rebuild). Every pack goes
      through KW.pack.read with the same options: a signature is required unless the page is 'dev'.
-     The rules of docs/packs.md, "When packs fail", in order:
+     The rules of docs/library.md, "When packs fail", in order:
 
      1. A pack refused by read(), turned away by gather(), or whose list throws while drawing goes
         into status.refused as { id, file, step, reason }, and to the console once.
@@ -689,7 +689,8 @@
      frozen), or null on the code path. The settings screen takes its choices from it. */
   const basePack = () => (PK.look ? PK.packs.get(PK.lib.BASE_ID).data : null);
   /* ---- Downloaded packs -------------------------------------------------------------------------
-     The packs the collector downloads lie in data/packs/ beside state.json, with index.json naming
+     The downloaded packs lie in data/packs/ beside state.json, put there by hand (the collector
+     downloads none yet), with index.json naming
      them: { "packs": ["<file>.pack.json", ...] }, names only. fetchPacks(get, root) fetches the
      index and then each file it names, as text, with get (the page passes window.fetch): never as
      script, never from outside data/packs/, each fetch with cache 'no-store', no redirects, and cut

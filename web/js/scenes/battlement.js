@@ -73,7 +73,7 @@
     hosts: ['flies', 'crate', 'feast', 'foe'],
     rounds: [{ x: 92, act: 'guard', dur: 18 }, { x: 88, act: 'look', dur: 16 }, { x: 96, act: 'sniff', dur: 12 }],
     key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt, foeZone: FOE_ZONE,
-    // where the crate may land (docs/worlds.md): the stretch of walkway between the device at the left
+    // where the crate may land (docs/scenes.md): the stretch of walkway between the device at the left
     // edge and the knight's boots at its leftmost spot
     crate: { span: [150, 384] }
   };

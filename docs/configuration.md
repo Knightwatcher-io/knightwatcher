@@ -27,7 +27,7 @@ A display's look, its display preferences, its quiet scenes and the scene each o
 plays in are its settings. Each comes from four levels, highest first, key by key:
 
 1. **The page's address.** Its hooks (`sk=`, `hc=`, `mon=`, `ck=` and the rest, in
-   [page.md](./page.md#the-address)) win while the address holds them, so that screenshots look
+   [display.md](./display.md#the-address)) win while the address holds them, so that screenshots look
    the same whatever is saved.
 2. **The saved settings**, chosen on any display's settings screen (a press and hold of two
    seconds). Served by the bundled server, they are the deployment's: the server keeps them, and
@@ -45,7 +45,7 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
 
 A value a level holds that the page does not know is ignored at that level, and the next one down
 is used. So is a long name, `"<pack>/<id>"`, of something the display has not loaded.
-[page.md](./page.md#settings) has the details.
+[display.md](./display.md#settings) has the details.
 
 **A world** (`world` in `[look]`) sets every part at once: the look's other keys, the quiet scenes
 and the scene of each condition. It counts as setting each of them at the level it was chosen at.
@@ -522,7 +522,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 
 | Variable | Scope | Values | Default | What it is |
 |---|---|---|---|---|
-| `KNIGHTWATCHER_OUT` | path | a host path, such as `./var/out` | required | The host folder the collector writes state.json to, and the packs it downloads. Mounted at /out in both containers, read-only in the server's, which serves it as data/. Must exist and be writable by the collector's account. |
+| `KNIGHTWATCHER_OUT` | path | a host path, such as `./var/out` | required | The host folder the collector writes state.json to. Mounted at /out in both containers, read-only in the server's, which serves it as data/: state.json, and the packs placed in its packs/ folder, which the page reads. Must exist and be writable by the collector's account. |
 | `KNIGHTWATCHER_BACKUP_LOG` | path | a host path, such as `/var/log/backup.log` | required | The host's backup log, a single file. Mounted read-only at /host/backup.log. |
 | `KNIGHTWATCHER_DATA_DISK` | path | a host path, such as `/data/lost+found` | required | Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size. |
 | `KNIGHTWATCHER_VAR` | path | a host path, such as `./var` | `./var` | The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account. |
@@ -713,7 +713,7 @@ camera = "medieval"
 
 The page ships one world, `medieval`, whose pack is `kw.medieval`, so the long names it loads by
 itself are that pack's own (`kw.medieval/patron.b` is monarch `b`) and the base pack's items. A
-world pack the collector downloads into `data/packs/` adds its own: its world, its scenes, its
+world pack placed in `data/packs/` ([display.md](./display.md#another-world-pack)) adds its own: its world, its scenes, its
 cast, its words and overlay, its bodies, swatches and items, each by its long name
 ([worlds.md](./worlds.md#other-worlds)). A kind the chosen prop set does not draw takes the
 medieval drawing.

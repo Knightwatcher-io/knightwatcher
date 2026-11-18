@@ -13,7 +13,7 @@
   const STONE = ['#2b2333', '#2f2738', '#272030', '#332a3d'];
   const BLANKET = [[.12, C.B0], [.5, C.B1], [.85, C.B2], [1, C.B3]];
 
-  /* The places for the knight's gear at rest (docs/page.md): the stool, a surface where the
+  /* The places for the knight's gear at rest (docs/rig.md): the stool, a surface where the
      helmet rests, x and y the middle of its top and w by h the room above it; the pegs on the
      wall, where the weapon hangs, x and y the middle of its grip and a its angle, which lays it
      flat; and the wall right of the pegs, where a shield hangs by its strap from a nail in the

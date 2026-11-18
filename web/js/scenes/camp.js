@@ -69,7 +69,7 @@
     hosts: ['flies', 'crate', 'feast', 'foe'],
     rounds: [{ x: 104, act: 'sniff', dur: 22 }, { x: 98, act: 'yawn', dur: 14 }, { x: 101, act: 'look', dur: 16 }],
     paint, draw, foeZone: FOE_ZONE,
-    // where the crate may land (docs/worlds.md): the ground between the devices before the tent and
+    // where the crate may land (docs/scenes.md): the ground between the devices before the tent and
     // the knight's boots at its leftmost spot
     crate: { span: [298, 436] }
   };
