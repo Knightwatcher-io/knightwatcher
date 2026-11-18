@@ -119,7 +119,8 @@ at the `json` step, while one in a length of a tile's shape, or in a point outsi
 Format 1.2 adds what a world needs for weapons that fire, on the same terms as 1.1: everything it
 adds is a field a pack of 1.0 or 1.1 does not have, refused there at `fields`, and a pack of 1.0 or
 1.1 reads exactly as before on a page of 1.2. `tests/web/base-read.test.js` holds the base pack's
-read to the copy stored before format 1.1, and `tests/web/orbit-swap.test.js` holds the test
+read to the copy first stored before format 1.1 (the base pack moved to format 1.2 for its crossbow
+in 1.5.0, and every look stored before it kept its records and costs), and `tests/web/orbit-swap.test.js` holds the test
 world's 1.1 file to the same read on a library of format 1.1 as on this one. A page of format 1.1
 refuses a pack of 1.2 at the `format` step (`pack.format: is 1.2, newer than this engine's 1.1`), and
 every part that pack would have set takes the base world's. What 1.2 adds:

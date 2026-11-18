@@ -6,9 +6,9 @@ two sets:
 
 | Mode | Does |
 |---|---|
-| `take DIR` | opens the page from disk once for each of the 267 shots of the main set, with time frozen by the address's `t=`, and writes `DIR/<name>.png` at 960 by 600, or at the size the shot names |
+| `take DIR` | opens the page from disk once for each of the 284 shots of the main set, with time frozen by the address's `t=`, and writes `DIR/<name>.png` at 960 by 600, or at the size the shot names |
 | `compare REF NEW` | decodes each pair of PNGs by name and counts the pixels that differ outside the clock; a pair of different sizes, or one missing or unreadable, is a failure |
-| `worlds DIR` | copies `web/` to a folder of its own outside the repository, adds the test world's carrier, takes the 47 shots of the worlds' set from that copy (7 `worldmix-`, 40 `orbit-`), puts the test world's copy of format 1.2 behind the same carrier, takes the 31 `orbit-fire-` shots, and removes the copy |
+| `worlds DIR` | copies `web/` to a folder of its own outside the repository, adds the test world's carrier, takes the 47 shots of the worlds' set from that copy (7 `worldmix-`, 40 `orbit-`), puts the test world's copy of format 1.2 behind the same carrier, takes the 32 `orbit-fire-` shots, and removes the copy |
 | `compare-worlds REF NEW` | compares two sets that `worlds` took |
 
 `take` and `worlds` need `CHROME`, the path of a headless Chromium, and `PAGE` names another copy of
@@ -134,6 +134,17 @@ they are missing. Against a reference from base pack 1.3.0 the six settings shot
 page and of the status differ too: the weapon and hair style rows gained choices, and the status
 names the base pack's version and whether it is signed.
 
+The 17 `free-crossbow-` shots after them show the base pack's crossbow of 1.5.0, the weapon that
+fires, chosen with `arm=crossbow`: standing on the battlement; the swat by shot (`f=6&sw=1`), a
+bolt's burst at a fly on the right (1 090), the turn across the body (1 230) and a shot to the left
+(1 690); practice from 300 short of the dummy (`kx=82`) with the bolt in flight (490) and the dummy
+struck (560); the goblin on the battlement with the watcher stepping back (500), the bolt in flight
+(1 440) and the hit (1 470), and the bolt in flight at the camp (1 440); the attack aimed; the
+crossbow on the house's pegs and across the smithy's anvil, cold; slung across the back in the
+cellar; the swat to the left on Broad and the attack on Slim; and the settings screen's knight page
+at 1480 by 2800 with the crossbow chosen and the shield greyed beside it. Against a reference from
+before the crossbow they are missing.
+
 The four shots after them show the worlds. `settings-world` opens the World page over the
 battlement with nothing set, and `settings-world-tablet` the same over the camp at the tablet's
 size; `settings-world-changed` has the weapon and the tabard the address changes from the world
@@ -182,7 +193,7 @@ with medieval parts (`orbit-swap-`): the goblin out of the Deck's floor and the 
 knight's own colours.
 
 The same run then puts the test world's copy of format 1.2 in place of its 1.1 file, behind the
-same carrier (the two share an id, so one or the other is loaded), and takes the 31 `orbit-fire-`
+same carrier (the two share an id, so one or the other is loaded), and takes the 32 `orbit-fire-`
 shots of the acts with a weapon that fires. The copy's world carries the blaster with the deflector;
 `arm=` and `sh=` with a long name choose the blaster and the deflector, or the prod, in the medieval
 world ([display.md](./display.md#the-address)). In the test world: the Deck while all is quiet; the
@@ -202,15 +213,18 @@ with the beam (1 420); practice by beam (470); its blade's hot tip on the anvil;
 the back in the cellar. Last, Glitch's own shot at 1 370, its tracer drawn and the watcher's eyes
 wide: stopped at the deflector with the spark (`orbit-fire-glitch-fire`); missing over the head
 with the prod, which carries no shield (`-miss`); in the medieval battlement (`fo=`), stopped at the
-heater shield of the arming sword (`-heater`) and missing over the greatsword's knight
-(`-overhead`); and with the watcher placed left of the Deck's foe zone (`kx=40`), so that Glitch
+heater shield of the arming sword (`-heater`), missing over the greatsword's knight
+(`-overhead`) and over the knight with the base pack's crossbow, who carries no shield
+(`-crossbow`); and with the watcher placed left of the Deck's foe zone (`kx=40`), so that Glitch
 stands on the right, missing overhead with the deflector carried, the known limit (`-right`). A
 reference from before the acts that fire has none of these, and the comparison reports them
-missing; every other shot is the same, since no weapon of the shipped packs fires. Against a
+missing; every other shot is the same, since the shots before them choose no weapon that fires.
+Against a
 reference from before Glitch fired, three shots differ: `orbit-fire-glitch-aim` (1 395) and
 `-shot` (1 440), by Glitch's aim pose, its tracer and spark and the watcher's wide eyes, and `-hit`
 (1 500) by the eyes alone, which are wide until 1 550. `-step` (450) and `-return` (1 760) are the
-same, and the five Glitch shots at 1 370 are missing.
+same, and the five Glitch shots at 1 370 are missing. Against a reference from before the crossbow
+`orbit-fire-glitch-crossbow` is missing.
 
 The 28 `cat-` shots show the mouser cat. Every shot above shows it resting at its
 spot in its calico coat; these show it in the ginger coat (`pc=ginger`) at each of its eight spots
@@ -310,8 +324,18 @@ hooks ([Taking and comparing them](#taking-and-comparing-them)); against a refer
 them they are missing. Against a reference from base pack 1.3.0 six shots differ besides: the
 settings screen's knight page in `settings-knight`, `settings-look`, `settings-tablet`,
 `bd-b-settings-knight` and `bd-c-settings-knight`, whose weapon and hair style rows gained choices,
-and `settings-status`, which names the base pack's version and whether it is signed. The four shots
-after the `free-` shots show the worlds: the World page with nothing set and at the tablet's size,
+and `settings-status`, which names the base pack's version and whether it is signed. The 17
+`free-crossbow-` shots after them show the base pack's crossbow of 1.5.0 in the acts by shot, at
+rest, slung and on the settings screen ([Taking and comparing them](#taking-and-comparing-them));
+against a reference from before it they are missing, and so is `orbit-fire-glitch-crossbow` of the
+worlds' set. Against base pack 1.4.0 the shots that show the knight's weapon row differ there, the
+crossbow added after the mace and shield: `settings-knight`, `settings-look`, `settings-tablet`,
+`bd-b-settings-knight`, `bd-c-settings-knight` and the four `free-settings-` shots, and in the
+worlds' set `worldmix-knight`, `worldmix-knight-orbit` and `worldmix-knight-small` (in
+`worldmix-knight` the test world's pry bar moves to a row of its own and every row under it moves
+down); and `settings-status`
+and `settings-status-world`, which name the base pack's version. The four shots after the
+`free-crossbow-` shots show the worlds: the World page with nothing set and at the tablet's size,
 the World page with parts the address changes from the world, and the status page's World, Parts and
 Fallbacks entries ([Taking and comparing them](#taking-and-comparing-them)); against a reference
 from before worlds they are missing, and every settings shot that shows the side rail differs in it,

@@ -475,8 +475,8 @@ other loaded pack's bodies, swatches and items follow under its world's name, by
 gives them (a weapon with One hand or Two hands under it, by its grip). The line over the armour
 says "each piece from its world's pack" once another world is loaded. A choice is saved by
 `choosePart()`, an item of another pack in `items` for its slot. The weapon
-row shows the greatsword and the longsword (Two hands) and the sword and shield and the mace and
-shield (One hand each); each gear row shows the items of its slot the base pack in use draws, by
+row shows the greatsword, the longsword and the crossbow (Two hands) and the sword and shield and
+the mace and shield (One hand each); each gear row shows the items of its slot the base pack in use draws, by
 their names, in the schema's order (`KW.settings.itemChoices`), and the back starts with Nothing. A
 row the look does not show is greyed as an unready build is, and a tap on a greyed choice says why
 in the line under the row and changes nothing (`KW.settings.greyed`, from the weapon and the helmet
@@ -651,7 +651,7 @@ down is used.
 | `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `device_down` on, the knight looks towards the first device that is down and alerts |
 | `wd=` | the world: `medieval`, or a loaded world by its long name, such as `wd=kw.example/world.neon`, chosen at the address's level, so that it sets every part the address leaves alone. A hook's value may hold the slash of a long name, as `bd=kw.example/body.courier` or `sk=kw.example/chrome` |
 | `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`, or a loaded body by its long name. A page that cannot draw from the base pack draws Classic whatever the hook says |
-| `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its shield in the other, `two` the greatsword, or any weapon by its contract name: `longsword`, `mace_and_shield`; or a loaded pack's weapon by its long name, `arm=test.orbit/main.blaster`, which `sh=` may match with a loaded pack's shield by its long name, `sh=test.orbit/off.deflector`. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
+| `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its shield in the other, `two` the greatsword, or any weapon by its contract name: `longsword`, `mace_and_shield`, `crossbow`; or a loaded pack's weapon by its long name, `arm=test.orbit/main.blaster`, which `sh=` may match with a loaded pack's shield by its long name, `sh=test.orbit/off.deflector`. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
 | `sh=`, `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=`, `bk=` | the knight's gear by its contract value: the shield (`sh=round`), the helmet (`hm=coif`), the plume's style (`ps=feather`), the body (`bo=cuirass`), the shoulders (`so=lames`), the arms (`am=mail`), the hands (`hn=leather`), the legs (`lg=hose`), the feet (`ft=sabatons`) and the back (`bk=cloak`, or `bk=none`); the values are in [state.md](./state.md) |
 | `sk=`, `hc=`, `tb=`, `pm=` | the knight's skin, hair colour, tabard and plume: the id of one of the base pack's swatches, such as `sk=deep&hc=black&tb=sable&pm=gold` (the ids are in [library.md](./library.md#the-base-pack)) |
 | `hy=` | the knight's hair style: `short`, `tied`, `curls`, `long` or `close`, the base pack's `hair.<value>` |

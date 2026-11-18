@@ -11,7 +11,7 @@ out.
 | File | Checks |
 |---|---|
 | `tests/web/base-pack.test.js` | the shipped base pack: its contents, the free options, builds and items as approved, and whether it ships signed |
-| `tests/web/base-read.test.js` | the base pack's whole read, its signed bytes and six looks against the copy stored before format 1.1 |
+| `tests/web/base-read.test.js` | the base pack's whole read, its signed bytes and its stored looks against the copy first stored before format 1.1 |
 | `tests/web/ed25519.test.js` | the verifier against RFC 8032's vectors and `node:crypto` |
 | `tests/web/effects.test.js` | each effect's cost against what it draws, and `pack.js` holding effects to their tables |
 | `tests/web/fire.test.js` | format 1.2: the fields and rules of weapons and foes that fire, the aim and `fire()`, and the shot effects |
@@ -30,7 +30,7 @@ out.
 | `tests/web/props.test.js` | the devices inside their places, gone against up, only what moves drawn each frame |
 | `tests/web/scenes.test.js` | every scene's paint and draw against the stored records, from code and from the pack |
 | `tests/web/settings-schema.test.js` | the page's lists of settings, scenes and conditions against the settings schema |
-| `tests/web/settings.test.js` | the settings' levels, storage, look and engine input, and the knight in 720 looks |
+| `tests/web/settings.test.js` | the settings' levels, storage, look and engine input, and the knight in 900 looks |
 | `tests/web/shared-settings.test.js` | the shared settings against a fake server |
 | `tests/web/state.test.js` | reading the state file, against the example in [state.md](./state.md) |
 | `tests/web/streams.test.js` | the streams' detail line and badge |
@@ -279,7 +279,7 @@ none is given or one cannot be read, each swatch's bands where one is, and the b
 from the base pack's names with Ready under each, a renamed build shown by its new name, and a
 base pack that draws build A alone greying the other two by their letters. It also draws the
 knight from the base pack in every combination the settings offer, weapon by skin by hair by hair
-style with the build, the tabard and the plume cycled, 720 looks, the build turning so that each
+style with the build, the tabard and the plume cycled, 900 looks, the build turning so that each
 meets every weapon, skin, hair colour and hair style, each standing, attacking and swinging both
 ways, helmet on and off, the bare head and the gear at rest, and checks that none throws, falls
 back or passes the caps, that it is rigged on its build, and that its colours are drawn; every
@@ -288,8 +288,10 @@ cloak drawn in the gold plume's colours; and every monarch in every skin, hair a
 among them, 882 courts, each drawing its own colours. For the gear it checks that every value names
 an item of its slot in the base pack and every item of a slot is offered, the page's own being the
 base pack's defaults; the look each choice makes, the shield carried only beside a one-handed
-weapon and no back putting nothing on; what the screen greys and the words it says; and the
-choices' names from the base pack, a base pack without an item offering only what it draws.
+weapon (never beside the crossbow) and no back putting nothing on; what the screen greys and the
+words it says, the shield greyed beside the greatsword, the longsword and the crossbow; and the
+choices' names from the base pack, the five weapons among them, a base pack without an item
+offering only what it draws.
 
 The stored record changes only when the knight is meant to look different. Store it again from the
 code as it is with `KNIGHT_LOG=write node --test tests/web/knight.test.js`, and look at the
@@ -398,7 +400,8 @@ stored record, in about a second. The record is stored again only when the knigh
 and the goblin strike with the greatsword and with the sword and shield, and fails if an arm is
 drawn over a blade or a shield ([rig.md](./rig.md#anchors-values-and-poses)). The same checks for the
 base pack's free items of 1.4.0 (every new weapon with every shield it may carry, the mail and
-padded sleeves and gloves, every free item in every pose, on each build) run from
+padded sleeves and gloves, every free item in every pose, on each build) and for its crossbow of
+1.5.0 (every pose, aimed and fired, cold on the anvil) run from
 `knight-free-classic.test.js`, `knight-free-broad.test.js` and `knight-free-slim.test.js`, which
 load `knight.test.js` with `KNIGHT_PART` naming one build, so that they run in processes of their
 own beside it; each takes about two minutes, the longest files of the suite. For the three builds it draws
@@ -499,7 +502,7 @@ and two displays sharing one server. `tests/web/settings.test.js` checks the set
 the reset, the 12-hour clock, the monarch's hair and robe with "As drawn", the scene chosen per
 condition and which scenes can act which condition, the build row's names from the base pack), the
 engine's quiet rotation and its choice of scene, the monarch's skin, hair and robe, and the knight
-drawn from the base pack in 720 looks of the settings', each build meeting every weapon, skin, hair
+drawn from the base pack in 900 looks of the settings', each build meeting every weapon, skin, hair
 colour and hair style, every choice of the gear on every build, the gear's look, what the screen
 greys and the choices' names, and every monarch in every skin, hair and robe.
 
@@ -606,17 +609,19 @@ list to paint each pixel of the grid, every frame of `AIM2` or `AIM1` at every 0
 range both ways, of `fire()` at every 0.01 of q both ways, aimed high, level and low, of two
 volleys of the swat every 10 ms, one starting each way and turning across the body six times
 between them at flies level, high and nearly overhead, and of the attack every 100 ms: 1 089
-frames for each of 40 sets, the test world's blaster with and without its deflector, its prod and
-the trial crossbow (`fixtures/crossbow.js`), on the base pack's three builds in plate, mail and
-padded sleeves and on the test world's unit. No arm or gauntlet may paint a pixel the weapon
+frames for each of 50 sets, the base pack's crossbow, the test world's blaster with and without its
+deflector, its prod and the trial crossbow (`fixtures/crossbow.js`), on the base pack's three builds
+in plate, mail and padded sleeves and on the test world's unit. No arm or gauntlet may paint a pixel the weapon
 painted at or beyond its barrel's `from`, nor one of the shield's, in any frame: with the deflector
 the turns across the body lift it ([rig.md](./rig.md#aiming-and-firing)). Drawn with the barrel from
-the frame's origin instead, the same check finds the hands on the weapon, which shows it sees what
-it looks for. It takes about two minutes, in a process of its own.
+the frame's origin instead, the same check finds the hands on the weapon, for both crossbows and the
+blaster, which shows it sees what it looks for. It takes about two minutes, in a process of its own.
 
 `tests/web/fire-acts.test.js` plays the acts with a weapon that fires, on the page's scripts under
-Node with time frozen, with the test world's copy of 1.2, the trial crossbow and, where it says so,
-the medieval world's scenes. The swat: seven flies give seven shots 300 ms apart from 450, the
+Node with time frozen, with the test world's copy of 1.2, the trial crossbow, the base pack's
+crossbow and, where it says so, the medieval world's scenes. The base pack's crossbow plays every
+act the trial crossbow plays: the swat, practice, the foe, the attack, the reach, the pegs, the
+anvil and the stowed view. The swat: seven flies give seven shots 300 ms apart from 450, the
 oldest fly's side first and each side oldest first, so the weapon changes side once; each shot
 aimed within the swat's limits, a bolt at 1.6 pixels a ms that pops its fly as it lands, and the
 swat over after the last return; the prod and the arming sword still swing, with no shot. Practice,
@@ -642,7 +647,8 @@ without a view. The shield: lifted in the middle of each turn to the left and ba
 down at either end, never lifted aiming right or without a shield.
 
 `tests/web/foe-fires.test.js` plays a foe that fires, in the same way, with the test world's Glitch
-from its copy of 1.2 and the medieval world's scenes. The numbers: `FOE.fires`, the aim from 1 230,
+from its copy of 1.2 and the medieval world's scenes; the base pack's crossbow, which carries no
+shield, is among the looks the shot misses overhead, flinches at and finds no shield face on. The numbers: `FOE.fires`, the aim from 1 230,
 the shot at 1 350, 40 over, 0.4 down the shield, a spark of 80 and a flinch of 200. The compiler:
 Glitch's poses the six and `aim` last, painted once, and its `fires` as the pack gives it; the
 goblin and Glitch from the 1.1 file with six poses and no `fires`. The foe player: `aim` from 1 230
@@ -689,11 +695,14 @@ that each cost function bounds what the effect draws. [The page's tests](#the-pa
 
 `tests/web/base-read.test.js` reads the shipped base pack with the library as it is and compares the
 whole result with `tests/web/fixtures/base-read.json`, first stored from the library before format
-1.1 and stored again for base pack 1.4.0: the read of the file signed (with a key made for the run,
+1.1 and stored again for base packs 1.4.0 and 1.5.0: the read of the file signed (with a key made for the run,
 which reads as the file signed with `kw1` does), unsigned on a `dev` page and unsigned on a
 deployed page, the SHA-256 and length of the bytes its signature covers, and `resolve()` with every
-record on each build, for the default look, the sword and shield, and three looks that wear the 25
-free items between them. The file as it ships must read as the signed read when it carries a `sig`
+record on each build, for the default look, the sword and shield, three looks that wear the 25
+free items between them, and the crossbow of 1.5.0 with the long cloak, its stowed view after the
+cloak in the body's list. Storing it for 1.5.0 changed only the version, the format, the new item
+and its sums, and the empty `world` a pack of format 1.1 or later reads with; every earlier look's
+records and costs stayed as stored. The file as it ships must read as the signed read when it carries a `sig`
 and as the deployed refusal when it does not, so the test holds in either state. Store it again
 only when the base pack is meant to change, from a library known to read it right:
 
@@ -720,12 +729,14 @@ signature, and on a `dev` page alone when it does not. It also checks the three 
 approved in `fixtures/base-builds.json`, with their names, Classic the present measurements, every
 head 51, every torso within the rule and every measurement at least 6 from the ends of its range;
 one item for each slot the present drawing has, the arming sword and the heater shield, the five
-hair styles, the free items of 1.4.0 after the 15 of 1.3.0, the wool palette, and nothing more;
+hair styles, the free items of 1.4.0 after the 15 of 1.3.0, the crossbow of 1.5.0 last, format
+`[1, 2]`, the wool palette, and nothing more;
 six swatches in each set in the settings screen's order, today's the defaults; each item and
 swatch equal to the fixture's, to `fixtures/base-builds.json` for the three items fitted to the
 builds, to `fixtures/base-onehand.items.json` for the one-handed items, to
-`fixtures/base-options.json` for the free options or to `fixtures/base-free-items.json` for the
-free items, with the iris of the shield, worn and at rest, on `@tabard.3` and no `@base.b3` left; a
+`fixtures/base-options.json` for the free options, to `fixtures/base-free-items.json` for the
+free items or to `fixtures/base-crossbow.json` for the crossbow (named "Crossbow" and with no flash
+of its own, the approved flash being the engine's pale snap), with the iris of the shield, worn and at rest, on `@tabard.3` and no `@base.b3` left; a
 default look that resolves with nothing missing at a cost of 13 878, and each build likewise; the
 look with the sword and shield resolving with nothing missing, one-handed, at 125 shapes; every one
 of the 23 328 combinations of build, skin, hair colour, the first three hair styles, tabard, plume
@@ -734,7 +745,8 @@ every item of every slot on every build, with each weapon where the grip matters
 each one-handed weapon, resolving with nothing missing, and every shield refused beside a
 two-handed weapon; the mail coif drawing no plume and every other helmet each plume; the long
 cloak changing with the plume and not the tabard and the short cape the other way round; each
-weapon's grip and blade; and the costliest whole look of the free items, with each grip, at 201
+swung weapon's grip and blade; the crossbow's fields, its 45 shapes at 6 309 held and slung, no
+blade, and its look on every build at 116 shapes and 13 896 with its stowed list; and the costliest whole look of the free items, with each grip, at 201
 shapes and 20 493 and at 188 and 19 721, the same on every build. `tests/web/knight.test.js` draws the
 knight's 94 poses, the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy painted and drawn, from the base
 pack as the page does, and compares every call with the record taken from the code. It draws the
@@ -756,7 +768,10 @@ the frame-by-frame arm check with every new weapon and every shield it may carry
 and the padded sleeves and gloves beside a two-handed and a one-handed weapon; every free item in
 every pose of the call record, both swings and the attack, without a throw and within its look's
 cost; the longsword and the mace held exactly where the greatsword and the arming sword are, frame
-by frame; and the mace's head glowing on the smithy's anvil.
+by frame; the mace's head glowing on the smithy's anvil; and the crossbow of 1.5.0 in every pose of
+the call record, aimed and fired both ways, in the attack and slung, without a throw and within its
+look's cost, keyed into the house's and the smithy's backdrops and lying on the anvil with no hot
+tip.
 
 `tests/web/loading.test.js` checks loading and failure. For the index: its shape, more than 32
 names, and names that carry a path or are not a pack file's. For the fetch, against a fake `fetch`:
@@ -865,7 +880,8 @@ from the packs within the look's caps, and reports no fallback but the two kinds
 Orbit unchosen on the display brings the medieval world back frame for frame, with nothing of
 Orbit's read, and a copy of the library of format 1.0 refuses Orbit at `format`. A copy of the
 library of format 1.1 refuses the copy of format 1.2 at `format` and reads the 1.1 file exactly as
-this library does.
+this library does. Both copies refuse the base pack at `format` too, since its crossbow made it a
+pack of format 1.2.
 
 `tests/web/orbit-body.test.js` draws Unit, at an end of every measurement's range, in every pose,
 swing and attack frame, in its own outfit and in the base pack's one-handed gear, without a throw or

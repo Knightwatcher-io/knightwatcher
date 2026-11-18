@@ -6,8 +6,8 @@
 // Run with: node --test tests/web/
 //
 // The weapons are the test world's, from its copy of format 1.2 (the blaster with its deflector,
-// and the prod, which is both swung and fired), and the trial crossbow made in memory
-// (fixtures/crossbow.js). The page's scripts run under Node into a sandbox, with the knight and,
+// and the prod, which is both swung and fired), the trial crossbow made in memory
+// (fixtures/crossbow.js), and the base pack's own crossbow where the acts and the rests meet it. The page's scripts run under Node into a sandbox, with the knight and,
 // where a test says so, the medieval world started from the packs on dev terms, and time frozen.
 'use strict';
 const test = require('node:test');
@@ -30,6 +30,7 @@ const O = n => 'test.orbit/' + n;
 const BLASTER = { items: { main: O('main.blaster'), off: O('off.deflector') } };
 const PROD = { items: { main: O('main.prod') } };
 const CROSSBOW = { items: { main: 'test.trial/main.crossbow' } };
+const BASE_CROSSBOW = { items: { main: 'kw.base/main.crossbow' } };
 const ARMING = { items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater' } };
 const L = Math.PI / 2;
 const near = (a, b, eps, what) => assert.ok(Math.abs(a - b) <= (eps || 1e-9), (what || '') + ': ' + a + ' is not ' + b);
@@ -98,7 +99,7 @@ function swatting(m, n) {
 }
 
 test('the swat by shot: one shot per settled fly, one side\'s flies and then the other\'s, 300 ms apart, turning once', () => {
-  for (const look of [BLASTER, CROSSBOW]) {
+  for (const look of [BLASTER, CROSSBOW, BASE_CROSSBOW]) {
     const m = page(look), E = swatting(m, 7), V = E.shots.VOLLEY;
     assert.deepEqual(plain(V), { raise: 450, gap: 300, after: [80, 560] });
     const plan = E.shots.swat().shots, flies = E.pet.flies();
@@ -170,7 +171,7 @@ test('the target\'s middle: the yard\'s dummy, as the code draws it and as the m
 });
 
 test('practice by shot: from 300 short of the target, every 5.6 s, the dummy struck as the shot lands, with the burst', () => {
-  for (const world of [false, true]) for (const look of [BLASTER, CROSSBOW, PROD]) {
+  for (const world of [false, true]) for (const look of [BLASTER, CROSSBOW, BASE_CROSSBOW, PROD]) {
     const m = page(look, world), E = engine(m, null, 'yard', { hooks: { kx: 82 } }), sc = m.KW.scenes.yard;
     const seen = poses(m, () => { at(m, 0); });
     assert.equal(seen[0].x, 410, 'at the practice spot');
@@ -237,7 +238,7 @@ function planFor(m, scene, kx, devices) {
 }
 
 test('the foe by shot: at the shot\'s gap, the watcher stepping back up to 160 while it climbs in, in its zone', () => {
-  for (const look of [BLASTER, CROSSBOW]) for (const world of [false, true]) {
+  for (const look of [BLASTER, CROSSBOW, BASE_CROSSBOW]) for (const world of [false, true]) {
     const m = page(look, world), S = m.E.foe.FOE.shot;
     assert.deepEqual(plain(S), { gap: [200, 300, 320], most: 420, clear: 30, step: 160, stepMs: 900, aim: 1250, fire: 1400 });
     for (const scene of ['battlement', 'camp']) for (const x of m.KW.scenes[scene].rounds.map(r => r.x * m.V.U)) {
@@ -312,7 +313,7 @@ test('the prod swings at a foe its blade reaches and shoots at one beyond it; th
 // ---- The attack ----------------------------------------------------------------------------------
 
 test('the attack: aimed to the right with the sword\'s tremble, and never fired', () => {
-  for (const look of [BLASTER, CROSSBOW, PROD]) {
+  for (const look of [BLASTER, CROSSBOW, BASE_CROSSBOW, PROD]) {
     const m = page(look), E = engine(m, 'attack');
     const seen = poses(m, () => { for (let t = 0; t <= 2000; t += 10) at(m, t); });
     assert.equal(seen.length, 201);
@@ -332,6 +333,7 @@ test('rest.reach() gives the blade, or the barrel of a weapon that only fires', 
   assert.deepEqual(plain(page(BLASTER).K.rest.reach()), plain(JSON.parse(FIRE_TEXT).pack.items['main.blaster'].barrel));
   assert.deepEqual(plain(page(PROD).K.rest.reach()), plain(JSON.parse(FIRE_TEXT).pack.items['main.prod'].blade));
   assert.deepEqual(plain(page(CROSSBOW).K.rest.reach()), { from: 54, to: 96, half: 8 });
+  assert.deepEqual(plain(page(BASE_CROSSBOW).K.rest.reach()), { from: 54, to: 96, half: 8 });
   assert.deepEqual(plain(page(ARMING).K.rest.reach()), { from: 34, to: 175, half: 10 });
 });
 
@@ -347,7 +349,7 @@ function pegs(m) {
 }
 
 test('the house\'s pegs are spaced from the reach: 28 past where it starts and 45 short of its end', () => {
-  for (const [look, b] of [[ARMING, { from: 34, to: 175 }], [BLASTER, { from: 22, to: 64 }], [CROSSBOW, { from: 54, to: 96 }]]) {
+  for (const [look, b] of [[ARMING, { from: 34, to: 175 }], [BLASTER, { from: 22, to: 64 }], [CROSSBOW, { from: 54, to: 96 }], [BASE_CROSSBOW, { from: 54, to: 96 }]]) {
     const m = page(look);
     assert.deepEqual(pegs(m), [618 + b.from + 28, 618 + b.to - 45].sort((x, y) => x - y), look.items.main);
   }
@@ -366,6 +368,7 @@ test('the anvil takes a weapon that only fires with no hot tip, and heats the bl
     assert.equal(hotTip(page(PROD, world)), true, 'the prod, on its blade');
     assert.equal(hotTip(page(BLASTER, world)), false, 'the blaster');
     assert.equal(hotTip(page(CROSSBOW, world)), false, 'the crossbow');
+    assert.equal(hotTip(page(BASE_CROSSBOW, world)), false, 'the base pack\'s crossbow');
   }
 });
 
@@ -381,8 +384,8 @@ function stowed(m, id, is, input) {
 }
 
 test('stowed gear: drawn on the body while the weapon is put away where the scene shows it at no rest place', () => {
-  for (const world of [false, true]) {
-    const m = page(CROSSBOW, world);
+  for (const look of [CROSSBOW, BASE_CROSSBOW]) for (const world of [false, true]) {
+    const m = page(look, world);
     assert.equal(stowed(m, 'disk_full'), true, 'the cellar, carrying the crate');
     assert.equal(stowed(m, 'disk_full', 'auto', { scenes: { disk_full: 'yard' } }), true, 'the crate carried in the yard');
     assert.equal(stowed(m, null, 'house'), false, 'the house, the weapon on its pegs (drawn into the backdrop)');

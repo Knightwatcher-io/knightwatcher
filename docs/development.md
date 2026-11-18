@@ -41,7 +41,8 @@ tests/
                      shield as approved (base-onehand.items.json), its free options as
                      approved (base-options.json), its three builds and the items fitted to
                      them as approved (base-builds.json), its free items of 1.4.0 as approved
-                     (base-free-items.json), a world pack of format 1.1 for the library's tests
+                     (base-free-items.json), its crossbow of 1.5.0 as approved
+                     (base-crossbow.json), a world pack of format 1.1 for the library's tests
                      (world-1.1.json), the base pack's read, first stored from the library
                      before format 1.1 (base-read.json), a state file with the settings'
                      defaults (state-defaults.json), and crossbow.js, the trial crossbow of
@@ -215,7 +216,10 @@ steps 1 and 3 is refused there and needs another run. [packs.md](./packs.md#sign
 describes the tool, and how a fork signs with a key of its own.
 
 Whether the base pack ships signed today, and what a deployed page draws in each case, is in
-[library.md](./library.md#where-the-knight-is-drawn-from). The medieval world's pack, `kw.medieval`, was
+[library.md](./library.md#where-the-knight-is-drawn-from). The base pack, `kw.base`, was signed at
+version 1.2.0 on 13 November 2026, at 1.3.0 on 14 November and at 1.4.0, which adds the free
+items, on 15 November. Version 1.5.0, which adds the crossbow and moves the pack to format
+`[1, 2]`, ships unsigned until its signing run. The medieval world's pack, `kw.medieval`, was
 first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, and again the same
 day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house.
 Version 0.3.0, which adds the devices, was signed the same way on 16 November, and version 0.4.0,

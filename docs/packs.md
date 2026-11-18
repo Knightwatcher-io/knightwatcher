@@ -488,8 +488,8 @@ counts the larger of the weapon and its stowed view toward the knight's caps, si
 never drawn in one frame. The grip is `two` or `one`, as in 1.0, and a one-handed weapon that fires
 may go with a shield as a one-handed blade does. A two-handed weapon that fires is held with its
 rear hand at its frame's origin under the shoulder and its front hand further along: the front
-station must sit far enough back that its gauntlet stays behind the barrel's `from`, the trial
-crossbow's 38 against a barrel from 54. Aimed to the left, a weapon that fires is drawn turned over
+station must sit far enough back that its gauntlet stays behind the barrel's `from`, the base
+pack's crossbow's 38 against a barrel from 54. Aimed to the left, a weapon that fires is drawn turned over
 its frame's line, so a weapon drawn from the side keeps its stock below and its sight on top either
 way.
 
@@ -498,7 +498,13 @@ weapon that is both swings at what its blade reaches and fires beyond it
 ([page.md](./page.md#the-acts-with-a-weapon-that-fires)). The house's pegs and the smithy's anvil
 read its `barrel` where a swung weapon's `blade` would be, with no hot tip on the anvil, and its
 stowed view is worn where the weapon is put away and the scene shows it at no rest place
-([rig.md](./rig.md#gear-at-rest)). No weapon of the shipped packs fires yet.
+([rig.md](./rig.md#gear-at-rest)).
+
+One shipped weapon fires: the base pack's crossbow, `main.crossbow`, new in 1.5.0, which is why the
+base pack is of format `[1, 2]`. It is held in two hands at stations 38 and 0, its barrel runs from
+54 to its muzzle at 96, its bolts are pale ash and carry 420 at the most, the engine's pale snap
+is its flash, and it is slung across the back when put away
+([library.md](./library.md#the-base-pack)).
 
 ## Decorations
 
@@ -630,7 +636,8 @@ grow with the build. Drawn through `draw.js` the present knight makes between ab
 calls in the poses measured, the face included, as before. With the helmet off the head group
 costs 1632; with the sword put away, or at the anvil, the greatsword's 4652 drops out. The look
 with the sword and shield costs 13 981 and draws up to about 7000 calls, the attack the
-heaviest.
+heaviest. With the crossbow in place of the greatsword the look costs 13 896: the crossbow held
+costs 4670 and slung 1639, and the larger counts.
 
 ## Signing
 

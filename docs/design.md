@@ -118,8 +118,17 @@ is drawn with it, and the settings screen greys the plume while it is worn; a pl
 looks wrong. The mace is held, swung and raised as the arming sword is, with a shield, and the
 longsword as the greatsword is; the smithy heats the mace's head as it heats a blade. The default
 look is unchanged, and the colour sets stay at six each. Eight more items were drawn and held back
-as close to something already offered or weak at wall distance, and a crossbow waits for fired
-weapons.
+as close to something already offered or weak at wall distance.
+
+Base pack 1.5.0 adds a fifth free weapon, a crossbow, the first that fires. The owner chose it from
+three designs drawn for the purpose: a wooden crossbow with a light ash tiller, a steel prod and a
+pale string, the plainest silhouette of the three at wall size, the same on both sides of its line
+and the cheapest to draw. It is held in both hands and carries no shield, so the shield row greys
+beside it as beside the greatsword. It shoots where the swords swing: a bolt at each fly, at the
+practice dummy from 300 short of it and at the goblin after a step back, and it is aimed in the
+attack but never fired. It lies on the house's pegs and across the smithy's anvil, cold, and is
+slung across the back where the weapon is put away and the scene has no rest place for it, as in
+the cellar.
 
 No arm or gauntlet is ever drawn over a blade or its guard, over the barrel of a weapon that
 fires forward of the front hand, nor over the face of a shield. With

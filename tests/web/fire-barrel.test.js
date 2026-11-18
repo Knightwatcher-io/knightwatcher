@@ -12,8 +12,9 @@
 // both ways, aimed high, level and low; two volleys of the swat, each turning across the body three
 // times, every 10 ms; and the attack every 100 ms. The weapons: the test world's blaster
 // (one-handed, with and without its deflector) and prod (two-handed, both swung and fired), from its
-// copy of format 1.2, and the trial crossbow (fixtures/crossbow.js), two-handed, its front hand 38
-// along the frame and its barrel from 54. Each on the base pack's three builds in its three sleeves
+// copy of format 1.2, the trial crossbow (fixtures/crossbow.js), two-handed, its front hand 38
+// along the frame and its barrel from 54, and the base pack's own crossbow, which ships with the same
+// stations and barrel. Each on the base pack's three builds in its three sleeves
 // (plate arms and gauntlets, mail sleeves and mittens, padded sleeves and leather gloves), and on
 // the test world's unit in its own panels.
 'use strict';
@@ -92,7 +93,7 @@ function rig() {
   return { KW, K, lib, st, covered };
 }
 const B = 'kw.base/', T = 'test.orbit/';
-const WEAPONS = [['the trial crossbow', 'test.trial/main.crossbow', null], ['the prod', T + 'main.prod', null], ['the blaster', T + 'main.blaster', null], ['the blaster and the deflector', T + 'main.blaster', T + 'off.deflector']];
+const WEAPONS = [['the base pack\'s crossbow', B + 'main.crossbow', null], ['the trial crossbow', 'test.trial/main.crossbow', null], ['the prod', T + 'main.prod', null], ['the blaster', T + 'main.blaster', null], ['the blaster and the deflector', T + 'main.blaster', T + 'off.deflector']];
 const SLEEVES = [['plate', {}], ['mail', { arms: B + 'arms.mail', gauntlets: B + 'gauntlets.mail' }], ['padded and leather', { arms: B + 'arms.padded', gauntlets: B + 'gauntlets.leather' }]];
 const BODIES = [];
 for (const [b, name] of [['build.a', 'Classic'], ['build.b', 'Broad'], ['build.c', 'Slim']]) for (const [sl, items] of SLEEVES) BODIES.push([name + ' in ' + sl, Object.assign({ build: B + b }, { items })]);
@@ -148,7 +149,7 @@ for (const [what, main, off] of WEAPONS) {
 }
 
 test('the barrel check sees what it looks for: from the frame\'s origin the hands cover the weapon', () => {
-  for (const main of ['test.trial/main.crossbow', T + 'main.blaster']) {
+  for (const main of [B + 'main.crossbow', 'test.trial/main.crossbow', T + 'main.blaster']) {
     const r = frames(M, { items: { main } }, 0);
     assert.ok(r.barrel > r.frames, main + ': ' + r.barrel + ' pixels covered in ' + r.frames + ' frames');
   }

@@ -5,7 +5,8 @@
 // medieval world's, changes what that part draws and nothing else, with no throw, no part past a
 // cap and no fallback but the ones expected; the medieval world returns exactly when Orbit is
 // unchosen; a library of format 1.0 refuses Orbit at format; and one of format 1.1 refuses the copy
-// of format 1.2 at format and reads the 1.1 file as this one does.
+// of format 1.2 at format and reads the 1.1 file as this one does. Both refuse the base pack, of
+// format 1.2 since its crossbow.
 // Run with: node --test tests/web/
 //
 // The engine's reads of KW.scenes, KW.cast and KW.kinds are watched while it draws, so a test sees
@@ -386,8 +387,8 @@ test('a library of format 1.0 refuses Orbit at format, and this one reads it', (
   const r = mod.exports.read(TEXT, { allowUnsigned: true });
   assert.deepEqual([r.ok, r.step, r.id], [false, 'format', 'test.orbit']);
   assert.match(r.reason, /pack\.format: is 1\.1, newer than this engine's 1\.0/);
-  // the base pack, of format 1.0, it reads as before
-  assert.equal(mod.exports.read(BASE_TEXT, { allowUnsigned: true }).ok, true);
+  // the base pack, of format 1.2 since its crossbow, it refuses at format as well
+  assert.deepEqual(plain(mod.exports.read(BASE_TEXT, { allowUnsigned: true })), { ok: false, step: 'format', reason: 'pack.format: is 1.2, newer than this engine\'s 1.0', id: 'kw.base' });
   assert.equal(PK.read(TEXT, { allowUnsigned: true }).ok, true);
 });
 
@@ -402,7 +403,8 @@ test('a library of format 1.1 refuses Orbit\'s copy of format 1.2 at format, rea
   const was = mod.exports.read(TEXT, { allowUnsigned: true }), now = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(was.ok, true);
   assert.deepEqual(JSON.parse(JSON.stringify(now)), JSON.parse(JSON.stringify(was)), 'the 1.1 file reads the same on both');
-  assert.equal(mod.exports.read(BASE_TEXT, { allowUnsigned: true }).ok, true);
+  // the base pack, of format 1.2 since its crossbow, is refused at format as Orbit's copy is
+  assert.deepEqual(plain(mod.exports.read(BASE_TEXT, { allowUnsigned: true })), { ok: false, step: 'format', reason: 'pack.format: is 1.2, newer than this engine\'s 1.1', id: 'kw.base' });
   const fire = PK.read(FIRE, { allowUnsigned: true });
   assert.deepEqual([fire.ok, fire.id, fire.version, fire.format], [true, 'test.orbit', '1.1.0', [1, 2]]);
 });

@@ -300,7 +300,7 @@ and `sources` the parts come from are shown:
   that is absent the page uses its own default.
   - `look`: `world` is `medieval` or a long name; `build` and `monarch` are `a`, `b` or `c`,
     each also a long name (a body of a world pack for `build`, a patron for `monarch`); `weapon` is `greatsword`,
-    `sword_and_shield`, `longsword` or `mace_and_shield`; `skin` and `monarch_skin` are `fair`,
+    `sword_and_shield`, `longsword`, `mace_and_shield` or `crossbow`; `skin` and `monarch_skin` are `fair`,
     `warm`, `golden`, `tan`, `brown` or `deep`; `hair` and `monarch_hair` are `black`, `dark`,
     `brown`, `auburn`, `blonde` or `silver`; `hair_style` is `short`, `tied`, `curls`, `long` or
     `close`; `tabard` and `monarch_robe` are `blue`, `forest`, `violet`, `wine`, `teal` or

@@ -204,8 +204,9 @@ One signature over 500 KiB takes about 15 ms under Node, and one over 15 KiB abo
 
 ### The base pack
 
-`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.4.0.
-Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, two more builds, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), the free items of 1.4.0 (two or three more in every slot a user chooses), and nothing the display does not draw:
+`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.5.0,
+format `[1, 2]`, which a weapon that fires needs ([packs.md](./packs.md#weapons-that-fire)).
+Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, two more builds, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), the free items of 1.4.0 (two or three more in every slot a user chooses), the crossbow of 1.5.0, and nothing the display does not draw:
 
 - three builds, new in 1.3.0 but for the first, each with the plain head, named as the settings
   screen shows them (differences from Classic in brackets):
@@ -296,13 +297,26 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   met by the mace's drawing rather than by its `blade`: the flanges, the ball and the knob, on a
   haft 7 across ([rig.md](./rig.md#anchors-values-and-poses)). The longsword's two stations are the greatsword's and the mace's
   one is the arming sword's, so each is held exactly where those are;
+- the crossbow, new in 1.5.0, `main.crossbow` ("Crossbow"), the fifth free weapon and the one that
+  fires: a wooden crossbow drawn from above, the same on both sides of its line, with an ash tiller
+  and two iron bands, a steel prod, a ring stirrup at the nose, a bolt in the groove and a gold nut.
+  Its fields are those of [Weapons that fire](./packs.md#weapons-that-fire): `use` `"fire"`, held in
+  two hands (`hands` [38, 0], the front hand 38 along the frame and the rear at its origin),
+  `barrel` `{"from": 54, "to": 96, "half": 8}`, `muzzle` `{"s": 96, "p": 0}`, `range` 420, and a
+  `bolt` shot in pale ash, `#d9b77a`, with no flash of its own, so the engine's pale snap shows at
+  the muzzle. Its `stowed` view, on the `back` layer, slings it across the back from the left
+  shoulder to the right hip while it is put away. It has no `blade`, so the house's pegs sit under
+  its barrel and the smithy's anvil shows no hot tip. 33 shapes held at a cost of 4 670, and 12
+  slung at 1 639, 45 at 6 309 together; a look counts the larger. The owner approved it from a
+  mock-up of three designs, and it is kept as approved in `tests/web/fixtures/base-crossbow.json`.
+  The settings call it `crossbow`, and it carries no shield;
 - one palette set of its own, new in 1.4.0, `cloth`, with the grey-violet wool of the padded hose
   and the turnshoes: `wool0` `#8a7f95`, `wool1` `#625a70`, `wool2` `#423c50`. `provides` lists
   `palettes` with it;
 - `defaults` naming the build `build.a`, the greatsword and the eleven others and today's swatches
   (skin `warm`, hair `brown`, tabard `blue`, plume `red`), so the default look is the present
-  knight; nothing names the sword and shield, the new options or the free items until a look asks
-  for them, and nothing is on the back. It has no decorations.
+  knight; nothing names the sword and shield, the new options, the free items or the crossbow until
+  a look asks for them, and nothing is on the back. It has no decorations.
 
 **The eye of the watch** on the tabard and on the shield, worn and at rest, is gold with a white
 eye and a pupil; its iris is `@tabard.3`, the tabard's darkest band, so the emblem takes the coat's
@@ -349,7 +363,7 @@ hair styles) in `tests/web/fixtures/base-options.json`, and the three builds wit
 the three fitted items in `tests/web/fixtures/base-builds.json`, and the free items of 1.4.0 with
 the wool in `tests/web/fixtures/base-free-items.json`, copied from the approved trial pack. The
 default look costs 13 878 and draws at most 105 shapes; the look with the sword and shield draws
-at most 125. Neither colours nor the build change the cost, so every look's cost depends on its
+at most 125, and with the crossbow 116 at a cost of 13 896. Neither colours nor the build change the cost, so every look's cost depends on its
 items alone. Of the looks before 1.4.0 the heaviest is the tied hair with the sword and shield:
 135 shapes, cost 14 470. With the free items the costliest look takes the costliest item of every
 slot: the mace and the kite shield with the bascinet and its tall feather, the tied hair, the
@@ -415,8 +429,8 @@ hooks, the saved settings chosen on the settings screen, the `defaults` of the s
 included, and reads nothing again; it does so at start-up and at every change, and with nothing
 set the look stays `{}`. The settings name only the base pack's items and swatches, in the
 contract's terms: the weapon `greatsword` is `kw.base/main.greatsword`, `longsword`
-`kw.base/main.longsword`, `sword_and_shield` `kw.base/main.arming` and `mace_and_shield`
-`kw.base/main.mace`, the two one-handed ones with the shield the `shield` setting names
+`kw.base/main.longsword`, `sword_and_shield` `kw.base/main.arming`, `mace_and_shield`
+`kw.base/main.mace` and `crossbow` `kw.base/main.crossbow`, the two one-handed ones with the shield the `shield` setting names
 (`kw.base/off.<shield>`, `off.heater` unless one is chosen); a skin, hair, tabard or plume is
 `kw.base/<id>`, the hair style `kw.base/hair.<style>`, the helmet `kw.base/helm.<value>`, and the
 rest of the gear the item of its slot by the same rule (`plume_style` `plume.`, `body` `torso.`,
@@ -443,10 +457,10 @@ knight reads every carried text, so while `kw.medieval` ships unsigned (between 
 signature step: sig: is missing, and this page accepts only signed packs`). Where the scenes are
 drawn from is the scene compiler's to say, in a line of its own ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)).
 
-**Today the base pack, version 1.4.0, ships signed** with `kw1` (see
-[development.md](./development.md#signing-the-packs)), so a deployed page draws the knight from it
-as a `dev` page does, in every build and with every item. A version changed after signing ships
-unsigned until the next signing run: meanwhile a `dev` page still draws from it, and a deployed
+**Today the base pack, version 1.5.0, ships unsigned until its signing run** with `kw1` (see
+[development.md](./development.md#signing-the-packs)). Signed, a deployed page draws the knight
+from it as a `dev` page does, in every build and with every item. A version changed after signing
+ships unsigned until the next signing run, as 1.5.0 does now: meanwhile a `dev` page still draws from it, and a deployed
 page refuses it at the `signature` step and draws the knight from the code in `knight.js`, the
 full knight as it shipped before packs, which looks the same as the default look (see
 [When packs fail](#when-packs-fail)).
@@ -458,8 +472,8 @@ refused pack, and one line, `console.info` for the base pack and `console.warn` 
 time the source changes:
 
 ```
-knightwatcher: the knight is drawn from the base pack kw.base 1.4.0, signed
-knightwatcher: the knight is drawn from the base pack kw.base 1.4.0, unsigned
+knightwatcher: the knight is drawn from the base pack kw.base 1.5.0, signed
+knightwatcher: the knight is drawn from the base pack kw.base 1.5.0, unsigned
 knightwatcher: the pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
 knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step
 ```
@@ -580,8 +594,8 @@ weapon on the house's pegs and across the smithy's anvil from its `main` list, t
 knight holds, on a frame the scene fixes, and the shield, when one is equipped, on the house's wall
 beside the pegs and the smithy's wall from its `restOff` list. The house places its two pegs from
 the weapon's reach, its `blade` or, for a weapon that only fires, its `barrel`: 28 past where it
-starts and 45 short of its end, which keeps the greatsword's pegs at 680 and 836; a weapon with
-neither gets the greatsword's pegs. The smithy draws the hot tip of the blade from the weapon's
+starts and 45 short of its end, which keeps the greatsword's pegs at 680 and 836 and puts the
+crossbow's at 669 and 700, under its prod; a weapon with neither gets the greatsword's pegs. The smithy draws the hot tip of the blade from the weapon's
 `blade`, and draws none for a weapon without one or for one that only fires. A scene asks for each by the item's slot
 in its own `paint` or `draw`, through `KW.knight.rest`, which draws from code on the code path, so
 no scene looks at which path is in use:

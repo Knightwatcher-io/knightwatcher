@@ -295,6 +295,30 @@ SHOTS=(
   "free-settings-coif-cloak|bar=0&t=2300&is=battlement&set=knight&arm=mace_and_shield&sh=kite&hm=coif&bk=cloak|1480,2800"
   "free-settings-bd-b|bar=0&t=2300&is=battlement&set=knight&bd=b&hm=kettle&ps=feather&bo=cuirass&so=lames&am=mail&hn=leather&lg=mail&ft=sabatons&bk=cloak&pm=gold|1480,2800"
   "free-settings-bd-c|bar=0&t=2300&is=battlement&set=knight&bd=c&arm=mace_and_shield&sh=round&hm=coif&bo=gambeson&so=leather&am=padded&hn=mail&lg=hose&ft=shoes&bk=cape&tb=forest|1480,2800"
+  # the crossbow of the base pack 1.5.0, which fires (arm=crossbow): standing; the swat by shot, a
+  # bolt's burst at a fly on the right, the turn across the body and a shot to the left; practice
+  # from 300 short of the dummy, the bolt in flight and the dummy struck; the goblin on the
+  # battlement after the step back, the bolt in flight and the hit, and the bolt in flight at the
+  # camp; the attack aimed; on the house's pegs and across the smithy's anvil with no hot tip;
+  # slung on the back in the cellar; the swat to the left on Broad and the attack on Slim; and the
+  # settings screen's knight page with the crossbow chosen and the shield greyed beside it
+  "free-crossbow|bar=0&t=2300&is=battlement&arm=crossbow"
+  "free-crossbow-swat|bar=0&t=1090&is=battlement&f=6&sw=1&arm=crossbow"
+  "free-crossbow-swat-turn|bar=0&t=1230&is=battlement&f=6&sw=1&arm=crossbow"
+  "free-crossbow-swat-left|bar=0&t=1690&is=battlement&f=6&sw=1&arm=crossbow"
+  "free-crossbow-practice|bar=0&t=490&is=yard&kx=82&arm=crossbow"
+  "free-crossbow-practice-hit|bar=0&t=560&is=yard&kx=82&arm=crossbow"
+  "free-crossbow-goblin-step|bar=0&t=500&is=battlement&e=goblin&arm=crossbow"
+  "free-crossbow-goblin-shot|bar=0&t=1440&is=battlement&e=goblin&arm=crossbow"
+  "free-crossbow-goblin-hit|bar=0&t=1470&is=battlement&e=goblin&arm=crossbow"
+  "free-crossbow-camp-goblin|bar=0&t=1440&is=camp&e=goblin&arm=crossbow"
+  "free-crossbow-attack|bar=0&t=2300&on=attack&arm=crossbow"
+  "free-crossbow-house|bar=0&t=2300&is=house&arm=crossbow"
+  "free-crossbow-update|bar=0&t=1250&on=update&arm=crossbow"
+  "free-crossbow-cellar|bar=0&t=2300&on=disk&arm=crossbow"
+  "free-crossbow-bd-b-swat-left|bar=0&t=1690&is=battlement&f=6&sw=1&bd=b&arm=crossbow"
+  "free-crossbow-bd-c-attack|bar=0&t=2300&on=attack&bd=c&arm=crossbow"
+  "free-crossbow-settings|bar=0&t=2300&is=battlement&set=knight&arm=crossbow|1480,2800"
   # the World page with nothing set, at 960 by 600 and on the tablet; with parts the address
   # changes from the world, each beside the world's own; and the status page's World, Parts and
   # Fallbacks, a fallback among them (the camp cannot act a full disk)
@@ -465,13 +489,15 @@ FIRE_SHOTS=(
   "orbit-fire-prod-cellar|bar=0&t=2300&on=disk&arm=test.orbit/main.prod"
   # Glitch fires first, at 1350, its tracer drawn and the watcher's eyes wide: stopped at the
   # deflector with the spark; missing over the head with the prod, which carries no shield; stopped
-  # at the heater shield and missing over the greatsword's knight on the battlement; and, with the
-  # watcher left of the Deck's foe zone so Glitch stands on the right, missing over the head with the
-  # deflector carried, the known limit
+  # at the heater shield and missing over the greatsword's knight on the battlement; missing over
+  # the base pack's crossbow's knight there, who carries no shield; and, with the watcher left of
+  # the Deck's foe zone so Glitch stands on the right, missing over the head with the deflector
+  # carried, the known limit
   "orbit-fire-glitch-fire|bar=0&t=1370&e=goblin&wd=test.orbit/world.orbit"
   "orbit-fire-glitch-miss|bar=0&t=1370&e=goblin&wd=test.orbit/world.orbit&arm=test.orbit/main.prod"
   "orbit-fire-glitch-heater|bar=0&t=1370&is=battlement&e=goblin&arm=one&fo=test.orbit/foe.glitch"
   "orbit-fire-glitch-overhead|bar=0&t=1370&is=battlement&e=goblin&fo=test.orbit/foe.glitch"
+  "orbit-fire-glitch-crossbow|bar=0&t=1370&is=battlement&e=goblin&arm=crossbow&fo=test.orbit/foe.glitch"
   "orbit-fire-glitch-right|bar=0&t=1370&e=goblin&kx=40&wd=test.orbit/world.orbit"
 )
 

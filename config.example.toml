@@ -152,7 +152,7 @@ secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 # [look]
 # world = "medieval"          # medieval, or a world of a loaded pack, "<pack>/<world>"
 # build = "a"                 # a Classic, b Broad, c Slim, or a body of a loaded pack, "<pack>/<build>"
-# weapon = "greatsword"       # greatsword, sword_and_shield, longsword or mace_and_shield
+# weapon = "greatsword"       # greatsword, sword_and_shield, longsword, mace_and_shield or crossbow
 # skin = "warm"               # fair, warm, golden, tan, brown or deep, or "<pack>/<swatch>"
 # hair = "brown"              # black, dark, brown, auburn, blonde or silver, or "<pack>/<swatch>"
 # hair_style = "short"        # short, tied, curls, long or close

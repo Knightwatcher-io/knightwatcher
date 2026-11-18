@@ -1,8 +1,8 @@
 // Tests for the base pack that ships with the page, web/packs/base.pack.json: that it is the present
 // knight, complete, with the arming sword and the heater shield besides, the free options (six of
 // each colour set and three hair styles), the three builds and the items fitted to them, the free
-// items of 1.4.0 (two to four more in every slot the user chooses), and nothing more, that every
-// choice of them resolves, and
+// items of 1.4.0 (two to four more in every slot the user chooses), the crossbow of 1.5.0, a weapon
+// that fires, and nothing more, that every choice of them resolves, and
 // that the page's rules for signing apply to it, whether it ships signed or not. Run with:
 // node --test tests/web/
 // That drawing it gives the same calls as the code is checked pose by pose in knight.test.js.
@@ -36,6 +36,12 @@ const BUILDS = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-bu
 // The free items of 1.4.0 as approved, 25 of them, and the wool of the pack's own cloth palette that
 // the padded hose and the turnshoes are drawn in.
 const FREE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-free-items.json'), 'utf8'));
+// The crossbow of 1.5.0 as approved: the wooden crossbow, its shapes, stations, barrel, shot and
+// stowed view exactly. The pack names it plainly, as it names the swords, and gives it no flash of
+// its own, since the approved flash is the engine's pale snap (SHOT.snap), which a shot with none
+// shows.
+const CROSSBOW = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-crossbow.json'), 'utf8'));
+const asShipped = item => { const o = JSON.parse(JSON.stringify(item)); o.name = 'Crossbow'; delete o.shot.flash; return o; };
 // The iris of the watch's eye follows the tabard: the tabard's and the shield's, worn and at rest,
 // take the tabard's darkest band where the fixture and the approved shield have the fixed blue.
 const irisFollows = item => JSON.parse(JSON.stringify(item).split('"@base.b3"').join('"@tabard.3"'));
@@ -44,22 +50,25 @@ const ORDER = { skin: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], hair: 
   tabard: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], plume: ['red', 'white', 'gold', 'royal', 'green', 'violet'] };
 // The builds in the order the settings screen shows them, by the names it shows.
 const BUILD_NAMES = { 'build.a': 'Classic', 'build.b': 'Broad', 'build.c': 'Slim' };
-// Every item of each slot a look chooses, today's first and then the free items of 1.4.0 in the order
-// the settings screen shows them.
+// Every item of each slot a look chooses, today's first and then the free items of 1.4.0 and the
+// crossbow of 1.5.0 in the order the settings screen shows them.
 const SLOTS = { legs: ['legs.plate', 'legs.mail', 'legs.hose'], boots: ['boots.leather', 'boots.sabatons', 'boots.shoes'],
   torso: ['torso.tabard', 'torso.cuirass', 'torso.gambeson'], head: ['head.plain'], hair: ['hair.short', 'hair.tied', 'hair.curls', 'hair.long', 'hair.close'],
   helmet: ['helm.open', 'helm.kettle', 'helm.coif', 'helm.bascinet'], plume: ['plume.crest', 'plume.feather', 'plume.horsehair'],
   pauldrons: ['pauldrons.plate', 'pauldrons.lames', 'pauldrons.leather'], arms: ['arms.plate', 'arms.mail', 'arms.padded'],
-  gauntlets: ['gauntlets.plate', 'gauntlets.leather', 'gauntlets.mail'], main: ['main.greatsword', 'main.arming', 'main.longsword', 'main.mace'],
+  gauntlets: ['gauntlets.plate', 'gauntlets.leather', 'gauntlets.mail'], main: ['main.greatsword', 'main.arming', 'main.longsword', 'main.mace', 'main.crossbow'],
   off: ['off.heater', 'off.round', 'off.kite'], back: ['back.cloak', 'back.cape'] };
 const B = id => 'kw.base/' + id;
 const grip = id => PACK.items[id].grip.kind;
+// The weapons that are swung, every one but the crossbow.
+const SWUNG = SLOTS.main.filter(id => PACK.items[id].use === undefined);
 
 test('the base pack unsigned is read on a dev page and refused at the signature step elsewhere', () => {
   const r = PK.read(UNSIGNED, { allowUnsigned: true, verify });
   assert.equal(r.ok, true, r.reason);
   assert.equal(r.id, 'kw.base');
-  assert.equal(r.version, '1.4.0');
+  assert.equal(r.version, '1.5.0');
+  assert.deepEqual(r.format, [1, 2]);
   assert.equal(r.signed, false);
   assert.deepEqual(r.provides, ['builds', 'items', 'palettes', 'swatches']);
   assert.deepEqual(PK.read(UNSIGNED, { verify }), { ok: false, step: 'signature', reason: 'sig: is missing, and this page accepts only signed packs', id: 'kw.base' });
@@ -104,16 +113,21 @@ test('three builds as approved, Classic the present knight\'s measurements, all 
   assert.equal(c.height, a.height - 6);
 });
 
-test('every slot the present drawing has, the one-handed sword and the shield, five hair styles, the free items of 1.4.0, and nothing else', () => {
+test('every slot the present drawing has, the one-handed sword and the shield, five hair styles, the free items of 1.4.0, the crossbow, and nothing else', () => {
   const slots = {};
   for (const [id, it] of Object.entries(PACK.items)) (slots[it.slot] = slots[it.slot] || []).push(id);
   for (const s of Object.keys(slots)) slots[s].sort();
   const want = {};
   for (const s of Object.keys(SLOTS)) want[s] = SLOTS[s].slice().sort();
   assert.deepEqual(slots, want);
-  // the 15 of 1.3.0 first, as they were, then the 25 free items in the fixture's order
-  assert.equal(Object.keys(PACK.items).length, 40);
-  assert.deepEqual(Object.keys(PACK.items).slice(15), Object.keys(FREE.items));
+  // the 15 of 1.3.0 first, as they were, then the 25 free items in the fixture's order, then the
+  // crossbow of 1.5.0
+  assert.equal(Object.keys(PACK.items).length, 41);
+  assert.deepEqual(Object.keys(PACK.items).slice(15, 40), Object.keys(FREE.items));
+  assert.deepEqual(Object.keys(PACK.items).slice(40), ['main.crossbow']);
+  // format 1.2, which the crossbow's fields need, and the one weapon that fires
+  assert.deepEqual(PACK.format, [1, 2]);
+  assert.deepEqual(SLOTS.main.filter(id => !SWUNG.includes(id)), ['main.crossbow']);
   // the defaults are 1.3.0's, so the default knight is drawn exactly as before, and nothing on the back
   assert.deepEqual(PACK.defaults, FIXTURE.defaults);
   assert.equal(PACK.defaults.items.back, undefined);
@@ -130,7 +144,7 @@ test('six choices in each colour set, in the order the settings screen shows the
 });
 
 test('each item and swatch is as approved: the fixture\'s, the one-handed items, the free options, the iris following the tabard', () => {
-  const want = id => (FREE.items[id] || BUILDS.items[id] || OPTIONS.items[id] || ONEHAND[id] || FIXTURE.items[id]);
+  const want = id => (id === 'main.crossbow' ? asShipped(CROSSBOW.items[id]) : FREE.items[id] || BUILDS.items[id] || OPTIONS.items[id] || ONEHAND[id] || FIXTURE.items[id]);
   for (const id of Object.keys(PACK.items)) {
     const w = id === 'off.heater' ? irisFollows(want(id)) : want(id);
     assert.deepEqual(PACK.items[id], w, id);
@@ -232,7 +246,7 @@ test('every item of every slot resolves with nothing missing on every build, wit
   const lib = [PK.read(TEXT, { allowUnsigned: true, verify })];
   const missing = L => L.fallbacks.filter(f => f.reason !== 'not set');
   const one = SLOTS.main.filter(id => grip(id) === 'one'), two = SLOTS.main.filter(id => grip(id) === 'two');
-  assert.deepEqual([one, two], [['main.arming', 'main.mace'], ['main.greatsword', 'main.longsword']]);
+  assert.deepEqual([one, two], [['main.arming', 'main.mace'], ['main.greatsword', 'main.longsword', 'main.crossbow']]);
   let n = 0;
   for (const build of Object.keys(BUILD_NAMES)) for (const [slot, ids] of Object.entries(SLOTS)) {
     if (slot === 'head') continue;
@@ -254,7 +268,7 @@ test('every item of every slot resolves with nothing missing on every build, wit
       }
     }
   }
-  assert.equal(n, 3 * (4 * (3 + 3 + 3 + 5 + 4 + 3 + 3 + 3 + 3 + 2) + 4 + 3 * 2));
+  assert.equal(n, 3 * (5 * (3 + 3 + 3 + 5 + 4 + 3 + 3 + 3 + 3 + 2) + 5 + 3 * 2));
   // a shield with a two-handed weapon is carried nowhere, as the heater shield is
   for (const m of two) for (const off of SLOTS.off) {
     const L = PK.resolve(lib, { items: { main: B(m), off: B(off) } });
@@ -295,7 +309,34 @@ test('each weapon\'s blade: the longsword\'s steel, and the mace\'s haft and hea
   assert.deepEqual(PACK.items['main.mace'].blade, { from: 34, to: 136, half: 16 });
   assert.deepEqual(PACK.items['main.longsword'].grip, { kind: 'two', hands: [2, -30] });
   assert.deepEqual(PACK.items['main.mace'].grip, { kind: 'one', hands: [0] });
-  for (const id of SLOTS.main) assert.ok(PACK.items[id].blade, id);
+  for (const id of SWUNG) assert.ok(PACK.items[id].blade, id);
+});
+
+test('the crossbow fires: a two-handed weapon with its barrel, muzzle, range and bolt, slung on the back when put away, and no blade', () => {
+  const it = PACK.items['main.crossbow'];
+  assert.equal(it.use, 'fire');
+  assert.equal(it.blade, undefined);
+  assert.deepEqual(it.grip, { kind: 'two', hands: [38, 0] });
+  // the front hand 38 along the frame, its gauntlet behind the barrel's from
+  assert.deepEqual(it.barrel, { from: 54, to: 96, half: 8 });
+  assert.deepEqual(it.muzzle, { s: 96, p: 0 });
+  assert.equal(it.range, 420);
+  // a bolt in pale ash, with the engine's pale snap at the muzzle
+  assert.deepEqual(it.shot, { kind: 'bolt', colour: '#d9b77a' });
+  assert.equal(it.stowed.layer, 'back');
+  const lib = [PK.read(TEXT, { allowUnsigned: true, verify })];
+  // 33 shapes held and 12 slung, 4670 and 1639 of the fills: the 45 and 6309 approved
+  assert.deepEqual(lib[0].sums['main.crossbow'], { parts: { n: 33, cost: 4670 }, view: { n: 0, cost: 0 }, rest: { n: 0, cost: 0 }, stowed: { n: 12, cost: 1639 } });
+  for (const id of Object.keys(BUILD_NAMES)) {
+    const L = PK.resolve(lib, { build: B(id), items: { main: B('main.crossbow') } });
+    assert.deepEqual(L.fallbacks.filter(f => f.reason !== 'not set'), [], id);
+    assert.deepEqual(L.grip, it.grip, id);
+    assert.equal(L.blade, null, id);
+    assert.deepEqual([L.use, L.barrel, L.muzzle, L.range, L.shot], [it.use, it.barrel, it.muzzle, it.range, it.shot], id);
+    assert.ok(L.lists.bodyStowed && L.lists.bodyStowed.length > L.lists.body.length, id + ': the stowed view has its body list');
+    // the default look with the crossbow for the greatsword: the larger of the weapon held and slung
+    assert.deepEqual([L.shapes, L.cost], [105 - 22 + 33, 13878 - 4652 + 4670], id);
+  }
 });
 
 test('the heaviest whole look of the free items stays well under the caps, on every build, with no fallback', () => {
