@@ -525,7 +525,7 @@ test('the anvil\'s act hammers as smithy.js does, the sparks fly only while it s
   // the hot tip: its bands start 73, 57 and 43 short of the greatsword's point, 263 along the blade from 490
   const tip = drawn(300);
   for (const [x0, c] of [[73, '#8f231d'], [57, '#cc352c'], [43, '#ff5a1e']]) assert.ok(tip.includes('s ' + c) && tip.some(l => l.startsWith(`r ${490 + 263 - x0} 410 `)), c);
-  K.rest.blade = () => null;
+  K.rest.reach = () => null;
   const none = drawn(300);
   assert.ok(!none.includes('s #8f231d') && !none.includes('s #7a2a1d'), 'no hot tip for a weapon without a blade');
   assert.equal(none[none.length - 1], 'devices');
@@ -618,9 +618,9 @@ test('a frame that names a stamp draws it under each end of the weapon\'s blade,
   const { s, sc } = compiled(TEXT, 'house'), K = s.KW.knight;
   const pegs = () => { s.log.length = 0; sc.paint(frameOf({})); return s.log.filter(l => /^r \d+ 254 14 1$/.test(l)).map(l => +l.split(' ')[1] + 7); };
   assert.deepEqual([...new Set(pegs())], [680, 836]);
-  K.rest.blade = () => ({ from: 34, to: 175, half: 10 });
+  K.rest.reach = () => ({ from: 34, to: 175, half: 10 });
   assert.deepEqual([...new Set(pegs())], [680, 748]);
-  K.rest.blade = () => null;
+  K.rest.reach = () => null;
   assert.deepEqual([...new Set(pegs())], [680, 836]);
   // the stamp a rest names must be the pack's, and it is costed twice
   const r = PK.read(edited(p => { p.scenes.house.rests.pegs.stamp = 'nails'; }), { allowUnsigned: true });

@@ -638,7 +638,7 @@ test('KW.knight.look() draws a new look from the base pack in place, without rea
   assert.equal(st.source, 'pack');
   assert.deepEqual(plain(st.fallbacks).filter(f => f.reason !== 'not set'), []);
   assert.equal(m.K.rest.key('off'), 'kw.base/off.heater');
-  assert.equal(m.K.rest.blade().to, 175);
+  assert.equal(m.K.rest.reach().to, 175);
   m.K.look({});
   assert.equal(m.K.rest.key('off'), '');
   assert.equal(m.K.status, was, 'the same status object, updated in place');

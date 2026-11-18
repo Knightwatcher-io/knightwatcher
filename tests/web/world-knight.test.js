@@ -142,7 +142,7 @@ test('the smithy from kw.medieval gives the code smithy\'s rests, and a weapon t
   delete env.pack.items['main.greatsword'].blade;
   const a = load(true), b = load(true);
   b.K.start([JSON.stringify(env)], true);
-  assert.equal(b.K.rest.blade(), null);
+  assert.equal(b.K.rest.reach(), null);
   const at300 = box => { box.log.length = 0; const s = { kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
   const with_ = at300(a), without = at300(b);
   assert.ok(with_.includes('s #7a2a1d') && with_.includes('s #fff3a0'));

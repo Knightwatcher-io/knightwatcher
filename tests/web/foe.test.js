@@ -340,13 +340,13 @@ test('the blade the engine measures is the blade drawn: KW.knight.rig takes the 
 test('a weapon too short to reach a goblin anywhere in the zone: the goblin does not come, and never plays a hit', () => {
   // held in both hands, where the grip stays close to the knight
   for (const [, pack, opts] of WEAPONS.filter(w => !w[2])) {
-    const m = load(pack, opts), full = m.K.rest.blade();
+    const m = load(pack, opts), full = m.K.rest.reach();
     // a dagger, its blade barely longer than its grip
-    m.K.rest.blade = () => ({ from: 34, to: 40, half: 8 });
+    m.K.rest.reach = () => ({ from: 34, to: 40, half: 8 });
     const o = pose(m.K, m.V, 480, 0);
     assert.equal(m.F.gaps(m.P.FOES.goblin, o, 1), null); assert.equal(m.F.gaps(m.P.FOES.goblin, o, -1), null);
     for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) assert.equal(planFor(m, scene, kx, [PIE]), null, `${scene} ${kx}`);
-    m.K.rest.blade = () => full;
+    m.K.rest.reach = () => full;
   }
 });
 

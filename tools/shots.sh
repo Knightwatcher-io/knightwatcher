@@ -421,6 +421,49 @@ WORLD_SHOTS=(
   "orbit-swap-classic|bar=0&t=2300&wd=test.orbit/world.orbit&bd=a&sk=warm&hc=brown&tb=blue&pm=red"
 )
 
+# The acts with a weapon that fires, from the same copy with the test world's file of format 1.2 in
+# place of its 1.1 file (the same id, so one or the other is loaded): its world carries the blaster
+# with the deflector, and arm= chooses the blaster (with sh= its deflector) or the prod in the
+# medieval world. docs/shots.md says what each shows.
+FIRE_SHOTS=(
+  # the test world with its blaster and deflector: standing, the swat by shot (a bolt in flight on
+  # the right, the turn across the body with the shield lifted, a bolt on the left), Glitch shot
+  # from range (the watcher stepping back, aimed just before the shot, the bolt in flight, the hit,
+  # the return with the shield lifted), the attack aimed and the blaster holstered on a full disk
+  "orbit-fire-deck|bar=0&t=2300&wd=test.orbit/world.orbit"
+  "orbit-fire-swat|bar=0&t=1090&f=6&sw=1&wd=test.orbit/world.orbit"
+  "orbit-fire-swat-turn|bar=0&t=1230&f=6&sw=1&wd=test.orbit/world.orbit"
+  "orbit-fire-swat-left|bar=0&t=1690&f=6&sw=1&wd=test.orbit/world.orbit"
+  "orbit-fire-glitch-step|bar=0&t=450&e=goblin&wd=test.orbit/world.orbit"
+  "orbit-fire-glitch-aim|bar=0&t=1395&e=goblin&wd=test.orbit/world.orbit"
+  "orbit-fire-glitch-shot|bar=0&t=1440&e=goblin&wd=test.orbit/world.orbit"
+  "orbit-fire-glitch-hit|bar=0&t=1500&e=goblin&wd=test.orbit/world.orbit"
+  "orbit-fire-glitch-return|bar=0&t=1760&e=goblin&wd=test.orbit/world.orbit"
+  "orbit-fire-attack|bar=0&t=2300&on=attack&wd=test.orbit/world.orbit"
+  "orbit-fire-disk|bar=0&t=2300&on=disk&wd=test.orbit/world.orbit"
+  # the medieval world with the blaster: practice from 300 short of the dummy (the bolt in flight,
+  # the dummy struck with the burst), the same running hot, the goblin shot after the step back, the
+  # blaster on the house's pegs and on the anvil with no hot tip, and holstered in the cellar
+  "orbit-fire-practice|bar=0&t=490&is=yard&kx=82&arm=test.orbit/main.blaster&sh=test.orbit/off.deflector"
+  "orbit-fire-practice-hit|bar=0&t=560&is=yard&kx=82&arm=test.orbit/main.blaster&sh=test.orbit/off.deflector"
+  "orbit-fire-practice-hot|bar=0&t=2600&on=cpu&kx=82&arm=test.orbit/main.blaster&sh=test.orbit/off.deflector"
+  "orbit-fire-goblin-step|bar=0&t=500&is=battlement&e=goblin&arm=test.orbit/main.blaster&sh=test.orbit/off.deflector"
+  "orbit-fire-goblin-shot|bar=0&t=1440&is=battlement&e=goblin&arm=test.orbit/main.blaster&sh=test.orbit/off.deflector"
+  "orbit-fire-goblin-hit|bar=0&t=1490&is=battlement&e=goblin&arm=test.orbit/main.blaster&sh=test.orbit/off.deflector"
+  "orbit-fire-house|bar=0&t=2300&is=house&arm=test.orbit/main.blaster&sh=test.orbit/off.deflector"
+  "orbit-fire-update|bar=0&t=1250&on=update&arm=test.orbit/main.blaster&sh=test.orbit/off.deflector"
+  "orbit-fire-cellar|bar=0&t=2300&on=disk&arm=test.orbit/main.blaster&sh=test.orbit/off.deflector"
+  # the prod, both swung and fired: the swat swung, the goblin within its blade's reach bonked and
+  # beyond it shot with the beam, practice by beam, its blade's hot tip on the anvil, and slung on
+  # the back in the cellar
+  "orbit-fire-prod-swat|bar=0&t=470&is=battlement&f=6&sw=1&arm=test.orbit/main.prod"
+  "orbit-fire-prod-bonk|bar=0&t=1660&is=battlement&e=goblin&arm=test.orbit/main.prod"
+  "orbit-fire-prod-beam|bar=0&t=1420&is=battlement&e=goblin&kx=152&arm=test.orbit/main.prod"
+  "orbit-fire-prod-practice|bar=0&t=470&is=yard&kx=82&arm=test.orbit/main.prod"
+  "orbit-fire-prod-update|bar=0&t=1250&on=update&arm=test.orbit/main.prod"
+  "orbit-fire-prod-cellar|bar=0&t=2300&on=disk&arm=test.orbit/main.prod"
+)
+
 take() {
   local dir="$1"
   shift
@@ -464,11 +507,16 @@ worlds() {
   sed -i 's#<script src="packs/medieval.pack.js"></script>#&\n<script src="packs/test.orbit.pack.js"></script>#' "$tmp/web/index.html"
   grep -q 'packs/test.orbit.pack.js' "$tmp/web/index.html" || { echo "shots: the test world's carrier was not added" >&2; exit 2; }
   PAGE="$tmp/web/index.html" take "$dir" "${WORLD_SHOTS[@]}"
+  # the same copy with the file of format 1.2 behind the same carrier
+  cp "$root/tests/web/fixtures/worlds/test.orbit-fire.pack.json" "$tmp/web/packs/test.orbit.pack.json"
+  node "$root/tools/pack-carrier.js" "$tmp/web/packs/test.orbit.pack.json" >/dev/null
+  grep -q 'main.blaster' "$tmp/web/packs/test.orbit.pack.js" || { echo "shots: the test world's file of format 1.2 was not put in" >&2; exit 2; }
+  PAGE="$tmp/web/index.html" take "$dir" "${FIRE_SHOTS[@]}"
 }
 
 compare() {
   local names=() entry list=("${SHOTS[@]}")
-  [[ "${WHICH:-}" == worlds ]] && list=("${WORLD_SHOTS[@]}")
+  [[ "${WHICH:-}" == worlds ]] && list=("${WORLD_SHOTS[@]}" "${FIRE_SHOTS[@]}")
   for entry in "${list[@]}"; do names+=("${entry%%|*}"); done
   python3 -I - "$1" "$2" "${names[@]}" <<'PY'
 import struct, sys, zlib

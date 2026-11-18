@@ -493,9 +493,12 @@ crossbow's 38 against a barrel from 54. Aimed to the left, a weapon that fires i
 its frame's line, so a weapon drawn from the side keeps its stock below and its sight on top either
 way.
 
-The engine has the aiming stances, `fire()` and the four shot effects, and resolves a weapon's
-fields; no act aims, fires or stows a weapon yet, so a weapon that fires is held and swung as a
-blade is until those acts are built.
+The engine aims and fires such a weapon in the attack, the swat, practice and the foe's event, and a
+weapon that is both swings at what its blade reaches and fires beyond it
+([page.md](./page.md#the-acts-with-a-weapon-that-fires)). The house's pegs and the smithy's anvil
+read its `barrel` where a swung weapon's `blade` would be, with no hot tip on the anvil, and its
+stowed view is worn where the weapon is put away and the scene shows it at no rest place
+([rig.md](./rig.md#gear-at-rest)). No weapon of the shipped packs fires yet.
 
 ## Decorations
 

@@ -71,7 +71,8 @@
   }
 
   function draw(t, s) {
-    const gx = s.kx + RESTS.anvil.x, gy = RESTS.anvil.y, b = K.rest.blade();
+    // the hot tip is on a blade: a weapon that only fires lies on the anvil with none
+    const fw = K.fired(), gx = s.kx + RESTS.anvil.x, gy = RESTS.anvil.y, b = fw && fw.use === 'fire' ? null : K.rest.reach();
     // the fire in the forge
     glow(840, 410, 230, '#ff4a3d', .11 + .03 * Math.sin(t / 140));
     E.coals.draw({ p: [780, 440] }, t);
@@ -79,7 +80,7 @@
     E.coals.draw({ p: [782, 432], part: 'sparks', seed: 62, of: ['#fff3a0', '#ffb000'] }, t);
     // The blade's hot tip, at the weapon's point (to along the blade) and between its edges (half
     // either side), in bands that start 73, 57 and 43 short of the point. A weapon that gives no
-    // blade shows none.
+    // blade, or only fires, shows none.
     if (b) {
       const to = b.to, h = b.half;
       glow(gx + (to - 31), gy, 56, '#ff8a3d', .14 + .03 * Math.sin(t / 120));

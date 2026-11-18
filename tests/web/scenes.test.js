@@ -49,7 +49,7 @@ const MODE = process.env.SCENES_LOG || '';
    sprites, the effects, the props, the cat (so that the pack's pet has the code's to take the place
    of), the knight, the scenes, the state library (for the places of the devices) and the engine
    (for KW.devices). Not the pack library: the knight is drawn from code, and the scenes read from it
-   only where its gear rests (KW.knight.rest.blade), which is the same on both paths
+   only where its gear rests (KW.knight.rest.reach), which is the same on both paths
    (knight.test.js). */
 const NEEDED = ['js/draw.js', 'js/sprites.js', 'js/effects.js', 'js/props.js', 'js/cat.js', 'js/knight.js', 'js/state.js', 'js/engine.js'];
 /* And for the scenes drawn from kw.medieval: the verifier, the pack library and the scene compiler. */
@@ -420,13 +420,14 @@ if (MODE === 'write') {
     test(`${name} from kw.medieval has the code scene's interface: the same data, and the same parts drawn`, () => {
       const code = load(SRC).KW.scenes[name], pack = load(SRC, undefined, 'pack').KW.scenes[name];
       assert.notEqual(code, pack);
-      const DATA = ['spot', 'places', 'rests', 'rounds', 'can', 'hosts', 'outdoors', 'bed', 'helmet', 'sword', 'foeZone', 'crate'];
+      // target: where a shot at the training target aims, the middle of the target's group
+      const DATA = ['spot', 'places', 'rests', 'rounds', 'can', 'hosts', 'outdoors', 'bed', 'helmet', 'sword', 'foeZone', 'crate', 'target'];
       for (const k of DATA) assert.deepEqual(plain(pack[k]), plain(code[k]), `${name}.${k}`);
       // key may be given by either, since a scene without one keeps one backdrop
       // drawn, the court's colours of each patron for the settings' "As drawn", in the court alone
-      for (const k of ['paint', 'draw', 'act', 'over', 'wallAt', 'drawn']) assert.equal(typeof pack[k], typeof code[k], `${name}.${k}`);
+      for (const k of ['paint', 'draw', 'act', 'over', 'wallAt', 'drawn', 'struck']) assert.equal(typeof pack[k], typeof code[k], `${name}.${k}`);
       if (code.drawn) for (const mon of ['a', 'b', 'c', 'z']) assert.deepEqual(plain(pack.drawn(mon)), plain(code.drawn(mon)), `${name}.drawn(${mon})`);
-      const known = DATA.concat(['paint', 'draw', 'act', 'over', 'wallAt', 'key', 'drawn']);
+      const known = DATA.concat(['paint', 'draw', 'act', 'over', 'wallAt', 'key', 'drawn', 'struck']);
       assert.deepEqual(Object.keys(pack).filter(k => !known.includes(k)), [], 'the compiled scene has no field the interface lacks');
     });
 

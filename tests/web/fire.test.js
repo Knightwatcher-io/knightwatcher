@@ -172,7 +172,8 @@ test('resolve() gives a weapon\'s use, barrel, muzzle, range and shot only when 
   const B = ITEMS['main.blaster'], P = ITEMS['main.prod'];
   const b = PK.resolve(packs, { items: { main: O('main.blaster'), off: O('off.deflector') } });
   assert.deepEqual(plain([b.use, b.barrel, b.muzzle, b.range, b.shot, b.stowed, b.blade, b.grip]), plain(['fire', B.barrel, B.muzzle, 420, B.shot, true, null, B.grip]));
-  assert.deepEqual(Object.keys(b.lists), Object.keys(PK.resolve(packs, {}).lists), 'the lists are the same');
+  // the lists are the same, and the body with the stowed view beside them (fire-acts.test.js)
+  assert.deepEqual(Object.keys(b.lists), Object.keys(PK.resolve(packs, {}).lists).concat('bodyStowed'));
   const p = PK.resolve(packs, { items: { main: O('main.prod') } });
   assert.deepEqual(plain([p.use, p.blade, p.barrel, p.shot]), plain(['both', P.blade, P.barrel, { kind: 'beam', colour: P.shot.colour }]));
 });

@@ -27,7 +27,7 @@ world rule, the shared settings and the screen.
 | `js/effects.js` | `KW.effects`: the effects, drawings the engine owns that a scene names with numbers (sky, stars, bricks, flame and the rest), each with its table of fields, its cost and its drawing; see [The effects](#the-effects) |
 | `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's, and `pieShapes`, the maps of the pie's lamp and its last slice), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), the fly (`flyHD`, `deadFlyHD` and `CRITTERS`, the code's critters and the fallback for the pack's; see [The cast](#the-cast)), the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures, its crown and its exit, the code's foes and the fallback for the pack's) with the smoke, the sparkles and the hole they come and go by |
 | `js/cat.js` | the mouser cat, the first pet: its drawing in code, each pose worked out into cells and painted once from them, in two coats, its spot in each scene and the measures of its pounce (`PETS`, the code's pets and the fallback for the pack's; see [The cast](#the-cast)) |
-| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](./rig.md#anchors-values-and-poses)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](./rig.md#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `ownReturn()` says whether a swing comes back by a return of its own (see [The knight's rig](./rig.md#anchors-values-and-poses)), `aim` holds the aiming stances of a weapon that fires and the angle that points it, `fire()` animates a shot, `muzzle()` gives where it leaves and `fired()` the look's weapon when it fires (see [Aiming and firing](./rig.md#aiming-and-firing)), `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](./rig.md#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
+| `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](./rig.md#anchors-values-and-poses)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](./rig.md#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `ownReturn()` says whether a swing comes back by a return of its own (see [The knight's rig](./rig.md#anchors-values-and-poses)), `aim` holds the aiming stances of a weapon that fires and the angle that points it, `fire()` animates a shot, `volley()` the swat by shot, `muzzle()` gives where it leaves and `fired()` the look's weapon when it fires (see [Aiming and firing](./rig.md#aiming-and-firing)), `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](./rig.md#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
 | `js/ed25519.js` | `KW.ed25519.verify`: checks a pack's Ed25519 signature, and does nothing else. See [library.md](./library.md#the-verifier) |
 | `js/pack.js` | the pack library: reads, checks and compiles packs and draws from them; see [packs.md](./packs.md) |
@@ -104,13 +104,15 @@ the interface.
 | `act(t, s)` | no | called each frame after strolling and before the foe's plan, the swat and the events, which may override it; may change the knight's pose `s.o`. No transform is set for it |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
 | `wallAt(x)` | no | the y of the top of whatever a foe climbs over at grid x; without it a foe digs up out of the ground |
-| `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a device on the ground or the pie, and 150 to 240 pixels from the knight's middle, within the reach of the weapon the knight holds; with no room the event shows its caption alone. A scene that hosts the foe without it plays the event's 3.4 seconds with no foe drawn, the knight standing still |
+| `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a device on the ground or the pie, and 150 to 240 pixels from the knight's middle, within the reach of the weapon the knight holds, or with a weapon that fires at the shot's gap, the knight stepping back for it ([The acts with a weapon that fires](#the-acts-with-a-weapon-that-fires)); with no room the event shows its caption alone. A scene that hosts the foe without it plays the event's 3.4 seconds with no foe drawn, the knight standing still |
 | `hosts` | no | the events the scene plays, each of `flies`, `crate`, `feast` and `foe` (the event with a foe, the banned address's): `['flies', 'crate', 'feast', 'foe']` at the battlement and the camp, `['flies', 'crate', 'feast']` in the yard, `['feast']` in the house and `[]` elsewhere. The engine plays the crate, the feast and the foe only in a scene that hosts them (`KW.engine.hosts(name, type)`); a scene without `hosts` plays the events whose `where` in `EVENTS` names it, the medieval world's lists, which the medieval scenes' `hosts` repeat. The flies follow `outdoors`, which a compiled scene gives when its `hosts` names both the flies and the crate. The settings read `foe` from it, to offer the foe's rows |
 | `outdoors` | no | `true` where the knight's flies gather and are swatted, and, for a scene without `hosts`, where the crate may land; elsewhere a fly is the pet's |
 | `crate` | where the crate lands | `{ span: [from, to] }`, the stretch of floor the crate may land on, at least 60 wide. The engine (`crateX`) lands the crate's middle at `clamp(kx - 160, from + 30, to - 30)`, as near 160 left of the knight as the stretch allows; the stretch lies clear of the ground places and the pie. The battlement gives `[150, 384]`, the camp and the yard `[298, 436]`. Without it the crate's left edge lands 320 left of the knight, and at least 70 inside the view's left edge, as it did before scenes gave one |
 | `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy`: in bed the knight is not drawn standing and does not stroll, the helmet is off, the pet keeps its spot by the bed and the scene is dimmed at night |
 | `helmet` | no | `false` where the helmet comes off, unless the address's `h=` or the display's setting for the helmet indoors says otherwise |
-| `sword` | no | `false` where the knight puts the sword away |
+| `sword` | no | `false` where the knight puts the sword away. Where none of the scene's `rests` is a frame (a place with an angle `a`), a weapon put away is worn by its stowed view, if it has one ([Gear at rest](./rig.md#gear-at-rest)) |
+| `target` | no | where a shot at the scene's training target aims, `[x, y]` on the grid, the middle of the target: `[710, 380]`, the dummy's, in the yard. With a weapon that fires the knight trains from 300 short of it ([The acts with a weapon that fires](#the-acts-with-a-weapon-that-fires)). A compiled scene with a `target` gives the middle of the box of its target group's shapes |
+| `struck()` | with `target` | the moment the target was last struck, for the tests |
 | `can` | no | the conditions the scene can act out, by the contract's ids, such as `['disk_full', 'backup_overdue', 'cpu_hot']` for the cellar: plain data, which a world pack carries as the scene's `can`. A condition plays in a scene the settings chose for it only when that scene lists it, and the settings offer a choice only between scenes that list it (see [Settings](./display.md#settings)); a scene without it is never chosen. [design.md](./design.md#scenes-chosen-per-condition) gives the table and the reasons |
 | `drawn(mon)` | no | each patron's own hair and robe colours, `{ hair, robe }`, for the settings screen's "As drawn" choices; the settings and the admin page read it off `KW.scenes.court` by that name. A compiled scene with a `seat` gives it |
 
@@ -142,8 +144,9 @@ knight talking in `draw` and draws the monarch's speech bubble with `KW.knight.s
 gives `drawn(mon)`, each monarch's own hair and robe colours, from its patron, for the settings
 screen's "As drawn" choices. The monarch itself is the patron's drawing ([The cast](#the-cast)). How a swatch's bands become the monarch's is in the comment above `hairOf` in `court.js`. The smithy's `act`
 sets the hammer and `strike`, its `paint` lays the weapon across the anvil with `KW.knight.rest`,
-and its `draw` puts the hot tip on the blade. The yard keeps
-the time the dummy was last struck and swings the knight's sword in `act`.
+and its `draw` puts the hot tip on the blade (none for a weapon that only fires). The yard keeps
+the time the dummy was last struck and swings the knight's sword in `act`, or with a weapon that
+fires shoots at the dummy (`KW.engine.shots.practice`).
 
 **How the engine calls a scene.** `draw(t, s)` runs every frame, after the backdrop is laid, with
 the grid's transform set on the display's canvas (the grid's corner at `X0` plus the picture's
@@ -152,7 +155,8 @@ pixels wider than the view, made the drawing context with `KW.draw.setCtx()`, wi
 16 pixels in, and the backdrop is laid 16 pixels left of the drift. Besides the key, the screen's
 shape and `KW.world.changes`, the engine drops every cached backdrop (`KW.engine.invalidate()`) when
 `main.js` changes the prop set in use, changes the knight's look, or adds downloaded packs.
-`act(t, s)` runs after the stroll and before the foe's plan, the swat and the events. `over(t, s)`
+`act(t, s)` runs after the stroll and before the foe's plan, the swat and the events, with the
+knight's pose already at its x (`s.o.x`), since a shot is aimed on the rig. `over(t, s)`
 runs after the knight, the pet, the devices in front, the flies, the foe's effects, the attack's red
 and the night's dimming. `wallAt(x)` is called through the foe's plan, once for each column across
 the foe while it is behind the line it climbs over, so `this` is the plan, not the scene. The
@@ -207,7 +211,28 @@ the first time the key is asked for, and the shot is kept, so the picture at a m
 the moment alone; it comes back with `lands`, the moment it reaches `to`, and `end`. The engine
 draws the shots each frame after the flies and before the foe's effects, the landing burst with
 `poofHD` for `burst` ms, and forgets a shot once nothing of it shows, at a change of scene and at
-`reset()`. No act makes a shot yet.
+`reset()`. The last 32 shots that have ended are remembered by their keys, so an act that asks for
+one again within its beat gets it back rather than a second shot. The acts that make shots are in
+[The acts with a weapon that fires](#the-acts-with-a-weapon-that-fires).
+
+### The acts with a weapon that fires
+
+When the look's weapon fires (`KW.knight.fired()`), the engine plays the swat, practice and the
+foe's event by shot, and the attack aims ([rig.md](./rig.md#aiming-and-firing)); a weapon that only
+swings plays them as before, frame for frame. A weapon that is both swung and fired swings at the
+flies and at a foe within its blade's reach (`foeGaps()`), and fires at a foe beyond it and at the
+practice target. Times are in ms; `KW.engine.shots` gives `VOLLEY`, `PRACTICE`, `volleyPlan`,
+`practice`, `practiceX` and the swat in play, and `KW.engine.foe` gives `shotPlan` and `shot`.
+
+| Act | By shot |
+|---|---|
+| the swat | one shot per settled fly (`volleyPlan`): the flies on the oldest fly's side first, each side oldest first, then the other side's, so the watcher turns once. The first shot leaves after a raise of 450 (`VOLLEY.raise`), each next one 300 later (`VOLLEY.gap`); after the last, the recoil of 80 and the return of 560 (`VOLLEY.after`), then the swat is over. Each shot flies from the muzzle as the pose stood aimed at its fly (the aim up to `AIM.swatAbove`, 1.4 above level) to where the fly was as it left, and the fly is popped, with the poof, when the shot reaches it. Seven flies: the last shot at 2 250, the return over by 2 890. The cat's rules about when the knight is busy are the same |
+| practice | the training spot stands 300 short of the scene's `target` (`PRACTICE`, `practiceX`), and the watcher strolls there in place of the round's `train` spot. The scene's act fires on the training's beats, `fire()` over 900 every 5 600 while quiet and over 1 000 every second while the CPU runs hot, the shot leaving at the middle of the beat (`practice(o, t, t0, len, at)`): from the muzzle to the target's middle, landing with the burst, and the target struck as it lands (its wobble and its straw). Running hot, the watcher first walks to that spot from wherever it stands, and fires once there |
+| the foe | `shotPlan()`: on each side the least gap is 200, or the muzzle's reach from the watcher's middle aimed level plus the foe's half width and 30 when that is more (`FOE.shot.clear`); the wanted 300 and the most 320, raised to the least for a long barrel, and never past the weapon's `range` or 420. Where the foe's zone has no room at the wanted gap, the watcher steps back from the zone's side, 4 at a time and up to 160 (`FOE.shot.step`), to the least step that gives it, or the widest gap found, never nearer the screen's edge than 90; the foe stands in its zone, clear of the devices, as for a blade. The event (`foeShot`): the step back over the first 900, while the foe climbs in; `fire()` at the foe's middle from 1 250 (`aim`), the shot leaving at 1 400 (`fire`), the recoil over 80 and the return over 560 (the strike's `rebound` and `recover`). The hit is where the shot meets the foe's body, its half width short of the middle: for a bolt when it gets there, at once for a tracer or a beam. With the blaster on the battlement the watcher steps back 132 and the goblin is hit at 1 473; the exit is the engine's, as for a blade, all within the event's 3 400. A foe's own `fires` is not played yet |
+| the attack | aimed to the right, trembling, and never fired (`pose('attack')` in `knight.js`) |
+
+Where the weapon is put away and the scene shows it at no rest place, the engine sets the pose's
+`stowed`, and the knight wears the weapon's stowed view ([Gear at rest](./rig.md#gear-at-rest)).
 
 `tests/web/effects.test.js` checks that each cost bounds the fills drawn, and the call records of
 `tests/web/scenes.test.js` that the scenes draw through the effects exactly what they drew before.
@@ -225,9 +250,9 @@ in its scene, as plain shapes, loops of fixed shapes (the world format's tiles) 
   acts with (the scene compiler builds the target's, the anvil's and the seat's acts, the bed, the
   screen and the patron's marks for the scenes from the medieval world's pack, and draws the
   patrons from its cast);
-- the weapon's pegs in the house and the hot tip on the anvil, which read the weapon's blade: what
-  reads the knight's gear stays the engine's (from the pack, the pegs are the scene's stamp, drawn by
-  the engine where the blade puts them);
+- the weapon's pegs in the house and the hot tip on the anvil, which read the weapon's reach, its
+  blade or its barrel: what reads the knight's gear stays the engine's (from the pack, the pegs are
+  the scene's stamp, drawn by the engine where the reach puts them);
 - the props shared as stamps (`barrelHD`, `tableHD`, `sconceHD`, `crateHD`), and the glows, which
   are a shape of their own.
 

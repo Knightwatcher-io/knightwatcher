@@ -391,7 +391,12 @@
         case 'drumstick': drumHD(o, neck, head); break;
         case 'hammer': hammerHD(main); break;
         case 'effects': effectsHD(o, neck, root); break;
-        default: PK.cur = seq[i]; lib.draw(L[seq[i]], A, Vs, D, face); PK.cur = null;
+        default: {
+          // the body with the weapon's stowed view, while the weapon is put away and the scene
+          // shows it at no rest place (o.stowed, which the engine sets)
+          const n = seq[i] === 'body' && o.stowed && r.grip === 'none' && L.bodyStowed ? 'bodyStowed' : seq[i];
+          PK.cur = n; lib.draw(L[n], A, Vs, D, face); PK.cur = null;
+        }
       }
     }
   }
@@ -467,9 +472,12 @@
       }
     } catch (e) { caught(e); }
   }
-  /* The equipped weapon's blade, { from, to, half } in frame units, for a scene that draws on it
-     (the smithy's hot tip), or null when the weapon gives none. */
-  const restBlade = () => (PK.look ? PK.look.blade : SWORD_BLADE);
+  /* The equipped weapon's reach, { from, to, half } in frame units: its blade when it gives one,
+     else its barrel when it fires, else null. A scene spaces the pegs from it, and the engine
+     measures a swing with it; the smithy's hot tip is drawn on it only for a weapon that is swung
+     (one that only fires has no blade to heat). A weapon that is both swung and fired gives its
+     blade. */
+  const restReach = () => (PK.look ? PK.look.blade || PK.look.barrel || null : SWORD_BLADE);
   /* The equipped weapon's head, as drawn, for the engine's reach (bladeOf in engine.js): null for a
      weapon whose blade's outline holds its drawing beyond the blade's middle (the swords, whose
      blades are as wide there as their outline, half and 4 more), for one with no blade, and on the
@@ -581,7 +589,8 @@
   /* The slots behind each list, to put a throw down to the packs that gave them. head is the
      build's head item, from the pack that gives the build. */
   const LIST_SLOTS = { body: ['back', 'legs', 'boots', 'torso'], headOn: ['hair', 'plume', 'helmet'], headOff: ['head', 'hair'], pauldrons: ['pauldrons'],
-    armL: ['arms'], armR: ['arms'], gauntL: ['gauntlets'], gauntR: ['gauntlets'], main: ['main'], off: ['off'], restHelmet: ['helmet', 'plume'], restOff: ['off'] };
+    armL: ['arms'], armR: ['arms'], gauntL: ['gauntlets'], gauntR: ['gauntlets'], main: ['main'], off: ['off'], restHelmet: ['helmet', 'plume'], restOff: ['off'],
+    bodyStowed: ['back', 'legs', 'boots', 'torso', 'main'] };
 
   /* Gathers the packs not marked bad, resolves the look and chooses the source. */
   function rebuild() {
@@ -780,6 +789,8 @@
   const BASE = { gx: 26, gy: 45, a: .45 };
   const BASE1 = { gx: 37.6, gy: 40.8, a: .3, fx: 20, fy: 38.4 };
   const ATTACK1 = { gx: 42, gy: 24.4, a: .2, fx: 19.6, fy: 37.6 };
+  /* The attack's tremble, in radians either way: the weapon's angle shakes by it, raised or aimed. */
+  const TREMBLE = .12;
   /* The aiming stances of a weapon that fires, towards the right, in the same units: gx and gy place
      the weapon's frame, its origin, which for a two-handed weapon is the rear hand's station. AIM2
      holds a two-handed weapon level at the chest with the stock under the right shoulder, the front
@@ -810,8 +821,10 @@
       case 'wan_down': o.look = Math.floor(t / 1400) % 2 ? 1 : -1; o.mouth = 'o'; o.mark = '?'; break;
       case 'attack':
         o.eyes = 'angry'; o.mouth = 'open'; o.mark = '!'; o.shake = Math.round(Math.sin(t / 60));
-        if (ONE) { o.gx = ATTACK1.gx; o.gy = ATTACK1.gy; o.wang = ATTACK1.a + Math.sin(t / 90) * .12; o.fx = ATTACK1.fx; o.fy = ATTACK1.fy; }
-        else { o.gx = 30; o.gy = 37; o.wang = .7 + Math.sin(t / 90) * .12; }
+        // a weapon that fires is aimed to the right, trembling as the sword does, and never fired
+        if (FIRE) aimPose(o, 1, level(1) + Math.sin(t / 90) * TREMBLE);
+        else if (ONE) { o.gx = ATTACK1.gx; o.gy = ATTACK1.gy; o.wang = ATTACK1.a + Math.sin(t / 90) * TREMBLE; o.fx = ATTACK1.fx; o.fy = ATTACK1.fy; }
+        else { o.gx = 30; o.gy = 37; o.wang = .7 + Math.sin(t / 90) * TREMBLE; }
         break;
       case 'night': o.eyes = 'closed'; break;
       case 'ssh_session': o.look = 1; break;
@@ -915,14 +928,26 @@
      weapon carried low across the body, never over the face. */
   const onTurn = a => ((a % TAU) + TAU) % TAU;
   const turn = (a0, a1, k) => (k <= 0 ? a0 : k >= 1 ? a1 : lerp(onTurn(a0), onTurn(a1), k));
-  /* Whether a turn from a0 to a1 changes side, each clearly on its side. */
-  const crosses = (a0, a1) => Math.sign(Math.sin(a0)) !== Math.sign(Math.sin(a1)) && Math.abs(Math.sin(a0)) > .2 && Math.abs(Math.sin(a1)) > .2;
+  /* Whether a turn from a0 to a1 changes side, each clearly on its side: more than 0.1 from
+     straight up or down, as every stance and aim is, the swat's highest included. */
+  const crosses = (a0, a1) => Math.sign(Math.sin(a0)) !== Math.sign(Math.sin(a1)) && Math.abs(Math.sin(a0)) > .1 && Math.abs(Math.sin(a1)) > .1;
+  /* The shield lifted out of the way of the weapon arm, as in the sword's swing to the left: while a
+     one-handed weapon turns across the body from one side to the other with a shield carried, the
+     shield hand rises by up to fy (in units of U, 80 pixels), straight up, so that the arm and the
+     gauntlet pass under the shield and none is ever drawn over its face. It eases up over the first
+     in of the turn, is held, and eases down over the last in, by when the weapon hand has passed the
+     shield's edge. While it is up it hides the face for the moment of the turn. */
+  const LIFT = Object.freeze({ fy: -16, in: .1 });
+  const lifted = k => SMOOTH(clamp01(Math.min(k, 1 - k) / LIFT.in));
   /* Between the poses f and t by k: the grip, the angle and the shield hand. A turn that changes
-     side dips the grip by DIP at its middle. */
+     side dips the grip by DIP at its middle and, in one hand with a shield, lifts the shield. */
   function between(o, f, t, k) {
-    const dip = crosses(f.wang, t.wang) ? DIP * Math.sin(k * Math.PI) : 0;
+    const cross = crosses(f.wang, t.wang), dip = cross ? DIP * Math.sin(k * Math.PI) : 0;
     o.gx = lerp(f.gx, t.gx, k); o.gy = lerp(f.gy, t.gy, k) + dip; o.wang = turn(f.wang, t.wang, k);
-    if (ONE) { o.fx = lerp(f.fx, t.fx, k); o.fy = lerp(f.fy, t.fy, k); }
+    if (ONE) {
+      const up = cross && SHIELD ? lifted(k) : 0;
+      o.fx = lerp(f.fx, t.fx, k); o.fy = lerp(f.fy, t.fy, k) + LIFT.fy * up;
+    }
   }
   /* The recoil on an aimed pose, kick from 1 (the moment of the shot) to 0: back along the frame by
      AIM.recoil pixels and up by AIM.recoilUp. */
@@ -947,6 +972,37 @@
     if (q > .2 && q < .7) o.eyes = 'angry';
     return q >= .5;
   }
+  /* A volley, the swat by shot: shots, in order, each { dir, t, at }, fired at t ms from the volley's
+     start towards dir at the point at (the swat's higher limit, AIM.swatAbove), and el the time
+     since the start. Before the first, the raise of fire() from the stance to the first point over
+     raise ms, ending as it leaves; at each shot the recoil, then a turn to the next point, through
+     straight down when it changes side (with the shield lifted, as in fire()), held 20 ms before
+     the next leaves; after the last, the recoil for after[0] ms and the return to the stance over
+     after[1]. Like fire(), the pose stands as aimed just before each shot's moment, so the shot
+     leaves the muzzle as muzzle() gives it there. */
+  function volley(o, el, shots, raise, after) {
+    if (!shots.length) return;
+    const st = stanceOf(), aims = shots.map(s => aimPose(Object.assign({}, o), s.dir, aimAngle(o, s.dir, s.at, AIM.swatAbove)));
+    const first = shots[0], end = shots[shots.length - 1];
+    o.aimed = true; o.eyes = 'angry';
+    if (el < first.t) {
+      const q = .5 * clamp01((el - (first.t - raise)) / raise), lv = aimPose(Object.assign({}, o), first.dir, level(first.dir));
+      if (q < .3) between(o, st, lv, ease(q / .3)); else between(o, lv, aims[0], ease(clamp01((q - .3) / .2)));
+      o.aimed = q > 0;
+      return;
+    }
+    if (el >= end.t) {
+      const r = el - end.t, a = aims[aims.length - 1];
+      if (r < after[0]) { copyPose(o, a); const k = 1 - r / after[0]; recoil(o, end.dir, k * k); }
+      else { const k = clamp01((r - after[0]) / after[1]); between(o, a, st, ease(k)); o.aimed = k < 1; }
+      return;
+    }
+    let i = 0;
+    while (i < shots.length - 1 && el >= shots[i + 1].t) i++;
+    const r = el - shots[i].t, gap = shots[i + 1].t - shots[i].t, kick = Math.min(after[0], gap / 3);
+    if (r < kick) { copyPose(o, aims[i]); const k = 1 - r / kick; recoil(o, shots[i].dir, k * k); }
+    else between(o, aims[i], aims[i + 1], ease(clamp01((r - kick) / Math.max(1, gap - kick - 20))));
+  }
   /* The muzzle of the weapon in the pose o, on the grid, as drawn: the frame's point plus the
      muzzle's offset along and across it, the offset across turned over while the drawing is flipped.
      null for a weapon that does not fire. */
@@ -959,8 +1015,9 @@
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
      knight is. speech draws a speech bubble. rest holds what a scene calls for the gear at rest
-     (described above): draw(slot, x, y, a), blade(), head(), key(slot) and fits(slot, place). fire,
-     muzzle and aim (pose(o, dir, a), angle(o, dir, at, above) and the stances) are described above,
+     (described above): draw(slot, x, y, a), reach(), head(), key(slot) and fits(slot, place). fire,
+     volley, muzzle and aim (pose(o, dir, a), angle(o, dir, at, above), the stances and the shield's
+     LIFT) are described above,
      and fired() gives the look's weapon when it fires, or null. rig, start, add, look,
      basePack, fetchPacks and packIndex are described above, except that rig from outside takes the
      look's build when b is left out (below), build is the present knight's measurements, source is
@@ -972,6 +1029,6 @@
      drawn. */
   const rigOf = (o, b) => rig(o, b || (PK.look ? PK.look.m : BUILD));
   KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, ownReturn, head: headAtCorner, speech: speechHD,
-    fire, muzzle: muzzleOf, fired: () => FIRE, aim: { pose: aimPose, angle: aimAngle, AIM, AIM1, AIM2 },
-    rest: { draw: restHD, blade: restBlade, head: restHead, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
+    fire, volley, muzzle: muzzleOf, fired: () => FIRE, aim: { pose: aimPose, angle: aimAngle, AIM, AIM1, AIM2, LIFT },
+    rest: { draw: restHD, reach: restReach, head: restHead, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);

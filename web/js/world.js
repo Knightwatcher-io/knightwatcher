@@ -293,9 +293,9 @@
         // the gear and the hot tip are the engine's drawing, and the pegs' stamp the scene's
         const R = KW.knight.rest, x = r.at.spot ? E.s.kx + r.at.x : r.at.x, y = r.at.y;
         // the hot tip is the anvil's act's, and shows while the act plays
-        if (r.hot) { if (plays(r, 'updating', E.s)) outside(() => hotTip(x, y, R.blade(), E.t)); }
+        if (r.hot) { if (plays(r, 'updating', E.s)) outside(() => hotTip(x, y, heated(), E.t)); }
         else if (r.slot === 'main') {
-          if (r.stamp) for (const px of outside(() => pegsAt(x, R.blade()))) for (const t of r.stamp) drawShape(t, E, px, y);
+          if (r.stamp) for (const px of outside(() => pegsAt(x, R.reach()))) for (const t of r.stamp) drawShape(t, E, px, y);
           outside(() => R.draw('main', x, y, r.at.a));
         } else if (outside(() => typeof R.fits !== 'function' || R.fits(r.slot, r.at))) outside(() => R.draw(r.slot, x, y));
       }
@@ -349,9 +349,10 @@
     const k = (P && P.from ? id + '@' + P.from : id) + '|' + (L.skin ? L.skin.id : ''), h = L.hair ? L.hair.id : '', r = L.robe ? L.robe.id : '';
     return h || r ? k + '|' + h + '|' + r : k;
   }
-  /* The xs of a frame's stamp, from the blade of the weapon lying on it with its grip's middle at x:
-     PEGS.from past where the blade starts and PEGS.to short of its point, as the house's pegs, which
-     a weapon that gives no blade gets for the greatsword's, PEGS.blade. */
+  /* The xs of a frame's stamp, from the reach of the weapon lying on it with its grip's middle at x
+     (its blade, or the barrel of one that fires, KW.knight.rest.reach): PEGS.from past where it
+     starts and PEGS.to short of its end, as the house's pegs, which a weapon that gives neither gets
+     for the greatsword's, PEGS.blade. */
   const PEGS = { from: 28, to: 45, blade: { from: 34, to: 263 } };
   function pegsAt(x, b) {
     const d = b || PEGS.blade;
@@ -559,13 +560,23 @@
      bobbing. A blow counts once, and is not counted again within TRAIN.rest ms (TRAIN.hot.rest while
      hot). Struck, the target's group wobbles for TRAIN.wobble.ms, by a sine that dies away, rounded
      to whole pixels: the named value targetDx, and the group's dx. A triggered effect counts its time
-     from the blow. Each compiled scene keeps the time of its last blow, as yard.js keeps dummyHit. */
+     from the blow. Each compiled scene keeps the time of its last blow, as yard.js keeps dummyHit.
+     With a weapon that fires the watcher shoots instead, on the same beats, from where the engine
+     puts it (KW.engine.shots.practiceX), at the middle of the target's group, at, and the blow is
+     the moment the shot lands (KW.engine.shots.practice); running hot, it shoots once it has walked
+     there. */
   const TRAIN = { swing: 900, rest: 2000, hot: { every: 1000, at: 470, rest: 600, bob: 170 }, wobble: { ms: 900, div: 60, amp: 15 } };
-  function trainOn(part) {
+  function trainOn(part, at) {
     let hit = -1e9;
     const H = TRAIN.hot, Wb = TRAIN.wobble;
     function act(t, s) {
       const o = s.o, here = s.here, K = KW.knight;
+      if (outside(() => K.fired())) {
+        const shot = (t0, len) => { const l = outside(() => KW.engine.shots.practice(o, t, t0, len, at)); if (l !== null && hit < l - 1) hit = l; };
+        if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % part.every; if (c < TRAIN.swing) shot(t - c, TRAIN.swing); }
+        if (s.w.id === 'cpu_hot') { o.eyes = 'half'; o.bob = Math.floor(t / H.bob) % 2; if (!o.walk) shot(t - t % H.every, H.every); }
+        return;
+      }
       if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % part.every; if (c < TRAIN.swing) { outside(() => K.swing(o, c / TRAIN.swing, 1)); if (c > part.hitAt && t - hit > TRAIN.rest) hit = t; } }
       if (s.w.id === 'cpu_hot') { const c = t % H.every; outside(() => K.swing(o, c / H.every, 1)); if (c > H.at && t - hit > H.rest) hit = t; o.eyes = 'half'; o.bob = Math.floor(t / H.bob) % 2; }
     }
@@ -575,7 +586,20 @@
       E.targetDx = w; E.since = a; E.dx = { [part.group]: w };
       return E;
     }
-    return { act, frame };
+    return { act, frame, struck: () => hit };
+  }
+
+  /* The middle of the box the shapes of the target's group paint, [x, y] rounded, from the scene's
+     moving and over layers, where the group is: where a shot at the target aims. A target of format
+     1.1 has no aim point of its own, and is shot here. */
+  function targetMid(data, v, group) {
+    let b = null;
+    for (const k of ['moving', 'over']) for (const l of v[k]) for (const sh of l.shapes || []) {
+      if (sh.g !== group) continue;
+      const e = KW.pack.shapeBox(data, sh);
+      if (e) b = b ? [Math.min(b[0], e[0]), Math.min(b[1], e[1]), Math.max(b[2], e[2]), Math.max(b[3], e[3])] : e;
+    }
+    return b ? freeze([Math.round((b[0] + b[2]) / 2), Math.round((b[1] + b[3]) / 2)]) : null;
   }
 
   /* The anvil: the watcher hammers the weapon that lies on it. It is act() in smithy.js with the
@@ -608,7 +632,9 @@
      (x, y): at its point (b.to along the blade) and between its edges (b.half either side), a glow
      that flickers, a dithered patch where the heat starts, three bands of red to orange that start
      TIP.bands[i][0] short of the point, the point white-hot and two lines of shine and shade, all
-     from smithy.js. A weapon that gives no blade (b null) shows none. */
+     from smithy.js. A weapon that gives no blade (b null) shows none, and so does one that only
+     fires, which has no blade to heat (heated). */
+  const heated = () => { const K = KW.knight, f = K.fired(); return f && f.use === 'fire' ? null : K.rest.reach(); };
   const TIP = {
     glow: { back: 31, r: 56, colour: '#ff8a3d', a: [.14, .03, 120] }, dith: { back: 87, w: 14, colour: '#7a2a1d' },
     bands: [[73, 57, '#8f231d'], [57, 43, '#cc352c'], [43, 30, '#ff5a1e']],
@@ -647,7 +673,8 @@
       seat: has(v, 'seat') ? freeze({ x: v.seat.x, y: v.seat.y, bubble: v.seat.bubble.slice(), turn: v.seat.turn, mouth: v.seat.mouth, always: only(v, 'ssh_session') }) : null };
     env.restStamps = restStamps(v, env);
     // the act, the target's or the anvil's, and the frame's values it gives the moving and over layers
-    const acted = has(v, 'target') ? trainOn(v.target) : has(v, 'anvil') ? anvilOn(only(v, 'updating')) : null;
+    const aim = has(v, 'target') ? targetMid(pack.data, v, v.target.group) : null;
+    const acted = has(v, 'target') ? trainOn(v.target, aim) : has(v, 'anvil') ? anvilOn(only(v, 'updating')) : null;
     const frameAt = (t, s) => (acted ? acted.frame(named(t, s), t) : named(t, s));
     const lists = {};
     for (const k of ['still', 'moving', 'over']) lists[k] = freeze(v[k].map((l, i) => layer(l, idx(at(path, k), i), Object.assign({}, env, { where: k }))));
@@ -682,6 +709,8 @@
     if (lists.over.length || bed) sc.over = (t, s) => { drawLayers(lists.over, frameAt(t, s)); if (bed && s.w && s.w.id === 'night') outside(() => zedsAt(bed, t)); };
     if (bed) sc.bed = true;
     if (acted) sc.act = acted.act;
+    // where a shot at the target aims: the middle of the box of its group's shapes
+    if (aim) { sc.target = aim; sc.struck = acted.struck; }
     if (v.weapon === 'away') sc.sword = false;
     if (v.helmet === 'off') sc.helmet = false;
     if (out) sc.outdoors = true;

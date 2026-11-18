@@ -15,7 +15,8 @@ out.
 | `tests/web/ed25519.test.js` | the verifier against RFC 8032's vectors and `node:crypto` |
 | `tests/web/effects.test.js` | each effect's cost against what it draws, and `pack.js` holding effects to their tables |
 | `tests/web/fire.test.js` | format 1.2: the fields and rules of weapons and foes that fire, the aim and `fire()`, and the shot effects |
-| `tests/web/fire-barrel.test.js` | no arm or gauntlet over a barrel, frame by frame, through the aim and `fire()` |
+| `tests/web/fire-barrel.test.js` | no arm or gauntlet over a barrel or a shield's face, frame by frame, through the aim, `fire()`, the swat's volley and the attack |
+| `tests/web/fire-acts.test.js` | the acts with a weapon that fires: the swat by shot, practice, the foe from range, the attack, the weapon that is both, the reach for the pegs and the anvil, the stowed view and the shield's lift |
 | `tests/web/foe.test.js` | the goblin's plan and hit on every build with each weapon, the blade meeting it and never passing through |
 | `tests/web/format-1.1.test.js` | the world sections of format 1.1: one refused copy of the world fixture for each rule |
 | `tests/web/knight.test.js` | the knight call by call against the stored record, the arm and blade checks, the gear at rest |
@@ -587,7 +588,8 @@ one may not, the muzzle on the barrel), each field's range and kind, a stowed vi
 that fires without `aim` or with its muzzle outside its sprite, each with the step and the exact
 reason it expects; a stowed view counted toward its item's cost and a look counting the larger of
 the weapon and its stowed view; `resolve()` adding the weapon's fields only for a weapon that fires,
-every swung weapon resolving with exactly the keys it had; and the flip drawing a framed point's
+every swung weapon resolving with exactly the keys it had, and a weapon with a stowed view adding
+the list `bodyStowed` and no other; and the flip drawing a framed point's
 `p` as `-p`. On the page, with the test world's copy loaded beside the base pack: `fired()` only
 for a weapon that fires; the aim held from 0.3 below level to 1.2 above it both ways, 1.4 for the
 swat; the line of the shot from the muzzle passing through the point aimed at, both ways, with the
@@ -600,15 +602,43 @@ pale snap; and at most 8 shots a frame, the first made first, a shot not yet lef
 
 `tests/web/fire-barrel.test.js` is the barrel check. It draws, into a context that keeps the last
 list to paint each pixel of the grid, every frame of `AIM2` or `AIM1` at every 0.05 of the aim's
-range both ways and of `fire()` at every 0.01 of q both ways, aimed high, level and low, 668 frames
-for each of 40 sets: the test world's blaster with and without its deflector, its prod and a trial
-crossbow it makes in memory, on the base pack's three builds in plate, mail and padded sleeves and
-on the test world's unit. No arm or gauntlet may paint a pixel the weapon painted at or beyond its
-barrel's `from`, nor one of the shield, but in the frames of a one-handed weapon's turn across the
-body to the left, which carry the weapon arm in front of the shield and are counted apart
-([rig.md](./rig.md#aiming-and-firing)). Drawn with the barrel from the frame's origin instead, the
-same check finds the hands on the weapon, which shows it sees what it looks for. It takes about a
-minute and a half, in a process of its own.
+range both ways, of `fire()` at every 0.01 of q both ways, aimed high, level and low, of two
+volleys of the swat every 10 ms, one starting each way and turning across the body six times
+between them at flies level, high and nearly overhead, and of the attack every 100 ms: 1 089
+frames for each of 40 sets, the test world's blaster with and without its deflector, its prod and
+the trial crossbow (`fixtures/crossbow.js`), on the base pack's three builds in plate, mail and
+padded sleeves and on the test world's unit. No arm or gauntlet may paint a pixel the weapon
+painted at or beyond its barrel's `from`, nor one of the shield's, in any frame: with the deflector
+the turns across the body lift it ([rig.md](./rig.md#aiming-and-firing)). Drawn with the barrel from
+the frame's origin instead, the same check finds the hands on the weapon, which shows it sees what
+it looks for. It takes about two minutes, in a process of its own.
+
+`tests/web/fire-acts.test.js` plays the acts with a weapon that fires, on the page's scripts under
+Node with time frozen, with the test world's copy of 1.2, the trial crossbow and, where it says so,
+the medieval world's scenes. The swat: seven flies give seven shots 300 ms apart from 450, the
+oldest fly's side first and each side oldest first, so the weapon changes side once; each shot
+aimed within the swat's limits, a bolt at 1.6 pixels a ms that pops its fly as it lands, and the
+swat over after the last return; the prod and the arming sword still swing, with no shot. Practice,
+in the code yard and the medieval pack's: the target's middle `[710, 380]` from both; the watcher
+at 410, a shot at 450 into each beat of 5 600 from the muzzle to that point with the burst, and
+the dummy struck the moment it lands (or at once for the prod's beam); running hot, the watcher
+walking from the spot to 410 with no shot on the way and then a shot every second, each striking
+the dummy; with a sword the yard as before. The foe: at every spot of the battlement and the camp,
+with the blaster and the crossbow, a plan by shot whose gap lies within its least and most (the
+crossbow's least at 236 or more), the step back at most 160 and away from the foe, the muzzle clear
+of the foe by 30, the foe in its zone, and the hit when the bolt meets its body, inside the event;
+the event itself: the step back over 900 ms, the stance until 1 250, aimed at the foe's middle just
+before 1 400, the one shot at 1 400 from the plan's muzzle, the stance again by 2 040. The prod
+bonks a goblin its blade reaches and shoots one beyond it, where a sword has no plan; Glitch's own
+`fires` makes no shot. The attack: aimed right with the tremble of 0.12 every 10 ms for two seconds,
+and no shot. Gear at rest: `rest.reach()` the barrel, the blade or the crossbow's barrel; the
+house's pegs drawn at 28 past the reach's start and 45 short of its end; the hot tip for the sword
+and the prod and none for the blaster and the crossbow, from code and from the pack. Stowed: the
+crossbow's view drawn in the cellar and with a crate carried in the yard, not in the house, the
+smithy or in bed; `bodyStowed` the body with the view after the back slot (and after the cloak when
+one is worn) for the crossbow, after the torso for the blaster, and no such list for a weapon
+without a view. The shield: lifted in the middle of each turn to the left and back in `fire()`,
+down at either end, never lifted aiming right or without a shield.
 
 `tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
 clean, with its signature taken off, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
@@ -777,8 +807,9 @@ below). `tests/web/fixtures/worlds/orbit.js` writes both, and checks them with `
 
 The copy of format 1.2 is a file of its own, under the same id, so that the 1.1 file stays as it
 was for every test and shot that reads it, and a page of format 1.1 can be shown refusing the copy
-while reading the 1.1 file. Only the tests read the copy: no act fires yet, and the shots take the
-1.1 file.
+while reading the 1.1 file. The tests read the copy, and so do the `orbit-fire-` shots, taken from
+the same copy of `web/` as the `orbit-` shots with the copy's carrier in place of the 1.1 file's
+([shots.md](./shots.md)); every other shot takes the 1.1 file.
 
 Its Deck's still layers cost 185 308 fills at the widest screen, within 10 percent of the 200 000 a
 scene may, which shows the cap is reachable and holds. A second preset, "Orbit (broken)", whose
@@ -851,6 +882,7 @@ sed -i 's#<script src="packs/medieval.pack.js"></script>#&\n<script src="packs/t
 The address's `wd=` chooses the world, and `fo=`, `cr=`, `pr=`, `wo=` and `ov=` its foe, critter,
 prop set, words and overlay alone ([display.md](./display.md#the-address)). `tools/shots.sh worlds DIR`
 makes the same copy in a folder of its own, takes from it the `worldmix-` shots of the settings
-screen and the `orbit-` shots of the wall, and removes it. Take a reference set with `worlds` before
+screen and the `orbit-` shots of the wall, then puts the copy of 1.2 behind the same carrier and
+takes the `orbit-fire-` shots, and removes the copy. Take a reference set with `worlds` before
 a change and another after it, and compare them with `compare-worlds`, as for the main set; a change
 to the test world itself changes the shots that show the part changed.

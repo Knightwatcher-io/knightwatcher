@@ -2664,6 +2664,20 @@
       cshapes(helmet.item.rest.shapes, { a: ANCHOR.rest, dx: 0, dy: 0 }, env(helmet), L.restHelmet);
     }
     if (off && off.item.rest) cshapes(off.item.rest.shapes, { a: ANCHOR.rest, dx: 0, dy: 0 }, env(off), L.restOff);
+    // a weapon with a stowed view (format 1.2) gets bodyStowed, the body with the view drawn in it:
+    // after the back slot when slung (layer back), after the torso when holstered (layer body). The
+    // knight draws it in place of body while the weapon is put away. A look without one has no such
+    // list, so every look of 1.0 and 1.1 compiles as before
+    const main = it('main');
+    if (main && main.item.stowed) {
+      const view = [], back = main.item.stowed.layer === 'back';
+      cparts(main.item.stowed.parts, env(main), view);
+      L.bodyStowed = [];
+      for (const sl of ['back', 'legs', 'boots', 'torso']) {
+        if (it(sl)) cparts(it(sl).item.parts, env(it(sl)), L.bodyStowed);
+        if (sl === (back ? 'back' : 'torso')) L.bodyStowed.push(...view);
+      }
+    }
     return L;
   }
 
@@ -3060,7 +3074,10 @@
   const FIRE_LISTS = freeze({ USES: USES.slice(), SHOT_KINDS: SHOT_KINDS.slice(), STOWED_LAYERS: STOWED_LAYERS.slice(), STOWED_AT: SLOT_AT.stowed.slice(), FOE_AIM });
   const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, FRAME_FL, VALUES, VALUE, MEASURES, TORSO, BASE, KEYS, ORDERS,
     WORLD_LIMITS, WORLD_LISTS, FIRE_LISTS, SCENE_RANGE, ACT_RANGE,
-    read, canonical, message, gather, resolve, draw, sequence, animate, fitsPlace, newAnchors, newValues };
+    read, canonical, message, gather, resolve, draw, sequence, animate, fitsPlace, newAnchors, newValues,
+    // the box a scene's shape paints, [x0, y0, x1, y1], at the ends of its values: for a pack's data
+    // and a shape of it (the scene compiler takes the middle of a target's group from it)
+    shapeBox: wextent };
   KW.pack = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? (window.KW = window.KW || {}) : {});

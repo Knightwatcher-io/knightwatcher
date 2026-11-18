@@ -156,7 +156,8 @@ are out on the right, instead of turning back through upright over the face. To 
 two-handed recovery is a single segment, as it always was. The longsword and the mace take these
 poses, as they take every other, from the grip their stations give. Every other condition keeps its pose; the sword is
 put away where the scene says so (`sword: false` in the house and the cellar, the hammer in the
-smithy), and the shield with it.
+smithy), and the shield with it; a weapon with a stowed view is then worn on the body where the
+scene shows it at no rest place ([Gear at rest](#gear-at-rest)).
 
 **The blade past the face.** `tests/web/knight.test.js` draws each swing to the left every 0.004 of
 its length on Classic and counts the steel (everything from 17 along the frame) lying on the head as
@@ -248,6 +249,16 @@ nearly overhead need. A point behind the watcher gives the nearer limit on the s
 The eyes are angry from q .2 to .7. A turn from one side to the other never passes through straight
 up: both angles are taken on the circle from 0 to 2 pi, so the weapon is carried low across the body
 through straight down, and the grip dips by 30 pixels at the middle of the turn, never over the face.
+A turn changes side when the angles lie on either side of upright and each is more than 0.1 from
+straight up or down, as every stance and aim is.
+
+**The shield lifts.** With a one-handed weapon and a shield, a turn that changes side (to the left
+and back in `fire()`, and between the swat's sides) lifts the shield out of the weapon arm's way, as
+the sword's swing to the left does: the shield hand rises straight up by up to `LIFT.fy`, 16 units
+(80 pixels), easing up over the first tenth of the turn (`LIFT.in`), held, and easing down over the
+last tenth, by when the weapon hand has passed the shield's edge. The arm and the gauntlet pass under
+the shield, and none is drawn over its face; while the shield is up it hides the face for the moment
+of the turn. `KW.knight.aim.LIFT` holds the numbers.
 Every pose the stances and `fire()` write is marked `o.aimed` (from q 0 to 1, not at either end): a
 two-handed weapon's front hand then stays on its station at every angle, with none of the blade's
 slide, and a weapon aimed left is drawn turned over its frame's line (`FRAME_FL`), so that one drawn
@@ -255,21 +266,37 @@ from the side keeps its stock below and its sight on top. `KW.knight.muzzle(o)` 
 on the grid as drawn, the flip included, and `null` for a weapon that does not fire. `AIM` holds the
 limits and the recoil (`below` 0.3, `above` 1.2, `swatAbove` 1.4, `recoil` 4, `recoilUp` 0.08).
 
-The stances and `fire()` exist for the acts to use, and no act uses them yet: the attack, the
-swat, practice and the foe still swing, and a weapon that fires is held and swung as a blade is
-until those acts are built.
+**`volley(o, el, shots, raise, after)`** plays the swat by shot: `shots`, in order, each `{ dir, t,
+at }`, fired at `t` ms from the start towards `dir` at the point `at`, aimed up to `AIM.swatAbove`,
+and `el` the time since the start. Before the first shot, the raise of `fire()` from the stance to
+the first point over `raise` ms; at each shot the recoil (80 ms, or a third of the gap when that is
+less), then a turn to the next point, held 20 ms before it leaves; after the last, the recoil for
+`after[0]` ms and the return to the stance over `after[1]`. As in `fire()`, the pose stands aimed
+just before each shot's moment, and a turn that changes side dips the grip and lifts a shield.
+
+**The acts.** The engine plays each act by shot when the look's weapon fires, and as before when
+it only swings ([page.md](./page.md#the-acts-with-a-weapon-that-fires) gives the timings):
+
+| Act | With a weapon that fires |
+|---|---|
+| the attack | `pose('attack')` aims to the right in `AIM2` or `AIM1`, the angle trembling by the sword's 0.12 (`TREMBLE`), and never fires |
+| the swat | `volley()`, one shot per settled fly, the flies on the oldest fly's side first, so the watcher turns once |
+| practice | `fire()` at the scene's target, on the training's beats, from 300 short of it |
+| the foe | `fire()` at the foe's middle, from the shot's gap, the watcher stepping back while it climbs in |
+
+A weapon that is both swung and fired (`use` `both`) swings at the flies and at a foe its blade
+reaches, fires at a foe beyond that and at the practice target, and aims in the attack.
 
 **No arm over the barrel.** The rule for blades holds for a barrel forward of the front hand:
 `tests/web/fire-barrel.test.js` draws every frame of `AIM2` or `AIM1` at every 0.05 of the aim's
-range both ways, and of `fire()` at every 0.01 of q both ways, aimed high, level and low, and checks
-that no arm or gauntlet is drawn over a pixel of the weapon from its barrel's `from`, nor over the
-shield's face. It does so for the test world's blaster with and without its deflector, its prod and
-a trial crossbow made in memory (its front hand 38 along the frame, its barrel from 54), on the base
-pack's three builds in plate, mail and padded sleeves and on the test world's unit: 40 sets of 668
-frames. With its front hand at 40 the crossbow's gauntlet covers up to 8 pixels of a barrel from 54
-in a frame. One limit is known: with a shield, the turn across the body to the left and back, from q
-0 to .3 and from .6 to 1, carries the weapon arm in front of the shield, and the test counts those
-frames apart.
+range both ways, of `fire()` at every 0.01 of q both ways, aimed high, level and low, of two volleys
+of the swat every 10 ms, which turn across the body six times between them, and of the attack every 100 ms,
+and checks that no arm or gauntlet is drawn over a pixel of the weapon from its barrel's `from`, nor
+over the shield's face, in any of them. It does so for the test world's blaster with and without its
+deflector, its prod and a trial crossbow made in memory (its front hand 38 along the frame, its
+barrel from 54), on the base pack's three builds in plate, mail and padded sleeves and on the test
+world's unit: 40 sets of 1 089 frames. With its front hand at 40 the crossbow's gauntlet covers up
+to 8 pixels of a barrel from 54 in a frame.
 
 ## The knight from the base pack
 
@@ -359,7 +386,7 @@ compiler turns into the same calls ([scenes.md](./scenes.md#how-a-scene-compiles
 | Call | Does |
 |---|---|
 | `draw(slot, x, y, a)` | draws the equipped item of `slot` at rest. `'helmet'`: the helmet's rest view on the `rest` anchor at `(x, y)`, the middle of its foot on a surface, with the plume's rest view behind it on the view's plume mount. `'off'`: the shield's rest view on the `rest` anchor at `(x, y)`, the top middle of a `hang` place, which for the base pack's shield is the nail it hangs from. `'main'`: the weapon's worn shapes on a frame with the middle of its grip at `(x, y)` along the angle `a` (0 is straight up, and `Math.PI / 2` lays it flat with the point to the right). Any other slot draws nothing, and on the code path `'off'` draws nothing, since the code path has no shield |
-| `blade()` | the equipped weapon's `blade`, `{ from, to, half }` in frame units, or `null` when it gives none. On the code path, the greatsword's `{ from: 34, to: 263, half: 15 }` |
+| `reach()` | the equipped weapon's reach, `{ from, to, half }` in frame units: its `blade`, or for a weapon that only fires its `barrel`, or `null` when it gives neither. A weapon both swung and fired gives its `blade`. On the code path, the greatsword's `{ from: 34, to: 263, half: 15 }`. The engine measures a swing with it (`bladeOf()` in `engine.js`) |
 | `key(slot)` | the equipped item's name, `<pack>/<item>`, or `''` when the slot is empty; `'code'` on the code path |
 | `fits(slot, place)` | whether the equipped item of `slot` may rest in `place`, `{ kind, w, h }`: its rest view's `fits` is the place's `kind` and its `box` no wider than `w` nor taller than `h`. Always true for `'main'`, which has no rest view, for an empty slot or an item without a rest view, and on the code path |
 
@@ -387,21 +414,23 @@ and its `rest` marks pass the numbers.
 The `kind`, `w` and `h` give a place in the shape the pack format gives places. The code scenes
 draw what they always drew; a scene from a world pack asks `fits()` first and draws a helmet or a
 shield only where its rest view fits the place, which every view of the base pack does in every
-place the medieval scenes give. The house's two pegs sit under the weapon's blade,
-28 past where it starts and 45 short of its point, from `blade()`: for the greatsword at 680 and
-836, where they always were, for the arming sword at 680 and 748, and for the mace, whose `blade`
-names its haft and head, at 680 and 709. A weapon with no `blade` gets
+place the medieval scenes give. The house's two pegs sit under the weapon's reach,
+28 past where it starts and 45 short of its end, from `reach()`: for the greatsword at 680 and
+836, where they always were, for the arming sword at 680 and 748, for the mace, whose `blade`
+names its haft and head, at 680 and 709, and for a weapon that only fires, from its barrel: the
+test world's blaster, whose barrel runs from 22 to 64, at 637 and 668. A weapon with neither gets
 the greatsword's pegs. The house's shield clears the arming sword's point on the pegs, the jug on
 the mantel and a camera at the house's high place `h2`, which stays where it was, at 926; a test
 draws that camera and its question mark and checks them against both swords on the pegs, the
 shield, the window and the knight at every spot of the house's rounds.
 
-**The hot tip.** The smithy draws the glowing tip of the blade on the anvil from `blade()`, in
+**The hot tip.** The smithy draws the glowing tip of the blade on the anvil from `reach()`, in
 frame units along the blade from `to`, the point, and across it from `half`, the distance from the
 middle to each edge: three bands of heat starting 73, 57 and 43 short of the point and reaching to
 30 short of it, each `2 * half + 1` tall, then the point itself, a light along each edge and a glow
 around it. For the greatsword these are the numbers the smithy always drew. A weapon with no
-`blade` has no hot tip. The smithy from the medieval world's pack draws the same hot tip as part of
+`blade` has no hot tip, and neither has a weapon that only fires, which lies on the anvil as any
+weapon does; one that is both swung and fired has its blade's. The smithy from the medieval world's pack draws the same hot tip as part of
 the anvil's act in the scene compiler, with the same numbers, where a `rest` mark for the weapon at
 the anvil's rest stands in a moving layer ([scenes.md](./scenes.md#how-a-scene-compiles)).
 
@@ -417,3 +446,13 @@ and the weapon's, each after a `'|'`, so `|440||kw.base/main.greatsword` at its 
 The strings differ from the code smithy's, and they tell the same states apart. The house from the
 pack keys its backdrop `10|kw.base/main.greatsword|` with the television on and `01|...` with it
 off ([scenes.md](./scenes.md#how-a-scene-compiles)).
+
+**Stowed gear.** A weapon may give a `stowed` view (format 1.2, [packs.md](./packs.md#weapons-that-fire)),
+slung across the back or holstered at a hip. While the weapon is put away (`o.sword` false, the
+grip `none`) and the scene shows it at no rest place, the engine sets `o.stowed`, and the knight
+draws the look's `bodyStowed` list in place of `body`: the body with the view drawn after the back
+slot (layer `back`) or after the torso (layer `body`). A scene shows the weapon at rest when one of
+its `rests` is a frame, a place with an angle `a`, as the house's pegs, the smithy's anvil and the
+test world's workbench are; so the view shows in the cellar and wherever a full disk's crate is
+carried, and not in the house or the smithy. In bed the knight is not drawn, and nothing is. A
+weapon with no stowed view, every weapon of `kw.base` among them, draws as before.
