@@ -298,6 +298,41 @@ barrel from 54), on the base pack's three builds in plate, mail and padded sleev
 world's unit: 40 sets of 1 089 frames. With its front hand at 40 the crossbow's gauntlet covers up
 to 8 pixels of a barrel from 54 in a frame.
 
+### A foe's shot
+
+A foe that fires (format 1.2) shoots at the watcher once before the strike, and the watcher is
+never hit ([page.md](./page.md#the-acts-with-a-weapon-that-fires) gives the timings). Two measures
+of the rig place the shot, both in the pose the watcher stands in at that moment, as drawn:
+
+- **`KW.knight.shieldFace(o)`** gives the face of the shield carried, `[x, y, w, h]` on the grid:
+  the shield item's `face` box from its `hold` point, which sits on the off hand, the left
+  ([packs.md](./packs.md#items)). It is `null` when no shield is carried: with a weapon in both
+  hands, a one-handed weapon alone, the weapon put away, at the anvil and on the code path. With the
+  foe on the left the shot stops on the face's left edge, 0.4 of the way down, with the spark.
+- **`KW.knight.headBox(o)`** gives the box of the head group, `[x0, y0, x1, y1]` on the grid: the
+  helmet, the plume and the hair's helmeted view with the helmet on, the head and the hair with it
+  off, the plume's sway included. On the pack path the look's list is drawn into a recorder that
+  keeps the box of each shape (an ellipse, a rounded rectangle and a pixel shape count as the box
+  around them); on the code path it is the code's open helm and crest, 70 either side of the head
+  anchor and 97 above it (`CODE_HEAD`). A shot that misses is aimed 40 above its corner nearest the
+  foe, so it clears the plume and the helmet. For the default look that corner is 70 across and 97
+  up from the head anchor; the kettle hat's brim reaches 82 across, the horsehair 88, and the tall
+  feather on a bascinet 161 up.
+
+**The flinch.** As the shot passes or stops, the eyes are `wide` for 200 ms, and then whatever the
+event sets. Nothing else changes: the swing, `fire()`, the step back and the shield's lift play
+frame for frame as with a foe that does not fire, and the face's colours and mouth stay the
+status's. `tests/web/foe-fires.test.js` checks this frame by frame, and that the line of a miss
+stays clear of every pixel the watcher is drawn with on the left, for the default look, the kettle
+hat, the bascinet with the tall feather, the Broad build and the test world's unit.
+
+**The right side.** The shield is always in the left hand, so a foe on the right misses overhead
+even with a shield carried, as with none, and the watcher flinches the same way. On that side the
+line can cross the weapon the watcher holds out towards the foe (the blaster aimed) or raises for
+the blow (the arming sword's wind-up). It still passes over the head group. The medieval scenes and
+Orbit's Deck put the foe on the left first, so a foe stands on the right only where the left has no
+room, as when the watcher stands left of the foe's zone.
+
 ## The knight from the base pack
 
 At start-up, before the first frame, `main.js` calls `KW.knight.start(KW.packText, dev, { look: {} })`

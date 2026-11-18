@@ -428,8 +428,9 @@ WORLD_SHOTS=(
 FIRE_SHOTS=(
   # the test world with its blaster and deflector: standing, the swat by shot (a bolt in flight on
   # the right, the turn across the body with the shield lifted, a bolt on the left), Glitch shot
-  # from range (the watcher stepping back, aimed just before the shot, the bolt in flight, the hit,
-  # the return with the shield lifted), the attack aimed and the blaster holstered on a full disk
+  # from range (the watcher stepping back, aimed just before the shot with Glitch's own tracer at the
+  # deflector, the bolt in flight, the hit, the return with the shield lifted), the attack aimed and
+  # the blaster holstered on a full disk
   "orbit-fire-deck|bar=0&t=2300&wd=test.orbit/world.orbit"
   "orbit-fire-swat|bar=0&t=1090&f=6&sw=1&wd=test.orbit/world.orbit"
   "orbit-fire-swat-turn|bar=0&t=1230&f=6&sw=1&wd=test.orbit/world.orbit"
@@ -462,6 +463,16 @@ FIRE_SHOTS=(
   "orbit-fire-prod-practice|bar=0&t=470&is=yard&kx=82&arm=test.orbit/main.prod"
   "orbit-fire-prod-update|bar=0&t=1250&on=update&arm=test.orbit/main.prod"
   "orbit-fire-prod-cellar|bar=0&t=2300&on=disk&arm=test.orbit/main.prod"
+  # Glitch fires first, at 1350, its tracer drawn and the watcher's eyes wide: stopped at the
+  # deflector with the spark; missing over the head with the prod, which carries no shield; stopped
+  # at the heater shield and missing over the greatsword's knight on the battlement; and, with the
+  # watcher left of the Deck's foe zone so Glitch stands on the right, missing over the head with the
+  # deflector carried, the known limit
+  "orbit-fire-glitch-fire|bar=0&t=1370&e=goblin&wd=test.orbit/world.orbit"
+  "orbit-fire-glitch-miss|bar=0&t=1370&e=goblin&wd=test.orbit/world.orbit&arm=test.orbit/main.prod"
+  "orbit-fire-glitch-heater|bar=0&t=1370&is=battlement&e=goblin&arm=one&fo=test.orbit/foe.glitch"
+  "orbit-fire-glitch-overhead|bar=0&t=1370&is=battlement&e=goblin&fo=test.orbit/foe.glitch"
+  "orbit-fire-glitch-right|bar=0&t=1370&e=goblin&kx=40&wd=test.orbit/world.orbit"
 )
 
 take() {

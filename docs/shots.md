@@ -8,7 +8,7 @@ two sets:
 |---|---|
 | `take DIR` | opens the page from disk once for each of the 267 shots of the main set, with time frozen by the address's `t=`, and writes `DIR/<name>.png` at 960 by 600, or at the size the shot names |
 | `compare REF NEW` | decodes each pair of PNGs by name and counts the pixels that differ outside the clock; a pair of different sizes, or one missing or unreadable, is a failure |
-| `worlds DIR` | copies `web/` to a folder of its own outside the repository, adds the test world's carrier, takes the 47 shots of the worlds' set from that copy (7 `worldmix-`, 40 `orbit-`), puts the test world's copy of format 1.2 behind the same carrier, takes the 26 `orbit-fire-` shots, and removes the copy |
+| `worlds DIR` | copies `web/` to a folder of its own outside the repository, adds the test world's carrier, takes the 47 shots of the worlds' set from that copy (7 `worldmix-`, 40 `orbit-`), puts the test world's copy of format 1.2 behind the same carrier, takes the 31 `orbit-fire-` shots, and removes the copy |
 | `compare-worlds REF NEW` | compares two sets that `worlds` took |
 
 `take` and `worlds` need `CHROME`, the path of a headless Chromium, and `PAGE` names another copy of
@@ -182,7 +182,7 @@ with medieval parts (`orbit-swap-`): the goblin out of the Deck's floor and the 
 knight's own colours.
 
 The same run then puts the test world's copy of format 1.2 in place of its 1.1 file, behind the
-same carrier (the two share an id, so one or the other is loaded), and takes the 26 `orbit-fire-`
+same carrier (the two share an id, so one or the other is loaded), and takes the 31 `orbit-fire-`
 shots of the acts with a weapon that fires. The copy's world carries the blaster with the deflector;
 `arm=` and `sh=` with a long name choose the blaster and the deflector, or the prod, in the medieval
 world ([display.md](./display.md#the-address)). In the test world: the Deck while all is quiet; the
@@ -190,16 +190,27 @@ swat by shot (`f=6&sw=1`) with a bolt in flight on the right (1 090), the turn a
 the shield lifted (1 230) and a bolt on the left (1 690); Glitch shot from range, the watcher
 stepping back while it climbs (450), aimed just before the shot (1 395), the bolt in flight
 (1 440), the hit (1 500) and the return with the shield lifted (1 760); the attack aimed; and the
-blaster holstered on a full disk. In the medieval world with the blaster: practice from 300 short
+blaster holstered on a full disk. Glitch fires too, from 1 350: from 1 230 it stands in its `aim`
+pose, and in the shots at 1 395 and 1 440 its tracer and the watcher's wide eyes show beside the
+watcher's own bolt. In the medieval world with the blaster: practice from 300 short
 of the dummy (`kx=82`) with the bolt in flight (490) and the dummy struck with the burst (560), the
 same running hot (2 600); the goblin with the watcher stepping back (500), the bolt (1 440) and
 the hit (1 490); the blaster on the house's pegs, spaced from its barrel; on the anvil with no hot
 tip; and holstered in the cellar. With the prod, which is both: the swat swung (470); the goblin
 within its blade's reach bonked (1 660) and, with the watcher placed beyond it (`kx=152`), shot
 with the beam (1 420); practice by beam (470); its blade's hot tip on the anvil; and slung across
-the back in the cellar. A reference from before the acts that fire has none of these, and the
-comparison reports them missing; every other shot is the same, since no weapon of the shipped packs
-fires.
+the back in the cellar. Last, Glitch's own shot at 1 370, its tracer drawn and the watcher's eyes
+wide: stopped at the deflector with the spark (`orbit-fire-glitch-fire`); missing over the head
+with the prod, which carries no shield (`-miss`); in the medieval battlement (`fo=`), stopped at the
+heater shield of the arming sword (`-heater`) and missing over the greatsword's knight
+(`-overhead`); and with the watcher placed left of the Deck's foe zone (`kx=40`), so that Glitch
+stands on the right, missing overhead with the deflector carried, the known limit (`-right`). A
+reference from before the acts that fire has none of these, and the comparison reports them
+missing; every other shot is the same, since no weapon of the shipped packs fires. Against a
+reference from before Glitch fired, three shots differ: `orbit-fire-glitch-aim` (1 395) and
+`-shot` (1 440), by Glitch's aim pose, its tracer and spark and the watcher's wide eyes, and `-hit`
+(1 500) by the eyes alone, which are wide until 1 550. `-step` (450) and `-return` (1 760) are the
+same, and the five Glitch shots at 1 370 are missing.
 
 The 28 `cat-` shots show the mouser cat. Every shot above shows it resting at its
 spot in its calico coat; these show it in the ginger coat (`pc=ginger`) at each of its eight spots

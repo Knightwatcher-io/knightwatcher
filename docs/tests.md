@@ -18,6 +18,7 @@ out.
 | `tests/web/fire-barrel.test.js` | no arm or gauntlet over a barrel or a shield's face, frame by frame, through the aim, `fire()`, the swat's volley and the attack |
 | `tests/web/fire-acts.test.js` | the acts with a weapon that fires: the swat by shot, practice, the foe from range, the attack, the weapon that is both, the reach for the pegs and the anvil, the stowed view and the shield's lift |
 | `tests/web/foe.test.js` | the goblin's plan and hit on every build with each weapon, the blade meeting it and never passing through |
+| `tests/web/foe-fires.test.js` | a foe that fires: its pose `aim` compiled and played in place of the taunt, its shot at 1 350 missing over the head group or stopped at the shield, the foe on the right, and the flinch |
 | `tests/web/format-1.1.test.js` | the world sections of format 1.1: one refused copy of the world fixture for each rule |
 | `tests/web/knight.test.js` | the knight call by call against the stored record, the arm and blade checks, the gear at rest |
 | `tests/web/knight-free-classic.test.js`, `knight-free-broad.test.js`, `knight-free-slim.test.js` | the free items' checks of `knight.test.js`, one build each in a process of its own |
@@ -629,8 +630,8 @@ crossbow's least at 236 or more), the step back at most 160 and away from the fo
 of the foe by 30, the foe in its zone, and the hit when the bolt meets its body, inside the event;
 the event itself: the step back over 900 ms, the stance until 1 250, aimed at the foe's middle just
 before 1 400, the one shot at 1 400 from the plan's muzzle, the stance again by 2 040. The prod
-bonks a goblin its blade reaches and shoots one beyond it, where a sword has no plan; Glitch's own
-`fires` makes no shot. The attack: aimed right with the tremble of 0.12 every 10 ms for two seconds,
+bonks a goblin its blade reaches and shoots one beyond it, where a sword has no plan; the goblin's
+event has the watcher's one shot, and Glitch's has its own at 1 350 first. The attack: aimed right with the tremble of 0.12 every 10 ms for two seconds,
 and no shot. Gear at rest: `rest.reach()` the barrel, the blade or the crossbow's barrel; the
 house's pegs drawn at 28 past the reach's start and 45 short of its end; the hot tip for the sword
 and the prod and none for the blaster and the crossbow, from code and from the pack. Stowed: the
@@ -639,6 +640,30 @@ smithy or in bed; `bodyStowed` the body with the view after the back slot (and a
 one is worn) for the crossbow, after the torso for the blaster, and no such list for a weapon
 without a view. The shield: lifted in the middle of each turn to the left and back in `fire()`,
 down at either end, never lifted aiming right or without a shield.
+
+`tests/web/foe-fires.test.js` plays a foe that fires, in the same way, with the test world's Glitch
+from its copy of 1.2 and the medieval world's scenes. The numbers: `FOE.fires`, the aim from 1 230,
+the shot at 1 350, 40 over, 0.4 down the shield, a spark of 80 and a flinch of 200. The compiler:
+Glitch's poses the six and `aim` last, painted once, and its `fires` as the pack gives it; the
+goblin and Glitch from the 1.1 file with six poses and no `fires`. The foe player: `aim` from 1 230
+to 1 479 and the brace at 1 480, the goblin's taunt as before. The miss, with the prod in the Deck
+and on the battlement, the greatsword with the kettle hat and the horsehair, the Broad build in the
+bascinet and the tall feather, and the unit: one tracer at 1 350 in Glitch's colours, from its
+muzzle as drawn, through the point 40 over the head group's corner nearest the foe, on off the
+screen with no burst, and at least a pixel clear of every pixel the watcher is drawn with. The
+shield, with the blaster and the deflector in the Deck and the arming sword and the heater on the
+battlement and in the Deck: the shot stopped on the face's left edge 0.4 down, the spark drawn
+there from 1 350 to 1 420. The right, the Deck with its foe zone moved right of the watcher: with
+the blaster and the deflector and with the arming sword and the heater the shot is not stopped,
+passes over the head group's right corner and off the screen, and the watcher flinches. The flinch:
+every 10 ms of the event, with the prod, the blaster, the arming sword and the greatsword, the pose
+against the same event with Glitch's `fires` taken away, equal in everything but the eyes, which
+are `wide` for the 200 ms from the moment the shot passes or stops and the same otherwise, and the
+watcher's own shots the same. A bolt, Glitch's shot made a bolt in memory: the flinch from when it
+reaches the point it was aimed at or the shield. With the blaster both shots show at 1 410.
+`shieldFace()` the heater's face on the off hand and `null` with no shield or the weapon put away;
+`headBox()` holding every pixel of the head group drawn above the chin, to the pixel, its top at
+most 12 above them, for four helmets and plumes on the three builds.
 
 `tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
 clean, with its signature taken off, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
@@ -803,7 +828,7 @@ below). `tests/web/fixtures/worlds/orbit.js` writes both, and checks them with `
 | overlay | `overlay.orbit`, each level's colours near the edges of its band, the font `vt323` | another world's overlay; the band checks |
 | reserved | junk in `sounds`, a scene's `sound` and `companion`, the preset's `sound` and `companion` | read, covered by a signature and ignored |
 | preset | `world.orbit`, Orbit whole | a world chosen whole draws only its own parts |
-| weapons and a foe that fire, in a copy of format 1.2 | `test.orbit-fire.pack.json`, the same pack at version 1.1.0 and format `[1, 2]`: `main.blaster`, one-handed, `use` `fire`, a bolt, holstered on the right hip when stowed; `off.deflector`, the base pack's heater shield in flat panels; `main.prod`, two-handed, `use` `both`, a beam with no flash colour, slung across the back when stowed; Glitch with `fires`, a tracer, and the pose `aim`; the preset's outfit the blaster and the deflector | the fields of 1.2 on a body at the ends of the ranges; a weapon of each use; a foe that fires; a page of format 1.1 refusing the copy at `format` |
+| weapons and a foe that fire, in a copy of format 1.2 | `test.orbit-fire.pack.json`, the same pack at version 1.1.0 and format `[1, 2]`: `main.blaster`, one-handed, `use` `fire`, a bolt, holstered on the right hip when stowed; `off.deflector`, the base pack's heater shield in flat panels; `main.prod`, two-handed, `use` `both`, a beam with no flash colour, slung across the back when stowed; Glitch with `fires`, a tracer, and the pose `aim`; the preset's outfit the blaster and the deflector | the fields of 1.2 on a body at the ends of the ranges; a weapon of each use; a foe that fires, aiming and shooting first, missing over the head or stopped at the deflector (`foe-fires.test.js`); a page of format 1.1 refusing the copy at `format` |
 
 The copy of format 1.2 is a file of its own, under the same id, so that the 1.1 file stays as it
 was for every test and shot that reads it, and a page of format 1.1 can be shown refusing the copy

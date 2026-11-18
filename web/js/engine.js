@@ -429,6 +429,8 @@
                      never passes through the foe; or, with a weapon that fires, a shot from range
                      (shotPlan and foeShot, below);
        the exit      what the foe leaves by; the one exit built is the poof.
+     A foe that fires (format 1.2) also aims in place of its taunt and fires once before the strike
+     (foeFires, below); the watcher is never hit, and flinches.
      Times are in ms from the start of the event; an exit's are from the moment of the hit. */
   const FOE = {
     // the distance from the knight's middle to the foe's, least, wanted and most. The least keeps
@@ -452,6 +454,13 @@
     // the gap, over stepMs while the foe climbs in; the aim from aim and the shot at fire. The recoil
     // and the return are the strike's rebound and recover
     shot: { gap: [200, 300, 320], most: 420, clear: 30, step: 160, stepMs: 900, aim: 1250, fire: 1400 },
+    // a foe that fires (its fires, format 1.2; foeFires): it aims in place of its taunt from aim and
+    // fires once at fire, before the watcher's strike or shot. The shot misses over the watcher's
+    // head, aimed over px above the corner of the head group nearest the foe; or with a shield
+    // carried on the foe's side it stops at the shield's face, face of the way down its edge nearest
+    // the foe, with the spark, the burst of a blade's blow, for spark ms. As the shot passes or
+    // stops the watcher's eyes are wide for flinch ms
+    fires: { aim: 1230, fire: 1350, over: 40, face: .4, spark: 80, flinch: 200 },
     exits: {
       // gone in a puff of smoke: struck (squashed for 120 ms, a burst on the pot for the 80 ms the
       // blade bounces off it), the cloud at 140, the foe hidden at 170 behind it, sparkles from
@@ -702,6 +711,8 @@
     } else { st.y = HFL; st.behind = false; st.pose = 'stand'; }
     if (el >= N.land[0] && el < N.land[1]) { const k = Math.sin(segQ(el, N.land[0], N.land[1]) * Math.PI); st.sy = 1 - N.squash[0] * k; st.sx = 1 + N.squash[1] * k; }
     if (el >= N.taunt[0] && el < N.taunt[1]) st.pose = Math.floor((el - N.taunt[0]) / N.tauntFrame) % 2 ? 'taunt1' : 'taunt0';
+    // a foe that fires aims in place of its taunt
+    if (F.fires && el >= FOE.fires.aim && el < N.taunt[1]) st.pose = 'aim';
     if (el >= N.brace && el < pl.hit) st.pose = 'brace';
     if (el < pl.hit) return st;
     const r = el - pl.hit;
@@ -713,6 +724,53 @@
     if (r >= X.sparkles && r < X.sparkles + P.SPARKLE_MS) st.fx.push({ kind: 'sparkles', x: pl.x, y: HFL - F.mid, el: r - X.sparkles });
     if (pl.burrow) st.hole = 1 - ease(segQ(r, X.close[0], X.close[1]));
     return st;
+  }
+
+  /* A foe that fires: its one shot, made at FOE.fires.fire, from its muzzle as drawn (fires.muzzle
+     is given as the foe is drawn facing left, and mirrors with it), in the shot's kind and colours.
+     o is the watcher's pose as it stands at that moment. With a shield carried and the foe on its
+     side, the left, since the shield is always in the left hand, the shot stops at the shield's
+     face (KW.knight.shieldFace), on its edge nearest the foe, FOE.fires.face of the way down, with
+     the spark. Otherwise it misses: aimed FOE.fires.over above the corner of the head group nearest
+     the foe, as drawn (KW.knight.headBox), and carried on along that line until it is off the
+     screen, with no burst. A foe on the right with a shield carried misses as with none, the known
+     limit of a shield always on the left. The shot comes back with stop, whether the shield stopped it, and pass, the moment it
+     stops there or, for a miss, reaches the point it was aimed at: at once for a tracer or a beam,
+     when the bolt gets there for a bolt. */
+  function foeShotOf(pl, o, t0) {
+    const FI = FOE.fires, fi = pl.F.fires, st = foeAt(FI.fire, pl), sg = st.face > 0 ? -1 : 1;
+    const from = [Math.round(st.x) + sg * st.sx * fi.muzzle[0], Math.round(st.y) + st.sy * fi.muzzle[1]], t = t0 + FI.fire;
+    const shot = { kind: fi.shot.kind, colour: fi.shot.colour, flash: fi.shot.flash, from, t0: t };
+    const sf = pl.side < 0 && K.shieldFace ? K.shieldFace(o) : null;
+    if (sf) {
+      const to = [Math.round(sf[0]), Math.round(sf[1] + sf[3] * FI.face)];
+      const len = Math.hypot(to[0] - from[0], to[1] - from[1]);
+      return Object.assign(shot, { to, burst: FI.spark, stop: true, pass: t + (fi.shot.kind === 'bolt' ? len / SHOT.speed : 0) });
+    }
+    const hb = K.headBox(o), aim = [pl.side > 0 ? hb[2] : hb[0], hb[1] - FI.over];
+    const len = Math.hypot(aim[0] - from[0], aim[1] - from[1]) || 1, u = [(aim[0] - from[0]) / len, (aim[1] - from[1]) / len];
+    // carried on to the screen's edge, and past it by the picture's sway and the bolt's streak
+    const m = 8 + SHOT.streak, out = (p, v, lo, hi) => (v > 0 ? (hi + m - p) / v : v < 0 ? (lo - m - p) / v : Infinity);
+    const far = Math.max(len, Math.min(out(from[0], u[0], V.HL, V.HR), out(from[1], u[1], V.HT, V.HH)));
+    const to = [Math.round(from[0] + u[0] * far), Math.round(from[1] + u[1] * far)];
+    return Object.assign(shot, { to, burst: 0, stop: false, aim, pass: t + (fi.shot.kind === 'bolt' ? len / SHOT.speed : 0) });
+  }
+  /* The foe's shot at el in the event that began at t0, on the watcher's pose o, which the strike or
+     the shot has posed for el, and o0, the pose before them: from FOE.fires.fire, while the foe has
+     not yet been hit, the shot is made once, from the watcher as the event poses it at that moment,
+     and as it passes or stops the watcher flinches, eyes wide for FOE.fires.flinch. Nothing else of
+     the watcher changes. */
+  function foeFires(o, o0, el, pl, t0) {
+    const FI = FOE.fires;
+    if (!pl.F.fires || el < FI.fire || pl.hit <= FI.fire) return null;
+    const r = shoot('foe-fires|' + Math.round(t0), () => {
+      const p = Object.assign({}, o0, { t: t0 + FI.fire });
+      if (pl.shot) foeShot(p, FI.fire, pl, t0); else strike(p, FI.fire, pl);
+      return foeShotOf(pl, p, t0);
+    });
+    const k = t0 + el - r.pass;
+    if (k >= 0 && k < FI.flinch) o.eyes = 'wide';
+    return r;
   }
 
   /* Clips to above the line: for each column x from x0 to x1, from the top down to lineAt(x). */
@@ -932,7 +990,10 @@
     if (plan) {
       o.bob = 0;
       if (el > FOE.strike.eyes) { o.eyes = 'angry'; o.look = plan.side; }
+      const o0 = plan.F.fires ? Object.assign({}, o) : null;
       if (plan.shot) kx = foeShot(o, el, plan, ev.t0); else strike(o, el, plan);
+      // a foe that fires: its shot, and the watcher's flinch
+      if (o0) foeFires(o, o0, el, plan, ev.t0);
       if (el > plan.hit + plan.exit.pleased) { o.eyes = 'happy'; o.mouth = 'smile'; o.look = 0; }
     }
     if (live === 'crate') { o.look = -1; if (p < .6) o.eyes = 'wide'; else { o.eyes = 'happy'; o.mouth = 'smile'; } }
@@ -992,7 +1053,7 @@
     /* The foe player's parts, for the tests: the tables, where a foe stands, when the blade meets
        it, the plan of an event, the strike on a pose and the foe at a moment. */
     crateX, CLASS_BOX,
-    foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bladeGap, crownNear, plan: foePlan, strike, at: foeAt, shotPlan, shot: foeShot },
+    foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bladeGap, crownNear, plan: foePlan, strike, at: foeAt, shotPlan, shot: foeShot, fires: foeFires, shotOf: foeShotOf },
     init(ctx) { main = ctx; D.setCtx(ctx); },
     draw, addFly, startSwat, fireEvent,
     /* The shots of a weapon that fires: the timings, shoot(key, make) as described above, the

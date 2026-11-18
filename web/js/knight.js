@@ -1011,13 +1011,47 @@
     const m = rigOf(o).anchors.main, sx = Math.sin(m[2]), sy = -Math.cos(m[2]), s = FIRE.muzzle.s, p = flipped(o, m[2]) ? -FIRE.muzzle.p : FIRE.muzzle.p;
     return [m[0] + sx * s - sy * p, m[1] + sy * s + sx * p];
   }
+  /* The face of the shield carried in the pose o, as drawn: [x, y, w, h] on the grid, the shield
+     item's face box from its hold point, which sits on the off hand, the left. null when no shield
+     is carried: with a weapon in both hands, a one-handed weapon alone, the weapon put away, at the
+     anvil and on the code path. The engine stops a foe's shot at it (engine.js, foes that fire). */
+  function shieldFace(o) {
+    if (!SHIELD || !PK.look || o.sword === false || o.hammer != null) return null;
+    const n = PK.look.look.items.off, p = n ? PK.packs.get(n.slice(0, n.indexOf('/'))) : null;
+    const it = p && p.data.items ? p.data.items[n.slice(n.indexOf('/') + 1)] : null;
+    if (!it || !Array.isArray(it.face)) return null;
+    const h = rigOf(o).anchors.off;
+    return [h[0] + it.face[0], h[1] + it.face[1], it.face[2], it.face[3]];
+  }
+  /* The box of the head group in the pose o, as drawn: [x0, y0, x1, y1] on the grid, the helmet, the
+     plume and the hair's helmeted view with the helmet on, the head and the hair with it off, the
+     plume's sway included. On the pack path the look's list is drawn into a recorder that keeps
+     the box of every shape (an ellipse, a rounded rectangle and a pixel shape count as the box
+     around them); on the code path the code's open helm and crest give CODE_HEAD about the head
+     anchor. The engine aims a foe's missed shot over its corner nearest the foe (engine.js). */
+  const CODE_HEAD = Object.freeze([-70, -97, 70, 26]);
+  function headBox(o) {
+    if (!PK.look) { const h = rig(o).anchors.head; return [h[0] + CODE_HEAD[0], h[1] + CODE_HEAD[1], h[0] + CODE_HEAD[2], h[1] + CODE_HEAD[3]]; }
+    fillArrays(rig(o, PK.look.m), o);
+    const b = [Infinity, Infinity, -Infinity, -Infinity];
+    const pt = (x, y) => { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; };
+    const box = (x, y, w, h) => { pt(x, y); pt(x + w, y + h); };
+    const rec = {
+      Rh: box, Rv: box, rrect: box, pix: box, poly: pts => { for (const q of pts) pt(q[0], q[1]); },
+      ell: (cx, cy, rx, ry) => box(cx - rx, cy - ry, 2 * rx, 2 * ry),
+      strip: (x0, y0, x1, y1, hw0, hw1) => { const w = Math.max(hw0, hw1); box(Math.min(x0, x1) - w, Math.min(y0, y1) - w, Math.abs(x1 - x0) + 2 * w, Math.abs(y1 - y0) + 2 * w); }
+    };
+    PK.lib.draw(PK.look.lists[o.helmet !== false ? 'headOn' : 'headOff'], PK.A, PK.Vs, rec);
+    if (b[0] > b[2]) { const h = rig(o, PK.look.m).anchors.head; return [h[0], h[1], h[0], h[1]]; }
+    return b;
+  }
 
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
      knight is. speech draws a speech bubble. rest holds what a scene calls for the gear at rest
      (described above): draw(slot, x, y, a), reach(), head(), key(slot) and fits(slot, place). fire,
      volley, muzzle and aim (pose(o, dir, a), angle(o, dir, at, above), the stances and the shield's
-     LIFT) are described above,
+     LIFT) are described above, and so are shieldFace and headBox,
      and fired() gives the look's weapon when it fires, or null. rig, start, add, look,
      basePack, fetchPacks and packIndex are described above, except that rig from outside takes the
      look's build when b is left out (below), build is the present knight's measurements, source is
@@ -1029,6 +1063,6 @@
      drawn. */
   const rigOf = (o, b) => rig(o, b || (PK.look ? PK.look.m : BUILD));
   KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, ownReturn, head: headAtCorner, speech: speechHD,
-    fire, volley, muzzle: muzzleOf, fired: () => FIRE, aim: { pose: aimPose, angle: aimAngle, AIM, AIM1, AIM2, LIFT },
+    fire, volley, muzzle: muzzleOf, shieldFace, headBox, fired: () => FIRE, aim: { pose: aimPose, angle: aimAngle, AIM, AIM1, AIM2, LIFT },
     rest: { draw: restHD, reach: restReach, head: restHead, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);

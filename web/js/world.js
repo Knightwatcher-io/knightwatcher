@@ -43,10 +43,11 @@
    - the kinds of a prop set: their still and moving shapes in both states, the engine's lamp at a
      point, and a lamp of the kind's own from two stamps of pix shapes, as the pie's is;
    - the critters of the cast: their two frames and what falls, with a group's alpha; its foes:
-     their poses, from parts shared between them, and their measures; and its patrons: their still
-     parts and mouths at their anchors, in the user's skin, hair and robe, with the colours mixed,
-     chosen by contrast, and drawn and dressed; and its pets: each pose of each coat from a stamp of
-     pix shapes, painted once, with the pet's spots and the measures of its pounce.
+     their poses, from parts shared between them, and their measures, with the pose aim and the
+     muzzle and shot of a foe that fires; and its patrons: their still parts and mouths at their
+     anchors, in the user's skin, hair and robe, with the colours mixed, chosen by contrast, and
+     drawn and dressed; and its pets: each pose of each coat from a stamp of pix shapes, painted
+     once, with the pet's spots and the measures of its pounce.
    A scene that needs more adds its rows to these tables. */
 (function (KW) {
   'use strict';
@@ -848,7 +849,10 @@
      sprite.feet (anchor), the first time it is asked for, as foeSprites() in props.js paints them;
      a name that is not a pose gives stand. A pose is its parts, each a list of shapes shared between
      poses and compiled once, in the order it lists them, then its own shapes. The measures and the
-     crown are the pack's, and exit names one of the engine's exits, which the foe player keeps. */
+     crown are the pack's, and exit names one of the engine's exits, which the foe player keeps. A foe
+     of format 1.2 that gives the pose aim has it compiled and painted as the six are, and listed in
+     poses after them; one that fires also gives fires, { muzzle, shot }, as the pack does, which the
+     foe player plays (engine.js). */
   const ROLE_SETS = { critter: 'critters', foe: 'foes', patron: 'patrons', pet: 'pets' };
   function compileCritter(pack, id, v) {
     const path = 'cast.' + id, env = Object.assign(placedEnv(pack, 'the cast'), { groups: v.groups || null });
@@ -864,7 +868,11 @@
     return Object.freeze({ draw(x, y, flap) { drawList(frames[flap ? 1 : 0], x, y); }, dead(x, y) { drawList(dead, x, y); }, from: pack.id + '#' + (++compiles) });
   }
   function compileFoe(pack, id, v) {
-    const path = 'cast.' + id, env = placedEnv(pack, 'the cast'), FOE_POSES = KW.pack.WORLD_LISTS.FOE_POSES;
+    const path = 'cast.' + id, env = placedEnv(pack, 'the cast');
+    // the seventh pose, of a foe that fires (format 1.2), after the six when the foe gives it; a
+    // library of format 1.1 has no such pose and reads none
+    const AIM = KW.pack.FIRE_LISTS ? KW.pack.FIRE_LISTS.FOE_AIM : null;
+    const FOE_POSES = KW.pack.WORLD_LISTS.FOE_POSES.concat(AIM && has(v.poses, AIM) ? [AIM] : []);
     const parts = {};
     for (const n of Object.keys(v.parts)) parts[n] = freeze(v.parts[n].map((s, i) => shape(s, idx(at(at(path, 'parts'), n), i), env)));
     const lists = {};
@@ -885,8 +893,10 @@
       }
       return cache[n];
     }
-    return Object.freeze({ pose, poses: Object.freeze(FOE_POSES.slice()), anchor: Object.freeze([ax, ay]), size: Object.freeze([w, h]), h: v.h, w: v.w, mid: v.mid,
-      crown: freeze(v.crown.map(q => [q[0], q[1]])), exit: v.exit, from: pack.id + '#' + (++compiles) });
+    // a foe that fires (format 1.2) gives its muzzle and its shot, which the foe player fires
+    const fires = has(v, 'fires') ? { fires: freeze({ muzzle: [v.fires.muzzle[0], v.fires.muzzle[1]], shot: Object.assign({}, v.fires.shot) }) } : {};
+    return Object.freeze(Object.assign({ pose, poses: Object.freeze(FOE_POSES.slice()), anchor: Object.freeze([ax, ay]), size: Object.freeze([w, h]), h: v.h, w: v.w, mid: v.mid,
+      crown: freeze(v.crown.map(q => [q[0], q[1]])), exit: v.exit }, fires, { from: pack.id + '#' + (++compiles) }));
   }
   /* A patron compiles to { draw, mouth, drawn, from } with the interface of KW.props.PATRONS, which
      court.js gives: draw(x, by, look) draws its still parts with the seat at (x, by), mouth(x, by,
