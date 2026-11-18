@@ -6,8 +6,9 @@
 #
 # Under a systemd user session the command runs in a transient scope with CPUQuota and MemoryMax;
 # elsewhere it runs at a lower priority alone. KW_CPU (default 400%, four cores) and KW_MEM
-# (default 4G) change the ceiling. A command already inside a capped scope runs as it is, so the
-# scripts that cap themselves can be called through this one.
+# (default 4G) change the ceiling. A command already inside a capped scope (KW_CAPPED set) gets no
+# second scope and is run at nice 10 alone, so the scripts that cap themselves can be called
+# through this one; each nested call lowers the priority by 10 more.
 set -euo pipefail
 
 cpu="${KW_CPU:-400%}" mem="${KW_MEM:-4G}"
