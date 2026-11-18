@@ -958,10 +958,10 @@ the code's).
 A display's look, its display preferences, its quiet scenes and the scene each offered condition
 plays in are its settings. Each comes from four levels, highest first, key by key:
 
-1. **The address's hooks**: `bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
+1. **The address's hooks**: `wd=`, `bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
    `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`,
-   `pc=`, `hs=`, `h=`, `ck=` and `sc=` (see [The address](#the-address)). They keep screenshots the
-   same whatever is saved.
+   `pc=`, `fo=`, `cr=`, `pr=`, `wo=`, `ov=`, `hs=`, `h=`, `ck=` and `sc=` (see [The address](#the-address)).
+   They keep screenshots the same whatever is saved.
 2. **The saved settings**, made on the settings screen. Served by the bundled server they are the
    deployment's, kept by the server and the same on every display (see
    [The shared settings](#the-shared-settings)); with no server they are this browser's own, kept
@@ -1447,7 +1447,7 @@ build the input.
 The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `pl=`,
 `set=` and the settings hooks (`wd=`, `bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
 `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`, `pc=`,
-`ck=`, `sc=`) also work in live mode. `f=`, `fa=`, `e=`, `sw=`, `dv=`, `st=` and `sm=` act in the demo and do nothing elsewhere. The
+`fo=`, `cr=`, `pr=`, `wo=`, `ov=`, `ck=`, `sc=`) also work in live mode. `f=`, `fa=`, `e=`, `sw=`, `dv=`, `st=` and `sm=` act in the demo and do nothing elsewhere. The
 settings hooks, `h=` and `hs=` are the highest of the settings' levels (see [Settings](#settings)):
 each outranks this display's saved choices and the state file's defaults while the address holds
 it, and a value it does not know is ignored, with a line in the console, so that the next level
@@ -1466,6 +1466,8 @@ down is used.
 | `f=` | starts with that many flies, which come at -5000 ms, or at `fa=` |
 | `fa=` | when the flies of `f=` come, in ms, such as `fa=600`: with `e=` and time frozen, a fly that comes during the event is the cat's |
 | `pc=` | the pet's coat: `calico` or `ginger` |
+| `fo=`, `cr=` | the foe of the banned address's event and the critter a blocked advert becomes: `goblin` and `fly`, or a loaded world's by its long name, as `fo=kw.example/foe.drone` |
+| `pr=`, `wo=`, `ov=` | the prop set the devices are drawn from, the words and the overlay: `medieval`, or a loaded world's by its long name, as `wo=kw.example/words.neon` |
 | `st=` | how many of the demo's three invented streams play, `1` to `3`; without it three |
 | `sm=` | the demo's streams as the collector's setting `show` would send them: `names`, `titles` or `count`; without it `names` |
 | `sw=1` | starts a swat |
@@ -2044,6 +2046,22 @@ test world, its drone at home on the Deck; `worldmix-scenes` gives the WAN going
 condition only the battlement acts in the medieval world; `worldmix-world` is the World page with
 the open helm changed from the test world's dome; and `worldmix-knight-small` is the first at 960
 by 600. `tools/shots.sh compare-worlds` compares two such sets.
+
+The same run takes the 40 `orbit-` shots of the wall with the test world loaded. With the test world
+chosen whole (`wd=test.orbit/world.orbit`): the Deck while all is quiet, at 1400 by 600 and at 4:3
+too; its devices, the VM and the plain box drawn from the medieval world's set, on the Deck and on
+the Bridge; each condition the Deck acts; the Airlock running hot; the Bridge with the Captain
+talking while a shell is open (`orbit-ssh`, 3 450) and the workbench while updating; the moths
+swatted (`orbit-swat`); Glitch out of the Deck's floor at its rise, at the pry bar's hit at 1 682 and
+in the poof; the crate and the feast; the drone on the Bridge sitting up (12 500), at the top of the
+leap 40 ms before it meets the moth at 15 910, and pleased; and on the Deck for a moth that came with
+Glitch, at 22 406. Then the medieval world with the test world's parts (`orbit-mix-`): the Unit in
+chrome and panels at the battlement, and with the sword and shield in the yard; Glitch over the
+battlement's wall (`fo=`, hit at 1 668); the moths swatted (`cr=`); the Captain on the throne; the
+Airlock and the Deck for a condition (`sc=`); the test world's words and overlay over the camp and
+under a warning (`wo=`, `ov=`); and its devices in the camp's places (`pr=`). Last, the test world
+with medieval parts (`orbit-swap-`): the goblin out of the Deck's floor and the Classic build in the
+knight's own colours.
 
 The 28 `cat-` shots show the mouser cat. Every shot above shows it resting at its
 spot in its calico coat; these show it in the ginger coat (`pc=ginger`) at each of its eight spots

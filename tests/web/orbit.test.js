@@ -233,7 +233,8 @@ test('the Spark moth is Orbit\'s critter, and the drone catches it at its spot i
     const k = E.pet.catches();
     assert.equal(k.length, 1, scene + ': the drone\'s fly');
     assert.deepEqual(plain(k[0].sp.rest), plain(drone.spots[O(scene)].rest), scene);
-    for (let t = 0; t <= k[0].end + 200; t += 250) at(KW, t);
+    for (let t = 0; t <= k[0].end; t += 250) at(KW, t);
+    at(KW, k[0].end + 200);
     assert.equal(E.pet.catches().length, 0, scene + ': caught');
     assert.equal(E.pet.at(drone.spots[O(scene)], k[0].end + 200).pose, 'rest', scene + ': resting');
   }

@@ -15,10 +15,12 @@
 # With time frozen each shot depends only on its address, however many frames the browser paints,
 # so a single DIFF is a real difference.
 #
-# worlds takes the shots of WORLD_SHOTS, the settings screen with the test world, test.orbit, loaded
-# beside the medieval one, from a copy of web/ made outside the repository with the test world's
-# carrier added (docs/development.md, The test world), which it removes afterwards: the test world
-# never goes under web/. compare-worlds compares two such sets.
+# worlds takes the shots of WORLD_SHOTS, with the test world, test.orbit, loaded beside the
+# medieval one: the settings screen (worldmix-), and the wall in the test world, in a mix of the two
+# worlds' parts and in the test world with medieval parts (orbit-). It shoots a copy of web/ made
+# outside the repository with the test world's carrier added (docs/development.md, The test world),
+# which it removes afterwards: the test world never goes under web/. compare-worlds compares two
+# such sets.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -349,7 +351,7 @@ SHOTS=(
   "streams-badge-court|bar=0&t=3450&on=ssh,plex&st=2"
 )
 
-# The settings screen with the test world loaded (see worlds above): the knight's page with the
+# The test world loaded (see worlds above). First the settings screen: the knight's page with the
 # test world's body, skin and items beside the medieval world's, its own world in use with the open
 # helm and a wine tabard over it, the monarch's page with its Captain, the cast, the scenes with a
 # condition only the test world gives a second scene for, and the World page with the open helm
@@ -362,6 +364,59 @@ WORLD_SHOTS=(
   "worldmix-scenes|bar=0&t=2300&is=battlement&set=scenes&sc=wan_down:test.orbit/deck|1480,924"
   "worldmix-world|bar=0&t=2300&is=battlement&set=world&wd=test.orbit/world.orbit&hm=open|1480,924"
   "worldmix-knight-small|bar=0&t=2300&is=battlement&set=knight&bd=test.orbit/body.unit&sk=test.orbit/chrome"
+  # The wall in the test world chosen whole (wd=): the Deck while all is quiet, at the wide and the
+  # 4:3 sizes too, with its devices (the VM and the plain box from the medieval world's set), and in
+  # every condition it acts; the Airlock running hot; the Bridge with the Captain talking while a
+  # shell is open and the workbench while updating. Then its events on the Deck: the moths swatted,
+  # Glitch out of the floor at its rise, a moment after the pry bar's hit at 1682 and in the poof,
+  # the crate and the feast; and the drone's catch on the Bridge, sitting up, at the top of the leap
+  # 40 ms before it meets the moth at 15 910 and pleased, and on the Deck for a moth that came with
+  # Glitch. Then the medieval world with the test world's parts: the Unit in chrome and panels at
+  # the battlement and with the sword and shield in the yard, Glitch over the battlement's wall (hit
+  # at 1668), the moths swatted, the Captain on the throne, the Airlock and the Deck for a condition,
+  # the test world's words and overlay over the camp, quiet and under a warning, and its devices in
+  # the camp's places. Last, the test world with medieval parts: the goblin out of the Deck's floor
+  # (hit at 1668), and the Classic build in the knight's own colours.
+  "orbit-deck|bar=0&t=2300&wd=test.orbit/world.orbit"
+  "orbit-deck-wide|bar=0&t=2300&wd=test.orbit/world.orbit|1400,600"
+  "orbit-deck-43|bar=0&t=2300&wd=test.orbit/world.orbit|960,720"
+  "orbit-devices|bar=0&t=2300&wd=test.orbit/world.orbit&dv=pi,camera,camera!,machine-,vm,x"
+  "orbit-devices-bridge|bar=0&t=3450&on=ssh&wd=test.orbit/world.orbit&dv=pi!,camera,camera,machine,vm!,x"
+  "orbit-device-down|bar=0&t=2300&on=device&wd=test.orbit/world.orbit&dv=pi,camera,camera,machine!,vm,x"
+  "orbit-attack|bar=0&t=2300&on=attack&wd=test.orbit/world.orbit"
+  "orbit-wan|bar=0&t=2300&on=wan&wd=test.orbit/world.orbit"
+  "orbit-sick|bar=0&t=2300&on=sick&wd=test.orbit/world.orbit"
+  "orbit-disk|bar=0&t=2300&on=disk&wd=test.orbit/world.orbit"
+  "orbit-backup|bar=0&t=2300&on=backup&wd=test.orbit/world.orbit"
+  "orbit-pi|bar=0&t=2300&on=pi&wd=test.orbit/world.orbit"
+  "orbit-cpu|bar=0&t=2300&on=cpu&wd=test.orbit/world.orbit"
+  "orbit-swap|bar=0&t=2300&on=swap&wd=test.orbit/world.orbit"
+  "orbit-ssh|bar=0&t=3450&on=ssh&wd=test.orbit/world.orbit"
+  "orbit-update|bar=0&t=1250&on=update&wd=test.orbit/world.orbit"
+  "orbit-plex|bar=0&t=2300&on=plex&wd=test.orbit/world.orbit"
+  "orbit-night|bar=0&t=2300&on=night&wd=test.orbit/world.orbit"
+  "orbit-swat|bar=0&t=470&f=6&sw=1&wd=test.orbit/world.orbit"
+  "orbit-glitch-rise|bar=0&t=460&e=goblin&wd=test.orbit/world.orbit"
+  "orbit-glitch-bonk|bar=0&t=1682&e=goblin&wd=test.orbit/world.orbit"
+  "orbit-glitch-poof|bar=0&t=1900&e=goblin&wd=test.orbit/world.orbit"
+  "orbit-crate|bar=0&t=1700&e=crate&wd=test.orbit/world.orbit"
+  "orbit-feast|bar=0&t=1800&e=feast&wd=test.orbit/world.orbit"
+  "orbit-drone-alert|bar=0&t=12500&on=ssh&f=1&wd=test.orbit/world.orbit"
+  "orbit-drone-pounce|bar=0&t=15870&on=ssh&f=1&wd=test.orbit/world.orbit"
+  "orbit-drone-pleased|bar=0&t=17200&on=ssh&f=1&wd=test.orbit/world.orbit"
+  "orbit-drone-glitch-pounce|bar=0&t=22406&e=goblin&f=1&fa=600&wd=test.orbit/world.orbit"
+  "orbit-mix-unit|bar=0&t=2300&is=battlement&bd=test.orbit/body.unit&sk=test.orbit/chrome&hc=test.orbit/wire&tb=test.orbit/panel&pm=test.orbit/beacon"
+  "orbit-mix-unit-arm|bar=0&t=2470&on=cpu&arm=one&bd=test.orbit/body.unit&sk=test.orbit/chrome"
+  "orbit-mix-glitch|bar=0&t=1668&is=battlement&e=goblin&fo=test.orbit/foe.glitch"
+  "orbit-mix-moths|bar=0&t=470&is=battlement&f=6&sw=1&cr=test.orbit/critter.moth"
+  "orbit-mix-captain|bar=0&t=3450&on=ssh&mon=test.orbit/patron.captain"
+  "orbit-mix-airlock|bar=0&t=2300&on=cpu&sc=cpu_hot:test.orbit/airlock"
+  "orbit-mix-deck|bar=0&t=2300&on=wan&sc=wan_down:test.orbit/deck"
+  "orbit-mix-words|bar=0&t=2300&is=camp&wo=test.orbit/words.orbit&ov=test.orbit/overlay.orbit"
+  "orbit-mix-overlay-warn|bar=0&t=2300&on=disk&wo=test.orbit/words.orbit&ov=test.orbit/overlay.orbit"
+  "orbit-mix-props|bar=0&t=2300&is=camp&pr=test.orbit/props.orbit&dv=pi,camera,camera!,machine-,vm,x"
+  "orbit-swap-goblin|bar=0&t=1668&e=goblin&wd=test.orbit/world.orbit&fo=goblin"
+  "orbit-swap-classic|bar=0&t=2300&wd=test.orbit/world.orbit&bd=a&sk=warm&hc=brown&tb=blue&pm=red"
 )
 
 take() {

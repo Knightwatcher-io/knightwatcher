@@ -2708,6 +2708,195 @@
      }
     ]
    },
+   "back.panel": {
+    "slot": "back",
+    "name": "Back panel",
+    "parts": [
+     {
+      "at": "neck",
+      "shapes": [
+       {
+        "k": "poly",
+        "dir": "rows",
+        "pts": [
+         [
+          {
+           "c": -46,
+           "dShoulder": -1,
+           "bloat": -1
+          },
+          20
+         ],
+         [
+          {
+           "c": 46,
+           "dShoulder": 1,
+           "bloat": 1
+          },
+          20
+         ],
+         [
+          {
+           "c": 90,
+           "dShoulder": 1,
+           "bloat": 1
+          },
+          {
+           "c": 80,
+           "dHeight": 1,
+           "drop": -1
+          }
+         ],
+         [
+          {
+           "c": -90,
+           "dShoulder": -1,
+           "bloat": -1
+          },
+          {
+           "c": 80,
+           "dHeight": 1,
+           "drop": -1
+          }
+         ]
+        ],
+        "fill": "@base.k"
+       },
+       {
+        "k": "poly",
+        "dir": "rows",
+        "pts": [
+         [
+          {
+           "c": -43,
+           "dShoulder": -1,
+           "bloat": -1
+          },
+          23
+         ],
+         [
+          {
+           "c": 43,
+           "dShoulder": 1,
+           "bloat": 1
+          },
+          23
+         ],
+         [
+          {
+           "c": 87,
+           "dShoulder": 1,
+           "bloat": 1
+          },
+          {
+           "c": 77,
+           "dHeight": 1,
+           "drop": -1
+          }
+         ],
+         [
+          {
+           "c": -87,
+           "dShoulder": -1,
+           "bloat": -1
+          },
+          {
+           "c": 77,
+           "dHeight": 1,
+           "drop": -1
+          }
+         ]
+        ],
+        "fill": "@tabard.1"
+       },
+       {
+        "k": "strip",
+        "p0": [
+         -22,
+         40
+        ],
+        "p1": [
+         {
+          "c": -46,
+          "dShoulder": -0.5
+         },
+         {
+          "c": 72,
+          "dHeight": 1,
+          "drop": -1
+         }
+        ],
+        "hw0": 1.5,
+        "hw1": 2.5,
+        "fill": "@tabard.1"
+       },
+       {
+        "k": "strip",
+        "p0": [
+         -8,
+         40
+        ],
+        "p1": [
+         {
+          "c": -17,
+          "dShoulder": -0.5
+         },
+         {
+          "c": 72,
+          "dHeight": 1,
+          "drop": -1
+         }
+        ],
+        "hw0": 1.5,
+        "hw1": 2.5,
+        "fill": "@tabard.1"
+       },
+       {
+        "k": "strip",
+        "p0": [
+         8,
+         40
+        ],
+        "p1": [
+         {
+          "c": 17,
+          "dShoulder": 0.5
+         },
+         {
+          "c": 72,
+          "dHeight": 1,
+          "drop": -1
+         }
+        ],
+        "hw0": 1.5,
+        "hw1": 2.5,
+        "fill": "@tabard.1"
+       },
+       {
+        "k": "strip",
+        "p0": [
+         22,
+         40
+        ],
+        "p1": [
+         {
+          "c": 46,
+          "dShoulder": 0.5
+         },
+         {
+          "c": 72,
+          "dHeight": 1,
+          "drop": -1
+         }
+        ],
+        "hw0": 1.5,
+        "hw1": 2.5,
+        "fill": "@tabard.1"
+       }
+      ]
+     }
+    ]
+   },
    "head.unit": {
     "slot": "head",
     "name": "Box head",
@@ -4616,7 +4805,7 @@
      "g3": {
       "cls": "ground",
       "kind": "floor",
-      "x": 360,
+      "x": 410,
       "y": 594,
       "w": 132,
       "h": 112,
@@ -5896,40 +6085,40 @@
     "spots": {
      "deck": {
       "rest": [
-       860,
+       780,
        530
       ],
       "face": -1,
       "floors": [],
       "lane": 530,
       "fly": [
-       760,
+       700,
        420
       ]
      },
      "bridge": {
       "rest": [
-       180,
-       530
-      ],
-      "face": 1,
-      "floors": [],
-      "lane": 530,
-      "fly": [
-       300,
-       420
-      ]
-     },
-     "airlock": {
-      "rest": [
-       860,
+       910,
        530
       ],
       "face": -1,
       "floors": [],
       "lane": 530,
       "fly": [
-       740,
+       840,
+       380
+      ]
+     },
+     "airlock": {
+      "rest": [
+       780,
+       530
+      ],
+      "face": -1,
+      "floors": [],
+      "lane": 530,
+      "fly": [
+       700,
        410
       ]
      }
@@ -6446,7 +6635,8 @@
       "pauldrons": "pauldrons.panel",
       "arms": "arms.panel",
       "gauntlets": "gauntlets.panel",
-      "main": "main.bar"
+      "main": "main.bar",
+      "back": "back.panel"
      },
      "swatches": {
       "skin": "chrome",

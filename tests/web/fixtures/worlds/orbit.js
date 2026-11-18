@@ -2,10 +2,11 @@
 /* Writes the test world, test.orbit ("Orbit"), into test.orbit.pack.json beside this file, and
    checks that the file is what it writes. A small world made unlike the medieval one, so that
    anything the engine still assumes about the medieval world shows: a robot body at the ends of
-   every measurement's range in an outfit of flat panels, three scenes (Deck, Bridge, Airlock), its
-   own cast (the Captain, Glitch, the Spark moth and a hover drone that catches them), a prop set
-   that draws three kinds of device, its words and an overlay. It is read only by the tests, on
-   dev terms: it is never signed and never copied into web/. docs/development.md says more.
+   every measurement's range in an outfit of flat panels in every slot but the shield's (its pry
+   bar takes both hands), three scenes (Deck, Bridge, Airlock), its own cast (the Captain, Glitch,
+   the Spark moth and a hover drone that catches them), a prop set that draws three kinds of
+   device, its words and an overlay. It is read only by the tests, on dev terms: it is never signed
+   and never copied into web/. docs/development.md says more.
 
      node tests/web/fixtures/worlds/orbit.js           writes the file
      node tests/web/fixtures/worlds/orbit.js --check   exits 1 when the file differs
@@ -135,7 +136,8 @@ const OUTFIT = [
   ['pauldrons', 'pauldrons.panel', 'Shoulder panels', 'pauldrons.plate', '#6a7fae'],
   ['arms', 'arms.panel', 'Arm panels', 'arms.plate', '#7a8cb6'],
   ['gauntlets', 'gauntlets.panel', 'Grippers', 'gauntlets.plate', '#566791'],
-  ['main', 'main.bar', 'Pry bar', 'main.greatsword', '#b8c3dc']
+  ['main', 'main.bar', 'Pry bar', 'main.greatsword', '#b8c3dc'],
+  ['back', 'back.panel', 'Back panel', 'back.cape', '#4f6392']
 ];
 function outfit() {
   const items = {};
@@ -281,7 +283,7 @@ function bridge() {
       { when: ['strike'], shapes: [{ k: 'fx', fx: 'burst', p: [{ spot: 1, c: 132 }, 418] }] }
     ],
     over: [],
-    things: places({ pie: [300, 445], h: [80, 228, 926], g: [70, 218, 360] }),
+    things: places({ pie: [300, 445], h: [80, 228, 926], g: [70, 218, 410] }),
     rests: { bench: { from: 'spot', x: 50, y: 425, a: 'flat' } },
     anvil: { rest: 'bench' },
     seat: { x: 780, y: 490, bubble: [632, 190], turn: 3000, mouth: 220 }
@@ -391,7 +393,8 @@ function droneMember() {
     role: 'pet', name: 'Hover drone',
     sprite: { size: SPRITE, feet: FEET },
     coats: { steel: { name: 'Steel', poses } },
-    spots: { deck: spot([860, 530], -1, [760, 420]), bridge: spot([180, 530], 1, [300, 420]), airlock: spot([860, 530], -1, [740, 410]) },
+    // each spot on the floor clear of every place's box, so a device never stands over the drone
+    spots: { deck: spot([780, 530], -1, [700, 420]), bridge: spot([910, 530], -1, [840, 380]), airlock: spot([780, 530], -1, [700, 410]) },
     paw: [29, -38], take: 40, land: 36, lift: 30
   };
 }
