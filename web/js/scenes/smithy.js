@@ -8,7 +8,7 @@
   const WALL = ['#1d1411', '#21170f', '#1a120e', '#241913'];
   const BRICK = ['#3a1b14', '#43201a', '#331813', '#4a2419'];
   const IRON = [[.15, '#7d899b'], [.5, '#525c6e'], [1, '#353b48']];
-  /* The places for the knight's gear at rest (docs/page.md): the anvil, where the weapon lies under
+  /* The places for the knight's gear at rest (docs/rig.md): the anvil, where the weapon lies under
      the hammer, x and y the middle of its grip and a its angle, which lays it flat, x counted from
      the knight's spot, s.kx, so that the blade lies where the hammer falls; and the wall over the
      quench barrel, where a shield hangs from a nail, x and y the nail and w by h the room below. */

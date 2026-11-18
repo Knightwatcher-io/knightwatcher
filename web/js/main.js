@@ -1,9 +1,9 @@
 /* Knightwatcher: start-up. Reads the address, starts the knight from the packs the page ships with
-   and adds the ones the collector downloaded, applies the settings and mounts their screen, sizes
+   and adds the downloaded ones from data/packs/, applies the settings and mounts their screen, sizes
    the canvas to the screen, keeps the clock and the words over the scene, runs the frames, chooses
    between the demo and live data, keeps the shared settings in step with the server, and reloads
    the page when a new version of it has been deployed.
-   docs/page.md describes the modes, the settings and the address's test hooks. */
+   docs/display.md describes the modes, the settings and the address's test hooks. */
 (function (KW) {
   'use strict';
   const V = KW.view, ST = KW.state, E = KW.engine, Demo = KW.demo;
@@ -42,8 +42,8 @@
      The packs that ship with the page come in through their carriers, before the first frame. Only
      a 'dev' page accepts an unsigned pack; a deployed page refuses one at the signature step. With
      no usable base pack the knight is drawn from code, the full knight. KW.knight writes one line
-     to the console for each refused pack and one for where the knight is drawn from. The packs
-     the collector downloaded are added below, once the page knows it is served. The knight starts
+     to the console for each refused pack and one for where the knight is drawn from. The
+     downloaded packs in data/packs/ are added below, once the page knows it is served. The knight starts
      in the base pack's defaults, and the settings then choose its look. */
   KW.knight.start(KW.packText, ownVersion === 'dev', { look: {} });
 
@@ -54,7 +54,7 @@
      line and the captions from the collector's parts, and its overlay gives the colours and the
      font of the words over the scene, set below; without them the page shows the collector's text
      and display.css's colours. KW.world writes one line to the console about where the scenes are
-     drawn from (docs/worlds.md). A part that throws while drawing gives way to its code copy
+     drawn from (docs/world-loading.md). A part that throws while drawing gives way to its code copy
      alone. The world starts again below once the downloaded packs have come. */
   if (KW.world) KW.world.start(KW.packText, ownVersion === 'dev');
 
@@ -348,7 +348,7 @@
   requestAnimationFrame(frame);
   // Browsers refuse to fetch from disk, so a page opened from disk does not try.
   if (!fromDisk && !forceDemo) ST.start(onView);
-  /* The packs the collector downloaded, in data/packs/, fetched once at load in every mode while
+  /* The downloaded packs, those placed in data/packs/, fetched once at load in every mode while
      served. From disk the page shows the packs it ships with. The knight adds them, and when any
      came the world starts again at once with every text, those the page ships with and the
      downloaded ones (a downloaded kw.medieval of a higher version takes the place of the shipped

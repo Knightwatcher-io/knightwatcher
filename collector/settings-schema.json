@@ -635,7 +635,7 @@
   "env": [
     { "name": "KNIGHTWATCHER_OUT", "scope": "path", "required": true, "default": null, "mount": "/out", "services": ["collector", "server"], "example": "./var/out",
       "gui": { "admin": { "section": "Host", "label": "Output folder" } }, "editable": false,
-      "help": "The host folder the collector writes state.json to, and the packs it downloads. Mounted at /out in both containers, read-only in the server's, which serves it as data/. Must exist and be writable by the collector's account." },
+      "help": "The host folder the collector writes state.json to. Mounted at /out in both containers, read-only in the server's, which serves it as data/: state.json, and the packs placed in its packs/ folder, which the page reads. Must exist and be writable by the collector's account." },
     { "name": "KNIGHTWATCHER_BACKUP_LOG", "scope": "path", "required": true, "default": null, "mount": "/host/backup.log", "example": "/var/log/backup.log",
       "gui": { "admin": { "section": "Host", "label": "Backup log" } }, "editable": false,
       "help": "The host's backup log, a single file. Mounted read-only at /host/backup.log." },

@@ -67,16 +67,25 @@ there in a file. Credentials stay in `.env` ([The admin page](docs/server.md#the
 Open `web/index.html` in a browser. With no `state.json` beside it, the page runs on invented data
 and shows a bar of controls for every scene and state.
 
-Press and hold anywhere on the display for two seconds to open the settings: the world, which
-sets every part at once and is medieval for now, the knight's build
-(Classic, Broad or Slim), weapon, skin, hair, tabard and plume, the shield and armour from helmet
-to boots and a cloak or cape, the monarch and the monarch's skin, hair and robe, the cat's coat
-(calico or a ginger tabby), the headline size,
-a 12-hour clock, the helmet indoors, which quiet scenes take turns, and the scene some conditions
-play in (running hot at the camp rather than the training yard, say). Served by Knightwatcher's own
-server, what is chosen there is saved for every display; opened from disk, it is kept in that
-browser. The defaults under it are set in `config.toml`; see
+Press and hold anywhere on the display for two seconds to open the settings: the world, which sets
+every part at once, the knight's build (Classic, Broad or Slim), weapon, skin, hair, tabard and
+plume, the shield and armour from helmet to boots and a cloak or cape, the monarch and the monarch's
+skin, hair and robe, the cat's coat (calico or a ginger tabby), the headline size, a 12-hour clock,
+the helmet indoors, which quiet scenes take turns, and the scene some conditions play in (running
+hot at the camp rather than the training yard, say). Served by Knightwatcher's own server, what is
+chosen there is saved for every display; opened from disk, it is kept in that browser. The defaults
+under it are set in `config.toml`; see
 [Configuration](docs/configuration.md#the-settings-screens-defaults).
+
+## Worlds
+
+The knight lives in the medieval world: its seven scenes, the monarchs, the goblin, the flies and
+the cat, the devices drawn as medieval things, and the words and colours of the text over the scene.
+A world sets all of that at once, and the settings screen can also mix single parts, a monarch from
+one world on another's throne, say, or another world's scene for a condition. The page ships the
+medieval world, and loads another world's pack when it is signed with the project's key, or unsigned
+on a `dev` page; [The display](docs/display.md#another-world-pack) says where to put one, and
+[Worlds](docs/worlds.md) how one is made.
 
 ## How the parts fit
 
@@ -89,14 +98,30 @@ page instead, with each browser then keeping its own settings and no admin page.
 
 ## Documentation
 
-- [Design](docs/design.md): what the display is for and how the two parts divide the work
-- [The state file](docs/state.md): the contract between collector and page
-- [The page](docs/page.md): the files, the one grid, the scene interface, the modes and the address
-- [The collector](docs/collector.md): one poll, conditions, events, sources and how to add one
+For people running it:
+
 - [Configuration](docs/configuration.md): how settings work, `config.toml`, `.env`, and a reference of every setting
+- [The display](docs/display.md): the modes, the settings and worlds, the settings screen, the address's hooks, the admin page and deploying
 - [The server](docs/server.md): what it serves, the settings API and store, the admin page, its security, and a reverse proxy in front
 - [Security](docs/security.md): what never enters this repository, and the collector's and the server's privileges
-- [Packs](docs/packs.md): the format of a pack, its checks and signing, and the library that reads it
-- [Worlds](docs/worlds.md): the scenes drawn from world packs, the scene compiler and the medieval world's pack
 - [A monitor on the host](docs/monitor.md): showing the display on a screen wired to a headless host
-- [Development](docs/development.md): layout, checks, and the rules for changes
+
+For people making packs:
+
+- [Packs](docs/packs.md): format 1.0, the rig items hang on, the checks every pack passes, and signing
+- [Worlds](docs/worlds.md): format 1.1, the words, the overlay, presets, and parts of different worlds together
+- [Scenes as data](docs/scenes.md): shapes and terms, the fields of a scene, and how a scene compiles and acts
+- [The cast and the devices](docs/cast.md): the patron, foes, critters and pets, and the drawings of the devices
+
+For contributors:
+
+- [Design](docs/design.md): what the display is for, the terms, and how the two parts divide the work
+- [Development](docs/development.md): layout, rules, checks, the icons and signing the packs
+- [The state file](docs/state.md): the contract between collector and page
+- [The collector](docs/collector.md): one poll, conditions, events, sources and how to add one
+- [The page](docs/page.md): the files, the one grid, the scene interface, the effects, the devices and the cast
+- [The knight's rig](docs/rig.md): anchors, values and poses, the knight from the base pack, and gear at rest
+- [The pack library](docs/library.md): looks, compiled lists, the library, and the packs on the page
+- [Loading a world](docs/world-loading.md): `KW.world`, where the scenes are drawn from, failures, and the two copies of the medieval world
+- [The tests](docs/tests.md): every test file and what it checks, and the test world
+- [The screenshots](docs/shots.md): taking and comparing them, and what an older reference shows

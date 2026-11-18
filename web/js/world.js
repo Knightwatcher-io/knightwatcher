@@ -1,4 +1,4 @@
-/* Knightwatcher: the scene compiler (docs/worlds.md). Turns a scene of a world pack, as the pack
+/* Knightwatcher: the scene compiler (docs/world-loading.md). Turns a scene of a world pack, as the pack
    library (pack.js) has read and checked it, into an object with the scene interface of
    docs/page.md, and puts the scenes of kw.medieval in place of the code scenes of the same names;
    turns each kind of its prop set into a drawing of a device, which it puts in KW.kinds in place
@@ -25,8 +25,8 @@
      that a term gives the same bits as the code it replaces;
    - colours: hex, @base and the pack's own palettes, translucent colours spelt as the code spells
      them ('rgba(0,0,0,.3)'), and band lists of these;
-   - shapes: rect, ell, rrect, poly and strip without clip, glow, fx, pix, use and tile without pick
-     or only;
+   - shapes: rect, ell and rrect with or without a clip, poly, strip, glow, fx, pix, use, and tile
+     with its picks; no shape takes only;
    - layers: still (painted into the cached backdrop), moving (in draw) and over (in over), each with
      its when; a moving or over layer's groups, and keyframes on a clock in ms with show tracks;
    - the things mark, where the devices behind the watcher are drawn, the rest mark, where the
@@ -47,7 +47,7 @@
      parts and mouths at their anchors, in the user's skin, hair and robe, with the colours mixed,
      chosen by contrast, and drawn and dressed; and its pets: each pose of each coat from a stamp of
      pix shapes, painted once, with the pet's spots and the measures of its pounce.
-   Each later step adds rows to these tables. */
+   A scene that needs more adds its rows to these tables. */
 (function (KW) {
   'use strict';
   const D = KW.draw, V = KW.view;
@@ -491,14 +491,15 @@
 
   /* ---- Scenes ---------------------------------------------------------------------------------- */
 
-  /* The fields of a scene this engine does not build yet: the pole drawn under a high place. decor, quiet, name, sound and companion are not read: nothing draws
-     decorations yet, the engine's own lists say which scenes take turns while all is quiet, and the
-     other three are names and reserved slots. Nor are the anvil's spark, the bed's blanket and the
+  /* The fields of a scene this engine does not build yet: the pole drawn under a high place. decor,
+     sound and companion are not read: nothing draws decorations yet, and the other two are reserved
+     slots. The compiled scene leaves out quiet and name, which catalogue() reads from the pack's
+     data for the settings (the quiet scenes on offer, and each scene's name on the screen). Nor are the anvil's spark, the bed's blanket and the
      screen's glow, which say what the scene's own shapes draw (the hammer's sparks, the blanket over
      the sleeper and the television's light). */
   const LATER = ['pole'];
 
-  /* The rests of a scene: where the watcher's gear is set down (docs/page.md, Gear at rest). A frame,
+  /* The rests of a scene: where the watcher's gear is set down (docs/rig.md, Gear at rest). A frame,
      { x, y, a }, is where the weapon lies, its grip's middle at (x, y) and a its angle, "upright" 0
      and "flat" pi/2 or a number of radians; a place, { kind, x, y, w, h }, is where a rest view
      goes. Each compiles to the code scenes' own form, with spot true when its x counts from the
@@ -691,7 +692,7 @@
   }
 
   /* ---- Props ----------------------------------------------------------------------------------
-     The prop set props.medieval gives the drawing of each kind of device (docs/worlds.md, Props and
+     The prop set props.medieval gives the drawing of each kind of device (docs/cast.md, The
      devices). A kind compiles to { draw, mark, from } with the interface of KW.props.KINDS:
      draw(x, y, t, ok, part) draws it standing on the base (x, y), up (ok) or gone, its still part
      (part 'still'), its moving part ('moving') or both, and mark is the height above the base of the
@@ -800,7 +801,7 @@
   restoreKinds();
 
   /* ---- The cast --------------------------------------------------------------------------------
-     The cast of kw.medieval gives the drawings of the engine's supporting cast (docs/worlds.md, The
+     The cast of kw.medieval gives the drawings of the engine's supporting cast (docs/cast.md, The
      cast). A member whose id is its role, a dot and a name, as critter.fly, takes the place of the
      code's member of that name in its role's set of KW.cast, critters.fly; a member of a name the
      engine does not know is not compiled. Its shapes are compiled as a prop's and drawn moved to
@@ -1021,7 +1022,7 @@
      The word set words.medieval gives the templates the page builds the quiet line and the events'
      captions from, out of the parts the collector sends beside its own text; the overlay
      overlay.phosphor gives the colours of the words over the scene and their font, which main.js
-     sets as CSS custom properties on the display (docs/worlds.md, The words and the overlay).
+     sets as CSS custom properties on the display (docs/worlds.md, Words and the overlay).
      Without them the page shows the collector's text as it comes, and display.css's own colours,
      which are the same as the overlay's. These two are the base world's, read by name; another
      pack's word set or overlay is put in use by useWords() and useOverlay() (Other worlds, below)
@@ -1297,7 +1298,7 @@
   /* ---- Loading ---------------------------------------------------------------------------------
      start() reads kw.medieval, and every other pack but the base pack, from the texts of the packs
      that ship with the page (the page passes KW.packText, as it does to the knight), and again
-     with the packs the collector downloaded once they have come, with the knight's rule: a 'dev'
+     with the downloaded packs from data/packs/ once they have come, with the knight's rule: a 'dev'
      page accepts a pack unsigned, a deployed page only signed. Of two copies of one pack the
      higher version is used, as gather() chooses. Another pack
      read cleanly is kept for its presets and prop sets (see catalogue and useKinds). Each of its scenes whose id names a code scene is
@@ -1328,7 +1329,7 @@
      A compiled part should never throw while it is drawn: the checks and the compiler see to that.
      One that does anyway (a scene, a kind of device or a member of the cast) is caught for that
      frame, and from then on that part alone is drawn from its code copy, the rest of the pack
-     staying in use, as a part that fails to compile is (docs/worlds.md, When a part throws). Its
+     staying in use, as a part that fails to compile is (docs/world-loading.md, When a part throws). Its
      fault goes into the status with step 'draw' and to the console once. A word set whose
      templates throw while filling gives way to the collector's own words the same way (filled,
      above).

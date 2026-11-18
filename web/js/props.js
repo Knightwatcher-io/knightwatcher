@@ -101,7 +101,7 @@
 
   /* ---- The pie's lamp ----------------------------------------------------------------------------
      The pie's lamp is a lamp of its own, as a world pack gives one ({ at, box, lit, dark, light },
-     docs/worlds.md): two drawings, dark and lit, of the same pixels, painted once each into a canvas
+     docs/cast.md): two drawings, dark and lit, of the same pixels, painted once each into a canvas
      of their own, and each frame a soft light of radius 24 round the lamp's middle at 0.3 of the
      loop's level, the dark drawing, and the lit one over it at the loop's level, as world.js draws
      a pack's. Its pixels are the filling the crust paints in the gaps of the lattice, lit in the

@@ -1,0 +1,813 @@
+# The tests
+
+For contributors: what the tests check and how to read a failure. The commands that run them,
+inside the ceiling every run keeps to, are in [development.md](./development.md#checks); the
+screenshots are in [shots.md](./shots.md). Every run of a test goes through `tools/capped.sh` with
+`--test-concurrency=2`, as development.md says, though the shorter commands below leave the wrapper
+out.
+
+## Every test file
+
+| File | Checks |
+|---|---|
+| `tests/web/base-pack.test.js` | the shipped base pack: its contents, the free options, builds and items as approved, and whether it ships signed |
+| `tests/web/base-read.test.js` | the base pack's whole read, its signed bytes and six looks against the copy stored before format 1.1 |
+| `tests/web/ed25519.test.js` | the verifier against RFC 8032's vectors and `node:crypto` |
+| `tests/web/effects.test.js` | each effect's cost against what it draws, and `pack.js` holding effects to their tables |
+| `tests/web/foe.test.js` | the goblin's plan and hit on every build with each weapon, the blade meeting it and never passing through |
+| `tests/web/format-1.1.test.js` | the world sections of format 1.1: one refused copy of the world fixture for each rule |
+| `tests/web/knight.test.js` | the knight call by call against the stored record, the arm and blade checks, the gear at rest |
+| `tests/web/knight-free-classic.test.js`, `knight-free-broad.test.js`, `knight-free-slim.test.js` | the free items' checks of `knight.test.js`, one build each in a process of its own |
+| `tests/web/loading.test.js` | the downloaded packs, the refusals and the knight drawn from code |
+| `tests/web/orbit.test.js`, `orbit-body.test.js`, `orbit-parts.test.js`, `orbit-swap.test.js` | the test world: read and drawn, its body at the ends of the ranges, its devices, cast and overlay, and the whole swap ([The test world](#the-test-world)) |
+| `tests/web/pack.test.js` | the pack library and format 1.0 |
+| `tests/web/pet.test.js` | the mouser cat from the pack against the code, and the engine's catch |
+| `tests/web/places.test.js` | what stands in every scene's places stays on the grid and clear of the others |
+| `tests/web/props.test.js` | the devices inside their places, gone against up, only what moves drawn each frame |
+| `tests/web/scenes.test.js` | every scene's paint and draw against the stored records, from code and from the pack |
+| `tests/web/settings-schema.test.js` | the page's lists of settings, scenes and conditions against the settings schema |
+| `tests/web/settings.test.js` | the settings' levels, storage, look and engine input, and the knight in 720 looks |
+| `tests/web/shared-settings.test.js` | the shared settings against a fake server |
+| `tests/web/state.test.js` | reading the state file, against the example in [state.md](./state.md) |
+| `tests/web/streams.test.js` | the streams' detail line and badge |
+| `tests/web/world.test.js` | the scene compiler and the medieval world's pack |
+| `tests/web/world-cast.test.js`, `world-knight.test.js`, `world-props.test.js`, `world-scenes.test.js`, `world-words.test.js` | the medieval world's cast, the house and the smithy with the knight's gear, devices, scenes, and words and overlay, each from the pack against the code |
+| `tests/web/world-loading.test.js` | the medieval world's pack refused, missing, failing to compile or throwing while drawing |
+| `tests/web/world-mix.test.js` | parts mixed across worlds, on the settings screen and the admin page |
+| `tests/web/worlds.test.js` | worlds as presets, the catalogue, the resolution rule and the devices per kind |
+| `tests/tools/cat-stamps.test.js` | the medieval world's pack holds what `tools/cat-stamps.js` writes, pixel for pixel |
+| `tests/tools/check-private.test.js` | `tools/check-private.sh` in a small repository made for the run: clean, a match, no patterns, and a pattern `git grep` cannot read |
+| `tests/tools/deploy.test.js` | `tools/deploy.sh` run on temporary folders and copies of `web/` |
+| `tests/tools/pack-carrier.test.js` | each carrier pushes its pack file's exact text |
+| `tests/tools/settings-schema.test.js` | `tools/settings-schema.js` and what it writes |
+| `tests/tools/sign-pack.test.js` | the signing tool, and the shipped packs' signatures |
+| `tests/collector/test_cli.py` | `--check-config`, `--once` and `--health` |
+| `tests/collector/test_conditions.py` | the conditions the collector judges: holding and clearing, CPU and memory, and the rest |
+| `tests/collector/test_config.py` | reading `config.toml`: defaults, paces, ranges, removed and unknown settings |
+| `tests/collector/test_contract.py` | the contract check against [state.md](./state.md): devices, `device_down`, defaults and the parts |
+| `tests/collector/test_devices.py` | the checks behind devices, against local sockets and a local HTTP server |
+| `tests/collector/test_reload.py` | `admin.json` laid over `config.toml`, the start and reload rules, the credentials' names |
+| `tests/collector/test_runner.py` | one poll: the file it writes, the defaults, failing and slow sources, each source's pace |
+| `tests/collector/test_schema.py` | the settings schema against the collector, the example files and `compose.yaml` |
+| `tests/collector/test_sources.py` | each source against invented answers |
+| `tests/collector/test_text.py` | clipping, joining and formatting the collector's words |
+| `tests/server/test_server.py` | the bundled server on the loopback |
+| `tests/server/test_admin.py` | the admin page's side of the server |
+| `tests/server/test_stamp.py` | the version stamp, `server/stamp.py`, against `tools/deploy.sh` |
+
+`tests/collector/kw_helpers.py` holds helpers the collector's tests share. The fixtures are in
+`tests/web/fixtures/`: the knight's stored record (`knight/calls.json`, and `knight/idle.log`, the
+full record of one pose, idle at 2 300 ms, compared call by call), the scenes'
+(`scenes/<scene>.json`, one for each of the seven scenes, and `scenes/cast.json`), the test world
+(`worlds/`), and the packs and states listed in [development.md](./development.md#layout).
+
+## The page's tests
+
+Syntax, from the repository's root:
+
+```bash
+for f in $(find web/js web/packs web/admin -name '*.js'); do node --check "$f" || exit 1; done
+```
+
+The mapping from a state file (the devices and the fallback to the pie among it), `judge`,
+the rules for events and the decision to reload, the props of the devices, the knight's
+drawing and rig on both paths, the base pack, the pack library, and loading the packs with what
+is drawn when they fail:
+
+```bash
+node --test tests/web/
+```
+
+`tests/web/knight.test.js` checks the knight call by call. It loads the scripts `index.html` loads
+that the knight's drawing needs (`draw.js`, `sprites.js`, `effects.js`, `props.js`, `knight.js`, the
+house and the smithy, `ed25519.js`, `pack.js` and the base pack's carrier, in the page's order; not
+the scene compiler or the medieval world's pack, which dress no knight) under Node
+with an empty `window` and a fake canvas context that records every call and every property set;
+`KW.devices.draw` writes one line in the record. It chooses the knight's source as `main.js` does
+and draws 112 records: the knight in 94 poses, the bare head in bed twice, the speech bubble twice,
+the helmet and the weapon at rest in four, and the house and the smithy in ten, each painted and
+drawn in the states that show the gear at rest. It compares each record with the one stored in
+`tests/web/fixtures/knight/`. It does this twice: once as a deployed page, which refuses the
+unsigned base pack and draws from code, and once as a `dev` page, which draws from the base pack.
+The stored record was taken from the code, and both paths must give it. For every pose it holds the
+number of calls, a hash of the whole record and a hash of each block of 128 calls; for one pose it
+holds the full record. Equal calls mean equal pixels, so a change that should leave the knight
+alone is checked in about a second, before the screenshots. A failure names the pose and the block
+of calls where the first difference lies, or the exact call in the pose stored in full.
+
+One spelling is allowed to differ on the pack path. The pack writes the helmet's translucent shade
+as `rgba(60,30,20,0.18)`, as JavaScript writes the number, where the code writes
+`rgba(60,30,20,.18)`; a canvas reads both as the same colour. Before the pack path's record is
+compared, the alpha of such a fillStyle loses its leading zero. Every other character is compared
+as drawn, and the screenshots confirm the pixels.
+
+`tests/web/props.test.js` loads `draw.js`, `sprites.js`, `effects.js` and `props.js` the same way and checks each
+kind of device: that it stays inside its class box above its base, up and gone, the owl the high
+class's and the rest the ground class's; that its moving part is only its lamp of its own, inside
+its box, and that no kind has one while down; that the engine's lamp fades
+green to black over 3.6 seconds while up and red to black over 2 while down; that the owl's eyes
+glow amber, the crystal pale blue-white, the potion blue and the chest's jewel gold while up, and
+at the low point of the pulse a dimmer colour of the same hue, bright enough to read as lit; that
+down nothing is lit and no down red is left, the dazed owl's spirals and the chest's dark jewel
+drawn still; and that no device light is green; that the owl's wall plate stands where the camera's
+did, x 22 to 32 from 64 above the base, so a pole meets it; that its still part does not change
+with time; that gone differs from up; and that the pie in parts draws what the whole pie drew. For
+the pie's lamp it checks that it lights red on the lamps' loop up, down to a dimmer red, that down the pie has no lamp
+and no steam and its moving part draws nothing, that the lamp covers exactly the filling the
+still part leaves showing through the lattice, that the last slice's filling is still and unlit,
+that nothing but the steam stands above the dome, and that it stays inside the pie's place. It
+prints the calls each part costs.
+
+`tests/web/world-props.test.js` draws every kind from the medieval world's prop set beside the
+code's drawing of it, call for call, in every place of every scene (the court's among them), up and
+gone, with and without its question mark, at seven moments, and its still and moving parts alone;
+the moving parts every 25 ms through the lamps' loops; with the rest of what the compiler does for
+the devices ([cast.md](./cast.md#the-devices-on-the-page)).
+
+`tests/web/world-cast.test.js` draws the fly from the medieval world's cast beside the code's, both
+frames and what falls, at whole and fractional points, and runs the engine's frames every 20 ms
+while six flies fly in, hover, are swatted and fall, with the cast from the pack and from code, every
+call of every frame compared. It draws each monarch from the pack beside the code's in 55 looks
+each, call for call, every skin with every hair among them. It holds the goblin's six pose canvases from the pack to the code's,
+call for call, and runs the goblin's whole event every 20 ms at the battlement and at the camp from
+both; with the rest of what the compiler does for the cast ([cast.md](./cast.md#the-cast-on-the-page)).
+`tests/web/foe.test.js` loads no compiler, so it checks the code's goblin;
+`tests/web/world-scenes.test.js` runs its checks on the pack's.
+
+`tests/web/pet.test.js` holds the mouser cat from the pack to the cat from code, every pose in both
+coats call for call, and plays the engine's catch with time frozen: who a fly belongs to, the swat
+passing over the cat's flies, one fly at a time with the time of every step, the poses through a
+catch and the fly meeting the paw at the top of the leap, three of the cat's flies at most, no fly
+under a warning and the flies on screen leaving, none in the cellar, a new scene starting clear, the
+spot by the bed at night under the dimming, the drawing order, the note and the coat, and on a page
+without `cat.js` every fly the knight's, waiting indoors as before ([The cast](./page.md#the-cast)).
+
+`tests/web/world-words.test.js` loads the page's scripts but the engine, the settings and `main.js`,
+and checks the quiet line and the captions built from the collector's parts in the medieval words,
+against the collector's own rule, with the collector's text when there are no parts or no words;
+the overlay's custom properties against the fallbacks `display.css` gives them; that `main.js`
+writes the words with `textContent` and sets the overlay after the world has started; where the
+words and the overlay come from on a `dev` and a deployed page; and the demo's parts, texts and
+lines ([worlds.md](./worlds.md#the-words-and-the-overlay-on-the-page)). `tests/web/state.test.js` checks that
+`quiet_parts` and an event's `parts` are read as strings, or not at all.
+
+`tests/web/streams.test.js` checks the streams: the stream the line shows at each moment, by the
+clock alone; one stream without `1 of 1`; the title giving way to the name and the count within 60
+characters, counted by code point; each line held to the collector's own `line()`, run through
+`python3` (the test is skipped without it); the sessions read as strings, at most 32, a session with
+nothing to show passed over; the collector's `detail` whenever there are no sessions; when the
+badge shows, its count in every mode of `show`, and that `main.js` writes both with `textContent`
+from `streamWords` and `display.css` keeps the badge outlined in a colour of the overlay and sized
+with the headline; and the demo's invented streams in each mode, with the detail the collector
+would write for them.
+
+`tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
+foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
+the entrance runs in order and the poof is over within the event's 3.4 seconds; that the goblin
+stands in the scene's `foeZone`, clear of the knight and of the whole class box of the pie and of
+every device on the ground, and does not come when there is no room; and, for the greatsword from the base pack and
+from code, the arming sword and the mace, at every spot the knight strolls to in both scenes, that
+the goblin stands within the weapon's reach, that the blade comes within 3 pixels of its crown at
+the hit and of a drawn pixel of its sprite, that the hit pose plays only from that moment, and that
+the blade never enters the goblin by more than 2. A sword is measured by its blade's outline and
+kept out of every drawn pixel of the goblin through the whole strike. The mace is measured by its
+drawn outline, read from the base pack's own shapes rather than from the engine, and kept out of
+the goblin's crown, the planned outline, laid where the goblin is drawn at each moment up to and
+including the hit. Its head meets the goblin where the swords do not, by the near ear at the camp
+beside a device in `g3`, and there the hit pose flings the near hand above the crown and the bounce
+brings a flange back across the ear's point, so the drawn goblin and the bounce are left out of the
+mace's check. The same check runs on Broad and Slim with each weapon. On every build and with each
+weapon the goblin comes wherever it comes on Classic, at the same spot, and is struck within 12 ms
+of Classic's hit, or 16 with the mace, which beside `g3` meets the goblin at the end of its reach,
+where each build changes which point of a flange meets it first (14 ms at most); at the knight's
+first spot the hits are, on Classic, Broad and Slim, with the greatsword 1657, 1659 and 1656 ms on
+the battlement and 1661, 1663 and 1659 at the camp, with the sword and shield 1697, 1705 and 1691 on
+the battlement and 1707, 1709 and 1706 at the camp, and with the mace and shield 1698, 1709 and
+1684 on the battlement and 1706, 1710 and 1703 at the camp, the goblin coming left of the knight in
+both since the scenes' redesign. The
+blade `bladeOf` measures is the rig's on the look's build, its grip raised by the build's height,
+and the present knight's on the code path. A blade too short to reach it anywhere keeps the goblin
+away.
+
+`tests/web/world-scenes.test.js` runs those of its checks that depend on a scene again on each scene
+of the medieval world's pack that hosts a foe, compiled from the pack: the entrance and the poof,
+where the goblin stands, the hits on every build and the blade against the goblin with each weapon.
+It also holds the goblin's whole plan there (where it stands, the line it comes over, the moment of
+the hit) to the plan in the code scene, for every weapon and build, and runs the checks of
+`places.test.js` on every scene of the pack. It runs every scene of the pack that has an act (a
+`target`, an `anvil`, a `bed` or a `screen`) frame by frame beside its code scene, comparing every
+call, `over`'s among them, every change to the knight's pose and `strike`.
+`tests/web/world-knight.test.js` runs the knight test's checks of the house and the smithy on the
+two from the pack: the ten records of them painted and drawn against the stored ones, with the
+knight from code and from the base pack; in each of the base pack's other looks (the arming sword
+and the shield, Broad and Slim) the same calls as the code scenes; their backdrop keys; their
+rests, and the house's places and rounds; the pegs under the arming sword's blade; no hot tip for a
+weapon without a blade; and no shield on the house's wall when its rest view does not fit. `foe.test.js` and
+`places.test.js` draw the code scenes.
+
+The same knight test checks the choice itself: the console lines, the refusal at the `signature`
+step, the code path when there is no base pack, a broken one or no library, a changed colour in the
+pack showing on the knight, and the clamping of `drop` and `bloat`. For the face it checks that a
+changed skin ramp, cheek, puffed cheek and hair brow show on the pack path and change nothing else;
+that each of the 36 pairs of the base pack's skins and hair colours, in the quiet, sick, hot,
+memory-tight, WAN-down and hungry faces, helmet on and off, and the sick head in bed, draws its own
+face band, lids, cheeks, puffed cheeks and brows and no colour that belongs only to another skin or
+another hair's brows; and that the brows keep contrast against every skin: each brow is drawn with
+the dark edge exactly when its contrast with the skin bands it lies on, worked out in the test
+apart from `knight.js`, is under 2.5, the 22 such pairs are the expected ones, today's warm skin
+with brown brows not among them, and the edge is darker than every skin band it lies on. For the crate it
+checks, from the base pack and helmet on and off, with and without the bob, every 100 ms over the
+sway, that it is drawn after the pauldrons and before the arms, that its hands are at its lower
+corners, that no pixel of it lies on the helmet's opening or the bare face, and that nothing of the
+load rises above the helmet. The call record holds the code path to the same calls.
+
+For the three builds the knight test checks that Classic, chosen by name, draws the stored record
+in every pose from the base pack; that Broad and Slim, with each weapon, draw every pose of the
+record, both swings at every twentieth and the attack without a throw, a refusal, a broken number
+or a fall back, each frame's fills from the look's lists within the look's cost, and other calls
+than Classic's; that on all three builds, with each weapon, both hands stay on the grip (the
+greatsword's two hands on its frame between its stations, the sword hand on its station and the
+shield hand where the pose puts it) in every frame of both swings at every hundredth, the attack
+every 20 ms, the goblin strike on both sides and the stances, that the grip is where Classic holds
+it raised or lowered by the build's height, that the hands hang 10 outside and 48 below each
+shoulder with no weapon, and that the hammer's hands do not move; that no arm is drawn over a blade,
+its guard or the shield on Broad and Slim with each weapon, by the same frame-by-frame check as
+above; and that the camera at the house's `h2` clears the knight of every build.
+
+To see every call that differs, dump the records of both trees and compare the folders.
+`dump-pack:` dumps the pack path's records instead of the code's:
+
+```bash
+KNIGHT_LOG=dump:/tmp/kw-calls-old node --test tests/web/knight.test.js        # in the tree before
+KNIGHT_LOG=dump:/tmp/kw-calls-new node --test tests/web/knight.test.js        # in the tree after
+KNIGHT_LOG=dump-pack:/tmp/kw-calls-pack node --test tests/web/knight.test.js  # the pack path
+diff -r /tmp/kw-calls-old /tmp/kw-calls-new
+```
+
+`tests/web/loading.test.js` checks the downloaded packs, the refusals and their console lines, the
+fallback to the base pack's defaults, the code path in every case of failure and a throw inside a
+draw list, and that `look()` draws a new look from the packs already loaded, a downloaded one
+included, where `start()` again would lose it; see
+[The pack library's tests](#the-pack-librarys-tests). `tests/web/world-loading.test.js` checks the same for the medieval
+world's pack: refused, missing, failing to compile, a part throwing while drawing and drawn from
+code alone from the next frame, a throw in the engine's own drawing, the downloaded world packs and
+the admin page's scripts; see [world-loading.md](./world-loading.md#two-copies-held-equal).
+
+`tests/web/settings.test.js` checks the settings: the order of the levels key by key, a value each
+level does not know ignored with one console line, a section that is not an object, the builds
+ready from the base pack, a choice saved under `knightwatcher.settings` and read back, a stored text
+or value the page does not know, a browser that refuses storage on reading, on writing or both, the
+reset of each section, when listeners are told, the state file's `defaults` from a fixture
+(`fixtures/state-defaults.json`) through `KW.state.map` to the store, the engine's input, and the
+12-hour clock, `12:05 AM` and `12:30 PM` among it. For the monarch's hair and robe it checks each
+level in turn, values the page does not know (the empty "as drawn" among them), "As drawn"
+clearing one saved key and falling to the defaults, and the swatches' bands in the engine's input.
+For the scenes it checks every scene's `can` against the table in
+[design.md](./design.md#scenes-chosen-per-condition), that every condition can be acted in its own
+scene, the five conditions offered, each level in turn, a scene that cannot act its condition, a
+condition not offered and an unknown name each ignored with one line, the saving, reading back
+and reset of the section, and a text saved before the section existed. In a sandbox it checks the
+engine's quiet rotation, the engine playing a condition in the scene chosen for it only where that
+scene can act it, the monarch's skin (the court's own calls for the warm swatch, and each other
+swatch's colours alone for every monarch), the monarch's hair and robe (the court's own calls when
+none is given or one cannot be read, each swatch's bands where one is, and the backdrop's key), and
+`look()`. It checks the build row's choices (`KW.settings.buildChoices`): Classic, Broad and Slim
+from the base pack's names with Ready under each, a renamed build shown by its new name, and a
+base pack that draws build A alone greying the other two by their letters. It also draws the
+knight from the base pack in every combination the settings offer, weapon by skin by hair by hair
+style with the build, the tabard and the plume cycled, 720 looks, the build turning so that each
+meets every weapon, skin, hair colour and hair style, each standing, attacking and swinging both
+ways, helmet on and off, the bare head and the gear at rest, and checks that none throws, falls
+back or passes the caps, that it is rigged on its build, and that its colours are drawn; every
+choice of the gear on every build, 108 looks, beside the longsword and the mace in turn, the long
+cloak drawn in the gold plume's colours; and every monarch in every skin, hair and robe, "As drawn"
+among them, 882 courts, each drawing its own colours. For the gear it checks that every value names
+an item of its slot in the base pack and every item of a slot is offered, the page's own being the
+base pack's defaults; the look each choice makes, the shield carried only beside a one-handed
+weapon and no back putting nothing on; what the screen greys and the words it says; and the
+choices' names from the base pack, a base pack without an item offering only what it draws.
+
+The stored record changes only when the knight is meant to look different. Store it again from the
+code as it is with `KNIGHT_LOG=write node --test tests/web/knight.test.js`, and look at the
+screenshots before trusting it. A change to the knight's look then changes the base pack too, so
+that both paths still give the stored record.
+
+`tests/web/scenes.test.js` checks the scenes call by call in the same way, so that a scene moved into
+pack data can be shown to draw exactly what it drew. It loads the scripts `index.html` loads that
+the scenes need (`draw.js`, `sprites.js`, `effects.js`, `props.js`, `knight.js`, the seven scenes,
+`state.js` and `engine.js`, in the page's order) into a fresh sandbox for each state, with the
+knight from code and the view's edges set as `fit()` sets them, and records each scene's `paint`,
+then for each moment
+its `act`, `draw` and `over` and the devices in front of the knight, which the engine draws after
+it. What `act` and `draw` change in the frame (the knight's pose, `strike`) is written as a line per
+field. The devices are drawn by `KW.devices`, and a canvas of the fake document keeps its own calls,
+written into the record where it is drawn, each after `| `; so the record holds every call that
+reaches the screen. Where a scene calls on the knight (`KW.knight.head`, `speech`, `swing` and
+`rest.draw`) the record has a line with the call and its arguments instead of the knight's own
+calls, which `knight.test.js` checks.
+
+The states, for every scene: idle; each condition in its `can`, the dish gone for `pi_silent` and a
+machine down with a box among the devices for `device_down`; the helmet the other way from the
+scene's own; and the devices in all seven places, up, gone and alerting, up in other kinds, and
+gone without alerting. The house adds the television on, the smithy the knight at x 300, the yard
+its dummy struck by the training swing and then wobbling, and the court each monarch in its own
+colours and in each of the base pack's six skins, and a sample of hair and robe: each monarch in
+each hair with a robe and a skin turned so that every monarch meets every hair, robe and skin, and
+light hair meets dark skin, where the brows change colour, and each with a hair alone and a robe
+alone. Each state is drawn at 960 by 600, at 1400 by 600, where `HL` and `HR` lie 236 pixels
+outside the grid, and at 960 by 720 (4:3), where `HT` lies 122 above it; and at 0, 1250, 2300, 3450
+and 4700 ms, which catch the hammer striking and raised, the monarch talking with the mouth open and
+shut, the question marks shown and hidden, the WAN's sparks and the sleeper's breathing, or at the
+moments of the dummy's wobble. The goblin's six poses, the flies, the hole, the clods, the smoke, the
+sparkles, the crate and its parachute are recorded once, apart (`cast`). The fly and the goblin of
+the medieval world's cast are drawn again from the pack against the same records.
+
+Each scene the medieval world's pack gives (today every scene) is then drawn again, with the
+monarchs from its cast, compiled from the
+pack by `world.js` as a `dev` page compiles it, in the same states, at the same sizes and moments,
+and held to the same stored records: the code and the pack must draw the same calls
+([world-loading.md](./world-loading.md#two-copies-held-equal)). The backdrop's key is not in the records, so the
+test also works out each scene's key in every recorded state, from code and from the pack, and
+requires the two to tell the states apart alike: two states share a key from the pack exactly when
+they share one from code, whatever the strings. And it requires the compiled scene to give the code
+scene's spot, places, rests, rounds, `can`, weapon and helmet, `outdoors`, `foeZone` and `crate`, and the same
+parts drawn. The records are
+stored from code alone: `SCENES_LOG=write` never stores the pack's copy, and `SCENES_LOG=dump:`
+writes it to a folder of its own, such as `cellar@kw.medieval`.
+
+The 1 803 records are stored in `tests/web/fixtures/scenes/`, one file per scene and `cast.json`:
+for each record the first 16 characters of the hash of its calls, and for each distinct record its
+number of calls and a hash of each block of 1 024 calls, about 230 KB in all, where the records in
+full would weigh 287 MB (123 MB counting each distinct record once). A run takes about 80 seconds,
+the 1 782 records of the scenes from the pack and the 21 of its cast included (the court's 522, the
+house's 270, the battlement's and the yard's 234 each, the camp's 216, the cellar's 162 and the
+smithy's 144). When a record differs, the test draws it again
+from the repository's `HEAD` (`git show`), and when `HEAD` draws the stored record it names the
+scene, the state, the size, the record and the first call that differs, with what `HEAD` drew there
+and what was drawn. Without git, or when `HEAD` draws something else too, it names the block the
+first difference lies in and prints what was drawn there; dump both trees and compare the folders to
+see every call. `SCENES_WEB` points the test at a copy of `web/`, to try a change outside the
+repository:
+
+```bash
+SCENES_LOG=write node --test tests/web/scenes.test.js         # stores the records of the code as it is
+SCENES_LOG=dump:/tmp/kw-scenes node --test tests/web/scenes.test.js
+SCENES_WEB=/tmp/kw-copy/web node --test tests/web/scenes.test.js
+```
+
+Store the records again only when a scene is meant to look different, and look at the screenshots
+before trusting them. The records were stored before the effects moved out of the scenes into
+`effects.js`, and the scenes draw them unchanged through it.
+
+`tests/web/effects.test.js` checks the effects of `effects.js` (see [The effects](./page.md#the-effects)).
+It loads `draw.js`, `sprites.js`, `effects.js` and `props.js` into a sandbox whose context counts
+the calls that fill, and draws every effect with a spread of its fields (each at its least, each at
+its greatest, its defaults, and forty made up at random within its table), at the three sizes and
+at six moments for one that moves, or for `burst` at five points of the sparks' progress and six
+times after the straw's trigger. Each drawing must make no more fills, and no more glows, than the
+effect's cost function gives for those fields, and for every effect some drawing must come within a
+quarter of it, so that no bound is loose enough to say nothing. A drawing whose cost passes 200 000,
+which no scene may hold, is not drawn. It checks that the effects are the list `pack.js` names, that
+a field left out draws as its default, and, with `pack.js`: that every effect reads clean in a 1.1
+scene, with its required fields and with every field given its default; that every field of every
+effect is refused at `fields`, naming it, when given a value of the wrong kind or out of its range;
+that a field the table lacks and a required field left out are refused; that scalars are held to
+their ranges at both ends, colours resolved and named values checked; that the counts step costs
+each effect with its own function at the ends of the scene's ranges; that effects too costly for a
+frame, or with too many glows, are refused; and that the world fixture still reads clean.
+
+The deploy tool, which it runs against temporary folders and copies of `web/`, never the
+repository's own, and the pack carriers against their pack files:
+
+```bash
+node --test tests/tools/
+```
+
+## What each test file checks
+
+
+`node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
+the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy, which show that gear, against a fake canvas, once
+from code and once from the base pack, and compares every call with a
+stored record, in about a second. The record is stored again only when the knight or those scenes are meant to change;
+[The page's tests](#the-pages-tests) says how. The same file draws every frame of the swings, the attack
+and the goblin strike with the greatsword and with the sword and shield, and fails if an arm is
+drawn over a blade or a shield ([rig.md](./rig.md#anchors-values-and-poses)). The same checks for the
+base pack's free items of 1.4.0 (every new weapon with every shield it may carry, the mail and
+padded sleeves and gloves, every free item in every pose, on each build) run from
+`knight-free-classic.test.js`, `knight-free-broad.test.js` and `knight-free-slim.test.js`, which
+load `knight.test.js` with `KNIGHT_PART` naming one build, so that they run in processes of their
+own beside it; each takes about two minutes, the longest files of the suite. For the three builds it draws
+Classic, chosen by name, against the stored record; Broad and Slim with each weapon in every pose
+and swing frame without a throw and within the look's cost; the hands on the grip on every build
+through both swings, the attack and the goblin strike; and the arm check on Broad and Slim.
+`tests/web/foe.test.js` checks the goblin's plan and hit on every build with each weapon, and that
+the blade the engine measures is the one drawn. `node --test tests/tools/` also checks that every pack
+carrier matches its pack file, that the mouser cat's stamps and member in the medieval world's pack
+are what `tools/cat-stamps.js` writes from `web/js/cat.js` and read back to the code's pixels, that the copy of the settings schema in `web/js/settings.js` and the
+reference in `docs/configuration.md` are what `tools/settings-schema.js` writes, tests the signing tool with keys generated for the run, and checks
+that every pack in `web/packs/` that carries a `sig` verifies against the key table in `pack.js`.
+`tests/web/format-1.1.test.js` checks the world sections of pack format 1.1 as the library reads
+and checks them: one refused copy of its world fixture for each rule, the
+limits at their edges, the costs, the signature over a 1.1 pack, and that a 1.0 pack reads as it did.
+`tests/web/effects.test.js` checks the effects of `web/js/effects.js`: that each effect's cost bounds
+the fills it draws for a spread of its fields on three screens, and that `pack.js` refuses every
+field of every effect out of its table and costs each with its own cost function.
+`tests/web/base-read.test.js` holds the shipped base pack's whole read, its signed bytes and six of
+its looks, records included, equal to a copy stored from the library before format 1.1;
+[The pack library's tests](#the-pack-librarys-tests) says how to store it again, which only a change to the base pack calls
+for. `tests/web/loading.test.js` checks the downloaded packs, the refusals and the knight drawn from code
+when no base pack can be used; its signed packs use keys generated for the run.
+`tests/web/world-loading.test.js` checks the same of the medieval world's pack: refused, missing or
+failing to compile, a scene, a kind of device, each role of the cast and the word set throwing while
+drawing and drawn from code alone from the next frame, a throw in the engine's own drawing not put
+down to the pack, the world started again with the downloaded packs, and the admin page's scripts
+against the walls'; its signed packs use keys generated for the run too. `tests/web/places.test.js`
+draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
+and that no two places draw over each other. `tests/web/world-scenes.test.js` runs those checks of
+`foe.test.js` and `places.test.js` that depend on a scene on each scene of the medieval world's pack,
+compiled from it with the goblin from its cast, holds the goblin's plan there to the code scene's
+with the code's goblin for every weapon and build, runs
+each scene of the pack with an act frame by frame beside its code scene, and checks each scene's `quiet` and `hosts` against the engine's and the settings' own lists of the quiet
+scenes and the events. `tests/web/world-knight.test.js` runs the checks `knight.test.js` makes of the
+house and the smithy on the two compiled from the pack: their paint and draw against the knight's
+stored records with the knight from code and from the base pack, the same calls as the code scenes
+in the base pack's other looks, their backdrop keys and rests, the pegs, the hot tip of a weapon
+without a blade, and a shield that does not fit the house's wall. `tests/web/world-cast.test.js`
+draws the fly, the goblin and the three monarchs from the medieval world's cast beside the code's,
+call for call: the fly's frames and what falls, the goblin's six pose canvases, each monarch in 55
+looks of skin, hair and robe, and the engine's frames while flies
+come, are swatted and fall and through the goblin's whole event, with the cast from the pack and
+from code; and checks where the cast is drawn from, a member that fails to compile and what the
+compiler refuses in the cast. `tests/web/pet.test.js` holds the mouser cat from the pack to the
+cat from code, every pose in both coats call for call, and checks the engine's catch: who a fly
+belongs to (the cat indoors and while the knight is busy, the knight outdoors while free), the
+knight's swat passing over the cat's flies, one fly at a time with every step's time, the poses
+through a catch and the fly meeting the paw at the top of the leap, three of the cat's flies at
+most, no fly under a warning and the flies on screen leaving, the cellar without flies, a new scene
+starting clear, the spot by the bed at night under the dimming, the drawing order, the note, the
+coat, and a page without the cat giving every fly to the knight as before. `tests/web/world-props.test.js`
+draws every kind of device from the medieval world's prop set beside the code's drawing of it, call
+for call, in every place of every scene, up and gone, with and without its question mark, in both
+parts and through the lamps' loops, and checks where the devices are drawn from, a kind that fails
+to compile, the lamp of a kind's own and what the compiler refuses in a prop. `tests/web/world-words.test.js`
+checks the quiet line and the captions the page builds from the collector's parts in the medieval
+world's words, held to the collector's own rule at the limits of 52 and 44, with the collector's text
+when there are no parts or no words; the overlay's CSS custom properties against the fallbacks
+`display.css` gives them; that `main.js` writes the words with `textContent`; where the words and the
+overlay come from on a `dev` and a deployed page; and the demo's parts, texts and lines.
+`tests/web/worlds.test.js` checks worlds as presets: the medieval preset in the pack, complete,
+its outfit the base pack's defaults and its scenes those of the code, and what the pack library
+refuses in a preset; what a page that reads kw.medieval and a second world pack made for the run
+lists for the settings (`KW.world.catalogue`, `KW.settings.pageWorld`), and that with nothing set
+the display is the same with the preset as from code; the rule that resolves a world against the
+parts set beside it, at the same level, above and below, the `items` and `devices` tables key by key,
+and the faults of a world whose parts are not loaded; long names kept, standing for short ones, or
+ignored with their reasons; the store's `chooseWorld`, kept in the browser and sent to a server in
+one write; the engine's scene from the world's `homes`; each kind of device drawn from the prop
+set chosen for it, from the base world's where that set cannot give it; and what the settings
+screen shows of the worlds (`KW.settings.screen`): the parts that differ from the world, a world's
+card as it comes, the line naming what choosing a world cleared, the device rows only once a second
+prop set is loaded and what a choice there saves, every fallback the status page lists with its
+reason, the labels from the world's words, World first in the rail and the screen opening on the
+knight.
+`tests/web/orbit.test.js` checks the test world and any loaded world drawn through the settings,
+`tests/web/orbit-swap.test.js` the whole swap of a world, part by part and whole, by what the engine
+reads of the scenes, the cast and the kinds while it draws, `tests/web/orbit-body.test.js` the test
+world's body at the ends of the measurements' ranges in every pose, and `tests/web/orbit-parts.test.js`
+its devices in every scene's places, the drone's spots, the Captain's talk, the overlay's bands and
+its reserved fields under a signature ([The test world](#the-test-world)). `tests/web/world-mix.test.js` checks mixing parts across worlds
+with the test world loaded: the long names of the monarch's colours and the pet's coat, a slot's
+item giving way to its key, the pet's coat fitted to the pet in use, the weapon's grip from its item
+and what it greys, the store's one-write choice of a part, the rows every part page lists (each
+world's choices grouped, the marks of a part changed from the world, the amber lines, the roles'
+labels, Coming for a body that cannot be drawn), the quiet scenes' names in a sentence, and the
+admin page's household look built on the same rows.
+`tests/web/state.test.js` also checks that `quiet_parts` and an event's `parts` are read as strings,
+or not at all. `tests/web/streams.test.js` checks the streams' detail line and badge: the stream
+shown at each moment by the clock, the clipping, each line held to the collector's `line()` through
+`python3`, the fallback to the collector's `detail`, when the badge shows and its count, and the
+demo's invented streams ([The page's tests](#the-pages-tests)). `tests/web/settings-schema.test.js` checks the page's lists of
+settings, scenes and conditions against the settings schema. `tests/web/shared-settings.test.js` checks the shared settings against a fake server: the first
+answer, the carry-over of a browser's own choices, no server, a choice sent and a write refused,
+and two displays sharing one server. `tests/web/settings.test.js` checks the settings in
+`web/js/settings.js` (the order of their levels, unknown values, the browser's storage refusing,
+the reset, the 12-hour clock, the monarch's hair and robe with "As drawn", the scene chosen per
+condition and which scenes can act which condition, the build row's names from the base pack), the
+engine's quiet rotation and its choice of scene, the monarch's skin, hair and robe, and the knight
+drawn from the base pack in 720 looks of the settings', each build meeting every weapon, skin, hair
+colour and hair style, every choice of the gear on every build, the gear's look, what the screen
+greys and the choices' names, and every monarch in every skin, hair and robe.
+
+`tests/web/scenes.test.js` does for the scenes what the knight test does for the knight. Against the
+same kind of fake canvas it records every scene's `paint()` and `draw()`, with `act()` and `over()`
+where a scene has them, call by call, in every state that changes them: idle and each condition the
+scene can act, the helmet the other way from the scene's own, the house's television, the smithy at
+another spot, the yard's dummy struck, the devices in all seven places up and gone, and at court
+each monarch in its own colours, in each of the six skins and in a sample of hair and robe; each at
+960 by 600, 1400 by 600 and 960 by 720, at five moments chosen to catch what moves. The devices are
+drawn by the engine's own `KW.devices`, and a canvas drawn with `drawImage` (a device's still part,
+the pie's lamp, a pose of the goblin) is written into the record with its calls. Where a scene calls
+on the knight (the sleeper's head, the gear at rest, the speech bubble, a swing) the record holds
+one line with the call and its arguments, since the knight test checks the knight. The goblin, the
+flies and the other props of the events are recorded apart. It compares 1 803 records with those in
+`tests/web/fixtures/scenes/`, one file per scene and one for those props (`cast.json`). Then it draws
+each scene the medieval world's pack holds (today every scene, 1 782 records) a second time, compiled
+from the pack and with the devices from its prop set and the monarchs from its cast, against the
+same stored records, and the rest of the cast the pack gives against `cast.json`; checks that the compiled scene's backdrop key tells
+the recorded states apart exactly as the code scene's does; and checks that it gives the code scene's
+interface, the crate's stretch among it. All of it takes about 80 seconds. A failure names the scene, the state, the size, the record and the first call that
+differs, with what `HEAD` draws there and what was drawn; without git, the block of 1 024 calls
+where the difference lies. Store the records again only when a scene is meant to change, from code
+whose drawing is known to be right, as the redesign of the scenes and devices of 17 November 2026
+did, and the knight's records (`KNIGHT_LOG=write`) too when the house or the smithy change, since
+the knight test draws them:
+
+```bash
+SCENES_LOG=write node --test tests/web/scenes.test.js      # stores the records of the code as it is, never the pack's
+SCENES_LOG=dump:DIR node --test tests/web/scenes.test.js   # writes every record in full to DIR
+SCENES_WEB=DIR node --test tests/web/scenes.test.js        # draws a copy of web/ in DIR instead
+```
+
+[The page's tests](#the-pages-tests) has the details.
+
+`tests/web/world.test.js` checks the scene compiler and the medieval world's pack: that the pack
+reads clean, where a `dev` and a deployed page draw every scene from, a refused, missing or unreadable pack and a compile that throws, each leaving
+the scenes concerned the code scenes with its console line, the predicates and the backdrop's key,
+`outdoors`, the foe's zone and the crate's stretch, the target's and the anvil's acts, the bed and the screen, the
+keyframes' tracks, the rests, the rest mark and the pegs, and
+that what the compiler does not build yet is refused by name.
+
+The repository's own page draws the knight from the base pack, and every scene, every device, the cast, the words and the overlay from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
+and the scene test check both paths. A deployed copy draws from each pack while it ships signed, and
+from code otherwise; to shoot the code path as well, take a second pair of sets from a copy of
+`web/` whose `kw-version` is not `dev` and whose packs carry no signature;
+[shots.md](./shots.md#taking-and-comparing-them) shows how.
+
+## The pack library's tests
+
+```bash
+node --test tests/web/
+```
+
+`tests/web/pack.test.js` reads `tests/web/fixtures/base.pack.json`, a base-like pack, and signs it
+with a key `node:crypto` generates for the run, verifying through `crypto.verify` and a canonical
+form written separately in the test. It refuses one copy of the pack for each rule, with the rule
+in the test's name and the exact reason it expects, refuses values of the wrong type, accepts each
+limit at its edge, and feeds the reader hostile and mangled text. Scalars are refused at each end of their ranges, costs at the
+limits and one past them, and the cost is checked against the calls `draw.js` makes with every
+value at the ends of its range.
+The sources of `pack.js` and of the scene compiler, `world.js`, are checked to hold neither `eval` nor
+`Function(`. The shipped `KEYS` is
+checked to hold `kw1` alone, as the 32 bytes above, in a frozen table whose bytes cannot be changed
+from outside, and a pack signed by any other key under `kw1` is refused against it.
+
+`tests/web/format-1.1.test.js` checks format 1.1. Its fixture, `tests/web/fixtures/world-1.1.json`,
+is a world pack made of the world format's own worked examples (the cellar, the house's planks and
+the blanket's breath, the act parts, the places, the patron, the goblin, the fly, a pet whose one
+pose is a stamp in runs, the camera and the pie with its own lamp, the words, the overlay and the
+preset) and of today's seven scenes' places,
+spots, rounds and `can` lists; it reads clean, signed and unsigned, at the deepest nesting allowed.
+The test refuses one signed copy of it for each rule above, 585 of them, rows in runs and the pet among them, each with the step and the
+exact reason it expects; accepts each limit at its edge; checks the costs the counts step reports
+against figures worked by hand; signs a 1.1 pack with a key made for the run and checks that the
+signature holds over a pretty-printed, minified or reordered copy and breaks at a changed value in
+any new section; checks that a `[1, 0]` pack still refuses every new section and that `[1, 2]` is
+refused at the format; checks the closed lists by name, the conditions against `state.js`; and feeds
+the reader mangled copies and values of the wrong type, none of which may throw. It checks too that
+the world's pack changes no look: `resolve()` gives the same with it loaded as without.
+
+`tests/web/world.test.js` checks the medieval world's pack and the scene compiler: the pack reads
+clean, with its signature taken off, with the costs [worlds.md](./worlds.md#the-medieval-worlds-pack) gives; a `dev` page
+draws every scene from it and a deployed page from code while it is unsigned, and from it
+once signed with a key made for the run, and the shipped file on a deployed page draws from it when
+it carries a signature; a refused, missing or unreadable pack, a missing library and a compile
+that throws all leave the scenes concerned the code scenes, each with its console line and its
+status. `tests/web/world-loading.test.js` holds the world's loading and failure as
+`tests/web/loading.test.js` holds the knight's: the pack refused, missing or failing to compile, a
+part that throws while drawing caught and drawn from code alone from the next frame, a throw in the
+engine's own drawing not put down to the pack, and the downloaded world packs
+([world-loading.md](./world-loading.md#two-copies-held-equal)). That each scene from the pack draws what the code draws, call for call, is
+`tests/web/scenes.test.js`'s ([The page's tests](#the-pages-tests)); that its `quiet` and `hosts` agree with
+the engine's own lists, and that the foe's and the places' checks hold on it, is
+`tests/web/world-scenes.test.js`'s. `tests/web/world-props.test.js` checks the devices from its prop
+set ([cast.md](./cast.md#the-devices-on-the-page)), `tests/web/world-cast.test.js` its cast
+([cast.md](./cast.md#the-cast-on-the-page)), and `tests/web/worlds.test.js` its preset and the presets and
+prop sets of a second world pack made for the run ([worlds.md](./worlds.md#presets-on-the-page)).
+
+`tests/web/effects.test.js` checks that `pack.js` holds an effect to its table in `effects.js`, every
+field of every effect refused out of its kind or range, and costs it with its own cost function; and
+that each cost function bounds what the effect draws. [The page's tests](#the-pages-tests) has the details.
+
+`tests/web/base-read.test.js` reads the shipped base pack with the library as it is and compares the
+whole result with `tests/web/fixtures/base-read.json`, first stored from the library before format
+1.1 and stored again for base pack 1.4.0: the read of the file signed (with a key made for the run,
+which reads as the file signed with `kw1` does), unsigned on a `dev` page and unsigned on a
+deployed page, the SHA-256 and length of the bytes its signature covers, and `resolve()` with every
+record on each build, for the default look, the sword and shield, and three looks that wear the 25
+free items between them. The file as it ships must read as the signed read when it carries a `sig`
+and as the deployed refusal when it does not, so the test holds in either state. Store it again
+only when the base pack is meant to change, from a library known to read it right:
+
+```bash
+BASE_READ=write node --test tests/web/base-read.test.js
+BASE_READ=write BASE_READ_LIB=DIR/web/js/pack.js node --test tests/web/base-read.test.js   # from another copy
+```
+
+`tests/web/ed25519.test.js` tests the verifier. It checks every Ed25519 vector of RFC 8032 section
+7.1 with one bit changed in each part, and SHA-512 against the digests of RFC 6234 and against
+`node:crypto`. It compares the verifier with `node:crypto` on 200 generated keys, their signatures
+and one-bit changes to each. For each strictness case it builds signatures that satisfy the
+cofactorless equation, using curve arithmetic written apart from the verifier, and requires them
+refused. No such signature can be made for a non-canonical key or `R` that is not also of small
+order, so the decoding is tested by itself against every encoding with `y` of `p` or more and 300
+random ones. Wrong arguments, the fixture pack read through `pack.js` with this verifier in place,
+and the same check of the source as for `pack.js` complete it. Under Node 26, `node:crypto` gave
+the same answer as this verifier for every signature the tests put to both.
+
+`tests/web/base-pack.test.js` checks the base pack, and holds whether it ships signed or not. An
+unsigned copy (the shipped file with any `sig` taken off) is read on a `dev` page and refused at
+the `signature` step otherwise; the file as it ships is read on every page when it carries a
+signature, and on a `dev` page alone when it does not. It also checks the three builds as
+approved in `fixtures/base-builds.json`, with their names, Classic the present measurements, every
+head 51, every torso within the rule and every measurement at least 6 from the ends of its range;
+one item for each slot the present drawing has, the arming sword and the heater shield, the five
+hair styles, the free items of 1.4.0 after the 15 of 1.3.0, the wool palette, and nothing more;
+six swatches in each set in the settings screen's order, today's the defaults; each item and
+swatch equal to the fixture's, to `fixtures/base-builds.json` for the three items fitted to the
+builds, to `fixtures/base-onehand.items.json` for the one-handed items, to
+`fixtures/base-options.json` for the free options or to `fixtures/base-free-items.json` for the
+free items, with the iris of the shield, worn and at rest, on `@tabard.3` and no `@base.b3` left; a
+default look that resolves with nothing missing at a cost of 13 878, and each build likewise; the
+look with the sword and shield resolving with nothing missing, one-handed, at 125 shapes; every one
+of the 23 328 combinations of build, skin, hair colour, the first three hair styles, tabard, plume
+and the first two weapons resolving with nothing missing, the heaviest at 135 shapes and 14 470;
+every item of every slot on every build, with each weapon where the grip matters and a shield with
+each one-handed weapon, resolving with nothing missing, and every shield refused beside a
+two-handed weapon; the mail coif drawing no plume and every other helmet each plume; the long
+cloak changing with the plume and not the tabard and the short cape the other way round; each
+weapon's grip and blade; and the costliest whole look of the free items, with each grip, at 201
+shapes and 20 493 and at 188 and 19 721, the same on every build. `tests/web/knight.test.js` draws the
+knight's 94 poses, the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy painted and drawn, from the base
+pack as the page does, and compares every call with the record taken from the code. It draws the
+code path from the unsigned copy, which a deployed page always refuses, and edits only that copy, so
+it too holds in either state. It checks that a deployed page draws from the shipped base pack when
+it is signed and from code when it is not, and, with a key made for the run swapped into the
+sandbox's `KEYS`, that a deployed page reads a signed base pack through `KW.ed25519.verify` and
+draws from code when no verifier is loaded. It also checks
+that a pack's colours reach the gear at rest, and that a helmet with no rest view and a weapon with
+no `blade` show nothing there. It checks that the face takes the look's skin and hair colours and
+that a deep skin with black hair, made for the test, leaves no colour of the warm skin in any
+condition's face. With the sword and shield it checks the one-handed grip, the stance
+and the attack, the free hand hanging when there is no shield, the change to `oneCrossed` in the
+swing to the left, the pegs, the shield's places and the backdrop keys, and, frame by frame, that
+no arm is drawn over a blade or a shield, in the swings, the attack and the goblin strike ([rig.md](./rig.md#anchors-values-and-poses)). [The page's tests](#the-pages-tests) describes it.
+The same checks for the free items of 1.4.0 run in `tests/web/knight-free-classic.test.js`,
+`knight-free-broad.test.js` and `knight-free-slim.test.js`, one build each in a process of its own:
+the frame-by-frame arm check with every new weapon and every shield it may carry, and with the mail
+and the padded sleeves and gloves beside a two-handed and a one-handed weapon; every free item in
+every pose of the call record, both swings and the attack, without a throw and within its look's
+cost; the longsword and the mace held exactly where the greatsword and the arming sword are, frame
+by frame; and the mace's head glowing on the smithy's anvil.
+
+`tests/web/loading.test.js` checks loading and failure. For the index: its shape, more than 32
+names, and names that carry a path or are not a pack file's. For the fetch, against a fake `fetch`:
+a missing index is silent and asks for nothing else; an index that is not JSON, too large, answered
+with an error, or not answered within four seconds is refused whole; a bad name is never asked
+for; a file that is missing, fails, hangs or is too large is refused with its name; a file that
+fails `read()` at the size, json, envelope, signature, format, fields or references step is refused
+with its name and id. On a deployed page an unsigned downloaded pack and one signed by an unknown
+kid or by the wrong key are refused, and one signed with a key made for the run and passed through
+`keys` is read and drawn; a `dev` page reads the unsigned one. Each refusal is in the status and
+written to the console once. A look naming a missing build, item or swatch falls back to the
+base pack's defaults and draws what the default look draws; a one-handed weapon from another pack
+is held in one hand; and a shield without one falls back to none, with its reason, and the knight
+draws as the default knight does. With no base pack, a broken one, an unsigned one or one signed by an unknown kid on
+a deployed page, no pack library, and after a throw inside the base pack's lists, the page draws
+from code, and 28 records of the knight, the sleeper's head, the gear at rest, the house and the
+smithy must equal, call for call, the records `knight.test.js` stores from the code. A throw
+inside a downloaded pack's list, a list of the gear at rest or the sleeper's head is caught and
+the right pack marked bad, and a throw in the engine's own drawing is not. `look()` draws a new look
+from the packs already read, a signed downloaded pack's tabard included, keeps every refusal, says
+nothing new in the console, and does nothing before `start()`, where `start()` again loses the
+downloaded pack.
+
+`tests/web/settings.test.js` draws the knight from the base pack, through the settings and
+`KW.knight.look()`, in each of the 720 looks of weapon by skin by hair colour by hair style, the
+tabard and the plume cycled through their six, standing, attacking and swinging, helmet on and off,
+with the bare head and the gear at rest; each draws its colours with no throw, no fallback and no
+refused pack, within the shape and cost caps. It draws every choice of the gear the same way on
+every build, beside a two-handed and a one-handed weapon in turn. It also draws every monarch in
+every skin, hair and robe of the base pack, each monarch's own hair and robe among them.
+[The page's tests](#the-pages-tests) lists the rest of what it checks.
+
+```bash
+node --test tests/tools/
+```
+
+`tests/tools/pack-carrier.test.js` checks the carriers against their pack files and the tool
+itself.
+
+`tests/tools/sign-pack.test.js` checks the signing tool with key pairs generated for the run and
+held in memory; no key of any kind is in the repository, and the files signed are copies in a
+temporary folder. A copy of the fixture pack is signed and must verify through `pack.js` and
+`ed25519.js`, and through `node:crypto` on the bytes `message()` gives, with only the `sig` added to
+the file and the carrier matching. An edit after signing must be refused until the pack is signed
+again. The tool must refuse to run without its variable, with a key whose public half is not the
+table's, with a key that is not Ed25519 and with a kid the table lacks, writing nothing and never
+printing the key, and must write nothing when any one of several files is refused. `--unsign` must
+give back the unsigned file byte for byte. Last, every pack in `web/packs/` that carries a `sig`
+must verify against the shipped `KEYS` with the page's verifier.
+
+## The test world
+
+`test.orbit` ("Orbit") is a small world made unlike the medieval one, so that anything the engine
+still assumes about the medieval world shows at once. It lives in
+`tests/web/fixtures/worlds/test.orbit.pack.json`, outside `web/`, so `tools/deploy.sh` never copies
+it; it is never signed, and the tests read it on `dev` terms. `tests/web/fixtures/worlds/orbit.js`
+writes it, and checks it with `--check` ([below](#the-test-world)). What it
+holds:
+
+| Part | What | Proves |
+|---|---|---|
+| body | `body.unit`, "Unit", a box-headed robot at an end of every measurement's range (shoulder 40, chest 32, waist 28, hip 32, stance 16, leg 100, height 160, head 42), with its own head item `head.unit` | the knight drawn on another pack's body, with its head |
+| outfit | the base pack's gear in flat panels, one item in every slot but `off`, since the pry bar takes both hands (`main.bar`, `helm.dome`, `plume.aerial`, `hair.wire`, `back.panel` and the rest), and a swatch of each set: `chrome` skin with its `sick` and `hot` ramps, `wire` hair, `panel` tabard, `beacon` plume | items and swatches from another pack; the face on a metal skin |
+| scenes | `deck`, quiet, acting every condition but `ssh_session` and `updating`, with a bunk as its `bed`, a wall panel as its `screen`, a layer while the WAN is down, three ground places, the effects `stars`, `twinkle` and `drift` falling, a keyframe clock in ms, and a foe zone with no wall; `bridge`, with a `seat` for the Captain and a workbench as its `anvil`, acting `ssh_session` and `updating`; `airlock`, acting `cpu_hot` alone | another world's scenes in turn and for conditions; each act in its own condition; the Airlock offered for running hot alone |
+| cast | `patron.captain`, with its own anchors and mouth; `foe.glitch` (out of the floor); `critter.moth` (the Spark moth); `pet.drone` (a hover drone with a resting spot in each scene, clear of every place, which catches the moths) | the cast on rigs of their own; a foe in a scene without a wall; the pet role on art that is not a cat |
+| props | `props.orbit`: `pi` (a pie tin with an aerial), `camera` (a dome) and `machine` (a rack), each with the engine's own lamp; no `vm` or `box` | the per-kind fallback to the base world's drawing |
+| words | `words.orbit`: `ALL CLEAR`, `{n} ads zapped`, captions `EJECTED {addr}`, `DOCKED`, `LOGGED` | another world's words, fitted to 52 and 44 |
+| overlay | `overlay.orbit`, each level's colours near the edges of its band, the font `vt323` | another world's overlay; the band checks |
+| reserved | junk in `sounds`, a scene's `sound` and `companion`, the preset's `sound` and `companion` | read, covered by a signature and ignored |
+| preset | `world.orbit`, Orbit whole | a world chosen whole draws only its own parts |
+
+Its Deck's still layers cost 185 308 fills at the widest screen, within 10 percent of the 200 000 a
+scene may, which shows the cap is reachable and holds. A second preset, "Orbit (broken)", whose
+quiet scene cannot act a device going down, is made by the generator's `broken()` and refused at
+`rules`; it is not in the file, since a refused preset refuses its whole pack.
+
+Four test files read it. `tests/web/orbit.test.js`: the fixture is the generator's, unsigned, and
+no pack under `web/packs/` has an id starting `test.`; it reads clean on `dev` terms and a deployed
+page refuses it unsigned, here and downloaded through `data/packs/`; every part compiles and is put
+in place under its long name; Orbit chosen whole sets every part to its own and the knight wears
+its body and outfit; its words and overlay are put in use; its props draw three kinds and the base
+world's the other two; the engine plays its scenes for each condition, its foe out of the Deck's
+floor, its moth and its drone catching the moths in the Deck and the Bridge and resting in every
+scene; its parts mixed into the medieval world, the Airlock refused for an attack; the level rule
+of a world; a scene and a foe that throw giving way to the base world's; and with Orbit loaded and
+nothing chosen, the medieval world frame for frame as without it.
+
+`tests/web/orbit-swap.test.js` proves the whole swap. It watches what the engine reads of
+`KW.scenes`, `KW.cast` and `KW.kinds` by name while it draws a tour: the first quiet scene with the
+foe's event and a fly, each quiet scene in turn, the crate, the feast, and every condition with a
+fly where one may come. Orbit chosen whole reads its own three scenes, four members and three kinds
+and of the medieval world only the VM's and the box's drawings, with no fault; its quiet line and
+captions fit 52 and 44 as the collector's do. The medieval world is then drawn with each of Orbit's
+parts swapped in alone (body, swatches, every item, patron, foe, critter, pet, prop set, words,
+overlay, quiet scenes, the scene of each condition), and Orbit with each of the medieval world's:
+each swap changes the reads of its own part and no other, throws nothing, keeps the knight drawn
+from the packs within the look's caps, and reports no fallback but the two kinds Orbit's set lacks.
+Orbit unchosen on the display brings the medieval world back frame for frame, with nothing of
+Orbit's read, and a copy of the library of format 1.0 refuses Orbit at `format`.
+
+`tests/web/orbit-body.test.js` draws Unit, at an end of every measurement's range, in every pose,
+swing and attack frame, in its own outfit and in the base pack's one-handed gear, without a throw or
+a fallback and within the look's cost; holds its hands on the grip through both swings, the attack
+and the strike; and has every weapon meet Glitch and the goblin on the Deck and the battlement.
+`tests/web/orbit-parts.test.js` stands Orbit's devices in every place of every scene, and the
+medieval world's in Orbit's, on the grid and clear of each other; keeps the drone's resting spot
+clear of every place; has the Captain talk on the Bridge while a shell is open and sit silent while
+updating; refuses an overlay colour past the edge of its band at `rules`; and signs Orbit with a key
+made for the run, which covers its reserved fields, and draws it the same without them.
+
+`tools/shots.sh worlds` takes the `orbit-` shots of the wall from a copy of `web/` with Orbit's
+carrier added: Orbit chosen whole in every scene, condition and event, the drone's catch, the medieval
+world with Orbit's parts and Orbit with the medieval world's ([shots.md](./shots.md#taking-and-comparing-them)).
+
+The file is written by its generator, never by hand:
+
+```bash
+node tests/web/fixtures/worlds/orbit.js           # writes the file
+node tests/web/fixtures/worlds/orbit.js --check   # exits 1 when the file is not what it writes
+```
+
+`tests/web/orbit.test.js` fails while the two differ, so change the generator and run it, then
+commit both. The pack is never signed, with `kw1` or any key, and never goes under `web/`, so
+`tools/deploy.sh` never copies it; the same test fails if any pack under `web/packs/` has an id
+starting `test.`. It is read only on `dev` terms. To look at it on a wall, from a copy of `web/`
+outside the repository with its carrier added, the way [shots.md](./shots.md#taking-and-comparing-them)
+shoots the code path:
+
+```bash
+cp -r web /tmp/kw-orbit
+cp tests/web/fixtures/worlds/test.orbit.pack.json /tmp/kw-orbit/packs/
+node tools/pack-carrier.js /tmp/kw-orbit/packs/test.orbit.pack.json
+sed -i 's#<script src="packs/medieval.pack.js"></script>#&\n<script src="packs/test.orbit.pack.js"></script>#' /tmp/kw-orbit/index.html
+# then open /tmp/kw-orbit/index.html#wd=test.orbit/world.orbit, or shoot it with PAGE=
+```
+
+The address's `wd=` chooses the world, and `fo=`, `cr=`, `pr=`, `wo=` and `ov=` its foe, critter,
+prop set, words and overlay alone ([display.md](./display.md#the-address)). `tools/shots.sh worlds DIR`
+makes the same copy in a folder of its own, takes from it the `worldmix-` shots of the settings
+screen and the `orbit-` shots of the wall, and removes it. Take a reference set with `worlds` before
+a change and another after it, and compare them with `compare-worlds`, as for the main set; a change
+to the test world itself changes the shots that show the part changed.

@@ -1,7 +1,7 @@
 /* The admin page. Dark, in the project's palette (KW.draw.C and the wall screen's colours): VT323
    for the brand, the titles, the rail and the choice chips; the system's own sans serif for what is
    read at length; the system's monospace for values, keys and the collector's words. One column
-   below 720 pixels, with the sections in a sheet. docs/page.md describes the page. */
+   below 720 pixels, with the sections in a sheet. docs/display.md describes the page. */
 @font-face { font-family: "VT323"; src: url("../fonts/VT323-Regular.ttf") format("truetype"); font-display: block; }
 
 :root {

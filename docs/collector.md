@@ -389,7 +389,7 @@ inside the container. `--admin` names the admin page's `admin.json`, laid over i
 `/var/lib/knightwatcher-server/admin.json`, the path inside the container. A missing file sets
 nothing. `--health` measures the state file's age against the larger of `config.toml`'s interval
 and the one the file says is in use, since the admin page may have set another. Credentials come from environment variables, which `compose.yaml` passes
-from `.env` (see [configuration.md](./configuration.md#env-host-paths-and-credentials)).
+from `.env` (see [configuration.md](./configuration.md#env-host-paths-the-servers-address-and-credentials)).
 `--check-config --env-file PATH` reads them from a `.env` file instead, for the check alone, so a
 new image can be checked against a host's `.env` before it starts; nothing in the file is
 expanded, and no message carries a value. The collector takes an exclusive lock on its state folder, so a second collector

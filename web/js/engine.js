@@ -321,7 +321,7 @@
   };
   const segQ = (el, a, b) => clamp01((el - a) / (b - a));
   /* Where the crate of an import lands, its left edge: in a scene that gives the stretch of floor
-     it may land on (crate.span, docs/worlds.md), its middle as near 160 left of the knight as the
+     it may land on (crate.span, docs/scenes.md), its middle as near 160 left of the knight as the
      stretch allows; elsewhere 320 left of the knight, and never past the screen's left edge. */
   function crateX(sc, kx) {
     const sp = sc && sc.crate && sc.crate.span;

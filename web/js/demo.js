@@ -62,7 +62,7 @@
     { on: 'attack,memory_tight,ssh_session', dur: 8000 }, { on: 'night', dur: 8000 } ];
 
   /* How long each quiet scene lasts while they take turns in the demo, unless the settings set a
-     length (docs/page.md). */
+     length (docs/display.md). */
   const DEMO_TURN_MS = 60 * 1000;
 
   let streams = streamsFor(3, 'names');

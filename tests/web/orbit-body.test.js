@@ -5,7 +5,7 @@
 // the other; the hands on the grip through both swings and the strike; and a foe met by the weapon
 // on the Deck and on the battlement. Run with: node --test tests/web/
 //
-// Orbit is never under web/ and never signed: it is read here, on dev terms (docs/development.md,
+// Orbit is never under web/ and never signed: it is read here, on dev terms (docs/tests.md,
 // The test world).
 'use strict';
 const test = require('node:test');

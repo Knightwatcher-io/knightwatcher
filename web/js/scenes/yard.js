@@ -124,7 +124,7 @@
     hosts: ['flies', 'crate', 'feast'],
     rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 98, act: 'look', dur: 14 }],
     act, paint, draw,
-    // where the crate may land (docs/worlds.md): the beaten earth in front of the door, between the
+    // where the crate may land (docs/scenes.md): the beaten earth in front of the door, between the
     // devices by the rack and the knight's boots at its look spot
     crate: { span: [298, 436] }
   };

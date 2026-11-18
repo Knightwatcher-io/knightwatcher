@@ -5,7 +5,7 @@
    this browser's own, kept in its storage. Also draws the settings screen, which a press and hold
    of two seconds anywhere on the display opens. Everything above the screen is pure and loads
    under Node for the tests in tests/web/; the screen is built only by mount(), which main.js
-   calls. docs/page.md describes the levels, the shared settings and the screen. */
+   calls. docs/display.md describes the levels, the shared settings and the screen. */
 (function (KW) {
   'use strict';
 
@@ -86,7 +86,7 @@
   const isLong = v => typeof v === 'string' && LONG.test(v);
   const TABLES = {};
   for (const k of KEYS.look) if (SCHEMA.look[k].keys) TABLES[k] = SCHEMA.look[k].keys;
-  /* The parts a world sets (docs/page.md, Worlds): every key of the look but the world itself, the
+  /* The parts a world sets (docs/display.md, Worlds): every key of the look but the world itself, the
      quiet scenes and every key of the scenes section. The display's preferences and the quiet
      scenes' length are not parts. */
   const isPart = (sec, k) => (sec === 'look' ? k !== 'world' : sec === 'quiet' ? k === 'scenes' : sec === 'scenes');
@@ -474,7 +474,7 @@
      world in use gave. levels holds the cleaned sections of each level, { hook, saved, defaults },
      and base the page's own. world is what the page has loaded (see worldOf).
 
-     The world counts as setting every part at the level it was chosen at (docs/page.md, Worlds): a
+     The world counts as setting every part at the level it was chosen at (docs/display.md, Worlds): a
      part a level at or above the world's sets is that level's, one only a level below sets gives
      way to the world's, and is listed in masked as { section, key, level, value }. With no level
      choosing a world, the base world is the page's own, and every part is as before. world says
@@ -750,7 +750,7 @@
         commit([section]); changed();
         return true;
       },
-      /* Saves the world id on this display and clears every part this display has chosen (docs/page.md,
+      /* Saves the world id on this display and clears every part this display has chosen (docs/display.md,
          Worlds): the look's other keys, the quiet scenes and the scene of each condition, in one
          write. The display's preferences and the quiet scenes' length stay. Returns what was
          cleared, each as 'section.key', or null, saving nothing, for a world the page has not

@@ -6,7 +6,7 @@
    bar takes both hands), three scenes (Deck, Bridge, Airlock), its own cast (the Captain, Glitch,
    the Spark moth and a hover drone that catches them), a prop set that draws three kinds of
    device, its words and an overlay. It is read only by the tests, on dev terms: it is never signed
-   and never copied into web/. docs/development.md says more.
+   and never copied into web/. docs/tests.md says more.
 
      node tests/web/fixtures/worlds/orbit.js           writes the file
      node tests/web/fixtures/worlds/orbit.js --check   exits 1 when the file differs

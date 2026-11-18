@@ -6,7 +6,7 @@
 // fields, which a signature covers and nothing draws. Run with: node --test tests/web/
 //
 // Orbit is never under web/ and never signed with the project's key: here it is signed with a key
-// made for the run, and otherwise read on dev terms (docs/development.md, The test world).
+// made for the run, and otherwise read on dev terms (docs/tests.md, The test world).
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

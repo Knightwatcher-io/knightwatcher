@@ -15,7 +15,7 @@
      reads and writes too, so that the two never disagree.
 
    The page has no checks of its own: a change is applied when the server keeps it, and refused
-   with the server's words when it does not. docs/server.md describes the API and docs/page.md the
+   with the server's words when it does not. docs/server.md describes the API and docs/display.md the
    page. */
 (function () {
   'use strict';
