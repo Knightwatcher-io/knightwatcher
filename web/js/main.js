@@ -70,7 +70,8 @@
      hm= the helmet, ps= the plume's style, bo= the body, so= the shoulders, am= the arms, hn= the
      hands, lg= the legs, ft= the feet and bk= the back; mon= the monarch, ms= the monarch's skin,
      mh= the monarch's hair (a hair swatch) and mr= the monarch's robe (a tabard swatch); pc= the
-     pet's coat (calico or ginger); hs= the
+     pet's coat (calico or ginger); fo= the foe (goblin), cr= the critter (fly), and pr= the prop
+     set, wo= the words and ov= the overlay (medieval), or a loaded world's by its long name; hs= the
      headline size (s, m, l), h= the helmet (on, or auto and off for the helmet off indoors; off
      also takes it off outdoors) and ck= the clock (12 or 24); and sc=<condition>:<scene>,
      separated by commas, the scene each condition plays in. A value a level does not know is ignored, with a line in the console. */
@@ -87,7 +88,7 @@
   if (hv('wd') !== undefined) HOOK.look.world = hv('wd');
   for (const [h, k] of [['bd', 'build'], ['sk', 'skin'], ['hc', 'hair'], ['hy', 'hair_style'], ['tb', 'tabard'], ['pm', 'plume'], ['mon', 'monarch'], ['ms', 'monarch_skin'],
     ['mh', 'monarch_hair'], ['mr', 'monarch_robe'], ['pc', 'pet_coat'], ['sh', 'shield'], ['hm', 'helmet'], ['ps', 'plume_style'], ['bo', 'body'], ['so', 'shoulders'], ['am', 'arms'],
-    ['hn', 'hands'], ['lg', 'legs'], ['ft', 'feet'], ['bk', 'back']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
+    ['hn', 'hands'], ['lg', 'legs'], ['ft', 'feet'], ['bk', 'back'], ['fo', 'foe'], ['cr', 'critter'], ['pr', 'props'], ['wo', 'words'], ['ov', 'overlay']]) if (hv(h) !== undefined) HOOK.look[k] = hv(h);
   const scHook = (H0.match(/[#&]sc=([^&]*)/) || [])[1];
   if (scHook !== undefined) for (const item of scHook.split(',').filter(Boolean)) { const [c, v] = item.split(':'); HOOK.scenes[c] = v === undefined ? '' : v; }
   /* Served, the page starts from its copy of the shared settings, if it has one, until the server

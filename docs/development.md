@@ -138,7 +138,8 @@ tools/capped.sh node --test --test-concurrency=2 tests/tools/
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-ref    # before a change
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-new    # after it
 tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
-# the settings screen with the test world loaded, from a copy of web/ the script makes and removes
+# the settings screen and the wall with the test world loaded, from a copy of web/ the script makes
+# and removes
 CHROME=/path/to/chrome-headless-shell tools/shots.sh worlds /tmp/kw-worlds-new
 tools/shots.sh compare-worlds /tmp/kw-worlds-ref /tmp/kw-worlds-new
 ```
@@ -286,8 +287,12 @@ card as it comes, the line naming what choosing a world cleared, the device rows
 prop set is loaded and what a choice there saves, every fallback the status page lists with its
 reason, the labels from the world's words, World first in the rail and the screen opening on the
 knight.
-`tests/web/orbit.test.js` checks the test world and any loaded world drawn through the settings
-([The test world](#the-test-world)). `tests/web/world-mix.test.js` checks mixing parts across worlds
+`tests/web/orbit.test.js` checks the test world and any loaded world drawn through the settings,
+`tests/web/orbit-swap.test.js` the whole swap of a world, part by part and whole, by what the engine
+reads of the scenes, the cast and the kinds while it draws, `tests/web/orbit-body.test.js` the test
+world's body at the ends of the measurements' ranges in every pose, and `tests/web/orbit-parts.test.js`
+its devices in every scene's places, the drone's spots, the Captain's talk, the overlay's bands and
+its reserved fields under a signature ([The test world](#the-test-world)). `tests/web/world-mix.test.js` checks mixing parts across worlds
 with the test world loaded: the long names of the monarch's colours and the pet's coat, a slot's
 item giving way to its key, the pet's coat fitted to the pet in use, the weapon's grip from its item
 and what it greys, the store's one-write choice of a part, the rows every part page lists (each
@@ -381,8 +386,12 @@ sed -i 's#<script src="packs/medieval.pack.js"></script>#&\n<script src="packs/t
 # then open /tmp/kw-orbit/index.html#wd=test.orbit/world.orbit, or shoot it with PAGE=
 ```
 
-The address's `wd=` chooses the world. `tools/shots.sh worlds DIR` makes the same copy in a folder of
-its own, takes the `worldmix-` shots of the settings screen from it and removes it.
+The address's `wd=` chooses the world, and `fo=`, `cr=`, `pr=`, `wo=` and `ov=` its foe, critter,
+prop set, words and overlay alone ([page.md](./page.md#the-address)). `tools/shots.sh worlds DIR`
+makes the same copy in a folder of its own, takes from it the `worldmix-` shots of the settings
+screen and the `orbit-` shots of the wall, and removes it. Take a reference set with `worlds` before
+a change and another after it, and compare them with `compare-worlds`, as for the main set; a change
+to the test world itself changes the shots that show the part changed.
 
 ## The logo and the icons
 

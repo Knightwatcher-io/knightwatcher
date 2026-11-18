@@ -20,7 +20,9 @@ are ([Downloaded world packs](#downloaded-world-packs)), and the admin page draw
 the pack, as a wall does. Step W10b draws any loaded world: another world pack's scenes, cast,
 words, overlay, body, swatches and items reach the wall through the settings, under their long
 names ([Other worlds](#other-worlds)), the events play where each scene's `hosts` says, and a
-small world made for the tests, `test.orbit`, proves it ([The test world](#the-test-world)).
+small world made for the tests, `test.orbit`, proves it ([The test world](#the-test-world)). Step
+W11 finished that world and proved the whole swap of a world, part by part and whole, with tests and
+shots of the wall.
 
 ## The medieval world's pack
 
@@ -1148,13 +1150,13 @@ holds:
 | Part | What | Proves |
 |---|---|---|
 | body | `body.unit`, "Unit", a box-headed robot at an end of every measurement's range (shoulder 40, chest 32, waist 28, hip 32, stance 16, leg 100, height 160, head 42), with its own head item `head.unit` | the knight drawn on another pack's body, with its head |
-| outfit | the base pack's gear in flat panels, one item in every slot but `back` and `off` (`main.bar`, `helm.dome`, `plume.aerial`, `hair.wire` and the rest), and a swatch of each set: `chrome` skin with its `sick` and `hot` ramps, `wire` hair, `panel` tabard, `beacon` plume | items and swatches from another pack; the face on a metal skin |
+| outfit | the base pack's gear in flat panels, one item in every slot but `off`, since the pry bar takes both hands (`main.bar`, `helm.dome`, `plume.aerial`, `hair.wire`, `back.panel` and the rest), and a swatch of each set: `chrome` skin with its `sick` and `hot` ramps, `wire` hair, `panel` tabard, `beacon` plume | items and swatches from another pack; the face on a metal skin |
 | scenes | `deck`, quiet, acting every condition but `ssh_session` and `updating`, with a bunk as its `bed`, a wall panel as its `screen`, a layer while the WAN is down, three ground places, the effects `stars`, `twinkle` and `drift` falling, a keyframe clock in ms, and a foe zone with no wall; `bridge`, with a `seat` for the Captain and a workbench as its `anvil`, acting `ssh_session` and `updating`; `airlock`, acting `cpu_hot` alone | another world's scenes in turn and for conditions; each act in its own condition; the Airlock offered for running hot alone |
-| cast | `patron.captain`, `foe.glitch` (out of the floor), `critter.moth` (the Spark moth), `pet.drone` (a hover drone with a resting spot in each scene, which catches the moths) | the cast on rigs of their own; a foe in a scene without a wall; the pet role on art that is not a cat |
+| cast | `patron.captain`, with its own anchors and mouth; `foe.glitch` (out of the floor); `critter.moth` (the Spark moth); `pet.drone` (a hover drone with a resting spot in each scene, clear of every place, which catches the moths) | the cast on rigs of their own; a foe in a scene without a wall; the pet role on art that is not a cat |
 | props | `props.orbit`: `pi` (a pie tin with an aerial), `camera` (a dome) and `machine` (a rack), each with the engine's own lamp; no `vm` or `box` | the per-kind fallback to the base world's drawing |
-| words | `words.orbit`: `ALL CLEAR`, `{n} ads zapped`, captions `EJECTED {addr}`, `DOCKED`, `LOGGED` | another world's words |
-| overlay | `overlay.orbit`, each level's colours near the edges of its band, the font `vt323` | another world's overlay |
-| reserved | junk in `sounds`, a scene's `sound` and `companion`, the preset's `sound` and `companion` | read and ignored |
+| words | `words.orbit`: `ALL CLEAR`, `{n} ads zapped`, captions `EJECTED {addr}`, `DOCKED`, `LOGGED` | another world's words, fitted to 52 and 44 |
+| overlay | `overlay.orbit`, each level's colours near the edges of its band, the font `vt323` | another world's overlay; the band checks |
+| reserved | junk in `sounds`, a scene's `sound` and `companion`, the preset's `sound` and `companion` | read, covered by a signature and ignored |
 | preset | `world.orbit`, Orbit whole | a world chosen whole draws only its own parts |
 
 Its Deck's still layers cost 185 308 fills at the widest screen, within 10 percent of the 200 000 a
@@ -1162,16 +1164,43 @@ scene may, which shows the cap is reachable and holds. A second preset, "Orbit (
 quiet scene cannot act a device going down, is made by the generator's `broken()` and refused at
 `rules`; it is not in the file, since a refused preset refuses its whole pack.
 
-`tests/web/orbit.test.js` reads it: the fixture is the generator's, unsigned, and no pack under
-`web/packs/` has an id starting `test.`; it reads clean on `dev` terms and a deployed page refuses
-it unsigned, here and downloaded through `data/packs/`; every part compiles and is put in place
-under its long name; Orbit chosen whole sets every part to its own and the knight wears its body
-and outfit; its words and overlay are put in use; its props draw three kinds and the base world's
-the other two; the engine plays its scenes for each condition, its foe out of the Deck's floor, its
-moth and its drone catching the moths in the Deck and the Bridge and resting in every scene; its
-parts mixed into the medieval world, the Airlock refused for an attack; the level rule of a world;
-a scene and a foe that throw giving way to the base world's; and with Orbit loaded and nothing
-chosen, the medieval world frame for frame as without it.
+Four test files read it. `tests/web/orbit.test.js`: the fixture is the generator's, unsigned, and
+no pack under `web/packs/` has an id starting `test.`; it reads clean on `dev` terms and a deployed
+page refuses it unsigned, here and downloaded through `data/packs/`; every part compiles and is put
+in place under its long name; Orbit chosen whole sets every part to its own and the knight wears
+its body and outfit; its words and overlay are put in use; its props draw three kinds and the base
+world's the other two; the engine plays its scenes for each condition, its foe out of the Deck's
+floor, its moth and its drone catching the moths in the Deck and the Bridge and resting in every
+scene; its parts mixed into the medieval world, the Airlock refused for an attack; the level rule
+of a world; a scene and a foe that throw giving way to the base world's; and with Orbit loaded and
+nothing chosen, the medieval world frame for frame as without it.
+
+`tests/web/orbit-swap.test.js` proves the whole swap. It watches what the engine reads of
+`KW.scenes`, `KW.cast` and `KW.kinds` by name while it draws a tour: the first quiet scene with the
+foe's event and a fly, each quiet scene in turn, the crate, the feast, and every condition with a
+fly where one may come. Orbit chosen whole reads its own three scenes, four members and three kinds
+and of the medieval world only the VM's and the box's drawings, with no fault; its quiet line and
+captions fit 52 and 44 as the collector's do. The medieval world is then drawn with each of Orbit's
+parts swapped in alone (body, swatches, every item, patron, foe, critter, pet, prop set, words,
+overlay, quiet scenes, the scene of each condition), and Orbit with each of the medieval world's:
+each swap changes the reads of its own part and no other, throws nothing, keeps the knight drawn
+from the packs within the look's caps, and reports no fallback but the two kinds Orbit's set lacks.
+Orbit unchosen on the display brings the medieval world back frame for frame, with nothing of
+Orbit's read, and a copy of the library of format 1.0 refuses Orbit at `format`.
+
+`tests/web/orbit-body.test.js` draws Unit, at an end of every measurement's range, in every pose,
+swing and attack frame, in its own outfit and in the base pack's one-handed gear, without a throw or
+a fallback and within the look's cost; holds its hands on the grip through both swings, the attack
+and the strike; and has every weapon meet Glitch and the goblin on the Deck and the battlement.
+`tests/web/orbit-parts.test.js` stands Orbit's devices in every place of every scene, and the
+medieval world's in Orbit's, on the grid and clear of each other; keeps the drone's resting spot
+clear of every place; has the Captain talk on the Bridge while a shell is open and sit silent while
+updating; refuses an overlay colour past the edge of its band at `rules`; and signs Orbit with a key
+made for the run, which covers its reserved fields, and draws it the same without them.
+
+`tools/shots.sh worlds` takes the `orbit-` shots of the wall from a copy of `web/` with Orbit's
+carrier added: Orbit chosen whole in every scene, condition and event, the drone's catch, the medieval
+world with Orbit's parts and Orbit with the medieval world's ([page.md](./page.md#checks)).
 
 ## Writing a scene as data
 
