@@ -7,9 +7,11 @@ The engine draws a pack's shapes with the primitives of `draw.js` (`Rh`, `Rv`, `
 
 This page is for anyone making a pack. It describes format 1.0 as the library implements it: the
 file, the pack's fields, colours, builds, the rig the items hang on, the slots, items and
-decorations; then the checks every pack passes and how a pack is signed, which hold for format 1.1
-too. The world sections that format 1.1 adds are in [worlds.md](./worlds.md), with the scenes in
-[scenes.md](./scenes.md) and the cast and the devices in [cast.md](./cast.md).
+decorations; then the checks every pack passes and how a pack is signed, which hold for formats 1.1
+and 1.2 too. The world sections that format 1.1 adds are in [worlds.md](./worlds.md), with the
+scenes in [scenes.md](./scenes.md) and the cast and the devices in [cast.md](./cast.md). The fields
+format 1.2 adds to a weapon are in [Weapons that fire](#weapons-that-fire), and what else 1.2 adds
+in [Format 1.2](./worlds.md#format-12).
 
 `web/js/pack.js` is the library that reads packs. It checks a pack's text whole and either returns
 the pack or refuses it with the step and the field at fault, turns a look into flat lists of
@@ -53,7 +55,7 @@ A pack file is UTF-8 JSON holding an envelope:
 | `id` | string | `^[a-z][a-z0-9-]{1,31}(\.[a-z0-9-]{1,31}){0,3}$`, such as `kw.base` |
 | `name` | string | 1 to 48 characters, one line |
 | `version` | string | `major.minor.patch`, each 0 to 999, no leading zeros |
-| `format` | `[1, minor]` | the minor no higher than the engine's, which is 1: `[1, 0]` or `[1, 1]` |
+| `format` | `[1, minor]` | the minor no higher than the engine's, which is 2: `[1, 0]`, `[1, 1]` or `[1, 2]` |
 | `licence` | string | 1 to 200 characters, one line |
 | `provides` | array | each of `builds`, `items`, `palettes`, `swatches`, `decorations` (and in 1.1 `scenes`, `cast`, `props`, `words`, `overlays`, `worlds`, `sounds`, `stamps`) at most once: exactly the sections that are present and not empty |
 | `palettes` | object | the pack's own colour sets |
@@ -348,7 +350,8 @@ numbers.
 | `hold` | `off`, required | a pair of numbers: the point of the shield that sits on the off hand |
 | `face` | `off`, required | `[x, y, w, h]` from `hold`: the box no arm may be drawn over |
 
-No other field is allowed on an item of a given slot. An item fits every build.
+No other field is allowed on an item of a given slot, except that a `main` item in a pack of format
+1.2 may carry the fields of [Weapons that fire](#weapons-that-fire). An item fits every build.
 
 A **part** is `{"at": anchor, "side": "L" or "R", "shapes": [...]}` with 1 to 128 shapes. `side`
 is required in `arms` and `gauntlets`, which must each have exactly one part for side L and one for
@@ -436,6 +439,64 @@ view only in a place of that kind with room for the box (`KW.knight.rest.fits`);
 draw what they always drew. The base pack's shield fits `hang`: its rest view hangs it by a strap
 from a nail at the rest anchor, the top middle of the place.
 
+## Weapons that fire
+
+Format 1.2 lets a `main` item fire: a pack of format `[1, 2]` may give a weapon these fields, and
+a pack of format 1.0 or 1.1 that gives any of them is refused at `fields` (`is not a field here`).
+An item with none of them is swung, as every weapon of 1.0 is, and reads, resolves and draws
+exactly as before.
+
+```json
+"main.blaster": {
+  "slot": "main", "name": "Blaster", "use": "fire",
+  "grip": { "kind": "one", "hands": [0] },
+  "barrel": { "from": 22, "to": 64, "half": 7 },
+  "muzzle": { "s": 64, "p": 0 },
+  "range": 420,
+  "shot": { "kind": "bolt", "colour": "#7af0ff", "flash": "#fff3a0" },
+  "stowed": { "layer": "body", "parts": [ { "at": "hipR", "shapes": [
+    { "k": "rrect", "p": [4, -8], "w": 20, "h": 38, "r": 5, "fill": "@base.k" } ] } ] },
+  "parts": [ { "at": "main", "shapes": ["..."] } ]
+}
+```
+
+| Field | Rule |
+|---|---|
+| `use` | `"swing"`, `"fire"` or `"both"`; left out, `"swing"` |
+| `barrel` | `{"from", "to", "half"}` in frame units, as `blade` is, `from` below `to`: the part of the weapon no arm may cross, forward of the front hand |
+| `muzzle` | `{"s", "p"}`, a point on the frame where the shot leaves and the flash shows: `s` from the barrel's `from` to its `to`, `p` within its `half` either side |
+| `range` | a whole number from 200 to 640: the farthest a shot is drawn |
+| `shot` | `{"kind", "colour", "flash"}`: `kind` one of `bolt` (a short streak that flies), `tracer` (a line from the muzzle that fades) or `beam` (a line drawn at once, for a moment); `colour` and `flash` hex colours, `flash` optional |
+| `stowed` | `{"layer", "parts"}`, optional, on any weapon: the weapon put away on the body, `layer` `back` (slung, drawn with the `back` slot) or `body` (holstered, drawn after the `torso`); 1 to 16 parts hung on `neck`, `hipL`, `hipR`, or `hip` with a side, with no framed point |
+
+What each use must give is checked at `rules`:
+
+| `use` | Means | Must give | May not give |
+|---|---|---|---|
+| `"swing"`, or none | held and swung | nothing more; a `blade` gives its reach, as in 1.0 | `barrel`, `muzzle`, `range`, `shot` |
+| `"fire"` | held and fired | `barrel`, `muzzle`, `range`, `shot` | |
+| `"both"` | swung or fired, the engine choosing which | `barrel`, `muzzle`, `range`, `shot` and `blade` | |
+
+A shot with no `flash` shows the engine's pale snap at the muzzle. The burst where a shot lands is
+the engine's, the same cartoon burst a blade's blow makes, and the shot's motion is the engine's
+too: a pack says what the weapon looks like, where its barrel lies, how far it shoots and in what
+colours, and the engine holds it, aims it and fires it
+([rig.md](./rig.md#aiming-and-firing), [scenes.md](./scenes.md#the-effects)).
+
+The stowed view counts toward its item's 400 shapes and 8 000 fills with the parts, and a look
+counts the larger of the weapon and its stowed view toward the knight's caps, since the two are
+never drawn in one frame. The grip is `two` or `one`, as in 1.0, and a one-handed weapon that fires
+may go with a shield as a one-handed blade does. A two-handed weapon that fires is held with its
+rear hand at its frame's origin under the shoulder and its front hand further along: the front
+station must sit far enough back that its gauntlet stays behind the barrel's `from`, the trial
+crossbow's 38 against a barrel from 54. Aimed to the left, a weapon that fires is drawn turned over
+its frame's line, so a weapon drawn from the side keeps its stock below and its sight on top either
+way.
+
+The engine has the aiming stances, `fire()` and the four shot effects, and resolves a weapon's
+fields; no act aims, fires or stows a weapon yet, so a weapon that fires is held and swung as a
+blade is until those acts are built.
+
 ## Decorations
 
 A decoration is a small picture a scene shows in one of its places.
@@ -489,10 +550,10 @@ sections, as [Format 1.1](./worlds.md#format-11) sets out, and `compile` compile
 | `json` | nesting no deeper than 12 and no key twice in one object, checked on the raw text before parsing; then `JSON.parse`; then every number finite, below 1,000,000 in size and with at most 3 decimals, every string and key free of unpaired surrogates, and no key `__proto__`, `constructor` or `prototype` anywhere, `ext` and `companions` included |
 | `envelope` | the file holds a JSON object; `kwpack` is 1 and `pack` an object, both present; `sig`, when present, is an object; no other key |
 | `signature` | the signature, against the key named by `kid` |
-| `format` | `format` is `[1, 0]` or `[1, 1]` |
+| `format` | `format` is `[1, 0]`, `[1, 1]` or `[1, 2]` |
 | `fields` | every field against its table, with no unknown keys outside `ext` and `companions`: types, ranges, multiples of 1/8, id patterns, text lengths, rising band fractions, and the counts the tables give |
-| `references` | every `@set.entry` exists and is the right kind, every anchor is one the slot allows, every named value is on the list and allowed where it is, `dir: "frame"` appears only in a part of a `main` item, every `g` is a declared group, every palette track names a hex entry of the pack's own palettes, each build's head item exists with slot `head`, and every default exists |
-| `rules` | `provides` matches the sections, each build's torso (`height` less `leg`) is 46 to 74, `arms` and `gauntlets` have one part for each side, each helmet passes the face check, each grip has as many stations as its kind, each blade's `from` is below its `to`, every scalar stays in its range at both ends (folded where something is folded in), each polygon is convex with no point repeated, each decoration's box is at most 240 by 240, no two tracks drive one thing |
+| `references` | every `@set.entry` exists and is the right kind, every anchor is one the slot allows (a stowed view's one of `neck`, `hipL`, `hipR` and `hip`), every named value is on the list and allowed where it is, `dir: "frame"` appears only in a part of a `main` item, every `g` is a declared group, every palette track names a hex entry of the pack's own palettes, each build's head item exists with slot `head`, and every default exists |
+| `rules` | `provides` matches the sections, each build's torso (`height` less `leg`) is 46 to 74, `arms` and `gauntlets` have one part for each side, each helmet passes the face check, each grip has as many stations as its kind, each blade's and barrel's `from` is below its `to`, each weapon gives what its `use` asks and its muzzle lies on its barrel, every scalar stays in its range at both ends (folded where something is folded in), each polygon is convex with no point repeated, each decoration's box is at most 240 by 240, no two tracks drive one thing |
 | `counts` | the per-pack counts and costs below; that the base pack's default look, with each of its builds, draws at most 1200 shapes and costs at most 40 000; and that its default plume fits its default helmet |
 | `compile` | every item and decoration compiles |
 
@@ -515,7 +576,7 @@ text, and a page must show it as text, never as markup.
 | items per pack | 256 (companion items included) |
 | parts per item, or in hair's `helmeted` view | 16 |
 | shapes per part | 128 |
-| shapes per item, its parts, view and rest view together | 400 |
+| shapes per item, its parts, views, rest view and stowed view together | 400 |
 | points per `poly` | 16 |
 | `pix` | 64 by 64, 4096 pixels per shape, 160 000 per pack (counted as width times height, rows in runs as they expand) |
 | `pix` keys | 24 |

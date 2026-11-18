@@ -45,8 +45,8 @@ draws nothing there and reports nothing.
 
 **The caps.** A look may draw at most 1200 shapes for the knight in one frame, and cost at most
 40 000. Both are counted for the heaviest frame the look can draw: the body, the larger of the two
-head groups, the pauldrons, both arms and gauntlets, and the weapon, with the shield only when the
-grip is one-handed.
+head groups, the pauldrons, both arms and gauntlets, and the weapon or its stowed view (format 1.2),
+whichever is larger, with the shield only when the grip is one-handed.
 
 `resolve` then falls back, one step at a time, until the look passes:
 
@@ -97,7 +97,9 @@ the engine's steps `crates`, `face`, `drumstick`, `hammer` and `effects`.
 nothing of its own. `anchors` holds the x and y of each anchor in the order of `ANCHORS` (`root`,
 `footL`, `footR`, `hipL`, `hipR`, `hem`, `belt`, `neck`, `shoulderL`, `shoulderR`, `head`, `handL`,
 `handR`, `main`, `off`, `rest`), then the frame's `sin(a)` and `-cos(a)` at `FRAME_SX` and
-`FRAME_SY`; `newAnchors()` makes one. `values` holds `drop`, `bloat`, `stepL`, `stepR` and `sway`
+`FRAME_SY`, and its flip at `FRAME_FL`: 1 draws every framed point's `p` as `-p`, which the knight
+sets while a weapon that fires is aimed to the left, and 0, as `newAnchors()` makes it, draws as
+always. `newAnchors()` makes one. `values` holds `drop`, `bloat`, `stepL`, `stepR` and `sway`
 in the order of `VALUES`; `newValues()` makes one. `prims` is `KW.draw` or any object with the
 seven primitives. `face` is the skin ramp for `@skin.face` this frame; left out, the swatch's
 normal ramp is used.
@@ -133,7 +135,8 @@ speech bubble twice each, the gear at rest, and the house and the smithy); see
 A loaded pack is frozen: `{ ok: true, id, version, name, licence, format, provides, signed, data,
 own, swatches, decorations, sums }`, with `world` after them for a pack of format 1.1, where `data` is the pack as read, `own` its palettes resolved,
 `swatches` its swatches resolved, `decorations` each decoration's groups, compiled keyframes and
-`cost`, and `sums` each item's shapes and cost as `{ parts, view, rest }`, each `{ n, cost }`.
+`cost`, and `sums` each item's shapes and cost as `{ parts, view, rest }`, each `{ n, cost }`, with
+`stowed` after them for a weapon that has a stowed view (format 1.2).
 `world` holds what the counts step found for the world sections: `{ scenes, cast, props, stamps }`
 (see [Costs and limits](./worlds.md#costs-and-limits)); the sections themselves are in `data`.
 
@@ -147,15 +150,21 @@ shapes, cost, lists }`: `look` names what is drawn, `m` and `diffs` are the buil
 differences, `colours` holds the skin's `face`, `sick`, `hot`, `cheek` and `puff` and the hair's
 `brow` for the engine's face (the half-closed eyes' lid takes the middle band of the ramp in use,
 the cheeks, the puffed cheeks and the brows the three colours), and `shapes` and `cost` are the counts against the caps.
+For a weapon that fires, one whose `use` is `fire` or `both` (format 1.2), the look also gives
+`use`, `barrel`, `muzzle`, `range` and `shot` as the item has them and `stowed`, whether it has a
+stowed view, after `lists`; a weapon that only swings adds none of them, so it resolves exactly as
+before. The lists are the same for either: no list holds the stowed view yet.
 
 `animate(decoration, t)` takes a `t` that is not a finite number, or is negative, as 0, and returns
 finite values and well-formed colours for every `t`.
 
-Constants: `FORMAT` (`[1, 1]`), `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STEPS`, `SLOTS`,
-`ANCHORS`, `ANCHOR`, `FRAME_SX`, `FRAME_SY`, `VALUES`, `VALUE`, `MEASURES`, `TORSO`, `BASE`, `KEYS`,
-`ORDERS`, and for format 1.1 `WORLD_LIMITS`, `WORLD_LISTS` (the closed lists: conditions, round acts,
+Constants: `FORMAT` (`[1, 2]`), `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STEPS`, `SLOTS`,
+`ANCHORS`, `ANCHOR`, `FRAME_SX`, `FRAME_SY`, `FRAME_FL`, `VALUES`, `VALUE`, `MEASURES`, `TORSO`, `BASE`, `KEYS`,
+`ORDERS`, for format 1.1 `WORLD_LIMITS`, `WORLD_LISTS` (the closed lists: conditions, round acts,
 hosts, predicates, marks, triggers, effects, roles, exits, foe poses, fonts, device kinds and their
-classes and boxes, labels, placeholders and the status colours' bands) and `SCENE_RANGE`.
+classes and boxes, labels, placeholders and the status colours' bands), `SCENE_RANGE` and `ACT_RANGE`, and for
+format 1.2 `FIRE_LISTS` (a weapon's uses, the shot kinds, the stowed view's layers and anchors, and
+the foe's pose `aim`).
 
 ## The verifier
 

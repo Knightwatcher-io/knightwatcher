@@ -103,7 +103,8 @@ knight. `rig(o, build)` takes another build's measurements, which only the tests
   guard, which starts 17 up the blade. Once the blade turns past level it slides further down the
   grip (`SLIDE`): not at all up to an angle of 1.4, 2 pixels from 1.8 on, in proportion between. At
   the end of a cut and in the goblin strike's bounce the gauntlet would otherwise reach the guard
-  by a pixel at some angles.
+  by a pixel at some angles. A weapon aimed ([Aiming and firing](#aiming-and-firing)) has no guard,
+  and its hand stays on its station.
 - `one`, a weapon in one hand, on the pack path only: `main` is placed as for `two`, and the right
   hand holds the weapon at its one station along the frame (the arming sword's is the grip's
   middle). The left hand, which is also `off`, holds the shield where the pose's `fx` and `fy`
@@ -192,7 +193,9 @@ that `draw()` in `pack.js` reads, made once by `newAnchors()` and `newValues()`:
   `main`, `off`, `rest`). The rig has no `rest`, which stays at 0: nothing on the knight hangs on
   it, and the gear at rest sets it in arrays of its own (see [Gear at rest](#gear-at-rest)). After
   them, at `FRAME_SX` and
-  `FRAME_SY`, the weapon frame's direction, `sin(a)` and `-cos(a)` of `main`'s angle;
+  `FRAME_SY`, the weapon frame's direction, `sin(a)` and `-cos(a)` of `main`'s angle, and at
+  `FRAME_FL` the flip: 1 while a weapon that fires is aimed to the left, when every framed point's
+  `p` is drawn as `-p`, and 0 otherwise;
 - the values in the order of `VALUES`: `drop`, `bloat`, `stepL`, `stepR`, `sway`. `drop` is
   clamped to 0 to 40 and `bloat` to 0 to 60, the ranges `RANGE` in `pack.js` states and every
   pack's shapes were checked over. The present knight stays inside them (a drop of 10 at most and
@@ -204,6 +207,69 @@ On the pack path the hand stations along the weapon are the weapon's own `grip.h
 base pack's greatsword the same 2 and -30, and for its arming sword the one station 0. The
 longsword's are the greatsword's and the mace's the arming sword's, so each is held, swung and
 raised exactly where those are.
+
+## Aiming and firing
+
+A weapon that fires (format 1.2, [packs.md](./packs.md#weapons-that-fire)) is aimed and fired by
+the engine, as a blade is swung, the same way whatever body holds it. `KW.knight.fired()` gives the
+look's weapon when its `use` is `fire` or `both`, as `{ use, barrel, muzzle, range, shot, stowed }`
+from the resolved look, and `null` for a weapon that only swings and on the code path.
+
+**The stances**, beside `BASE` and `BASE1`, in the same units, towards the right:
+
+| Stance | Weapon frame `gx`, `gy` | Shield hand `fx`, `fy` | On the grid, from the root |
+|---|---|---|---|
+| `AIM2`, two hands | 38, 35.6 | | the frame's origin, the rear hand's station, at (+70, -122), just outside the right shoulder; the front hand further along the frame |
+| `AIM2.left` | 10, 35.6 | | mirrored about the root, at (-70, -122) |
+| `AIM1`, one hand | 45.6, 34.4 | 20.4, 37.2 | the weapon hand out at shoulder height at (+108, -128), the shield in front of the chest a little raised, at (-18, -114) |
+| `AIM1.left` | 7.2, 34.8 | 20.4, 37.2 | the weapon hand across the body at (-84, -126), past the shield's edge, since the weapon stays in the right hand |
+
+`KW.knight.aim.pose(o, dir, a)` puts the stance towards `dir` (1 right, -1 left) into the pose with
+the weapon at the angle `a` (0 straight up, pi / 2 level to the right, -pi / 2 to the left). Like
+every pose they are written for the present knight and rise and sink with the build's shoulder line.
+
+**The aim.** `KW.knight.aim.angle(o, dir, at, above)` gives the angle that points the shot at the
+point `at`: worked out from the frame's origin in the stance, which does not move as the weapon
+turns, and turned by the muzzle's offset across the frame, so that the line of the shot from the
+muzzle meets `at`. It is held from 0.3 below level to `above` over it, 1.2 when left out, so the
+watcher never aims at the floor or the headline; `AIM.swatAbove`, 1.4, is the higher limit flies
+nearly overhead need. A point behind the watcher gives the nearer limit on the side aimed.
+
+**`fire(o, q, dir, at)`** plays one shot over q from 0 to 1, timed by the act that fires:
+
+| q | The weapon |
+|---|---|
+| 0 to .3 | raised from the stance to level, easing |
+| .3 to .5 | turned to `at`, easing |
+| .5 | fired: from here `fire()` returns true. The shot leaves the muzzle as the pose stands just before .5 (`KW.knight.muzzle(o)`) |
+| .5 to .6 | the recoil, 4 pixels back along the frame and 0.08 up at .5, gone by .6 |
+| .6 to 1 | back to the stance, easing |
+
+The eyes are angry from q .2 to .7. A turn from one side to the other never passes through straight
+up: both angles are taken on the circle from 0 to 2 pi, so the weapon is carried low across the body
+through straight down, and the grip dips by 30 pixels at the middle of the turn, never over the face.
+Every pose the stances and `fire()` write is marked `o.aimed` (from q 0 to 1, not at either end): a
+two-handed weapon's front hand then stays on its station at every angle, with none of the blade's
+slide, and a weapon aimed left is drawn turned over its frame's line (`FRAME_FL`), so that one drawn
+from the side keeps its stock below and its sight on top. `KW.knight.muzzle(o)` gives the muzzle
+on the grid as drawn, the flip included, and `null` for a weapon that does not fire. `AIM` holds the
+limits and the recoil (`below` 0.3, `above` 1.2, `swatAbove` 1.4, `recoil` 4, `recoilUp` 0.08).
+
+The stances and `fire()` exist for the acts to use, and no act uses them yet: the attack, the
+swat, practice and the foe still swing, and a weapon that fires is held and swung as a blade is
+until those acts are built.
+
+**No arm over the barrel.** The rule for blades holds for a barrel forward of the front hand:
+`tests/web/fire-barrel.test.js` draws every frame of `AIM2` or `AIM1` at every 0.05 of the aim's
+range both ways, and of `fire()` at every 0.01 of q both ways, aimed high, level and low, and checks
+that no arm or gauntlet is drawn over a pixel of the weapon from its barrel's `from`, nor over the
+shield's face. It does so for the test world's blaster with and without its deflector, its prod and
+a trial crossbow made in memory (its front hand 38 along the frame, its barrel from 54), on the base
+pack's three builds in plate, mail and padded sleeves and on the test world's unit: 40 sets of 668
+frames. With its front hand at 40 the crossbow's gauntlet covers up to 8 pixels of a barrel from 54
+in a frame. One limit is known: with a shield, the turn across the body to the left and back, from q
+0 to .3 and from .6 to 1, carries the weapon arm in front of the shield, and the test counts those
+frames apart.
 
 ## The knight from the base pack
 

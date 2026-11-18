@@ -6,16 +6,18 @@
    bar takes both hands), three scenes (Deck, Bridge, Airlock), its own cast (the Captain, Glitch,
    the Spark moth and a hover drone that catches them), a prop set that draws three kinds of
    device, its words and an overlay. It is read only by the tests, on dev terms: it is never signed
-   and never copied into web/. docs/tests.md says more.
+   and never copied into web/. It also writes a copy of format 1.2, test.orbit-fire.pack.json, with
+   weapons and a foe that fire (below). docs/tests.md says more.
 
-     node tests/web/fixtures/worlds/orbit.js           writes the file
-     node tests/web/fixtures/worlds/orbit.js --check   exits 1 when the file differs
+     node tests/web/fixtures/worlds/orbit.js           writes the files
+     node tests/web/fixtures/worlds/orbit.js --check   exits 1 when either file differs
 
    The outfit is the base pack's gear in flat colours: each item's shapes kept, every colour but
    the outline and the user's own sets turned to one flat colour per slot. The art is flat colour
-   and clear shapes, enough to tell the parts apart. require() gives { build, text, broken }:
-   broken() is a copy with a second preset, "Orbit (broken)", whose quiet scene cannot act a
-   device going down, which the pack library refuses at rules. */
+   and clear shapes, enough to tell the parts apart. require() gives { build, text, broken, fired,
+   fireText }: fired() and fireText() are the 1.2 copy, and broken() is a copy with a second
+   preset, "Orbit (broken)", whose quiet scene cannot act a device going down, which the pack
+   library refuses at rules. */
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -341,7 +343,9 @@ function captain() {
     }
   };
 }
-function glitch() {
+/* Glitch, the foe that comes out of the floor. With fires (the 1.2 copy) it fires a tracer from the
+   end of an arm held out, in a seventh pose, aim. */
+function glitch(fires) {
   const C1 = '#3dfca0', C2 = VIOLET, C3 = '#ff4fd8';
   const blocks = [
     { k: 'rect', p: [-34, -110], w: 68, h: 110, fill: K },
@@ -356,21 +360,28 @@ function glitch() {
   const arms = up => [{ k: 'rect', p: [-50, up ? -130 : -80], w: 14, h: 40, fill: K }, { k: 'rect', p: [-47, up ? -127 : -77], w: 8, h: 34, fill: C1 },
     { k: 'rect', p: [36, up ? -130 : -80], w: 14, h: 40, fill: K }, { k: 'rect', p: [39, up ? -127 : -77], w: 8, h: 34, fill: C1 }];
   const mouth = w => [{ k: 'rect', p: [-w / 2, -70], w, h: 6, fill: K }];
-  return {
+  const v = {
     role: 'foe', name: 'Glitch',
     sprite: { size: [160, 180], feet: [80, 170] }, h: 130, w: 34, mid: 60,
     crown: [[-50, -96], [-46, -110], [-34, -112], [-20, -112], [0, -112], [20, -112], [34, -112], [46, -110], [50, -96]],
-    exit: 'poof',
-    parts: { body: blocks, arms: arms(false), 'arms.up': arms(true) },
-    poses: {
-      stand: { parts: ['arms', 'body'], shapes: eyes(0).concat(mouth(20)) },
-      climb: { parts: ['arms.up', 'body'], shapes: eyes(0).concat(mouth(12)) },
-      taunt0: { parts: ['arms.up', 'body'], shapes: eyes(-2).concat(mouth(30)) },
-      taunt1: { parts: ['arms', 'body'], shapes: eyes(2).concat(mouth(30)) },
-      brace: { parts: ['arms', 'body'], shapes: eyes(0, true).concat(mouth(8)) },
-      hit: { parts: ['arms.up', 'body'], shapes: eyes(4, true).concat(mouth(24)) }
-    }
+    exit: 'poof'
   };
+  // drawn facing left: the arm held out to the left, its end the muzzle, the other arm down
+  if (fires) v.fires = { muzzle: [-76, -83], shot: { kind: 'tracer', colour: '#ff8fb0', flash: '#fff3a0' } };
+  v.parts = { body: blocks, arms: arms(false), 'arms.up': arms(true) };
+  v.poses = {
+    stand: { parts: ['arms', 'body'], shapes: eyes(0).concat(mouth(20)) },
+    climb: { parts: ['arms.up', 'body'], shapes: eyes(0).concat(mouth(12)) },
+    taunt0: { parts: ['arms.up', 'body'], shapes: eyes(-2).concat(mouth(30)) },
+    taunt1: { parts: ['arms', 'body'], shapes: eyes(2).concat(mouth(30)) },
+    brace: { parts: ['arms', 'body'], shapes: eyes(0, true).concat(mouth(8)) },
+    hit: { parts: ['arms.up', 'body'], shapes: eyes(4, true).concat(mouth(24)) }
+  };
+  if (fires) v.poses.aim = { parts: ['body'], shapes: [
+    { k: 'rect', p: [-78, -90], w: 44, h: 14, fill: K }, { k: 'rect', p: [-75, -87], w: 40, h: 8, fill: C1 }, { k: 'rect', p: [-78, -88], w: 4, h: 10, fill: WARN },
+    { k: 'rect', p: [36, -80], w: 14, h: 40, fill: K }, { k: 'rect', p: [39, -77], w: 8, h: 34, fill: C1 }
+  ].concat(eyes(0), mouth(10)) };
+  return v;
 }
 function moth() {
   const wing = (dy, a) => [
@@ -480,6 +491,61 @@ function build() {
 }
 const text = () => JSON.stringify(build(), null, 1) + '\n';
 
+/* ---- The 1.2 copy: weapons and a foe that fire --------------------------------------------------
+   test.orbit-fire.pack.json: the same world, the same id, at format [1, 2], with what 1.2 adds. The
+   unit carries a one-handed blaster that fires a bolt, with a deflector, the base pack's heater
+   shield in flat panels; the prod, two-handed, is both swung and fired, a beam with no flash colour
+   of its own; Glitch fires a tracer. A page of format 1.1 refuses the copy at format, and reads the
+   1.1 file beside it as before. Framed points are on the weapon's frame: s along it, p across. */
+const FIRE_FILE = path.join(__dirname, 'test.orbit-fire.pack.json');
+const F = (s, p) => ({ frame: 'main', s, p });
+const frameBox = (s0, s1, p0, p1, fill) => ({ k: 'poly', pts: [F(s0, p0), F(s1, p0), F(s1, p1), F(s0, p1)], fill, dir: 'frame' });
+function blaster() {
+  return {
+    slot: 'main', name: 'Blaster', use: 'fire',
+    grip: { kind: 'one', hands: [0] },
+    barrel: { from: 22, to: 64, half: 7 }, muzzle: { s: 64, p: 0 }, range: 420,
+    shot: { kind: 'bolt', colour: GLOW, flash: '#fff3a0' },
+    stowed: { layer: 'body', parts: [{ at: 'hipR', shapes: [
+      { k: 'rrect', p: [4, -8], w: 20, h: 38, r: 5, fill: K }, { k: 'rrect', p: [7, -5], w: 14, h: 32, r: 3, fill: '#566791' }
+    ] }] },
+    parts: [{ at: 'main', shapes: [
+      { k: 'strip', p0: F(-2, 2), p1: F(-10, 18), hw0: 5, hw1: 5, fill: K }, { k: 'strip', p0: F(-2, 2), p1: F(-10, 18), hw0: 2.5, hw1: 2.5, fill: '#566791' },
+      frameBox(-12, 64, -7, 7, K), frameBox(-9, 61, -4, 4, '#8ea2d2'), frameBox(30, 58, -1, 1, GLOW), frameBox(56, 64, -5, 5, WARN)
+    ] }]
+  };
+}
+function prod() {
+  return {
+    slot: 'main', name: 'Prod', use: 'both',
+    grip: { kind: 'two', hands: [2, -30] },
+    blade: { from: 34, to: 204, half: 10 },
+    barrel: { from: 34, to: 204, half: 10 }, muzzle: { s: 204, p: 0 }, range: 360,
+    shot: { kind: 'beam', colour: LIME },
+    stowed: { layer: 'back', parts: [{ at: 'neck', shapes: [
+      { k: 'strip', p0: [-70, -30], p1: [64, 150], hw0: 6, hw1: 6, fill: K }, { k: 'strip', p0: [-70, -30], p1: [64, 150], hw0: 3, hw1: 3, fill: '#b8c3dc' },
+      { k: 'ell', p: [-70, -30], rx: 10, ry: 10, fill: K }, { k: 'ell', p: [-70, -30], rx: 6, ry: 6, fill: LIME }
+    ] }] },
+    parts: [{ at: 'main', shapes: [
+      { k: 'strip', p0: F(-44, 0), p1: F(160, 0), hw0: 6, hw1: 6, fill: K }, { k: 'strip', p0: F(-44, 0), p1: F(160, 0), hw0: 3, hw1: 3, fill: '#b8c3dc' },
+      frameBox(150, 180, -10, 10, K), frameBox(153, 177, -7, 7, '#5d6f99'),
+      { k: 'strip', p0: F(178, -7), p1: F(204, -7), hw0: 3, hw1: 3, fill: K }, { k: 'strip', p0: F(178, 7), p1: F(204, 7), hw0: 3, hw1: 3, fill: K },
+      { k: 'ell', p: F(194, 0), rx: 5, ry: 5, fill: K }, { k: 'ell', p: F(194, 0), rx: 3, ry: 3, fill: LIME }
+    ] }]
+  };
+}
+function fired() {
+  const env = build(), p = env.pack;
+  p.version = '1.1.0'; p.format = [1, 2];
+  p.items['main.blaster'] = blaster();
+  p.items['main.prod'] = prod();
+  p.items['off.deflector'] = Object.assign(flat(clone(BASE.items['off.heater']), '#6a7fae'), { name: 'Deflector' });
+  p.cast['foe.glitch'] = glitch(true);
+  Object.assign(p.worlds['world.orbit'].outfit.items, { main: 'main.blaster', off: 'off.deflector' });
+  return env;
+}
+const fireText = () => JSON.stringify(fired(), null, 1) + '\n';
+
 /* A copy with a second preset, "Orbit (broken)": its quiet scene, the lounge, is the deck that
    cannot act a device going down, so the pack library refuses the pack at rules. */
 function broken() {
@@ -489,16 +555,22 @@ function broken() {
   return JSON.stringify(env);
 }
 
-module.exports = { FILE, ID, build, text, broken };
+module.exports = { FILE, FIRE_FILE, ID, build, text, broken, fired, fireText };
 
 if (require.main === module) {
-  const want = text();
+  const files = [[FILE, text()], [FIRE_FILE, fireText()]];
   if (process.argv.includes('--check')) {
-    const got = fs.existsSync(FILE) ? fs.readFileSync(FILE, 'utf8') : '';
-    if (got !== want) { console.error('orbit: ' + path.relative(process.cwd(), FILE) + ' is not what the generator writes; run node ' + path.relative(process.cwd(), __filename)); process.exit(1); }
-    console.log('orbit: the fixture is what the generator writes');
+    let bad = 0;
+    for (const [f, want] of files) {
+      const got = fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '';
+      if (got !== want) { bad++; console.error('orbit: ' + path.relative(process.cwd(), f) + ' is not what the generator writes; run node ' + path.relative(process.cwd(), __filename)); }
+    }
+    if (bad) process.exit(1);
+    console.log('orbit: the fixtures are what the generator writes');
   } else {
-    fs.writeFileSync(FILE, want);
-    console.log('orbit: wrote ' + path.relative(process.cwd(), FILE) + ', ' + Buffer.byteLength(want) + ' bytes');
+    for (const [f, want] of files) {
+      fs.writeFileSync(f, want);
+      console.log('orbit: wrote ' + path.relative(process.cwd(), f) + ', ' + Buffer.byteLength(want) + ' bytes');
+    }
   }
 }

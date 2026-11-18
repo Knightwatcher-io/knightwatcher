@@ -185,13 +185,15 @@ test('one changed value in any world section breaks the signature', () => {
 
 // ---- Versions ------------------------------------------------------------------------------------------
 
-test('the library reads [1, 0] and [1, 1] and refuses [1, 2] at the format step', () => {
-  assert.deepEqual(PK.FORMAT, [1, 1]);
+test('the library reads [1, 0], [1, 1] and [1, 2] and refuses [1, 3] at the format step', () => {
+  assert.deepEqual(PK.FORMAT, [1, 2]);
   assert.equal(load(small([1, 0])).ok, true);
   assert.equal(load(small([1, 1])).ok, true);
-  for (const f of [[1, 2], [1, 3]]) assert.deepEqual(load(small(f)), { ok: false, step: 'format', reason: 'pack.format: is 1.' + f[1] + ', newer than this engine\'s 1.1', id: 'test.small' });
-  // a 1.2 field such as a fired weapon's use is refused the same way, at the format, in a 1.2 pack
-  assert.equal(load(Object.assign(WORLD(), { format: [1, 2] })).step, 'format');
+  assert.equal(load(small([1, 2])).ok, true);
+  for (const f of [[1, 3], [1, 4]]) assert.deepEqual(load(small(f)), { ok: false, step: 'format', reason: 'pack.format: is 1.' + f[1] + ', newer than this engine\'s 1.2', id: 'test.small' });
+  // a world of 1.1 reads the same as 1.2, which adds only the fields of weapons and foes that fire
+  // (tests/web/fire.test.js)
+  assert.equal(load(Object.assign(WORLD(), { format: [1, 2] })).ok, true);
 });
 
 test('a 1.0 pack reads as it did: no world section, builds only in the base pack, pick and lamp free', () => {

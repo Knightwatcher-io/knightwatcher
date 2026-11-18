@@ -4,7 +4,8 @@
 // medieval world with each of Orbit's parts swapped in one at a time, and Orbit with each of the
 // medieval world's, changes what that part draws and nothing else, with no throw, no part past a
 // cap and no fallback but the ones expected; the medieval world returns exactly when Orbit is
-// unchosen; and a library of format 1.0 refuses Orbit at format.
+// unchosen; a library of format 1.0 refuses Orbit at format; and one of format 1.1 refuses the copy
+// of format 1.2 at format and reads the 1.1 file as this one does.
 // Run with: node --test tests/web/
 //
 // The engine's reads of KW.scenes, KW.cast and KW.kinds are watched while it draws, so a test sees
@@ -378,7 +379,7 @@ test('Orbit unchosen on the display: the medieval world returns exactly, frame f
 
 test('a library of format 1.0 refuses Orbit at format, and this one reads it', () => {
   const src = fs.readFileSync(path.join(WEB, 'js/pack.js'), 'utf8');
-  const old = src.replace('const FORMAT = Object.freeze([1, 1]);', 'const FORMAT = Object.freeze([1, 0]);');
+  const old = src.replace('const FORMAT = Object.freeze([1, 2]);', 'const FORMAT = Object.freeze([1, 0]);');
   assert.notEqual(old, src, 'the library\'s format is swapped in the sandbox');
   const mod = { exports: {} };
   vm.runInContext(old, vm.createContext({ module: mod, require: p => require(path.join(WEB, 'js', p)), console }), { filename: 'pack-1.0.js' });
@@ -388,4 +389,20 @@ test('a library of format 1.0 refuses Orbit at format, and this one reads it', (
   // the base pack, of format 1.0, it reads as before
   assert.equal(mod.exports.read(BASE_TEXT, { allowUnsigned: true }).ok, true);
   assert.equal(PK.read(TEXT, { allowUnsigned: true }).ok, true);
+});
+
+test('a library of format 1.1 refuses Orbit\'s copy of format 1.2 at format, reads the 1.1 file as before, and this one reads both', () => {
+  const FIRE = fs.readFileSync(ORBIT.FIRE_FILE, 'utf8');
+  const src = fs.readFileSync(path.join(WEB, 'js/pack.js'), 'utf8');
+  const old = src.replace('const FORMAT = Object.freeze([1, 2]);', 'const FORMAT = Object.freeze([1, 1]);');
+  assert.notEqual(old, src, 'the library\'s format is swapped in the sandbox');
+  const mod = { exports: {} };
+  vm.runInContext(old, vm.createContext({ module: mod, require: p => require(path.join(WEB, 'js', p)), console }), { filename: 'pack-1.1.js' });
+  assert.deepEqual(JSON.parse(JSON.stringify(mod.exports.read(FIRE, { allowUnsigned: true }))), { ok: false, step: 'format', reason: 'pack.format: is 1.2, newer than this engine\'s 1.1', id: 'test.orbit' });
+  const was = mod.exports.read(TEXT, { allowUnsigned: true }), now = PK.read(TEXT, { allowUnsigned: true });
+  assert.equal(was.ok, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(now)), JSON.parse(JSON.stringify(was)), 'the 1.1 file reads the same on both');
+  assert.equal(mod.exports.read(BASE_TEXT, { allowUnsigned: true }).ok, true);
+  const fire = PK.read(FIRE, { allowUnsigned: true });
+  assert.deepEqual([fire.ok, fire.id, fire.version, fire.format], [true, 'test.orbit', '1.1.0', [1, 2]]);
 });

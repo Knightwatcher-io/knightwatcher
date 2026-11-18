@@ -9,10 +9,11 @@
 
   /* ---- The format's constants -------------------------------------------------------------- */
 
-  /* The newest format this library reads. It reads [1, 0] and [1, 1]: 1.1 adds the world sections
-     (docs/worlds.md, Format 1.1), which are checked and kept as data; the scene compiler,
-     world.js, draws from them. */
-  const FORMAT = Object.freeze([1, 1]);
+  /* The newest format this library reads. It reads [1, 0], [1, 1] and [1, 2]: 1.1 adds the world
+     sections (docs/worlds.md, Format 1.1), which are checked and kept as data; the scene compiler,
+     world.js, draws from them. 1.2 adds the fields of a weapon that fires, on a main item, and of a
+     foe that fires (docs/packs.md, Weapons that fire). */
+  const FORMAT = Object.freeze([1, 2]);
   /* Signed ahead of the pack's canonical form, so that a signature made for anything else cannot
      pass as a pack's. */
   const PREFIX = 'knightwatcher pack v1\n';
@@ -39,12 +40,19 @@
   const ANCHORS = Object.freeze(['root', 'footL', 'footR', 'hipL', 'hipR', 'hem', 'belt', 'neck', 'shoulderL', 'shoulderR', 'head', 'handL', 'handR', 'main', 'off', 'rest']);
   const ANCHOR = Object.freeze(ANCHORS.reduce((o, n, i) => { o[n] = i; return o; }, {}));
   const FRAME_SX = ANCHORS.length * 2, FRAME_SY = FRAME_SX + 1, MAIN = ANCHOR.main;
+  /* After the frame's direction, the flip: 1 while a weapon that fires is aimed to the left, which
+     turns its drawing over its frame's line (a framed point's p is drawn as -p), so that a stock, a
+     lever or a sight stays on the same side of the weapon whichever way it aims. 0 for everything
+     else, which draws as it always has. */
+  const FRAME_FL = FRAME_SY + 1;
   const SIDED = { foot: ['footL', 'footR'], hip: ['hipL', 'hipR'], shoulder: ['shoulderL', 'shoulderR'], hand: ['handL', 'handR'] };
   const BODY = ['root', 'footL', 'footR', 'hipL', 'hipR', 'hem', 'belt', 'neck', 'shoulderL', 'shoulderR', 'head', 'handL', 'handR'];
   const SLOT_AT = {
     back: BODY.concat(['foot', 'hip', 'shoulder', 'hand']), legs: ['hipL', 'hipR', 'hip'], boots: ['footL', 'footR', 'foot'],
     torso: ['neck', 'belt', 'hem'], head: ['head'], hair: ['head'], helmet: ['head'], plume: ['plume'],
-    pauldrons: ['shoulderL', 'shoulderR', 'shoulder'], arms: ['shoulder', 'hand'], gauntlets: ['hand'], main: ['main'], off: ['off'] };
+    pauldrons: ['shoulderL', 'shoulderR', 'shoulder'], arms: ['shoulder', 'hand'], gauntlets: ['hand'], main: ['main'], off: ['off'],
+    // not a slot: a weapon's stowed view (format 1.2) hangs on the neck, slung, or on a hip, holstered
+    stowed: ['neck', 'hipL', 'hipR', 'hip'] };
 
   /* The named values. VALUES are those the engine sets each frame, in the order of the values
      array. The build's differences are folded into constants when a look is compiled. */
@@ -453,12 +461,26 @@
   }
   const ITEM_KEYS = { helmet: ['mounts', 'rest'], hair: ['views'], plume: ['rest'], off: ['rest', 'hold', 'face'], main: ['grip', 'blade'] };
   const ITEM_REQ = { main: ['grip'], off: ['hold', 'face'] };
-  function item(v, path) {
+  /* Format 1.2's fields on a main item: how the weapon is used, where its barrel and muzzle lie, how
+     far it shoots, its shot, and its view while put away. USES and SHOT_KINDS are their closed lists;
+     FIRED are the fields a weapon that fires must give, and a weapon that only swings may not. */
+  const FIRE_KEYS = ['use', 'barrel', 'muzzle', 'range', 'shot', 'stowed'];
+  const USES = ['swing', 'fire', 'both'], SHOT_KINDS = ['bolt', 'tracer', 'beam'], STOWED_LAYERS = ['back', 'body'];
+  const FIRED = ['barrel', 'muzzle', 'range', 'shot'];
+  /* The shot of a weapon or a foe that fires: { kind, colour, flash }, flash optional (the engine's
+     pale snap when left out). */
+  function shotField(v, path) {
+    obj(v, path, ['kind', 'colour', 'flash'], ['kind', 'colour']);
+    oneOf(v.kind, key(path, 'kind'), SHOT_KINDS);
+    for (const c of ['colour', 'flash']) if (has(v, c) && (typeof v[c] !== 'string' || !HEX.test(v[c]))) fail(key(path, c), 'must be a hex colour');
+  }
+  /* An item. m2 is whether the pack is of format 1.2, which alone takes the fields of FIRE_KEYS. */
+  function item(v, path, m2) {
     if (!isObj(v)) fail(path, 'must be an object');
     if (!has(v, 'slot')) fail(key(path, 'slot'), 'is missing');
     oneOf(v.slot, key(path, 'slot'), SLOTS);
     if (v.slot === 'companion') return;
-    obj(v, path, ['slot', 'name', 'parts'].concat(ITEM_KEYS[v.slot] || []), ['slot', 'name', 'parts'].concat(ITEM_REQ[v.slot] || []));
+    obj(v, path, ['slot', 'name', 'parts'].concat(ITEM_KEYS[v.slot] || [], v.slot === 'main' && m2 ? FIRE_KEYS : []), ['slot', 'name', 'parts'].concat(ITEM_REQ[v.slot] || []));
     text(v.name, key(path, 'name'), 1, 48);
     parts(v.parts, key(path, 'parts'));
     if ((v.slot === 'arms' || v.slot === 'gauntlets')) v.parts.forEach((pt, i) => { if (!has(pt, 'side')) fail(key(idx(key(path, 'parts'), i), 'side'), 'is required in ' + v.slot); });
@@ -475,6 +497,25 @@
       const bp = key(path, 'blade');
       obj(v.blade, bp, ['from', 'to', 'half'], ['from', 'to', 'half']);
       eighth(v.blade.from, key(bp, 'from'), -400, 400); eighth(v.blade.to, key(bp, 'to'), -400, 400); eighth(v.blade.half, key(bp, 'half'), 0, 400);
+    }
+    if (has(v, 'use')) oneOf(v.use, key(path, 'use'), USES);
+    if (has(v, 'barrel')) {
+      const bp = key(path, 'barrel');
+      obj(v.barrel, bp, ['from', 'to', 'half'], ['from', 'to', 'half']);
+      eighth(v.barrel.from, key(bp, 'from'), -400, 400); eighth(v.barrel.to, key(bp, 'to'), -400, 400); eighth(v.barrel.half, key(bp, 'half'), 0, 400);
+    }
+    if (has(v, 'muzzle')) {
+      const mp = key(path, 'muzzle');
+      obj(v.muzzle, mp, ['s', 'p'], ['s', 'p']);
+      eighth(v.muzzle.s, key(mp, 's'), -400, 400); eighth(v.muzzle.p, key(mp, 'p'), -400, 400);
+    }
+    if (has(v, 'range')) int(v.range, key(path, 'range'), 200, 640);
+    if (has(v, 'shot')) shotField(v.shot, key(path, 'shot'));
+    if (has(v, 'stowed')) {
+      const wp = key(path, 'stowed');
+      obj(v.stowed, wp, ['layer', 'parts'], ['layer', 'parts']);
+      oneOf(v.stowed.layer, key(wp, 'layer'), STOWED_LAYERS);
+      parts(v.stowed.parts, key(wp, 'parts'));
     }
     if (has(v, 'hold')) pair(v.hold, key(path, 'hold'), -512, 512);
     if (has(v, 'face')) {
@@ -543,8 +584,10 @@
   /* Format 1.1's sections, each listed in provides when it holds anything. */
   const WORLD_SECTIONS = ['scenes', 'cast', 'props', 'words', 'overlays', 'worlds', 'sounds', 'stamps'];
   const PACK_KEYS_11 = PACK_KEYS.concat(WORLD_SECTIONS), PROVIDES_11 = PROVIDES.concat(WORLD_SECTIONS);
-  /* Whether a pack is of format 1.1, which the format step has already held to [1, 0] or [1, 1]. */
+  /* Whether a pack is of format 1.1 or later, which the format step has already held to [1, 0] to [1, 2]. */
   const is11 = pack => pack.format[1] >= 1;
+  /* Whether a pack is of format 1.2, which adds the fields of weapons and foes that fire. */
+  const is12 = pack => pack.format[1] >= 2;
   function fields(pack) {
     const P = 'pack', m1 = is11(pack), PV = m1 ? PROVIDES_11 : PROVIDES;
     obj(pack, P, m1 ? PACK_KEYS_11 : PACK_KEYS, ['id', 'name', 'version', 'format', 'licence', 'provides']);
@@ -606,7 +649,7 @@
     if (base && (!has(pack, 'builds') || !has(pack, 'defaults'))) fail(P, 'the base pack must carry builds and defaults');
     if (has(pack, 'items')) {
       const ip = key(P, 'items');
-      for (const i of table(pack.items, ip, LOCAL_ID, 0, Infinity, 'items')) item(pack.items[i], key(ip, i));
+      for (const i of table(pack.items, ip, LOCAL_ID, 0, Infinity, 'items')) item(pack.items[i], key(ip, i), is12(pack));
     }
     if (has(pack, 'decorations')) {
       const dp = key(P, 'decorations');
@@ -690,6 +733,7 @@
     });
   }
   function badAnchor(ctx, name) {
+    if (ctx.slot === 'stowed' && !SLOT_AT.stowed.includes(name)) return 'a stowed view hangs only on neck, hipL, hipR or hip, not on ' + quote(name);
     if (!SLOT_AT[ctx.slot].includes(name)) return 'the slot ' + ctx.slot + ' does not hang anything on ' + quote(name);
     return quote(name) + ' needs a part drawn for one side';
   }
@@ -723,6 +767,7 @@
       const v = items[i], ip = key(key(P, 'items'), i);
       refParts(pack, v.parts, key(ip, 'parts'), v.slot);
       if (v.views) refParts(pack, v.views.helmeted, key(key(ip, 'views'), 'helmeted'), v.slot);
+      if (v.stowed) refParts(pack, v.stowed.parts, key(key(ip, 'stowed'), 'parts'), 'stowed');
       if (v.mounts) v.mounts.plume.forEach((c, j) => names(c, idx(key(key(ip, 'mounts'), 'plume'), j), { kind: 'mount' }));
       if (v.rest) {
         const rp = key(ip, 'rest');
@@ -852,6 +897,7 @@
       const dx = v.slot === 'off' ? -v.hold[0] : 0, dy = v.slot === 'off' ? -v.hold[1] : 0, fold = v.slot === 'off' ? 'the hold point' : '';
       v.parts.forEach((pt, j) => pt.shapes.forEach((s, k) => shapeRanges(s, idx(key(idx(key(ip, 'parts'), j), 'shapes'), k), dx, dy, fold)));
       if (v.views) v.views.helmeted.forEach((pt, j) => pt.shapes.forEach((s, k) => shapeRanges(s, idx(key(idx(key(key(ip, 'views'), 'helmeted'), j), 'shapes'), k), 0, 0, '')));
+      if (v.stowed) v.stowed.parts.forEach((pt, j) => pt.shapes.forEach((s, k) => shapeRanges(s, idx(key(idx(key(key(ip, 'stowed'), 'parts'), j), 'shapes'), k), 0, 0, '')));
       if (v.mounts) v.mounts.plume.forEach((c, j) => within(form(c), -512, 512, idx(key(key(ip, 'mounts'), 'plume'), j), 'the offset'));
       if (v.rest) {
         const rp = key(ip, 'rest');
@@ -913,11 +959,27 @@
       const v = items[i], ip = key(key(P, 'items'), i);
       v.parts.forEach((pt, j) => pt.shapes.forEach((s, k) => fn(s, idx(key(idx(key(ip, 'parts'), j), 'shapes'), k))));
       if (v.views) v.views.helmeted.forEach((pt, j) => pt.shapes.forEach((s, k) => fn(s, idx(key(idx(key(key(ip, 'views'), 'helmeted'), j), 'shapes'), k))));
+      if (v.stowed) v.stowed.parts.forEach((pt, j) => pt.shapes.forEach((s, k) => fn(s, idx(key(idx(key(key(ip, 'stowed'), 'parts'), j), 'shapes'), k))));
       if (v.rest) v.rest.shapes.forEach((s, k) => fn(s, idx(key(key(ip, 'rest'), 'shapes'), k)));
     }
     for (const d of Object.keys(pack.decorations || {})) pack.decorations[d].shapes.forEach((s, k) => fn(s, idx(key(key(key(P, 'decorations'), d), 'shapes'), k)));
   }
   function nonEmpty(v) { return isObj(v) && Object.keys(v).length > 0; }
+  /* What each use asks of a main item (format 1.2; an item of 1.0 or 1.1 has no use and swings): one
+     that fires gives its barrel, muzzle, range and shot, one that only swings gives none of them, and
+     one that is both gives a blade too. A swung weapon with no blade stays allowed, as in 1.0. The
+     muzzle lies on the barrel: along it between from and to, and across it within half. */
+  function fireRules(v, ip) {
+    const use = has(v, 'use') ? v.use : 'swing';
+    for (const f of FIRED) {
+      if (use !== 'swing' && !has(v, f)) fail(key(ip, f), 'is required on a weapon whose use is "' + use + '"');
+      if (use === 'swing' && has(v, f)) fail(key(ip, f), 'is only for a weapon that fires, and this one only swings');
+    }
+    if (use === 'both' && !has(v, 'blade')) fail(key(ip, 'blade'), 'is required on a weapon that is both swung and fired');
+    if (v.barrel && !(v.barrel.from < v.barrel.to)) fail(key(ip, 'barrel'), 'from must be below to');
+    if (v.muzzle && v.barrel && (v.muzzle.s < v.barrel.from || v.muzzle.s > v.barrel.to || Math.abs(v.muzzle.p) > v.barrel.half))
+      fail(key(ip, 'muzzle'), 'must lie on the barrel: s from its from to its to, and p within its half');
+  }
   function rules(pack) {
     const P = 'pack', items = pack.items || {};
     const have = (is11(pack) ? PROVIDES_11 : PROVIDES).filter(s => nonEmpty(pack[s]));
@@ -935,6 +997,7 @@
         if (v.grip.hands.length !== want) fail(key(key(ip, 'grip'), 'hands'), 'a "' + v.grip.kind + '" grip has ' + want + ' station' + (want > 1 ? 's' : ''));
       }
       if (v.blade && !(v.blade.from < v.blade.to)) fail(key(ip, 'blade'), 'from must be below to');
+      if (v.slot === 'main') fireRules(v, ip);
     }
     for (const b of Object.keys(pack.builds || {})) {
       const m = pack.builds[b].m, t = m.height - m.leg;
@@ -1019,12 +1082,16 @@
       }
     }
   }
-  /* The shapes and the cost of an item's parts, of hair's helmeted view and of its rest view. */
+  /* The shapes and the cost of an item's parts, of hair's helmeted view and of its rest view, and of
+     a weapon's stowed view (format 1.2) only when it has one, so that every item of 1.0 and 1.1
+     sums as it always has. */
   function itemSums(pack, v) {
     const sum = list => { const o = { n: 0, cost: 0 }; for (const pt of list) for (const s of pt.shapes) { o.n++; o.cost += shapeCost(pack, s, has(s, 'at') ? s.at : pt.at); } return o; };
     const rest = { n: 0, cost: 0 };
     if (v.rest) for (const s of v.rest.shapes) { rest.n++; rest.cost += shapeCost(pack, s, 'rest'); }
-    return { parts: sum(v.parts), view: v.views ? sum(v.views.helmeted) : { n: 0, cost: 0 }, rest };
+    const out = { parts: sum(v.parts), view: v.views ? sum(v.views.helmeted) : { n: 0, cost: 0 }, rest };
+    if (v.stowed) out.stowed = sum(v.stowed.parts);
+    return out;
   }
   /* A decoration's cost, each shape's multiplied by the largest scale its group reaches. */
   function decorCost(pack, v) {
@@ -1037,7 +1104,7 @@
     if (ids.length > LIMITS.items) fail(key(P, 'items'), 'holds ' + ids.length + ' items, more than ' + LIMITS.items);
     for (const i of live(items)) {
       const s = sums[i] = itemSums(pack, items[i]), ip = key(key(P, 'items'), i);
-      const n = s.parts.n + s.view.n + s.rest.n, c = s.parts.cost + s.view.cost + s.rest.cost;
+      const w = s.stowed || { n: 0, cost: 0 }, n = s.parts.n + s.view.n + s.rest.n + w.n, c = s.parts.cost + s.view.cost + s.rest.cost + w.cost;
       if (n > LIMITS.itemShapes) fail(ip, 'holds ' + n + ' shapes in its parts and views, more than ' + LIMITS.itemShapes);
       if (c > LIMITS.itemCost) fail(ip, 'costs up to ' + c + ' fills in its parts and views, more than ' + LIMITS.itemCost);
     }
@@ -1065,16 +1132,18 @@
   }
   /* The most shapes, and the most fills, a look draws for the knight in one frame, over every grip
      mode and helmet state: the body, the larger head group, the pauldrons, both arms and gauntlets,
-     and the weapon, with the shield when the grip is one-handed. c.items(slot) gives { item, sum },
-     c.head the build's head item. */
+     and the weapon or its stowed view, whichever is larger, since the two are never drawn in one
+     frame, with the shield when the grip is one-handed. c.items(slot) gives { item, sum }, c.head
+     the build's head item. */
   function lookTotals(c) {
-    const g = (s, part, what) => { const x = c.items(s); return x ? x.sum[part][what] : 0; };
+    const g = (s, part, what) => { const x = c.items(s); return x && x.sum[part] ? x.sum[part][what] : 0; };
     const helmet = c.items('helmet'), main = c.items('main'), plume = !!(helmet && helmet.item.mounts);
     const one = !!(main && main.item.grip.kind === 'one');
     const t = what => {
       const headOn = g('hair', 'view', what) + (plume ? g('plume', 'parts', what) : 0) + g('helmet', 'parts', what);
       const headOff = c.head.sum.parts[what] + g('hair', 'parts', what);
-      return ['back', 'legs', 'boots', 'torso', 'pauldrons', 'arms', 'gauntlets', 'main'].reduce((a, s) => a + g(s, 'parts', what), 0) + Math.max(headOn, headOff) + (one ? g('off', 'parts', what) : 0);
+      return ['back', 'legs', 'boots', 'torso', 'pauldrons', 'arms', 'gauntlets'].reduce((a, s) => a + g(s, 'parts', what), 0) + Math.max(g('main', 'parts', what), g('main', 'stowed', what))
+        + Math.max(headOn, headOff) + (one ? g('off', 'parts', what) : 0);
     };
     return { n: t('n'), cost: t('cost') };
   }
@@ -1112,6 +1181,10 @@
   const ROLES = ['patron', 'foe', 'critter', 'pet'];
   const EXITS = ['poof'];
   const FOE_POSES = ['stand', 'climb', 'taunt0', 'taunt1', 'brace', 'hit'];
+  /* The seventh pose, of a foe that fires (format 1.2), which the engine plays in place of the taunt;
+     a foe's poses are the six, and aim when it gives it. */
+  const FOE_AIM = 'aim';
+  const foePoses = v => (has(v.poses, FOE_AIM) ? FOE_POSES.concat([FOE_AIM]) : FOE_POSES);
   const PATRON_ANCHORS = ['seat', 'eyes', 'mouth'];
   const MOUTHS = ['shut', 'open'];
   const FLAPS = ['flap0', 'flap1'];
@@ -1596,11 +1669,13 @@
     int(v.lane, f('lane'), 0, 600);
     if (has(v, 'bed')) petSpot(v.bed, f('bed'), true);
   }
-  function castMember(v, path) {
+  /* A cast member. m2 is whether the pack is of format 1.2, in which alone a foe may fire: its fires
+     and its pose aim. */
+  function castMember(v, path, m2) {
     if (!isObj(v)) fail(path, 'must be an object');
     if (!has(v, 'role')) fail(key(path, 'role'), 'is missing');
     oneOf(v.role, key(path, 'role'), ROLES);
-    obj(v, path, CAST_KEYS[v.role], CAST_REQ[v.role]);
+    obj(v, path, CAST_KEYS[v.role].concat(v.role === 'foe' && m2 ? ['fires'] : []), CAST_REQ[v.role]);
     const f = k => key(path, k), where = { where: v.role };
     text(v.name, f('name'), 1, 48);
     if (v.role === 'patron') {
@@ -1639,9 +1714,15 @@
       int(v.h, f('h'), 1, WORLD_LIMITS.sprite); int(v.w, f('w'), 1, WORLD_LIMITS.sprite); int(v.mid, f('mid'), 0, WORLD_LIMITS.sprite);
       arr(v.crown, f('crown'), 1, 32).forEach((q, i) => pair(q, idx(f('crown'), i), -WORLD_LIMITS.sprite, WORLD_LIMITS.sprite));
       oneOf(v.exit, f('exit'), EXITS);
+      if (has(v, 'fires')) {
+        const fp = f('fires');
+        obj(v.fires, fp, ['muzzle', 'shot'], ['muzzle', 'shot']);
+        pair(v.fires.muzzle, key(fp, 'muzzle'), -WORLD_LIMITS.sprite, WORLD_LIMITS.sprite);
+        shotField(v.fires.shot, key(fp, 'shot'));
+      }
       for (const n of table(v.parts, f('parts'), LOCAL_ID, 0, 16, 'parts')) shapeList(v.parts[n], key(f('parts'), n), 1, LIMITS.partShapes, where);
-      obj(v.poses, f('poses'), FOE_POSES, FOE_POSES);
-      for (const n of FOE_POSES) {
+      obj(v.poses, f('poses'), m2 ? FOE_POSES.concat([FOE_AIM]) : FOE_POSES, FOE_POSES);
+      for (const n of foePoses(v)) {
         const p = key(f('poses'), n), pose = v.poses[n];
         obj(pose, p, ['parts', 'shapes'], ['parts', 'shapes']);
         arr(pose.parts, key(p, 'parts'), 0, 16).forEach((x, i) => { id(x, idx(key(p, 'parts'), i), LOCAL_ID); if (pose.parts.indexOf(x) !== i) fail(idx(key(p, 'parts'), i), 'appears twice'); });
@@ -1766,7 +1847,7 @@
     // how many each section may hold is checked at counts, as for items and decorations
     sec('stamps', (v, p) => shapeList(v, p, 1, WORLD_LIMITS.stampShapes, { where: 'stamp' }), 'stamps');
     sec('scenes', scene, 'scenes');
-    sec('cast', castMember, 'members');
+    sec('cast', (v, p) => castMember(v, p, is12(pack)), 'members');
     sec('props', propSet, 'prop sets');
     sec('words', wordsSet, 'word sets');
     sec('overlays', overlay, 'overlays');
@@ -1798,7 +1879,7 @@
         for (const m of MOUTHS) list(v.states[m], key(key(cp, 'states'), m), c);
       } else if (v.role === 'foe') {
         for (const x of Object.keys(v.parts)) list(v.parts[x], key(key(cp, 'parts'), x), c);
-        for (const x of FOE_POSES) list(v.poses[x].shapes, key(key(key(cp, 'poses'), x), 'shapes'), c);
+        for (const x of foePoses(v)) list(v.poses[x].shapes, key(key(key(cp, 'poses'), x), 'shapes'), c);
       } else if (v.role === 'critter') {
         for (const x of FLAPS) list(v.frames[x], key(key(cp, 'frames'), x), Object.assign({ groups: v.groups || {} }, c));
         list(v.dead, key(cp, 'dead'), c);
@@ -1999,7 +2080,7 @@
           else eachColour(x, ref, key(key(key(cp, 'palettes'), s), e));
         }
       }
-      if (v.role === 'foe') for (const x of FOE_POSES) v.poses[x].parts.forEach((q, i) => { if (!has(v.parts, q)) fail(idx(key(key(key(cp, 'poses'), x), 'parts'), i), 'names a part, ' + quote(q) + ', that the foe does not have'); });
+      if (v.role === 'foe') for (const x of foePoses(v)) v.poses[x].parts.forEach((q, i) => { if (!has(v.parts, q)) fail(idx(key(key(key(cp, 'poses'), x), 'parts'), i), 'names a part, ' + quote(q) + ', that the foe does not have'); });
       if (v.role === 'critter' && v.alpha) for (const g of Object.keys(v.alpha)) if (!(v.groups && has(v.groups, g))) fail(key(key(cp, 'alpha'), g), 'names a group, ' + quote(g) + ', that the critter does not declare');
       if (v.role === 'pet') {
         for (const c of Object.keys(v.coats)) for (const x of PET_POSES) {
@@ -2296,6 +2377,12 @@
         const [w, h] = v.sprite.size, [fx, fy] = v.sprite.feet;
         if (fx > w || fy > h) fail(key(key(cp, 'sprite'), 'feet'), 'must lie in the sprite');
         v.crown.forEach((q, i) => { if (q[0] + fx < 0 || q[0] + fx > w || q[1] + fy < 0 || q[1] + fy > h) fail(idx(key(cp, 'crown'), i), 'must lie in the sprite, from its feet'); });
+        // a foe that fires (format 1.2) aims in a pose of its own, from a muzzle inside its sprite
+        if (v.fires) {
+          const q = v.fires.muzzle;
+          if (!has(v.poses, FOE_AIM)) fail(key(cp, 'poses'), 'a foe that fires must give the pose "' + FOE_AIM + '"');
+          if (q[0] + fx < 0 || q[0] + fx > w || q[1] + fy < 0 || q[1] + fy > h) fail(key(key(cp, 'fires'), 'muzzle'), 'must lie in the sprite, from its feet');
+        }
       }
     }
     for (const n of Object.keys(pack.props || {})) propRules(pack, pack.props[n], key(key(P, 'props'), n));
@@ -2410,7 +2497,7 @@
         out.cast[n] = { still, states };
       } else if (v.role === 'foe') {
         const poses = {};
-        for (const x of FOE_POSES) {
+        for (const x of foePoses(v)) {
           poses[x] = v.poses[x].parts.reduce((t, q) => t + listCost(pack, v.parts[q], c).cost, 0) + listCost(pack, v.poses[x].shapes, c).cost;
           cap(key(key(cp, 'poses'), x), poses[x], L.poseCost, 'costs up to', 'fills');
         }
@@ -2607,6 +2694,7 @@
     const env = { diffs: ZERO_DIFFS, pal, hold: v.hold || [0, 0], plume: { a: ANCHOR.head, dx: 0, dy: 0 }, rest: at0 }, out = [];
     cparts(v.parts, env, out);
     if (v.views) cparts(v.views.helmeted, env, out);
+    if (v.stowed) cparts(v.stowed.parts, env, out);
     if (v.mounts) mount(v.mounts.plume, env);
     if (v.rest) { cshapes(v.rest.shapes, at0, env, out); if (v.rest.mounts) mount(v.rest.mounts.plume, env); }
     return out;
@@ -2851,7 +2939,10 @@
     MEASURES.forEach(x => { m[x[0]] = b.m[x[0]]; });
     return { ok: true, look: used, fallbacks, ignored, m, diffs, shapes: t.n, cost: t.cost,
       colours: { face: sw.skin.face, sick: sw.skin.sick, hot: sw.skin.hot, cheek: sw.skin.cheek, puff: sw.skin.puff, brow: sw.hair.brow },
-      grip: main ? main.grip : null, blade: main && main.blade ? main.blade : null, plumeShown: !!(items.helmet && items.helmet.item.mounts && items.plume), lists };
+      grip: main ? main.grip : null, blade: main && main.blade ? main.blade : null, plumeShown: !!(items.helmet && items.helmet.item.mounts && items.plume), lists,
+      // a weapon that fires (format 1.2) adds how it is used, its barrel, muzzle, range and shot, and
+      // whether it has a stowed view; a weapon that only swings adds nothing, so it resolves as before
+      ...(main && has(main, 'use') && main.use !== 'swing' ? { use: main.use, barrel: main.barrel, muzzle: main.muzzle, range: main.range, shot: main.shot, stowed: !!main.stowed } : {}) };
   }
 
   /* ---- Drawing ---------------------------------------------------------------------------------- */
@@ -2863,16 +2954,17 @@
     return s;
   }
   /* A point: the anchor plus the whole offset, in one addition. A framed point as the greatsword
-     computes it: gx + sx * s + px * p, then the screen offset. */
+     computes it: gx + sx * s + px * p, then the screen offset; with the frame flipped (FRAME_FL),
+     its p is drawn as -p. */
   function ptx(q, A, V) {
-    if (q.m === 1) return A[2 * MAIN] + A[FRAME_SX] * q.s + -A[FRAME_SY] * q.p + sv(q.x, V);
+    if (q.m === 1) return A[2 * MAIN] + A[FRAME_SX] * q.s + -A[FRAME_SY] * (A[FRAME_FL] ? -q.p : q.p) + sv(q.x, V);
     return A[2 * q.a] + sv(q.x, V);
   }
   function pty(q, A, V) {
-    if (q.m === 1) return A[2 * MAIN + 1] + A[FRAME_SY] * q.s + A[FRAME_SX] * q.p + sv(q.y, V);
+    if (q.m === 1) return A[2 * MAIN + 1] + A[FRAME_SY] * q.s + A[FRAME_SX] * (A[FRAME_FL] ? -q.p : q.p) + sv(q.y, V);
     return A[2 * q.a + 1] + sv(q.y, V);
   }
-  /* Draws a compiled list. A: the anchors array (ANCHORS order, then the frame's direction), V: the
+  /* Draws a compiled list. A: the anchors array (ANCHORS order, then the frame's direction and flip), V: the
      values array (VALUES order), P: the primitives, face: the skin ramp for @skin.face this frame
      (the list's own when left out). Allocates nothing of its own. */
   function draw(list, A, V, P, face) {
@@ -2895,7 +2987,7 @@
       }
     }
   }
-  const newAnchors = () => new Float64Array(ANCHORS.length * 2 + 2);
+  const newAnchors = () => new Float64Array(ANCHORS.length * 2 + 3);
   const newValues = () => new Float64Array(VALUES.length);
 
   /* The drawing order of one frame for each grip mode, as names: the lists of a resolved look, and
@@ -2964,8 +3056,10 @@
     TRIGGERS: TRIGGERS.slice(), EFFECTS: EFFECTS.slice(), ROLES: ROLES.slice(), EXITS: EXITS.slice(), FOE_POSES: FOE_POSES.slice(), PET_POSES: PET_POSES.slice(), FONTS: FONTS.slice(),
     PROP_KINDS: PROP_KINDS.slice(), CLASS_OF: Object.assign({}, CLASS_OF), CLASS_BOX: JSON.parse(JSON.stringify(CLASS_BOX)), PLACE_SIZE: JSON.parse(JSON.stringify(PLACE_SIZE)), CRATE_W, LABELS: LABELS.slice(),
     QUIET_PARTS: JSON.parse(JSON.stringify(QUIET_PARTS)), CAPTIONS: JSON.parse(JSON.stringify(CAPTIONS)), LEVELS: JSON.parse(JSON.stringify(LEVELS)) });
-  const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, VALUES, VALUE, MEASURES, TORSO, BASE, KEYS, ORDERS,
-    WORLD_LIMITS, WORLD_LISTS, SCENE_RANGE, ACT_RANGE,
+  /* The closed lists format 1.2 adds, for weapons and foes that fire. */
+  const FIRE_LISTS = freeze({ USES: USES.slice(), SHOT_KINDS: SHOT_KINDS.slice(), STOWED_LAYERS: STOWED_LAYERS.slice(), STOWED_AT: SLOT_AT.stowed.slice(), FOE_AIM });
+  const api = { FORMAT, PREFIX, BASE_ID, LIMITS, ANCHOR_SPAN, RANGE, STEPS, SLOTS, ANCHORS, ANCHOR, FRAME_SX, FRAME_SY, FRAME_FL, VALUES, VALUE, MEASURES, TORSO, BASE, KEYS, ORDERS,
+    WORLD_LIMITS, WORLD_LISTS, FIRE_LISTS, SCENE_RANGE, ACT_RANGE,
     read, canonical, message, gather, resolve, draw, sequence, animate, fitsPlace, newAnchors, newValues };
   KW.pack = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

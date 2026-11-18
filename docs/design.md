@@ -121,7 +121,8 @@ look is unchanged, and the colour sets stay at six each. Eight more items were d
 as close to something already offered or weak at wall distance, and a crossbow waits for fired
 weapons.
 
-No arm or gauntlet is ever drawn over a blade or its guard, nor over the face of a shield. With
+No arm or gauntlet is ever drawn over a blade or its guard, over the barrel of a weapon that
+fires forward of the front hand, nor over the face of a shield. With
 the greatsword both arms go behind the blade, the one on the side it leans to first, and the hands
 close on the grip below the guard, the upper one far enough down that it never covers the guard.
 With the sword and shield the shield's arm goes behind the shield and the sword's arm behind the

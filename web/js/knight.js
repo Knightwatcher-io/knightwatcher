@@ -37,6 +37,10 @@
      sets them from the resolved look; pose(), swing() and rig() read them. Only the pack path can
      hold a one-handed weapon: the code path is the greatsword. */
   let ONE = false, SHIELD = false;
+  /* The look's weapon when it fires (format 1.2, docs/rig.md, Aiming and firing): { use, barrel,
+     muzzle, range, shot, stowed } from the resolved look for a weapon whose use is "fire" or "both",
+     and null for a weapon that only swings and on the code path. rebuild() sets it. */
+  let FIRE = null;
 
   /* The rig's result, filled in place on every call so that drawing a frame allocates nothing for it.
      Each anchor is an [x, y] pair, except main, the weapon's frame, which is [x, y, angle]. off is
@@ -100,14 +104,16 @@
       // hand on the side the blade leans to holds the upper station. The sums keep the order the
       // drawing has always used, since gx and gy are fractional in a swing. Once the blade is past
       // level, at the end of a cut and in the strike's bounce, the upper hand slides down the grip
-      // (SLIDE), so that its gauntlet stays clear of the guard at every angle. The poses are written
-      // for the present knight; on another build the grip rises and sinks with the shoulder line
-      // (dHeight), so the weapon is held where it is on the present knight, relative to the body.
+      // (SLIDE), so that its gauntlet stays clear of the guard at every angle; a weapon aimed (o.aimed,
+      // set by the aiming stances and fire()) has no guard, and the hand stays on its station. The
+      // poses are written for the present knight; on another build the grip rises and sinks with the
+      // shoulder line (dHeight), so the weapon is held where it is on the present knight, relative to
+      // the body.
       RIG.grip = 'two';
       const a = o.wang || 0, gx = X - 120 + o.gx * U, gy = Y - 300 + o.gy * U + d - dHt, sx = Math.sin(a), sy = -Math.cos(a);
       m[0] = gx; m[1] = gy; m[2] = a;
       const up = sx >= 0 ? A.handR : A.handL, low = sx >= 0 ? A.handL : A.handR;
-      const s0 = HANDS[0] - SLIDE.most * clamp01((Math.abs(a) - SLIDE.from) / (SLIDE.to - SLIDE.from));
+      const s0 = o.aimed ? HANDS[0] : HANDS[0] - SLIDE.most * clamp01((Math.abs(a) - SLIDE.from) / (SLIDE.to - SLIDE.from));
       put(up, gx + sx * s0, gy + sy * s0); put(low, gx + sx * HANDS[1], gy + sy * HANDS[1]);
     } else {
       // No weapon: the hands hang at the sides, or with the crate (the carrying grip) hold the
@@ -355,11 +361,12 @@
     st: null, wanted: {}, readOpts: null, entries: [], extra: [], faults: [], bad: new Set(), logged: new Set(), lastNote: '' };
   const clampTo = (v, r) => (v < r[0] ? r[0] : v > r[1] ? r[1] : v);
   /* The pose's anchors and values into the library's arrays, in its order, the weapon frame's
-     direction after the anchors, drop and bloat clamped into the ranges the library states. */
-  function fillArrays(r) {
+     direction and flip after the anchors, drop and bloat clamped into the ranges the library
+     states. o is the pose, whose aim decides the flip. */
+  function fillArrays(r, o) {
     const A = PK.A, from = PK.from, Vs = PK.Vs, v = r.values, m = r.anchors.main, lib = PK.lib;
     for (let i = 0; i < from.length; i++) { const p = from[i]; if (p) { A[2 * i] = p[0]; A[2 * i + 1] = p[1]; } }
-    A[lib.FRAME_SX] = Math.sin(m[2]); A[lib.FRAME_SY] = -Math.cos(m[2]);
+    A[lib.FRAME_SX] = Math.sin(m[2]); A[lib.FRAME_SY] = -Math.cos(m[2]); A[lib.FRAME_FL] = flipped(o, m[2]) ? 1 : 0;
     Vs[PK.iDrop] = clampTo(v.drop, PK.drop); Vs[PK.iBloat] = clampTo(v.bloat, PK.bloat);
     Vs[PK.iStepL] = v.stepL; Vs[PK.iStepR] = v.stepR; Vs[PK.iSway] = v.sway;
   }
@@ -371,7 +378,7 @@
     // the page sets it.
     if (o.droop) { codeHD(o); return; }
     const r = rig(o, PK.look.m), lib = PK.lib, L = PK.look.lists, A = PK.A, Vs = PK.Vs;
-    fillArrays(r);
+    fillArrays(r, o);
     const { root, neck, head, main } = r.anchors, face = faceRamp(o);
     // In one hand, the sword's group goes behind the shield's while the sword hand is across the
     // middle line, on the shield's side.
@@ -579,7 +586,7 @@
   /* Gathers the packs not marked bad, resolves the look and chooses the source. */
   function rebuild() {
     const st = PK.st, lib = PK.lib;
-    PK.look = null; PK.packs = null; HANDS = [2, -30]; ONE = false; SHIELD = false;
+    PK.look = null; PK.packs = null; HANDS = [2, -30]; ONE = false; SHIELD = false; FIRE = null;
     st.base = null; st.fallbacks = [];
     if (!lib) { st.refused = PK.extra.concat(PK.faults); st.source = 'code'; st.note = 'knightwatcher: the knight is drawn from code: the pack library is not loaded'; return; }
     const g = lib.gather(PK.entries.filter(e => !PK.bad.has(e.result)).map(e => e.result));
@@ -602,6 +609,8 @@
     PK.look = look; PK.packs = g.packs; HANDS = look.grip.hands.slice();
     // resolve() keeps a shield only with a one-handed weapon
     ONE = look.grip.kind === 'one'; SHIELD = ONE && !!look.look.items.off;
+    // resolve() gives a weapon's use, barrel, muzzle, range and shot only when it fires
+    if (look.use) FIRE = Object.freeze({ use: look.use, barrel: look.barrel, muzzle: look.muzzle, range: look.range, shot: look.shot, stowed: look.stowed });
     st.source = 'pack'; st.base = { id: base.id, version: base.version, signed: base.signed }; st.fallbacks = look.fallbacks;
     st.note = 'knightwatcher: the knight is drawn from the base pack ' + base.id + ' ' + base.version + (base.signed ? ', signed' : ', unsigned');
   }
@@ -771,6 +780,18 @@
   const BASE = { gx: 26, gy: 45, a: .45 };
   const BASE1 = { gx: 37.6, gy: 40.8, a: .3, fx: 20, fy: 38.4 };
   const ATTACK1 = { gx: 42, gy: 24.4, a: .2, fx: 19.6, fy: 37.6 };
+  /* The aiming stances of a weapon that fires, towards the right, in the same units: gx and gy place
+     the weapon's frame, its origin, which for a two-handed weapon is the rear hand's station. AIM2
+     holds a two-handed weapon level at the chest with the stock under the right shoulder, the front
+     hand further along the frame; towards the left it is mirrored about the root (left). AIM1 holds a
+     one-handed weapon with the arm out at shoulder height and the shield, when one is carried, in
+     front of the chest a little raised (fx, fy); towards the left the weapon hand comes across the
+     body behind the shield (left), since the weapon stays in the right hand. AIM holds the aim's
+     limits from level, below and above, the higher limit the swat may take, since flies hover
+     nearly overhead, and the recoil: back along the frame in pixels, and up in radians. */
+  const AIM2 = Object.freeze({ gx: 38, gy: 35.6, left: Object.freeze({ gx: 10, gy: 35.6 }) });
+  const AIM1 = Object.freeze({ gx: 45.6, gy: 34.4, fx: 20.4, fy: 37.2, left: Object.freeze({ gx: 7.2, gy: 34.8 }) });
+  const AIM = Object.freeze({ below: .3, above: 1.2, swatAbove: 1.4, recoil: 4, recoilUp: .08 });
   function pose(id, t) {
     const o = { t, eyes: 'open', mouth: 'flat', bob: Math.floor(t / 900) % 2, gx: BASE.gx, gy: BASE.gy, wang: BASE.a };
     if (ONE) { o.gx = BASE1.gx; o.gy = BASE1.gy; o.wang = BASE1.a; o.fx = BASE1.fx; o.fy = BASE1.fy; }
@@ -851,10 +872,96 @@
      one segment from the cut's end. The goblin strike's return follows it (strike in engine.js). */
   const ownReturn = dir => swingKeys(dir).filter(k => k.q > .55).length > 1;
 
+  /* ---- Aiming and firing -------------------------------------------------------------------------
+     A weapon that fires (FIRE) is held in the aiming stances and fired by fire(). Every pose these
+     write is marked o.aimed, which keeps a two-handed weapon's front hand on its station (no slide)
+     and, while the weapon points left, flips its drawing over its frame's line (flipped). Angles run
+     as the blade's: 0 straight up, pi / 2 level to the right, -pi / 2 level to the left. */
+  const TAU = 2 * Math.PI;
+  const level = dir => (dir > 0 ? 1 : -1) * Math.PI / 2;
+  /* How far the grip dips, in units of U at the middle of a turn from one side to the other. */
+  const DIP = 6;
+  /* Whether the pose o, its weapon at the angle a, draws the weapon turned over its line: a weapon
+     that fires, aimed, pointing left. */
+  const flipped = (o, a) => !!(FIRE && o.aimed && Math.sin(a) < 0);
+  /* Puts the aiming stance towards dir, the weapon at the angle a, into the pose o. */
+  function aimPose(o, dir, a) {
+    const p = ONE ? (dir > 0 ? AIM1 : AIM1.left) : dir > 0 ? AIM2 : AIM2.left;
+    o.gx = p.gx; o.gy = p.gy; o.wang = a; o.aimed = true;
+    if (ONE) { o.fx = AIM1.fx; o.fy = AIM1.fy; }
+    return o;
+  }
+  /* The angle towards dir that points the shot at the point at, held from AIM.below under level to
+     above over it (AIM.above when left out; the swat gives AIM.swatAbove), so the watcher never aims
+     at the floor or the headline. Worked out on the rig from the frame's origin in the stance, which
+     does not move as the weapon turns, then turned by the muzzle's offset across the frame, so the
+     line of the shot from the muzzle meets at. Level when at is not given. */
+  function aimAngle(o, dir, at, above) {
+    const lv = level(dir), sd = dir > 0 ? 1 : -1;
+    if (!at) return lv;
+    const m = rigOf(aimPose(Object.assign({}, o), dir, lv)).anchors.main;
+    const dx = at[0] - m[0], dy = at[1] - m[1], d = Math.hypot(dx, dy) || 1, p = FIRE ? FIRE.muzzle.p : 0;
+    // the frame's angle from straight up is atan2(dx, -dy); the muzzle p across the frame (drawn as -p
+    // when flipped, to the left) turns it by asin(p / d) away from its own side
+    let a = Math.atan2(dx, -dy) - sd * Math.asin(Math.max(-1, Math.min(1, p / d)));
+    a -= Math.round((a - lv) / TAU) * TAU;
+    const hi = above === undefined ? AIM.above : above;
+    // to the right, up is a smaller angle; to the left, a larger one
+    const lo = sd > 0 ? lv - hi : lv - AIM.below, top = sd > 0 ? lv + AIM.below : lv + hi;
+    return Math.min(top, Math.max(lo, a));
+  }
+  /* From the angle a0 towards a1 by k, never through straight up: both are taken on the turn of the
+     circle from 0 to 2 pi, so a turn from one side to the other passes through straight down, the
+     weapon carried low across the body, never over the face. */
+  const onTurn = a => ((a % TAU) + TAU) % TAU;
+  const turn = (a0, a1, k) => (k <= 0 ? a0 : k >= 1 ? a1 : lerp(onTurn(a0), onTurn(a1), k));
+  /* Whether a turn from a0 to a1 changes side, each clearly on its side. */
+  const crosses = (a0, a1) => Math.sign(Math.sin(a0)) !== Math.sign(Math.sin(a1)) && Math.abs(Math.sin(a0)) > .2 && Math.abs(Math.sin(a1)) > .2;
+  /* Between the poses f and t by k: the grip, the angle and the shield hand. A turn that changes
+     side dips the grip by DIP at its middle. */
+  function between(o, f, t, k) {
+    const dip = crosses(f.wang, t.wang) ? DIP * Math.sin(k * Math.PI) : 0;
+    o.gx = lerp(f.gx, t.gx, k); o.gy = lerp(f.gy, t.gy, k) + dip; o.wang = turn(f.wang, t.wang, k);
+    if (ONE) { o.fx = lerp(f.fx, t.fx, k); o.fy = lerp(f.fy, t.fy, k); }
+  }
+  /* The recoil on an aimed pose, kick from 1 (the moment of the shot) to 0: back along the frame by
+     AIM.recoil pixels and up by AIM.recoilUp. */
+  function recoil(o, dir, kick) {
+    const a = o.wang;
+    o.gx -= Math.sin(a) * AIM.recoil * kick / U; o.gy -= -Math.cos(a) * AIM.recoil * kick / U;
+    o.wang = a - (dir > 0 ? 1 : -1) * AIM.recoilUp * kick;
+  }
+  const stanceOf = () => (ONE ? { gx: BASE1.gx, gy: BASE1.gy, wang: BASE1.a, fx: BASE1.fx, fy: BASE1.fy } : { gx: BASE.gx, gy: BASE.gy, wang: BASE.a });
+  const copyPose = (o, f) => { o.gx = f.gx; o.gy = f.gy; o.wang = f.wang; if (ONE) { o.fx = f.fx; o.fy = f.fy; } };
+  /* A shot: the weapon raised from the stance to level (q 0 to .3), turned to the point at (to .5),
+     fired at .5, the recoil to .6, and back to the stance by 1. dir +1 aims to the right. Returns
+     whether the shot has left, from q .5. The acts time q; the shot leaves the muzzle as the pose
+     stands just before .5 (muzzle()). */
+  function fire(o, q, dir, at) {
+    const st = stanceOf(), lv = aimPose(Object.assign({}, o), dir, level(dir)), ai = aimPose(Object.assign({}, o), dir, aimAngle(o, dir, at));
+    if (q < .3) between(o, st, lv, ease(clamp01(q / .3)));
+    else if (q < .5) between(o, lv, ai, ease(clamp01((q - .3) / .2)));
+    else if (q < .6) { copyPose(o, ai); const k = 1 - (q - .5) / .1; recoil(o, dir, k * k); }
+    else between(o, ai, st, ease(clamp01((q - .6) / .4)));
+    o.aimed = q > 0 && q < 1;
+    if (q > .2 && q < .7) o.eyes = 'angry';
+    return q >= .5;
+  }
+  /* The muzzle of the weapon in the pose o, on the grid, as drawn: the frame's point plus the
+     muzzle's offset along and across it, the offset across turned over while the drawing is flipped.
+     null for a weapon that does not fire. */
+  function muzzleOf(o) {
+    if (!FIRE) return null;
+    const m = rigOf(o).anchors.main, sx = Math.sin(m[2]), sy = -Math.cos(m[2]), s = FIRE.muzzle.s, p = flipped(o, m[2]) ? -FIRE.muzzle.p : FIRE.muzzle.p;
+    return [m[0] + sx * s - sy * p, m[1] + sy * s + sx * p];
+  }
+
   /* head draws the knight's bare head with the corner of its 240 by 300 box at (ax, ay), as in bed:
      the head anchor is 120 right of that corner and 94 below it, from the pack or from code as the
      knight is. speech draws a speech bubble. rest holds what a scene calls for the gear at rest
-     (described above): draw(slot, x, y, a), blade(), head(), key(slot) and fits(slot, place). rig, start, add, look,
+     (described above): draw(slot, x, y, a), blade(), head(), key(slot) and fits(slot, place). fire,
+     muzzle and aim (pose(o, dir, a), angle(o, dir, at, above) and the stances) are described above,
+     and fired() gives the look's weapon when it fires, or null. rig, start, add, look,
      basePack, fetchPacks and packIndex are described above, except that rig from outside takes the
      look's build when b is left out (below), build is the present knight's measurements, source is
      'pack' or 'code' and status what start() found. */
@@ -865,5 +972,6 @@
      drawn. */
   const rigOf = (o, b) => rig(o, b || (PK.look ? PK.look.m : BUILD));
   KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, ownReturn, head: headAtCorner, speech: speechHD,
+    fire, muzzle: muzzleOf, fired: () => FIRE, aim: { pose: aimPose, angle: aimAngle, AIM, AIM1, AIM2 },
     rest: { draw: restHD, blade: restBlade, head: restHead, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);
