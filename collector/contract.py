@@ -7,7 +7,7 @@ from typing import Any
 
 from collector import SCHEMA, text
 from collector.config import CONDITION_IDS, DEFAULT_TABLES, check_defaults
-from collector.sources.streams import NAME_MAX, SESSION_KEYS, SESSIONS_MAX
+from collector.kinds.streams import NAME_MAX, SESSION_KEYS, SESSIONS_MAX
 
 LEVELS = {"critical", "warning", "work", "quiet", "sleep"}
 EVENT_TYPES = {"ad_blocked", "ip_banned", "import", "backup_done"}

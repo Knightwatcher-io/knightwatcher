@@ -1,0 +1,29 @@
+{
+ "about": "A login AdGuard Home refuses, or an address it has locked out: HTTP 401.",
+ "settings": {},
+ "credentials": [
+  "username",
+  "password"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/control/stats",
+    "headers": {
+     "Authorization": "Basic {credential.username}:{credential.password}"
+    }
+   },
+   "reply": {
+    "status": 401,
+    "json": {
+     "message": "forbidden"
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "HTTP 401: credentials refused"
+ }
+}

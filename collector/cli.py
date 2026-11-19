@@ -1,8 +1,11 @@
-"""Command line: run the loop, run once, check the configuration, or report health."""
+"""Command line: run the loop, run once, check the configuration, report health, or probe one
+source read through a provider."""
 
 from __future__ import annotations
 
 import argparse
+import base64
+import datetime as dt
 import json
 import logging
 import os
@@ -11,10 +14,11 @@ import sys
 import threading
 import time
 
-from collector import overlay, reload
+from collector import kinds, overlay, reload, text
 from collector.config import ConfigError, credential_names, load, read_env_file
+from collector.net import AuthError, SourceError
 from collector.runner import STATE_FILE, Runner, utcnow
-from collector.store import Memory, atomic_write
+from collector.store import MEMORY_FILE, Memory, atomic_write
 
 DEFAULT_CONFIG = "/etc/knightwatcher/config.toml"
 # Beside state.json: the names of the credential variables the collector's environment holds, for
@@ -38,6 +42,12 @@ def _parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="with --check-config: read the credentials from this .env file, not the environment",
     )
+    p.add_argument(
+        "--record",
+        metavar="FOLDER",
+        help="with --probe: also write the exchanges to a file in this folder, each credential "
+        "replaced by its field's name; the replies in it are private",
+    )
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--once", action="store_true", help="run one poll, write the file, exit")
     mode.add_argument(
@@ -48,7 +58,134 @@ def _parser() -> argparse.ArgumentParser:
     mode.add_argument(
         "--health", action="store_true", help="exit 1 if state.json is older than 3 intervals"
     )
+    mode.add_argument(
+        "--probe",
+        metavar="SOURCE",
+        help="read one source through its provider once, with the settings in use, and print "
+        "what it gave with every text masked",
+    )
     return p
+
+
+# ---- --probe -----------------------------------------------------------------------------------
+
+
+def _mask(value):
+    """A fill or facts with every text replaced by its type and length: `<string 21>`."""
+    if isinstance(value, str):
+        return f"<string {len(value)}>"
+    if isinstance(value, dt.datetime):
+        return "<time>"
+    if isinstance(value, dict):
+        return {k: _mask(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_mask(v) for v in value]
+    return value
+
+
+def _paused(config, name: str, now: dt.datetime) -> dt.datetime | None:
+    """When the running collector's pause of a source ends, from its memory file, or None."""
+    try:
+        with open(os.path.join(config.collector["state_dir"], MEMORY_FILE), encoding="utf-8") as fh:
+            held = json.load(fh)["backoff"][name]
+        until = text.parse_iso(held["until"])
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+    return until if until > now else None
+
+
+def _record(folder: str, name: str, source, exchanges: list, values: dict, now) -> str:
+    """The exchanges of a probe, written to a file of their own; each credential value replaced by
+    its field's name, the address by the setting's name."""
+    base = source.settings["url"].rstrip("/")
+
+    def hide(text_: str) -> str:
+        for field, value in sorted(values.items(), key=lambda kv: -len(kv[1])):
+            text_ = text_.replace(value, "{credential." + field + "}")
+        return text_
+
+    out = []
+    for e in exchanges:
+        headers = {}
+        for key, value in e["headers"].items():
+            if key.lower() == "authorization" and value.startswith("Basic "):
+                value = "Basic " + base64.b64decode(value[6:]).decode("utf-8", "replace")
+            headers[key] = hide(value)
+        url = e["url"][len(base) :] if e["url"].startswith(base) else e["url"]
+        entry = {
+            "request": {"id": e["request"], "method": "GET", "path": hide(url), "headers": headers}
+        }
+        if "reply" in e:
+            entry["reply"] = {"json": e["reply"]}
+        else:
+            entry["error"] = hide(e["error"])
+        out.append(entry)
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, f"{name}-{now.astimezone(dt.UTC):%Y%m%dT%H%M%SZ}.json")
+    doc = {"source": name, "provider": source.spec.id, "exchanges": out}
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh, ensure_ascii=False, indent=1)
+    return path
+
+
+def _probe(config, name: str, record: str | None) -> int:
+    from collector.sources import KindSource
+
+    if name not in kinds.SECTIONS:
+        names = ", ".join(kinds.SECTIONS)
+        print(f"probe: {name} is not read through a provider; use {names}", file=sys.stderr)
+        return 2
+    if name not in config.sources:
+        print(f"probe: [sources.{name}] is not set up, or is off", file=sys.stderr)
+        return 2
+    if name in config.missing:
+        for problem in config.missing[name]:
+            print(f"probe: {problem}", file=sys.stderr)
+        return 2
+    now = utcnow()
+    until = _paused(config, name, now)
+    if until is not None:
+        local = until.astimezone(config.tz)
+        print(
+            f"probe {name}: paused after refused credentials until {local:%H:%M}; not read, "
+            "so the service is not asked again",
+            file=sys.stderr,
+        )
+        return 1
+    source = KindSource(name, config.sources[name], config)
+    settings = source.settings
+    said = [f"provider {source.spec.id} ({source.spec.name})"]
+    if "show" in settings:
+        said.append(f"show = {settings['show']}")
+    print(f"probe {name}: " + ", ".join(said))
+    variables = [
+        f"KNIGHTWATCHER_{settings['secret'].upper()}_{f.upper()}" for f in source.spec.credentials
+    ]
+    if variables:
+        print("credentials: " + ", ".join(variables))
+    if record:
+        source.provider.record = []
+    secrets = sorted(config.secret_values(), key=len, reverse=True)
+    try:
+        fill = source.fill(now)
+        reading = source.kind.reading(fill, settings, config, now)
+    except SourceError as exc:
+        message = str(exc)
+        for value in secrets:
+            message = message.replace(value, "***")
+        what = "credentials refused" if isinstance(exc, AuthError) else "failed"
+        print(f"probe {name}: {what}: {message}", file=sys.stderr)
+        return 1
+    finally:
+        if record:
+            path = _record(record, name, source, source.provider.record, config.secret(name), now)
+            print(f"recorded: {path}")
+    print("fill:")
+    print(json.dumps(_mask(fill), ensure_ascii=False, indent=1))
+    print("facts:")
+    print(json.dumps(_mask(reading.facts), ensure_ascii=False, indent=1))
+    return 0
 
 
 def _health(config) -> int:
@@ -78,6 +215,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.env_file and not args.check_config:
         parser.error("--env-file goes with --check-config")
+    if args.record and not args.probe:
+        parser.error("--record goes with --probe")
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
@@ -106,6 +245,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.health:
         return _health(config)
+    if args.probe:
+        return _probe(config, args.probe, args.record)
     if args.check_config:
         names = ", ".join(config.sources) or "none"
         line = f"config ok: {len(config.sources)} sources enabled ({names})"

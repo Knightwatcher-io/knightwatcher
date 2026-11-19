@@ -271,9 +271,10 @@ leaves it. A fall raises nothing and resets the marker.
 
 A fly stands for one helping of the household's normal blocking, so that normal traffic gives a
 fly every `fly_every_s` (300 seconds by default) on average and a burst gives a swarm. The
-normal rate is read afresh from `/control/stats` on every read: `num_blocked_filtering` divided
-by the length of AdGuard Home's statistics window, counted from the first day or hour with any
-DNS queries to the current one, so a new install's mostly empty window does not understate it.
+normal rate is read afresh from the service's statistics on every read, AdGuard Home's
+`/control/stats` for the `adguard` provider: the blocked count divided by the length of the
+statistics window, counted from the first day or hour with any DNS queries to the current one, so
+a new install's mostly empty window does not understate it.
 One fly is then `rate * fly_every_s` blocked queries, and never fewer than one. Each read's rise
 goes into a carry kept in memory; every whole fly's worth in the carry becomes a fly and the
 remainder stays for the next read. None of this depends on how often the source is read. An
@@ -284,8 +285,9 @@ one fly is due. `fly_every_s = 0` restores one fly per blocked query, with `coun
 `blocked_today` counts from local midnight in the collector's time zone. The source keeps the
 date and the count in memory and adds each read's rise, starting again from nought when the
 date changes. On first sight, or on the first poll after an upgrade from a version that kept no
-count, it starts from AdGuard Home's own figures for today: the last day's blocks, or with
-hourly statistics the hours since local midnight.
+count, it starts from the service's own figures for today: with buckets of a day, the last one;
+with shorter ones, those since local midnight (AdGuard Home's hourly statistics give the hours
+since midnight and the current one).
 
 The backup log is rotated by truncation, which leaves it without a completion line for a few
 hours each week. The last completion seen is kept in memory and reported until a newer one
@@ -317,11 +319,13 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `pi` | `devices.py` | a TCP connection to every port at once; a refusal counts as an answer | `pi` |
 | `updates` | `updates.py` | the host's lock table, `/proc/locks`, and the command line of each process holding a lock | `updates` |
 | `ssh` | `ssh.py` | established connections to the SSH port in `/proc/net/tcp` and `tcp6` | `ssh` |
-| `streams` | `streams.py` | Tautulli's `get_activity`: of each stream its title, and its user's name only when `show` is `names` | `streams` |
-| `adblock` | `adblock.py` | AdGuard Home's `/control/stats` | `adblock` |
+| `streams` | the streams kind, `kinds/streams.py`, through its `from` provider, `tautulli` by default | Tautulli's `get_activity`: of each stream its title, and its user's name only when `show` is `names` | `streams` |
+| `adblock` | the adblock kind, `kinds/adblock.py`, through its `from` provider, `adguard` by default | AdGuard Home's `/control/stats` | `adblock` |
 | `security` | `security.py` | a fail2ban summary at `/soc` | `security` |
-| `sonarr`, `radarr` | `imports.py` | the last ten import records in each one's history | none |
+| `sonarr`, `radarr` | the imports kind, `kinds/imports.py`, through the provider of each one's name | the last ten import records in each one's history | none |
 | `device:<name>` | `devices.py` | a TCP connection to every port at once, or one `GET` to a web address | none; `devices` is built from the conditions |
+
+Modules are in `collector/sources/` unless the table says otherwise.
 
 The `updates` source never opens the maintenance scripts' lock files. Probing a lock with
 `flock` could make a script that starts in that instant find its lock taken and skip its run,
@@ -329,7 +333,43 @@ and a bind mount of a lock file that does not exist yet makes Docker create a fo
 place, which would break the script. Reading `/proc/locks` avoids both: a holder is found by
 matching its command line against the configured patterns.
 
+## Kinds and providers
+
+The services the collector reads for streams, blocked queries and imports are each read through a
+**kind** and a **provider**. A kind is the fixed shape of one sort of reading, written once in
+`collector/kinds/`: it owns everything after the service has answered, the cleaning and cutting of
+the words, the markers in the memory file, the events and the facts. A provider fills a kind's
+shape from one service. The built-in providers are files in `collector/providers/builtin/`, one
+for each service: the requests, the login, and paths into the JSON reply mapped onto the kind's
+fields. One engine, `collector/providers/engine.py`, runs every file; nothing in a file runs as
+code. [providers.md](./providers.md) describes the format.
+
+| Section | Kind | `from` | Built-in providers |
+|---|---|---|---|
+| `[sources.streams]` | streams | `tautulli` by default | `tautulli` |
+| `[sources.adblock]` | adblock | `adguard` by default | `adguard` |
+| `[sources.sonarr]`, `[sources.radarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr` |
+
+To the runner each of these sections is a source like any other (`KindSource` in
+`collector/sources/__init__.py`), with the same pace, time limit, back-off and status entry. One
+read makes the provider's requests in order through `collector/net.py` (direct, no proxy, no
+redirect, the reply cut at 4 MiB, `http_timeout_s` each), checks each reply, and builds the fill,
+reading only the fields the kind allows: for streams, a name is read from the reply only when
+`show` is `names`, and nothing of a stream when it is `count`. The fill is held to the kind's
+declaration before the kind sees it, so a provider that gives a field of the wrong type, or one
+`show` holds back, fails the read with a message naming the field. A refused credential (HTTP 401,
+403 or 429, or a reply the provider marks as one) raises the back-off of
+[Credentials refused](#credentials-refused). A source whose provider or provider file changes is
+started afresh when a change is taken up, as one whose settings change is.
+
 ## Adding a source
+
+A service that a kind already covers needs a provider file, not code: write it in
+`collector/providers/builtin/`, add it to the `providers` list of `collector/settings-schema.json`
+with its credentials in `env`, give it fixtures in `tests/collector/fixtures/providers/<id>/`, and
+run `node tools/settings-schema.js`. A new sort of reading is a kind: a module in
+`collector/kinds/` with its fill's declaration, `reading` and `observe`, named in `SECTIONS` and
+`KINDS` there. Anything else is a source of its own.
 
 A source is a class in `collector/sources/` with two methods:
 
@@ -352,11 +392,11 @@ Then:
 
 1. Describe its settings in `collector/settings-schema.json`: a `sources.<name>` table with
    `enabled`, `every_s` and its own, each with its type, default, range and help, and
-   `"required": true` on any it cannot run without. A source that logs in has a `secret` setting
-   and one entry in `env` for each credential, named `KNIGHTWATCHER_<SECRET>_<FIELD>`; add each to
-   `.env.example` and to the `environment` list in `compose.yaml`. `collector/config.py` builds
-   `SOURCE_DEFAULTS`, `REQUIRED` and `SECRET_FIELDS` from the schema. Register the class in
-   `build_sources` in `collector/sources/__init__.py`.
+   `"required": true` on any it cannot run without. `collector/config.py` builds
+   `SOURCE_DEFAULTS` and `REQUIRED` from the schema. A service that logs in is read through a
+   provider, whose file names its credentials (above); each is an entry in `env`, named
+   `KNIGHTWATCHER_<SECRET>_<FIELD>`, added to `.env.example` and to the `environment` list in
+   `compose.yaml`. Register the class in `build_sources` in `collector/sources/__init__.py`.
 2. If it brings a new `facts` section or event type, change [state.md](./state.md) and the
    lists in `collector/contract.py` in the same commit. An event type whose caption the page may
    word for itself lists its part names in `EVENT_PARTS` there, and its events carry `parts`.
@@ -379,8 +419,19 @@ resolver hangs is caught only by the poll's limit on the read. An address avoids
 python3 -m collector --check-config     # validate config.toml alone and its credentials, then exit
 python3 -m collector --once             # one poll, write state.json, exit
 python3 -m collector --health           # exit 1 if state.json is older than three intervals
+python3 -m collector --probe streams    # read one source through its provider once, masked
 python3 -m collector                    # poll until stopped
 ```
+
+`--probe <source>` reads one section read through a provider (`streams`, `adblock`, `sonarr` or
+`radarr`) once, with the settings in use, and prints the provider's fill and the facts the kind
+would write with every text replaced by its type and length (`<string 21>`), so that a provider is
+proved against a live service without anyone reading what is being watched. It writes nothing of
+the collector's own, and a source the running collector has paused after refused credentials is
+not read until the pause ends. Run it in the container, where the credentials come from `.env`
+through compose: `docker compose run --rm collector --probe streams`. `--record FOLDER` also
+writes the exchanges to a file in that folder, mode 600, each credential replaced by its field's
+name; the replies in it are the service's own, private, and never committed as they are.
 
 `--config` names the settings file. It defaults to the environment variable
 `KNIGHTWATCHER_CONFIG`, and where that is unset to `/etc/knightwatcher/config.toml`, the path

@@ -53,17 +53,44 @@ out.
 | `tests/collector/test_reload.py` | `admin.json` laid over `config.toml`, the start and reload rules, the credentials' names |
 | `tests/collector/test_runner.py` | one poll: the file it writes, the defaults, failing and slow sources, each source's pace |
 | `tests/collector/test_schema.py` | the settings schema against the collector, the example files and `compose.yaml` |
-| `tests/collector/test_sources.py` | each source against invented answers |
+| `tests/collector/test_sources.py` | each source of its own against invented answers |
+| `tests/collector/test_kinds.py` | the streams, adblock and imports kinds through their built-in providers against invented answers, the fill's checks, and when a source read through a provider starts afresh |
+| `tests/collector/test_path.py` | the path syntax: every allowed form, the RFC's results on its own examples, every refused form with its position, the limit on values found |
+| `tests/collector/test_provider_format.py` | the provider file format: the built-in files pass, and each rule is held to a refused file with its message |
+| `tests/collector/test_engine.py` | the engine against a local HTTP server: the requests built, `statuses`, `not_json`, `require`, nesting and the limits, scalar, list, object, item, case and zipped fields, the vars read only when allowed |
+| `tests/collector/test_providers.py` | every built-in provider against its fixtures, at every `show` for streams with no name read unless `show` is `names`, and `from` and `secret` in `config.toml` |
+| `tests/collector/test_port.py` | [the port proof](#the-port-proof): today's four services read through the engine, against what the collector wrote before it, byte for byte |
+| `tests/collector/test_probe.py` | `--probe` and `--record` |
 | `tests/collector/test_text.py` | clipping, joining and formatting the collector's words |
 | `tests/server/test_server.py` | the bundled server on the loopback |
 | `tests/server/test_admin.py` | the admin page's side of the server |
 | `tests/server/test_stamp.py` | the version stamp, `server/stamp.py`, against `tools/deploy.sh` |
 
-`tests/collector/kw_helpers.py` holds helpers the collector's tests share. The fixtures are in
+`tests/collector/kw_helpers.py` holds helpers the collector's tests share. The collector's
+fixtures are in `tests/collector/fixtures/`: `port/`, the port proof's record, and
+`providers/<id>/<case>.json`, one read of a built-in provider each: the requests expected, with
+each credential written as `{credential.<field>}`, the replies in the service's shapes with every
+value invented, and the fill, by `show` for streams, or the error. The fixtures are in
 `tests/web/fixtures/`: the knight's stored record (`knight/calls.json`, and `knight/idle.log`, the
 full record of one pose, idle at 2 300 ms, compared call by call), the scenes'
 (`scenes/<scene>.json`, one for each of the seven scenes, and `scenes/cast.json`), the test world
 (`worlds/`), and the packs and states listed in [development.md](./development.md#layout).
+
+## The port proof
+
+`tests/collector/test_port.py` holds the collector to what it wrote before Tautulli, AdGuard Home,
+Sonarr and Radarr were read through provider files. Each scenario is a run of polls through the
+whole collector (the runner, the conditions and the memory file) against a local HTTP server that
+answers each poll as the scenario says: the shapes these services send, and the edge cases the
+readers handled, among them refused keys and the pause after them, a pause still running at
+start, errors, empty and malformed replies, counts that rise in bursts and fall, the fly rate from
+hourly and daily windows, a day that turns at local midnight, first sight and memory from an
+older version, new imports across polls, and the streams at every `show`. `fixtures/port/` holds
+what the readers before the engine wrote for each poll: `state.json` and `memory.json`, byte for
+byte, and the requests made, with each credential replaced by its variable's name. The record was
+made once from those readers, and a difference from it is a change in what the wall shows. One
+that is not wanted is put right; one that is wanted changes the scenario's record in the commit
+that makes it, and the commit says why.
 
 ## The page's tests
 

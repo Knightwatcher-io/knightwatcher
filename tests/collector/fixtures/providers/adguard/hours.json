@@ -1,0 +1,209 @@
+{
+ "about": "AdGuard Home's statistics over a 24-hour interval, every value invented; the arrays run oldest first.",
+ "settings": {},
+ "credentials": [
+  "username",
+  "password"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/control/stats",
+    "headers": {
+     "Authorization": "Basic {credential.username}:{credential.password}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "time_units": "hours",
+     "num_dns_queries": 5100,
+     "num_blocked_filtering": 480,
+     "num_replaced_safebrowsing": 0,
+     "num_replaced_safesearch": 0,
+     "num_replaced_parental": 0,
+     "avg_processing_time": 0.004,
+     "dns_queries": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      260,
+      261,
+      262,
+      263,
+      264,
+      265,
+      266,
+      267,
+      268,
+      269,
+      270,
+      271,
+      272,
+      273,
+      274,
+      275,
+      276,
+      277,
+      278
+     ],
+     "blocked_filtering": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38
+     ],
+     "replaced_safebrowsing": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "replaced_parental": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "top_queried_domains": [
+      {
+       "example.com": 12
+      }
+     ],
+     "top_clients": [
+      {
+       "192.0.2.10": 300
+      }
+     ],
+     "top_blocked_domains": [
+      {
+       "ads.example.net": 40
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "fill": {
+  "blocked": 480,
+  "window": {
+   "queries": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    260,
+    261,
+    262,
+    263,
+    264,
+    265,
+    266,
+    267,
+    268,
+    269,
+    270,
+    271,
+    272,
+    273,
+    274,
+    275,
+    276,
+    277,
+    278
+   ],
+   "blocked": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38
+   ],
+   "unit_s": 3600,
+   "current": true
+  }
+ }
+}

@@ -242,19 +242,21 @@ and `sources` the parts come from are shown:
   collector's time zone. `pi.up` says whether the Pi of `[sources.pi]` answered its last check,
   so it turns false at the first check it misses; whether the Pi has been silent long enough to
   count as down is its entry in `devices`.
-- **`facts.streams`** says what plays, from Tautulli, as far as the collector's setting `show` in
+- **`facts.streams`** says what plays, from the streams provider (Tautulli by default), as far as
+  the collector's setting `show` in
   `[sources.streams]` lets it out ([configuration.md](./configuration.md#sourcesstreams)). It is
   for a display guests can see, so what the setting holds back is never in the file, the words of
   `streaming` held through its clearing period included; a change to the setting holds from the
   next file on.
-  - `count`, always: how many streams Tautulli reports.
+  - `count`, always: how many streams the service reports, or the number of its sessions when it
+    gives no count.
   - `titles`, with `show` `names` or `titles`: what each stream plays, sorted as `sessions` is.
     Episodes read `The Night Shift S02E04` and tracks `<artist> - <track>`.
   - `sessions`, with `show` `names` or `titles`, when any stream has a name or a title to show:
-    1 to 32 of them, in the order the streams started (Tautulli's session key), so a new stream
-    joins the end and the others keep their places. Each is an object with `title`, 1 to 60
-    characters, and `who`, 1 to 16: Tautulli's friendly name for the user, else the user, else the
-    user name. Either is cut with an ellipsis at its limit. `who` is there with `show` `names` alone, and each key is
+    1 to 32 of them, in the order the streams started (the provider's order, Tautulli's session
+    key), so a new stream joins the end and the others keep their places. Each is an object with
+    `title`, 1 to 60 characters, and `who`, 1 to 16: for Tautulli its friendly name for the user,
+    else the user, else the user name. Either is cut with an ellipsis at its limit. `who` is there with `show` `names` alone, and each key is
     left out when the stream has none; a stream with neither is counted and not listed.
   - With `show` `count` there is `count` and nothing else.
 

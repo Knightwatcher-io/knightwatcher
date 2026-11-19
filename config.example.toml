@@ -115,6 +115,7 @@ ignore_sources = []
 [sources.streams]
 enabled = true
 every_s = 30
+from = "tautulli"            # the provider the streams are read through; tautulli is the default
 url = "http://192.0.2.20:8181"
 show = "names"               # who and what; "titles" for what alone, "count" for how many
 secret = "tautulli"          # reads KNIGHTWATCHER_TAUTULLI_API_KEY from .env
@@ -122,6 +123,7 @@ secret = "tautulli"          # reads KNIGHTWATCHER_TAUTULLI_API_KEY from .env
 [sources.adblock]
 enabled = true
 every_s = 30
+from = "adguard"             # the provider the blocked queries are read through; the default
 url = "http://192.0.2.53"
 secret = "adguard"           # reads KNIGHTWATCHER_ADGUARD_USERNAME and _PASSWORD
 fly_every_s = 300

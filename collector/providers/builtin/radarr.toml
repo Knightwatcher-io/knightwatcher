@@ -1,0 +1,36 @@
+# Films imported, from the last ten import records in Radarr's history.
+format = 1
+id = "radarr"
+kind = "imports"
+name = "Radarr"
+docs = "https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json"
+
+[credentials]
+api_key = "Radarr's API key. In Radarr: Settings, General, Security, API Key."
+
+# eventType 3 is downloadFolderImported.
+[[request]]
+path = "/api/v3/history"
+query = { page = "1", pageSize = "10", eventType = "3", sortKey = "date", sortDirection = "descending", includeMovie = "true" }
+headers = { X-Api-Key = "{credential.api_key}" }
+
+[[request.require]]
+path = "$.records"
+type = "list"
+message = "unexpected reply from the history call"
+
+[fill.records]
+each = "$.records[*]"
+
+[fill.records.vars]
+id = { path = "$.id", type = "int", strict = true }
+movie = { path = "$.movie.title", nonzero = true }
+# Radarr gives 0 for a year it does not know.
+year = { path = "$.movie.year", nonzero = true }
+source = { path = "$.sourceTitle", nonzero = true }
+
+[fill.records.fields]
+id = "id"
+
+[[fill.records.title]]
+try = ["{movie} ({year})", "{movie}", "{source}"]

@@ -536,6 +536,11 @@ def _section(raw: dict, table: str) -> dict | None:
     return here if isinstance(here, dict) else None
 
 
+def _variables(credentials: list[dict], provider: str | None, secret: str) -> list[str]:
+    """The variables a section reads its provider's credentials from, under its secret."""
+    return [schema.env_name(secret, e["field"]) for e in credentials if e["provider"] == provider]
+
+
 def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
     """A complete config.toml: raw (the file with the admin page's settings laid over it) in
     every table of the schema, the defaults written where it leaves a setting out, and the
@@ -548,7 +553,7 @@ def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
     )
     out += _comment(
         "Credentials are never in this file. They stay in .env (see .env.example), named by each "
-        "source's secret."
+        "source's secret, which is its provider's id when it is left out."
     )
     credentials = schema.credentials()
     for t in schema.SCHEMA["tables"]:
@@ -576,6 +581,13 @@ def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
             given = {**(given or {}), **(shared.get(table) or {})}
         source = table[len("sources.") :] if table.startswith("sources.") else None
         absent = source is not None and given is None
+        # The provider the section reads: its from, or the default, or the one of its own name.
+        provider = None
+        if source is not None:
+            chosen = (given or {}).get("from")
+            keys = {s["key"]: s for s in t["settings"]}
+            default = keys["from"]["default"] if "from" in keys else source
+            provider = chosen if isinstance(chosen, str) and chosen else default
         lead = "# " if absent else ""
         if absent:
             out.append("# Not set up. Remove the first # of each line below to use it.")
@@ -585,6 +597,13 @@ def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
             out += _comment(s["help"], "# " + lead)
             if given is not None and key in given:
                 value = given[key]
+            elif key == "secret" and s.get("default_note"):
+                names = _variables(credentials, provider, provider)
+                out += _comment(
+                    f"Left out: {s['default_note']}, so it reads {' and '.join(names)} from .env."
+                )
+                out.append(f'# {key} = "{provider}"')
+                continue
             elif wall:
                 own = s.get("page_default")
                 shown = own if own is not None else s["values"][0]
@@ -598,9 +617,7 @@ def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
                 value = s["default"]
             line = _line(key, value, s["type"], lead)
             if key == "secret" and isinstance(value, str):
-                names = [
-                    schema.env_name(value, e["field"]) for e in credentials if e["source"] == source
-                ]
+                names = _variables(credentials, provider, value)
                 line[-1] += f"   # reads {' and '.join(names)} from .env"
             out += line
     text = "\n".join(out) + "\n"

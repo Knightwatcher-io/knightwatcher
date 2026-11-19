@@ -23,7 +23,8 @@ from typing import Any
 
 from collector import text
 from collector.config import Config
-from collector.sources import Reading, streams
+from collector.kinds import streams
+from collector.sources import Reading
 
 log = logging.getLogger("collector")
 

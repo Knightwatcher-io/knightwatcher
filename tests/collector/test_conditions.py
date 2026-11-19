@@ -4,8 +4,8 @@ from typing import ClassVar
 from unittest import mock
 
 from collector.conditions import Conditions
+from collector.kinds import streams as streams_source
 from collector.sources import Reading
-from collector.sources import streams as streams_source
 from collector.sources.host import HostSource
 from kw_helpers import T0, FakeProc, at, make_config
 

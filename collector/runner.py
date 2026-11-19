@@ -84,15 +84,17 @@ class Runner:
 
     @staticmethod
     def _sameness(source: Source, config: Config) -> str:
-        """What a source's reads depend on: its class, its settings and the collector's settings,
-        and for the host source the averaging windows it keeps samples for."""
+        """What a source's reads depend on: its class, and for a source read through a provider
+        that provider and the version of its file; its settings and the collector's settings; and
+        for the host source the averaging windows it keeps samples for."""
         windows = (
             [config.conditions[c]["window_s"] for c in ("cpu_hot", "memory_tight")]
             if source.name == "host"
             else []
         )
+        provider = getattr(source, "identity", None)
         return json.dumps(
-            [type(source).__name__, source.settings, config.collector, windows],
+            [type(source).__name__, provider, source.settings, config.collector, windows],
             sort_keys=True,
             default=str,
         )

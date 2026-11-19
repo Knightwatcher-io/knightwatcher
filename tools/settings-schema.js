@@ -4,9 +4,9 @@
 //   - the page's copy, between the settings-schema markers in web/js/settings.js: the settings of
 //     the four sections the display chooses (look, display, quiet, scenes) with the values each may
 //     take and the page's own default, and every scene;
-//   - the reference of every setting and every .env variable (the host paths, the bundled
-//     server's address and port, and the credentials), between the settings-reference markers in
-//     docs/configuration.md.
+//   - the reference of every setting, every built-in provider and every .env variable (the host
+//     paths, the bundled server's address and port, and the credentials), between the
+//     settings-reference markers in docs/configuration.md.
 //
 //   node tools/settings-schema.js           write both
 //   node tools/settings-schema.js --check   write nothing; exit 1 and name each that is stale
@@ -87,7 +87,11 @@ function rangeText(s) {
 }
 /* A long name, as the reference names it. */
 const LONG = 'a long name, `"<pack>/<id>"`';
-function valuesText(s) {
+function valuesText(s, schema) {
+  if (s.values_from === 'providers') {
+    const ids = ((schema && schema.providers) || []).filter(p => p.kind === s.kind).map(p => code(toml(p.id)));
+    return (ids.length ? or(ids) + ': ' : '') + 'a provider of the ' + s.kind + ' kind (see Providers below)';
+  }
   if (s.acts) return 'any scene, or ' + LONG + '; the page acts it in ' + or(s.acts.map(v => code(toml(v))));
   if (s.type === 'boolean') return '`true` or `false`';
   if (s.type === 'table') return 'a table whose keys are ' + or(s.keys.map(code)) + ', each ' + (s.values.length ? or(s.values.map(v => code(toml(v)))) + ' or ' : '') + LONG;
@@ -102,6 +106,7 @@ function valuesText(s) {
 }
 function defaultText(s) {
   if (s.required) return 'required';
+  if (s.default_note) return s.default_note;
   if (s.page_default !== undefined) return s.page_default === null || s.type === 'table' ? 'none' : 'none; the page\'s own is ' + code(toml(s.page_default, s.type));
   if (s.default === null || s.default === undefined) return 'none';
   return code(toml(s.default, s.type));
@@ -116,9 +121,23 @@ function reference(schema) {
     out.push('### ' + heading(t), '', t.help, '');
     if (!t.settings.length) continue;
     out.push('| Key | Values | Default | Scope | What it does |', '|---|---|---|---|---|');
-    for (const s of t.settings) out.push('| ' + [code(s.key), valuesText(s), defaultText(s), s.scope, s.help].map(cell).join(' | ') + ' |');
+    for (const s of t.settings) out.push('| ' + [code(s.key), valuesText(s, schema), defaultText(s), s.scope, s.help].map(cell).join(' | ') + ' |');
     out.push('');
   }
+  out.push('### Providers', '', 'The services the sections read through a kind can read, each by its provider. A section with `from` reads the provider it names, of its own kind; any other reads the provider of its own name. A provider names the credentials it reads from `.env`, `KNIGHTWATCHER_<SECRET>_<FIELD>`, where `<SECRET>` is the section\'s `secret`, the provider\'s id when it is left out. [providers.md](./providers.md) describes the provider files.', '');
+  out.push('| Provider | Kind | Service | Read by | Credentials |', '|---|---|---|---|---|');
+  for (const p of schema.providers || []) {
+    const by = [];
+    for (const t of schema.tables) {
+      if (!t.table.startsWith('sources.')) continue;
+      const from = t.settings.find(x => x.key === 'from');
+      if (from && from.kind === p.kind) by.push(code('[' + t.table + ']') + (from.default === p.id ? ' by default' : ' with ' + code('from = ' + toml(p.id))));
+      else if (!from && t.table === 'sources.' + p.id) by.push(code('[' + t.table + ']'));
+    }
+    const vars = p.credentials.map(f => code('KNIGHTWATCHER_' + p.id.toUpperCase() + '_' + f.toUpperCase()));
+    out.push('| ' + [code(p.id), p.kind, '[' + p.name + '](' + p.docs + ')', by.join(', ') || 'none', vars.join(', ') || 'none'].map(cell).join(' | ') + ' |');
+  }
+  out.push('');
   out.push('### .env', '', 'Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server\'s address and port are where it publishes the bundled server, the admin password reaches the server alone, and the credentials reach the collector alone.', '');
   out.push('| Variable | Scope | Values | Default | What it is |', '|---|---|---|---|---|');
   for (const e of schema.env) {

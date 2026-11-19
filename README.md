@@ -25,6 +25,11 @@ potion flask, anything else as a chest), with a light that glows while it is up.
 down looks broken, with a question mark blinking over it;
 [Devices](docs/configuration.md#devices) says how to list them.
 
+Beside the host's own figures, the collector reads the streams playing from Tautulli, the adverts
+blocked from AdGuard Home, and the films and episodes imported from Radarr and Sonarr. Each of
+these services is read through a provider, a small file that maps the service's answers onto the
+shape the display needs ([Providers](docs/providers.md)).
+
 ## Quick start
 
 On a machine with Docker and its compose plugin, from a checkout of this repository:
@@ -102,6 +107,7 @@ page instead, with each browser then keeping its own settings and no admin page.
 For people running it:
 
 - [Configuration](docs/configuration.md): how settings work, `config.toml`, `.env`, and a reference of every setting
+- [Providers](docs/providers.md): the provider files the services are read through, the path syntax, `--probe`, and the safety rules
 - [The display](docs/display.md): the modes, the settings and worlds, the settings screen, the address's hooks, the admin page and deploying
 - [The server](docs/server.md): what it serves, the settings API and store, the admin page, its security, and a reverse proxy in front
 - [Security](docs/security.md): what never enters this repository, and the collector's and the server's privileges

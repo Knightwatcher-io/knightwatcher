@@ -21,7 +21,10 @@ web/                 the page: static files, no build step (index.html, css/, fo
 collector/           the collector: Python, standard library only (overlay.py reads the admin
                      page's admin.json and lays it over config.toml, reload.py takes up a change
                      between polls)
-  sources/           one module per source
+  sources/           one module per source, and KindSource for the sections read through a kind
+  kinds/             one module per kind: the shape of a sort of reading, its facts and events
+  providers/         the engine that runs provider files, the path syntax and the format's checks
+    builtin/         the built-in provider files, one for each service
   settings-schema.json  every setting of config.toml and every variable of .env
 server/              the bundled server: Python, standard library only, reusing the collector's
                      checks (app.py the HTTP side, store.py the shared settings, admin.py the
@@ -29,6 +32,9 @@ server/              the bundled server: Python, standard library only, reusing 
                      page's version stamp at build time)
 tests/
   collector/         unittest tests for the collector
+    fixtures/port/   what the collector wrote before the provider engine, for the same polls, which
+                     the port proof holds the engine to byte for byte
+    fixtures/providers/  each built-in provider's exchanges and fill, every value invented
   server/            unittest tests for the server and the stamp
   web/               node tests for the page's scripts
     fixtures/knight/ the stored call record of the knight's drawing
@@ -77,6 +83,8 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 - **The page has no build step and no dependencies.** It must open from disk in a browser.
 - **The collector and the server use the standard library alone.** A dependency needs a reason
   written here.
+- **A provider is a file first.** A service that a kind covers is read through a provider file
+  ([providers.md](./providers.md)), and code is written only for what a file cannot describe.
 - **A pack file and its carrier change together.** After editing a file in `web/packs/`, run
   `node tools/pack-carrier.js` and commit both; a test fails while they differ. See
   [library.md](./library.md#carriers).

@@ -533,6 +533,32 @@ class SettingsTest(AdminCase):
         status, _, body = self.patch({"set": {"sources.radarr.enabled": True}})
         self.assertEqual(body["error"], ".env: KNIGHTWATCHER_RADARR_API_KEY missing (for radarr)")
 
+    def test_the_provider_a_source_reads_is_chosen_here_and_checked(self):
+        # A source that is off is not checked until it is turned on, as for its other settings.
+        set_up = {"sources.streams.url": "http://192.0.2.20:8181", "sources.streams.enabled": False}
+        for chosen, words in (
+            ("plx", 'sources.streams.from: unknown provider "plx"; use tautulli'),
+            ("adguard", 'sources.streams.from: "adguard" reads adblock, not streams'),
+        ):
+            status, _, body = self.patch({"set": {**set_up, "sources.streams.from": chosen}})
+            self.assertEqual(status, 200)
+            status, _, body = self.patch({"set": {"sources.streams.enabled": True}})
+            self.assertEqual((status, body["error"]), (400, words))
+        status, _, body = self.patch({"set": {"sources.streams.from": "tautulli"}})
+        self.assertEqual(status, 200)
+        status, _, body = self.patch({"set": {"sources.streams.enabled": True}})
+        self.assertEqual(
+            body["error"], ".env: KNIGHTWATCHER_TAUTULLI_API_KEY missing (for streams)"
+        )
+        text = self.s.json_call("GET", "/api/admin/export", cookie=self.cookie)[2].decode("utf-8")
+        streams = text.split("[sources.streams]\n", 1)[1].split("\n[", 1)[0]
+        self.assertIn('\nfrom = "tautulli"\n', streams)
+        self.assertIn(
+            "# Left out: the provider's id, so it reads KNIGHTWATCHER_TAUTULLI_API_KEY from .env.\n"
+            '# secret = "tautulli"\n',
+            streams,
+        )
+
     def test_the_new_problem_comes_first(self):
         # config.toml with a credential the collector lacks: every change is refused, and the one
         # the change brings is named first.
