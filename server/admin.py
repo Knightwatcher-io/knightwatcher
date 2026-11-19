@@ -15,8 +15,9 @@ MIN_PASSWORD characters, the page is off and says why; the walls are not affecte
   - Admin holds what is set on the page, in admin.json in the server's folder (collector/overlay.py
     describes the file), and checks each change before it is kept: config.toml as the collector
     reads it, mounted read-only into the server, with the store laid over it and the change on
-    top, built by the collector's own code. The server has no credential, so it checks them by the
-    names the collector reports in credentials.json, giving the same words.
+    top, built by the collector's own code, with the provider files of the providers folder beside
+    it, mounted read-only too. The server has no credential, so it checks them by the names the
+    collector reports in credentials.json, giving the same words.
 
 docs/server.md describes the endpoints and docs/security.md the posture.
 """
@@ -40,7 +41,7 @@ from collections.abc import Callable
 from typing import Any
 
 from collector import config as config_mod
-from collector import overlay, schema
+from collector import overlay, providers, schema
 from collector.config import ConfigError
 from collector.store import atomic_write
 
@@ -339,6 +340,8 @@ class Admin:
         self.gate, self.shared = gate, shared
         self._lock = threading.Lock()
         self._seen: tuple | None = None
+        # The providers folder as last read: (its path and signature, what it held).
+        self._providers: tuple[tuple, providers.Providers] | None = None
         with self._lock:
             self._reread()
 
@@ -363,17 +366,30 @@ class Admin:
         except ConfigError as exc:
             return None, exc.problems[0]
 
+    def providers(self, raw: dict | None) -> providers.Providers:
+        """The providers folder config.toml names, read again only when its files have changed."""
+        folder = config_mod.providers_folder(raw or {}, self.config_path)
+        seen = (folder, providers.signature(folder))
+        held = self._providers
+        if held is None or held[0] != seen:
+            found = providers.scan(folder)
+            for problem in found.problems:
+                log.warning("provider file left out: %s", problem)
+            held = self._providers = (seen, found)
+        return held[1]
+
     def problems(self, given: dict[str, Any], raw: dict | None, why: str | None) -> list[str]:
         """Every problem the collector would find with config.toml and given laid over it.
 
         A credential is checked by the names the collector reported holding; while it has
-        reported none, credentials are not checked here."""
+        reported none, credentials are not checked here. A provider file left out is not a
+        problem of the settings: the collector runs, and the source that names it fails."""
         if raw is None:
             return [why or "config.toml cannot be read"]
         names = read_credentials(self.out)
         env = None if names is None else {name: "present" for name, ok in names.items() if ok}
         try:
-            config_mod.build(overlay.lay(raw, given), env)
+            config_mod.build(overlay.lay(raw, given), env, providers=self.providers(raw))
         except ConfigError as exc:
             return exc.problems
         return []
@@ -386,6 +402,7 @@ class Admin:
         with self._lock:
             self._reread()
             given, version = copy.deepcopy(self._set), self._version
+        found = self.providers(raw)
         body = {
             "v": overlay.VERSION,
             "set": given,
@@ -394,6 +411,7 @@ class Admin:
             "status": read_status(self.out),
             "credentials": read_credentials(self.out),
             "problems": self.problems(given, raw, why),
+            "providers": own_providers(found),
             "now": _now_iso(),
         }
         if why:
@@ -481,7 +499,28 @@ class Admin:
             self._reread()
             given = copy.deepcopy(self._set)
         shared = json.loads(self.shared.get()[0])
-        return export_toml(overlay.lay(raw or {}, given), shared, when or dt.datetime.now(dt.UTC))
+        laid = overlay.lay(raw or {}, given)
+        return export_toml(laid, shared, when or dt.datetime.now(dt.UTC), self.providers(raw))
+
+
+def own_providers(found: providers.Providers) -> dict:
+    """The provider files of the user's own, for the admin page: each that passed, as the schema
+    lists the built-in ones, and each left out, by its id, with its problems."""
+    return {
+        "own": [
+            {
+                "id": spec.id,
+                "kind": spec.kind,
+                "name": spec.name,
+                "docs": spec.docs,
+                "credentials": [{"field": f, "help": h} for f, h in spec.credentials.items()],
+                "settings": [{"key": k, **d} for k, d in spec.settings.items()],
+            }
+            for spec in found.own.values()
+        ],
+        "refused": [{"id": pid, "problems": list(p)} for pid, p in found.refused.items()],
+        "problems": list(found.problems),
+    }
 
 
 # ---- config.toml, written out ------------------------------------------------------------------
@@ -536,15 +575,21 @@ def _section(raw: dict, table: str) -> dict | None:
     return here if isinstance(here, dict) else None
 
 
-def _variables(credentials: list[dict], provider: str | None, secret: str) -> list[str]:
+def _variables(found: providers.Providers, provider: str | None, secret: str) -> list[str]:
     """The variables a section reads its provider's credentials from, under its secret."""
-    return [schema.env_name(secret, e["field"]) for e in credentials if e["provider"] == provider]
+    spec = found.get(provider) if provider else None
+    return [schema.env_name(secret, f) for f in (spec.credentials if spec else [])]
 
 
-def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
+def export_toml(
+    raw: dict, shared: dict, when: dt.datetime, found: providers.Providers | None = None
+) -> str:
     """A complete config.toml: raw (the file with the admin page's settings laid over it) in
     every table of the schema, the defaults written where it leaves a setting out, and the
-    shared settings over its look, display, quiet scenes and scenes."""
+    shared settings over its look, display, quiet scenes and scenes. A section also keeps the
+    settings its provider declares, with the provider file's help; found is the providers folder,
+    or None for the built-in providers alone."""
+    found = found if found is not None else providers.builtin_only()
     stamp = when.astimezone(dt.UTC).strftime("%d %B %Y at %H:%M UTC").lstrip("0")
     out = _comment(
         f"Knightwatcher settings, downloaded from the admin page on {stamp}. Every setting the "
@@ -555,7 +600,6 @@ def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
         "Credentials are never in this file. They stay in .env (see .env.example), named by each "
         "source's secret, which is its provider's id when it is left out."
     )
-    credentials = schema.credentials()
     for t in schema.SCHEMA["tables"]:
         table = t["table"]
         out.append("")
@@ -598,10 +642,9 @@ def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
             if given is not None and key in given:
                 value = given[key]
             elif key == "secret" and s.get("default_note"):
-                names = _variables(credentials, provider, provider)
-                out += _comment(
-                    f"Left out: {s['default_note']}, so it reads {' and '.join(names)} from .env."
-                )
+                names = _variables(found, provider, provider)
+                reads = f"reads {' and '.join(names)} from .env" if names else "needs no credential"
+                out += _comment(f"Left out: {s['default_note']}, so it {reads}.")
                 out.append(f'# {key} = "{provider}"')
                 continue
             elif wall:
@@ -617,9 +660,19 @@ def export_toml(raw: dict, shared: dict, when: dt.datetime) -> str:
                 value = s["default"]
             line = _line(key, value, s["type"], lead)
             if key == "secret" and isinstance(value, str):
-                names = _variables(credentials, provider, value)
-                line[-1] += f"   # reads {' and '.join(names)} from .env"
+                names = _variables(found, provider, value)
+                if names:
+                    line[-1] += f"   # reads {' and '.join(names)} from .env"
             out += line
+        # The settings the section's provider declares, as the section sets them.
+        spec = found.get(provider) if source is not None and provider else None
+        own = {s["key"] for s in t["settings"]}
+        for key, value in (given or {}).items():
+            if key in own or spec is None or key not in spec.settings:
+                continue
+            declared = spec.settings[key]
+            out += _comment(f"{declared['help']} Declared by the {provider} provider.", "# " + lead)
+            out += _line(key, value, declared["type"], lead)
     text = "\n".join(out) + "\n"
     tomllib.loads(text)  # what is written must read back
     return text

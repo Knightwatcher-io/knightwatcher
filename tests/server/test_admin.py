@@ -446,6 +446,7 @@ class SettingsTest(AdminCase):
         self.assertEqual(body["status"]["config"], STATE["config"])
         self.assertEqual(body["credentials"], CREDENTIALS)
         self.assertEqual(body["problems"], [])
+        self.assertEqual(body["providers"], {"own": [], "refused": [], "problems": []})
         self.assertNoPassword(json.dumps(body))
 
     def test_a_valid_change_is_kept_and_written(self):
@@ -685,6 +686,119 @@ class SettingsTest(AdminCase):
     def test_credentials_json_is_read_and_never_served(self):
         self.assertEqual(self.s.request("GET", "/data/credentials.json")[0], 404)
         self.assertEqual(self.s.request("GET", "/data/../data/credentials.json")[0], 404)
+
+
+MYFLIX = """\
+format = 1
+id = "myflix"
+kind = "streams"
+name = "Myflix"
+
+[credentials]
+token = "Myflix's token, from its settings page."
+
+[settings]
+page_size = { type = "integer", default = 10, min = 1, max = 50, help = "Sessions read per call." }
+
+[[request]]
+path = "/api/sessions"
+query = { limit = "{setting.page_size}" }
+headers = { X-Token = "{credential.token}" }
+
+[fill]
+count = { path = "$.total", type = "int" }
+
+[fill.sessions]
+each = "$.sessions[*]"
+
+[fill.sessions.vars]
+title = "$.title"
+
+[[fill.sessions.title]]
+try = ["{title}"]
+"""
+
+
+class OwnProvidersTest(AdminCase):
+    """Provider files of the user's own, in the providers folder beside config.toml: the checks
+    use them as the collector does, the page is told of them, and the export keeps their
+    settings."""
+
+    def setUp(self):
+        super().setUp()
+        self.cookie = self.s.sign_in()
+        folder = os.path.join(self.s.base, "providers")
+        os.mkdir(folder)
+        with open(os.path.join(folder, "myflix.toml"), "w", encoding="utf-8") as fh:
+            fh.write(MYFLIX)
+        with open(os.path.join(folder, "spare.toml"), "w", encoding="utf-8") as fh:
+            fh.write(MYFLIX.replace('"myflix"', '"spare"').replace('"/api/', '"api/'))
+
+    def patch(self, payload):
+        return self.s.json_call("PATCH", "/api/admin/settings", payload, self.cookie)
+
+    def credentials(self, **extra):
+        with open(os.path.join(self.s.out, "credentials.json"), "w", encoding="utf-8") as fh:
+            json.dump({**CREDENTIALS, **extra}, fh)
+
+    def test_the_page_is_told_of_each_file_and_each_left_out(self):
+        body = self.s.json_call("GET", "/api/admin/settings", cookie=self.cookie)[2]
+        own = body["providers"]["own"]
+        self.assertEqual(
+            [(p["id"], p["kind"], p["name"]) for p in own], [("myflix", "streams", "Myflix")]
+        )
+        self.assertEqual(
+            own[0]["credentials"],
+            [{"field": "token", "help": "Myflix's token, from its settings page."}],
+        )
+        self.assertEqual(own[0]["settings"][0]["key"], "page_size")
+        problem = "providers/spare.toml: request[0].path: must start with /"
+        self.assertEqual(body["providers"]["refused"], [{"id": "spare", "problems": [problem]}])
+        self.assertEqual(body["providers"]["problems"], [problem])
+        # A file left out is not a problem of the settings: the collector runs on.
+        self.assertEqual(body["problems"], [])
+
+    def test_from_may_name_a_file_and_its_credential_is_checked_by_name(self):
+        change = {
+            "set": {
+                "sources.streams.enabled": True,
+                "sources.streams.url": "http://192.0.2.20:8080",
+                "sources.streams.from": "myflix",
+            }
+        }
+        status, _, body = self.patch(change)
+        self.assertEqual(status, 400)
+        self.assertEqual(
+            body["problems"], [".env: KNIGHTWATCHER_MYFLIX_TOKEN missing (for streams)"]
+        )
+        self.credentials(KNIGHTWATCHER_MYFLIX_TOKEN=True)
+        status, _, body = self.patch(change)
+        self.assertEqual(status, 200, body)
+        status, _, body = self.patch({"set": {"sources.streams.from": "plx"}})
+        self.assertEqual(status, 400)
+        self.assertEqual(
+            body["problems"],
+            ['sources.streams.from: unknown provider "plx"; use tautulli or myflix'],
+        )
+        # A file that was left out may be named: that source fails, and the collector runs.
+        status, _, body = self.patch({"set": {"sources.streams.from": "spare"}})
+        self.assertEqual(status, 200, body)
+
+    def test_the_export_keeps_the_settings_a_file_declares(self):
+        with open(self.s.config_path, "a", encoding="utf-8") as fh:
+            fh.write(
+                '\n[sources.streams]\nurl = "http://192.0.2.20:8080"\n'
+                'from = "myflix"\npage_size = 20\n'
+            )
+        text = self.s.json_call("GET", "/api/admin/export", cookie=self.cookie)[2].decode("utf-8")
+        self.assertIn(
+            "# Sessions read per call. Declared by the myflix provider.\npage_size = 20\n", text
+        )
+        self.assertIn("so it reads KNIGHTWATCHER_MYFLIX_TOKEN from .env.", text)
+        found = self.s.admin.providers(None)
+        exported = config.build(tomllib.loads(text), providers=found)
+        self.assertEqual(exported.sources["streams"]["page_size"], 20)
+        self.assertEqual(exported.sources["streams"]["from"], "myflix")
 
 
 class PageTest(unittest.TestCase):

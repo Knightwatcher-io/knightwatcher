@@ -1,5 +1,5 @@
-"""The settings in use: config.toml with the admin page's admin.json laid over it, at start and
-whenever either file changes.
+"""The settings in use: config.toml with the admin page's admin.json laid over it, and the
+provider files of the providers folder, at start and whenever any of them changes.
 
 At start config.toml must pass on its own, credentials included, or the collector does not start,
 as it always has. admin.json is then laid over it (see collector/overlay.py). When the result
@@ -7,8 +7,13 @@ passes it is used; a credential it needs and the environment lacks does not stop
 source runs and fails, saying which variable is missing. When the result fails for any other
 reason, the collector runs on config.toml alone and says why in the state file.
 
-While it runs, the collector looks at both files at the start of every poll. When either has
-been written since it last looked, it builds the settings again the same way, without requiring
+A provider file of the folder that fails its checks is left out and never stops the collector:
+its problems go to the log and to the state file's `config.problems`, and a section whose `from`
+names it runs and fails at every read.
+
+While it runs, the collector looks at both files, and at the folder's files by name, inode, size
+and time, at the start of every poll. When any has changed since it last looked, it reads the
+folder again and builds the settings again the same way, without requiring
 config.toml to pass alone, and takes them up between polls when they pass; when they fail it
 keeps the settings it has and says why. Either way the state file's `config` says which version of
 admin.json is in use, since when, and the problems of the last change it looked at
@@ -22,7 +27,7 @@ import logging
 from collections.abc import Callable, Mapping
 
 from collector import config as config_mod
-from collector import overlay, text
+from collector import overlay, providers, text
 from collector.config import Config, ConfigError
 
 log = logging.getLogger("collector")
@@ -43,25 +48,49 @@ class Settings:
         self.admin_path = admin_path
         self.env = env
         self._seen: tuple | None = None
+        # The providers folder config.toml named when it was last read.
+        self.folder: str | None = None
 
     def _signatures(self) -> tuple:
-        return (overlay.signature(self.config_path), overlay.signature(self.admin_path))
+        return (
+            overlay.signature(self.config_path),
+            overlay.signature(self.admin_path),
+            providers.signature(self.folder),
+        )
+
+    def _read(self) -> tuple[dict, providers.Providers]:
+        """config.toml and the providers folder it names, read, with what they were when read
+        noted first, so that a change while they are read is seen at the next look; ConfigError
+        when config.toml cannot be read."""
+        files = self._signatures()[:2]
+        try:
+            raw = config_mod.read(self.config_path)
+        except ConfigError:
+            self._seen = (*files, providers.signature(self.folder))
+            raise
+        self.folder = config_mod.providers_folder(raw, self.config_path)
+        self._seen = (*files, providers.signature(self.folder))
+        return raw, providers.scan(self.folder)
 
     def start(self) -> tuple[Config, dict]:
         """The settings to start with, and what the state file should say of them.
 
         Raises ConfigError when config.toml does not pass on its own, credentials included.
         """
-        self._seen = self._signatures()
-        raw = config_mod.read(self.config_path)
-        alone = config_mod.build(raw, self.env)
+        raw, found = self._read()
+        for problem in found.problems:
+            log.warning("provider file left out: %s", problem)
+        alone = config_mod.build(raw, self.env, providers=found)
         given, version, problems = overlay.read(self.admin_path)
         for problem in problems:
             log.warning("admin settings: %s", problem)
+        problems = list(found.problems) + problems
         if not given:
             return alone, {"admin": version, "problems": problems}
         try:
-            layered = config_mod.build(overlay.lay(raw, given), self.env, missing="report")
+            layered = config_mod.build(
+                overlay.lay(raw, given), self.env, missing="report", providers=found
+            )
         except ConfigError as exc:
             for problem in exc.problems:
                 log.warning("admin settings not taken up: %s", problem)
@@ -72,31 +101,39 @@ class Settings:
         return layered, {"admin": version, "problems": problems + _missing(layered)}
 
     def changed(self) -> bool:
-        """Whether either file has been written since the settings were last read."""
+        """Whether either file, or a provider file, has changed since the settings were last
+        read."""
         return self._signatures() != self._seen
 
     def take_up(self, running: Config) -> tuple[Config | None, dict]:
         """The settings again, after a change: (the new settings or None to keep running ones,
         what the state file should say of them)."""
-        self._seen = self._signatures()
-        given, version, problems = overlay.read(self.admin_path)
         try:
-            raw = config_mod.read(self.config_path)
-            new = config_mod.build(overlay.lay(raw, given), self.env, missing="report")
+            raw, found = self._read()
         except ConfigError as exc:
+            given, version, problems = overlay.read(self.admin_path)
             problems = problems + exc.problems
         else:
-            fixed = [
-                f"collector.{key}: changes only when the collector starts again"
-                for key in _AT_START
-                if new.collector[key] != running.collector[key]
-            ]
-            if not fixed:
-                for problem in problems + _missing(new):
-                    log.warning("settings taken up with a problem: %s", problem)
-                log.info("settings taken up: admin.json %s", version or "none")
-                return new, {"admin": version, "problems": problems + _missing(new)}
-            problems = problems + fixed
+            given, version, problems = overlay.read(self.admin_path)
+            problems = list(found.problems) + problems
+            try:
+                new = config_mod.build(
+                    overlay.lay(raw, given), self.env, missing="report", providers=found
+                )
+            except ConfigError as exc:
+                problems = problems + exc.problems
+            else:
+                fixed = [
+                    f"collector.{key}: changes only when the collector starts again"
+                    for key in _AT_START
+                    if new.collector[key] != running.collector[key]
+                ]
+                if not fixed:
+                    for problem in problems + _missing(new):
+                        log.warning("settings taken up with a problem: %s", problem)
+                    log.info("settings taken up: admin.json %s", version or "none")
+                    return new, {"admin": version, "problems": problems + _missing(new)}
+                problems = problems + fixed
         for problem in problems:
             log.warning("settings not taken up: %s", problem)
         return None, {"problems": problems, "refused": version}

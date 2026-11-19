@@ -51,7 +51,10 @@
           "help": "Pause after a 401, 403 or 429 before the service is called again. Cannot be set below 1200." },
         { "key": "proc_root", "type": "string", "default": "/host/proc", "form": "a folder inside the container", "scope": "household",
           "gui": { "admin": { "section": "Collector", "label": "Host's process folder" } }, "editable": false,
-          "help": "Where the host's /proc is mounted, for CPU, memory, load and the lock table." }
+          "help": "Where the host's /proc is mounted, for CPU, memory, load and the lock table." },
+        { "key": "providers_dir", "type": "string", "default": "providers", "form": "a folder, relative to the one config.toml is in, or absolute", "scope": "household",
+          "gui": { "admin": { "section": "Collector", "label": "Provider files folder" } }, "editable": false,
+          "help": "The folder of provider files of your own, one provider each, each named after its id with .toml (myflix.toml). Relative, it is taken from the folder config.toml is in, so the default is /etc/knightwatcher/providers in the containers, where compose.yaml mounts KNIGHTWATCHER_PROVIDERS. A folder that does not exist holds none. Read at start and again whenever a file in it changes." }
       ]
     },
     {
@@ -661,6 +664,9 @@
     { "name": "KNIGHTWATCHER_VAR", "scope": "path", "required": false, "default": "./var", "mount": "/var/lib/knightwatcher", "example": "./var",
       "gui": { "admin": { "section": "Host", "label": "Memory folder" } }, "editable": false,
       "help": "The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account." },
+    { "name": "KNIGHTWATCHER_PROVIDERS", "scope": "path", "required": false, "default": "./providers", "mount": "/etc/knightwatcher/providers", "services": ["collector", "server"], "example": "./providers",
+      "gui": { "admin": { "section": "Host", "label": "Provider files" } }, "editable": false,
+      "help": "The host folder of provider files of your own, for services no built-in provider reads. Mounted read-only at /etc/knightwatcher/providers in both containers: the collector reads the files, and the server checks a change on the admin page by them. Must exist and be readable by uid 10001; the repository's own providers folder, empty, is the default." },
     { "name": "KNIGHTWATCHER_SERVER_VAR", "scope": "path", "required": false, "default": "./var/server", "mount": "/var/lib/knightwatcher-server", "services": ["collector", "server"], "example": "./var/server",
       "gui": { "admin": { "section": "Server", "label": "Server folder" } }, "editable": false,
       "help": "The host folder for the bundled server's own files: the settings saved for every display, in settings.json, and those set on the admin page, in admin.json, with the admin page's sessions. Mounted at /var/lib/knightwatcher-server, the one place the server writes, and read-only at the same place in the collector, which takes up admin.json. Must exist and be writable by the server's account." },

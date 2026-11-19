@@ -8,9 +8,9 @@
    - api/admin/state says whether the page is on and whether this browser is signed in;
    - api/admin/schema is collector/settings-schema.json, from which every section, label, help
      line, default, range and list of values on the page is taken;
-   - api/admin/settings gives what is set here, config.toml as parsed, the collector's last report
-     and which credential variables it holds, by name; a change is sent there and checked by the
-     collector's own code before it is kept;
+   - api/admin/settings gives what is set here, config.toml as parsed, the collector's last report,
+     which credential variables it holds, by name, and the provider files of the user's own; a
+     change is sent there and checked by the collector's own code before it is kept;
    - api/settings is the walls' shared look, display, quiet scenes and scenes, which this page
      reads and writes too, so that the two never disagree.
 
@@ -80,7 +80,15 @@
   /* The provider a source reads: its from, or the provider of its own name. A provider names the
      credentials it reads. */
   const providerOf = name => (SPEC['sources.' + name + '.from'] ? val('sources.' + name + '.from') || SPEC['sources.' + name + '.from'].default : name);
-  const needs = name => CREDS.filter(e => e.provider === providerOf(name));
+  /* The provider files of the user's own, from the server's answer (each that passed, and each
+     left out with its problems), added to the schema's built-in providers and their credentials. */
+  const mine = () => (A && A.providers) || { own: [], refused: [], problems: [] };
+  const providers = () => PROVIDERS.concat(mine().own.map(p => Object.assign({ own: true }, p)));
+  const credList = () => CREDS.concat(mine().own.flatMap(p => p.credentials.map(c => ({
+    name: varOf(p.id, c.field), scope: 'credential', provider: p.id, field: c.field, secret: p.id, own: true,
+    help: c.help + ' For ' + p.name + ', a provider file of your own: the variable must also be named in the collector\'s environment in compose.override.yaml.',
+    gui: { admin: { section: 'Credentials', label: p.name + ' ' + c.field.replace('_', ' ') } } }))));
+  const needs = name => credList().filter(e => e.provider === providerOf(name));
   const readersOf = provider => SOURCES.filter(n => providerOf(n) === provider);
 
   /* ---- Where each value comes from: set here, config.toml, or the default ------------------------- */
@@ -269,7 +277,12 @@
       return l;
     }
     if (s.type === 'boolean') return sw(v, () => set(!v), label);
-    if (s.values_from === 'providers') return seg(PROVIDERS.filter(p => p.kind === s.kind).map(p => [p.id, p.name]), v, nv => set(nv));
+    if (s.values_from === 'providers') {
+      const choices = providers().filter(p => p.kind === s.kind).map(p => [p.id, p.name + (p.own ? ' (your file)' : '')]);
+      // A file of the user's own that was left out stays shown while it is chosen.
+      if (v && !choices.some(([id]) => id === v)) choices.push([v, v + (mine().refused.some(r => r.id === v) ? ' (left out: see the problems)' : '')]);
+      return seg(choices, v, nv => set(nv));
+    }
     if (s.values && s.type !== 'list') return seg(s.values.map(x => [x, String(x)]), v, nv => set(nv));
     if (s.type === 'integer' || s.type === 'number') {
       const l = el('div', 'line'), i = textIn('num', words(v, s), t => set(typed(s, t), t), shown, label);
@@ -340,7 +353,7 @@
     { id: 'scenes', name: 'Scenes', count: () => setCount('scenes') },
     { id: 'env', name: '.env', count: () => 0, bad: () => missingNeeded().length }
   ];
-  const missingNeeded = () => CREDS.filter(e => readersOf(e.provider).some(n => srcOn(n) && credState(varOf(val('sources.' + n + '.secret') || e.secret, e.field)) === false));
+  const missingNeeded = () => credList().filter(e => readersOf(e.provider).some(n => srcOn(n) && credState(varOf(val('sources.' + n + '.secret') || e.secret, e.field)) === false));
   function countWords(p) {
     const n = p.count(), b = p.bad ? p.bad() : 0;
     if (b) return [p.id === 'env' ? b + ' missing' : b + ' failing', true];
@@ -801,13 +814,13 @@
     const c0 = el('div', 'ctl'); c0.appendChild(rich('p', 'help', pw ? pw.help : '')); r0.appendChild(c0);
     const s0 = el('div', 'st'); s0.appendChild(el('span', 'tag ok', 'Set')); r0.appendChild(s0); a.appendChild(r0);
     m.appendChild(a);
-    const groups = [['Credentials', 'For the collector alone. The server is told only whether each is there, by name.', S.env.filter(e => e.scope === 'credential')],
+    const groups = [['Credentials', 'For the collector alone. The server is told only whether each is there, by name.', credList()],
       ['Host', 'The host folders compose.yaml mounts. Read by docker compose when it makes the containers; the server never sees them.', S.env.filter(e => e.gui.admin.section === 'Host')],
       ['Server', 'Where compose.yaml publishes the server. Read by docker compose; the server never sees them.', S.env.filter(e => e.gui.admin.section === 'Server')]];
     for (const [title, help, list] of groups) {
       const c = card(title, null, help);
       for (const e of list) {
-        const readers = cred ? readersOf(e.provider) : [], src = readers[0];
+        const cred = e.scope === 'credential', readers = cred ? readersOf(e.provider) : [], src = readers[0];
         const name = cred && src ? varOf(val('sources.' + src + '.secret') || e.secret, e.field) : e.name, ok = cred ? credState(name) : true, need = cred && readers.some(srcOn);
         const r = el('div', 'envrow' + (cred && ok === false && need ? ' missing' : '')), l = el('div', 'lab'); l.appendChild(el('b', '', e.gui.admin.label)); l.appendChild(el('code', '', name)); r.appendChild(l);
         const ct = el('div', 'ctl'); ct.appendChild(rich('p', 'help', e.help));
@@ -817,7 +830,7 @@
           const fl = el('p', 'help'); fl.appendChild(document.createTextNode('For ' + sn + ', which is ' + (need ? 'on' : srcThere(src) ? 'off' : 'not in config.toml') + '. '));
           fl.appendChild(btn('btn small', 'Open ' + sn, () => { go('sources'); st.open[src] = true; render(true); })); ct.appendChild(fl);
         } else if (cred) {
-          const p = PROVIDERS.find(x => x.id === e.provider);
+          const p = providers().find(x => x.id === e.provider);
           ct.appendChild(el('p', 'help', 'For ' + (p ? p.name : e.provider) + ', which no source reads now.'));
         } else if (e.default !== null && e.default !== undefined) ct.appendChild(rich('p', 'help', 'Left out, it is `' + (e.default === '' ? 'empty' : e.default) + '`.'));
         r.appendChild(ct);

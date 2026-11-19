@@ -368,6 +368,30 @@ class TemplatesAgreeTest(unittest.TestCase):
 
         self.assertEqual(os.path.dirname(overlay.DEFAULT_PATH), mount.group(1))
 
+    def test_the_providers_folder_is_mounted_read_only_and_never_stops_a_start(self):
+        for name, block in services(compose_text()).items():
+            mount = re.search(
+                r"source: \$\{KNIGHTWATCHER_PROVIDERS:-\./providers\}\n"
+                r"\s+target: /etc/knightwatcher/providers\n\s+read_only: true\n"
+                r"\s+bind: \{ create_host_path: false \}",
+                block,
+            )
+            self.assertIsNotNone(mount, name)
+        # Its default is the repository's own folder, tracked empty, so a checkout has it.
+        self.assertTrue(os.path.isfile(os.path.join(ROOT, "providers", ".gitkeep")))
+        with open(os.path.join(ROOT, ".gitignore"), encoding="utf-8") as fh:
+            ignored = fh.read().splitlines()
+        self.assertIn("/providers/*", ignored)
+        self.assertIn("!/providers/.gitkeep", ignored)
+        # The collector finds it beside config.toml, where compose mounts it.
+        spec = schema.setting("collector", "providers_dir")
+        self.assertFalse(spec["editable"])
+        variable = next(e for e in S["env"] if e["name"] == "KNIGHTWATCHER_PROVIDERS")
+        self.assertEqual(
+            os.path.join(os.path.dirname("/etc/knightwatcher/config.toml"), spec["default"]),
+            variable["mount"],
+        )
+
 
 def compose_text() -> str:
     with open(os.path.join(ROOT, "compose.yaml"), encoding="utf-8") as fh:

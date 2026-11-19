@@ -362,10 +362,11 @@ and `sources` the parts come from are shown:
     as a UTC timestamp.
   - `problems`: the problems of the last change the collector looked at, in the words of
     `check-config`, empty when it went in cleanly. A credential the settings need and the
-    environment lacks is listed here while the settings are in use, that source failing.
+    environment lacks is listed here while the settings are in use, that source failing, and so
+    is each provider file that was left out (`providers/myflix.toml: ...`).
   - `refused`: present only when the last change looked at was not taken up, and then the
-    version of `admin.json` that was refused, or `null` when the change was to `config.toml`
-    alone; `admin` and `at` still describe the settings in use, and `problems` says why.
+    version of `admin.json` that was refused, or `null` when the change was to `config.toml` or
+    the provider files alone; `admin` and `at` still describe the settings in use, and `problems` says why.
 
   The page ignores `config`. A file from a collector older than the admin page has no `config`.
   [collector.md](./collector.md#taking-up-a-change) says when the collector takes up a change.

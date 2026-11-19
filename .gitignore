@@ -1,6 +1,11 @@
 # Site configuration and credentials: never committed
 /config.toml
 /secrets.json
+# A host's own additions to compose.yaml, such as the credentials of its own provider files
+/compose.override.yaml
+# Provider files of the user's own: the folder ships empty
+/providers/*
+!/providers/.gitkeep
 .env
 .env.*
 !.env.example

@@ -20,6 +20,7 @@ __all__ = [
     "KindSource",
     "MissingCredentials",
     "Reading",
+    "RefusedProvider",
     "Source",
     "SourceError",
     "build_sources",
@@ -82,6 +83,22 @@ class MissingCredentials(Source):
         raise SourceError(f"{' and '.join(self.variables)} missing")
 
 
+class RefusedProvider(Source):
+    """A section whose `from` names a provider file of the user's own that was left out.
+
+    It fails at every read, pointing at the problems the state file's `config` lists, so the source
+    shows as failing and why, and the rest of the collector carries on.
+    """
+
+    def __init__(self, name: str, settings: dict[str, Any], config: Config, provider: str):
+        super().__init__(settings, config)
+        self.name = name
+        self.provider = provider
+
+    def fetch(self, now: dt.datetime) -> Reading:
+        raise SourceError(f"provider {self.provider} refused; see the settings problems")
+
+
 class KindSource(Source):
     """A section read through a kind: its provider fills the kind's shape, and the kind makes the
     reading and the events. What the runner sees is a source like any other."""
@@ -93,7 +110,7 @@ class KindSource(Source):
         self.name = name
         self.kind = kinds.kind_class(kinds.SECTIONS[name])()
         self.section = self.kind.section
-        self.spec = providers.get(kinds.provider_of(name, settings))
+        self.spec = config.providers.get(kinds.provider_of(name, settings))
         self.allowed = self.kind.allowed(settings)
         self.provider = providers.make(
             self.spec, settings, config.secret(name), self.timeout, self.allowed
@@ -123,7 +140,7 @@ def _variables(problems: list[str]) -> list[str]:
 
 
 def build_sources(config: Config) -> list[Source]:
-    from collector.kinds import SECTIONS
+    from collector.kinds import SECTIONS, provider_of
     from collector.sources import (
         backup,
         containers,
@@ -155,6 +172,8 @@ def build_sources(config: Config) -> list[Source]:
         elif name in config.missing:
             variables = _variables(config.missing[name])
             built.append(MissingCredentials(name, settings, config, variables))
+        elif name in SECTIONS and config.providers.is_refused(provider_of(name, settings)):
+            built.append(RefusedProvider(name, settings, config, provider_of(name, settings)))
         elif name in SECTIONS:
             built.append(KindSource(name, settings, config))
         else:
