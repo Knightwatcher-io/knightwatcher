@@ -29,10 +29,18 @@ from collector.net import SourceError
 
 # The sections of config.toml read through a kind, with the kind each reads. A section with a
 # `from` setting reads the provider it names; any other reads the provider of its own name.
-SECTIONS = {"streams": "streams", "adblock": "adblock", "sonarr": "imports", "radarr": "imports"}
+# [sources.security] reads the fail2ban summary by default, which is not a provider: build_sources
+# gives it the summary's own reader (collector/sources/security.py).
+SECTIONS = {
+    "streams": "streams",
+    "adblock": "adblock",
+    "security": "security",
+    "sonarr": "imports",
+    "radarr": "imports",
+}
 
 # Every kind, by name, with its module in this package.
-KINDS = ("streams", "adblock", "imports")
+KINDS = ("streams", "adblock", "imports", "security")
 
 
 def provider_of(section: str, settings: dict[str, Any]) -> str:

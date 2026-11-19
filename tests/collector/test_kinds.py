@@ -1,6 +1,8 @@
 """The kinds, each through its built-in provider against invented answers: streams, adblock and
-imports. tests/collector/test_port.py holds the same readings to what the collector wrote before
-the kinds, byte for byte; tests/collector/test_providers.py checks each provider's fill."""
+imports; and security from fills, its provider (fail2ban) being tested on its own in
+tests/collector/test_fail2ban.py. tests/collector/test_port.py holds the same readings to what the
+collector wrote before the kinds, byte for byte; tests/collector/test_providers.py checks each
+provider's fill."""
 
 import datetime as dt
 import json
@@ -529,6 +531,227 @@ class StreamsTest(unittest.TestCase):
             s.fetch(T0)
 
 
+# A provider file of a user's own for the security kind, against an invented service.
+MYBANS = """
+format = 1
+id = "mybans"
+kind = "security"
+name = "My bans"
+
+[credentials]
+token = "The service's token."
+
+[[request]]
+path = "/bans"
+headers = { "X-Token" = "{credential.token}" }
+
+[fill.bans]
+each = "$.bans[*]"
+vars = { ip = "$.ip", jail = "$.jail", at = { path = "$.at", type = "time" } }
+fields = { ip = "ip", jail = "jail", at = "at" }
+"""
+
+
+def ban(ip, seconds, jail="sshd", **extra):
+    """A ban as a provider lists it, made `seconds` after T0 (before it when negative)."""
+    return {"ip": ip, "jail": jail, "at": at(seconds), **extra}
+
+
+class SecurityTest(unittest.TestCase):
+    """The security kind from fills: the counts, the attack's inputs, new bans and the memory."""
+
+    def setUp(self):
+        self.kind = kind_class("security")()
+        self.config = make_config(
+            {"conditions": {"attack": {"window_s": 600, "jails": ["sshd"], "bans": 5}}}
+        )
+
+    def read(self, bans, now=T0, **fill):
+        fill = check_fill(self.kind.FILL, {"bans": bans, **fill}, self.kind.allowed({}))
+        return self.kind.reading(fill, {}, self.config, now)
+
+    def observe(self, bans, memory, now=T0):
+        r = self.read(bans, now)
+        return r, self.kind.observe(r, memory, {}, self.config, now)
+
+    def test_counts_from_the_list_itself(self):
+        r = self.read([
+            ban("203.0.113.5", -86_401, jail="recidive"),  # a day and a second ago
+            ban("203.0.113.6", -86_400, jail="recidive"),  # a day ago, counted
+            ban("198.51.100.9", -601, jail="nginx-botsearch"),
+            ban("198.51.100.10", -600, jail="nginx-botsearch"),
+            ban("198.51.100.11", -30, jail="nginx-botsearch"),
+        ])  # fmt: skip
+        self.assertEqual(r.facts, {"bans_24h": 4, "attack": False})
+        self.assertEqual(r.data["bans_24h"], 4)
+        self.assertEqual(r.data["bans_in_window"], 2)
+        self.assertFalse(r.data["jail_ban"])
+        self.assertEqual(
+            r.data["last_ban"], {"ip": "198.51.100.11", "jail": "nginx-botsearch", "time": at(-30)}
+        )
+
+    def test_a_watched_jail_in_the_window_names_the_last_ban_even_when_not_the_newest(self):
+        r = self.read([ban("203.0.113.77", -300), ban("198.51.100.9", -10, jail="nginx")])
+        self.assertTrue(r.data["jail_ban"])
+        self.assertEqual(r.data["last_ban"]["ip"], "203.0.113.77")
+        self.assertEqual(r.data["bans_in_window"], 2)
+        # Out of the window, the watched jail no longer counts.
+        r = self.read([ban("203.0.113.77", -700), ban("198.51.100.9", -10, jail="nginx")])
+        self.assertFalse(r.data["jail_ban"])
+        self.assertEqual(r.data["last_ban"]["ip"], "198.51.100.9")
+
+    def test_no_bans(self):
+        r = self.read([])
+        self.assertEqual(r.facts, {"bans_24h": 0, "attack": False})
+        self.assertEqual(r.data["last_ban"], {"ip": "", "jail": "", "time": None})
+        self.assertEqual((r.data["bans_in_window"], r.data["jail_ban"]), (0, False))
+
+    def test_the_newest_is_the_latest_time_then_the_last_listed(self):
+        r = self.read([ban("192.0.2.1", -5), ban("192.0.2.2", -5), ban("192.0.2.3", -9)])
+        self.assertEqual(r.data["last_ban"]["ip"], "192.0.2.2")
+
+    def test_first_sight_adopts_every_ban_and_raises_nothing(self):
+        memory = {}
+        _, events = self.observe([ban("192.0.2.1", -60), ban("192.0.2.2", -30)], memory)
+        self.assertEqual(events, [])
+        self.assertEqual(
+            memory["seen"],
+            ["sshd|192.0.2.1|2026-01-15T20:59:00Z", "sshd|192.0.2.2|2026-01-15T20:59:30Z"],
+        )
+        _, events = self.observe([ban("192.0.2.1", -60), ban("192.0.2.2", -30)], memory, at(30))
+        self.assertEqual(events, [])
+
+    def test_one_event_per_read_names_the_newest_new_ban_and_counts_them_all(self):
+        memory = {}
+        self.observe([ban("192.0.2.1", -60)], memory)
+        bans = [
+            ban("192.0.2.1", -60),
+            ban("198.51.100.9", 10, jail="nginx-botsearch"),
+            # Written after the one above, with an older time, as fail2ban can.
+            ban("203.0.113.77", 5),
+            ban("198.51.100.20", 20, jail=""),
+        ]
+        _, events = self.observe(bans, memory, at(30))
+        self.assertEqual(
+            events,
+            [{"type": "ip_banned", "count": 3, "text": "BANNED 198.51.100.20",
+              "parts": {"addr": "198.51.100.20"}}],
+        )  # fmt: skip
+        _, events = self.observe(bans, memory, at(60))
+        self.assertEqual(events, [])
+        _, events = self.observe([*bans, ban("203.0.113.78", 50)], memory, at(90))
+        self.assertEqual(
+            events,
+            [{"type": "ip_banned", "count": 1, "text": "BANNED 203.0.113.78 · sshd",
+              "parts": {"addr": "203.0.113.78", "jail": "sshd"}}],
+        )  # fmt: skip
+
+    def test_a_ban_that_arrives_and_is_lifted_between_reads_is_not_raised_but_one_after_is(self):
+        memory = {}
+        self.observe([ban("192.0.2.1", -60)], memory)
+        # Unbanned: fail2ban deletes the row, so the ban leaves the count.
+        r, events = self.observe([], memory, at(30))
+        self.assertEqual((events, r.facts["bans_24h"]), ([], 0))
+        self.assertEqual(memory["seen"], [])
+        # The same address banned again is a new ban.
+        _, events = self.observe([ban("192.0.2.1", 40)], memory, at(60))
+        self.assertEqual(events[0]["count"], 1)
+
+    def test_a_restart_raises_nothing_twice(self):
+        memory = {}
+        self.observe([ban("192.0.2.1", -60)], memory)
+        self.observe([ban("192.0.2.1", -60), ban("192.0.2.2", 10)], memory, at(30))
+        saved = json.loads(json.dumps(memory))
+        # A new kind instance, as after a restart, with the memory file's copy.
+        self.kind = kind_class("security")()
+        _, events = self.observe([ban("192.0.2.1", -60), ban("192.0.2.2", 10)], saved, at(60))
+        self.assertEqual(events, [])
+
+    def test_a_key_of_the_provider_names_the_ban(self):
+        memory = {}
+        self.observe([ban("192.0.2.1", -60, key="a")], memory)
+        self.assertEqual(memory["seen"], ["a"])
+        _, events = self.observe([ban("192.0.2.1", -60, key="b")], memory, at(30))
+        self.assertEqual(events[0]["parts"], {"addr": "192.0.2.1", "jail": "sshd"})
+
+    def test_the_memory_keeps_the_newest_keys_and_a_floor_beneath_them(self):
+        from collector.kinds import security
+
+        memory = {}
+        many = [
+            ban(f"10.0.{i // 250}.{i % 250}", -80_000 + i) for i in range(security.MAX_SEEN + 5)
+        ]
+        self.observe(many, memory)
+        self.assertEqual(len(memory["seen"]), security.MAX_SEEN)
+        self.assertEqual(memory["seen"][0], "sshd|10.0.0.5|2026-01-14T22:46:45Z")
+        self.assertEqual(memory["floor"], "2026-01-14T22:46:45Z")
+        # The keys forgotten are no newer than the floor, so they are not raised again.
+        _, events = self.observe(many, memory, at(30))
+        self.assertEqual(events, [])
+        _, events = self.observe([*many, ban("192.0.2.9", 20)], memory, at(60))
+        self.assertEqual(events[0]["count"], 1)
+        # Once the list fits again, the floor goes.
+        self.observe(many[:10], memory, at(90))
+        self.assertNotIn("floor", memory)
+
+    def test_names_are_cleaned(self):
+        r = self.read([ban("192.0.2.1\n", -5, jail="ssh\u202ed ")])
+        self.assertEqual(r.data["last_ban"]["ip"], "192.0.2.1")
+        self.assertEqual(r.data["last_ban"]["jail"], "ssh d")
+
+    def test_how_far_back_a_cut_list_reaches_is_kept(self):
+        r = self.read([ban("192.0.2.1", -5)], complete_s=3600)
+        self.assertEqual(r.data["complete_s"], 3600)
+
+    def test_what_a_fill_may_not_be(self):
+        for bad, said in [
+            ({}, "provider gave no bans"),
+            ({"bans": [{"jail": "sshd", "at": T0}]}, "provider gave no bans[0].ip"),
+            ({"bans": [{"ip": "192.0.2.1", "at": "2026-01-15"}]}, "bans[0].at as text"),
+            (
+                {"bans": [{"ip": "192.0.2.1", "at": T0.replace(tzinfo=None)}]},
+                "bans[0].at as a time",
+            ),
+            ({"bans": [], "complete_s": -1}, "complete_s below 0"),
+            ({"bans": [{"ip": "192.0.2.1", "at": T0}] * 5001}, "more than 5000 bans"),
+        ]:
+            with self.assertRaises(SourceError) as cm:
+                check_fill(self.kind.FILL, bad, self.kind.allowed({}))
+            self.assertIn(said, str(cm.exception))
+
+    def test_a_provider_file_of_the_users_own_fills_it(self):
+        import tomllib
+
+        from collector.providers import format as fmt
+        from collector.providers.engine import DataProvider
+
+        spec = fmt.check(tomllib.loads(MYBANS), "mybans.toml", "mybans")
+        http = FakeHttp()
+        self.addCleanup(http.close)
+        http.routes["/bans"] = (200, {"bans": [
+            {"ip": "192.0.2.1", "jail": "sshd", "at": "2026-01-15T20:59:00Z"},
+            {"ip": "192.0.2.2", "at": int(at(-10).timestamp())},
+            {"jail": "sshd", "at": "2026-01-15T20:59:00Z"},
+        ]})  # fmt: skip
+        allowed = self.kind.allowed({})
+        provider = DataProvider(spec, {"url": http.url}, {"token": "t"}, 2.0, allowed)
+        fill = check_fill(self.kind.FILL, provider.read(T0), allowed)
+        self.assertEqual(
+            fill,
+            {"bans": [{"ip": "192.0.2.1", "jail": "sshd", "at": at(-60)},
+                      {"ip": "192.0.2.2", "at": at(-10)}]},
+        )  # fmt: skip
+        r = self.kind.reading(fill, {}, self.config, T0)
+        self.assertEqual((r.data["bans_in_window"], r.data["jail_ban"]), (2, True))
+
+    def test_the_window_follows_the_conditions(self):
+        from collector.kinds import security
+
+        self.assertEqual(security.span(self.config), dt.timedelta(days=1))
+        longer = make_config({"conditions": {"attack": {"window_s": 172_800}}})
+        self.assertEqual(security.span(longer), dt.timedelta(days=2))
+
+
 class FillTest(unittest.TestCase):
     """check_fill holds a provider's fill to its kind's declaration."""
 
@@ -605,7 +828,13 @@ class FillTest(unittest.TestCase):
     def test_sections_and_their_providers(self):
         self.assertEqual(
             SECTIONS,
-            {"streams": "streams", "adblock": "adblock", "sonarr": "imports", "radarr": "imports"},
+            {
+                "streams": "streams",
+                "adblock": "adblock",
+                "security": "security",
+                "sonarr": "imports",
+                "radarr": "imports",
+            },
         )
         self.assertEqual(provider_of("streams", {"from": "tautulli"}), "tautulli")
         self.assertEqual(provider_of("sonarr", {}), "sonarr")

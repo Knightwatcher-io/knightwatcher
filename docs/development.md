@@ -24,7 +24,7 @@ collector/           the collector: Python, standard library only (overlay.py re
   sources/           one module per source, and KindSource for the sections read through a kind
   kinds/             one module per kind: the shape of a sort of reading, its facts and events
   providers/         the engine that runs provider files, the path syntax, the format's checks,
-                     and the reading of the providers folder
+                     the reading of the providers folder, and the code adapters (fail2ban.py)
     builtin/         the built-in provider files, one for each service
   settings-schema.json  every setting of config.toml and every variable of .env
 server/              the bundled server: Python, standard library only, reusing the collector's
@@ -71,6 +71,8 @@ tools/
   contact-sweep.sh   every swung weapon against the drawn goblin at every spot, held to the
                      contact standard (its scripts in contact-sweep/, which the page's tests share)
   capped.sh          runs a command within a ceiling on CPU and memory, for the checks
+  throwaway/         scripts that start a real service from its published image, read it with the
+                     collector, and remove everything again (fail2ban.sh)
   check-private.sh   the check that no private detail is tracked
   private-patterns.example.txt  the template of the patterns check-private.sh reads
 docs/                this documentation
@@ -87,7 +89,8 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 - **The collector and the server use the standard library alone.** A dependency needs a reason
   written here.
 - **A provider is a file first.** A service that a kind covers is read through a provider file
-  ([providers.md](./providers.md)), and code is written only for what a file cannot describe.
+  ([providers.md](./providers.md)), and code is written only for what a file cannot describe: a
+  code adapter, such as `collector/providers/fail2ban.py`, which reads a SQLite database.
 - **A pack file and its carrier change together.** After editing a file in `web/packs/`, run
   `node tools/pack-carrier.js` and commit both; a test fails while they differ. See
   [library.md](./library.md#carriers).
@@ -156,6 +159,18 @@ taking up a change while the collector runs. `tests/server/` runs the
 server on the loopback, the admin page's side with a password made for the run; its stamp test
 needs bash and rsync, for `tools/deploy.sh`, and is skipped without them. [server.md](./server.md#checks) lists what they
 check.
+
+A provider proved against the real service runs from `tools/throwaway/`, outside the default
+checks since it needs Docker and pulls an image. Each script starts the service from its
+published image on a Docker network of its own with nothing published, caps every container at 2
+CPUs and 1 GB, sets the service up through files it mounts rather than with `docker exec` (which,
+like installing anything in a running container, trips a host's runtime security alerts), runs
+the collector from the image it is built on with this checkout's code, and removes the
+containers, the network and its scratch folder however it ends:
+
+```bash
+tools/throwaway/fail2ban.sh     # crazymax/fail2ban: a ban, the attack, an unban, a rebuilt file
+```
 
 The page:
 

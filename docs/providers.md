@@ -1,7 +1,7 @@
 # Providers
 
-The collector reads the streams playing, the adverts blocked and the imports of a homelab's
-services through providers. This page is for anyone writing or changing a provider file: what a
+The collector reads the streams playing, the adverts blocked, the bans and the imports of a
+homelab's services through providers. This page is for anyone writing or changing a provider file: what a
 provider fills, the format of the file, the path syntax it uses, how a file is run and checked,
 how to prove one against a live service, and where files of your own go. Choosing a provider in `config.toml` is in
 [configuration.md](./configuration.md#sources); the collector's side is in
@@ -11,7 +11,7 @@ how to prove one against a live service, and where files of your own go. Choosin
 
 A **kind** is the fixed shape of one sort of reading. The kind owns everything after the service
 has answered: cleaning and cutting the words, the markers kept in the memory file, the events and
-the facts written to `state.json`. There are three, each a module in `collector/kinds/`.
+the facts written to `state.json`. There are four, each a module in `collector/kinds/`.
 
 A **provider** fills a kind's shape from one service. A provider is a TOML file: the requests to
 make, the login, and paths into the JSON replies mapped onto the kind's fields. One engine,
@@ -19,17 +19,21 @@ make, the login, and paths into the JSON replies mapped onto the kind's fields. 
 files are in `collector/providers/builtin/`, one for each service, named after the provider's id.
 Files of your own, for a service no built-in reads, go in the providers folder beside
 `config.toml` and are run by the same engine under the same checks
-([Your own provider files](#your-own-provider-files)).
+([Your own provider files](#your-own-provider-files)). A service no file can describe is read by a
+**code adapter**, a short Python class returning the same fill: `fail2ban`, which reads fail2ban's
+SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-providers)).
 
 | Provider | Kind | Service | Read by |
 |---|---|---|---|
 | `tautulli` | streams | Tautulli's `get_activity` | `[sources.streams]`, the default for `from` |
 | `adguard` | adblock | AdGuard Home's `/control/stats` | `[sources.adblock]`, the default for `from` |
+| `fail2ban` | security | fail2ban's database, a code adapter | `[sources.security]` with `from = "fail2ban"` |
+| `summary` | security | a fail2ban summary at `/soc`, read by the collector's own reader rather than through the kind | `[sources.security]`, the default for `from` |
 | `sonarr` | imports | Sonarr's import history | `[sources.sonarr]` |
 | `radarr` | imports | Radarr's import history | `[sources.radarr]` |
 
-`[sources.streams]` and `[sources.adblock]` name their provider with `from`, a built-in's id or one
-of your own; `[sources.sonarr]` and `[sources.radarr]` read the provider of their own name. Every request a provider makes goes to the
+`[sources.streams]`, `[sources.adblock]` and `[sources.security]` name their provider with `from`,
+a built-in's id or one of your own; `[sources.sonarr]` and `[sources.radarr]` read the provider of their own name. Every request a provider makes goes to the
 section's `url`, and its credentials are read from `.env` as `KNIGHTWATCHER_<SECRET>_<FIELD>`, where
 `<SECRET>` is the section's `secret`, the provider's id when it is left out, and `<FIELD>` each
 credential the file names.
@@ -42,7 +46,7 @@ not have, or a field the setting `show` holds back fails the read with a message
 (`provider gave sessions[2].title as a whole number`).
 
 Types: `int` is a whole number, `number` any number, `string` text as the service sent it (the
-kind cleans it), `bool` true or false, and `raw` a value the kind reads itself.
+kind cleans it), `bool` true or false, `time` a moment, and `raw` a value the kind reads itself.
 
 ### streams
 
@@ -73,6 +77,23 @@ Today's first count is the last bucket when a bucket is a day or more, else the 
 local midnight: the last `floor(seconds since midnight / unit_s) + 1`, one fewer when `current` is
 false. Without `window.queries`, a fly is 50 blocked queries; without `window.blocked`, the count
 for today starts from nothing.
+
+### security
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `bans` | list of objects, newest last, at most 5,000 | yes, may be empty | every ban the service knows of in the last 24 hours, or since the start of `conditions.attack.window_s` when that is longer |
+| `bans[].ip` | string | yes | the address banned |
+| `bans[].jail` | string | no | the jail, or whatever the service calls the rule that banned it |
+| `bans[].at` | time | yes | when the ban was made |
+| `bans[].key` | string | no | the ban's identity; `jail|ip|time` when left out |
+| `complete_s` | int, 0 or more | no | how far back the list reaches, in seconds, when that is less than the span asked for |
+
+The kind counts from the list at every read rather than from differences between reads:
+`facts.security.bans_24h`, the bans in the attack window, whether one is in a watched jail, and
+the ban the attack's words name. A ban whose key it has not seen is new, and each read with new
+bans gives one `ip_banned` event naming the newest ([collector.md](./collector.md#attacks)). A
+lifted ban should leave the list, as fail2ban deletes its rows.
 
 ### imports
 
@@ -146,7 +167,7 @@ try = ["{title}", "{full}"]
 |---|---|---|
 | `format` | yes | the format's version, 1 |
 | `id` | yes | 1 to 24 of `a` to `z`, `0` to `9` and `_`, starting with a letter; the file's name without `.toml`, and the default `secret` |
-| `kind` | yes | `streams`, `adblock` or `imports` |
+| `kind` | yes | `streams`, `adblock`, `imports` or `security` |
 | `name` | yes | what the admin page and messages call the service, up to 60 characters |
 | `docs` | no | the address of the API reference the file was written from |
 
@@ -393,8 +414,8 @@ url = "http://192.0.2.20:8080"
 page_size = 20
 ```
 
-Only `[sources.streams]` and `[sources.adblock]` take `from` for now, so a file of the imports kind
-is checked but cannot be chosen. Its credentials are read as any provider's, from
+Only `[sources.streams]`, `[sources.adblock]` and `[sources.security]` take `from` for now, so a
+file of the imports kind is checked but cannot be chosen. Its credentials are read as any provider's, from
 `KNIGHTWATCHER_<SECRET>_<FIELD>` with the section's `secret`, the file's id when left out:
 `KNIGHTWATCHER_MYFLIX_TOKEN` here. The collector's container gets only the variables compose names,
 so the name also goes in the collector's `environment` in `compose.override.yaml`

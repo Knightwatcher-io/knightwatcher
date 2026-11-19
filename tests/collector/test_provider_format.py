@@ -73,10 +73,14 @@ def check(data, expect="myflix"):
 class BuiltInTest(unittest.TestCase):
     def test_the_built_in_files_pass(self):
         found = providers.builtin()
-        self.assertEqual(sorted(found), ["adguard", "radarr", "sonarr", "tautulli"])
-        for pid, spec in found.items():
+        files = {p: s for p, s in found.items() if not isinstance(s, providers.Adapter)}
+        self.assertEqual(sorted(files), ["adguard", "radarr", "sonarr", "tautulli"])
+        for pid, spec in files.items():
             self.assertEqual(spec.id, pid)
             self.assertEqual(len(spec.digest), 20)
+        # The code adapters, and the summary reader that `from` can name, are listed beside them.
+        self.assertEqual(sorted(set(found) - set(files)), ["fail2ban", "summary"])
+        self.assertEqual(list(found), sorted(found))
 
     def test_a_valid_file_compiles(self):
         spec = check(VALID)
@@ -126,7 +130,7 @@ class RefusedTest(unittest.TestCase):
         self.refused(lambda d: d.update(id="other"), 'id: must be "myflix", the file\'s name')
         self.refused(
             lambda d: d.update(kind="weather"),
-            "kind: unknown kind 'weather'; use streams, adblock, imports",
+            "kind: unknown kind 'weather'; use streams, adblock, imports, security",
         )
         self.refused(lambda d: d.pop("name"), "name: required")
         self.refused(lambda d: d.update(name="x\ny"), "name: at most 60 printable characters")

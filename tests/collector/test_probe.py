@@ -144,7 +144,8 @@ class ProbeTest(unittest.TestCase):
     def test_what_cannot_be_probed(self):
         code, _, err = self.probe("host")
         self.assertEqual((code, err), (2, "probe: host is not read through a provider; use "
-                                           "streams, adblock, sonarr, radarr\n"))  # fmt: skip
+                                           "streams, adblock, security, sonarr, "
+                                           "radarr\n"))  # fmt: skip
         code, _, err = self.probe("sonarr")
         self.assertEqual((code, err), (2, "probe: [sources.sonarr] is not set up, or is off\n"))
         self.write_config('from = "plx"')

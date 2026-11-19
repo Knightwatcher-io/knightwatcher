@@ -132,7 +132,11 @@ Credentials are never typed or shown there: the page says, by name, which ones `
 source read through a provider (streams and adverts blocked) has Read from, a choice of the
 providers of its kind ([collector.md](./collector.md#kinds-and-providers)), the provider files of
 the user's own among them, and each source names the credential variables its provider reads. The
-settings a provider file declares are set in `config.toml` alone. The page itself is described in
+settings a provider file declares are set in `config.toml` alone. Security shows its Read from and
+Database without letting them be changed: reading fail2ban's database needs a mount and a read
+grant on the host, so both are set in `config.toml`
+([configuration.md](./configuration.md#fail2bans-database)). Download config.toml writes a setting
+the chosen provider does not use as a comment. The page itself is described in
 [display.md](./display.md#the-admin-page).
 
 It is behind the admin password, `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env`, which `compose.yaml`

@@ -54,13 +54,14 @@ out.
 | `tests/collector/test_runner.py` | one poll: the file it writes, the defaults, failing and slow sources, each source's pace |
 | `tests/collector/test_schema.py` | the settings schema against the collector, the example files and `compose.yaml`, the providers folder's mount, its `.gitkeep` and its lines in `.gitignore` |
 | `tests/collector/test_sources.py` | each source of its own against invented answers |
-| `tests/collector/test_kinds.py` | the streams, adblock and imports kinds through their built-in providers against invented answers, the fill's checks, and when a source read through a provider starts afresh |
+| `tests/collector/test_kinds.py` | the streams, adblock and imports kinds through their built-in providers against invented answers; the security kind from fills (the counts, the window, a watched jail's ban, new bans by key, one event a read, first sight, a restart, the memory's cap and floor) and from a provider file of a user's own; the fill's checks, and when a source read through a provider starts afresh |
+| `tests/collector/test_fail2ban.py` | the fail2ban adapter against databases made with fail2ban's own `CREATE TABLE` statements: rows and late rows, an unban, an empty table, rows without an address, the 5,000-row cut, the file left untouched with nothing written beside it, a file replaced between reads, a missing, unreadable, locked or damaged file, a folder in its place and a database without the `bans` table; `from`, `url` and `database` in `config.toml`, the export of the admin page, a whole collector raising the attack and the events and coming back after a restart, and `--probe security` |
 | `tests/collector/test_path.py` | the path syntax: every allowed form, the RFC's results on its own examples, every refused form with its position, the limit on values found |
 | `tests/collector/test_provider_format.py` | the provider file format: the built-in files pass, and each rule is held to a refused file with its message |
 | `tests/collector/test_engine.py` | the engine against a local HTTP server: the requests built, `statuses`, `not_json`, `require`, nesting and the limits, scalar, list, object, item, case and zipped fields, the vars read only when allowed |
 | `tests/collector/test_providers.py` | every built-in provider against its fixtures, at every `show` for streams with no name read unless `show` is `names`, and `from` and `secret` in `config.toml` |
 | `tests/collector/test_provider_files.py` | provider files of the user's own: which files are read and which left out (bad TOML, a broken rule, a name that is not the id, a built-in's id, a link, a folder, the size and count limits), a `from` naming one or a refused one and the source that then fails, the settings a file declares, a file read through the engine like a built-in, `--check-config`'s exit codes and warnings, `--probe`, `config.problems` in the state file, and a change taken up between polls |
-| `tests/collector/test_port.py` | [the port proof](#the-port-proof): today's four services read through the engine, against what the collector wrote before it, byte for byte |
+| `tests/collector/test_port.py` | [the port proof](#the-port-proof): today's four services read through the engine, and the fail2ban summary read by its own reader while `from` is left out, against what the collector wrote before, byte for byte |
 | `tests/collector/test_probe.py` | `--probe` and `--record` |
 | `tests/collector/test_text.py` | clipping, joining and formatting the collector's words |
 | `tests/server/test_server.py` | the bundled server on the loopback |
@@ -92,6 +93,30 @@ byte, and the requests made, with each credential replaced by its variable's nam
 made once from those readers, and a difference from it is a change in what the wall shows. One
 that is not wanted is put right; one that is wanted changes the scenario's record in the commit
 that makes it, and the commit says why.
+
+The `security-summary` scenarios do the same for `[sources.security]` with no `from`, which still
+reads the fail2ban summary with its own reader: a watched jail's ban, a burst, the window running
+out, errors and the replies the reader made the best of, and memory from a run before with an
+attack window of its own. Their record was made from the collector before the security kind and
+the fail2ban provider were added, so they show that a `config.toml` without `from` gives the same
+state file and memory file as before, byte for byte.
+
+## The throwaway services
+
+`tools/throwaway/` holds scripts that prove a provider against the real service, outside the
+default checks ([development.md](./development.md#checks)). `tools/throwaway/fail2ban.sh` starts
+`crazymax/fail2ban` 1.1.1 as the account running the script, on an internal network of its own
+with nothing published, with one jail, a filter for a test line and the dummy action, so it needs
+no capability. fail2ban makes its own database in a scratch folder, and the collector reads it
+through a read-only mount, as uid 10001 with no network, from `python:3.13-slim` (the image the
+collector is built on) with this checkout's code, one `--once` at a time. It prints, in order: the
+read refused while the database has fail2ban's own modes; the read ACL of
+[configuration.md](./configuration.md#fail2bans-database) applied (without sudo, since the
+script's account owns the folder) and the read passing; a failure line banned, read as one
+`ip_banned` event with the attack raised; the address unbanned with `fail2ban-client` from a
+second container of the same image, and the count falling with no new event; and the database
+moved aside and made afresh by fail2ban, the new file taking the read grant from the folder's
+default ACL. It removes the containers, the network and the scratch folder however it ends.
 
 ## The page's tests
 

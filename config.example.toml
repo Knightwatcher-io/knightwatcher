@@ -132,7 +132,10 @@ fly_every_s = 300
 [sources.security]
 enabled = true
 every_s = 30
+from = "summary"             # a fail2ban summary at url; "fail2ban" reads fail2ban's own database
 url = "http://192.0.2.1:9192"
+# or: database = "/host/fail2ban/fail2ban.sqlite3"   # with from = "fail2ban", in place of url
+# secret = "summary"         # neither summary nor fail2ban needs a credential
 
 [sources.sonarr]
 enabled = true
