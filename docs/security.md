@@ -37,7 +37,8 @@ downloads and `credentials.json`) and its memory folder.
 - It runs as a non-root user with a read-only root filesystem and no capabilities.
 - It mounts host paths read-only, and only the ones a source needs, apart from the output folder
   and the memory folder. It also mounts the bundled server's folder read-only, to take up what is
-  set on the admin page.
+  set on the admin page, and the providers folder read-only, for provider files of the user's
+  own.
 - It opens no listening port.
 - It connects only to the addresses in its configuration: the services it reads, and the
   machines listed as devices. A device gets a TCP connection, or one `GET` with no
@@ -88,6 +89,19 @@ message or the state file. `--probe` prints a provider's fill with every text ma
 `--record` writes the service's replies, which are private, to a file of mode 600 with each
 credential replaced by its field's name.
 
+Provider files of the user's own, in the providers folder beside `config.toml`
+([providers.md](./providers.md#your-own-provider-files)), are held to the same rules by the same
+checks, and to three more: a file whose id is a built-in provider's is left out, so a file in the
+folder can never stand in for a built-in one; a link or anything but a regular file is left out,
+so a name in the folder cannot point the collector at another file in its container; and at most
+32 files of 64 KiB each are read. A file that fails is left out and never stops the collector or
+another source. What the rules leave possible is that a file sends GETs to the address its section
+names, carrying the credential its section names, which is the power `config.toml` and `.env`
+already give whoever writes them. The folder is mounted read-only, and should be writable by the
+operator alone, as `config.toml` is. A user's own credential reaches the collector only once the
+operator names its variable in the collector's `environment`, in `compose.override.yaml`, so the
+rule that the container gets only the variables it names still holds.
+
 ## The server's privileges
 
 The bundled server ([server.md](./server.md)) serves the page and `state.json`, keeps the
@@ -97,8 +111,8 @@ port, so it gets less than the collector:
 - No credential. From `.env`, `compose.yaml` passes it the admin page's password alone, and reads
   its address and port to publish it. It reads the password once at start, takes it out of its
   own environment, and never logs it, answers it or writes it anywhere. It mounts `config.toml`
-  read-only, which holds no secret, and not `/proc`, the collector's memory or anything of the
-  host's beyond two folders.
+  and the providers folder read-only, neither of which holds a secret, and not `/proc`, the
+  collector's memory or anything of the host's beyond those and two folders.
 - The collector's output folder read-only, and one folder of its own, the only place it writes.
   It reads the collector's `credentials.json` there, names only, and never serves it.
 - The same uid as the collector, a read-only root filesystem, no capabilities and

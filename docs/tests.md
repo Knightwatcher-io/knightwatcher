@@ -50,20 +50,21 @@ out.
 | `tests/collector/test_config.py` | reading `config.toml`: defaults, paces, ranges, removed and unknown settings |
 | `tests/collector/test_contract.py` | the contract check against [state.md](./state.md): devices, `device_down`, defaults and the parts |
 | `tests/collector/test_devices.py` | the checks behind devices, against local sockets and a local HTTP server |
-| `tests/collector/test_reload.py` | `admin.json` laid over `config.toml`, the start and reload rules, the credentials' names |
+| `tests/collector/test_reload.py` | `admin.json` laid over `config.toml`, the start and reload rules, the credentials' names, the providers folder watched and moved |
 | `tests/collector/test_runner.py` | one poll: the file it writes, the defaults, failing and slow sources, each source's pace |
-| `tests/collector/test_schema.py` | the settings schema against the collector, the example files and `compose.yaml` |
+| `tests/collector/test_schema.py` | the settings schema against the collector, the example files and `compose.yaml`, the providers folder's mount, its `.gitkeep` and its lines in `.gitignore` |
 | `tests/collector/test_sources.py` | each source of its own against invented answers |
 | `tests/collector/test_kinds.py` | the streams, adblock and imports kinds through their built-in providers against invented answers, the fill's checks, and when a source read through a provider starts afresh |
 | `tests/collector/test_path.py` | the path syntax: every allowed form, the RFC's results on its own examples, every refused form with its position, the limit on values found |
 | `tests/collector/test_provider_format.py` | the provider file format: the built-in files pass, and each rule is held to a refused file with its message |
 | `tests/collector/test_engine.py` | the engine against a local HTTP server: the requests built, `statuses`, `not_json`, `require`, nesting and the limits, scalar, list, object, item, case and zipped fields, the vars read only when allowed |
 | `tests/collector/test_providers.py` | every built-in provider against its fixtures, at every `show` for streams with no name read unless `show` is `names`, and `from` and `secret` in `config.toml` |
+| `tests/collector/test_provider_files.py` | provider files of the user's own: which files are read and which left out (bad TOML, a broken rule, a name that is not the id, a built-in's id, a link, a folder, the size and count limits), a `from` naming one or a refused one and the source that then fails, the settings a file declares, a file read through the engine like a built-in, `--check-config`'s exit codes and warnings, `--probe`, `config.problems` in the state file, and a change taken up between polls |
 | `tests/collector/test_port.py` | [the port proof](#the-port-proof): today's four services read through the engine, against what the collector wrote before it, byte for byte |
 | `tests/collector/test_probe.py` | `--probe` and `--record` |
 | `tests/collector/test_text.py` | clipping, joining and formatting the collector's words |
 | `tests/server/test_server.py` | the bundled server on the loopback |
-| `tests/server/test_admin.py` | the admin page's side of the server |
+| `tests/server/test_admin.py` | the admin page's side of the server, provider files of the user's own in its checks, its answer and the export included |
 | `tests/server/test_stamp.py` | the version stamp, `server/stamp.py`, against `tools/deploy.sh` |
 
 `tests/collector/kw_helpers.py` holds helpers the collector's tests share. The collector's

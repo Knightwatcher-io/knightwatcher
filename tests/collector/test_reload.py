@@ -271,6 +271,31 @@ class SettingsTest(unittest.TestCase):
             said["problems"], ["collector.output_dir: changes only when the collector starts again"]
         )
 
+    def test_the_providers_folder_is_watched_and_may_move_while_it_runs(self):
+        running, _ = self.settings.start()
+        self.assertEqual(self.settings.folder, os.path.join(self.tmp.name, "providers"))
+        # A folder that does not exist yet is watched for its making.
+        mine = os.path.join(self.tmp.name, "providers")
+        os.mkdir(mine)
+        self.assertTrue(self.settings.changed())
+        with self.assertLogs("collector", "INFO"):
+            running, said = self.settings.take_up(running)
+        self.assertEqual(said["problems"], [])
+        self.assertFalse(self.settings.changed())
+        # providers_dir is taken up live: it only names a folder to read.
+        other = os.path.join(self.tmp.name, "other")
+        os.mkdir(other)
+        with open(os.path.join(other, "bad.toml"), "w", encoding="utf-8") as fh:
+            fh.write("format = 1\n")
+        self.write_config(f'[collector]\ninterval_s = 10\nproviders_dir = "{other}"\n')
+        with self.assertLogs("collector", "WARNING"):
+            new, said = self.settings.take_up(running)
+        self.assertIsNotNone(new)
+        self.assertEqual(self.settings.folder, other)
+        self.assertTrue(said["problems"])
+        self.assertTrue(all(p.startswith("providers/bad.toml: ") for p in said["problems"]))
+        self.assertEqual(list(new.providers.refused), ["bad"])
+
 
 class ReconfigureTest(unittest.TestCase):
     """A running collector taking up a change between polls."""

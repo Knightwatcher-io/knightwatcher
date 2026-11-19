@@ -143,6 +143,12 @@ def _probe(config, name: str, record: str | None) -> int:
         for problem in config.missing[name]:
             print(f"probe: {problem}", file=sys.stderr)
         return 2
+    pid = kinds.provider_of(name, config.sources[name])
+    if config.providers.is_refused(pid):
+        print(f"probe: provider {pid} refused:", file=sys.stderr)
+        for problem in config.providers.refused[pid]:
+            print(f"probe: {problem}", file=sys.stderr)
+        return 2
     now = utcnow()
     until = _paused(config, name, now)
     if until is not None:
@@ -185,6 +191,36 @@ def _probe(config, name: str, record: str | None) -> int:
     print(json.dumps(_mask(fill), ensure_ascii=False, indent=1))
     print("facts:")
     print(json.dumps(_mask(reading.facts), ensure_ascii=False, indent=1))
+    return 0
+
+
+def _check(config) -> int:
+    """--check-config, once config.toml has passed: the provider files. Exit 2 when a section's
+    `from` names a file that was left out, which would leave that source failing; the problems of
+    a file no section names, or of the folder, are warnings, and the exit is 0."""
+    used = {name: kinds.provider_of(name, config.sources[name]) for name in config.refused_in_use()}
+    filed = [p for found in config.providers.refused.values() for p in found]
+    for pid, problems in config.providers.refused.items():
+        for problem in problems:
+            if pid in used.values():
+                print(f"config: {problem}", file=sys.stderr)
+            else:
+                print(f"warning: {problem} (no source reads it)", file=sys.stderr)
+    for problem in config.providers.problems:
+        if problem not in filed:
+            print(f"warning: {problem}", file=sys.stderr)
+    for name, pid in used.items():
+        print(f"config: sources.{name}.from: provider {pid} refused, as above", file=sys.stderr)
+    if used:
+        return 2
+    names = ", ".join(config.sources) or "none"
+    line = f"config ok: {len(config.sources)} sources enabled ({names})"
+    if config.devices:
+        watched = ", ".join(t["name"] for t in config.devices)
+        line += f"; {len(config.devices)} watched ({watched})"
+    if config.providers.own:
+        line += f"; provider files: {', '.join(config.providers.own)}"
+    print(line)
     return 0
 
 
@@ -248,13 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.probe:
         return _probe(config, args.probe, args.record)
     if args.check_config:
-        names = ", ".join(config.sources) or "none"
-        line = f"config ok: {len(config.sources)} sources enabled ({names})"
-        if config.devices:
-            watched = ", ".join(t["name"] for t in config.devices)
-            line += f"; {len(config.devices)} watched ({watched})"
-        print(line)
-        return 0
+        return _check(config)
 
     for key in ("output_dir", "state_dir"):
         folder = config.collector[key]

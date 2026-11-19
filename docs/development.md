@@ -23,7 +23,8 @@ collector/           the collector: Python, standard library only (overlay.py re
                      between polls)
   sources/           one module per source, and KindSource for the sections read through a kind
   kinds/             one module per kind: the shape of a sort of reading, its facts and events
-  providers/         the engine that runs provider files, the path syntax and the format's checks
+  providers/         the engine that runs provider files, the path syntax, the format's checks,
+                     and the reading of the providers folder
     builtin/         the built-in provider files, one for each service
   settings-schema.json  every setting of config.toml and every variable of .env
 server/              the bundled server: Python, standard library only, reusing the collector's
@@ -73,6 +74,8 @@ tools/
   check-private.sh   the check that no private detail is tracked
   private-patterns.example.txt  the template of the patterns check-private.sh reads
 docs/                this documentation
+providers/           provider files of the user's own: shipped empty with a .gitkeep, everything
+                     else in it ignored by git, mounted read-only into both containers
 compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 ```
 
@@ -146,7 +149,10 @@ The last two need a `.env` and a `config.toml` in place; see
 against the collector, `config.example.toml`, `.env.example` and `compose.yaml`, each service's
 mounts included, and that the server is given no variable but its address and port.
 `tests/collector/test_reload.py` checks admin.json laid over `config.toml`, the start and reload
-rules, the credentials' names and the acknowledgement in the state file. `tests/server/` runs the
+rules, the credentials' names and the acknowledgement in the state file.
+`tests/collector/test_provider_files.py` checks the providers folder: which files are read and
+which left out, a `from` naming one, the settings a file declares, `--check-config`, `--probe` and
+taking up a change while the collector runs. `tests/server/` runs the
 server on the loopback, the admin page's side with a password made for the run; its stamp test
 needs bash and rsync, for `tools/deploy.sh`, and is skipped without them. [server.md](./server.md#checks) lists what they
 check.
@@ -255,3 +261,10 @@ across changes no test.
 
 How to deploy the image, or the page alone to a web server of your own, and why the page goes
 before the collector, is in [display.md](./display.md#deploying).
+
+`compose.yaml` takes its relative paths (`./config.toml`, `./var`, and `./providers` for the
+provider files) from the project directory: the folder `docker compose` runs in, or the one given
+with `--project-directory`. A deployment that builds from a clean export but runs compose against
+another checkout must bring that checkout up to the same commit first, so that it has
+`providers/` with its `.gitkeep`; otherwise the providers mount has no source and neither container
+is created. Setting `KNIGHTWATCHER_PROVIDERS` in `.env` to a folder that exists does as well.

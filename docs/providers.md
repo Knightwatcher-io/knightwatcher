@@ -3,7 +3,7 @@
 The collector reads the streams playing, the adverts blocked and the imports of a homelab's
 services through providers. This page is for anyone writing or changing a provider file: what a
 provider fills, the format of the file, the path syntax it uses, how a file is run and checked,
-and how to prove one against a live service. Choosing a provider in `config.toml` is in
+how to prove one against a live service, and where files of your own go. Choosing a provider in `config.toml` is in
 [configuration.md](./configuration.md#sources); the collector's side is in
 [collector.md](./collector.md#kinds-and-providers).
 
@@ -17,6 +17,9 @@ A **provider** fills a kind's shape from one service. A provider is a TOML file:
 make, the login, and paths into the JSON replies mapped onto the kind's fields. One engine,
 `collector/providers/engine.py`, runs every file, and nothing in a file runs as code. The built-in
 files are in `collector/providers/builtin/`, one for each service, named after the provider's id.
+Files of your own, for a service no built-in reads, go in the providers folder beside
+`config.toml` and are run by the same engine under the same checks
+([Your own provider files](#your-own-provider-files)).
 
 | Provider | Kind | Service | Read by |
 |---|---|---|---|
@@ -25,8 +28,8 @@ files are in `collector/providers/builtin/`, one for each service, named after t
 | `sonarr` | imports | Sonarr's import history | `[sources.sonarr]` |
 | `radarr` | imports | Radarr's import history | `[sources.radarr]` |
 
-`[sources.streams]` and `[sources.adblock]` name their provider with `from`; `[sources.sonarr]` and
-`[sources.radarr]` read the provider of their own name. Every request a provider makes goes to the
+`[sources.streams]` and `[sources.adblock]` name their provider with `from`, a built-in's id or one
+of your own; `[sources.sonarr]` and `[sources.radarr]` read the provider of their own name. Every request a provider makes goes to the
 section's `url`, and its credentials are read from `.env` as `KNIGHTWATCHER_<SECRET>_<FIELD>`, where
 `<SECRET>` is the section's `secret`, the provider's id when it is left out, and `<FIELD>` each
 credential the file names.
@@ -157,10 +160,18 @@ anywhere else.
 ### [settings]
 
 Keys the provider needs beyond the section's own, each a table with `type` (`string`, `integer`,
-`number` or `boolean`), `default` and `help`, and optionally `min`, `max` and `values`. A request
-uses one as `{setting.<key>}`, and a key the section does not set takes its default. A setting
-cannot take the name of one of the section's own (`enabled`, `every_s`, `from`, `url`, `secret`,
-`show`, `fly_every_s`). None of the built-in files declares one.
+`number` or `boolean`), `default` and `help`, and optionally `min`, `max` and `values`:
+
+```toml
+[settings]
+page_size = { type = "integer", default = 10, min = 1, max = 50, help = "Sessions read per call." }
+```
+
+A request uses one as `{setting.<key>}`. The section that chooses the provider may set it, as
+`page_size = 20` beside its `url`, and the collector checks the value against the declaration; a
+key the section does not set takes its default. A setting cannot take the name of one of the
+section's own (`enabled`, `every_s`, `from`, `url`, `secret`, `show`, `fly_every_s`). None of the
+built-in files declares one.
 
 ### [auth]
 
@@ -351,6 +362,69 @@ A provider file is data: the engine reads it, and nothing in it is executed.
 6. **No chaining.** No request is built from a reply.
 7. **What it can fill.** Only the shape of its kind, checked like any other, and `show` is held the
    same way for every provider of streams.
+8. **No shadowing.** A file of your own whose id is a built-in provider's is left out, so a file in
+   the folder can never stand in for a built-in one.
+
+What the rules leave possible: a file can make the collector send GETs to the address you typed in
+`config.toml`, carrying the credential you named for it. That is the same power `config.toml` and
+`.env` already give whoever writes them. They cannot stop a wrong address being typed.
+
+## Your own provider files
+
+A service no built-in provider reads can be read through a file of your own, as long as it answers
+GET requests with JSON and the file format can describe it.
+
+**The folder.** Files go in `providers/` beside `config.toml`, one provider each, named after the
+provider's id with `.toml`: `providers/myflix.toml` holds `id = "myflix"`. The repository ships
+the folder empty, with a `.gitkeep`, and git ignores everything else in it. `compose.yaml` mounts
+it read-only at `/etc/knightwatcher/providers` in both containers, from `KNIGHTWATCHER_PROVIDERS`
+in `.env` (`./providers` when left out): the collector reads the files, and the bundled server
+checks a change on the admin page by them. The collector's `providers_dir` setting names the
+folder, relative to the one `config.toml` is in; a folder that does not exist holds no files and
+is no problem. The files need only be readable by everyone.
+
+**Choosing it.** A section of the file's kind names it with `from`, and sets any settings the file
+declares:
+
+```toml
+[sources.streams]
+from = "myflix"
+url = "http://192.0.2.20:8080"
+page_size = 20
+```
+
+Only `[sources.streams]` and `[sources.adblock]` take `from` for now, so a file of the imports kind
+is checked but cannot be chosen. Its credentials are read as any provider's, from
+`KNIGHTWATCHER_<SECRET>_<FIELD>` with the section's `secret`, the file's id when left out:
+`KNIGHTWATCHER_MYFLIX_TOKEN` here. The collector's container gets only the variables compose names,
+so the name also goes in the collector's `environment` in `compose.override.yaml`
+([configuration.md](./configuration.md#env-host-paths-the-servers-address-and-credentials) has
+the snippet).
+
+**Which files are read.** Names ending `.toml` and not starting with a dot, in the order of their
+names, at most 32; those after the 32nd are left out. A file is left out when its name is not a
+valid id with `.toml`, its id is a built-in provider's, it is a link or not a regular file, it is
+larger than 64 KiB, it is not TOML, or it breaks any rule of the format above.
+
+**A bad file** is left out and never stops the collector or another source.
+
+- Its problems go to the collector's log and to the state file's `config.problems`, each naming the
+  file and the field: `providers/myflix.toml: request[0].path: must start with /`. The admin page
+  shows them.
+- A section whose `from` names it runs and fails at every read with
+  `provider myflix refused; see the settings problems`, as a source with a missing credential does.
+- A `from` naming no file at all stays a configuration error, so a typo is caught.
+- `--check-config` lists every problem, and exits 2 when a `from` names a file that was left out;
+  the problems of a file no section names are warnings, and the exit is 0
+  ([configuration.md](./configuration.md#checking)).
+
+**Changing one.** The collector looks at the folder at the start of every poll, each file by its
+name, inode, size and time, and takes up a file added, changed or removed between polls, as it
+takes up a change to `config.toml`. A source whose file changed starts afresh; the others carry on.
+Nothing needs restarting.
+
+**Proving it.** Once it passes, read it once with `--probe` (below), which prints the fill with
+every text masked. A file that was left out makes the probe print its problems and exit 2.
 
 ## Proving a provider: --probe
 
@@ -358,14 +432,15 @@ A provider file is data: the engine reads it, and nothing in it is executed.
 docker compose run --rm collector --probe streams
 ```
 
-reads one source once through its provider, with the settings in use, and prints the fill and the
-facts the kind would write with every text replaced by its type and length (`<string 21>`).
-Numbers and true or false are shown as they are, and no credential is printed, only the names of
-the variables read. It runs inside the container, so the credentials come from `.env` through
+reads one source once through its provider, built-in or your own, with the settings in use, and
+prints the fill and the facts the kind would write with every text replaced by its type and length
+(`<string 21>`). Numbers and true or false are shown as they are, and no credential is printed,
+only the names of the variables read. It runs inside the container, so the credentials come from `.env` through
 compose and never through the person running it. It writes nothing of the collector's own, and a
 source the running collector has paused after refused credentials is not read until the pause
 ends, so a probe never adds to a lockout. It exits 0 with a reading, 1 when the read fails, and 2
-when the source is not one read through a provider, is not set up, or its settings do not pass.
+when the source is not one read through a provider, is not set up, its settings do not pass, or
+its provider is a file that was left out.
 
 `--record FOLDER` also writes the read's exchanges to a file in that folder, mode 600: each request
 with each credential replaced by its field's name (`{credential.api_key}`), and each reply or

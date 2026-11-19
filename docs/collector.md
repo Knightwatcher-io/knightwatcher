@@ -72,12 +72,21 @@ all the same, and that source runs and fails at every read with the variable's n
 display. When it fails for any other reason, the collector runs on `config.toml` alone and says
 why in the state file.
 
+**Provider files** of the user's own, in the providers folder beside `config.toml`
+([providers.md](./providers.md#your-own-provider-files)), are read with it. A file that fails its
+checks is left out and never stops the collector: its problems are logged
+(`provider file left out: providers/myflix.toml: ...`) and listed in the state file's
+`config.problems`, and a section whose `from` names it runs and fails at every read
+(`provider myflix refused; see the settings problems`).
+
 **While it runs**, the collector looks at both files at the start of every poll, by their inode,
-size and time. When either has changed it builds the settings again the same way, without
+size and time, and at the providers folder's files by their name, inode, size and time. When any
+has changed it reads the folder again and builds the settings again the same way, without
 requiring `config.toml` to pass alone, and when they pass it swaps to them between polls:
 
-- a source whose reads would be the same (the same class, settings and collector settings, and for
-  `host` the same averaging windows) keeps its last reading, any read in flight and, for `host`,
+- a source whose reads would be the same (the same class, settings and collector settings, for a
+  source read through a provider the same provider file, and for `host` the same averaging
+  windows) keeps its last reading, any read in flight and, for `host`,
   its samples; any other source starts afresh, and one that was taken away is dropped, a read of it
   still running left to finish unseen. A change to the collector's own settings, the interval
   among them, starts every source afresh;
@@ -342,12 +351,14 @@ the words, the markers in the memory file, the events and the facts. A provider 
 shape from one service. The built-in providers are files in `collector/providers/builtin/`, one
 for each service: the requests, the login, and paths into the JSON reply mapped onto the kind's
 fields. One engine, `collector/providers/engine.py`, runs every file; nothing in a file runs as
-code. [providers.md](./providers.md) describes the format.
+code. [providers.md](./providers.md) describes the format. `from` may also name a file of the
+user's own in the providers folder, which `collector/providers/__init__.py` reads with the same
+checks; such a file may declare settings the section then sets.
 
 | Section | Kind | `from` | Built-in providers |
 |---|---|---|---|
-| `[sources.streams]` | streams | `tautulli` by default | `tautulli` |
-| `[sources.adblock]` | adblock | `adguard` by default | `adguard` |
+| `[sources.streams]` | streams | `tautulli` by default, or a file of the user's own | `tautulli` |
+| `[sources.adblock]` | adblock | `adguard` by default, or a file of the user's own | `adguard` |
 | `[sources.sonarr]`, `[sources.radarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr` |
 
 To the runner each of these sections is a source like any other (`KindSource` in
@@ -364,8 +375,9 @@ started afresh when a change is taken up, as one whose settings change is.
 
 ## Adding a source
 
-A service that a kind already covers needs a provider file, not code: write it in
-`collector/providers/builtin/`, add it to the `providers` list of `collector/settings-schema.json`
+A service that a kind already covers needs a provider file, not code. For one host it is a file in
+the providers folder ([providers.md](./providers.md#your-own-provider-files)); to ship it with
+Knightwatcher, write it in `collector/providers/builtin/`, add it to the `providers` list of `collector/settings-schema.json`
 with its credentials in `env`, give it fixtures in `tests/collector/fixtures/providers/<id>/`, and
 run `node tools/settings-schema.js`. A new sort of reading is a kind: a module in
 `collector/kinds/` with its fill's declaration, `reading` and `observe`, named in `SECTIONS` and
@@ -416,7 +428,7 @@ resolver hangs is caught only by the poll's limit on the read. An address avoids
 ## Running it
 
 ```bash
-python3 -m collector --check-config     # validate config.toml alone and its credentials, then exit
+python3 -m collector --check-config     # validate config.toml alone, its credentials and the provider files, then exit
 python3 -m collector --once             # one poll, write state.json, exit
 python3 -m collector --health           # exit 1 if state.json is older than three intervals
 python3 -m collector --probe streams    # read one source through its provider once, masked
@@ -431,7 +443,13 @@ the collector's own, and a source the running collector has paused after refused
 not read until the pause ends. Run it in the container, where the credentials come from `.env`
 through compose: `docker compose run --rm collector --probe streams`. `--record FOLDER` also
 writes the exchanges to a file in that folder, mode 600, each credential replaced by its field's
-name; the replies in it are the service's own, private, and never committed as they are.
+name; the replies in it are the service's own, private, and never committed as they are. A
+section whose provider is a file that was left out is not read: the probe prints the file's
+problems and exits 2.
+
+`--check-config` exits 2 when `config.toml` fails, or when a section's `from` names a provider file
+that was left out; the problems of a file no section names are printed as warnings, and the exit
+is 0 ([configuration.md](./configuration.md#checking)).
 
 `--config` names the settings file. It defaults to the environment variable
 `KNIGHTWATCHER_CONFIG`, and where that is unset to `/etc/knightwatcher/config.toml`, the path
@@ -451,5 +469,7 @@ read-only root filesystem, no capabilities, `no-new-privileges`, the host's netw
 published port and no Docker socket. Its health check runs `--health`, which at the default
 interval fails once the file is more than 30 seconds old. Every host path is bound with
 `create_host_path: false`, so a missing path stops the container rather than leaving Docker to
-create an empty folder there. [configuration.md](./configuration.md#the-accounts)
+create an empty folder there. The providers folder, mounted read-only at
+`/etc/knightwatcher/providers`, defaults to the repository's own `providers/`, which is tracked
+empty so that every checkout has it. [configuration.md](./configuration.md#the-accounts)
 says how that user is given the files it needs.

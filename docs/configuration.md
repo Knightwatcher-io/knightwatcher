@@ -73,9 +73,10 @@ A list is one value: set on the admin page, it replaces `config.toml`'s list who
 puts the file's list back. The devices are one list in the same way: once set there, the
 page's list is the list, and a `[[device]]` added to `config.toml` afterwards is not used until the
 page's list is reset. A source that `config.toml` does not set up can be set up on the page, and
-gets a table of its own there. The folders (`output_dir`, `state_dir`, `proc_root`), the backup
-log's path and each source's `secret` are set in `config.toml` alone, since they follow what
-`compose.yaml` mounts and passes.
+gets a table of its own there. The folders (`output_dir`, `state_dir`, `proc_root`,
+`providers_dir`), the backup log's path and each source's `secret` are set in `config.toml` alone,
+since they follow what `compose.yaml` mounts and passes, and so are the settings a provider file
+of your own declares.
 
 The admin page's Download config.toml writes every setting as the collector uses it into one
 `config.toml`, comments included and credentials left out, to keep what was set there in the file.
@@ -98,8 +99,23 @@ A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>
 Its provider names the fields (Tautulli's is `api_key`, AdGuard Home's `username` and `password`;
 [Providers](#providers) lists them), and `SECRET` is the source's `secret` setting, which is the
 provider's id unless set: `tautulli`, `adguard`, `sonarr` or `radarr`. A source given
-`secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and that name must be
-added to the `environment` list in `compose.yaml` too.
+`secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and a source reading a
+provider file of your own with the id `myflix` and a `token` reads `KNIGHTWATCHER_MYFLIX_TOKEN`.
+
+The collector's container gets only the variables `compose.yaml` names, so a name of your own must
+be named for it as well. Put it in `compose.override.yaml` beside `compose.yaml` (ignored by git,
+read by docker compose by itself, and kept when `compose.yaml` is updated), then run
+`docker compose up -d`:
+
+```yaml
+services:
+  collector:
+    environment:
+      KNIGHTWATCHER_MYFLIX_TOKEN: ${KNIGHTWATCHER_MYFLIX_TOKEN:-}
+      KNIGHTWATCHER_SONARR_4K_API_KEY: ${KNIGHTWATCHER_SONARR_4K_API_KEY:-}
+```
+
+with the values themselves in `.env`, as for every other credential.
 
 Values are written as docker compose reads them: one `NAME=value` a line, `#` for a comment. A
 value holding `$`, `#`, a space or a quote goes in single quotes, such as `'pa$$ word#1'`, so that
@@ -121,6 +137,11 @@ treat `.env` as you would their own configuration; see [security.md](./security.
   says why in the state file and on the admin page, and refuses to start on the file until it is
   put right. The household defaults reach the displays in the next state file, and a setting
   saved on a screen or the admin page stays over them.
+- **A provider file of your own** is read when the collector starts, and the folder is looked at
+  at the start of every poll, each file by its name, inode, size and time. A file added, changed
+  or removed is taken up as a change to `config.toml` is, between polls; a source reading a file
+  that changed starts afresh, and the others carry on. A file that fails its checks is left out
+  and never stops the collector ([providers.md](./providers.md#your-own-provider-files)).
 - **`.env`** is read by docker compose when it creates the containers, so a changed path,
   address, port, admin password or credential needs them made again: `docker compose up -d`. A
   plain restart keeps the old values. A new admin password signs every browser out.
@@ -151,6 +172,22 @@ config: .env: KNIGHTWATCHER_ADGUARD_PASSWORD missing (for adblock)
 deployment can check a new collector against the host's `.env` before starting it. A line it
 cannot read is named by its number, never by what it holds.
 
+It checks the provider files in the providers folder beside `config.toml` too. A file that fails
+its checks and that a section's `from` names would leave that source failing, so its problems are
+listed and the exit is 2:
+
+```
+config: providers/myflix.toml: request[0].path: must start with /
+config: sources.streams.from: provider myflix refused, as above
+```
+
+The problems of a file no section names are printed as warnings, and the exit stays 0:
+
+```
+warning: providers/spare.toml: request[0].path: must start with / (no source reads it)
+config ok: 2 sources enabled (ssh, streams); provider files: myflix
+```
+
 ## Every setting
 
 This part is written from `collector/settings-schema.json` by `node tools/settings-schema.js`;
@@ -173,6 +210,7 @@ How the collector runs. The whole table may be left out to take the defaults.
 | `http_timeout_s` | a number of seconds, above zero | `5.0` | household | Timeout for each network call. Must be shorter than the time between polls, so a poll every 5 seconds needs it lowered. A device's check uses at most 3 seconds of it for each step. |
 | `auth_backoff_s` | a whole number of seconds, at least 1200 | `1200` | household | Pause after a 401, 403 or 429 before the service is called again. Cannot be set below 1200. |
 | `proc_root` | a folder inside the container | `"/host/proc"` | household | Where the host's /proc is mounted, for CPU, memory, load and the lock table. |
+| `providers_dir` | a folder, relative to the one config.toml is in, or absolute | `"providers"` | household | The folder of provider files of your own, one provider each, each named after its id with .toml (myflix.toml). Relative, it is taken from the folder config.toml is in, so the default is /etc/knightwatcher/providers in the containers, where compose.yaml mounts KNIGHTWATCHER_PROVIDERS. A folder that does not exist holds none. Read at start and again whenever a file in it changes. |
 
 ### [conditions]
 
@@ -540,6 +578,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KNIGHTWATCHER_BACKUP_LOG` | path | a host path, such as `/var/log/backup.log` | required | The host's backup log, a single file. Mounted read-only at /host/backup.log. |
 | `KNIGHTWATCHER_DATA_DISK` | path | a host path, such as `/data/lost+found` | required | Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size. |
 | `KNIGHTWATCHER_VAR` | path | a host path, such as `./var` | `./var` | The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account. |
+| `KNIGHTWATCHER_PROVIDERS` | path | a host path, such as `./providers` | `./providers` | The host folder of provider files of your own, for services no built-in provider reads. Mounted read-only at /etc/knightwatcher/providers in both containers: the collector reads the files, and the server checks a change on the admin page by them. Must exist and be readable by uid 10001; the repository's own providers folder, empty, is the default. |
 | `KNIGHTWATCHER_SERVER_VAR` | path | a host path, such as `./var/server` | `./var/server` | The host folder for the bundled server's own files: the settings saved for every display, in settings.json, and those set on the admin page, in admin.json, with the admin page's sessions. Mounted at /var/lib/knightwatcher-server, the one place the server writes, and read-only at the same place in the collector, which takes up admin.json. Must exist and be writable by the server's account. |
 | `KNIGHTWATCHER_SERVER_ADDRESS` | server | an address of this host, or empty for all of them, such as `127.0.0.1` | empty | The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network. |
 | `KNIGHTWATCHER_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
@@ -566,8 +605,30 @@ means every poll.
 names no provider, or a provider of another kind, is refused by name
 (`sources.streams.from: unknown provider "plx"; use tautulli`), so a typo never falls back to the
 default. A source that is off is checked when it is turned on, as for its other settings.
-[providers.md](./providers.md) describes the provider files. `host` should be read at least as often as the shorter averaging window; when it
-is read less often, an average reaches back to the previous read instead.
+[providers.md](./providers.md) describes the provider files.
+
+`from` may also name a provider file of your own, by its id: a file in the providers folder beside
+`config.toml` (`providers_dir`, mounted from `KNIGHTWATCHER_PROVIDERS`), described in
+[providers.md](./providers.md#your-own-provider-files). Such a file may declare settings of its
+own, which the section that chooses it may then set:
+
+```toml
+[sources.streams]
+from = "myflix"                    # providers/myflix.toml
+url = "http://192.0.2.20:8080"
+page_size = 20                     # declared by myflix.toml; reads KNIGHTWATCHER_MYFLIX_TOKEN
+```
+
+Each is checked against the file's declaration (its type, `min`, `max` and `values`), and one left
+out takes the file's default. A key that the chosen provider does not declare is refused by name
+(`sources.streams.page_size: not used by tautulli`). A `from` naming a file that failed its checks
+is not refused: that source runs and fails at every read
+(`provider myflix refused; see the settings problems`) while the file's problems are in the state
+file and on the admin page. Only `[sources.streams]` and `[sources.adblock]` take `from`, so a file
+of the imports kind is checked but cannot be chosen yet.
+
+`host` should be read at least as often as the shorter averaging window; when it is read less
+often, an average reaches back to the previous read instead.
 
 The backup log's date may be ISO 8601 or the form `date` prints, such as
 `Thu 15 Jan 03:12:00 UTC 2026`.
@@ -791,8 +852,9 @@ folder a web server of your own serves. The second line sets the default for fil
 folders from then on, and names your own uid as well so that you can still read what the
 containers write. Files already there from an earlier run under another uid need the grant once:
 `setfacl -m u:10001:rw` on each. Stop that earlier collector first, since every file it rewrites
-comes back without the grant. `config.toml` and the backup log only need to be readable by
-everyone (both containers read `config.toml`), and `/proc` needs nothing. `.env` needs no grant: docker compose reads it as you, and the
+comes back without the grant. `config.toml`, the providers folder with its files, and the backup
+log only need to be readable by everyone (both containers read `config.toml` and the provider
+files), and `/proc` needs nothing. `.env` needs no grant: docker compose reads it as you, and the
 collector gets its credentials as environment variables.
 
 To run them under another uid, change `user:` in `compose.yaml` and grant that uid instead.

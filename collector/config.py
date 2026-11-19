@@ -9,15 +9,19 @@ Devices are the `[[device]]` tables, checked here and turned into one list with 
 screen's household defaults; they have no defaults here, and only what they set is written to
 state.json. Where they take the long name of a part from a pack, "<pack>/<id>", only its form is
 checked here. The sections read through a kind (collector/kinds/) take their provider from
-`from`, or the provider of their own name, and the provider's file names the credentials it needs.
-Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>, where SECRET is
-the source's `secret` setting, the provider's id unless it is set; no message ever carries a
-credential's value.
+`from`, or the provider of their own name, and the provider's file names the credentials it needs
+and any settings of its own, which the section may then set. The providers are the built-in ones
+and the user's own files in the providers folder (collector.providers_dir, beside config.toml),
+read by collector/providers/__init__.py's scan(); a `from` naming a file that was left out is no
+problem here, and that source fails at every read. Credentials come from environment variables
+named KNIGHTWATCHER_<SECRET>_<FIELD>, where SECRET is the source's `secret` setting, the
+provider's id unless it is set; no message ever carries a credential's value.
 """
 
 from __future__ import annotations
 
 import copy
+import os
 import re
 import tomllib
 import urllib.parse
@@ -26,6 +30,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from collector import providers as providers_mod
 from collector import schema
 from collector.kinds import SECTIONS, provider_of
 
@@ -162,10 +167,21 @@ class Config:
     # with the problems that name them. Such a source runs and fails, saying which is missing.
     missing: dict[str, list[str]] = field(default_factory=dict)
 
+    # The providers its sections could name: the built-ins and the providers folder's files.
+    providers: Any = field(default_factory=providers_mod.builtin_only, repr=False)
+
     def secret_values(self) -> list[str]:
         """Every secret string, so that error text can be scrubbed of them."""
         used = [v for section in self.secrets.values() for v in section.values() if v]
         return list(dict.fromkeys(used + self.scrub))
+
+    def refused_in_use(self) -> list[str]:
+        """The enabled sections whose `from` names a provider file that was left out."""
+        return [
+            name
+            for name, s in self.sources.items()
+            if name in SECTIONS and self.providers.is_refused(provider_of(name, s))
+        ]
 
 
 def _type_ok(default: Any, value: Any) -> bool:
@@ -239,7 +255,7 @@ def _validate_conditions(c: dict, problems: list[str]) -> None:
             problems.append(f"conditions.night.{key}: expected HH:MM, 24-hour")
 
 
-def _validate_source(name: str, s: dict, problems: list[str]) -> None:
+def _validate_source(name: str, s: dict, problems: list[str], registry) -> None:
     table = f"sources.{name}"
     _check_ranges(table, s, table, problems)
     for spec in schema.settings(table):
@@ -255,7 +271,7 @@ def _validate_source(name: str, s: dict, problems: list[str]) -> None:
     if "secret" in s and not _SECRET_NAME.match(s["secret"]):
         problems.append(f"sources.{name}.secret: use letters, digits and underscores")
     if "from" in s:
-        why = _provider_problem(name, s["from"])
+        why = _provider_problem(name, s["from"], registry)
         if why:
             problems.append(f"sources.{name}.from: {why}")
     if name == "host":
@@ -308,37 +324,108 @@ def _validate_source(name: str, s: dict, problems: list[str]) -> None:
                 problems.append(f"sources.ssh.ignore_sources: {net!r} is not an address range")
 
 
-def provider_credentials(pid: str) -> list[str]:
+def provider_credentials(pid: str, registry=None) -> list[str]:
     """The credential fields a provider needs, by its id; none for an unknown one."""
-    from collector import providers
-
-    spec = providers.get(pid)
+    spec = (registry or providers_mod.builtin_only()).get(pid)
     return list(spec.credentials) if spec is not None else []
 
 
-def _section_credentials(section: str, settings: dict) -> list[str]:
+def _chosen(section: str, settings: dict, registry):
+    """The compiled file of the provider a section reads, or None when it reads no provider, names
+    one that does not exist or was left out, or names one of another kind."""
+    if section not in SECTIONS:
+        return None
+    spec = registry.get(provider_of(section, settings))
+    return spec if spec is not None and spec.kind == SECTIONS[section] else None
+
+
+def _section_credentials(section: str, settings: dict, registry) -> list[str]:
     """The credential fields a section's provider needs; none when it reads no provider, or names
     one that is not of its kind, which is a problem of its own."""
-    from collector import providers
-
-    if section not in SECTIONS:
-        return []
-    spec = providers.get(provider_of(section, settings))
-    return list(spec.credentials) if spec is not None and spec.kind == SECTIONS[section] else []
+    spec = _chosen(section, settings, registry)
+    return list(spec.credentials) if spec is not None else []
 
 
-def _provider_problem(section: str, pid: str) -> str | None:
-    """What is wrong with the provider a section's `from` names, or None."""
-    from collector import providers
-
+def _provider_problem(section: str, pid: str, registry) -> str | None:
+    """What is wrong with the provider a section's `from` names, or None. A provider file that
+    was left out is not a problem of the configuration: that source fails at every read."""
     kind = SECTIONS[section]
-    spec = providers.get(pid)
+    spec = registry.get(pid)
     if spec is None:
-        ids = [p.id for p in providers.of_kind(kind)]
+        if registry.is_refused(pid):
+            return None
+        ids = [p.id for p in registry.of_kind(kind)]
         return f'unknown provider "{pid}"; use {_say_or(tuple(ids))}'
     if spec.kind != kind:
         return f'"{pid}" reads {spec.kind}, not {kind}'
     return None
+
+
+_SETTING_WORDS = {
+    "string": "expected text",
+    "integer": "expected a whole number",
+    "number": "expected a number",
+    "boolean": "expected true or false",
+}
+
+
+def _setting_ok(kind: str, value: Any) -> bool:
+    if kind == "string":
+        return isinstance(value, str)
+    if kind == "integer":
+        return _is_int(value)
+    if kind == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return isinstance(value, bool)
+
+
+def _provider_settings(name: str, given: dict, registry, problems: list[str]) -> tuple[dict, dict]:
+    """A kind's section split in two: (its own settings, the settings its provider declares,
+    checked against the provider file's declaration). A key that is neither is a problem: "not
+    used by" the provider when another provider of the kind declares it, else unknown. While the
+    section names a provider file that was left out, its other keys are kept out unchecked, since
+    that source fails anyway."""
+    own = SOURCE_DEFAULTS[name]
+    extra = {
+        k: v for k, v in given.items() if k not in own and f"sources.{name}.{k}" not in REPLACED
+    }
+    if not extra:
+        return given, {}
+    base = {k: v for k, v in given.items() if k not in extra}
+    pid = provider_of(name, {**own, **given})
+    if registry.is_refused(pid):
+        return base, {}
+    spec = _chosen(name, {**own, **given}, registry)
+    declared = spec.settings if spec is not None else {}
+    others = {k for p in registry.of_kind(SECTIONS[name]) for k in p.settings}
+    out: dict[str, Any] = {}
+    for key, value in extra.items():
+        w = f"sources.{name}.{key}"
+        if key not in declared:
+            problems.append(f"{w}: not used by {pid}" if key in others else f"{w}: unknown setting")
+            continue
+        d = declared[key]
+        if not _setting_ok(d["type"], value):
+            problems.append(f"{w}: {_SETTING_WORDS[d['type']]}")
+            continue
+        if d["type"] in ("integer", "number"):
+            why = schema.range_problem(d, value)
+            if why:
+                problems.append(f"{w}: {why}")
+                continue
+        if "values" in d and value not in d["values"]:
+            shown = f'"{value}"' if isinstance(value, str) else _word(value)
+            problems.append(f"{w}: unknown value {shown}; use {_say_or(tuple(d['values']))}")
+            continue
+        out[key] = float(value) if d["type"] == "number" else value
+    return base, out
+
+
+def _word(value: Any) -> str:
+    """A value as config.toml writes it, for a message."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
 
 
 def _is_int(value: Any) -> bool:
@@ -671,6 +758,7 @@ def _credentials(
     env: Mapping[str, str],
     problems: list[str],
     missing: dict[str, list[str]] | None = None,
+    registry=None,
 ) -> dict[str, dict[str, str]]:
     """The credentials of the enabled sources, by their `secret`, read from env.
 
@@ -680,7 +768,7 @@ def _credentials(
     """
     out: dict[str, dict[str, str]] = {}
     for name, s in sources.items():
-        need = _section_credentials(name, s)
+        need = _section_credentials(name, s, registry or providers_mod.builtin_only())
         secret = s.get("secret", name)
         if not need or not isinstance(secret, str) or not _SECRET_NAME.match(secret):
             continue
@@ -699,16 +787,25 @@ def _credentials(
     return out
 
 
-def build(raw: dict, env: Mapping[str, str] | None = None, missing: str = "refuse") -> Config:
+def build(
+    raw: dict,
+    env: Mapping[str, str] | None = None,
+    missing: str = "refuse",
+    providers: providers_mod.Providers | None = None,
+) -> Config:
     """Validate a parsed config.toml and fill in the defaults.
 
     The credentials are read from env, a mapping of environment variables, and checked too,
     unless env is None, which the health check uses so that it needs none. A credential env lacks
     is a problem, or with missing="report" is kept in the Config's `missing` instead, so that a
     collector taking up a change while it runs keeps going with that source failing.
+
+    providers is what the providers folder held (providers.scan), or None for the built-ins alone.
+    The folder's own problems are not raised here: they are the caller's to report.
     """
     if missing not in ("refuse", "report"):
         raise ValueError(f"missing: {missing!r}")
+    registry = providers if providers is not None else providers_mod.builtin_only()
     problems: list[str] = []
     for key in raw:
         if key not in ("collector", "conditions", "sources", "device", *DEFAULT_TABLES):
@@ -723,7 +820,11 @@ def build(raw: dict, env: Mapping[str, str] | None = None, missing: str = "refus
         if not isinstance(given, dict):
             problems.append(f"sources.{name}: expected a table")
             continue
+        declared: dict[str, Any] = {}
+        if name in SECTIONS:
+            given, declared = _provider_settings(name, given, registry, problems)
         merged = _merge(f"sources.{name}", SOURCE_DEFAULTS[name], given, problems)
+        merged.update(declared)
         if "secret" in merged and "secret" not in given:
             # A secret left out is the provider's id.
             merged["secret"] = provider_of(name, merged)
@@ -733,19 +834,32 @@ def build(raw: dict, env: Mapping[str, str] | None = None, missing: str = "refus
         _validate_collector(collector, problems)
         _validate_conditions(conditions, problems)
         for name, s in sources.items():
-            _validate_source(name, s, problems)
+            _validate_source(name, s, problems, registry)
     devices = _devices(raw.get("device"), sources, conditions, problems)
     defaults = _defaults(raw, problems)
     lacking: dict[str, list[str]] = {}
     report = lacking if missing == "report" else None
-    secrets = _credentials(sources, env, problems, report) if env is not None else {}
+    secrets = _credentials(sources, env, problems, report, registry) if env is not None else {}
     # The credentials the schema names are scrubbed from error text whether or not a source uses
     # them, as every section of the old secrets file was.
     names = [e["name"] for e in schema.credentials()]
     scrub = [env[n] for n in names if env is not None and isinstance(env.get(n), str) and env[n]]
     if problems:
         raise ConfigError(problems)
-    return Config(collector, conditions, sources, secrets, devices, defaults, scrub, lacking)
+    return Config(
+        collector, conditions, sources, secrets, devices, defaults, scrub, lacking, registry
+    )
+
+
+def providers_folder(raw: dict, config_path: str) -> str:
+    """The providers folder a parsed config.toml names: collector.providers_dir, taken from the
+    folder config.toml is in when it is relative. A value that is not text is the default, and a
+    problem build() reports."""
+    given = raw.get("collector") if isinstance(raw.get("collector"), dict) else {}
+    value = given.get("providers_dir", COLLECTOR_DEFAULTS["providers_dir"])
+    if not isinstance(value, str) or not value:
+        value = COLLECTOR_DEFAULTS["providers_dir"]
+    return os.path.join(os.path.dirname(os.path.abspath(config_path)), value)
 
 
 def read(config_path: str) -> dict:
@@ -760,8 +874,10 @@ def read(config_path: str) -> dict:
 
 
 def load(config_path: str, env: Mapping[str, str] | None) -> Config:
-    """Read config.toml and build it, with the credentials from env (see build)."""
-    return build(read(config_path), env)
+    """Read config.toml and the providers folder it names, and build it, with the credentials
+    from env (see build). The folder's problems are in the Config's providers.problems."""
+    raw = read(config_path)
+    return build(raw, env, providers=providers_mod.scan(providers_folder(raw, config_path)))
 
 
 # The fields a credential variable ends with: KNIGHTWATCHER_<SECRET>_<FIELD>.

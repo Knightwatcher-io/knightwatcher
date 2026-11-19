@@ -3,7 +3,8 @@
 # beside this file (ignored by git; .env.example is the template); see docs/configuration.md and
 # docs/server.md.
 # Every host path is bound with create_host_path: false, so a missing path stops the container
-# instead of Docker creating an empty folder in its place.
+# instead of Docker creating an empty folder in its place. The provider files' default folder,
+# ./providers, is tracked in git with a .gitkeep, so a checkout always has it.
 name: knightwatcher
 
 services:
@@ -38,6 +39,13 @@ services:
       - type: bind
         source: ./config.toml
         target: /etc/knightwatcher/config.toml
+        read_only: true
+        bind: { create_host_path: false }
+      # Provider files of the user's own, beside config.toml, read at start and again whenever one
+      # changes. Left out of .env, it is the repository's providers folder, which ships empty.
+      - type: bind
+        source: ${KNIGHTWATCHER_PROVIDERS:-./providers}
+        target: /etc/knightwatcher/providers
         read_only: true
         bind: { create_host_path: false }
       # The host's /proc: CPU, memory, load, the lock table and process command lines.
@@ -116,6 +124,12 @@ services:
       - type: bind
         source: ./config.toml
         target: /etc/knightwatcher/config.toml
+        read_only: true
+        bind: { create_host_path: false }
+      # The provider files, read only, for the same checks: a source's `from` may name one.
+      - type: bind
+        source: ${KNIGHTWATCHER_PROVIDERS:-./providers}
+        target: /etc/knightwatcher/providers
         read_only: true
         bind: { create_host_path: false }
       # The server's own folder, where the shared settings and the admin page's are kept: the one

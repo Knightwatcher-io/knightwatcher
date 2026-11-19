@@ -130,8 +130,9 @@ setting comes from one of three levels, highest first: what is set on the page, 
 the default ([configuration.md](./configuration.md#where-the-collectors-settings-come-from)).
 Credentials are never typed or shown there: the page says, by name, which ones `.env` holds. A
 source read through a provider (streams and adverts blocked) has Read from, a choice of the
-providers of its kind ([collector.md](./collector.md#kinds-and-providers)), and each source names
-the credential variables its provider reads. The page itself is described in
+providers of its kind ([collector.md](./collector.md#kinds-and-providers)), the provider files of
+the user's own among them, and each source names the credential variables its provider reads. The
+settings a provider file declares are set in `config.toml` alone. The page itself is described in
 [display.md](./display.md#the-admin-page).
 
 It is behind the admin password, `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env`, which `compose.yaml`
@@ -169,6 +170,7 @@ answers `401 {"error": "sign in first"}` without one. While the page is off, eve
              "config": {"admin": "3f9c0d12ab45e6789a0b", "at": "2026-01-15T21:42:10Z", "problems": []}},
   "credentials": {"KNIGHTWATCHER_SONARR_API_KEY": true, "KNIGHTWATCHER_RADARR_API_KEY": false},
   "problems": [],
+  "providers": {"own": [], "refused": [], "problems": []},
   "now": "2026-01-15T21:42:14Z"
 }
 ```
@@ -181,8 +183,12 @@ says it uses ([state.md](./state.md#fields)), so that the page can say "In use b
 since" once `status.config.admin` equals `version`. `credentials` is the collector's report of
 which credential variables it holds, by name ([collector.md](./collector.md#credentials-by-name)), or
 `null` while it has written none. `problems` is every problem the collector's checks find with
-`config.toml` and what is set laid over it, empty in the ordinary course. `now` is the server's
-clock, against which the page counts ages.
+`config.toml` and what is set laid over it, empty in the ordinary course. `providers` is what the
+providers folder holds ([providers.md](./providers.md#your-own-provider-files)): `own`, each file
+that passed, with its `id`, `kind`, `name`, `docs`, `credentials` (each `field` with its `help`)
+and `settings`, as the schema lists the built-in providers; `refused`, each file left out, by `id`,
+with its `problems`; and `problems`, every problem the folder gave. `now` is the server's clock,
+against which the page counts ages.
 
 A `PATCH` names paths to set and paths to reset (put back to `config.toml`'s value, or the default).
 A path is a setting's table and key, as `check-config` names them: `collector.interval_s`,
@@ -197,7 +203,8 @@ walls set them.
 
 The server builds the configuration exactly as the collector will: `config.toml` parsed, what is
 set on the page laid over it by path (a list whole), the change on top, then the collector's own
-`config.build` from the same image. It refuses with every problem it finds, in the words
+`config.build` from the same image, with the provider files of the providers folder, read again
+whenever one of them changes. It refuses with every problem it finds, in the words
 `check-config` prints after `config: `, the problems the change brings first:
 
 ```http
@@ -212,7 +219,9 @@ The server has no credential, so it checks credentials by the names the collecto
 in `credentials.json`, with the same words: turning on Sonarr while `.env` has no key for it is
 refused with `.env: KNIGHTWATCHER_SONARR_API_KEY missing (for sonarr)`. While the collector has
 reported none, credentials are not checked here, and a source that turns out to lack one runs and
-fails, saying which ([collector.md](./collector.md#taking-up-a-change)).
+fails, saying which ([collector.md](./collector.md#taking-up-a-change)). A provider file that
+failed its checks is not a problem of the settings: `from` may name it, and that source fails at
+every read, as in the collector.
 
 The other refusals of a write are those of `PUT /api/settings` above, except that a body may be up
 to 64 KiB, and a write that names an unknown or fixed path is refused with
@@ -318,7 +327,8 @@ does it from nothing. The server's part of `compose.yaml`:
 - the image's `python -m server`, as uid and gid 10001, with a read-only root filesystem, no
   capabilities and `no-new-privileges`;
 - the collector's output folder (`KNIGHTWATCHER_OUT`) mounted read-only at `/out`, `config.toml`
-  read-only at `/etc/knightwatcher/config.toml`, for the admin page's checks, and the server's own
+  read-only at `/etc/knightwatcher/config.toml` and the providers folder (`KNIGHTWATCHER_PROVIDERS`)
+  read-only at `/etc/knightwatcher/providers`, for the admin page's checks, and the server's own
   folder (`KNIGHTWATCHER_SERVER_VAR`) at `/var/lib/knightwatcher-server`, the one place it writes
   (`settings.json`, `admin.json` and the admin page's `sessions.json`);
 - `KNIGHTWATCHER_ADMIN_PASSWORD` from `.env`, its one variable, which it reads once at start and
@@ -350,7 +360,7 @@ python3 -m server --web /tmp/kw-page --out /path/to/the/collectors/output --data
 
 `--web` may name `web/` itself, unstamped, for a `dev` page that never checks for a new version.
 `--config` names the `config.toml` the admin page checks against, `/etc/knightwatcher/config.toml`
-unless given; without the password the admin page is off.
+unless given, and the providers folder beside it; without the password the admin page is off.
 
 ## Security
 
@@ -372,7 +382,8 @@ display has no keyboard to log in with. Choose it knowingly:
 
 **What it can touch.** The server gets no credential: from `.env`, `compose.yaml` passes it the
 admin password alone, and reads its address and port to publish it. It mounts no secret: it reads
-`config.toml`, which holds none, read-only, and not `/proc` and not the collector's memory. It
+`config.toml` and the provider files, which hold none, read-only, and not `/proc` and not the
+collector's memory. It
 reads the collector's output read-only, `credentials.json` there included, which names the
 credential variables the collector holds and never their values, and which the server reads and
 never serves. It writes only its own folder. It runs on Docker's own network for the project, not the

@@ -14,6 +14,7 @@ timezone = "UTC"
 http_timeout_s = 5.0
 auth_backoff_s = 1200
 proc_root = "/host/proc"
+providers_dir = "providers"
 
 [conditions]
 # Highest first. A condition left out of the list is never raised.
