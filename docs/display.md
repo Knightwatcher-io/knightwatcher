@@ -61,7 +61,10 @@ hides the review bar and drives the display:
   as tall as the knight's shoulders: it climbs over the battlement's wall or digs up out of the
   camp's grass beside the knight, pulls a face, is bonked on the saucepan it wears, and vanishes
   in a puff of smoke. The knight's swing stops where the blade meets the pot, so the blade never
-  passes through it; nothing gory is shown. After the bounce the knight returns to the stance; where
+  passes through it; nothing gory is shown. The goblin keeps its flinch for 16 ms after the blow,
+  so the blade lands on the pose it was aimed at, and then flings up its hands. In the bounce the
+  blade lifts off the pot, and a weapon held in one hand also rocks back; one held in both hands
+  does not, so its guard stays clear of the flung hand. After the bounce the knight returns to the stance; where
   the swing comes back low (the swings to the left, `KW.knight.ownReturn`), the return follows the
   swing's own, offset by where the bounce left the blade, so the blade does not pass the face again. The goblin stands where the weapon the knight holds
   reaches it, the greatsword, the longsword, the arming sword or the mace alike, on whichever build

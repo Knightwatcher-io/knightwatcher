@@ -1,11 +1,13 @@
 // Tests for the foe player in web/js/engine.js and the goblin in web/js/props.js: the timing
-// table, where a foe stands, and that the knight's blade, whichever weapon it is, meets the
-// goblin's pot at the bonk and never passes through any part of it.
+// table, where a foe stands, and that the knight's weapon, whichever it is, meets the goblin at the
+// bonk and never passes through any part of it, the bounce included.
 // Run with: node --test tests/web/
 //
 // The page's scripts run under Node as index.html loads them, into a sandbox whose document gives
 // fake canvases. Each fake canvas keeps the rectangles filled in it, so a pose of the goblin,
-// painted once into its own canvas, can be laid on the grid and checked against the blade.
+// painted once into its own canvas, can be laid on the grid. The weapon against the goblin is
+// measured by tools/contact-sweep/lib.js, which loads the scripts the same way and records the
+// knight's drawing too.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,18 +30,15 @@ function fakeCanvas() {
 const ONE = { look: { items: { main: 'kw.base/main.arming', off: 'kw.base/off.heater' } } };
 /* The flanged mace and the round shield, a free item of the base pack 1.4.0 (arm=mace_and_shield). */
 const MACE = { look: { items: { main: 'kw.base/main.mace', off: 'kw.base/off.round' } } };
+/* The longsword, a free item of the base pack 1.4.0, in both hands (arm=longsword). */
+const LONG = { look: { items: { main: 'kw.base/main.longsword' } } };
 /* The weapons the knight may hold at the bonk: the greatsword from the base pack and from code,
-   and the arming sword and the mace with a shield, which only the base pack holds. */
-const WEAPONS = [['the greatsword, from the base pack', true, null], ['the greatsword, from code', false, null], ['the arming sword', true, ONE], ['the flanged mace', true, MACE]];
-/* The base pack's other builds, Broad (build.b) and Slim (build.c), with each weapon. The engine
-   measures the blade on the build drawn, so the goblin is met where the drawn blade meets it. */
+   and the arming sword and the mace with a shield and the longsword, which only the base pack holds. */
+const WEAPONS = [['the greatsword, from the base pack', true, null], ['the greatsword, from code', false, null], ['the arming sword', true, ONE], ['the longsword', true, LONG],
+  ['the flanged mace', true, MACE]];
+/* The base pack's other builds, Broad (build.b) and Slim (build.c). The engine measures the blade
+   on the build drawn, so the goblin is met where the drawn blade meets it. */
 const BUILDS = { 'build.b': 'Broad', 'build.c': 'Slim' };
-const BUILT = [];
-for (const [b, name] of Object.entries(BUILDS)) {
-  BUILT.push([`the greatsword, ${name}`, true, { look: { build: 'kw.base/' + b } }]);
-  BUILT.push([`the arming sword, ${name}`, true, { look: { build: 'kw.base/' + b, items: ONE.look.items } }]);
-  BUILT.push([`the flanged mace, ${name}`, true, { look: { build: 'kw.base/' + b, items: MACE.look.items } }]);
-}
 
 /* The page's scripts, with the knight drawn from the base pack (pack true) or from code, in the
    look opts asks for (the base pack's defaults when left out). */
@@ -158,150 +157,71 @@ test('where the goblin stands: in its zone, clear of the knight, the pie and eve
   assert.equal(m.F.spot(G, m.KW.scenes.house, [PIE], m.KW.scenes.house.places, 480), null, 'a scene without foeZone hosts no foe');
 });
 
-/* The fills of the goblin's sprite at el, laid on the grid as the engine blits them, as points to
-   test: the middles of the corner pixels and the middle of each filled rectangle. */
-function foePoints(m, pl, el) {
-  const st = m.F.at(el, pl);
-  if (!st.show) return [];
-  const G = pl.F, [ax, ay] = G.anchor, fl = st.face > 0 ? -1 : 1, pts = [];
-  for (const [x, y, w, h] of G.pose(st.pose).fills) {
-    // the middles of the corner pixels, and of the rectangle
-    for (const [px, py] of [[x + .5, y + .5], [x + w - .5, y + .5], [x + .5, y + h - .5], [x + w - .5, y + h - .5], [x + w / 2, y + h / 2]]) {
-      // clipped behind the wall while it climbs: only what shows above the line counts
-      const gx = Math.round(st.x) + (px - ax) * fl * st.sx, gy = Math.round(st.y) + (py - ay) * st.sy;
-      if (st.behind && gy > pl.lineAt(Math.round(gx))) continue;
-      pts.push([gx, gy]);
-    }
-  }
-  return pts;
+/* The contact standard (docs/tests.md, The contact standard): the whole drawn weapon against every
+   drawn pixel of the goblin, through the whole strike, the bounce included, never more than 2 px in,
+   and at the hit no more than 3 px from the goblin as drawn then, on every build. It is measured
+   from the page's own drawing by tools/contact-sweep, whose sweep checks it at every spot the knight
+   strolls over; here it is checked at the spots the knight strolls to, every 30 between, and the
+   spots the sweep found hardest: where the greatsword's quillon came nearest the flung hand in the
+   bounce (440 to 453 on the battlement), the mace's flanges the hand at the hit (443 to 475, and
+   490 to 509 at the camp), and the arming sword's point (the far spots, 474 to 480 and 508 to 520). */
+const CONTACT_LIB = require('../../tools/contact-sweep/lib.js');
+const { measurePlan } = require('../../tools/contact-sweep/measure.js');
+const HARD = { battlement: [445, 448, 451, 453, 455, 459, 464, 467, 471, 474, 475, 479], camp: [493, 497, 501, 508, 513, 518] };
+/* Each swung weapon on each build, and the code path's greatsword: [name, weapon, build, pack]. */
+const CONTACT = [];
+for (const [b, bn] of [['a', 'Classic'], ['b', 'Broad'], ['c', 'Slim']]) {
+  for (const [w, wn] of [['great', 'the greatsword'], ['arming', 'the arming sword'], ['long', 'the longsword'], ['mace', 'the flanged mace']]) CONTACT.push([`${wn}, ${bn}`, w, b, true]);
 }
-/* How deep the point lies inside the blade's outline, in pixels; 0 or below is outside. A point
-   beyond either end of the blade counts 0, or -Infinity when far is set. */
-function depth(bl, x, y, far) {
-  const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), px = x - bl.x, py = y - bl.y, along = px * sx + py * sy, across = Math.abs(px * sy - py * sx);
-  return along < bl.from || along > bl.to ? (far ? -Infinity : 0) : bl.half - across;
-}
-/* The drawn outline of a main item, read from the base pack's own shapes rather than from the
-   engine: the pieces its dark outline (@base.k) is drawn as, in frame units, each a circle
-   { c: [s, p], r } or a convex polygon { pts: [[s, p], ...] } (a strip is its four corners). */
-const BASE = JSON.parse(fs.readFileSync(path.join(WEB, 'packs/base.pack.json'), 'utf8')).pack;
-function drawnOutline(item) {
-  const out = [], at = q => [q.s, q.p];
-  for (const sh of BASE.items[item].parts[0].shapes) {
-    if (sh.fill !== '@base.k') continue;
-    if (sh.k === 'ell') { assert.equal(sh.rx, sh.ry); out.push({ c: at(sh.p), r: sh.rx }); }
-    else if (sh.k === 'poly') out.push({ pts: sh.pts.map(at) });
-    else if (sh.k === 'strip') {
-      const a = at(sh.p0), b = at(sh.p1), n = Math.hypot(b[0] - a[0], b[1] - a[1]), u = [-(b[1] - a[1]) / n, (b[0] - a[0]) / n];
-      out.push({ pts: [[a[0] - u[0] * sh.hw0, a[1] - u[1] * sh.hw0], [b[0] - u[0] * sh.hw1, b[1] - u[1] * sh.hw1], [b[0] + u[0] * sh.hw1, b[1] + u[1] * sh.hw1], [a[0] + u[0] * sh.hw0, a[1] + u[1] * sh.hw0]] });
-    } else assert.fail(`${item}: a ${sh.k} in the outline`);
-  }
-  return out;
-}
-/* How deep the point (s, p) lies inside a piece, in pixels; below 0 it is outside, by that much. */
-function pieceDepth(pc, s, p) {
-  if (pc.c) return pc.r - Math.hypot(s - pc.c[0], p - pc.c[1]);
-  const q = pc.pts;
-  let pos = 0, neg = 0, d = Infinity;
-  for (let i = 0; i < q.length; i++) {
-    const [as, ap] = q[i], [bs, bp] = q[(i + 1) % q.length], es = bs - as, ep = bp - ap;
-    const cr = es * (p - ap) - ep * (s - as), t = Math.max(0, Math.min(1, ((s - as) * es + (p - ap) * ep) / (es * es + ep * ep)));
-    if (cr > 0) pos++; else if (cr < 0) neg++;
-    d = Math.min(d, Math.hypot(s - as - t * es, p - ap - t * ep));
-  }
-  return pos && neg ? -d : d;
-}
-/* The mace's head is not a blade: its flanges reach 27 across its frame where its blade's outline
-   gives 20, its knob reaches 151 along it, past the outline's 143, and its haft is 7 across, not
-   20. So the mace is measured by its drawn outline, from where the blade's outline starts (3 short
-   of the blade), and the swords by their blade's outline, which holds each drawn blade.
-   The swords are held off every drawn pixel of the goblin through the whole strike. The mace is
-   held off the goblin's planned outline, its crown, placed as the goblin is drawn at each moment,
-   up to and including the hit: the plan's own measure. Its head meets the goblin where the swords
-   never do, by the near ear at the camp beside a device in g3, where the hit pose flings the near
-   hand above the crown and the bounce brings the flanges back across the ear's point, so the
-   drawn goblin and the bounce are not part of its check. */
-const DRAWN = { 'kw.base/main.mace': drawnOutline('main.mace') };
-/* The goblin's crown at el, laid on the grid as the goblin is drawn (its spot, side, squash and
-   the line it is clipped to while it climbs), as points to test; none once it is hidden. */
-function crownPoints(m, pl, el) {
-  const st = m.F.at(el, pl);
-  if (!st.show) return [];
-  const pts = [];
-  for (const [cx, cy] of pl.F.crown) {
-    const gx = Math.round(st.x) + pl.side * cx * st.sx, gy = Math.round(st.y) + cy * st.sy;
-    if (st.behind && gy > pl.lineAt(Math.round(gx))) continue;
-    pts.push([gx, gy]);
-  }
-  return pts;
-}
-function depthFor(opts) {
-  const pieces = opts && opts.look.items && DRAWN[opts.look.items.main];
-  if (!pieces) return depth;
-  return (bl, x, y, far) => {
-    const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), px = x - bl.x, py = y - bl.y, s = px * sx + py * sy, p = px * Math.cos(bl.a) + py * Math.sin(bl.a);
-    if (s < bl.from) return far ? -Infinity : 0;
-    let d = -Infinity; for (const pc of pieces) d = Math.max(d, pieceDepth(pc, s, p));
-    return d;
-  };
-}
+CONTACT.push(['the greatsword, from code', 'great', 'a', false]);
 
-for (const [name, pack, opts] of WEAPONS.concat(BUILT)) {
-  test(`the blade meets the goblin's pot at the bonk and never passes through it (${name})`, () => {
-    const m = load(pack, opts), S = m.F.FOE.strike, into = depthFor(opts), drawn = into !== depth;
-    // what the blade is kept out of at el: the drawn goblin, or for the mace its crown until the hit
-    const goblin = (pl, el) => (drawn ? (el <= pl.hit ? crownPoints(m, pl, el) : []) : foePoints(m, pl, el));
+for (const [name, weapon, build, pack] of CONTACT) {
+  test(`the whole drawn weapon meets the drawn goblin at the hit and never goes more than 2 px into it, the bounce included (${name})`, () => {
+    const C = CONTACT_LIB, m = C.load({ from: 'code', pack, build, weapon }), fb = C.frameBox(m), X = m.F.FOE.exits.poof;
     let plans = 0;
-    for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) for (const devices of [[PIE], [PIE, device('g3')]]) {
-      const pl = planFor(m, scene, kx, devices);
-      if (devices.length === 1) assert.ok(pl, `${scene} knight ${kx}: the goblin comes with the pie alone`);
-      if (!pl) continue;
-      plans++;
-      // the goblin stands within the reach the weapon gives on its side
-      const g = m.F.gaps(pl.F, pose(m.K, m.V, kx, 0), pl.side), d = Math.abs(pl.x - kx);
-      assert.ok(g && d >= g[0] && d <= g[2], `${scene} knight ${kx}: gap ${d} within the weapon's reach ${g}`);
-      // the hit pose plays from the hit, and the blade touches the drawn goblin there: within 3
-      // pixels of its crown, and within 3 pixels of a filled pixel of the sprite itself
-      assert.equal(m.F.at(pl.hit - 1, pl).pose, 'brace'); assert.equal(m.F.at(pl.hit, pl).pose, 'hit');
-      const oh = pose(m.K, m.V, kx, pl.hit); m.F.strike(oh, pl.hit, pl);
-      const bh = m.F.bladeOf(oh), gapAtHit = m.F.bladeGap(bh, pl.F, pl.x, pl.side, m.V.HFL);
-      assert.ok(Math.abs(gapAtHit) < 3, `${scene} knight ${kx}: the blade meets the crown at the hit (${gapAtHit.toFixed(1)})`);
-      let touch = -Infinity; for (const [x, y] of foePoints(m, pl, pl.hit - 1)) touch = Math.max(touch, into(bh, x, y, true));
-      assert.ok(touch >= -3, `${scene} knight ${kx}: the blade is ${(-touch).toFixed(1)} px from the drawn goblin at the hit`);
-      let closest = Infinity;
-      const times = []; for (let el = S.at; el <= pl.hit + S.rebound + S.recover; el += 8) times.push(el);
-      times.push(pl.hit, pl.hit - 1, pl.hit + 1);
-      for (const el of times) {
-        const o = pose(m.K, m.V, kx, el);
-        m.F.strike(o, el, pl);
-        const bl = m.F.bladeOf(o);
-        let worst = -Infinity;
-        for (const [x, y] of goblin(pl, el)) worst = Math.max(worst, into(bl, x, y));
-        // the two outlines may touch, by up to 2 pixels, and no more
-        assert.ok(worst <= 2, `${scene} knight ${kx} at ${el} ms: the blade is ${worst.toFixed(1)} px into the goblin${drawn ? '\'s crown' : ''}`);
-        if (el <= pl.hit) closest = Math.min(closest, m.F.bladeGap(bl, pl.F, pl.x, pl.side, m.V.HFL));
+    for (const scene of ['battlement', 'camp']) for (const kx of [...new Set(C.testSpots(m, scene).concat(HARD[scene]))]) {
+      const seen = new Set();
+      for (const devices of [[PIE], [PIE, device('g3')]]) {
+        const pl = C.planFor(m, scene, kx, devices), at = `${scene} knight ${kx}${devices.length > 1 ? ' beside g3' : ''}`;
+        if (devices.length === 1) assert.ok(pl, `${at}: the goblin comes with the pie alone`);
+        if (!pl || seen.has([pl.x, pl.side, pl.hit].join())) continue;
+        seen.add([pl.x, pl.side, pl.hit].join()); plans++;
+        // the goblin stands within the reach the weapon gives on its side
+        const g = m.F.gaps(pl.F, C.pose(m, kx, 0), pl.side), d = Math.abs(pl.x - kx);
+        assert.ok(g && d >= g[0] && d <= g[2], `${at}: gap ${d} within the weapon's reach ${g}`);
+        // the plan's own measure: the blade, or the mace's drawn head, touches the crown at the hit
+        const oh = C.pose(m, kx, pl.hit); m.F.strike(oh, pl.hit, pl);
+        const gapAtHit = m.F.bladeGap(m.F.bladeOf(oh), pl.F, pl.x, pl.side, m.V.HFL);
+        assert.ok(Math.abs(gapAtHit) < 3, `${at}: the blade meets the crown at the hit (${gapAtHit.toFixed(1)})`);
+        // the goblin holds its brace for the first ms of the hit, then flings into its hit pose
+        assert.equal(m.F.at(pl.hit, pl).pose, 'brace'); assert.equal(m.F.at(pl.hit + X.hitPose, pl).pose, 'hit');
+        // and the drawn weapon against the drawn goblin
+        const r = measurePlan(m, kx, pl, fb, 8), w = r.worst;
+        assert.equal(r.over2, null, `${at}: the weapon is ${w && w.depth} px into the goblin at ${w && w.el} ms (hit ${pl.hit}), at (${w && w.glocal}) on the goblin's ${w && w.pose} pose, (${w && w.wlocal}) on the weapon`);
+        assert.ok(r.gap <= 3, `${at}: the weapon is ${r.gap} px from the goblin at the hit (${pl.hit} ms), at (${r.gapAt && r.gapAt.glocal}) on its ${r.gapAt && r.gapAt.pose} pose`);
       }
-      assert.ok(closest <= 3, `${scene} knight ${kx}: the blade reaches the pot (${closest.toFixed(1)} px short)`);
     }
-    assert.ok(plans > 10);
+    assert.ok(plans >= 20, `${plans} plans`);
   });
 }
 
 /* The hit at the knight's first spot in each scene, the pie alone, in ms from the start of the
-   event, for each grip on Classic, Broad and Slim, and for the mace, held in one hand as the arming
-   sword is but met by its drawn head. The poses are the present knight's, raised and lowered with
-   each build's shoulders, so the hit moves by a few ms at most. */
+   event, for each weapon on Classic, Broad and Slim: two is the greatsword, long the longsword, both
+   in two hands; one the arming sword, which meets the goblin with its tapered point, and mace the
+   mace, held in one hand as the arming sword is but met by its drawn head. The poses are the
+   present knight's, raised and lowered with each build's shoulders, so the hit moves by a few ms. */
 const HITS = {
   two: { battlement: [1657, 1659, 1656], camp: [1661, 1663, 1659] },
-  one: { battlement: [1697, 1705, 1691], camp: [1707, 1709, 1706] },
+  long: { battlement: [1658, 1661, 1657], camp: [1662, 1664, 1660] },
+  one: { battlement: [1703, 1707, 1699], camp: [1710, 1712, 1710] },
   mace: { battlement: [1698, 1709, 1684], camp: [1706, 1710, 1703] } };
 
 test('on every build, with each weapon, the goblin comes wherever it does on Classic, and is struck within a few ms of Classic\'s hit', () => {
   // The mace is struck within 16 ms of Classic's hit rather than 12: it meets the goblin at the end
-  // of its reach, by the near ear, and each build's shoulder line changes which point of a flange
-  // meets it first (14 ms at most, Slim on the battlement).
-  const ITEMS = { one: ONE.look.items, mace: MACE.look.items };
-  for (const grip of ['two', 'one', 'mace']) {
+  // of its reach, and each build's shoulder line changes which point of a flange meets it first
+  // (15 ms at most between these spots, Slim on the battlement and at the camp).
+  const ITEMS = { one: ONE.look.items, long: LONG.look.items, mace: MACE.look.items };
+  for (const grip of ['two', 'long', 'one', 'mace']) {
     const looks = ['build.a', 'build.b', 'build.c'].map(b => ({ look: Object.assign({ build: 'kw.base/' + b }, ITEMS[grip] ? { items: ITEMS[grip] } : {}) }));
     const [a, ...others] = looks.map(o => load(true, o));
     for (const [scene, kx0] of [['battlement', 460], ['camp', 520]]) {
@@ -337,20 +257,75 @@ test('the blade the engine measures is the blade drawn: KW.knight.rig takes the 
   assert.deepEqual(plain(c.K.rig(o).anchors.main), plain(c.K.rig(o, c.K.build).anchors.main));
 });
 
-test('a weapon too short to reach a goblin anywhere in the zone: the goblin does not come, and never plays a hit', () => {
-  // held in both hands, where the grip stays close to the knight
-  for (const [, pack, opts] of WEAPONS.filter(w => !w[2])) {
-    const m = load(pack, opts), full = m.K.rest.reach();
-    // a dagger, its blade barely longer than its grip
-    m.K.rest.reach = () => ({ from: 34, to: 40, half: 8 });
-    const o = pose(m.K, m.V, 480, 0);
-    assert.equal(m.F.gaps(m.P.FOES.goblin, o, 1), null); assert.equal(m.F.gaps(m.P.FOES.goblin, o, -1), null);
-    for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) assert.equal(planFor(m, scene, kx, [PIE]), null, `${scene} ${kx}`);
-    m.K.rest.reach = () => full;
+test('the band the engine measures a sword by ends at its drawn point: full width as far as the point starts, then tapering to the tip', () => {
+  // where each sword's outline starts to taper and its tip, from the base pack's drawing, and the
+  // code path's greatsword as swordHD draws it; the mace is measured by its head, and the crossbow
+  // is not swung
+  const want = [[true, null, { at: 236, to: 270 }], [false, null, { at: 236, to: 270 }], [true, ONE, { at: 150, to: 180 }], [true, LONG, { at: 198, to: 228 }],
+    [true, MACE, null], [true, { look: { items: { main: 'kw.base/main.crossbow' } } }, null]];
+  for (const [pack, opts, pt] of want) {
+    const m = load(pack, opts), what = (opts ? opts.look.items.main : 'the greatsword') + (pack ? '' : ' from code');
+    assert.deepEqual(plain(m.K.rest.point()), pt, what);
+    if (!pt) continue;
+    const o = pose(m.K, m.V, 480, 0), bl = m.F.bladeOf(o), b = m.K.rest.reach();
+    assert.deepEqual([bl.from, bl.to, bl.half, bl.point], [b.from - 3, pt.to, b.half + 4, pt.at], what);
+    // beside the band the gap is the distance across it; past where the point starts the edge
+    // slants in, so a point at the band's full width is outside it, and the tip is on the outline
+    assert.equal(m.F.bandGap(bl, pt.at, bl.half + 2), 2, what);
+    assert.ok(m.F.bandGap(bl, (pt.at + pt.to) / 2, bl.half) > 0, what);
+    assert.ok(Math.abs(m.F.bandGap(bl, (pt.at + pt.to) / 2, bl.half / 2)) < 1e-9, what);
+    assert.ok(Math.abs(m.F.bandGap(bl, pt.to, 0)) < 1e-9, what);
   }
 });
 
-test('the greatsword keeps the gaps of the table, and the arming sword and the mace have their own, worked out from their reach', () => {
+test('in the bounce a weapon in both hands lifts without rocking back, and one in one hand rocks back too', () => {
+  const S = load(false).F.FOE.strike;
+  for (const [opts, one] of [[null, false], [LONG, false], [ONE, true], [MACE, true]]) {
+    const m = load(true, opts), what = opts ? opts.look.items.main : 'the greatsword';
+    for (const [scene, kx] of [['battlement', 440], ['camp', 520]]) {
+      const pl = planFor(m, scene, kx, [PIE]), at = el => { const o = pose(m.K, m.V, kx, el); m.F.strike(o, el, pl); return o; };
+      const hit = at(pl.hit), end = at(pl.hit + S.rebound - 1), k = 1 - (1 - (S.rebound - 1) / S.rebound) ** 2;
+      assert.ok(end.gy < hit.gy, `${what} ${scene}: the bounce lifts the blade`);
+      if (one) assert.ok(Math.abs(end.wang - (hit.wang - pl.side * S.kick * k)) < 0.02, `${what} ${scene}: rocks back by kick`);
+      else for (let r = 0; r < S.rebound; r += 10) assert.equal(at(pl.hit + r).wang, hit.wang, `${what} ${scene} +${r} ms: no rock back`);
+    }
+  }
+});
+
+test('struck by a blade the goblin holds its brace for the first 16 ms, squashed and with the burst from the hit; struck by a shot it flings at once', () => {
+  const m = load(true), X = m.F.FOE.exits.poof, pl = planFor(m, 'battlement', 460, [PIE]);
+  assert.equal(X.hitPose, 16);
+  assert.equal(m.F.at(pl.hit - 1, pl).pose, 'brace');
+  for (let r = 0; r < X.hitPose; r++) assert.equal(m.F.at(pl.hit + r, pl).pose, 'brace', `+${r} ms`);
+  for (const r of [X.hitPose, X.hitPose + 1, X.gone - 1]) assert.equal(m.F.at(pl.hit + r, pl).pose, 'hit', `+${r} ms`);
+  // the squash and the burst start at the hit itself
+  const at1 = m.F.at(pl.hit + 1, pl);
+  assert.ok(at1.sy < 1 && at1.sx > 1, 'squashed from the hit');
+  assert.deepEqual(plain(m.F.at(pl.hit, pl).fx.map(f => f.kind)), ['impact']);
+  assert.deepEqual(plain(m.F.at(pl.hit - 1, pl).fx), []);
+  // the crossbow's bolt: no blade lands, so the hit pose plays from the hit
+  const c = load(true, { look: { items: { main: 'kw.base/main.crossbow' } } }), ps = planFor(c, 'battlement', 460, [PIE]);
+  assert.ok(ps.shot, 'the crossbow shoots');
+  assert.notEqual(c.F.at(ps.hit - 1, ps).pose, 'hit'); assert.equal(c.F.at(ps.hit, ps).pose, 'hit');
+});
+
+test('a weapon too short to reach a goblin anywhere in the zone: the goblin does not come, and never plays a hit', () => {
+  // held in both hands, where the grip stays close to the knight
+  for (const [, pack, opts] of WEAPONS.filter(w => !w[2])) {
+    const m = load(pack, opts), full = m.K.rest.reach(), point = m.K.rest.point();
+    // a dagger, its blade barely longer than its grip: the engine measures the blade by its reach
+    // and by its drawn point, so both are shortened
+    m.K.rest.reach = () => ({ from: 34, to: 40, half: 8 });
+    m.K.rest.point = () => ({ at: 40, to: 46 });
+    const o = pose(m.K, m.V, 480, 0);
+    assert.equal(m.F.bladeOf(o).to, 46);
+    assert.equal(m.F.gaps(m.P.FOES.goblin, o, 1), null); assert.equal(m.F.gaps(m.P.FOES.goblin, o, -1), null);
+    for (const scene of ['battlement', 'camp']) for (const kx of spots(m, scene)) assert.equal(planFor(m, scene, kx, [PIE]), null, `${scene} ${kx}`);
+    m.K.rest.reach = () => full; m.K.rest.point = () => point;
+  }
+});
+
+test('the greatsword keeps the gaps of the table, and the arming sword, the longsword and the mace have their own, worked out from their reach', () => {
   for (const [, pack, opts] of WEAPONS) {
     const m = load(pack, opts), G = m.P.FOES.goblin, o = pose(m.K, m.V, 480, 0);
     for (const side of [1, -1]) {

@@ -447,6 +447,10 @@
       peekBelow: 72, hopOver: 26, squash: [.14, .1], tauntFrame: 110,
       // the line a foe is clipped to while in its hole: the hole's middle, below the ground
       holeLine: 4 },
+    // the knight's swing from at over dur, stopped at the hit; the bounce back over rebound and the
+    // return to the stance over recover. In the bounce the blade lifts a little and, with a weapon in
+    // one hand, rocks back by kick (radians); a weapon in both hands does not rock back, since its
+    // crossguard would swing into the foe's flung hand
     strike: { at: 1250, dur: 900, rebound: 80, recover: 560, kick: .32, eyes: 500 },
     // with a weapon that fires (shotPlan): the gap from the watcher's middle to the foe's, least,
     // wanted and most, the most no more than the weapon's range or most; the least raised to keep
@@ -464,8 +468,10 @@
     exits: {
       // gone in a puff of smoke: struck (squashed for 120 ms, a burst on the pot for the 80 ms the
       // blade bounces off it), the cloud at 140, the foe hidden at 170 behind it, sparkles from
-      // 240, the knight pleased at 640, a hole closed by 1190
-      poof: { struck: 140, squash: [120, .1, .08], cloud: 140, gone: 170, sparkles: 240, pleased: 640, close: [840, 1190], impact: 80 }
+      // 240, the knight pleased at 640, a hole closed by 1190. Struck by a blade, the foe holds its
+      // brace for the first hitPose ms and only then flings into its hit pose, so the blade lands on
+      // the pose it was planned against; the squash and the burst start at the hit all the same
+      poof: { struck: 140, squash: [120, .1, .08], cloud: 140, gone: 170, sparkles: 240, pleased: 640, close: [840, 1190], impact: 80, hitPose: 16 }
     }
   };
   const segQ = (el, a, b) => clamp01((el - a) / (b - a));
@@ -521,8 +527,12 @@
   }
 
   /* The blade in the knight's pose o: its frame and its extent along it, outline included. The
-     outline is 4 pixels wide along the edges and, at the point, longer as the blade is broader: 7
-     on the greatsword, 5 on the arming sword. The frame is the rig's on the build being drawn
+     outline is 4 pixels wide along the edges, so the band is half and 4 across; it keeps that width
+     as far as the drawn point starts (point, KW.knight.rest.point's at) and tapers from there to the
+     drawn tip (to): from s 236 to 270 on the greatsword, 198 to 228 on the longsword and 150 to 180
+     on the arming sword. Without a drawn point (a pack's blade the knight cannot measure) the band
+     runs full width to the outline's end, longer than the blade as the blade is broader: 7 on the
+     greatsword, 5 on the arming sword. The frame is the rig's on the build being drawn
      (KW.knight.rig takes the look's build), so foeGaps, contactQ and the foe's plan measure the blade
      as it is drawn on every build. A weapon with a head the outline does not describe (the mace's,
      KW.knight.rest.head) is measured by its drawing instead: head is the drawing's pieces and the
@@ -530,7 +540,17 @@
   function bladeOf(o) {
     const b = K.rest.reach() || { from: 34, to: 263, half: 15 }, m = K.rig(o).anchors.main, h = K.rest.head ? K.rest.head() : null;
     if (h) return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: h.to, half: h.half, head: h };
+    const pt = K.rest.point ? K.rest.point() : null;
+    if (pt) return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: pt.to, half: b.half + 4, point: pt.at };
     return { x: m[0], y: m[1], a: m[2], from: b.from - 3, to: b.to + Math.round(b.half * 7 / 15), half: b.half + 4 };
+  }
+  /* How far the point s along the blade's frame and p across it lies from the band's outline, in
+     pixels, 0 or below once it is within: across the band, or past where the point starts, from the
+     slanted edge running to the tip. */
+  function bandGap(bl, s, p) {
+    if (bl.point == null || s <= bl.point) return Math.abs(p) - bl.half;
+    const len = bl.to - bl.point;
+    return ((s - bl.point) * bl.half + (Math.abs(p) - bl.half) * len) / Math.hypot(len, bl.half);
   }
   /* How far the point s along the weapon's frame and p across it lies from the head's drawing, in
      pixels, 0 or below once it is within: the least over the head's pieces, each a circle or a convex
@@ -565,7 +585,7 @@
       if (along < bl.from || along > bl.to) continue;
       // a point further from the whole head than the nearest so far is passed by
       if (bl.head && Math.hypot(along - bl.head.bc[0], px * nx + py * ny - bl.head.bc[1]) - bl.head.br >= near.gap) continue;
-      const gap = bl.head ? headGap(bl.head, along, px * nx + py * ny) : Math.abs(px * nx + py * ny) - bl.half;
+      const gap = bl.head ? headGap(bl.head, along, px * nx + py * ny) : bandGap(bl, along, px * nx + py * ny);
       if (gap < near.gap) near = { gap, x, y };
     }
     return near;
@@ -670,19 +690,20 @@
     return x;
   }
 
-  /* The strike on the knight's pose o at el: the swing until the hit, then the bounce back and the
-     return to the stance the pose began in. With a weapon in one hand the shield hand (fx, fy)
-     comes back with it. Where the swing comes back by a return of its own (K.ownReturn: the swings
-     to the left, which bring the blade back low so that it does not pass the face again), the
-     strike's return plays that return over its own time, offset by where the bounce left the blade
-     against the cut's end, the offset easing out; otherwise it goes straight back to the stance. */
+  /* The strike on the knight's pose o at el: the swing until the hit, then the bounce back (a lift,
+     and with a weapon in one hand a rock back by FOE.strike.kick) and the return to the stance the
+     pose began in. With a weapon in one hand the shield hand (fx, fy) comes back with it. Where the
+     swing comes back by a return of its own (K.ownReturn: the swings to the left, which bring the
+     blade back low so that it does not pass the face again), the strike's return plays that return
+     over its own time, offset by where the bounce left the blade against the cut's end, the offset
+     easing out; otherwise it goes straight back to the stance. */
   function strike(o, el, pl) {
     const S = FOE.strike, one = o.fx != null, base = { gx: o.gx, gy: o.gy, wang: o.wang, fx: o.fx, fy: o.fy };
     if (el < S.at) return;
     if (el < pl.hit) { K.swing(o, (el - S.at) / S.dur, pl.side); return; }
     const r = el - pl.hit; if (r >= S.rebound + S.recover) return;
     const c = { gx: 0, gy: 0, wang: 0, fx: o.fx, fy: o.fy }; K.swing(c, pl.q, pl.side);
-    const b = { gx: c.gx - pl.side * .5, gy: c.gy - 2, wang: c.wang - pl.side * S.kick, fx: c.fx, fy: c.fy };
+    const b = { gx: c.gx - pl.side * .5, gy: c.gy - 2, wang: c.wang - (one ? pl.side * S.kick : 0), fx: c.fx, fy: c.fy };
     if (r >= S.rebound && K.ownReturn(pl.side)) {
       const u = clamp01((r - S.rebound) / S.recover), w = 1 - ease(u), h = { fx: o.fx, fy: o.fy }, p = { fx: o.fx, fy: o.fy };
       K.swing(h, .55, pl.side); K.swing(p, .55 + .45 * u, pl.side);
@@ -697,7 +718,9 @@
   }
 
   /* What the foe looks like at el: its pose, its feet, which way it faces, its squash, whether it
-     is still behind the line (and clipped to above it), the hole's opening, and what it leaves. */
+     is still behind the line (and clipped to above it), the hole's opening, and what it leaves.
+     Struck by a blade it holds its brace for the exit's hitPose ms after the hit, then takes its hit
+     pose; struck by a shot it takes its hit pose at once. */
   function foeAt(el, pl) {
     const N = FOE.enter, X = pl.exit, HFL = V.HFL, F = pl.F, L = pl.burrow ? HFL : pl.lineAt(pl.x), deep = L + F.h + 12;
     const st = { pose: 'climb', x: pl.x, y: deep, face: -pl.side, sx: 1, sy: 1, behind: true, show: el >= N.rise[0], hole: 0, fx: [] };
@@ -716,7 +739,7 @@
     if (el >= N.brace && el < pl.hit) st.pose = 'brace';
     if (el < pl.hit) return st;
     const r = el - pl.hit;
-    st.pose = 'hit';
+    st.pose = !pl.shot && r < X.hitPose ? 'brace' : 'hit';
     const k = Math.sin(segQ(r, 0, X.squash[0]) * Math.PI); st.sy = 1 - X.squash[1] * k; st.sx = 1 + X.squash[2] * k;
     if (r < X.impact) st.fx.push({ kind: 'impact', x: pl.touch[0], y: pl.touch[1] - 2 });
     if (r >= X.gone) st.show = false;
@@ -1053,7 +1076,7 @@
     /* The foe player's parts, for the tests: the tables, where a foe stands, when the blade meets
        it, the plan of an event, the strike on a pose and the foe at a moment. */
     crateX, CLASS_BOX,
-    foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bladeGap, crownNear, plan: foePlan, strike, at: foeAt, shotPlan, shot: foeShot, fires: foeFires, shotOf: foeShotOf },
+    foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bandGap, bladeGap, crownNear, plan: foePlan, strike, at: foeAt, shotPlan, shot: foeShot, fires: foeFires, shotOf: foeShotOf },
     init(ctx) { main = ctx; D.setCtx(ctx); },
     draw, addFly, startSwat, fireEvent,
     /* The shots of a weapon that fires: the timings, shoot(key, make) as described above, the

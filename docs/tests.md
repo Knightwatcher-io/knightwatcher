@@ -17,7 +17,7 @@ out.
 | `tests/web/fire.test.js` | format 1.2: the fields and rules of weapons and foes that fire, the aim and `fire()`, and the shot effects |
 | `tests/web/fire-barrel.test.js` | no arm or gauntlet over a barrel or a shield's face, frame by frame, through the aim, `fire()`, the swat's volley and the attack |
 | `tests/web/fire-acts.test.js` | the acts with a weapon that fires: the swat by shot, practice, the foe from range, the attack, the weapon that is both, the reach for the pegs and the anvil, the stowed view and the shield's lift |
-| `tests/web/foe.test.js` | the goblin's plan and hit on every build with each weapon, the blade meeting it and never passing through |
+| `tests/web/foe.test.js` | the goblin's plan and hit on every build with each weapon, the drawn weapon meeting the drawn goblin to [the contact standard](#the-contact-standard) |
 | `tests/web/foe-fires.test.js` | a foe that fires: its pose `aim` compiled and played in place of the taunt, its shot at 1 350 missing over the head group or stopped at the shield, the foe on the right, and the flinch |
 | `tests/web/format-1.1.test.js` | the world sections of format 1.1: one refused copy of the world fixture for each rule |
 | `tests/web/knight.test.js` | the knight call by call against the stored record, the arm and blade checks, the gear at rest |
@@ -169,33 +169,33 @@ would write for them.
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
 the entrance runs in order and the poof is over within the event's 3.4 seconds; that the goblin
 stands in the scene's `foeZone`, clear of the knight and of the whole class box of the pie and of
-every device on the ground, and does not come when there is no room; and, for the greatsword from the base pack and
-from code, the arming sword and the mace, at every spot the knight strolls to in both scenes, that
-the goblin stands within the weapon's reach, that the blade comes within 3 pixels of its crown at
-the hit and of a drawn pixel of its sprite, that the hit pose plays only from that moment, and that
-the blade never enters the goblin by more than 2. A sword is measured by its blade's outline and
-kept out of every drawn pixel of the goblin through the whole strike. The mace is measured by its
-drawn outline, read from the base pack's own shapes rather than from the engine, and kept out of
-the goblin's crown, the planned outline, laid where the goblin is drawn at each moment up to and
-including the hit. Its head meets the goblin where the swords do not, by the near ear at the camp
-beside a device in `g3`, and there the hit pose flings the near hand above the crown and the bounce
-brings a flange back across the ear's point, so the drawn goblin and the bounce are left out of the
-mace's check. The same check runs on Broad and Slim with each weapon. On every build and with each
-weapon the goblin comes wherever it comes on Classic, at the same spot, and is struck within 12 ms
-of Classic's hit, or 16 with the mace, which beside `g3` meets the goblin at the end of its reach,
-where each build changes which point of a flange meets it first (14 ms at most); at the knight's
-first spot the hits are, on Classic, Broad and Slim, with the greatsword 1657, 1659 and 1656 ms on
-the battlement and 1661, 1663 and 1659 at the camp, with the sword and shield 1697, 1705 and 1691 on
-the battlement and 1707, 1709 and 1706 at the camp, and with the mace and shield 1698, 1709 and
-1684 on the battlement and 1706, 1710 and 1703 at the camp, the goblin coming left of the knight in
-both since the scenes' redesign. The
-blade `bladeOf` measures is the rig's on the look's build, its grip raised by the build's height,
-and the present knight's on the code path. A blade too short to reach it anywhere keeps the goblin
-away.
+every device on the ground, and does not come when there is no room; and, for the greatsword from
+the base pack and from code, the arming sword, the longsword and the mace, each on Classic, Broad
+and Slim, that the goblin stands within the weapon's reach, that the blade the engine plans with
+(or the mace's drawn head) touches the goblin's crown at the hit, and that the weapon meets the
+goblin to [the contact standard](#the-contact-standard), at the spots the knight strolls to in both
+scenes, every 30 between, and the spots the full sweep found hardest. The goblin holds its brace
+for 16 ms after the hit (`hitPose` of the poof) and only then flings into its hit pose, squashed and
+with the burst from the hit itself; struck by a shot it flings at once. In the bounce a weapon in
+both hands lifts without rocking back and one in one hand rocks back by `kick` as well. The band
+the engine measures a sword by ends at its drawn point (`KW.knight.rest.point()`): the greatsword's
+tapers from 236 to 270, the longsword's from 198 to 228 and the arming sword's from 150 to 180. On
+every build and with each weapon the goblin comes wherever it comes on Classic, at the same spot,
+and is struck within 12 ms of Classic's hit, or 16 with the mace, which meets the goblin at the end
+of its reach, where each build changes which point of a flange meets it first (15 ms at most
+between the tested spots); at the knight's first spot the hits are, on Classic, Broad and Slim,
+with the greatsword 1657, 1659 and 1656 ms on the battlement and 1661, 1663 and 1659 at the camp,
+with the longsword 1658, 1661 and 1657 and 1662, 1664 and 1660, with the sword and shield 1703,
+1707 and 1699 on the battlement and 1710, 1712 and 1710 at the camp, and with the mace and shield
+1698, 1709 and 1684 on the battlement and 1706, 1710 and 1703 at the camp, the goblin coming left
+of the knight in both since the scenes' redesign. The blade `bladeOf` measures is the rig's on the
+look's build, its grip raised by the build's height, and the present knight's on the code path. A
+blade too short to reach it anywhere, its reach and its point shortened, keeps the goblin away.
 
 `tests/web/world-scenes.test.js` runs those of its checks that depend on a scene again on each scene
 of the medieval world's pack that hosts a foe, compiled from the pack: the entrance and the poof,
-where the goblin stands, the hits on every build and the blade against the goblin with each weapon.
+where the goblin stands, the hits on every build and the contact standard with each swung weapon on
+each build, with the goblin from the pack's cast.
 It also holds the goblin's whole plan there (where it stands, the line it comes over, the moment of
 the hit) to the plan in the code scene, for every weapon and build, and runs the checks of
 `places.test.js` on every scene of the pack. It runs every scene of the pack that has an act (a
@@ -389,6 +389,52 @@ repository's own, and the pack carriers against their pack files:
 node --test tests/tools/
 ```
 
+## The contact standard
+
+Every swung weapon meets the goblin as drawn, not as planned. The rule:
+
+- **Never more than 2 px in.** The whole drawn weapon (blade, guard, grip and pommel, or the
+  mace's head and haft) against every drawn pixel of the goblin, through the whole strike, from
+  the swing's start to the goblin's last drawn frame, the bounce included. A pixel both draw is as
+  deep as the larger of how far it lies inside the weapon and how far inside the goblin, counted
+  from pixel centre to pixel centre, so a pixel on an edge is 1 in.
+- **At the hit, at most 3 px apart.** The weapon at the hit against the goblin as drawn at that
+  moment (its brace, which it holds for 16 ms after the hit), the empty pixels between their
+  nearest pixels.
+- **On Classic, Broad and Slim alike**, each build struck within 12 ms of Classic's hit, or 16
+  with the mace.
+
+The shield is not held to it: it is drawn over the goblin at the hit, as accepted. The crossbow,
+which never strikes, must never be drawn on the goblin at all.
+
+`tools/contact-sweep/lib.js` and `measure.js` measure it from the page's own drawing: the knight
+drawn into a recording context, its weapon's fills told apart from the rest, and the goblin's pose
+laid on the grid as the engine draws it. `tests/web/foe.test.js` (on the code scenes) and
+`tests/web/world-scenes.test.js` (on the pack's) use them for each swung weapon on each build, at
+about 25 spots, every 8 ms and every ms around the hit and around anything deep; each weapon and
+build takes 2 to 3 seconds, about 35 seconds in each file.
+
+The full sweep checks every spot. Run it after any change to a weapon, the strike, the goblin or
+a scene that hosts it:
+
+```bash
+tools/contact-sweep.sh /tmp/kw-contact            # the pack's scenes, then the code's, compared
+QUICK=1 tools/contact-sweep.sh /tmp/kw-contact    # the pack's scenes alone
+```
+
+It measures every weapon the settings offer on every build and the code path's greatsword, in
+every scene that hosts the goblin, at every whole pixel the knight strolls over, with every
+combination of the pie and the ground devices, every 2 ms: 1 152 plans, the crossbow's 216 among
+them. It runs inside `tools/capped.sh` in four workers, about two and a half minutes for the pack's
+scenes and a minute and a half for the code's, which leave out the crossbow. It prints a line for each weapon and build (the plans, those deeper than 2 or
+apart by more than 3, the worst of each), the largest difference from Classic's hit for each
+weapon, and the count of faults, and exits 1 on any fault, on any difference between the pack's
+results and the code's, or when the base pack has a weapon with a blade that the sweep does not
+hold (add it to `ITEMS` in `lib.js`). It writes into the directory it is given, which belongs
+outside the repository: the results as JSON, `faults.md` listing every fault (where the knight
+stood, when, and where on the goblin and on the weapon), and `sheet.html` with a picture of the
+worst moment of each group of faults. It is not part of `node --test`.
+
 ## What each test file checks
 
 
@@ -408,8 +454,9 @@ own beside it; each takes about two minutes, the longest files of the suite. For
 Classic, chosen by name, against the stored record; Broad and Slim with each weapon in every pose
 and swing frame without a throw and within the look's cost; the hands on the grip on every build
 through both swings, the attack and the goblin strike; and the arm check on Broad and Slim.
-`tests/web/foe.test.js` checks the goblin's plan and hit on every build with each weapon, and that
-the blade the engine measures is the one drawn. `node --test tests/tools/` also checks that every pack
+`tests/web/foe.test.js` checks the goblin's plan and hit on every build with each weapon, the
+weapon against the goblin to [the contact standard](#the-contact-standard), and that the blade the
+engine measures is the one drawn. `node --test tests/tools/` also checks that every pack
 carrier matches its pack file, that the mouser cat's stamps and member in the medieval world's pack
 are what `tools/cat-stamps.js` writes from `web/js/cat.js` and read back to the code's pixels, that the copy of the settings schema in `web/js/settings.js` and the
 reference in `docs/configuration.md` are what `tools/settings-schema.js` writes, tests the signing tool with keys generated for the run, and checks

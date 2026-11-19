@@ -45,7 +45,8 @@ The seven `goblin-` shots play the goblin's event with the greatsword: on the ba
 rises over the wall (`goblin-rise`), at the hit (`goblin-bonk`, 1657 ms) and in the puff
 (`goblin-poof`); at the camp as it comes out of its hole (`goblin-camp-rise`), at the hit
 (`goblin-camp-bonk`, 1661 ms) and in the puff (`goblin-camp-poof`); and at the camp with three
-devices on the ground, which it stands clear of, as it pulls a face (`goblin-camp-g3`).
+devices on the ground, which it stands clear of, as it pulls a face (`goblin-camp-g3`). At the hit
+the goblin still holds its brace, squashed, as it does for 16 ms after a blade's blow.
 
 The nine `arm-` shots draw the arming sword and the heater shield (`arm=one`): the quiet battlement
 (`arm-battlement`), the yard's hot training (`on=cpu`) mid-swing (`arm-yard`), the attack
@@ -53,8 +54,9 @@ The nine `arm-` shots draw the arming sword and the heater shield (`arm=one`): t
 smithy with the sword on the anvil and the shield on the wall (`arm-update`), the swat to the left
 at the moment the sword passes in front of the shield (`arm-swat-left`), the cellar with the
 crate carried against the chest, at the largest headline (`arm-disk`), and the goblin a
-millisecond after the hit on the battlement (`arm-goblin-bonk`, hit at 1697 ms) and at the camp,
-with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1707 ms). Every other shot but `settings-look` has no `arm=`, so a change to the one-handed look leaves them
+millisecond after the hit on the battlement (`arm-goblin-bonk`, hit at 1703 ms) and at the camp,
+with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1710 ms), the sword's tapered point
+on the pot. Every other shot but `settings-look` has no `arm=`, so a change to the one-handed look leaves them
 byte for byte the same. A copy of the page from before the hook draws the greatsword in the `arm-`
 shots, so against such a reference those differ and the rest compare as usual.
 
@@ -97,8 +99,10 @@ four quiet scenes with the knight standing (`is-`); the attack, tight memory's b
 crate carried, the smithy's hammering, asleep in bed, the sick tint in bed, the hot tint in the yard
 and the court (`on-`); the stance with the sword and shield (`arm-battlement`); the swat on the
 battlement, which is the swing, with each weapon (`swing-two-`, `swing-one-`), both ways at the
-wind-up (q .3), mid cut (q .42) and the cut's end (q .55); the goblin a millisecond after each
-weapon's hit on that build (`goblin-bonk` at 1660 and 1657 ms, `arm-goblin-bonk` at 1706 and 1692);
+wind-up (q .3), mid cut (q .42) and the cut's end (q .55); the goblin about each weapon's hit on
+that build (`goblin-bonk` at 1660 and 1657 ms, a millisecond after the greatsword's hits, the goblin
+still braced; `arm-goblin-bonk` at 1708 and 1700, after the arming sword's hits of 1707 and
+1699);
 and the settings screen's knight page with the build chosen (`settings-knight`), the build chosen by
 the address's `bd=` hook. No other shot has `bd=`, so they change nothing else in a comparison, and
 against a reference from before them they are missing.  The 62 `ref-` shots follow the builds'
@@ -360,5 +364,14 @@ on two moments of three streams, on one stream, with titles alone and with the c
 streams' badge beside `+1 MORE` at each headline size and alone at court, with the demo's invented
 streams (`st=`, `sm=`). Against a reference from before the streams' sessions they are missing, and
 the nine shots that show streaming differ in their words: `on-plex` and the eight `cat-house-`
-shots. A headless browser has no saved choices, so every shot shows what its address asks for.
+shots. Against a reference from before the swung weapons were held to the contact standard
+([tests.md](./tests.md#the-contact-standard)), the shots of the goblin's hit and puff differ: the
+goblin holds its brace for 16 ms after a blade's blow (`goblin-bonk`, `goblin-camp-bonk`,
+`bd-b-goblin-bonk`, `bd-c-goblin-bonk`, and in the worlds' set `orbit-glitch-bonk`,
+`orbit-mix-glitch` and `orbit-swap-goblin`); a weapon in both hands no longer rocks back in the
+bounce, so the greatsword stands otherwise in the return (`goblin-poof`, `orbit-glitch-poof`), and
+the test world's prod, held in both hands, differs in both ways (`orbit-fire-prod-bonk`); and the
+arming sword meets the goblin by its tapered point, a few ms later, so the four `arm-goblin-` shots
+are timed to the new hits. Every other shot is the same.
+A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.

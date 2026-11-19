@@ -64,8 +64,13 @@ and `hip` move no anchor. The hands and the weapon follow the build too: see the
 knight from outside measures the knight drawn. `engine.js` does: `bladeOf` finds the blade on the
 rig, and through it `foeGaps`, `contactQ` and the goblin's plan work out where the blade meets the
 goblin on the build drawn (see [Modes](./display.md#modes)). The weapon is measured by its blade's outline, the
-`blade` with 4 pixels along each edge and a little more at the point, unless its drawing is wider
-than that beyond the blade's middle by a pixel or more. Such a weapon has a head the outline does
+`blade` with 4 pixels along each edge, full width as far as the drawn point starts and tapering from
+there to the drawn tip, as `KW.knight.rest.point()` gives them: the greatsword's from 236 to 270
+along its frame, the longsword's from 198 to 228 and the arming sword's from 150 to 180, read once
+for each look from the drawing as the head is (below), and on the code path the greatsword's as
+`swordHD` draws it. Measured as a band running full width to the tip, the arming sword stopped on
+the empty corners beside its point, up to 11 pixels short of the goblin. That holds unless the
+weapon's drawing is wider than its outline beyond the blade's middle by a pixel or more. Such a weapon has a head the outline does
 not describe, and `KW.knight.rest.head()` gives the pieces its `main` list draws past the hand, read
 once for each look by drawing the list on a frame of its own: each shape as the exact circle or
 convex polygon it fills, an ellipse, a rounded rectangle or a pixel shape as the box around it, and
@@ -75,7 +80,7 @@ has a head: its flanges reach 27 across its frame where its blade's outline give
 reaches 151 along it, past the outline's 143, and its haft is 7 across. Measured as a straight
 blade, its swing stopped on the empty corners of that outline, up to 13 pixels short of the goblin,
 or let the flanges into it by up to 7. The swords' drawings past the middle are exactly as wide as
-their outlines, so they are measured as before. On the code path the knight is always the present
+their outlines, so they are measured by the band and its point. On the code path the knight is always the present
 knight. `rig(o, build)` takes another build's measurements, which only the tests pass.
 
 **The grip** is in the result's `grip` and places the hands and `main`:
@@ -422,6 +427,7 @@ compiler turns into the same calls ([scenes.md](./scenes.md#how-a-scene-compiles
 |---|---|
 | `draw(slot, x, y, a)` | draws the equipped item of `slot` at rest. `'helmet'`: the helmet's rest view on the `rest` anchor at `(x, y)`, the middle of its foot on a surface, with the plume's rest view behind it on the view's plume mount. `'off'`: the shield's rest view on the `rest` anchor at `(x, y)`, the top middle of a `hang` place, which for the base pack's shield is the nail it hangs from. `'main'`: the weapon's worn shapes on a frame with the middle of its grip at `(x, y)` along the angle `a` (0 is straight up, and `Math.PI / 2` lays it flat with the point to the right). Any other slot draws nothing, and on the code path `'off'` draws nothing, since the code path has no shield |
 | `reach()` | the equipped weapon's reach, `{ from, to, half }` in frame units: its `blade`, or for a weapon that only fires its `barrel`, or `null` when it gives neither. A weapon both swung and fired gives its `blade`. On the code path, the greatsword's `{ from: 34, to: 263, half: 15 }`. The engine measures a swing with it (`bladeOf()` in `engine.js`) |
+| `point()` | the equipped blade's point as drawn, `{ at, to }` in frame units along its frame: the outline full width as far as `at` and tapering to the tip at `to`, read from the weapon's `main` list once for each look. `null` for a weapon with no blade and for one measured by its head (`rest.head()`, the mace); on the code path the greatsword's `{ at: 236, to: 270 }`. The engine's band ends there (`bladeOf()` in `engine.js`) |
 | `key(slot)` | the equipped item's name, `<pack>/<item>`, or `''` when the slot is empty; `'code'` on the code path |
 | `fits(slot, place)` | whether the equipped item of `slot` may rest in `place`, `{ kind, w, h }`: its rest view's `fits` is the place's `kind` and its `box` no wider than `w` nor taller than `h`. Always true for `'main'`, which has no rest view, for an empty slot or an item without a rest view, and on the code path |
 
