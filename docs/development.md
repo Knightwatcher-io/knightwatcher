@@ -61,6 +61,8 @@ tools/
   icons/             icon-16.svg, icon-32.svg and icon-48.svg for favicon.ico, icon-d.svg for
                      the larger icons
   shots.sh           regression screenshots of the page
+  contact-sweep.sh   every swung weapon against the drawn goblin at every spot, held to the
+                     contact standard (its scripts in contact-sweep/, which the page's tests share)
   capped.sh          runs a command within a ceiling on CPU and memory, for the checks
   check-private.sh   the check that no private detail is tracked
   private-patterns.example.txt  the template of the patterns check-private.sh reads
@@ -158,6 +160,15 @@ tools/shots.sh compare-worlds /tmp/kw-worlds-ref /tmp/kw-worlds-new
 
 [tests.md](./tests.md) says what each test file checks, and [shots.md](./shots.md) what the
 screenshots show and what to expect against an older reference.
+
+After any change to a weapon, the strike, the goblin or a scene that hosts it, run the contact
+sweep as well. The page's tests hold the swung weapons to the contact standard at a few dozen spots;
+the sweep holds them to it at every spot the knight strolls over, on every build, in about four
+minutes, and exits 1 on any fault ([tests.md](./tests.md#the-contact-standard)):
+
+```bash
+tools/contact-sweep.sh /tmp/kw-contact
+```
 
 Three files are written by a tool, and each tool has a `--check` mode that writes nothing and exits
 1 when the file in the tree is not what it would write:

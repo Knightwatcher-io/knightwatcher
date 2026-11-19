@@ -79,10 +79,10 @@ SHOTS=(
   "goblin-camp-bonk|bar=0&t=1661&is=camp&e=goblin"
   "goblin-camp-poof|bar=0&t=2400&is=camp&e=goblin"
   "goblin-camp-g3|bar=0&t=1300&is=camp&e=goblin&dv=pi,machine,vm,box"
-  # the goblin bonked with the sword and shield, a moment after the hit: on the battlement at 1697,
-  # at the camp at 1707
-  "arm-goblin-bonk|bar=0&t=1698&is=battlement&e=goblin&arm=one"
-  "arm-goblin-camp-bonk|bar=0&t=1708&is=camp&e=goblin&arm=one"
+  # the goblin bonked with the sword and shield, a millisecond after the hit: on the battlement at
+  # 1703, at the camp at 1710
+  "arm-goblin-bonk|bar=0&t=1704&is=battlement&e=goblin&arm=one"
+  "arm-goblin-camp-bonk|bar=0&t=1711&is=camp&e=goblin&arm=one"
   # the free options, chosen by the look hooks (sk= hc= hy= tb= pm=): looks other than the default,
   # the tail of the tied hair under the helmet, a sick and a hot face on dark skins, and the brows'
   # dark edge where the brows are near the skin's own lightness
@@ -156,7 +156,7 @@ SHOTS=(
   "bd-b-swing-one-left-cut|bar=0&t=1278&is=battlement&f=6&sw=1&arm=one&bd=b"
   "bd-b-swing-one-left-end|bar=0&t=1395&is=battlement&f=6&sw=1&arm=one&bd=b"
   "bd-b-goblin-bonk|bar=0&t=1660&is=battlement&e=goblin&bd=b"
-  "bd-b-arm-goblin-bonk|bar=0&t=1706&is=battlement&e=goblin&arm=one&bd=b"
+  "bd-b-arm-goblin-bonk|bar=0&t=1708&is=battlement&e=goblin&arm=one&bd=b"
   "bd-b-settings-knight|bar=0&t=2300&is=battlement&set=knight&bd=b"
   "bd-c-is-battlement|bar=0&t=2300&is=battlement&bd=c"
   "bd-c-is-camp|bar=0&t=2300&is=camp&bd=c"
@@ -184,7 +184,7 @@ SHOTS=(
   "bd-c-swing-one-left-cut|bar=0&t=1278&is=battlement&f=6&sw=1&arm=one&bd=c"
   "bd-c-swing-one-left-end|bar=0&t=1395&is=battlement&f=6&sw=1&arm=one&bd=c"
   "bd-c-goblin-bonk|bar=0&t=1657&is=battlement&e=goblin&bd=c"
-  "bd-c-arm-goblin-bonk|bar=0&t=1692&is=battlement&e=goblin&arm=one&bd=c"
+  "bd-c-arm-goblin-bonk|bar=0&t=1700&is=battlement&e=goblin&arm=one&bd=c"
   "bd-c-settings-knight|bar=0&t=2300&is=battlement&set=knight&bd=c"
   # the reference set for converting the scenes to pack data, beside the call records of
   # tests/web/scenes.test.js: each condition in each scene that can act it where no shot above shows

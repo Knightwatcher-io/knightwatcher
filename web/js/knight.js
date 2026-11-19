@@ -447,6 +447,8 @@
   /* The greatsword's blade on the code path: the inner edges of the blade along its frame, as
      swordHD draws them. */
   const SWORD_BLADE = Object.freeze({ from: 34, to: 263, half: 15 });
+  /* Its point, as swordHD draws its outline: full width to s 236, tapering to the tip at s 270. */
+  const SWORD_POINT = Object.freeze({ at: 236, to: 270 });
 
   /* Draws the equipped item of slot at rest: 'helmet' with the rest anchor at (x, y), its foot's
      middle on a surface; 'off' with the rest anchor at (x, y), the top middle of a 'hang' place; or
@@ -489,16 +491,36 @@
      reaches along the frame, half the furthest across it, and bc and br the circle around them all. An ellipse that is not a circle, a rounded rectangle
      and a pixel shape count as the box around them. Worked out once for each look, by drawing the
      weapon's list on a frame of its own, upright with its grip at 0, 0. */
-  let headLook = null, headOf = null;
+  let headLook = null, headOf = null, pointOf = null;
   function restHead() {
     if (!PK.look) return null;
-    if (PK.look !== headLook) {
-      headLook = PK.look; headOf = null;
-      try { headOf = drawnHead(PK.look); } catch (e) { headOf = null; }
-    }
+    measureLook();
     return headOf;
   }
-  function drawnHead(look) {
+  /* The equipped blade's point, as drawn, for the engine's reach (bladeOf in engine.js): { at, to }
+     in frame units, the outline full width as far as s at and tapering to its tip at s to, as the
+     outline the weapon's list draws does. null for a weapon with no blade and for one measured by
+     its head (restHead); on the code path the greatsword's, as swordHD draws it. Worked out with the
+     head, once for each look. */
+  function restPoint() {
+    if (!PK.look) return SWORD_POINT;
+    measureLook();
+    return pointOf;
+  }
+  function measureLook() {
+    if (PK.look === headLook) return;
+    headLook = PK.look; headOf = null; pointOf = null;
+    let pieces = null;
+    try { pieces = drawnPieces(PK.look); } catch (e) { pieces = null; }
+    if (!pieces) return;
+    try { headOf = drawnHead(PK.look, pieces); } catch (e) { headOf = null; }
+    if (!headOf) try { pointOf = drawnPoint(PK.look, pieces); } catch (e) { pointOf = null; }
+  }
+  /* The pieces the weapon's list draws, in frame units, upright with its grip at 0, 0: each a circle
+     { c: [s, p], r } or a convex polygon { pts: [[s, p], ...] } counter-clockwise. An ellipse that
+     is not a circle, a rounded rectangle and a pixel shape count as the box around them. null for a
+     weapon with no blade. */
+  function drawnPieces(look) {
     const b = look.blade, lib = PK.lib;
     if (!b || !look.lists.main) return null;
     // upright, the frame's s runs up the screen and p to the right: a point drawn at (x, y) is [-y, x]
@@ -521,18 +543,33 @@
       }
     };
     lib.draw(look.lists.main, A, PK.rV, rec);
-    const sOf = pc => (pc.c ? [pc.c[0] - pc.r, pc.c[0] + pc.r] : [Math.min(...pc.pts.map(q => q[0])), Math.max(...pc.pts.map(q => q[0]))]);
-    // how far across the frame a piece reaches beyond s0 along it
-    const across = (pc, s0) => {
-      if (pc.c) { const [cs, cp] = pc.c, r = pc.r; return cs + r <= s0 ? 0 : Math.abs(cp) + (cs >= s0 ? r : Math.sqrt(r * r - (s0 - cs) * (s0 - cs))); }
-      let w = 0;
-      for (let i = 0; i < pc.pts.length; i++) {
-        const u = pc.pts[i], v = pc.pts[(i + 1) % pc.pts.length];
-        if (u[0] >= s0) w = Math.max(w, Math.abs(u[1]));
-        if ((u[0] - s0) * (v[0] - s0) < 0) w = Math.max(w, Math.abs(u[1] + (v[1] - u[1]) * (s0 - u[0]) / (v[0] - u[0])));
-      }
-      return w;
-    };
+    return pieces;
+  }
+  const sOf = pc => (pc.c ? [pc.c[0] - pc.r, pc.c[0] + pc.r] : [Math.min(...pc.pts.map(q => q[0])), Math.max(...pc.pts.map(q => q[0]))]);
+  /* How far across the frame a piece reaches beyond s0 along it. */
+  function across(pc, s0) {
+    if (pc.c) { const [cs, cp] = pc.c, r = pc.r; return cs + r <= s0 ? 0 : Math.abs(cp) + (cs >= s0 ? r : Math.sqrt(r * r - (s0 - cs) * (s0 - cs))); }
+    let w = 0;
+    for (let i = 0; i < pc.pts.length; i++) {
+      const u = pc.pts[i], v = pc.pts[(i + 1) % pc.pts.length];
+      if (u[0] >= s0) w = Math.max(w, Math.abs(u[1]));
+      if ((u[0] - s0) * (v[0] - s0) < 0) w = Math.max(w, Math.abs(u[1] + (v[1] - u[1]) * (s0 - u[0]) / (v[0] - u[0])));
+    }
+    return w;
+  }
+  /* The blade's point as drawn: the tip is as far as any piece reaches along the frame, and the
+     taper starts where the drawing beyond is last as wide as it is at the blade's middle. null when
+     the drawing does not reach past the middle. */
+  function drawnPoint(look, pieces) {
+    const b = look.blade, wideAt = s0 => Math.max(0, ...pieces.map(pc => across(pc, s0)));
+    const mid = (b.from + b.to) / 2, full = wideAt(mid), to = Math.max(...pieces.map(pc => sOf(pc)[1]));
+    if (!(to > mid) || !(full > 0)) return null;
+    let lo = mid, hi = to;
+    for (let i = 0; i < 40; i++) { const s = (lo + hi) / 2; if (wideAt(s) >= full - 1e-6) lo = s; else hi = s; }
+    return Object.freeze({ at: Math.round(lo * 100) / 100, to });
+  }
+  function drawnHead(look, pieces) {
+    const b = look.blade;
     const mid = (b.from + b.to) / 2, wide = Math.max(0, ...pieces.map(pc => across(pc, mid)));
     if (wide - (b.half + 4) < 1) return null;
     // a piece wholly inside another (an inner fill inside its outline) adds nothing to the reach;
@@ -1064,5 +1101,5 @@
   const rigOf = (o, b) => rig(o, b || (PK.look ? PK.look.m : BUILD));
   KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, ownReturn, head: headAtCorner, speech: speechHD,
     fire, volley, muzzle: muzzleOf, shieldFace, headBox, fired: () => FIRE, aim: { pose: aimPose, angle: aimAngle, AIM, AIM1, AIM2, LIFT },
-    rest: { draw: restHD, reach: restReach, head: restHead, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
+    rest: { draw: restHD, reach: restReach, head: restHead, point: restPoint, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);
