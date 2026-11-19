@@ -61,7 +61,7 @@
     draft: null, confirm: null, menu: false, exp: null, resetAsk: false, scrollTo: null, reveal: false, dirty: false };
 
   /* ---- The schema ------------------------------------------------------------------------------- */
-  let TABLES, SPEC, COND, SCENE, SOURCES, CREDS, PRIORITY;
+  let TABLES, SPEC, COND, SCENE, SOURCES, CREDS, PROVIDERS, PRIORITY;
   function readSchema(schema) {
     S = schema; TABLES = {}; SPEC = {}; COND = {}; SCENE = {};
     for (const t of S.tables) { TABLES[t.table] = t; for (const s of t.settings) SPEC[t.table + '.' + s.key] = Object.assign({ table: t.table }, s); }
@@ -69,6 +69,7 @@
     for (const c of S.scenes) SCENE[c.id] = c.name;
     SOURCES = S.tables.filter(t => t.table.startsWith('sources.')).map(t => t.table.slice(8));
     CREDS = S.env.filter(e => e.scope === 'credential');
+    PROVIDERS = S.providers || [];
     PRIORITY = SPEC['conditions.priority'].default;
   }
   const WALL = ['look', 'display', 'quiet', 'scenes'];
@@ -76,7 +77,11 @@
   /* The admin section's place, "Conditions: under attack": the page, and the group within it. */
   const groupOf = section => { const i = section.indexOf(': '); return i < 0 ? section : cap(section.slice(i + 2)); };
   const varOf = (secret, field) => 'KNIGHTWATCHER_' + secret.toUpperCase() + '_' + field.toUpperCase();
-  const needs = name => CREDS.filter(e => e.source === name);
+  /* The provider a source reads: its from, or the provider of its own name. A provider names the
+     credentials it reads. */
+  const providerOf = name => (SPEC['sources.' + name + '.from'] ? val('sources.' + name + '.from') || SPEC['sources.' + name + '.from'].default : name);
+  const needs = name => CREDS.filter(e => e.provider === providerOf(name));
+  const readersOf = provider => SOURCES.filter(n => providerOf(n) === provider);
 
   /* ---- Where each value comes from: set here, config.toml, or the default ------------------------- */
   let OWN = {}, PACK = null;
@@ -264,6 +269,7 @@
       return l;
     }
     if (s.type === 'boolean') return sw(v, () => set(!v), label);
+    if (s.values_from === 'providers') return seg(PROVIDERS.filter(p => p.kind === s.kind).map(p => [p.id, p.name]), v, nv => set(nv));
     if (s.values && s.type !== 'list') return seg(s.values.map(x => [x, String(x)]), v, nv => set(nv));
     if (s.type === 'integer' || s.type === 'number') {
       const l = el('div', 'line'), i = textIn('num', words(v, s), t => set(typed(s, t), t), shown, label);
@@ -334,7 +340,7 @@
     { id: 'scenes', name: 'Scenes', count: () => setCount('scenes') },
     { id: 'env', name: '.env', count: () => 0, bad: () => missingNeeded().length }
   ];
-  const missingNeeded = () => CREDS.filter(e => srcOn(e.source) && credState(varOf(val('sources.' + e.source + '.secret') || e.secret, e.field)) === false);
+  const missingNeeded = () => CREDS.filter(e => readersOf(e.provider).some(n => srcOn(n) && credState(varOf(val('sources.' + n + '.secret') || e.secret, e.field)) === false));
   function countWords(p) {
     const n = p.count(), b = p.bad ? p.bad() : 0;
     if (b) return [p.id === 'env' ? b + ' missing' : b + ' failing', true];
@@ -801,14 +807,18 @@
     for (const [title, help, list] of groups) {
       const c = card(title, null, help);
       for (const e of list) {
-        const cred = e.scope === 'credential', name = cred ? varOf(val('sources.' + e.source + '.secret') || e.secret, e.field) : e.name, ok = cred ? credState(name) : true, need = cred && srcOn(e.source);
+        const readers = cred ? readersOf(e.provider) : [], src = readers[0];
+        const name = cred && src ? varOf(val('sources.' + src + '.secret') || e.secret, e.field) : e.name, ok = cred ? credState(name) : true, need = cred && readers.some(srcOn);
         const r = el('div', 'envrow' + (cred && ok === false && need ? ' missing' : '')), l = el('div', 'lab'); l.appendChild(el('b', '', e.gui.admin.label)); l.appendChild(el('code', '', name)); r.appendChild(l);
         const ct = el('div', 'ctl'); ct.appendChild(rich('p', 'help', e.help));
         if (e.form || e.example) ct.appendChild(rich('p', 'help', 'Possible values: ' + (e.form || 'a host path') + (e.example ? ', such as `' + e.example + '`.' : '.')));
-        if (cred) {
-          const t = TABLES['sources.' + e.source], sn = groupOf(t.settings[0].gui.admin.section);
-          const fl = el('p', 'help'); fl.appendChild(document.createTextNode('For ' + sn + ', which is ' + (need ? 'on' : srcThere(e.source) ? 'off' : 'not in config.toml') + '. '));
-          fl.appendChild(btn('btn small', 'Open ' + sn, () => { go('sources'); st.open[e.source] = true; render(true); })); ct.appendChild(fl);
+        if (cred && src) {
+          const t = TABLES['sources.' + src], sn = groupOf(t.settings[0].gui.admin.section);
+          const fl = el('p', 'help'); fl.appendChild(document.createTextNode('For ' + sn + ', which is ' + (need ? 'on' : srcThere(src) ? 'off' : 'not in config.toml') + '. '));
+          fl.appendChild(btn('btn small', 'Open ' + sn, () => { go('sources'); st.open[src] = true; render(true); })); ct.appendChild(fl);
+        } else if (cred) {
+          const p = PROVIDERS.find(x => x.id === e.provider);
+          ct.appendChild(el('p', 'help', 'For ' + (p ? p.name : e.provider) + ', which no source reads now.'));
         } else if (e.default !== null && e.default !== undefined) ct.appendChild(rich('p', 'help', 'Left out, it is `' + (e.default === '' ? 'empty' : e.default) + '`.'));
         r.appendChild(ct);
         const sx = el('div', 'st');

@@ -1,0 +1,80 @@
+{
+ "about": "Radarr's history of imports, newest first, every value invented; Radarr gives 0 for a year it does not know.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true",
+    "headers": {
+     "X-Api-Key": "{credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "page": 1,
+     "pageSize": 10,
+     "totalRecords": 2,
+     "records": [
+      {
+       "movieId": 345,
+       "sourceTitle": "Harbour.of.Glass.2023.1080p",
+       "quality": {
+        "quality": {
+         "id": 7,
+         "name": "Bluray-1080p"
+        }
+       },
+       "date": "2026-01-15T19:12:44Z",
+       "eventType": "downloadFolderImported",
+       "data": {},
+       "movie": {
+        "title": "Harbour of Glass",
+        "originalTitle": "Harbour of Glass",
+        "year": 2023,
+        "id": 345
+       },
+       "id": 305
+      },
+      {
+       "movieId": 344,
+       "sourceTitle": "Night.Lines.0.1080p",
+       "quality": {
+        "quality": {
+         "id": 7,
+         "name": "Bluray-1080p"
+        }
+       },
+       "date": "2026-01-15T19:12:44Z",
+       "eventType": "downloadFolderImported",
+       "data": {},
+       "movie": {
+        "title": "Night Lines",
+        "originalTitle": "Night Lines",
+        "year": 0,
+        "id": 344
+       },
+       "id": 304
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "fill": {
+  "records": [
+   {
+    "id": 305,
+    "title": "Harbour of Glass (2023)"
+   },
+   {
+    "id": 304,
+    "title": "Night Lines"
+   }
+  ]
+ }
+}

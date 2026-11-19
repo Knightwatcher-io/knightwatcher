@@ -128,8 +128,11 @@ browser: the collector, the conditions, the sources and the devices, and the hou
 display, quiet scenes and scenes that the walls' settings screens also change. Its value for each
 setting comes from one of three levels, highest first: what is set on the page, `config.toml`, and
 the default ([configuration.md](./configuration.md#where-the-collectors-settings-come-from)).
-Credentials are never typed or shown there: the page says, by name, which ones `.env` holds. The
-page itself is described in [display.md](./display.md#the-admin-page).
+Credentials are never typed or shown there: the page says, by name, which ones `.env` holds. A
+source read through a provider (streams and adverts blocked) has Read from, a choice of the
+providers of its kind ([collector.md](./collector.md#kinds-and-providers)), and each source names
+the credential variables its provider reads. The page itself is described in
+[display.md](./display.md#the-admin-page).
 
 It is behind the admin password, `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env`, which `compose.yaml`
 gives to the server alone. While it is missing, or shorter than 12 characters, the page is off and

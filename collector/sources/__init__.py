@@ -1,4 +1,5 @@
-"""Sources: one module per thing the collector reads.
+"""Sources: one module per thing the collector reads, and KindSource for the sections read through
+a kind and a provider (collector/kinds/, collector/providers/).
 
 Every source follows the interface of `Source`. The runner calls `fetch` in a worker thread with
 a deadline, and `observe` afterwards in the main thread. A source that raises is marked not ok
@@ -16,6 +17,7 @@ from collector.net import AuthError, SourceError
 
 __all__ = [
     "AuthError",
+    "KindSource",
     "MissingCredentials",
     "Reading",
     "Source",
@@ -80,23 +82,56 @@ class MissingCredentials(Source):
         raise SourceError(f"{' and '.join(self.variables)} missing")
 
 
+class KindSource(Source):
+    """A section read through a kind: its provider fills the kind's shape, and the kind makes the
+    reading and the events. What the runner sees is a source like any other."""
+
+    def __init__(self, name: str, settings: dict[str, Any], config: Config):
+        from collector import kinds, providers
+
+        super().__init__(settings, config)
+        self.name = name
+        self.kind = kinds.kind_class(kinds.SECTIONS[name])()
+        self.section = self.kind.section
+        self.spec = providers.get(kinds.provider_of(name, settings))
+        self.allowed = self.kind.allowed(settings)
+        self.provider = providers.make(
+            self.spec, settings, config.secret(name), self.timeout, self.allowed
+        )
+
+    @property
+    def identity(self) -> str:
+        """The provider and the version of its file, for the runner's test of sameness."""
+        return f"{self.spec.id}:{self.spec.digest}"
+
+    def fill(self, now: dt.datetime) -> dict:
+        """One read of the provider, held to the kind's declaration."""
+        from collector.kinds import check_fill
+
+        return check_fill(self.kind.FILL, self.provider.read(now), self.allowed)
+
+    def fetch(self, now: dt.datetime) -> Reading:
+        return self.kind.reading(self.fill(now), self.settings, self.config, now)
+
+    def observe(self, reading: Reading, memory: dict, now: dt.datetime) -> list[dict]:
+        return self.kind.observe(reading, memory, self.settings, self.config, now)
+
+
 def _variables(problems: list[str]) -> list[str]:
     """The variables named by the problems of Config.missing: ".env: NAME missing (for x)"."""
     return [p.split(": ", 1)[1].split(" ", 1)[0] for p in problems]
 
 
 def build_sources(config: Config) -> list[Source]:
+    from collector.kinds import SECTIONS
     from collector.sources import (
-        adblock,
         backup,
         containers,
         devices,
         dns,
         host,
-        imports,
         security,
         ssh,
-        streams,
         updates,
         wan,
     )
@@ -109,11 +144,7 @@ def build_sources(config: Config) -> list[Source]:
         "backup": backup.BackupSource,
         "updates": updates.UpdatesSource,
         "ssh": ssh.SshSource,
-        "streams": streams.StreamsSource,
-        "adblock": adblock.AdblockSource,
         "security": security.SecuritySource,
-        "sonarr": imports.SonarrSource,
-        "radarr": imports.RadarrSource,
     }
     built: list[Source] = []
     for name, settings in config.sources.items():
@@ -124,6 +155,8 @@ def build_sources(config: Config) -> list[Source]:
         elif name in config.missing:
             variables = _variables(config.missing[name])
             built.append(MissingCredentials(name, settings, config, variables))
+        elif name in SECTIONS:
+            built.append(KindSource(name, settings, config))
         else:
             built.append(classes[name](settings, config))
     built += [devices.DeviceSource(t, config) for t in config.devices if not t["legacy"]]

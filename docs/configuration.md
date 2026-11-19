@@ -94,11 +94,12 @@ variables and nothing else from the file, and the server gets none. The server g
 characters, the admin page stays off and says why, and the walls work as before. A credential that no enabled
 source needs may be left empty or out; the collector's check names any it needs and lacks.
 
-A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals,
-where `SECRET` is the source's `secret` setting (`tautulli`, `adguard`, `sonarr` or `radarr`
-unless set). A source given `secret = "sonarr_4k"` therefore reads
-`KNIGHTWATCHER_SONARR_4K_API_KEY`, and that name must be added to the `environment` list in
-`compose.yaml` too.
+A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals.
+Its provider names the fields (Tautulli's is `api_key`, AdGuard Home's `username` and `password`;
+[Providers](#providers) lists them), and `SECRET` is the source's `secret` setting, which is the
+provider's id unless set: `tautulli`, `adguard`, `sonarr` or `radarr`. A source given
+`secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and that name must be
+added to the `environment` list in `compose.yaml` too.
 
 Values are written as docker compose reads them: one `NAME=value` a line, `#` for a comment. A
 value holding `$`, `#`, a space or a quote goes in single quotes, such as `'pa$$ word#1'`, so that
@@ -374,26 +375,28 @@ Open SSH sessions.
 
 ### [sources.streams]
 
-Streams playing, from Tautulli.
+Streams playing, from the service its provider reads: Tautulli by default.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `url` | an http:// or https:// address | required | household | Base URL of Tautulli. |
+| `from` | `"tautulli"`: a provider of the streams kind (see Providers below) | `"tautulli"` | household | The provider the streams are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
+| `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
 | `show` | `"names"`, `"titles"` or `"count"` | `"names"` | household | What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file. |
-| `secret` | letters, digits and underscores | `"tautulli"` | household | The name its credential is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's is API_KEY). Left out, it is the provider's id. Set in config.toml alone. |
 
 ### [sources.adblock]
 
-Blocked adverts, from AdGuard Home.
+Blocked adverts, from the service its provider reads: AdGuard Home by default.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `url` | an http:// or https:// address | required | household | Base URL of AdGuard Home. |
-| `secret` | letters, digits and underscores | `"adguard"` | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_USERNAME and KNIGHTWATCHER_<SECRET>_PASSWORD, in capitals. Set in config.toml alone. |
+| `from` | `"adguard"`: a provider of the adblock kind (see Providers below) | `"adguard"` | household | The provider the blocked queries are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
+| `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD). Left out, it is the provider's id. Set in config.toml alone. |
 | `fly_every_s` | a number of seconds, zero or more | `300.0` | household | Average seconds between flies while blocking runs at the household's normal rate, which AdGuard Home's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query. |
 
 ### [sources.security]
@@ -415,7 +418,7 @@ Episodes imported, from Sonarr.
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Sonarr. |
-| `secret` | letters, digits and underscores | `"sonarr"` | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
 
 ### [sources.radarr]
 
@@ -426,7 +429,7 @@ Films imported, from Radarr.
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Radarr. |
-| `secret` | letters, digits and underscores | `"radarr"` | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
 
 ### [[device]]
 
@@ -516,6 +519,17 @@ Where the knight acts out each condition that more than one scene can play, for 
 | `pi_silent` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"` or `"house"` | none; the page's own is `"house"` | display | Where the knight acts out a silent Pi. |
 | `cpu_hot` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"` or `"cellar"` | none; the page's own is `"yard"` | display | Where the knight acts out a hot CPU. |
 
+### Providers
+
+The services the sections read through a kind can read, each by its provider. A section with `from` reads the provider it names, of its own kind; any other reads the provider of its own name. A provider names the credentials it reads from `.env`, `KNIGHTWATCHER_<SECRET>_<FIELD>`, where `<SECRET>` is the section's `secret`, the provider's id when it is left out. [providers.md](./providers.md) describes the provider files.
+
+| Provider | Kind | Service | Read by | Credentials |
+|---|---|---|---|---|
+| `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KNIGHTWATCHER_ADGUARD_USERNAME`, `KNIGHTWATCHER_ADGUARD_PASSWORD` |
+| `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]` | `KNIGHTWATCHER_RADARR_API_KEY` |
+| `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]` | `KNIGHTWATCHER_SONARR_API_KEY` |
+| `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KNIGHTWATCHER_TAUTULLI_API_KEY` |
+
 ### .env
 
 Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, the admin password reaches the server alone, and the credentials reach the collector alone.
@@ -530,11 +544,11 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KNIGHTWATCHER_SERVER_ADDRESS` | server | an address of this host, or empty for all of them, such as `127.0.0.1` | empty | The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network. |
 | `KNIGHTWATCHER_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
 | `KNIGHTWATCHER_ADMIN_PASSWORD` | server | a password of at least 12 characters, or empty to leave the admin page off, such as `a-long-password-of-your-own` | empty | The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out. |
-| `KNIGHTWATCHER_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for [sources.streams]. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for [sources.adblock]. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_SONARR_API_KEY` | credential | 32 hexadecimal characters, such as `fedcba9876543210fedcba9876543210` | none | Sonarr's API key, for [sources.sonarr]. In Sonarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_RADARR_API_KEY` | credential | 32 hexadecimal characters, such as `00112233445566778899aabbccddeeff` | none | Radarr's API key, for [sources.radarr]. In Radarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_SONARR_API_KEY` | credential | 32 hexadecimal characters, such as `fedcba9876543210fedcba9876543210` | none | Sonarr's API key, for the sonarr provider, which [sources.sonarr] reads. In Sonarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_RADARR_API_KEY` | credential | 32 hexadecimal characters, such as `00112233445566778899aabbccddeeff` | none | Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 
 <!-- settings-reference:end -->
 
@@ -544,7 +558,15 @@ Every variable the project reads from `.env`. The host paths are the folders and
 
 A source runs when its `[sources.<name>]` table is present and its `enabled` is not `false`.
 Between reads its last reading stands, and it raises no events. An `every_s` below `interval_s`
-means every poll. `host` should be read at least as often as the shorter averaging window; when it
+means every poll.
+
+`[sources.streams]` and `[sources.adblock]` read a service through a provider, named by `from`:
+`tautulli` and `adguard`, the defaults, so a table without `from` reads what it always has.
+`[sources.sonarr]` and `[sources.radarr]` read the provider of their own name. A `from` that
+names no provider, or a provider of another kind, is refused by name
+(`sources.streams.from: unknown provider "plx"; use tautulli`), so a typo never falls back to the
+default. A source that is off is checked when it is turned on, as for its other settings.
+[providers.md](./providers.md) describes the provider files. `host` should be read at least as often as the shorter averaging window; when it
 is read less often, an average reaches back to the previous read instead.
 
 The backup log's date may be ISO 8601 or the form `date` prints, such as

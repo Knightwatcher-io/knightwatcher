@@ -1,0 +1,36 @@
+# Episodes imported, from the last ten import records in Sonarr's history.
+format = 1
+id = "sonarr"
+kind = "imports"
+name = "Sonarr"
+docs = "https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json"
+
+[credentials]
+api_key = "Sonarr's API key. In Sonarr: Settings, General, Security, API Key."
+
+# eventType 3 is downloadFolderImported.
+[[request]]
+path = "/api/v3/history"
+query = { page = "1", pageSize = "10", eventType = "3", sortKey = "date", sortDirection = "descending", includeSeries = "true", includeEpisode = "true" }
+headers = { X-Api-Key = "{credential.api_key}" }
+
+[[request.require]]
+path = "$.records"
+type = "list"
+message = "unexpected reply from the history call"
+
+[fill.records]
+each = "$.records[*]"
+
+[fill.records.vars]
+id = { path = "$.id", type = "int", strict = true }
+series = { path = "$.series.title", nonzero = true }
+season = { path = "$.episode.seasonNumber", type = "int", strict = true }
+episode = { path = "$.episode.episodeNumber", type = "int", default = 0 }
+source = { path = "$.sourceTitle", nonzero = true }
+
+[fill.records.fields]
+id = "id"
+
+[[fill.records.title]]
+try = ["{series} S{season:02}E{episode:02}", "{source}"]

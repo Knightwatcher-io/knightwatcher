@@ -1,0 +1,123 @@
+{
+ "about": "Three streams as Tautulli's get_activity lists them, every value invented: an episode, a film and a track, not in the order they started.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2?apikey={credential.api_key}&cmd=get_activity",
+    "headers": {}
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "response": {
+      "result": "success",
+      "message": null,
+      "data": {
+       "lan_bandwidth": 0,
+       "stream_count": "3",
+       "sessions": [
+        {
+         "session_key": "21",
+         "media_type": "episode",
+         "friendly_name": "Robin",
+         "user": "robin.k",
+         "username": "robink",
+         "grandparent_title": "The Lantern Keepers",
+         "parent_media_index": "1",
+         "media_index": "3",
+         "title": "The Tide Bell",
+         "full_title": "The Lantern Keepers - The Tide Bell",
+         "year": "2024",
+         "player": "Lounge TV",
+         "state": "playing",
+         "transcode_decision": "direct play",
+         "progress_percent": "41"
+        },
+        {
+         "session_key": "19",
+         "media_type": "movie",
+         "friendly_name": "Sam",
+         "user": "sam",
+         "username": "sam",
+         "grandparent_title": "",
+         "parent_media_index": "",
+         "media_index": "",
+         "title": "Harbour of Glass",
+         "full_title": "Harbour of Glass",
+         "year": "2023",
+         "player": "Phone",
+         "state": "paused"
+        },
+        {
+         "session_key": "24",
+         "media_type": "track",
+         "friendly_name": "",
+         "user": "alex",
+         "username": "alexr",
+         "grandparent_title": "Fen Owls",
+         "parent_title": "Night Lines",
+         "title": "Low Tide",
+         "full_title": "Fen Owls - Low Tide",
+         "player": "Kitchen speaker",
+         "state": "playing"
+        }
+       ]
+      }
+     }
+    }
+   }
+  }
+ ],
+ "fill": {
+  "names": {
+   "count": 3,
+   "sessions": [
+    {
+     "title": "The Lantern Keepers S01E03",
+     "who": "Robin",
+     "order": "21"
+    },
+    {
+     "title": "Harbour of Glass",
+     "who": "Sam",
+     "order": "19"
+    },
+    {
+     "title": "Fen Owls - Low Tide",
+     "who": "alex",
+     "order": "24"
+    }
+   ]
+  },
+  "titles": {
+   "count": 3,
+   "sessions": [
+    {
+     "title": "The Lantern Keepers S01E03",
+     "order": "21"
+    },
+    {
+     "title": "Harbour of Glass",
+     "order": "19"
+    },
+    {
+     "title": "Fen Owls - Low Tide",
+     "order": "24"
+    }
+   ]
+  },
+  "count": {
+   "count": 3,
+   "sessions": [
+    {},
+    {},
+    {}
+   ]
+  }
+ }
+}

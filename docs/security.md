@@ -71,10 +71,22 @@ services' own configuration.
 The display often hangs where guests can read it, and `state.json` is served to anyone who can
 reach the page. So the collector decides how much of the streams leaves it, with `show` in
 `[sources.streams]`: `names` (who is watching and what, the default), `titles` (what alone) or
-`count` (how many and nothing else). It reads a user's name from Tautulli only for `names`, and
-what the setting holds back is never written to `state.json`, the words of `streaming` held
-through its clearing period included ([state.md](./state.md#fields)). The page cannot show what
-the file does not carry, whatever its version.
+`count` (how many and nothing else). The setting holds for every provider of streams: the engine
+reads a user's name from the service's reply only for `names`, and nothing of a stream for
+`count`; a fill that carries a field the setting holds back fails the read rather than being
+passed on; and what the setting holds back is never written to `state.json`, the words of
+`streaming` held through its clearing period included ([state.md](./state.md#fields)). The reply
+itself still arrives whole over the network, as it always has. The page cannot show what the file
+does not carry, whatever its version.
+
+The services are read through provider files ([providers.md](./providers.md)), which are data:
+nothing in one runs as code. Every request a provider makes goes to the scheme, host and port of
+the source's `url` with the file's path appended, with no redirect and no proxy; a file holds no
+address and cannot build one, no request is built from a reply, and a credential is put only into
+that provider's own requests, in a header, the query or a basic login, never into the fill, a
+message or the state file. `--probe` prints a provider's fill with every text masked, and its
+`--record` writes the service's replies, which are private, to a file of mode 600 with each
+credential replaced by its field's name.
 
 ## The server's privileges
 

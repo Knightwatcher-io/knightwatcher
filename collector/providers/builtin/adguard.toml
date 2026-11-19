@@ -1,0 +1,31 @@
+# Blocked DNS queries, from AdGuard Home's statistics.
+format = 1
+id = "adguard"
+kind = "adblock"
+name = "AdGuard Home"
+docs = "https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml"
+
+[credentials]
+username = "The user name of an AdGuard Home login. AdGuard Home has no API keys: the collector signs in as a user of its web interface."
+password = "That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins."
+
+# Sent with the first request: a retry without them is what locks an account out.
+[auth]
+method = "basic"
+username = "{credential.username}"
+password = "{credential.password}"
+
+[[request]]
+path = "/control/stats"
+
+[fill]
+# A rolling count over the statistics window: it rises as queries are blocked and falls when an
+# old hour or day leaves the window.
+blocked = { path = "$.num_blocked_filtering", type = "int", required = "no blocked count in the statistics" }
+
+# One bucket an hour, or a day from an interval of 8 days, oldest first, the last the current one.
+[fill.window]
+queries = { path = "$.dns_queries[*]", type = "number" }
+blocked = { path = "$.blocked_filtering[*]", type = "number" }
+unit_s = { path = "$.time_units", map = { hours = 3600, days = 86400 } }
+current = true

@@ -1,0 +1,37 @@
+{
+ "about": "Tautulli when it cannot reach Plex: success with no data, which reads as no streams.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2?apikey={credential.api_key}&cmd=get_activity",
+    "headers": {}
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "response": {
+      "result": "success",
+      "message": null,
+      "data": {}
+     }
+    }
+   }
+  }
+ ],
+ "fill": {
+  "names": {
+   "sessions": []
+  },
+  "titles": {
+   "sessions": []
+  },
+  "count": {
+   "sessions": []
+  }
+ }
+}

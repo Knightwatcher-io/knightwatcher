@@ -86,7 +86,7 @@ test('the page words the streams as the collector does', t => {
     [{ title: 'Harbour of Glass' }, 2, 3], [{ who: 'Sam' }, 2, 2], [{ who: 'Robin', title }, 2, 3],
     [{ who: 'A Name Far Too Long', title }, 12, 12], [{ title: title + ' and More' }, 1, 1], [{ who: 'Alex', title: '🎬'.repeat(70) }, 3, 4],
     [{ who: 'Sam', title: 'x'.repeat(44) }, 30, 32]];
-  const script = 'import json, sys\nsys.path.insert(0, sys.argv[1])\nfrom collector.sources.streams import line\n' +
+  const script = 'import json, sys\nsys.path.insert(0, sys.argv[1])\nfrom collector.kinds.streams import line\n' +
     'print(json.dumps([line(s, i, n) for s, i, n in json.loads(sys.argv[2])], ensure_ascii=False))';
   const collector = JSON.parse(execFileSync('python3', ['-I', '-c', script, ROOT, JSON.stringify(cases)], { encoding: 'utf8' }));
   const page = cases.map(([s, i, n]) => {

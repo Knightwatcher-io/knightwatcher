@@ -343,7 +343,7 @@
     },
     {
       "table": "sources.streams",
-      "help": "Streams playing, from Tautulli.",
+      "help": "Streams playing, from the service its provider reads: Tautulli by default.",
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "On" } }, "editable": true,
@@ -351,20 +351,23 @@
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
+        { "key": "from", "type": "string", "default": "tautulli", "values_from": "providers", "kind": "streams", "scope": "household",
+          "gui": { "admin": { "section": "Sources: streams", "label": "Read from" } }, "editable": true,
+          "help": "The provider the streams are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name." },
         { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "Address" } }, "editable": true,
-          "help": "Base URL of Tautulli." },
+          "help": "Base URL of the service the provider reads." },
         { "key": "show", "type": "string", "default": "names", "values": ["names", "titles", "count"], "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "Show" } }, "editable": true,
           "help": "What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file." },
-        { "key": "secret", "type": "string", "default": "tautulli", "form": "letters, digits and underscores", "scope": "household",
+        { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credential is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone." }
+          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's is API_KEY). Left out, it is the provider's id. Set in config.toml alone." }
       ]
     },
     {
       "table": "sources.adblock",
-      "help": "Blocked adverts, from AdGuard Home.",
+      "help": "Blocked adverts, from the service its provider reads: AdGuard Home by default.",
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "On" } }, "editable": true,
@@ -372,12 +375,15 @@
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
+        { "key": "from", "type": "string", "default": "adguard", "values_from": "providers", "kind": "adblock", "scope": "household",
+          "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Read from" } }, "editable": true,
+          "help": "The provider the blocked queries are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name." },
         { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Address" } }, "editable": true,
-          "help": "Base URL of AdGuard Home." },
-        { "key": "secret", "type": "string", "default": "adguard", "form": "letters, digits and underscores", "scope": "household",
+          "help": "Base URL of the service the provider reads." },
+        { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_USERNAME and KNIGHTWATCHER_<SECRET>_PASSWORD, in capitals. Set in config.toml alone." },
+          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD). Left out, it is the provider's id. Set in config.toml alone." },
         { "key": "fly_every_s", "type": "number", "default": 300.0, "min": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "A fly every" } }, "editable": true,
           "help": "Average seconds between flies while blocking runs at the household's normal rate, which AdGuard Home's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query." }
@@ -411,9 +417,9 @@
         { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
           "gui": { "admin": { "section": "Sources: Sonarr", "label": "Address" } }, "editable": true,
           "help": "Base URL of Sonarr." },
-        { "key": "secret", "type": "string", "default": "sonarr", "form": "letters, digits and underscores", "scope": "household",
+        { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: Sonarr", "label": "Credential name" } }, "editable": false,
-          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone." }
+          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
       ]
     },
     {
@@ -429,9 +435,9 @@
         { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
           "gui": { "admin": { "section": "Sources: Radarr", "label": "Address" } }, "editable": true,
           "help": "Base URL of Radarr." },
-        { "key": "secret", "type": "string", "default": "radarr", "form": "letters, digits and underscores", "scope": "household",
+        { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: Radarr", "label": "Credential name" } }, "editable": false,
-          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Set in config.toml alone." }
+          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
       ]
     },
     {
@@ -632,6 +638,16 @@
       ]
     }
   ],
+  "providers": [
+    { "id": "adguard", "kind": "adblock", "name": "AdGuard Home", "docs": "https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml",
+      "default": true, "credentials": ["username", "password"], "settings": [] },
+    { "id": "radarr", "kind": "imports", "name": "Radarr", "docs": "https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json",
+      "default": false, "credentials": ["api_key"], "settings": [] },
+    { "id": "sonarr", "kind": "imports", "name": "Sonarr", "docs": "https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json",
+      "default": false, "credentials": ["api_key"], "settings": [] },
+    { "id": "tautulli", "kind": "streams", "name": "Tautulli", "docs": "https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference",
+      "default": true, "credentials": ["api_key"], "settings": [] }
+  ],
   "env": [
     { "name": "KNIGHTWATCHER_OUT", "scope": "path", "required": true, "default": null, "mount": "/out", "services": ["collector", "server"], "example": "./var/out",
       "gui": { "admin": { "section": "Host", "label": "Output folder" } }, "editable": false,
@@ -660,25 +676,25 @@
       "form": "a password of at least 12 characters, or empty to leave the admin page off",
       "gui": { "admin": { "section": "Admin", "label": "Admin password" } }, "editable": false,
       "help": "The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out." },
-    { "name": "KNIGHTWATCHER_TAUTULLI_API_KEY", "scope": "credential", "source": "streams", "field": "api_key", "secret": "tautulli", "default": null,
+    { "name": "KNIGHTWATCHER_TAUTULLI_API_KEY", "scope": "credential", "provider": "tautulli", "field": "api_key", "secret": "tautulli", "default": null,
       "example": "0123456789abcdef0123456789abcdef", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Tautulli API key" } }, "editable": false,
-      "help": "Tautulli's API key, for [sources.streams]. In Tautulli: Settings, Web Interface, API, with Enable API ticked." },
-    { "name": "KNIGHTWATCHER_ADGUARD_USERNAME", "scope": "credential", "source": "adblock", "field": "username", "secret": "adguard", "default": null,
+      "help": "Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked." },
+    { "name": "KNIGHTWATCHER_ADGUARD_USERNAME", "scope": "credential", "provider": "adguard", "field": "username", "secret": "adguard", "default": null,
       "example": "knightwatcher", "form": "a user name",
       "gui": { "admin": { "section": "Credentials", "label": "AdGuard Home user name" } }, "editable": false,
-      "help": "The user name of an AdGuard Home login, for [sources.adblock]. AdGuard Home has no API keys: the collector signs in as a user of its web interface." },
-    { "name": "KNIGHTWATCHER_ADGUARD_PASSWORD", "scope": "credential", "source": "adblock", "field": "password", "secret": "adguard", "default": null,
+      "help": "The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface." },
+    { "name": "KNIGHTWATCHER_ADGUARD_PASSWORD", "scope": "credential", "provider": "adguard", "field": "password", "secret": "adguard", "default": null,
       "example": "an-invented-password", "form": "a password",
       "gui": { "admin": { "section": "Credentials", "label": "AdGuard Home password" } }, "editable": false,
       "help": "That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins." },
-    { "name": "KNIGHTWATCHER_SONARR_API_KEY", "scope": "credential", "source": "sonarr", "field": "api_key", "secret": "sonarr", "default": null,
+    { "name": "KNIGHTWATCHER_SONARR_API_KEY", "scope": "credential", "provider": "sonarr", "field": "api_key", "secret": "sonarr", "default": null,
       "example": "fedcba9876543210fedcba9876543210", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Sonarr API key" } }, "editable": false,
-      "help": "Sonarr's API key, for [sources.sonarr]. In Sonarr: Settings, General, Security, API Key." },
-    { "name": "KNIGHTWATCHER_RADARR_API_KEY", "scope": "credential", "source": "radarr", "field": "api_key", "secret": "radarr", "default": null,
+      "help": "Sonarr's API key, for the sonarr provider, which [sources.sonarr] reads. In Sonarr: Settings, General, Security, API Key." },
+    { "name": "KNIGHTWATCHER_RADARR_API_KEY", "scope": "credential", "provider": "radarr", "field": "api_key", "secret": "radarr", "default": null,
       "example": "00112233445566778899aabbccddeeff", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Radarr API key" } }, "editable": false,
-      "help": "Radarr's API key, for [sources.radarr]. In Radarr: Settings, General, Security, API Key." }
+      "help": "Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key." }
   ]
 }

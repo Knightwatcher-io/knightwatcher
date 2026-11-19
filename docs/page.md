@@ -267,7 +267,7 @@ the clock are HTML text over the canvas, in VT323. `KW.ui.show` and `KW.ui.capti
 write them with `textContent`, never as markup. The headline, the detail and the badge are the
 collector's words as they come. The detail of `streaming` and the streams' badge are worded on the
 page from `facts.streams`, by `KW.state.streamWords(streams, nowMs)` alone, in the collector's own
-words and to its own rule (`line()` in `collector/sources/streams.py`); no world words them yet,
+words and to its own rule (`line()` in `collector/kinds/streams.py`); no world words them yet,
 and `KW.ui.streamTick`, called each second with the clock, moves the line on. The quiet line and the captions are the world's: `KW.state.map` keeps the collector's
 `quiet_parts` and each event's `type` and `parts` beside its text, and `main.js` passes them to
 `KW.world.quietLine(parts, text)` and `KW.world.caption(type, parts, text)`, which build the line

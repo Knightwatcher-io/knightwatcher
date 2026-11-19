@@ -8,8 +8,11 @@ Devices are the `[[device]]` tables, checked here and turned into one list with 
 `[sources.pi]` first. The `[look]`, `[display]`, `[quiet]` and `[scenes]` tables are the settings
 screen's household defaults; they have no defaults here, and only what they set is written to
 state.json. Where they take the long name of a part from a pack, "<pack>/<id>", only its form is
-checked here. Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>,
-where SECRET is the source's `secret` setting; no message ever carries a credential's value.
+checked here. The sections read through a kind (collector/kinds/) take their provider from
+`from`, or the provider of their own name, and the provider's file names the credentials it needs.
+Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>, where SECRET is
+the source's `secret` setting, the provider's id unless it is set; no message ever carries a
+credential's value.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from collector import schema
+from collector.kinds import SECTIONS, provider_of
 
 CONDITION_IDS = schema.condition_ids()
 
@@ -45,10 +49,9 @@ REQUIRED = {
 }
 REQUIRED = {name: keys for name, keys in REQUIRED.items() if keys}
 
-# The credentials each source needs, by field; each is read from KNIGHTWATCHER_<SECRET>_<FIELD>.
-SECRET_FIELDS: dict[str, list[str]] = {}
-for _e in schema.credentials():
-    SECRET_FIELDS.setdefault(_e["source"], []).append(_e["field"])
+# The fields a credential may have, the last part of KNIGHTWATCHER_<SECRET>_<FIELD>. The set is
+# fixed so that the credentials' names are known whatever the provider.
+CREDENTIAL_FIELDS = ("api_key", "token", "username", "password", "header")
 # A source's `secret` names variables, so it is letters, digits and underscores.
 _SECRET_NAME = re.compile(r"^[A-Za-z0-9_]+$")
 
@@ -150,7 +153,7 @@ class Config:
         return zoneinfo.ZoneInfo(self.collector["timezone"])
 
     def secret(self, source: str) -> dict[str, str]:
-        name = self.sources[source].get("secret", source)
+        name = self.sources[source].get("secret") or source
         return self.secrets.get(name, {})
 
     # The value of every credential variable the environment held, used or not, for scrubbing.
@@ -251,6 +254,10 @@ def _validate_source(name: str, s: dict, problems: list[str]) -> None:
             problems.append(f"sources.{name}.{key}: must start with http:// or https://")
     if "secret" in s and not _SECRET_NAME.match(s["secret"]):
         problems.append(f"sources.{name}.secret: use letters, digits and underscores")
+    if "from" in s:
+        why = _provider_problem(name, s["from"])
+        if why:
+            problems.append(f"sources.{name}.from: {why}")
     if name == "host":
         for i, d in enumerate(s["disks"]):
             if (
@@ -299,6 +306,39 @@ def _validate_source(name: str, s: dict, problems: list[str]) -> None:
                 ipaddress.ip_network(net, strict=False)
             except (ValueError, TypeError):
                 problems.append(f"sources.ssh.ignore_sources: {net!r} is not an address range")
+
+
+def provider_credentials(pid: str) -> list[str]:
+    """The credential fields a provider needs, by its id; none for an unknown one."""
+    from collector import providers
+
+    spec = providers.get(pid)
+    return list(spec.credentials) if spec is not None else []
+
+
+def _section_credentials(section: str, settings: dict) -> list[str]:
+    """The credential fields a section's provider needs; none when it reads no provider, or names
+    one that is not of its kind, which is a problem of its own."""
+    from collector import providers
+
+    if section not in SECTIONS:
+        return []
+    spec = providers.get(provider_of(section, settings))
+    return list(spec.credentials) if spec is not None and spec.kind == SECTIONS[section] else []
+
+
+def _provider_problem(section: str, pid: str) -> str | None:
+    """What is wrong with the provider a section's `from` names, or None."""
+    from collector import providers
+
+    kind = SECTIONS[section]
+    spec = providers.get(pid)
+    if spec is None:
+        ids = [p.id for p in providers.of_kind(kind)]
+        return f'unknown provider "{pid}"; use {_say_or(tuple(ids))}'
+    if spec.kind != kind:
+        return f'"{pid}" reads {spec.kind}, not {kind}'
+    return None
 
 
 def _is_int(value: Any) -> bool:
@@ -640,7 +680,7 @@ def _credentials(
     """
     out: dict[str, dict[str, str]] = {}
     for name, s in sources.items():
-        need = SECRET_FIELDS.get(name)
+        need = _section_credentials(name, s)
         secret = s.get("secret", name)
         if not need or not isinstance(secret, str) or not _SECRET_NAME.match(secret):
             continue
@@ -684,6 +724,9 @@ def build(raw: dict, env: Mapping[str, str] | None = None, missing: str = "refus
             problems.append(f"sources.{name}: expected a table")
             continue
         merged = _merge(f"sources.{name}", SOURCE_DEFAULTS[name], given, problems)
+        if "secret" in merged and "secret" not in given:
+            # A secret left out is the provider's id.
+            merged["secret"] = provider_of(name, merged)
         if merged["enabled"]:
             sources[name] = merged
     if not problems:
@@ -724,7 +767,7 @@ def load(config_path: str, env: Mapping[str, str] | None) -> Config:
 # The fields a credential variable ends with: KNIGHTWATCHER_<SECRET>_<FIELD>.
 _CREDENTIAL = re.compile(
     r"^KNIGHTWATCHER_[A-Z0-9_]+_(?:"
-    + "|".join(sorted({e["field"].upper() for e in schema.credentials()}))
+    + "|".join(sorted(f.upper() for f in CREDENTIAL_FIELDS))
     + r")$"
 )
 

@@ -1,0 +1,56 @@
+# Streams playing now, from Tautulli's activity call.
+format = 1
+id = "tautulli"
+kind = "streams"
+name = "Tautulli"
+docs = "https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference"
+
+[credentials]
+api_key = "Tautulli's API key. In Tautulli: Settings, Web Interface, API, with Enable API ticked."
+
+[[request]]
+path = "/api/v2"
+query = { apikey = "{credential.api_key}", cmd = "get_activity" }
+
+[[request.require]]
+path = "$.response.result"
+equals = "success"
+message = "Tautulli reported an error"
+auth = { path = "$.response.message", contains = "key", ignore_case = true, message = "API key refused" }
+
+[fill]
+# Tautulli sends the count as text. Without it, the kind counts the sessions.
+count = { path = "$.response.data.stream_count", type = "int" }
+
+[fill.sessions]
+each = "$.response.data.sessions[*]"
+
+[fill.sessions.vars]
+type = "$.media_type"
+grand = { path = "$.grandparent_title", type = "string" }
+season = { path = "$.parent_media_index", type = "int" }
+episode = { path = "$.media_index", type = "int" }
+title = { path = "$.title", nonzero = true }
+full = { path = "$.full_title", nonzero = true }
+friendly = { path = "$.friendly_name", type = "string" }
+user = { path = "$.user", type = "string" }
+username = { path = "$.username", type = "string" }
+# Rises as streams start.
+key = "$.session_key"
+
+[fill.sessions.fields]
+who = { pick = ["friendly", "user", "username"] }
+order = "key"
+
+# An episode is the show and its numbers, either alone when the other is missing, else the full
+# title; a track is the artist and the track, either alone; anything else its title.
+[[fill.sessions.title]]
+when = { type = "episode" }
+try = ["{grand} S{season:02}E{episode:02}", "S{season:02}E{episode:02}", "{grand}", "{full}"]
+
+[[fill.sessions.title]]
+when = { type = "track" }
+try = ["{grand} - {title}", "{grand}", "{title}"]
+
+[[fill.sessions.title]]
+try = ["{title}", "{full}"]

@@ -12,18 +12,19 @@ import re
 import tomllib
 import unittest
 
-from collector import config, schema
+from collector import config, kinds, providers, schema
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 S = schema.SCHEMA
 TYPES = {"integer", "number", "string", "boolean", "list", "table"}
 SETTING_FIELDS = {
-    "key", "type", "items", "item_keys", "keys", "values", "long", "acts", "min", "above", "max",
-    "min_items", "max_items", "problem", "default", "page_default", "required", "required_problem",
-    "form", "unit", "scope", "gui", "editable", "help",
+    "key", "type", "items", "item_keys", "keys", "values", "values_from", "kind", "long", "acts",
+    "min", "above", "max", "min_items", "max_items", "problem", "default", "default_note",
+    "page_default", "required", "required_problem", "form", "unit", "scope", "gui", "editable",
+    "help",
 }  # fmt: skip
 ENV_FIELDS = {
-    "name", "scope", "required", "default", "mount", "services", "example", "source", "field",
+    "name", "scope", "required", "default", "mount", "services", "example", "provider", "field",
     "secret", "form", "gui", "editable", "help",
 }  # fmt: skip
 SERVICES = ("collector", "server")
@@ -199,19 +200,62 @@ class CollectorAgreesTest(unittest.TestCase):
             known, {"collector", "conditions", "sources", "device", *config.DEFAULT_TABLES}
         )
 
-    def test_every_source_that_logs_in_names_its_variables(self):
-        by_source: dict[str, list[str]] = {}
-        for e in schema.credentials():
-            self.assertEqual(e["name"], schema.env_name(e["secret"], e["field"]))
+    def test_the_providers_listed_are_the_built_in_files(self):
+        built = providers.builtin()
+        listed = {p["id"]: p for p in S["providers"]}
+        self.assertEqual(list(listed), sorted(listed), "the list is in the order of the ids")
+        self.assertEqual(sorted(listed), sorted(built))
+        for pid, spec in built.items():
+            p = listed[pid]
             self.assertEqual(
-                schema.setting(f"sources.{e['source']}", "secret")["default"], e["secret"]
+                set(p), {"id", "kind", "name", "docs", "default", "credentials", "settings"}
             )
-            by_source.setdefault(e["source"], []).append(e["field"])
-        self.assertEqual(by_source, config.SECRET_FIELDS)
+            self.assertEqual(
+                (p["kind"], p["name"], p["docs"], p["credentials"], p["settings"]),
+                (spec.kind, spec.name, spec.docs, list(spec.credentials), list(spec.settings)),
+                pid,
+            )
+
+    def test_the_reference_lists_every_provider(self):
+        with open(os.path.join(ROOT, "docs", "configuration.md"), encoding="utf-8") as fh:
+            doc = fh.read()
+        for p in S["providers"]:
+            self.assertIn(f"| `{p['id']}` | {p['kind']} | [{p['name']}]({p['docs']}) |", doc)
+
+    def test_each_section_read_through_a_kind_names_its_provider(self):
+        built = providers.builtin()
+        defaults = set()
+        for section, kind in kinds.SECTIONS.items():
+            table = f"sources.{section}"
+            keys = {s["key"] for s in schema.settings(table)}
+            self.assertIn("secret", keys, table)
+            self.assertIsNone(schema.setting(table, "secret")["default"], table)
+            if "from" in keys:
+                chosen = schema.setting(table, "from")
+                self.assertEqual((chosen["values_from"], chosen["kind"]), ("providers", kind))
+                self.assertEqual(built[chosen["default"]].kind, kind, table)
+                defaults.add(chosen["default"])
+            else:
+                # A section without from reads the provider of its own name.
+                self.assertEqual(built[section].kind, kind, table)
+        self.assertEqual({p["id"] for p in S["providers"] if p["default"]}, defaults)
         with_secret = {
             t["table"][8:] for t in S["tables"] if any(s["key"] == "secret" for s in t["settings"])
         }
-        self.assertEqual(with_secret, set(config.SECRET_FIELDS))
+        self.assertEqual(with_secret, set(kinds.SECTIONS))
+
+    def test_every_provider_names_its_variables(self):
+        by_provider: dict[str, list[str]] = {}
+        for e in schema.credentials():
+            self.assertEqual(e["name"], schema.env_name(e["secret"], e["field"]))
+            # Each is read under the provider's id unless a section's secret says otherwise.
+            self.assertEqual(e["secret"], e["provider"])
+            self.assertIn(e["field"], config.CREDENTIAL_FIELDS)
+            by_provider.setdefault(e["provider"], []).append(e["field"])
+        self.assertEqual(
+            by_provider,
+            {p: list(s.credentials) for p, s in providers.builtin().items() if s.credentials},
+        )
 
 
 class TemplatesAgreeTest(unittest.TestCase):
