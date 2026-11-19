@@ -4,7 +4,9 @@ Most providers are a provider file, TOML that the engine runs (collector/provide
 the requests, the login, and paths into the reply mapped onto the kind's fields. The built-in
 files are collector/providers/builtin/<id>.toml, read and checked the first time the registry is
 asked for one; a built-in file that fails its check is a bug, and raises at once. A service that a
-file cannot describe gets a code adapter, a subclass of Provider returning the same shape.
+file cannot describe gets a code adapter, a subclass of Provider returning the same shape, made
+known with the adapter() decorator (collector/providers/fail2ban.py). The registry lists each
+adapter beside the files, by an Adapter in place of a compiled file.
 
 A user's own files are in the providers folder beside config.toml (the collector's providers_dir
 setting), one provider each, named <id>.toml. scan() reads and checks them into a Providers: the
@@ -40,7 +42,12 @@ _ID = re.compile(r"^[a-z][a-z0-9_]{0,23}$")
 
 
 class Provider:
-    """Fills one kind's shape from one service. Runs in the source's worker thread."""
+    """Fills one kind's shape from one service. Runs in the source's worker thread.
+
+    A code adapter is made with the section's settings (the kind's own and those the adapter
+    declares), its credentials, the time limit of one request, the fields it may read, and a
+    function that gives the configuration in use, for a provider that needs more of it.
+    """
 
     id: str = ""
     kind: str = ""
@@ -52,6 +59,68 @@ class Provider:
 
     def close(self) -> None:
         """End anything held open. Best effort; never raises."""
+
+
+@dataclasses.dataclass(frozen=True)
+class Adapter:
+    """A built-in provider written in code, as the registry lists it beside the provider files.
+
+    It has what a compiled file has that the configuration and the settings schema read: the id,
+    the kind, the name, the docs, the credential fields and the declared settings. address says
+    whether it reads the section's url; make is the Provider class, or None for a reader that is
+    not a provider at all (the fail2ban summary, read by collector/sources/security.py).
+    """
+
+    id: str
+    kind: str
+    name: str
+    docs: str
+    credentials: dict = dataclasses.field(default_factory=dict)
+    settings: dict = dataclasses.field(default_factory=dict)
+    address: bool = False
+    make: Any = None
+    digest: str = "code"
+
+
+_ADAPTERS: dict[str, Adapter] = {}
+# The modules that hold code adapters, imported the first time the registry is asked for one.
+_ADAPTER_MODULES = ("collector.providers.fail2ban",)
+
+
+def adapter(pid: str, kind: str, name: str, docs: str, settings: dict | None = None):
+    """Make a Provider class known as the built-in provider pid of kind."""
+
+    def register(cls):
+        _register(Adapter(pid, kind, name, docs, settings=dict(settings or {}), make=cls))
+        cls.id, cls.kind = pid, kind
+        return cls
+
+    return register
+
+
+def _register(entry: Adapter) -> None:
+    if entry.id in _ADAPTERS:
+        raise ValueError(f"two built-in providers with the id {entry.id}")
+    _ADAPTERS[entry.id] = entry
+
+
+# The fail2ban summary that [sources.security] reads while `from` is left out. It is not a
+# provider: collector/sources/security.py reads it as it always has, and build_sources picks that
+# reader when a section names it. It is listed so that `from` can name it.
+_register(
+    Adapter(
+        "summary",
+        "security",
+        "fail2ban summary",
+        "https://github.com/fail2ban/fail2ban",
+        address=True,
+    )
+)
+
+
+def takes_address(spec) -> bool:
+    """Whether a provider reads the section's url: every provider file does, an adapter may not."""
+    return getattr(spec, "address", True)
 
 
 _lock = threading.Lock()
@@ -83,16 +152,22 @@ def _compile(data: bytes, where: str, expect_id: str | None):
 
 
 def builtin() -> dict[str, Any]:
-    """Every built-in provider, by id, in the order of their ids."""
+    """Every built-in provider, by id, in the order of their ids: the files, and the adapters."""
     global _builtin
     with _lock:
         if _builtin is None:
-            found = {}
+            import importlib
+
+            for module in _ADAPTER_MODULES:
+                importlib.import_module(module)
+            found: dict[str, Any] = dict(_ADAPTERS)
             for name in sorted(os.listdir(BUILTIN)):
                 if name.endswith(".toml"):
                     pid = name[: -len(".toml")]
+                    if pid in found:
+                        raise ValueError(f"two built-in providers with the id {pid}")
                     found[pid] = load(os.path.join(BUILTIN, name), pid)
-            _builtin = found
+            _builtin = dict(sorted(found.items()))
         return _builtin
 
 
@@ -231,8 +306,27 @@ def signature(folder: str | None) -> tuple | None:
         return ("error", exc.errno)
 
 
-def make(spec, settings: dict, credentials: dict, timeout: float, allowed: frozenset) -> Provider:
-    """The provider instance that reads one source."""
+def make(
+    spec, settings: dict, credentials: dict, timeout: float, allowed: frozenset, config=None
+) -> Provider:
+    """The provider instance that reads one source. config, for a code adapter, is a function
+    that gives the configuration in use."""
+    if isinstance(spec, Adapter):
+        if spec.make is None:
+            return _NotAProvider(spec)
+        return spec.make(settings, credentials, timeout, allowed, config)
     from collector.providers.engine import DataProvider
 
     return DataProvider(spec, settings, credentials, timeout, allowed)
+
+
+class _NotAProvider(Provider):
+    """What --probe meets for a reader that is not a provider: a read that says so."""
+
+    def __init__(self, spec: Adapter):
+        self.id, self.kind = spec.id, spec.kind
+
+    def read(self, now: dt.datetime) -> dict:
+        from collector.net import SourceError
+
+        raise SourceError(f"{self.id} is not read through a provider; --probe cannot read it")

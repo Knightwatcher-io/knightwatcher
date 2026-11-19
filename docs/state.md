@@ -239,7 +239,11 @@ and `sources` the parts come from are shown:
   the file is written keeps its section from its last read until the next. `host.cpu_pct` is the
   CPU use averaged over the `cpu_hot` window (30 seconds by default); `host.mem_pct` is the
   latest reading. `adblock.blocked_today` counts the blocked queries since midnight in the
-  collector's time zone. `pi.up` says whether the Pi of `[sources.pi]` answered its last check,
+  collector's time zone. `security.bans_24h` counts the bans of the last 24 hours, and
+  `security.attack` says whether the `attack` condition is raised; `security.threat_score`, a
+  score the fail2ban summary works out, is there only while `[sources.security]` reads the summary
+  (its default), and not with `from = "fail2ban"`, where a ban lifted by hand also leaves
+  `bans_24h` ([collector.md](./collector.md#attacks)). `pi.up` says whether the Pi of `[sources.pi]` answered its last check,
   so it turns false at the first check it misses; whether the Pi has been silent long enough to
   count as down is its entry in `devices`.
 - **`facts.streams`** says what plays, from the streams provider (Tautulli by default), as far as

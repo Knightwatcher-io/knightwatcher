@@ -10,12 +10,14 @@ screen's household defaults; they have no defaults here, and only what they set 
 state.json. Where they take the long name of a part from a pack, "<pack>/<id>", only its form is
 checked here. The sections read through a kind (collector/kinds/) take their provider from
 `from`, or the provider of their own name, and the provider's file names the credentials it needs
-and any settings of its own, which the section may then set. The providers are the built-in ones
-and the user's own files in the providers folder (collector.providers_dir, beside config.toml),
-read by collector/providers/__init__.py's scan(); a `from` naming a file that was left out is no
-problem here, and that source fails at every read. Credentials come from environment variables
-named KNIGHTWATCHER_<SECRET>_<FIELD>, where SECRET is the source's `secret` setting, the
-provider's id unless it is set; no message ever carries a credential's value.
+and any settings of its own, which the section may then set; a key of the section that its
+provider does not use (url with fail2ban, database with any other) is refused by name. The
+providers are the built-in ones and the user's own files in the providers folder
+(collector.providers_dir, beside config.toml), read by collector/providers/__init__.py's scan();
+a `from` naming a file that was left out is no problem here, and that source fails at every read.
+Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>, where SECRET is
+the source's `secret` setting, the provider's id unless it is set; no message ever carries a
+credential's value.
 """
 
 from __future__ import annotations
@@ -261,12 +263,15 @@ def _validate_source(name: str, s: dict, problems: list[str], registry) -> None:
     for spec in schema.settings(table):
         if spec["type"] == "string" and "values" in spec:
             _choice(f"{table}.{spec['key']}", s[spec["key"]], tuple(spec["values"]), problems)
+    unused = unused_keys(name, s, registry)
     for key in REQUIRED.get(name, []):
+        if key in unused:
+            continue
         if not s[key]:
             why = schema.setting(table, key).get("required_problem")
             problems.append(f"{table}.{key}: {why or 'required when the source is enabled'}")
     for key in ("url",):
-        if s.get(key) and not re.match(r"^https?://", s[key]):
+        if key not in unused and s.get(key) and not re.match(r"^https?://", s[key]):
             problems.append(f"sources.{name}.{key}: must start with http:// or https://")
     if "secret" in s and not _SECRET_NAME.match(s["secret"]):
         problems.append(f"sources.{name}.secret: use letters, digits and underscores")
@@ -302,6 +307,9 @@ def _validate_source(name: str, s: dict, problems: list[str], registry) -> None:
             zoneinfo.ZoneInfo(s["timezone"])
         except (zoneinfo.ZoneInfoNotFoundError, ValueError):
             problems.append(f"sources.backup.timezone: unknown time zone {s['timezone']!r}")
+    elif name == "security":
+        if "database" not in unused and not str(s["database"]).startswith("/"):
+            problems.append("sources.security.database: a path inside the container, from /")
     elif name == "pi":
         if not s["ports"] or not all(isinstance(p, int) and 0 < p < 65536 for p in s["ports"]):
             problems.append("sources.pi.ports: must be a non-empty list of port numbers")
@@ -322,6 +330,32 @@ def _validate_source(name: str, s: dict, problems: list[str], registry) -> None:
                 ipaddress.ip_network(net, strict=False)
             except (ValueError, TypeError):
                 problems.append(f"sources.ssh.ignore_sources: {net!r} is not an address range")
+
+
+def unused_keys(section: str, settings: dict, registry) -> set[str]:
+    """The keys of a kind's section that the provider it reads does not use: a setting the schema
+    marks with the providers that read it, when the provider is not one of them, and url, when the
+    provider reads no address (fail2ban). Nothing when the provider is not known, or was left
+    out, which are problems of their own."""
+    spec = _chosen(section, settings, registry)
+    if spec is None:
+        return set()
+    out = set()
+    for s in schema.settings(f"sources.{section}"):
+        users = s.get("providers")
+        if users is not None and spec.id not in users:
+            out.add(s["key"])
+    if not providers_mod.takes_address(spec):
+        out.add("url")
+    return out
+
+
+def _check_unused(name: str, given: dict, settings: dict, registry, problems: list[str]) -> None:
+    """A key given that the section's provider does not use is refused by name, so that a change
+    of provider never leaves a stale setting doing nothing."""
+    pid = provider_of(name, settings)
+    for key in sorted(unused_keys(name, settings, registry) & set(given), key=list(given).index):
+        problems.append(f"sources.{name}.{key}: not used by {pid}")
 
 
 def provider_credentials(pid: str, registry=None) -> list[str]:
@@ -825,6 +859,8 @@ def build(
             given, declared = _provider_settings(name, given, registry, problems)
         merged = _merge(f"sources.{name}", SOURCE_DEFAULTS[name], given, problems)
         merged.update(declared)
+        if name in SECTIONS:
+            _check_unused(name, given, merged, registry, problems)
         if "secret" in merged and "secret" not in given:
             # A secret left out is the provider's id.
             merged["secret"] = provider_of(name, merged)

@@ -26,9 +26,10 @@ down looks broken, with a question mark blinking over it;
 [Devices](docs/configuration.md#devices) says how to list them.
 
 Beside the host's own figures, the collector reads the streams playing from Tautulli, the adverts
-blocked from AdGuard Home, and the films and episodes imported from Radarr and Sonarr. Each of
-these services is read through a provider, a small file that maps the service's answers onto the
-shape the display needs ([Providers](docs/providers.md)). Another service that answers with JSON
+blocked from AdGuard Home, the films and episodes imported from Radarr and Sonarr, and the bans
+fail2ban makes, from its own database ([fail2ban's database](docs/configuration.md#fail2bans-database))
+or from a summary of it. Each of these services is read through a provider, a small file that maps
+the service's answers onto the shape the display needs ([Providers](docs/providers.md)). Another service that answers with JSON
 can be read through a provider file of your own, dropped into the `providers/` folder beside
 `config.toml`; it is data, checked by the same rules, and never runs as code.
 

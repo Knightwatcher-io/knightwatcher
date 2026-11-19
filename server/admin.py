@@ -587,8 +587,9 @@ def export_toml(
     """A complete config.toml: raw (the file with the admin page's settings laid over it) in
     every table of the schema, the defaults written where it leaves a setting out, and the
     shared settings over its look, display, quiet scenes and scenes. A section also keeps the
-    settings its provider declares, with the provider file's help; found is the providers folder,
-    or None for the built-in providers alone."""
+    settings its provider declares, with the provider file's help, and writes a key of its own that
+    its provider does not use (url with fail2ban, database with any other) commented, so that the
+    file reads back; found is the providers folder, or None for the built-in providers alone."""
     found = found if found is not None else providers.builtin_only()
     stamp = when.astimezone(dt.UTC).strftime("%d %B %Y at %H:%M UTC").lstrip("0")
     out = _comment(
@@ -632,6 +633,9 @@ def export_toml(
             keys = {s["key"]: s for s in t["settings"]}
             default = keys["from"]["default"] if "from" in keys else source
             provider = chosen if isinstance(chosen, str) and chosen else default
+        # The section's keys its provider does not use (url with fail2ban, database with any
+        # other), which config.toml must leave out: written commented, unless the file sets one.
+        unused = config_mod.unused_keys(source, {"from": provider}, found) if source else set()
         lead = "# " if absent else ""
         if absent:
             out.append("# Not set up. Remove the first # of each line below to use it.")
@@ -646,6 +650,11 @@ def export_toml(
                 reads = f"reads {' and '.join(names)} from .env" if names else "needs no credential"
                 out += _comment(f"Left out: {s['default_note']}, so it {reads}.")
                 out.append(f'# {key} = "{provider}"')
+                continue
+            elif key in unused:
+                shown = s["default"] if s.get("default") is not None else ""
+                line = f"{key} = {toml_value(shown, s['type'])}   # not used by {provider}"
+                out.append(f"# {lead}{line}")
                 continue
             elif wall:
                 own = s.get("page_default")

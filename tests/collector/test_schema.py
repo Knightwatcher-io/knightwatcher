@@ -21,7 +21,7 @@ SETTING_FIELDS = {
     "key", "type", "items", "item_keys", "keys", "values", "values_from", "kind", "long", "acts",
     "min", "above", "max", "min_items", "max_items", "problem", "default", "default_note",
     "page_default", "required", "required_problem", "form", "unit", "scope", "gui", "editable",
-    "help",
+    "help", "providers",
 }  # fmt: skip
 ENV_FIELDS = {
     "name", "scope", "required", "default", "mount", "services", "example", "provider", "field",
@@ -44,9 +44,11 @@ def example_keys() -> dict[str, set[str]]:
     """Every key config.example.toml sets, by table, its commented settings included."""
     with open(os.path.join(ROOT, "config.example.toml"), encoding="utf-8") as fh:
         text = fh.read()
-    # A commented setting is "# key = value", "# [[device]]" or the header of a defaults table.
+    # A commented setting is "# key = value", "# [[device]]" or the header of a defaults table;
+    # "# or: key = value" is a setting that replaces another in its table, so it is counted here
+    # but left commented when the example's tables are loaded uncommented (test_config).
     setting = re.compile(
-        r"^# (\[\[device\]\]|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]"
+        r"^# (?:or: )?(\[\[device\]\]|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]"
         r"|[a-z_]+ = .+)$"
     )
     lines = [m.group(1) if (m := setting.match(line)) else line for line in text.splitlines()]
@@ -243,6 +245,24 @@ class CollectorAgreesTest(unittest.TestCase):
             t["table"][8:] for t in S["tables"] if any(s["key"] == "secret" for s in t["settings"])
         }
         self.assertEqual(with_secret, set(kinds.SECTIONS))
+
+    def test_a_setting_marked_with_its_providers_names_built_ins_of_its_kind(self):
+        built = providers.builtin()
+        marked = {}
+        for section, kind in kinds.SECTIONS.items():
+            for s in schema.settings(f"sources.{section}"):
+                if "providers" in s:
+                    marked[f"{section}.{s['key']}"] = s["providers"]
+                    for pid in s["providers"]:
+                        self.assertEqual(built[pid].kind, kind, f"{section}.{s['key']}")
+                        # The provider lists it among its own settings.
+                        self.assertIn(s["key"], built[pid].settings, pid)
+        self.assertEqual(marked, {"security.database": ["fail2ban"]})
+        # Every setting a built-in adapter declares is a marked setting of its section.
+        for pid, spec in built.items():
+            if isinstance(spec, providers.Adapter):
+                for key in spec.settings:
+                    self.assertIn(pid, marked[f"{spec.kind}.{key}"], pid)
 
     def test_every_provider_names_its_variables(self):
         by_provider: dict[str, list[str]] = {}

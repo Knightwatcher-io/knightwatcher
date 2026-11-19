@@ -439,13 +439,16 @@ Blocked adverts, from the service its provider reads: AdGuard Home by default.
 
 ### [sources.security]
 
-Bans and the threat score, from a fail2ban summary.
+Bans, and the attack they may add up to, from the provider its from names: a fail2ban summary by default, or fail2ban's own database.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `url` | an http:// or https:// address | required | household | Base URL of the fail2ban summary; the collector calls /soc on it. |
+| `from` | `"fail2ban"` or `"summary"`: a provider of the security kind (see Providers below) | `"summary"` | household | The provider the bans are read through, by its id: summary, a fail2ban summary at url, or fail2ban, fail2ban's own database at database, which needs its folder mounted and a read grant on the host (docs/configuration.md, fail2ban's database). A provider of another kind, or one that does not exist, is refused by name. Set in config.toml alone, with the mount. |
+| `url` | an http:// or https:// address | required | household | Base URL of the fail2ban summary; the collector calls /soc on it. Required by summary and by a provider file of your own; refused with fail2ban, which reads database instead. |
+| `database` | a path inside the collector's container | `"/host/fail2ban/fail2ban.sqlite3"` | household | fail2ban's database, as the collector's container sees it through the mount of fail2ban's folder. Read by fail2ban alone, and refused with any other provider. Set in config.toml alone, with the mount. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names. Neither summary nor fail2ban needs one; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone. |
 
 ### [sources.sonarr]
 
@@ -564,8 +567,10 @@ The services the sections read through a kind can read, each by its provider. A 
 | Provider | Kind | Service | Read by | Credentials |
 |---|---|---|---|---|
 | `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KNIGHTWATCHER_ADGUARD_USERNAME`, `KNIGHTWATCHER_ADGUARD_PASSWORD` |
+| `fail2ban` | security | [fail2ban](https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py) | `[sources.security]` with `from = "fail2ban"` | none |
 | `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]` | `KNIGHTWATCHER_RADARR_API_KEY` |
 | `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]` | `KNIGHTWATCHER_SONARR_API_KEY` |
+| `summary` | security | [fail2ban summary](https://github.com/fail2ban/fail2ban) | `[sources.security]` by default | none |
 | `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KNIGHTWATCHER_TAUTULLI_API_KEY` |
 
 ### .env
@@ -599,8 +604,10 @@ A source runs when its `[sources.<name>]` table is present and its `enabled` is 
 Between reads its last reading stands, and it raises no events. An `every_s` below `interval_s`
 means every poll.
 
-`[sources.streams]` and `[sources.adblock]` read a service through a provider, named by `from`:
-`tautulli` and `adguard`, the defaults, so a table without `from` reads what it always has.
+`[sources.streams]`, `[sources.adblock]` and `[sources.security]` read a service through a
+provider, named by `from`: `tautulli`, `adguard` and `summary`, the defaults, so a table without
+`from` reads what it always has. `[sources.security]` may instead read fail2ban's own database,
+with `from = "fail2ban"` ([below](#fail2bans-database)).
 `[sources.sonarr]` and `[sources.radarr]` read the provider of their own name. A `from` that
 names no provider, or a provider of another kind, is refused by name
 (`sources.streams.from: unknown provider "plx"; use tautulli`), so a typo never falls back to the
@@ -624,14 +631,104 @@ out takes the file's default. A key that the chosen provider does not declare is
 (`sources.streams.page_size: not used by tautulli`). A `from` naming a file that failed its checks
 is not refused: that source runs and fails at every read
 (`provider myflix refused; see the settings problems`) while the file's problems are in the state
-file and on the admin page. Only `[sources.streams]` and `[sources.adblock]` take `from`, so a file
-of the imports kind is checked but cannot be chosen yet.
+file and on the admin page. Only `[sources.streams]`, `[sources.adblock]` and `[sources.security]`
+take `from`, so a file of the imports kind is checked but cannot be chosen yet.
+
+A key of the section itself that the chosen provider does not use is refused by name too:
+`sources.security.url: not used by fail2ban`, and `sources.security.database: not used by
+summary`. The admin page's Download config.toml writes such a key commented.
 
 `host` should be read at least as often as the shorter averaging window; when it is read less
 often, an average reaches back to the previous read instead.
 
 The backup log's date may be ISO 8601 or the form `date` prints, such as
 `Thu 15 Jan 03:12:00 UTC 2026`.
+
+### fail2ban's database
+
+`[sources.security]` reads a fail2ban summary at `url` by default (`from = "summary"`). With
+`from = "fail2ban"` it reads fail2ban's own SQLite database instead, which any host running
+fail2ban has:
+
+```toml
+[sources.security]
+from = "fail2ban"
+database = "/host/fail2ban/fail2ban.sqlite3"   # the default; leave url out
+```
+
+It reads the `bans` table at every read: the bans of the last 24 hours (or of
+`conditions.attack.window_s` when that is longer) give `facts.security.bans_24h` and the attack
+condition, and each read that finds new bans gives one `ip_banned` event naming the newest of
+them ([collector.md](./collector.md#attacks)). A ban lifted with `fail2ban-client set <jail>
+unbanip` deletes its rows and leaves the count at the next read; a ban that runs out on its own
+keeps its row, and is counted until it is a day old. fail2ban drops rows older than its
+`dbpurgeage` once an hour, so keep that at its default of one day or longer, or the 24-hour count
+falls short. The database is opened read-only at every read and closed again; the collector never
+writes to it or beside it. fail2ban 0.11.2 and later write this table the same way.
+
+Two things on the host give the collector the file, both once.
+
+**The mount.** The collector sees fail2ban's folder through a read-only mount of the whole folder,
+never of the file alone: a mount of one file keeps the file it found at start, and would go on
+reading the old database after fail2ban replaces it. `compose.yaml` cannot carry the mount for
+everyone, since a host without fail2ban would then refuse to start, so it goes in your own
+`compose.override.yaml` beside `compose.yaml`, which docker compose merges by itself:
+
+```yaml
+services:
+  collector:
+    volumes:
+      # fail2ban's folder, read only, for [sources.security] from = "fail2ban".
+      - type: bind
+        source: /var/lib/fail2ban
+        target: /host/fail2ban
+        read_only: true
+        bind: { create_host_path: false }
+```
+
+`/var/lib/fail2ban` is fail2ban's default `dbfile` folder (`fail2ban-client get dbfile` prints
+yours). With a `dbfile` elsewhere, mount that folder and set `database` to match. A new mount
+needs the container made again, `docker compose up -d collector`; a restart is not enough.
+
+**The read ACL.** fail2ban makes its database root's, mode 0600, and its folder 0700 when it makes
+it, so uid 10001 can read neither. Grant it, as root:
+
+```bash
+ls -ld /var/lib/fail2ban; ls -l /var/lib/fail2ban/fail2ban.sqlite3
+
+# Let uid 10001 pass through the folder (needed when it is 0700) and read the database.
+sudo setfacl -m u:10001:x /var/lib/fail2ban
+sudo setfacl -m u:10001:r /var/lib/fail2ban/fail2ban.sqlite3
+
+# Files fail2ban makes in the folder later get the same read grant and nothing wider.
+sudo setfacl -d -m u::rwx,g::-,o::-,u:10001:r /var/lib/fail2ban
+
+getfacl /var/lib/fail2ban /var/lib/fail2ban/fail2ban.sqlite3
+```
+
+`getfacl` should show `user:10001:--x` on the folder, `user:10001:r--` on the database, and
+`default:user:10001:r--`, `default:group::---` and `default:other::---` on the folder. The default
+ACL names the owner, the group and others itself: left to `setfacl -d` alone, it would copy the
+folder's own bits for others into the default, and a new database would be readable by everyone.
+The filesystem must support ACLs, as ext4, XFS and Btrfs do.
+
+**When fail2ban replaces the file.** An upgrade of fail2ban's schema copies the database aside and
+changes it in place, so the grant stays. A damaged database is moved aside, as
+`fail2ban.sqlite3.<date>-<time>`, and made afresh: a new file, which takes `u:10001:r` from the
+folder's default ACL, since with a default ACL present the kernel applies it in place of
+fail2ban's umask. The collector opens the file again at every read, so it reads the new one at
+the next read. A new `dbfile` in fail2ban's configuration is a new path: change `database`, and
+the mount when the folder changes.
+
+The source says what is wrong in `sources.security.error`:
+
+| Error | What it means |
+|---|---|
+| `cannot open the fail2ban database (see the read ACL in configuration.md)` | the grants above are missing |
+| `no fail2ban database at sources.security.database` | no file at that path: the mount, or `database` |
+| `fail2ban database busy` | fail2ban held its lock for longer than a second; read again at the next read |
+| `fail2ban database damaged` | not a database, or a damaged one; fail2ban repairs it when it next starts |
+| `not a fail2ban database` | a database without fail2ban's `bans` table |
 
 ### Removed settings
 
@@ -854,7 +951,8 @@ containers write. Files already there from an earlier run under another uid need
 `setfacl -m u:10001:rw` on each. Stop that earlier collector first, since every file it rewrites
 comes back without the grant. `config.toml`, the providers folder with its files, and the backup
 log only need to be readable by everyone (both containers read `config.toml` and the provider
-files), and `/proc` needs nothing. `.env` needs no grant: docker compose reads it as you, and the
-collector gets its credentials as environment variables.
+files), and `/proc` needs nothing. fail2ban's database, read with `from = "fail2ban"`, needs the
+read grant of [fail2ban's database](#fail2bans-database). `.env` needs no grant: docker compose
+reads it as you, and the collector gets its credentials as environment variables.
 
 To run them under another uid, change `user:` in `compose.yaml` and grant that uid instead.

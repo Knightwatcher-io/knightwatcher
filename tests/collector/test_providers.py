@@ -95,8 +95,10 @@ class FixturesTest(unittest.TestCase):
         self.assertEqual(fill, want, where)
         return provider, fill
 
-    def test_every_built_in_provider_has_fixtures(self):
-        self.assertEqual(sorted({pid for pid, _, _ in fixtures()}), sorted(providers.builtin()))
+    def test_every_built_in_provider_file_has_fixtures(self):
+        # The code adapters are tested on their own (test_fail2ban.py).
+        files = [p for p, s in providers.builtin().items() if not isinstance(s, providers.Adapter)]
+        self.assertEqual(sorted({pid for pid, _, _ in fixtures()}), sorted(files))
 
     def test_each_fixture(self):
         for pid, case, fixture in fixtures():
