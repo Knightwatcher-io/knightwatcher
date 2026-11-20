@@ -67,8 +67,7 @@ class Adapter:
 
     It has what a compiled file has that the configuration and the settings schema read: the id,
     the kind, the name, the docs, the credential fields and the declared settings. address says
-    whether it reads the section's url; make is the Provider class, or None for a reader that is
-    not a provider at all (the fail2ban summary, read by collector/sources/security.py).
+    whether it reads the section's url; make is the Provider class.
     """
 
     id: str
@@ -102,20 +101,6 @@ def _register(entry: Adapter) -> None:
     if entry.id in _ADAPTERS:
         raise ValueError(f"two built-in providers with the id {entry.id}")
     _ADAPTERS[entry.id] = entry
-
-
-# The fail2ban summary that [sources.security] reads while `from` is left out. It is not a
-# provider: collector/sources/security.py reads it as it always has, and build_sources picks that
-# reader when a section names it. It is listed so that `from` can name it.
-_register(
-    Adapter(
-        "summary",
-        "security",
-        "fail2ban summary",
-        "https://github.com/fail2ban/fail2ban",
-        address=True,
-    )
-)
 
 
 def takes_address(spec) -> bool:
@@ -312,21 +297,7 @@ def make(
     """The provider instance that reads one source. config, for a code adapter, is a function
     that gives the configuration in use."""
     if isinstance(spec, Adapter):
-        if spec.make is None:
-            return _NotAProvider(spec)
         return spec.make(settings, credentials, timeout, allowed, config)
     from collector.providers.engine import DataProvider
 
     return DataProvider(spec, settings, credentials, timeout, allowed)
-
-
-class _NotAProvider(Provider):
-    """What --probe meets for a reader that is not a provider: a read that says so."""
-
-    def __init__(self, spec: Adapter):
-        self.id, self.kind = spec.id, spec.kind
-
-    def read(self, now: dt.datetime) -> dict:
-        from collector.net import SourceError
-
-        raise SourceError(f"{self.id} is not read through a provider; --probe cannot read it")

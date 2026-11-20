@@ -384,9 +384,7 @@ class RunnerTest(unittest.TestCase):
         self.assertTrue(ev[1]["text"].endswith("…"))
 
     def test_only_the_last_twenty_events_are_kept(self):
-        src = Fake(
-            "security", "security", self.config, {"threat_score": 0, "bans_24h": 0, "attack": False}
-        )
+        src = Fake("security", "security", self.config, {"bans_24h": 0, "attack": False})
         r = self.runner([src])
         r.cycle()
         src.events = [
@@ -573,9 +571,7 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(contract.validate(state), [])
 
     def events_written(self, found):
-        src = Fake(
-            "security", "security", self.config, {"threat_score": 0, "bans_24h": 0, "attack": False}
-        )
+        src = Fake("security", "security", self.config, {"bans_24h": 0, "attack": False})
         r = self.runner([src])
         r.cycle()
         src.events = found
@@ -684,7 +680,7 @@ class RunnerTest(unittest.TestCase):
             "security",
             "security",
             self.config,
-            {"threat_score": 9, "bans_24h": 40, "attack": False},
+            {"bans_24h": 40, "attack": False},
         )
         orig = sec.fetch
 

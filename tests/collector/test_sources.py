@@ -13,7 +13,6 @@ from collector.sources.backup import BackupSource, parse_when
 from collector.sources.containers import ContainersSource, classify, ignored
 from collector.sources.dns import DnsSource
 from collector.sources.host import HostSource, Sample, cpu_average, mem_average
-from collector.sources.security import SecuritySource
 from collector.sources.ssh import SshSource, decode_address
 from collector.sources.updates import UpdatesSource
 from collector.sources.wan import WanSource
@@ -449,97 +448,13 @@ class BackupTest(unittest.TestCase):
             s.fetch(T0)
 
 
-class SecurityTest(unittest.TestCase):
-    def setUp(self):
-        self.http = FakeHttp()
-        self.addCleanup(self.http.close)
-        self.soc = {
-            "threat_score_24h": 2,
-            "organic_bans_24h": 14,
-            "last_ban": {
-                "ip": "203.0.113.77",
-                "jail": "caddy",
-                "time": "2026-01-15T20:00:00+00:00",
-            },
-            "schema": 6,
-        }
-        self.http.routes["/soc"] = (200, lambda _h: self.soc)
-        self.s = source(SecuritySource, "security", {"url": self.http.url})
-
-    def poll(self, memory, now):
-        r = self.s.fetch(now)
-        return r, self.s.observe(r, memory, now)
-
-    def test_facts(self):
-        r, _ = self.poll({}, T0)
-        self.assertEqual(r.facts, {"threat_score": 2, "bans_24h": 14, "attack": False})
-
-    def test_new_last_ban_is_an_event_and_first_sight_is_not(self):
-        memory = {}
-        _, events = self.poll(memory, T0)
-        self.assertEqual(events, [])
-        self.soc["last_ban"] = {
-            "ip": "198.51.100.9",
-            "jail": "sshd",
-            "time": "2026-01-15T21:00:10Z",
-        }
-        self.soc["organic_bans_24h"] = 15
-        r, events = self.poll(memory, at(30))
-        self.assertEqual(
-            events,
-            [
-                {
-                    "type": "ip_banned",
-                    "count": 1,
-                    "text": "BANNED 198.51.100.9 · sshd",
-                    "parts": {"addr": "198.51.100.9", "jail": "sshd"},
-                }
-            ],
-        )
-        self.assertTrue(r.data["jail_ban"])
-        self.assertEqual(r.data["bans_in_window"], 1)
-
-    def test_a_ban_with_no_jail_has_no_jail_part(self):
-        memory = {}
-        self.poll(memory, T0)
-        self.soc["last_ban"] = {"ip": "198.51.100.9", "jail": "", "time": "2026-01-15T21:00:10Z"}
-        _, [event] = self.poll(memory, at(30))
-        self.assertEqual(event["text"], "BANNED 198.51.100.9")
-        self.assertEqual(event["parts"], {"addr": "198.51.100.9"})
-
-    def test_old_jail_ban_is_not_an_attack(self):
-        self.soc["last_ban"]["jail"] = "sshd"
-        self.soc["last_ban"]["time"] = "2026-01-15T19:00:00Z"  # two hours before T0
-        r, _ = self.poll({}, T0)
-        self.assertFalse(r.data["jail_ban"])
-
-    def test_bans_are_counted_over_the_window(self):
-        memory = {}
-        self.poll(memory, T0)
-        self.soc["organic_bans_24h"] = 17  # three new bans
-        r, _ = self.poll(memory, at(60))
-        self.assertEqual(r.data["bans_in_window"], 3)
-        self.soc["organic_bans_24h"] = 19
-        r, _ = self.poll(memory, at(300))
-        self.assertEqual(r.data["bans_in_window"], 5)
-        r, _ = self.poll(memory, at(700))  # the first three have left the window
-        self.assertEqual(r.data["bans_in_window"], 2)
-
-    def test_marker_survives_a_restart(self):
-        memory = {}
-        self.poll(memory, T0)
-        fresh = source(SecuritySource, "security", {"url": self.http.url})
-        r = fresh.fetch(at(30))
-        self.assertEqual(fresh.observe(r, memory, at(30)), [])
-
-
 class InterfaceTest(unittest.TestCase):
     def test_every_source_has_a_name_and_returns_a_reading(self):
         from collector.config import SOURCE_DEFAULTS
         from collector.contract import FACT_SECTIONS
 
         raw = {"sources": {n: {"enabled": True} for n in SOURCE_DEFAULTS}}
-        for name in ("containers", "streams", "adblock", "security", "sonarr", "radarr"):
+        for name in ("containers", "streams", "adblock", "sonarr", "radarr"):
             raw["sources"][name]["url"] = "http://192.0.2.1"
         raw["sources"]["pi"]["host"] = "192.0.2.4"
         raw["sources"]["updates"]["holders"] = [{"name": "x", "pattern": "x"}]

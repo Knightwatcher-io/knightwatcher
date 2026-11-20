@@ -38,7 +38,7 @@ def containers(bad=None):
 
 
 def security(jail_ban=False, in_window=0, jail="sshd", ip="203.0.113.77"):
-    facts = {"threat_score": 1, "bans_24h": 3, "attack": False}
+    facts = {"bans_24h": 3, "attack": False}
     data = {
         "bans_in_window": in_window,
         "jail_ban": jail_ban,

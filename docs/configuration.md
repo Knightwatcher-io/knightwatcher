@@ -439,16 +439,16 @@ Blocked adverts, from the service its provider reads: AdGuard Home by default.
 
 ### [sources.security]
 
-Bans, and the attack they may add up to, from the provider its from names: a fail2ban summary by default, or fail2ban's own database.
+Bans, and the attack they may add up to, from the provider its from names: fail2ban's own database by default.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `from` | `"fail2ban"` or `"summary"`: a provider of the security kind (see Providers below) | `"summary"` | household | The provider the bans are read through, by its id: summary, a fail2ban summary at url, or fail2ban, fail2ban's own database at database, which needs its folder mounted and a read grant on the host (docs/configuration.md, fail2ban's database). A provider of another kind, or one that does not exist, is refused by name. Set in config.toml alone, with the mount. |
-| `url` | an http:// or https:// address | required | household | Base URL of the fail2ban summary; the collector calls /soc on it. Required by summary and by a provider file of your own; refused with fail2ban, which reads database instead. |
+| `from` | `"fail2ban"`: a provider of the security kind (see Providers below) | `"fail2ban"` | household | The provider the bans are read through, by its id: fail2ban, fail2ban's own database at database, which needs its folder mounted and a read grant on the host (docs/configuration.md, fail2ban's database), or a provider file of your own. A provider of another kind, or one that does not exist, is refused by name. Set in config.toml alone, with the mount. |
+| `url` | an http:// or https:// address | required | household | Base URL of the service a provider file of your own reads, and required by one. Refused with fail2ban, which reads database instead. Set in config.toml alone, with from. |
 | `database` | a path inside the collector's container | `"/host/fail2ban/fail2ban.sqlite3"` | household | fail2ban's database, as the collector's container sees it through the mount of fail2ban's folder. Read by fail2ban alone, and refused with any other provider. Set in config.toml alone, with the mount. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names. Neither summary nor fail2ban needs one; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names. fail2ban needs none; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone. |
 
 ### [sources.sonarr]
 
@@ -567,10 +567,9 @@ The services the sections read through a kind can read, each by its provider. A 
 | Provider | Kind | Service | Read by | Credentials |
 |---|---|---|---|---|
 | `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KNIGHTWATCHER_ADGUARD_USERNAME`, `KNIGHTWATCHER_ADGUARD_PASSWORD` |
-| `fail2ban` | security | [fail2ban](https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py) | `[sources.security]` with `from = "fail2ban"` | none |
+| `fail2ban` | security | [fail2ban](https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py) | `[sources.security]` by default | none |
 | `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]` | `KNIGHTWATCHER_RADARR_API_KEY` |
 | `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]` | `KNIGHTWATCHER_SONARR_API_KEY` |
-| `summary` | security | [fail2ban summary](https://github.com/fail2ban/fail2ban) | `[sources.security]` by default | none |
 | `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KNIGHTWATCHER_TAUTULLI_API_KEY` |
 
 ### .env
@@ -605,9 +604,9 @@ Between reads its last reading stands, and it raises no events. An `every_s` bel
 means every poll.
 
 `[sources.streams]`, `[sources.adblock]` and `[sources.security]` read a service through a
-provider, named by `from`: `tautulli`, `adguard` and `summary`, the defaults, so a table without
-`from` reads what it always has. `[sources.security]` may instead read fail2ban's own database,
-with `from = "fail2ban"` ([below](#fail2bans-database)).
+provider, named by `from`: `tautulli`, `adguard` and `fail2ban`, the defaults, so a table without
+`from` reads the default. `[sources.security]` reads fail2ban's own database
+([below](#fail2bans-database)).
 `[sources.sonarr]` and `[sources.radarr]` read the provider of their own name. A `from` that
 names no provider, or a provider of another kind, is refused by name
 (`sources.streams.from: unknown provider "plx"; use tautulli`), so a typo never falls back to the
@@ -636,7 +635,8 @@ take `from`, so a file of the imports kind is checked but cannot be chosen yet.
 
 A key of the section itself that the chosen provider does not use is refused by name too:
 `sources.security.url: not used by fail2ban`, and `sources.security.database: not used by
-summary`. The admin page's Download config.toml writes such a key commented.
+mybans` with a provider file of your own, `mybans`, of the security kind. The admin page's
+Download config.toml writes such a key commented.
 
 `host` should be read at least as often as the shorter averaging window; when it is read less
 often, an average reaches back to the previous read instead.
@@ -646,9 +646,8 @@ The backup log's date may be ISO 8601 or the form `date` prints, such as
 
 ### fail2ban's database
 
-`[sources.security]` reads a fail2ban summary at `url` by default (`from = "summary"`). With
-`from = "fail2ban"` it reads fail2ban's own SQLite database instead, which any host running
-fail2ban has:
+`[sources.security]` reads fail2ban's own SQLite database (`from = "fail2ban"`, the default),
+which any host running fail2ban has:
 
 ```toml
 [sources.security]
@@ -736,6 +735,17 @@ The source says what is wrong in `sources.security.error`:
 moved to 10-second polls and averaged CPU and memory. A `config.toml` that still sets one is
 refused with a message naming its replacement: `clear_after_s`, or `window_s`.
 [collector.md](./collector.md#cpu-and-memory) says how the averages are worked out.
+
+`[sources.security]` once read a fail2ban summary at `url`, the default before fail2ban's own
+database. A table that still has `url` with no `from`, or `from = "summary"`, is refused with a
+message naming what replaces it:
+
+```
+config: sources.security.url: the fail2ban summary is no longer read; use from = "fail2ban" and database, with the mount and the read ACL in docs/configuration.md, fail2ban's database
+```
+
+Set `from = "fail2ban"` and `database`, take `url` out, and give the collector fail2ban's folder
+as [fail2ban's database](#fail2bans-database) describes: the mount and the read ACL.
 
 ### The Pi of [sources.pi]
 
@@ -951,7 +961,7 @@ containers write. Files already there from an earlier run under another uid need
 `setfacl -m u:10001:rw` on each. Stop that earlier collector first, since every file it rewrites
 comes back without the grant. `config.toml`, the providers folder with its files, and the backup
 log only need to be readable by everyone (both containers read `config.toml` and the provider
-files), and `/proc` needs nothing. fail2ban's database, read with `from = "fail2ban"`, needs the
+files), and `/proc` needs nothing. fail2ban's database, which `[sources.security]` reads, needs the
 read grant of [fail2ban's database](#fail2bans-database). `.env` needs no grant: docker compose
 reads it as you, and the collector gets its credentials as environment variables.
 

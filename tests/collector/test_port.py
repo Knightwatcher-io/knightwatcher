@@ -10,10 +10,6 @@ the same polls, byte for byte: state.json and memory.json after each poll, and t
 with each credential replaced by its variable's name. They were recorded once from those readers
 and are never written from the current code; a difference here is a change in what the wall
 shows, never something to record again.
-
-The security-summary scenarios hold [sources.security] with no `from`, which still reads the
-fail2ban summary with its own reader, to what the collector wrote before the security kind and
-the fail2ban provider were added, in the same way.
 """
 
 from __future__ import annotations
@@ -332,49 +328,6 @@ def radarr_polls() -> list[dict]:
     ]  # fmt: skip
 
 
-# ---- The fail2ban summary ---------------------------------------------------------------------
-
-
-def soc(bans, last=None, score=12):
-    body = {"threat_score_24h": score, "organic_bans_24h": bans}
-    if last is not None:
-        body["last_ban"] = last
-    return (200, body)
-
-
-def ban(ip, jail, time):
-    return {"ip": ip, "jail": jail, "time": time}
-
-
-def summary_polls() -> list[dict]:
-    """A fail2ban summary through an evening: a watched jail's ban, a burst of bans of any jail,
-    the window running out, and the replies the reader refused or made the best of."""
-    route = "/soc"
-    old = ban("203.0.113.5", "recidive", "2026-01-15T20:30:00Z")
-    ssh = ban("203.0.113.77", "sshd", "2026-01-15T21:00:50Z")
-    web = ban("198.51.100.9", "nginx-botsearch", "2026-01-15T21:01:25+00:00")
-    return [
-        {"at": 0, "routes": {route: soc(3, old)}},
-        {"at": 30, "routes": {route: soc(3, old)}},
-        {"at": 60, "routes": {route: soc(4, ssh)}},
-        {"at": 90, "routes": {route: soc(6, web, score=40)}},
-        {"at": 120, "routes": {route: soc(6, web)}},
-        {"at": 150, "routes": {route: soc(9, web)}},
-        {"at": 180, "routes": {route: (500, {"error": "boom"})}},
-        {"at": 210, "routes": {route: (200, [9])}},
-        {"at": 240, "routes": {route: (200, {"threat_score_24h": 1})}},
-        {"at": 270, "routes": {route: soc("10", web, score="7")}},
-        {"at": 300, "routes": {route: soc(10, web, score="high")}},
-        {"at": 330, "routes": {route: soc(11, ban("192.0.2.44", "", "yesterday"))}},
-        {"at": 360, "routes": {route: soc(11, {"ip": "192.0.2.45"})}},
-        {"at": 390, "routes": {route: (200, b"<html></html>")}},
-        {"at": 420, "routes": {route: soc(11, None)}},
-        {"at": 900, "routes": {route: soc(11, {"ip": "192.0.2.45"})}},
-        {"at": 930, "routes": {route: soc(8, ban("203.0.113.78", "sshd", "2026-01-15T20:40:00Z"))}},
-        {"at": 960, "routes": {route: soc(None, ssh)}},
-    ]
-
-
 # ---- The scenarios ----------------------------------------------------------------------------
 
 BERLIN = {"collector": {"timezone": "Europe/Berlin"}}
@@ -469,23 +422,6 @@ SCENARIOS: dict[str, dict] = {
         "sources": {"radarr": {"secret": "films"}},
         "env": {"KNIGHTWATCHER_FILMS_API_KEY": secrets.token_hex(16)},
         "polls": {"radarr": radarr_polls()},
-    },
-    # The fail2ban summary, read by its own reader while [sources.security] has no from.
-    "security-summary": {
-        "sources": {"security": {}},
-        "polls": {"security": summary_polls()},
-    },
-    # Memory from a run before, with a last ban the summary no longer gives, and its own window.
-    "security-summary-restart": {
-        "raw": {"conditions": {"attack": {"window_s": 120, "jails": ["recidive"], "bans": 2}}},
-        "sources": {"security": {"every_s": 60}},
-        "memory": {
-            "seq": 7,
-            "events": [],
-            "sources": {"security": {"last_ban": "203.0.113.5|2026-01-15T20:30:00Z"}},
-            "backoff": {},
-        },
-        "polls": {"security": summary_polls()[2:8]},
     },
     # All four at once, as a wall reads them: the quiet line, the streaming words and the events
     # of several sources in one poll.
