@@ -132,10 +132,10 @@ fly_every_s = 300
 [sources.security]
 enabled = true
 every_s = 30
-from = "summary"             # a fail2ban summary at url; "fail2ban" reads fail2ban's own database
-url = "http://192.0.2.1:9192"
-# or: database = "/host/fail2ban/fail2ban.sqlite3"   # with from = "fail2ban", in place of url
-# secret = "summary"         # neither summary nor fail2ban needs a credential
+from = "fail2ban"            # the default; needs a mount and a read grant (docs/configuration.md)
+database = "/host/fail2ban/fail2ban.sqlite3"   # the default, inside the collector's container
+# or: url = "http://192.0.2.40:8080"   # in place of database, for a provider file of your own
+# secret = "fail2ban"        # fail2ban needs no credential
 
 [sources.sonarr]
 enabled = true

@@ -48,14 +48,14 @@ downloads and `credentials.json`) and its memory folder.
   reads beyond the fact of an answer, so an impostor at that address can at worst make a machine
   that is down look up.
 
-With `[sources.security] from = "fail2ban"` it also reads fail2ban's SQLite database, through a
-read-only mount of fail2ban's folder that the operator adds in `compose.override.yaml`, and a read
-grant for uid 10001 on that folder and file alone, given with `setfacl`
-([configuration.md](./configuration.md#fail2bans-database)). The folder's default ACL passes the
-same read grant, and nothing wider, to a database fail2ban makes afresh. The collector opens the
-file read-only (SQLite's `mode=ro`) for one query at each read and writes nothing to it or beside
-it; it never needs root or write access, and the database holds nothing but jails, addresses and
-times.
+Through `[sources.security]`, with its default provider `fail2ban`, it also reads fail2ban's
+SQLite database, through a read-only mount of fail2ban's folder that the operator adds in
+`compose.override.yaml`, and a read grant for uid 10001 on that folder and file alone, given with
+`setfacl` ([configuration.md](./configuration.md#fail2bans-database)). The folder's default ACL
+passes the same read grant, and nothing wider, to a database fail2ban makes afresh. The collector
+opens the file read-only (SQLite's `mode=ro`) for one query at each read and writes nothing to it
+or beside it; it never needs root or write access, and the database holds nothing but jails,
+addresses and times.
 
 It mounts the host's `/proc` read-only, for load, memory and the lock table. A process can read
 the environment of other processes that run as its own user through `/proc`, so the collector

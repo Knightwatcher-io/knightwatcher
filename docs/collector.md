@@ -246,21 +246,15 @@ them ([state.md](./state.md#fields)).
 ### Attacks
 
 The attack signal is a ban in one of the configured jails (`sshd` by default) within the attack
-window (`window_s`, ten minutes by default), or at least `bans` bans in that window. How the bans
-are counted depends on the provider of `[sources.security]`.
+window (`window_s`, ten minutes by default), or at least `bans` bans in that window.
 
-With `from = "fail2ban"`, the security kind (`kinds/security.py`) works everything out from the
-list of bans fail2ban's database holds, at every read: the bans of the last 24 hours, those in the
+The security kind (`kinds/security.py`) works everything out from the list of bans its provider
+gives, fail2ban's database by default, at every read: the bans of the last 24 hours, those in the
 window, whether one of those is in a watched jail, and the ban the words name (the newest in a
 watched jail inside the window, else the newest). A ban that arrives between two reads is counted
 even when it would have aged out by the next, a watched jail's ban that is not the very last ban
 still raises the condition, and a ban lifted by hand (its rows deleted) leaves the count. The words
-are the same as the summary's: `UNDER ATTACK` with `sshd ban from 203.0.113.77 · 3 bans in
-10 min`.
-
-With the default, `summary`, bans are counted from the rise in the summary's 24-hour ban count
-between reads and from changes in its last ban, so a ban that both arrives and ages out of the
-24-hour window between two reads can be missed.
+are `UNDER ATTACK` with `sshd ban from 203.0.113.77 · 3 bans in 10 min`.
 
 The history behind all of this, the host's samples included, is held by the running process
 rather than the memory file, and starts again when the collector restarts.
@@ -270,7 +264,7 @@ rather than the memory file, and starts again when the collector restarts.
 | Event | Raised when | `count` | `text` |
 |---|---|---|---|
 | `ad_blocked` | enough blocked queries have built up for at least one fly | the flies, at most 8 unless `fly_every_s` is 0 | empty |
-| `ip_banned` | from fail2ban: a read finds bans it has not seen, and names the newest; from the summary: the last ban changed | the new bans; 1 from the summary | `BANNED 203.0.113.77 · sshd` |
+| `ip_banned` | a read of `[sources.security]` finds bans it has not seen, and names the newest | the new bans | `BANNED 203.0.113.77 · sshd` |
 | `import` | a new import record appears in Sonarr's or Radarr's history | 1 each | `IMPORTED · The Night Shift S02E04` |
 | `backup_done` | the backup log shows a completion newer than the last one seen | 1 | `BACKUP DONE 03:12` |
 
@@ -347,7 +341,7 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `ssh` | `ssh.py` | established connections to the SSH port in `/proc/net/tcp` and `tcp6` | `ssh` |
 | `streams` | the streams kind, `kinds/streams.py`, through its `from` provider, `tautulli` by default | Tautulli's `get_activity`: of each stream its title, and its user's name only when `show` is `names` | `streams` |
 | `adblock` | the adblock kind, `kinds/adblock.py`, through its `from` provider, `adguard` by default | AdGuard Home's `/control/stats` | `adblock` |
-| `security` | `security.py` while `from` is `summary`, the default; the security kind, `kinds/security.py`, through the `fail2ban` provider (`providers/fail2ban.py`) with `from = "fail2ban"` | a fail2ban summary at `/soc`; or the `bans` table of fail2ban's SQLite database, read-only | `security` |
+| `security` | the security kind, `kinds/security.py`, through its `from` provider, `fail2ban` (`providers/fail2ban.py`) by default | the `bans` table of fail2ban's SQLite database, read-only | `security` |
 | `sonarr`, `radarr` | the imports kind, `kinds/imports.py`, through the provider of each one's name | the last ten import records in each one's history | none |
 | `device:<name>` | `devices.py` | a TCP connection to every port at once, or one `GET` to a web address | none; `devices` is built from the conditions |
 
@@ -378,14 +372,13 @@ A service that a file cannot describe gets a **code adapter**: a `Provider` subc
 (`collector/providers/fail2ban.py`), which reads fail2ban's SQLite database rather than an HTTP
 service: it opens the file read-only at every read (SQLite's `mode=ro`, never `immutable`, since
 fail2ban writes the file while it is read), runs one query of the `bans` table, and closes it, so
-a file fail2ban replaces is read afresh. The `summary` of `[sources.security]` is listed too, so
-that `from` can name it, but it is not a provider: `security.py` reads it as before.
+a file fail2ban replaces is read afresh.
 
 | Section | Kind | `from` | Built-in providers |
 |---|---|---|---|
 | `[sources.streams]` | streams | `tautulli` by default, or a file of the user's own | `tautulli` |
 | `[sources.adblock]` | adblock | `adguard` by default, or a file of the user's own | `adguard` |
-| `[sources.security]` | security | `summary` by default (read by `security.py`, not through the kind), `fail2ban`, or a file of the user's own | `fail2ban` (a code adapter) |
+| `[sources.security]` | security | `fail2ban` by default, or a file of the user's own | `fail2ban` (a code adapter) |
 | `[sources.sonarr]`, `[sources.radarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr` |
 
 To the runner each of these sections is a source like any other (`KindSource` in

@@ -22,7 +22,6 @@ from collector.net import SourceError
 from collector.providers import fail2ban
 from collector.runner import Runner
 from collector.sources import KindSource, build_sources
-from collector.sources.security import SecuritySource
 from collector.store import Memory
 from kw_helpers import Clock, at, make_config
 
@@ -264,13 +263,12 @@ class ConfigTest(unittest.TestCase):
             self.build(security)
         return cm.exception.problems
 
-    def test_from_left_out_reads_the_summary_as_before(self):
-        config = self.build({"url": "http://192.0.2.1:9192"})
+    def test_fail2ban_is_the_default(self):
+        config = self.build({})
+        self.assertEqual(config.sources["security"]["from"], "fail2ban")
         (source,) = build_sources(config)
-        self.assertIs(type(source), SecuritySource)
-        self.assertEqual(config.sources["security"]["from"], "summary")
-        (source,) = build_sources(self.build({"from": "summary", "url": "http://192.0.2.1:9192"}))
-        self.assertIs(type(source), SecuritySource)
+        self.assertIs(type(source), KindSource)
+        self.assertEqual(source.spec.id, "fail2ban")
 
     def test_fail2ban_reads_through_the_kind(self):
         config = self.build({"from": "fail2ban"})
@@ -286,17 +284,58 @@ class ConfigTest(unittest.TestCase):
 
     def test_a_key_the_provider_does_not_use_is_refused_by_name(self):
         self.assertEqual(
-            self.refused({"from": "fail2ban", "url": "http://192.0.2.1:9192"}),
+            self.refused({"from": "fail2ban", "url": "http://192.0.2.1:8080"}),
             ["sources.security.url: not used by fail2ban"],
         )
+
+    def test_a_section_written_for_the_fail2ban_summary_is_refused_with_what_replaces_it(self):
+        gone = (
+            'the fail2ban summary is no longer read; use from = "fail2ban" and database, with '
+            "the mount and the read ACL in docs/configuration.md, fail2ban's database"
+        )
+        self.assertEqual(config_mod.SUMMARY_GONE, gone)
+        # A url with no from: the section as it was written for the summary.
         self.assertEqual(
-            self.refused({"url": "http://192.0.2.1:9192", "database": "/host/f.sqlite3"}),
-            ["sources.security.database: not used by summary"],
+            self.refused({"url": "http://192.0.2.1:8080"}), [f"sources.security.url: {gone}"]
         )
         self.assertEqual(
-            self.refused({"from": "summary", "database": "/host/f.sqlite3"}),
-            ["sources.security.database: not used by summary"],
+            self.refused({"enabled": False, "url": "http://192.0.2.1:8080"}),
+            [f"sources.security.url: {gone}"],
         )
+        # The summary named by from, as a section could since fail2ban was added beside it.
+        self.assertEqual(
+            self.refused({"from": "summary", "url": "http://192.0.2.1:8080"}),
+            [f"sources.security.from: {gone}"],
+        )
+        # The command line says the same.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "config.toml")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('[sources.security]\nurl = "http://192.0.2.1:8080"\n')
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+                code = main(["--config", path, "--admin", os.path.join(tmp, "a.json"),
+                             "--check-config"])  # fmt: skip
+        self.assertEqual(code, 2)
+        self.assertIn(f"config: sources.security.url: {gone}\n", err.getvalue())
+
+    def test_a_provider_file_of_your_own_takes_url_and_not_database(self):
+        from test_kinds import MYBANS
+
+        from collector import providers
+
+        with tempfile.TemporaryDirectory() as folder:
+            with open(os.path.join(folder, "mybans.toml"), "w", encoding="utf-8") as fh:
+                fh.write(MYBANS)
+            found = providers.scan(folder)
+        env = {"KNIGHTWATCHER_MYBANS_TOKEN": "an-invented-token"}
+        own = {"from": "mybans", "url": "http://192.0.2.40:8080"}
+        config = config_mod.build({"sources": {"security": own}}, env, providers=found)
+        self.assertEqual(config.sources["security"]["url"], "http://192.0.2.40:8080")
+        with self.assertRaises(ConfigError) as cm:
+            raw = {"sources": {"security": {**own, "database": "/host/f.sqlite3"}}}
+            config_mod.build(raw, env, providers=found)
+        self.assertEqual(cm.exception.problems, ["sources.security.database: not used by mybans"])
 
     def test_the_database_is_a_path_from_the_root(self):
         self.assertEqual(
@@ -310,7 +349,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_a_from_of_another_kind_or_none(self):
         self.assertIn(
-            'sources.security.from: unknown provider "fail2bam"; use fail2ban or summary',
+            'sources.security.from: unknown provider "fail2bam"; use fail2ban',
             self.refused({"from": "fail2bam"}),
         )
         self.assertIn(
@@ -318,8 +357,8 @@ class ConfigTest(unittest.TestCase):
             self.refused({"from": "tautulli", "url": "http://192.0.2.1"}),
         )
 
-    def test_neither_needs_a_credential(self):
-        for security in ({"from": "fail2ban"}, {"url": "http://192.0.2.1:9192"}):
+    def test_fail2ban_needs_no_credential(self):
+        for security in ({"from": "fail2ban"}, {}):
             config = config_mod.build({"sources": {"security": security}}, {})
             self.assertEqual(config.missing, {})
             self.assertEqual(config.secret("security"), {})
@@ -338,18 +377,12 @@ class ExportTest(unittest.TestCase):
         config_mod.build(tomllib.loads(text), None)
         return [line for line in text.splitlines() if "not used by" in line]
 
-    def test_each_provider_and_none(self):
-        summary = {"sources": {"security": {"url": "http://192.0.2.1:9192"}}}
-        self.assertEqual(
-            self.export(summary),
-            ['# database = "/host/fail2ban/fail2ban.sqlite3"   # not used by summary'],
-        )
-        own = {"sources": {"security": {"from": "fail2ban"}}}
-        self.assertEqual(self.export(own), ['# url = ""   # not used by fail2ban'])
-        self.assertEqual(
-            self.export({}),
-            ['# # database = "/host/fail2ban/fail2ban.sqlite3"   # not used by summary'],
-        )
+    def test_fail2ban_given_left_out_and_absent(self):
+        given = {"sources": {"security": {"from": "fail2ban"}}}
+        self.assertEqual(self.export(given), ['# url = ""   # not used by fail2ban'])
+        left_out = {"sources": {"security": {}}}
+        self.assertEqual(self.export(left_out), ['# url = ""   # not used by fail2ban'])
+        self.assertEqual(self.export({}), ['# # url = ""   # not used by fail2ban'])
 
 
 class WallTest(unittest.TestCase):
@@ -480,14 +513,10 @@ class ProbeTest(unittest.TestCase):
         self.assertIn('"bans_24h": 1', out)
         self.assertNotIn("203.0.113.77", out)
 
-    def test_the_summary_is_not_a_provider(self):
-        code, _, err = self.probe('url = "http://192.0.2.1:9192"')
-        self.assertEqual(code, 1)
-        self.assertEqual(
-            err,
-            "probe security: failed: summary is not read through a provider; "
-            "--probe cannot read it\n",
-        )
+    def test_fail2ban_is_probed_with_from_left_out(self):
+        code, out, err = self.probe(f'database = "{self.db.path}"')
+        self.assertEqual(code, 0, err)
+        self.assertIn("probe security: provider fail2ban (fail2ban)\n", out)
 
 
 if __name__ == "__main__":

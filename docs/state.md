@@ -24,7 +24,7 @@ Every value below is invented.
   "events": [
     { "seq": 4410, "type": "ad_blocked", "at": "2026-01-15T21:42:01Z", "count": 3, "text": "" },
     { "seq": 4411, "type": "ip_banned", "at": "2026-01-15T21:42:07Z", "count": 1,
-      "text": "BANNED 203.0.113.77 · 6 probes for /.env" }
+      "text": "BANNED 203.0.113.77 · sshd", "parts": { "addr": "203.0.113.77", "jail": "sshd" } }
   ],
   "facts": {
     "host": { "cpu_pct": 23.0, "load1": 2.9, "cores": 12, "mem_pct": 61.0, "swap_pct": 9.0,
@@ -39,7 +39,7 @@ Every value below is invented.
                  "sessions": [ { "who": "Robin", "title": "The Night Shift S02E04" } ] },
     "ssh": { "count": 0, "sources": [] },
     "adblock": { "blocked_today": 4812 },
-    "security": { "threat_score": 2, "bans_24h": 14, "attack": false },
+    "security": { "bans_24h": 14, "attack": false },
     "devices": {
       "list": [
         { "name": "Pi", "kind": "pi", "state": "up", "alert": true, "seen": true,
@@ -55,7 +55,7 @@ Every value below is invented.
   },
   "sources": {
     "containers": { "ok": true, "at": "2026-01-15T21:42:10Z", "error": "" },
-    "adblock": { "ok": false, "at": "2026-01-15T21:40:40Z", "error": "401 from the DNS filter" },
+    "adblock": { "ok": false, "at": "2026-01-15T21:40:40Z", "error": "HTTP 401: credentials refused" },
     "pi": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" },
     "device:Vault": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" },
     "device:Gate cam": { "ok": false, "at": "2026-01-15T21:42:01Z",
@@ -240,12 +240,10 @@ and `sources` the parts come from are shown:
   CPU use averaged over the `cpu_hot` window (30 seconds by default); `host.mem_pct` is the
   latest reading. `adblock.blocked_today` counts the blocked queries since midnight in the
   collector's time zone. `security.bans_24h` counts the bans of the last 24 hours, and
-  `security.attack` says whether the `attack` condition is raised; `security.threat_score`, a
-  score the fail2ban summary works out, is there only while `[sources.security]` reads the summary
-  (its default), and not with `from = "fail2ban"`, where a ban lifted by hand also leaves
-  `bans_24h` ([collector.md](./collector.md#attacks)). `pi.up` says whether the Pi of `[sources.pi]` answered its last check,
-  so it turns false at the first check it misses; whether the Pi has been silent long enough to
-  count as down is its entry in `devices`.
+  `security.attack` says whether the `attack` condition is raised; a ban lifted by hand leaves
+  `bans_24h` at the next read ([collector.md](./collector.md#attacks)). `pi.up` says whether the
+  Pi of `[sources.pi]` answered its last check, so it turns false at the first check it misses;
+  whether the Pi has been silent long enough to count as down is its entry in `devices`.
 - **`facts.streams`** says what plays, from the streams provider (Tautulli by default), as far as
   the collector's setting `show` in
   `[sources.streams]` lets it out ([configuration.md](./configuration.md#sourcesstreams)). It is

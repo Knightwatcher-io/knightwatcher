@@ -1,7 +1,5 @@
 """Sources: one module per thing the collector reads, and KindSource for the sections read through
-a kind and a provider (collector/kinds/, collector/providers/). [sources.security] is read through
-the security kind when its `from` names a provider such as fail2ban, and by security.py, the
-fail2ban summary's own reader, while `from` is left out or is "summary".
+a kind and a provider (collector/kinds/, collector/providers/).
 
 Every source follows the interface of `Source`. The runner calls `fetch` in a worker thread with
 a deadline, and `observe` afterwards in the main thread. A source that raises is marked not ok
@@ -154,7 +152,6 @@ def build_sources(config: Config) -> list[Source]:
         devices,
         dns,
         host,
-        security,
         ssh,
         updates,
         wan,
@@ -178,9 +175,6 @@ def build_sources(config: Config) -> list[Source]:
         elif name in config.missing:
             variables = _variables(config.missing[name])
             built.append(MissingCredentials(name, settings, config, variables))
-        elif name == "security" and provider_of(name, settings) == "summary":
-            # The fail2ban summary is read by its own reader, as before there were kinds.
-            built.append(security.SecuritySource(settings, config))
         elif name in SECTIONS and config.providers.is_refused(provider_of(name, settings)):
             built.append(RefusedProvider(name, settings, config, provider_of(name, settings)))
         elif name in SECTIONS:

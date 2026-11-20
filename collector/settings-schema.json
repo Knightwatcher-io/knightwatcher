@@ -394,7 +394,7 @@
     },
     {
       "table": "sources.security",
-      "help": "Bans, and the attack they may add up to, from the provider its from names: a fail2ban summary by default, or fail2ban's own database.",
+      "help": "Bans, and the attack they may add up to, from the provider its from names: fail2ban's own database by default.",
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: security", "label": "On" } }, "editable": true,
@@ -402,18 +402,18 @@
         { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: security", "label": "Read every" } }, "editable": true,
           "help": "How often the source is read." },
-        { "key": "from", "type": "string", "default": "summary", "values_from": "providers", "kind": "security", "scope": "household",
+        { "key": "from", "type": "string", "default": "fail2ban", "values_from": "providers", "kind": "security", "scope": "household",
           "gui": { "admin": { "section": "Sources: security", "label": "Read from" } }, "editable": false,
-          "help": "The provider the bans are read through, by its id: summary, a fail2ban summary at url, or fail2ban, fail2ban's own database at database, which needs its folder mounted and a read grant on the host (docs/configuration.md, fail2ban's database). A provider of another kind, or one that does not exist, is refused by name. Set in config.toml alone, with the mount." },
+          "help": "The provider the bans are read through, by its id: fail2ban, fail2ban's own database at database, which needs its folder mounted and a read grant on the host (docs/configuration.md, fail2ban's database), or a provider file of your own. A provider of another kind, or one that does not exist, is refused by name. Set in config.toml alone, with the mount." },
         { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
-          "gui": { "admin": { "section": "Sources: security", "label": "Address" } }, "editable": true,
-          "help": "Base URL of the fail2ban summary; the collector calls /soc on it. Required by summary and by a provider file of your own; refused with fail2ban, which reads database instead." },
+          "gui": { "admin": { "section": "Sources: security", "label": "Address" } }, "editable": false,
+          "help": "Base URL of the service a provider file of your own reads, and required by one. Refused with fail2ban, which reads database instead. Set in config.toml alone, with from." },
         { "key": "database", "type": "string", "default": "/host/fail2ban/fail2ban.sqlite3", "providers": ["fail2ban"], "form": "a path inside the collector's container", "scope": "household",
           "gui": { "admin": { "section": "Sources: security", "label": "Database" } }, "editable": false,
           "help": "fail2ban's database, as the collector's container sees it through the mount of fail2ban's folder. Read by fail2ban alone, and refused with any other provider. Set in config.toml alone, with the mount." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: security", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names. Neither summary nor fail2ban needs one; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone." }
+          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names. fail2ban needs none; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone." }
       ]
     },
     {
@@ -654,13 +654,11 @@
     { "id": "adguard", "kind": "adblock", "name": "AdGuard Home", "docs": "https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml",
       "default": true, "credentials": ["username", "password"], "settings": [] },
     { "id": "fail2ban", "kind": "security", "name": "fail2ban", "docs": "https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py",
-      "default": false, "credentials": [], "settings": ["database"] },
+      "default": true, "credentials": [], "settings": ["database"] },
     { "id": "radarr", "kind": "imports", "name": "Radarr", "docs": "https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json",
       "default": false, "credentials": ["api_key"], "settings": [] },
     { "id": "sonarr", "kind": "imports", "name": "Sonarr", "docs": "https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json",
       "default": false, "credentials": ["api_key"], "settings": [] },
-    { "id": "summary", "kind": "security", "name": "fail2ban summary", "docs": "https://github.com/fail2ban/fail2ban",
-      "default": true, "credentials": [], "settings": [] },
     { "id": "tautulli", "kind": "streams", "name": "Tautulli", "docs": "https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference",
       "default": true, "credentials": ["api_key"], "settings": [] }
   ],

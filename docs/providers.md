@@ -27,8 +27,7 @@ SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-pr
 |---|---|---|---|
 | `tautulli` | streams | Tautulli's `get_activity` | `[sources.streams]`, the default for `from` |
 | `adguard` | adblock | AdGuard Home's `/control/stats` | `[sources.adblock]`, the default for `from` |
-| `fail2ban` | security | fail2ban's database, a code adapter | `[sources.security]` with `from = "fail2ban"` |
-| `summary` | security | a fail2ban summary at `/soc`, read by the collector's own reader rather than through the kind | `[sources.security]`, the default for `from` |
+| `fail2ban` | security | fail2ban's database, a code adapter | `[sources.security]`, the default for `from` |
 | `sonarr` | imports | Sonarr's import history | `[sources.sonarr]` |
 | `radarr` | imports | Radarr's import history | `[sources.radarr]` |
 

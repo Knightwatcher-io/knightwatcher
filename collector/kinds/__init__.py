@@ -28,9 +28,8 @@ from typing import Any
 from collector.net import SourceError
 
 # The sections of config.toml read through a kind, with the kind each reads. A section with a
-# `from` setting reads the provider it names; any other reads the provider of its own name.
-# [sources.security] reads the fail2ban summary by default, which is not a provider: build_sources
-# gives it the summary's own reader (collector/sources/security.py).
+# `from` setting reads the provider it names; any other reads the provider of its own name, or
+# for [sources.security] fail2ban, the default its `from` takes.
 SECTIONS = {
     "streams": "streams",
     "adblock": "adblock",

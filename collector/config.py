@@ -11,7 +11,9 @@ state.json. Where they take the long name of a part from a pack, "<pack>/<id>", 
 checked here. The sections read through a kind (collector/kinds/) take their provider from
 `from`, or the provider of their own name, and the provider's file names the credentials it needs
 and any settings of its own, which the section may then set; a key of the section that its
-provider does not use (url with fail2ban, database with any other) is refused by name. The
+provider does not use (url with fail2ban, database with any other) is refused by name. An old
+[sources.security] that still reads the fail2ban summary (a url with no `from`, or
+from = "summary") is refused with a message that names fail2ban's own database instead. The
 providers are the built-in ones and the user's own files in the providers folder
 (collector.providers_dir, beside config.toml), read by collector/providers/__init__.py's scan();
 a `from` naming a file that was left out is no problem here, and that source fails at every read.
@@ -69,6 +71,13 @@ REPLACED = {
     "conditions.cpu_hot.for_s": "window_s, the seconds the CPU is averaged over",
     "conditions.memory_tight.for_s": "window_s, the seconds available memory is averaged over",
 }
+
+# What an old [sources.security] gets in place of "not used by fail2ban" or "unknown provider":
+# the fail2ban summary it read at url is no longer read, and fail2ban's own database replaces it.
+SUMMARY_GONE = (
+    'the fail2ban summary is no longer read; use from = "fail2ban" and database, with the mount '
+    "and the read ACL in docs/configuration.md, fail2ban's database"
+)
 
 # The shortest interval and averaging window the collector accepts, in seconds.
 MIN_INTERVAL_S = schema.setting("collector", "interval_s")["min"]
@@ -355,6 +364,10 @@ def _check_unused(name: str, given: dict, settings: dict, registry, problems: li
     of provider never leaves a stale setting doing nothing."""
     pid = provider_of(name, settings)
     for key in sorted(unused_keys(name, settings, registry) & set(given), key=list(given).index):
+        if name == "security" and key == "url" and "from" not in given:
+            # A url with no `from` is a [sources.security] written for the fail2ban summary.
+            problems.append(f"sources.{name}.{key}: {SUMMARY_GONE}")
+            continue
         problems.append(f"sources.{name}.{key}: not used by {pid}")
 
 
@@ -388,6 +401,8 @@ def _provider_problem(section: str, pid: str, registry) -> str | None:
     if spec is None:
         if registry.is_refused(pid):
             return None
+        if section == "security" and pid == "summary":
+            return SUMMARY_GONE
         ids = [p.id for p in registry.of_kind(kind)]
         return f'unknown provider "{pid}"; use {_say_or(tuple(ids))}'
     if spec.kind != kind:

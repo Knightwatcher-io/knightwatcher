@@ -78,8 +78,8 @@ class BuiltInTest(unittest.TestCase):
         for pid, spec in files.items():
             self.assertEqual(spec.id, pid)
             self.assertEqual(len(spec.digest), 20)
-        # The code adapters, and the summary reader that `from` can name, are listed beside them.
-        self.assertEqual(sorted(set(found) - set(files)), ["fail2ban", "summary"])
+        # The code adapters are listed beside them.
+        self.assertEqual(sorted(set(found) - set(files)), ["fail2ban"])
         self.assertEqual(list(found), sorted(found))
 
     def test_a_valid_file_compiles(self):
