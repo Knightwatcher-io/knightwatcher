@@ -700,6 +700,36 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(state["conditions"][0]["id"], "attack")
 
 
+class CloseTest(unittest.TestCase):
+    """A source's close(): when it is replaced or taken away, and when the collector stops."""
+
+    class Closing(Fake):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.closed = threading.Event()
+
+        def close(self):
+            self.closed.set()
+
+    def test_a_source_replaced_or_taken_away_is_closed_and_one_kept_is_not(self):
+        config = make_config({})
+        kept, changed, gone = (CloseTest.Closing(n, None, config) for n in ("a", "b", "c"))
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        runner = Runner(config, Memory(tmp.name), sources=[kept, changed, gone])
+        again = CloseTest.Closing("a", None, config)
+        other = CloseTest.Closing("b", None, config, every_s=60)
+        runner.reconfigure(config, [again, other])
+        self.assertTrue(changed.closed.wait(5))
+        self.assertTrue(gone.closed.wait(5))
+        self.assertFalse(kept.closed.is_set())
+        self.assertEqual([s for s in runner.sources], [kept, other])
+        runner.close()
+        self.assertTrue(kept.closed.is_set())
+        self.assertTrue(other.closed.is_set())
+        self.assertFalse(again.closed.is_set())
+
+
 class DevicesRunnerTest(unittest.TestCase):
     """Devices through the whole poll, against local sockets."""
 

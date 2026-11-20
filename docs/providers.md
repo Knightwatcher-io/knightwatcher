@@ -27,6 +27,7 @@ SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-pr
 |---|---|---|---|
 | `tautulli` | streams | Tautulli's `get_activity` | `[sources.streams]`, the default for `from` |
 | `adguard` | adblock | AdGuard Home's `/control/stats` | `[sources.adblock]`, the default for `from` |
+| `pihole` | adblock | Pi-hole 6's `/api/stats/summary` and `/api/history`, through a session | `[sources.adblock]` with `from = "pihole"` |
 | `fail2ban` | security | fail2ban's database, a code adapter | `[sources.security]`, the default for `from` |
 | `sonarr` | imports | Sonarr's import history | `[sources.sonarr]` |
 | `radarr` | imports | Radarr's import history | `[sources.radarr]` |
@@ -174,7 +175,7 @@ try = ["{title}", "{full}"]
 
 One key for each credential the provider uses, from `api_key`, `token`, `username`, `password`
 and `header`, with the help the admin page shows for it. A credential is used only inside a
-request: in a header, in the query, or in `[auth]`. The format refuses `{credential.<field>}`
+request: in a header, in the query, or in `[auth]` (a basic login, or a session login's body). The format refuses `{credential.<field>}`
 anywhere else.
 
 ### [settings]
@@ -190,7 +191,8 @@ page_size = { type = "integer", default = 10, min = 1, max = 50, help = "Session
 A request uses one as `{setting.<key>}`. The section that chooses the provider may set it, as
 `page_size = 20` beside its `url`, and the collector checks the value against the declaration; a
 key the section does not set takes its default. A setting cannot take the name of one of the
-section's own (`enabled`, `every_s`, `from`, `url`, `secret`, `show`, `fly_every_s`). None of the
+section's own (`enabled`, `every_s`, `from`, `url`, `secret`, `verify_tls`, `show`,
+`fly_every_s`). None of the
 built-in files declares one.
 
 ### [auth]
@@ -206,7 +208,42 @@ username = "{credential.username}"
 password = "{credential.password}"
 ```
 
-`basic` is the only method.
+A service that hands out a session at a login takes `method = "session"`. The built-in Pi-hole
+file's:
+
+```toml
+[auth]
+method = "session"
+login = { path = "/api/auth", json = { password = "{credential.password}" } }
+sid = "$.session.sid"
+valid_s = "$.session.validity"
+send = { header = "X-FTL-SID" }
+logout = { path = "/api/auth" }
+statuses = { 401 = "password refused, or Pi-hole has none set", 404 = "not Pi-hole 6 (version 5 is not supported)", 429 = "Pi-hole's sessions are all taken, or too many logins" }
+not_json = "not Pi-hole 6 (version 5 is not supported)"
+
+[[auth.require]]
+path = "$.session.sid"
+type = "string"
+message = "Pi-hole has no password set; the collector needs one"
+```
+
+| Key | Required | Meaning |
+|---|---|---|
+| `login` | yes | `path`, appended to the section's `url` as a request's is, and `json`, the body POSTed to it: a table of text (which may hold `{credential.<field>}` and `{setting.<key>}`), numbers, `true` or `false`, and tables of the same, at most 16 members and 4 tables deep |
+| `sid` | yes | the path to the session's id in the login's reply. The id must be printable ASCII with no space, quote or backslash, at most 512 characters, or the read fails (`the login gave no session id`) |
+| `valid_s` | no | the path to the seconds the session lasts. Left out, or finding nothing, the session is kept until it is refused |
+| `send` | yes | where the id goes with each request after: `{ header = "<name>" }`, a header named as a request's are, or `{ query = "<name>" }`. A request may not set that header or parameter itself |
+| `logout` | no | `path`, where a DELETE with the session's id ends the session when the provider is closed |
+| `statuses`, `not_json`, `require` | no | as a request's, for the login's reply |
+
+The engine logs in before the first read and keeps the session's id in memory alone. The session
+is used until 30 seconds before `valid_s` runs out (half a session shorter than a minute), counted
+from its last use, since a service such as Pi-hole extends a session at each use; then the next
+read logs in again. A 401 on a session made at an earlier read (the service restarted, or dropped
+it early) logs in again once, in the same read. A refused login (401, 403 or 429), and a 401 on a
+session just made, are refused credentials, with the back-off; so is a `require` of the login whose
+`auth` test matches.
 
 ### [[request]]
 
@@ -223,7 +260,8 @@ One to three requests, made in order at every read.
 | `require` | `[[request.require]]` tables, checked in order on the reply |
 
 Every request is a GET. A request's parts never take a value from a reply, so a reply cannot steer
-the collector to another path or address.
+the collector to another path or address. The one exception is a session's id, which goes only
+where `[auth]`'s `send` says.
 
 A `require` fails the read with its `message` unless the value its `path` finds passes one test:
 `equals` a literal (a string, a number, `true` or `false`, compared as JSON compares them), `type`
@@ -306,8 +344,10 @@ counts the items without reading anything of them.
 
 ### What a file may not hold
 
-Code, regular expressions, file paths, addresses, absolute URLs, request bodies, methods other than
-GET, references to reply values inside a request, references to credentials outside a request,
+Code, regular expressions, file paths, addresses, absolute URLs, request bodies (but a session
+login's), methods other than GET (but a session's login and logout), references to reply values
+inside a request (but a session's id, where `send` says), references to credentials outside a
+request,
 and more than 3 requests, 64 vars in a list, 16 cases for a field, 8 templates in a case, or
 64 KiB in all. The checks are in `collector/providers/format.py`; a file that fails them gets one
 message for each fault, naming the file and the field
@@ -345,12 +385,14 @@ A path finds at most 10,000 values; past that the read fails (`a path found too 
 
 ## A read
 
-1. Each request is made in order through `collector/net.py`: direct, never through a proxy, a
-   redirect an error, the reply cut at 4 MiB, `http_timeout_s` each.
-2. The reply is parsed as JSON, refused when nested deeper than 64, and checked by `statuses`,
+1. A provider that logs in by session and holds no live session logs in first.
+2. Each request is made in order through `collector/net.py`: direct, never through a proxy, a
+   redirect an error, the reply cut at 4 MiB, `http_timeout_s` each, and the certificate of an
+   `https` address checked unless the section sets `verify_tls = false`.
+3. The reply is parsed as JSON, refused when nested deeper than 64, and checked by `statuses`,
    `not_json` and `require`.
-3. The fill is built from the replies, reading only the fields the kind allows.
-4. The fill is held to the kind's declaration, and the kind makes the reading.
+4. The fill is built from the replies, reading only the fields the kind allows.
+5. The fill is held to the kind's declaration, and the kind makes the reading.
 
 A read has the runner's limit, as every source's does: 66 percent of the source's pace or of the
 interval, whichever is longer.
@@ -358,7 +400,7 @@ interval, whichever is longer.
 **Errors.** HTTP 401, 403 or 429, and a `require` whose `auth` test matches, are refused
 credentials: the runner pauses the source for `auth_backoff_s` (20 minutes at least), which keeps
 AdGuard Home's lockout of five bad logins out of reach. Every other failure is a short message in
-`sources`: the engine's own (`timed out`, `HTTP 500`, `response is not JSON`) or the file's. No
+`sources`: the engine's own (`timed out`, `TLS error`, `HTTP 500`, `response is not JSON`) or the file's. No
 message holds an address, and every credential value is scrubbed from it. An error inside the
 engine itself is `internal error (TypeError)`, with its trace in the log.
 
@@ -370,22 +412,27 @@ A provider file is data: the engine reads it, and nothing in it is executed.
    path appended to it. A file holds no address and cannot build one.
 2. **No redirects and no proxies.** A redirect is an error, and a proxy named in the environment is
    ignored.
-3. **GET alone.**
+3. **GET alone**, but for a session's login, one POST, and its logout, one DELETE, both to paths at
+   the same address.
 4. **Headers** are named with letters, digits and `-`, never `Host`, `Content-Length`,
    `Transfer-Encoding`, `Connection`, `Cookie`, `User-Agent`, `Proxy-Authorization` or a `Proxy-`
    header, and their values are printable ASCII, so no line break can be slipped in; a credential
    whose value would put one in fails the read before anything is sent.
 5. **Credentials.** A file names credential fields; the values come from `.env`, and a value goes
-   only into that provider's own requests: a header, the query, or a basic login. It never reaches
-   the fill, a message or the state file. Over plain `http` a credential crosses the network as it
-   always has; `https` keeps it off the wire.
-6. **No chaining.** No request is built from a reply.
+   only into that provider's own requests: a header, the query, a basic login, or a session
+   login's body. It never reaches the fill, a message or the state file. A session's id is held
+   the same way, in memory alone. Over plain `http` a credential crosses the network as it always
+   has; `https` keeps it off the wire, and `verify_tls = false` keeps it off the wire but no longer
+   proves who receives it.
+6. **No chaining.** No request is built from a reply, but for a session's id going where `send`
+   says.
 7. **What it can fill.** Only the shape of its kind, checked like any other, and `show` is held the
    same way for every provider of streams.
 8. **No shadowing.** A file of your own whose id is a built-in provider's is left out, so a file in
    the folder can never stand in for a built-in one.
 
-What the rules leave possible: a file can make the collector send GETs to the address you typed in
+What the rules leave possible: a file can make the collector send GETs, and a login and a logout,
+to the address you typed in
 `config.toml`, carrying the credential you named for it. That is the same power `config.toml` and
 `.env` already give whoever writes them. They cannot stop a wrong address being typed.
 
@@ -456,15 +503,18 @@ reads one source once through its provider, built-in or your own, with the setti
 prints the fill and the facts the kind would write with every text replaced by its type and length
 (`<string 21>`). Numbers and true or false are shown as they are, and no credential is printed,
 only the names of the variables read. It runs inside the container, so the credentials come from `.env` through
-compose and never through the person running it. It writes nothing of the collector's own, and a
+compose and never through the person running it. A provider that logs in by session logs out
+once the probe has read, so a probe holds none of the service's sessions. It writes nothing of the collector's own, and a
 source the running collector has paused after refused credentials is not read until the pause
 ends, so a probe never adds to a lockout. It exits 0 with a reading, 1 when the read fails, and 2
 when the source is not one read through a provider, is not set up, its settings do not pass, or
 its provider is a file that was left out.
 
 `--record FOLDER` also writes the read's exchanges to a file in that folder, mode 600: each request
-with each credential replaced by its field's name (`{credential.api_key}`), and each reply or
-error. The replies are the service's own and private: never commit them as they are. A fixture
+with each credential replaced by its field's name (`{credential.api_key}`) and a session's id by
+`{session.sid}`, and each request's method and each reply or error. A session login is recorded
+with its JSON body as the file writes it, templates unfilled, and every text of its reply masked,
+since a login's reply holds the session's id; its logout follows the read. The replies are the service's own and private: never commit them as they are. A fixture
 for `tests/collector/fixtures/providers/<id>/` is made from one by replacing every value with an
 invented one. The container's root is read-only, so the folder is one mounted for the run and
 writable by uid 10001.
@@ -472,9 +522,11 @@ writable by uid 10001.
 ## Testing a provider
 
 Each built-in provider has fixtures in `tests/collector/fixtures/providers/<id>/<case>.json`: the
-requests expected, with each credential written as `{credential.<field>}`, the replies in the
-service's shapes with every value invented, and the fill (by `show` for a streams provider) or the
-error. `tests/collector/test_providers.py` serves the replies on a local HTTP server, fails when a
-request differs from the fixture's, and compares the fill. For a streams provider it also checks
+requests expected (method, path, headers, and a session login's JSON body), with each credential
+written as `{credential.<field>}`, the replies in the service's shapes with every value invented,
+and the fill (by `show` for a streams provider) or the error. `tests/collector/test_providers.py`
+serves the replies on a local HTTP server, fails when a request differs from the fixture's, and
+compares the fill; it closes the provider after the read, so a session provider's fixture ends with
+its logout. For a streams provider it also checks
 that no var behind a name is read unless `show` is `names`. [tests.md](./tests.md) lists the
 rest.

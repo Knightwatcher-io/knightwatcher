@@ -8,15 +8,24 @@ name the setting `show` holds back is never looked at.
 
 A request goes to the source's `url` with the file's path appended, and to nowhere else; its query
 and headers may carry the source's credentials and settings, and nothing in a request comes from
-a reply. Failures raise SourceError, or AuthError for refused credentials, with a short message
-that never holds an address.
+a reply but the id of a session. Failures raise SourceError, or AuthError for refused credentials,
+with a short message that never holds an address.
+
+A provider whose [auth] is a session logs in with one POST before its first read, keeps the
+session's id in memory alone and sends it with every request after, so that one provider instance
+holds one session however often it reads. The session is used until shortly before its lifetime
+runs out, counted from its last use; a 401 on a session made at an earlier read drops it and logs
+in again once, in the same read. close() ends the session with the file's logout, if it has one.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 import re
+import threading
+import time
 import urllib.parse
 from collections import Counter
 from typing import Any
@@ -31,6 +40,7 @@ from collector.providers.format import (
     Ref,
     Request,
     Scalar,
+    Session,
     Spec,
     Template,
     Test,
@@ -43,8 +53,17 @@ MAX_DEPTH = 64
 # The longest text a template may give, before the kind cuts it to its own limits.
 MAX_TEMPLATE = 1000
 
+# A session is used until this many seconds before its lifetime runs out, or half of a shorter one.
+SESSION_MARGIN_S = 30
+# The longest session id kept.
+MAX_SID = 512
+
 _STATUS = re.compile(r"^HTTP (\d{3})\b")
 _HEADER_VALUE = re.compile(r"^[ -~]*$")
+# A session id as it may be sent: printable ASCII with no space, quote or backslash.
+_SID = re.compile(r"^[!#-\[\]-~]+$")
+# How a recording names the session's id in place of its value.
+SID_SHOWN = "{session.sid}"
 _ABSENT = object()
 
 
@@ -154,6 +173,18 @@ class DataProvider(Provider):
         self.reads: Counter[str] = Counter()
         # With record set to a list, each exchange of a read is added to it (for --probe --record).
         self.record: list | None = None
+        self.verify_tls = settings.get("verify_tls", True) is not False
+        # The session, for a provider that logs in: its id, its lifetime in seconds (inf when the
+        # login gives none), and when it is no longer used, by the clock.
+        self.clock = time.monotonic
+        self._sid: str | None = None
+        self._valid_s = math.inf
+        self._until = 0.0
+        # A read in flight, and whether close() has been called; close() during a read leaves the
+        # logout to the read's end.
+        self._lock = threading.Lock()
+        self._busy = False
+        self._closed = False
 
     # Requests ----------------------------------------------------------------------------------
 
@@ -189,15 +220,25 @@ class DataProvider(Provider):
                 out.append(urllib.parse.quote(str(value), safe=""))
         return "".join(out)
 
+    def _base(self) -> str:
+        return self.settings["url"].rstrip("/")
+
     def request_of(self, request: Request) -> tuple[str, dict[str, str]]:
         """The address and the headers of one request."""
-        url = self.settings["url"].rstrip("/") + self._path(request.path)
-        if request.query:
-            url += "?" + urllib.parse.urlencode([(k, self._text(t)) for k, t in request.query])
+        url = self._base() + self._path(request.path)
+        query = [(k, self._text(t)) for k, t in request.query]
         headers: dict[str, str] = {}
-        if self.spec.auth is not None:
-            auth = self.spec.auth
+        auth = self.spec.auth
+        if isinstance(auth, Session):
+            if self._sid is not None:
+                if auth.header:
+                    headers[auth.header] = self._sid
+                else:
+                    query.append((auth.query, self._sid))
+        elif auth is not None:
             headers.update(net.basic_auth(self._text(auth.username), self._text(auth.password)))
+        if query:
+            url += "?" + urllib.parse.urlencode(query)
         for name, template in request.headers:
             value = self._text(template)
             if not _HEADER_VALUE.match(value):
@@ -205,26 +246,31 @@ class DataProvider(Provider):
             headers[name] = value
         return url, headers
 
-    def _get(self, request: Request) -> Any:
-        url, headers = self.request_of(request)
+    def _fetch(self, url: str, headers: dict, statuses: dict, note, **how) -> bytes:
+        """One request through net.fetch; an error status with a message of the file's own takes
+        that message, and keeps its status and whether it is a credential failure."""
         try:
-            body = net.fetch(url, self.timeout, headers)
+            return net.fetch(url, self.timeout, headers, verify_tls=self.verify_tls, **how)
         except SourceError as exc:
-            self._note(request, url, headers, error=str(exc))
+            note(error=str(exc))
             m = _STATUS.match(str(exc))
-            said = request.statuses.get(int(m.group(1))) if m else None
+            said = statuses.get(int(m.group(1))) if m else None
             if said is None:
                 raise
-            raise type(exc)(said) from None
+            out = type(exc)(said)
+            out.status = exc.status
+            raise out from None
+
+    def _parse(self, body: bytes, not_json: str | None, requires: tuple, note) -> Any:
         try:
             reply = json.loads(body)
         except (json.JSONDecodeError, UnicodeDecodeError, RecursionError):
-            self._note(request, url, headers, error="not JSON")
-            raise SourceError(request.not_json or "response is not JSON") from None
-        self._note(request, url, headers, reply=reply)
+            note(error="not JSON")
+            raise SourceError(not_json or "response is not JSON") from None
+        note(reply=reply)
         if not _depth_ok(reply):
             raise SourceError("response nested too deeply")
-        for require in request.require:
+        for require in requires:
             if self._test(require.test, reply):
                 continue
             if require.auth is not None and self._test(require.auth, reply):
@@ -232,10 +278,110 @@ class DataProvider(Provider):
             raise SourceError(require.message)
         return reply
 
-    def _note(self, request: Request, url: str, headers: dict, **what) -> None:
+    def _get(self, request: Request) -> Any:
+        url, headers = self.request_of(request)
+
+        def note(**what):
+            self._note(request.id, "GET", url, headers, **what)
+
+        body = self._fetch(url, headers, request.statuses, note)
+        return self._parse(body, request.not_json, request.require, note)
+
+    def _note(self, rid: str, method: str, url: str, headers: dict, **what) -> None:
+        """An exchange added to the recording, with the session's id shown by name."""
         if self.record is None:
             return
-        self.record.append({"request": request.id, "url": url, "headers": headers, **what})
+        if self._sid is not None:
+            sid = self._sid
+            quoted = urllib.parse.quote_plus(sid)
+            url = url.replace(quoted, SID_SHOWN).replace(sid, SID_SHOWN)
+            headers = {k: v.replace(sid, SID_SHOWN) for k, v in headers.items()}
+        self.record.append(
+            {"request": rid, "method": method, "url": url, "headers": headers, **what}
+        )
+
+    # Sessions ----------------------------------------------------------------------------------
+
+    def _live(self) -> bool:
+        return self._sid is not None and self.clock() < self._until
+
+    def _used(self) -> None:
+        """The session was used: its lifetime counts from now."""
+        margin = min(SESSION_MARGIN_S, self._valid_s / 2)
+        self._until = self.clock() + self._valid_s - margin
+
+    def _body(self, body: dict) -> dict:
+        out: dict[str, Any] = {}
+        for key, value in body.items():
+            if isinstance(value, dict):
+                out[key] = self._body(value)
+            elif isinstance(value, Template):
+                out[key] = self._text(value)
+            else:
+                out[key] = value
+        return out
+
+    def _login(self) -> None:
+        """Log in with the file's session login: AuthError when it is refused, SourceError when
+        its reply holds no session."""
+        auth = self.spec.auth
+        self._sid = None
+        url = self._base() + self._path(auth.login)
+
+        def note(**what):
+            if "reply" in what:
+                what["reply"] = _masked(what["reply"])
+            self._note("auth.login", "POST", url, {}, json=auth.body_text, **what)
+
+        body = self._fetch(
+            url, {}, auth.statuses, note, method="POST", json_body=self._body(auth.body)
+        )
+        reply = self._parse(body, auth.not_json, auth.require, note)
+        found = self._find(auth.sid, reply)
+        sid = found[0] if found else None
+        if not isinstance(sid, str) or not sid or len(sid) > MAX_SID or not _SID.match(sid):
+            raise SourceError("the login gave no session id")
+        valid = self._find(auth.valid_s, reply) if auth.valid_s is not None else []
+        lasts = valid[0] if valid else None
+        number = isinstance(lasts, (int, float)) and not isinstance(lasts, bool)
+        self._valid_s = float(lasts) if number and 0 < lasts < math.inf else math.inf
+        self._sid = sid
+        self._used()
+
+    def _logout(self) -> None:
+        """End the session, if one is held: the file's logout, best effort. Never raises."""
+        auth = self.spec.auth
+        sid = self._sid
+        if not self._live() or not isinstance(auth, Session) or auth.logout is None:
+            self._sid = None
+            return
+        try:
+            url = self._base() + self._path(auth.logout)
+            headers: dict[str, str] = {}
+            if auth.header:
+                headers[auth.header] = sid
+            else:
+                url += "?" + urllib.parse.urlencode([(auth.query, sid)])
+            try:
+                net.fetch(url, self.timeout, headers, method="DELETE", verify_tls=self.verify_tls)
+                self._note("auth.logout", "DELETE", url, headers, reply=None)
+            except SourceError as exc:
+                self._note("auth.logout", "DELETE", url, headers, error=str(exc))
+        except Exception:  # noqa: BLE001 - a logout that fails leaves the session to expire
+            pass
+        finally:
+            self._sid = None
+
+    def close(self) -> None:
+        """End the session, if the provider holds one, and read no more. A read in flight ends it
+        when it finishes."""
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            if self._busy:
+                return
+        self._logout()
 
     def _test(self, test: Test, reply: Any) -> bool:
         found = self._find(test.path, reply)
@@ -263,9 +409,41 @@ class DataProvider(Provider):
     # The read ----------------------------------------------------------------------------------
 
     def read(self, now: dt.datetime) -> dict:
+        with self._lock:
+            if self._closed:
+                raise SourceError("provider closed")
+            self._busy = True
+        try:
+            return self._read()
+        finally:
+            with self._lock:
+                self._busy = False
+                ending = self._closed
+            if ending:
+                self._logout()
+
+    def _read(self) -> dict:
+        session = isinstance(self.spec.auth, Session)
+        made = False
+        if session and not self._live():
+            self._login()
+            made = True
         replies = {}
         for request in self.spec.requests:
-            replies[request.id] = self._get(request)
+            try:
+                replies[request.id] = self._get(request)
+            except AuthError as exc:
+                # A session made at an earlier read that the service no longer knows (it
+                # restarted, or the session expired early) is made again, once.
+                if not session or made or exc.status != 401:
+                    if session:
+                        self._sid = None
+                    raise
+                self._login()
+                made = True
+                replies[request.id] = self._get(request)
+            if session:
+                self._used()
         return self._group(self.spec.fill, self.declaration, replies, "")
 
     def _group(self, entries: dict, declaration: dict, replies: dict, prefix: str) -> dict:
@@ -404,3 +582,15 @@ def _is(kind: str, value: Any) -> bool:
     if kind == "string":
         return isinstance(value, str)
     return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _masked(reply: Any) -> Any:
+    """A login's reply as a recording keeps it: every text replaced by its length, since a login's
+    reply holds the session's id and often other secrets beside it."""
+    if isinstance(reply, str):
+        return f"<string {len(reply)}>"
+    if isinstance(reply, dict):
+        return {k: _masked(v) for k, v in reply.items()}
+    if isinstance(reply, list):
+        return [_masked(v) for v in reply]
+    return reply

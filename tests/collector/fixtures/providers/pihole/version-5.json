@@ -1,0 +1,29 @@
+{
+ "about": "Pi-hole 5 (2024.07.0): its web server has no /api/auth and answers 404 with a page.",
+ "settings": {},
+ "credentials": [
+  "password"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "POST",
+    "path": "/api/auth",
+    "headers": {
+     "Content-Type": "application/json"
+    },
+    "json": {
+     "password": "{credential.password}"
+    }
+   },
+   "reply": {
+    "status": 404,
+    "body": "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?>\n<!DOCTYPE html>\n<html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1></body></html>\n"
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "not Pi-hole 6 (version 5 is not supported)"
+ }
+}

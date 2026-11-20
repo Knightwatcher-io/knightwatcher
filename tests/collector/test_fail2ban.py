@@ -378,11 +378,15 @@ class ExportTest(unittest.TestCase):
         return [line for line in text.splitlines() if "not used by" in line]
 
     def test_fail2ban_given_left_out_and_absent(self):
+        unused = [
+            '# url = ""   # not used by fail2ban',
+            "# verify_tls = true   # not used by fail2ban",
+        ]
         given = {"sources": {"security": {"from": "fail2ban"}}}
-        self.assertEqual(self.export(given), ['# url = ""   # not used by fail2ban'])
+        self.assertEqual(self.export(given), unused)
         left_out = {"sources": {"security": {}}}
-        self.assertEqual(self.export(left_out), ['# url = ""   # not used by fail2ban'])
-        self.assertEqual(self.export({}), ['# # url = ""   # not used by fail2ban'])
+        self.assertEqual(self.export(left_out), unused)
+        self.assertEqual(self.export({}), ["# " + line for line in unused])
 
 
 class WallTest(unittest.TestCase):

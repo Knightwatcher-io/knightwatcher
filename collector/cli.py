@@ -113,8 +113,16 @@ def _record(folder: str, name: str, source, exchanges: list, values: dict, now) 
             headers[key] = hide(value)
         url = e["url"][len(base) :] if e["url"].startswith(base) else e["url"]
         entry = {
-            "request": {"id": e["request"], "method": "GET", "path": hide(url), "headers": headers}
+            "request": {
+                "id": e["request"],
+                "method": e.get("method", "GET"),
+                "path": hide(url),
+                "headers": headers,
+            }
         }
+        if "json" in e:
+            # A session login's body, as the provider file writes it, its templates unfilled.
+            entry["request"]["json"] = e["json"]
         if "reply" in e:
             entry["reply"] = {"json": e["reply"]}
         else:
@@ -184,6 +192,8 @@ def _probe(config, name: str, record: str | None) -> int:
         print(f"probe {name}: {what}: {message}", file=sys.stderr)
         return 1
     finally:
+        # A provider that logs in ends its session, so that a probe holds none of the service's.
+        source.close()
         if record:
             path = _record(record, name, source, source.provider.record, config.secret(name), now)
             print(f"recorded: {path}")
@@ -309,7 +319,10 @@ def main(argv: list[str] | None = None) -> int:
         log.warning("cannot write %s: %s", CREDENTIALS_FILE, exc.strerror)
     log.info("collector started: %d sources, every %d s", len(runner.sources), config.interval_s)
     if args.once:
-        runner.cycle()
+        try:
+            runner.cycle()
+        finally:
+            runner.close()
         return 0
 
     stop = threading.Event()
@@ -333,4 +346,5 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:
             log.exception("poll failed")
         stop.wait(max(0.0, runner.config.interval_s - (time.monotonic() - started)))
+    runner.close()
     return 0

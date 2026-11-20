@@ -1,10 +1,12 @@
 """Every built-in provider against its fixtures, and `from` in config.toml.
 
 Each fixture in fixtures/providers/<id>/ holds the exchanges of one read, in the shapes the service
-sends with every value invented: the request expected, with each credential written as
-{credential.<field>}, and the reply. The test serves the replies on a local HTTP server, fails when
-a request differs from the fixture's, and compares the fill, or the error, with the fixture's. The
-credentials are made afresh for each run. A streams provider is run at every setting of `show`,
+sends with every value invented: the request expected (its method, path, headers and, for a
+session login, its JSON body), with each credential written as {credential.<field>}, and the reply.
+After the read the provider is closed, so a provider that logs in by session ends with its logout.
+The test serves the replies on a local HTTP server, fails when a request differs from the
+fixture's, and compares the fill, or the error, with the fixture's. The credentials are made afresh
+for each run. A streams provider is run at every setting of `show`,
 and the vars behind a name must never be read unless `show` is `names`.
 """
 
@@ -20,6 +22,7 @@ from collector import kinds, providers
 from collector.config import ConfigError, credential_names
 from collector.net import AuthError, SourceError
 from collector.providers.engine import DataProvider
+from collector.sources import KindSource
 from kw_helpers import T0, FakeHttp, make_config
 
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "providers")
@@ -33,9 +36,22 @@ def fixtures():
 
 
 def _filled(text, credentials):
+    if isinstance(text, dict):
+        return {k: _filled(v, credentials) for k, v in text.items()}
+    if not isinstance(text, str):
+        return text
     for field, value in credentials.items():
         text = text.replace("{credential." + field + "}", value)
     return text
+
+
+def _reply(reply):
+    """A fixture's reply as the local server sends it: JSON, a page, or no body at all."""
+    if "json" in reply:
+        return reply["json"]
+    if "body" in reply:
+        return reply["body"].encode()
+    return None
 
 
 def _vars_of(how) -> set[str]:
@@ -62,8 +78,10 @@ class FixturesTest(unittest.TestCase):
         http = FakeHttp()
         self.addCleanup(http.close)
         for e in fixture["exchanges"]:
-            reply = e["reply"]
-            http.routes[e["request"]["path"].split("?", 1)[0]] = (reply["status"], reply["json"])
+            want = e["request"]
+            path = want["path"].split("?", 1)[0]
+            key = path if want["method"] == "GET" else f"{want['method']} {path}"
+            http.routes[key] = (e["reply"]["status"], _reply(e["reply"]))
         settings = {"url": http.url, **fixture["settings"]}
         if show is not None:
             settings["show"] = show
@@ -74,17 +92,22 @@ class FixturesTest(unittest.TestCase):
             error = None
         except SourceError as exc:
             fill, error = None, exc
+        provider.close()
         where = f"{pid}/{case}" + (f" at show = {show}" if show else "")
-        self.assertEqual(len(http.requests), len(fixture["exchanges"]), where)
-        for (path, headers), e in zip(http.requests, fixture["exchanges"], strict=True):
+        self.assertEqual(len(http.calls), len(fixture["exchanges"]), where)
+        for (method, path, headers, sent), e in zip(http.calls, fixture["exchanges"], strict=True):
             want = e["request"]
+            self.assertEqual(method, want["method"], where)
             self.assertEqual(path, _filled(want["path"], credentials), where)
+            self.assertEqual(sent, _filled(want.get("json"), credentials), where)
+            # Header names arrive in another case than they were sent in.
+            headers = {k.lower(): v for k, v in headers.items()}
             for name, value in want["headers"].items():
-                got = headers[name]
+                got = headers[name.lower()]
                 if got.startswith("Basic "):
                     got = "Basic " + base64.b64decode(got[6:]).decode()
                 self.assertEqual(got, _filled(value, credentials), where)
-            self.assertEqual(headers["User-Agent"], "knightwatcher", where)
+            self.assertEqual(headers["user-agent"], "knightwatcher", where)
         if "error" in fixture:
             self.assertIsNotNone(error, where)
             self.assertEqual(str(error), fixture["error"]["message"], where)
@@ -194,9 +217,54 @@ class FromTest(unittest.TestCase):
         self.assertEqual(c.secret("streams"), {"api_key": "tk-invented"})
         self.assertEqual(c.secret_values(), ["tk-invented", "kw", "pw-invented"])
 
+    def test_pihole_reads_its_password(self):
+        env = {"KNIGHTWATCHER_PIHOLE_PASSWORD": "pw-invented"}
+        c = self.build("adblock", {"from": "pihole"}, env)
+        self.assertEqual(c.sources["adblock"]["secret"], "pihole")
+        self.assertEqual(c.secret("adblock"), {"password": "pw-invented"})
+        self.assertEqual(
+            self.problems("adblock", {"from": "pihole"}, {}),
+            [".env: KNIGHTWATCHER_PIHOLE_PASSWORD missing (for adblock)"],
+        )
+        self.assertEqual(
+            self.problems("streams", {"from": "pihole"}),
+            ['sources.streams.from: "pihole" reads adblock, not streams'],
+        )
+
+    def test_verify_tls(self):
+        env = {"KNIGHTWATCHER_PIHOLE_PASSWORD": "pw-invented"}
+        https = {"from": "pihole", "url": "https://192.0.2.53"}
+        c = self.build("adblock", https, env)
+        self.assertIs(c.sources["adblock"]["verify_tls"], True)
+        c = self.build("adblock", {**https, "verify_tls": False}, env)
+        self.assertIs(c.sources["adblock"]["verify_tls"], False)
+        source = KindSource("adblock", c.sources["adblock"], c)
+        self.assertIs(source.provider.verify_tls, False)
+        keys = {"KNIGHTWATCHER_SONARR_API_KEY": "s", "KNIGHTWATCHER_RADARR_API_KEY": "r"}
+        for section in ("streams", "sonarr", "radarr"):
+            got = self.build(section, {}, {**self.ENV, **keys})
+            self.assertIs(got.sources[section]["verify_tls"], True)
+        self.assertEqual(
+            self.problems("adblock", {"from": "pihole", "verify_tls": False}, env),
+            ["sources.adblock.verify_tls: only applies with an https url"],
+        )
+        self.assertEqual(
+            self.problems("adblock", {"verify_tls": "no"}),
+            ["sources.adblock.verify_tls: expected bool"],
+        )
+        # true with http checks nothing, and is the default: no problem.
+        self.build("adblock", {"verify_tls": True})
+        raw = {"sources": {"security": {"from": "fail2ban", "verify_tls": False}}}
+        with self.assertRaises(ConfigError) as cm:
+            make_config(raw, {})
+        self.assertEqual(
+            cm.exception.problems, ["sources.security.verify_tls: not used by fail2ban"]
+        )
+
     def test_the_credentials_each_provider_reads(self):
         self.assertEqual(config_mod.provider_credentials("tautulli"), ["api_key"])
         self.assertEqual(config_mod.provider_credentials("adguard"), ["username", "password"])
+        self.assertEqual(config_mod.provider_credentials("pihole"), ["password"])
         self.assertEqual(config_mod.provider_credentials("nothing"), [])
 
     def test_credential_names_know_every_field(self):

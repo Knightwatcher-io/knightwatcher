@@ -51,18 +51,18 @@ out.
 | `tests/collector/test_contract.py` | the contract check against [state.md](./state.md): devices, `device_down`, defaults and the parts |
 | `tests/collector/test_devices.py` | the checks behind devices, against local sockets and a local HTTP server |
 | `tests/collector/test_reload.py` | `admin.json` laid over `config.toml`, the start and reload rules, the credentials' names, the providers folder watched and moved |
-| `tests/collector/test_runner.py` | one poll: the file it writes, the defaults, failing and slow sources, each source's pace |
+| `tests/collector/test_runner.py` | one poll: the file it writes, the defaults, failing and slow sources, each source's pace; a source replaced or taken away by a change closed, one kept not, and every source closed as the collector stops |
 | `tests/collector/test_schema.py` | the settings schema against the collector, the example files and `compose.yaml`, the providers folder's mount, its `.gitkeep` and its lines in `.gitignore` |
 | `tests/collector/test_sources.py` | each source of its own against invented answers |
 | `tests/collector/test_kinds.py` | the streams, adblock and imports kinds through their built-in providers against invented answers; the security kind from fills (the counts, the window, a watched jail's ban, new bans by key, one event a read, first sight, a restart, the memory's cap and floor) and from a provider file of a user's own; the fill's checks, and when a source read through a provider starts afresh |
 | `tests/collector/test_fail2ban.py` | the fail2ban adapter against databases made with fail2ban's own `CREATE TABLE` statements: rows and late rows, an unban, an empty table, rows without an address, the 5,000-row cut, the file left untouched with nothing written beside it, a file replaced between reads, a missing, unreadable, locked or damaged file, a folder in its place and a database without the `bans` table; `from`, `url` and `database` in `config.toml` and a section written for the old fail2ban summary refused, the export of the admin page, a whole collector raising the attack and the events and coming back after a restart, and `--probe security` |
 | `tests/collector/test_path.py` | the path syntax: every allowed form, the RFC's results on its own examples, every refused form with its position, the limit on values found |
 | `tests/collector/test_provider_format.py` | the provider file format: the built-in files pass, and each rule is held to a refused file with its message |
-| `tests/collector/test_engine.py` | the engine against a local HTTP server: the requests built, `statuses`, `not_json`, `require`, nesting and the limits, scalar, list, object, item, case and zipped fields, the vars read only when allowed |
-| `tests/collector/test_providers.py` | every built-in provider against its fixtures, at every `show` for streams with no name read unless `show` is `names`, and `from` and `secret` in `config.toml` |
+| `tests/collector/test_engine.py` | the engine against a local HTTP server: the requests built, `statuses`, `not_json`, `require`, nesting and the limits, scalar, list, object, item, case and zipped fields, the vars read only when allowed, the recording, and a certificate checked unless `verify_tls` is `false`; session logins: one login then the session with every read, in a header or the query, made again near its end or when the service forgot it (once in a read), a refused login, a new session refused, a login with no session id, the login's JSON body, the logout at `close()` (once, after a read in flight, never for an expired session) and the recording with the session's id named and the login's reply masked |
+| `tests/collector/test_providers.py` | every built-in provider against its fixtures (each request's method, path, headers and login body, the logout when the provider is closed), at every `show` for streams with no name read unless `show` is `names`; `from`, `secret` and `verify_tls` in `config.toml`, and the password Pi-hole is read with |
 | `tests/collector/test_provider_files.py` | provider files of the user's own: which files are read and which left out (bad TOML, a broken rule, a name that is not the id, a built-in's id, a link, a folder, the size and count limits), a `from` naming one or a refused one and the source that then fails, the settings a file declares, a file read through the engine like a built-in, `--check-config`'s exit codes and warnings, `--probe`, `config.problems` in the state file, and a change taken up between polls |
 | `tests/collector/test_port.py` | [the port proof](#the-port-proof): today's four services read through the engine, against what the collector wrote before, byte for byte |
-| `tests/collector/test_probe.py` | `--probe` and `--record` |
+| `tests/collector/test_probe.py` | `--probe` and `--record`, and a session provider's probe logging out, its login recorded with its method and body and the session's id named |
 | `tests/collector/test_text.py` | clipping, joining and formatting the collector's words |
 | `tests/server/test_server.py` | the bundled server on the loopback |
 | `tests/server/test_admin.py` | the admin page's side of the server, provider files of the user's own in its checks, its answer and the export included |
@@ -70,9 +70,12 @@ out.
 
 `tests/collector/kw_helpers.py` holds helpers the collector's tests share. The collector's
 fixtures are in `tests/collector/fixtures/`: `port/`, the port proof's record, and
-`providers/<id>/<case>.json`, one read of a built-in provider each: the requests expected, with
-each credential written as `{credential.<field>}`, the replies in the service's shapes with every
-value invented, and the fill, by `show` for streams, or the error. The fixtures are in
+`providers/<id>/<case>.json`, one read of a built-in provider each: the requests expected (method,
+path, headers and a session login's JSON body), with each credential written as
+`{credential.<field>}`, the replies in the service's shapes with every value invented, and the
+fill, by `show` for streams, or the error. Pi-hole's are in the shapes a throwaway Pi-hole 6.8
+sent: a read with its login and logout, a wrong password, every session taken, a Pi-hole 5, and a
+Pi-hole with no password. The fixtures are in
 `tests/web/fixtures/`: the knight's stored record (`knight/calls.json`, and `knight/idle.log`, the
 full record of one pose, idle at 2 300 ms, compared call by call), the scenes'
 (`scenes/<scene>.json`, one for each of the seven scenes, and `scenes/cast.json`), the test world
@@ -110,6 +113,24 @@ script's account owns the folder) and the read passing; a failure line banned, r
 second container of the same image, and the count falling with no new event; and the database
 moved aside and made afresh by fail2ban, the new file taking the read grant from the folder's
 default ACL. It removes the containers, the network and the scratch folder however it ends.
+
+`tools/throwaway/pihole.sh` starts `pihole/pihole` 2026.10.1 (Pi-hole 6, FTL 6.8) on an internal
+network of its own with nothing published, its web password made for the run and passed by
+environment alone, NTP off, no DHCP, and only the capabilities its start script needs to hand its
+files to the `pihole` account and start FTL (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETUID`, `SETGID`,
+`SETFCAP`, `NET_BIND_SERVICE`; no `NET_ADMIN`), with `no-new-privileges`. Gravity's two download
+addresses resolve to a documentation address, so its check for DNS passes and its download fails
+at once, and Pi-hole starts with no blocklist. The other containers are `python:3.13-slim` with
+this checkout's code read-only: the collector as uid 10001, and a helper that speaks to Pi-hole's
+API and sends DNS queries with `collector/net.py`'s `dns_query`. It prints, in order: a domain
+denied through the API; the collector reading every 5 seconds, six queries for that domain giving
+six flies and `blocked_today` 6; Pi-hole's own list of sessions twice, ten seconds of reads apart,
+one session of the collector's logged in once and used since; the sessions after the collector
+stops, none left; a `--probe`, none left after it; the provider run directly, three reads with one session id and `close()` ending it; a wrong
+password refused and the source paused, and the next poll not asking again; `https` with Pi-hole's
+self-signed certificate refused (`TLS error`) and then read with `verify_tls = false`; and a
+Pi-hole 5 (`pihole/pihole` 2024.07.0) and a Pi-hole 6 with no password, each told plainly. No
+password or session id is printed.
 
 ## The page's tests
 

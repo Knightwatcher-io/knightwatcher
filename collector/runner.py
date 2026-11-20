@@ -121,12 +121,24 @@ class Runner:
             else:
                 self._forget(source.name)
                 kept.append(source)
-        for name in set(before) - {s.name for s in kept}:
-            self._forget(name)
+        for old in before.values():
+            if all(old is not s for s in kept):
+                self._forget(old.name)
+                # Its session, if it holds one, is ended in the background, so that a slow
+                # service never holds up the poll; a read still in flight ends it as it finishes.
+                threading.Thread(target=old.close, name=f"close-{old.name}", daemon=True).start()
         self.sources = kept
         self.config = config
         self.conditions.reconfigure(config)
         self._secrets = sorted(config.secret_values(), key=len, reverse=True)
+
+    def close(self) -> None:
+        """End what every source holds open, as the collector stops."""
+        for source in self.sources:
+            try:
+                source.close()
+            except Exception:
+                log.exception("source %s did not close", source.name)
 
     def _forget(self, name: str) -> None:
         for held in (self._inflight, self._read_at, self._last, self._last_ok):

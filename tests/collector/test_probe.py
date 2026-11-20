@@ -197,6 +197,38 @@ class ProbeTest(unittest.TestCase):
             main(["--config", self.config, "--record", self.tmp.name])
         self.assertIn("--record goes with --probe", err.getvalue())
 
+    def test_a_session_probe_logs_out_and_records_the_login_masked(self):
+        sid = "Zm9vYmFyYmF6cXV4cXV1eA="
+        self.http.routes["POST /api/auth"] = (
+            200, {"session": {"valid": True, "sid": sid, "csrf": "x", "validity": 1800}}
+        )  # fmt: skip
+        self.http.routes["DELETE /api/auth"] = (204, None)
+        self.http.routes["/api/stats/summary"] = (200, {"queries": {"blocked": 12}})
+        self.http.routes["/api/history"] = (200, {"history": [{"total": 9, "blocked": 2}]})
+        with mock.patch.dict(os.environ, {"KNIGHTWATCHER_PIHOLE_PASSWORD": self.password}):
+            self.write_config(extra='from = "pihole"\n')
+            folder = os.path.join(self.tmp.name, "rec")
+            code, _, err = self.probe("adblock", "--record", folder)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(
+            [(m, p) for m, p, _, _ in self.http.calls],
+            [("POST", "/api/auth"), ("GET", "/api/stats/summary"), ("GET", "/api/history"),
+             ("DELETE", "/api/auth")],
+        )  # fmt: skip
+        (name,) = os.listdir(folder)
+        with open(os.path.join(folder, name), encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertNotIn(sid, text)
+        self.assertNotIn(self.password, text)
+        exchanges = json.loads(text)["exchanges"]
+        self.assertEqual(
+            [(e["request"]["id"], e["request"]["method"]) for e in exchanges],
+            [("auth.login", "POST"), ("summary", "GET"), ("history", "GET"),
+             ("auth.logout", "DELETE")],
+        )  # fmt: skip
+        self.assertEqual(exchanges[0]["request"]["json"], {"password": "{credential.password}"})
+        self.assertEqual(exchanges[1]["request"]["headers"], {"X-FTL-SID": "{session.sid}"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -118,14 +118,16 @@ enabled = true
 every_s = 30
 from = "tautulli"            # the provider the streams are read through; tautulli is the default
 url = "http://192.0.2.20:8181"
+# verify_tls = true          # with an https url, whether its certificate is checked
 show = "names"               # who and what; "titles" for what alone, "count" for how many
 secret = "tautulli"          # reads KNIGHTWATCHER_TAUTULLI_API_KEY from .env
 
 [sources.adblock]
 enabled = true
 every_s = 30
-from = "adguard"             # the provider the blocked queries are read through; the default
+from = "adguard"             # the default; "pihole" reads Pi-hole 6 (KNIGHTWATCHER_PIHOLE_PASSWORD)
 url = "http://192.0.2.53"
+# verify_tls = true          # false for an https url with a self-signed certificate, as a Pi-hole's
 secret = "adguard"           # reads KNIGHTWATCHER_ADGUARD_USERNAME and _PASSWORD
 fly_every_s = 300
 
@@ -135,18 +137,21 @@ every_s = 30
 from = "fail2ban"            # the default; needs a mount and a read grant (docs/configuration.md)
 database = "/host/fail2ban/fail2ban.sqlite3"   # the default, inside the collector's container
 # or: url = "http://192.0.2.40:8080"   # in place of database, for a provider file of your own
+# or: verify_tls = true      # with that url, as for the other sections
 # secret = "fail2ban"        # fail2ban needs no credential
 
 [sources.sonarr]
 enabled = true
 every_s = 30
 url = "http://192.0.2.30:8989"
+# verify_tls = true          # with an https url, whether its certificate is checked
 secret = "sonarr"            # reads KNIGHTWATCHER_SONARR_API_KEY
 
 [sources.radarr]
 enabled = true
 every_s = 30
 url = "http://192.0.2.31:7878"
+# verify_tls = true          # with an https url, whether its certificate is checked
 secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 
 # The household defaults for the display's settings screen. Every display starts from these; a

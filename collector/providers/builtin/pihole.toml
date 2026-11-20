@@ -1,0 +1,51 @@
+# Blocked DNS queries, from Pi-hole 6's statistics, read through a session.
+format = 1
+id = "pihole"
+kind = "adblock"
+name = "Pi-hole 6"
+docs = "https://docs.pi-hole.net/api/"
+
+[credentials]
+password = "An app password (Pi-hole: Settings, Web interface / API, Configure app password), or the web password. An app password needs no second factor, which the collector cannot give."
+
+# One login, one session: its id goes in a header with every read after, and Pi-hole extends the
+# session at each use. Pi-hole holds 16 sessions by default and answers 429 when they are taken,
+# or after more than three password tries in a second; both pause the source.
+[auth]
+method = "session"
+login = { path = "/api/auth", json = { password = "{credential.password}" } }
+sid = "$.session.sid"
+valid_s = "$.session.validity"
+send = { header = "X-FTL-SID" }
+logout = { path = "/api/auth" }
+# Version 5 has no /api/auth: its web server answers 404 with a page, not JSON. A Pi-hole with no
+# password set answers 401 when the url names it by a name it does not know as its own.
+statuses = { 401 = "password refused, or Pi-hole has none set", 404 = "not Pi-hole 6 (version 5 is not supported)", 429 = "Pi-hole's sessions are all taken, or too many logins" }
+not_json = "not Pi-hole 6 (version 5 is not supported)"
+
+# With no password set and an address in the url, the login passes with no session at all.
+[[auth.require]]
+path = "$.session.sid"
+type = "string"
+message = "Pi-hole has no password set; the collector needs one"
+
+[[request]]
+id = "summary"
+path = "/api/stats/summary"
+
+[[request]]
+id = "history"
+path = "/api/history"
+
+[fill]
+# The queries blocked over the last 24 hours. Pi-hole drops queries older than that every ten
+# minutes, so the count falls then and the kind counts again from there.
+blocked = { from = "summary", path = "$.queries.blocked", type = "int", required = "no blocked count in the summary" }
+
+# Ten-minute slots over the last day, oldest first, the last the current one.
+[fill.window]
+from = "history"
+queries = { path = "$.history[*].total", type = "number" }
+blocked = { path = "$.history[*].blocked", type = "number" }
+unit_s = 600
+current = true

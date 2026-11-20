@@ -96,9 +96,10 @@ characters, the admin page stays off and says why, and the walls work as before.
 source needs may be left empty or out; the collector's check names any it needs and lacks.
 
 A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals.
-Its provider names the fields (Tautulli's is `api_key`, AdGuard Home's `username` and `password`;
-[Providers](#providers) lists them), and `SECRET` is the source's `secret` setting, which is the
-provider's id unless set: `tautulli`, `adguard`, `sonarr` or `radarr`. A source given
+Its provider names the fields (Tautulli's is `api_key`, AdGuard Home's `username` and `password`,
+Pi-hole's `password`; [Providers](#providers) lists them), and `SECRET` is the source's `secret`
+setting, which is the provider's id unless set: `tautulli`, `adguard`, `pihole`, `sonarr` or
+`radarr`. A source given
 `secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and a source reading a
 provider file of your own with the id `myflix` and a `token` reads `KNIGHTWATCHER_MYFLIX_TOKEN`.
 
@@ -421,21 +422,23 @@ Streams playing, from the service its provider reads: Tautulli by default.
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `from` | `"tautulli"`: a provider of the streams kind (see Providers below) | `"tautulli"` | household | The provider the streams are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
+| `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
 | `show` | `"names"`, `"titles"` or `"count"` | `"names"` | household | What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file. |
 | `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's is API_KEY). Left out, it is the provider's id. Set in config.toml alone. |
 
 ### [sources.adblock]
 
-Blocked adverts, from the service its provider reads: AdGuard Home by default.
+Blocked adverts, from the service its provider reads: AdGuard Home by default, or Pi-hole 6.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `from` | `"adguard"`: a provider of the adblock kind (see Providers below) | `"adguard"` | household | The provider the blocked queries are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
+| `from` | `"adguard"` or `"pihole"`: a provider of the adblock kind (see Providers below) | `"adguard"` | household | The provider the blocked queries are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD). Left out, it is the provider's id. Set in config.toml alone. |
-| `fly_every_s` | a number of seconds, zero or more | `300.0` | household | Average seconds between flies while blocking runs at the household's normal rate, which AdGuard Home's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query. |
+| `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD). Left out, it is the provider's id. Set in config.toml alone. |
+| `fly_every_s` | a number of seconds, zero or more | `300.0` | household | Average seconds between flies while blocking runs at the household's normal rate, which the service's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query. |
 
 ### [sources.security]
 
@@ -447,6 +450,7 @@ Bans, and the attack they may add up to, from the provider its from names: fail2
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `from` | `"fail2ban"`: a provider of the security kind (see Providers below) | `"fail2ban"` | household | The provider the bans are read through, by its id: fail2ban, fail2ban's own database at database, which needs its folder mounted and a read grant on the host (docs/configuration.md, fail2ban's database), or a provider file of your own. A provider of another kind, or one that does not exist, is refused by name. Set in config.toml alone, with the mount. |
 | `url` | an http:// or https:// address | required | household | Base URL of the service a provider file of your own reads, and required by one. Refused with fail2ban, which reads database instead. Set in config.toml alone, with from. |
+| `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. Refused with fail2ban, which reads no address. Set in config.toml alone, with from. |
 | `database` | a path inside the collector's container | `"/host/fail2ban/fail2ban.sqlite3"` | household | fail2ban's database, as the collector's container sees it through the mount of fail2ban's folder. Read by fail2ban alone, and refused with any other provider. Set in config.toml alone, with the mount. |
 | `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names. fail2ban needs none; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone. |
 
@@ -459,6 +463,7 @@ Episodes imported, from Sonarr.
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Sonarr. |
+| `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
 | `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
 
 ### [sources.radarr]
@@ -470,6 +475,7 @@ Films imported, from Radarr.
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Radarr. |
+| `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
 | `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
 
 ### [[device]]
@@ -568,6 +574,7 @@ The services the sections read through a kind can read, each by its provider. A 
 |---|---|---|---|---|
 | `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KNIGHTWATCHER_ADGUARD_USERNAME`, `KNIGHTWATCHER_ADGUARD_PASSWORD` |
 | `fail2ban` | security | [fail2ban](https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py) | `[sources.security]` by default | none |
+| `pihole` | adblock | [Pi-hole 6](https://docs.pi-hole.net/api/) | `[sources.adblock]` with `from = "pihole"` | `KNIGHTWATCHER_PIHOLE_PASSWORD` |
 | `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]` | `KNIGHTWATCHER_RADARR_API_KEY` |
 | `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]` | `KNIGHTWATCHER_SONARR_API_KEY` |
 | `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KNIGHTWATCHER_TAUTULLI_API_KEY` |
@@ -590,6 +597,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KNIGHTWATCHER_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_PIHOLE_PASSWORD` | credential | a password, such as `an-invented-app-password` | none | A Pi-hole 6 app password, for the pihole provider, which [sources.adblock] reads with from = "pihole". In Pi-hole: Settings, Web interface / API, Configure app password. The web password works too, but not with two-factor authentication on, since the collector cannot give a code. Version 5 is not supported. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_SONARR_API_KEY` | credential | 32 hexadecimal characters, such as `fedcba9876543210fedcba9876543210` | none | Sonarr's API key, for the sonarr provider, which [sources.sonarr] reads. In Sonarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_RADARR_API_KEY` | credential | 32 hexadecimal characters, such as `00112233445566778899aabbccddeeff` | none | Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 
@@ -634,9 +642,40 @@ file and on the admin page. Only `[sources.streams]`, `[sources.adblock]` and `[
 take `from`, so a file of the imports kind is checked but cannot be chosen yet.
 
 A key of the section itself that the chosen provider does not use is refused by name too:
-`sources.security.url: not used by fail2ban`, and `sources.security.database: not used by
-mybans` with a provider file of your own, `mybans`, of the security kind. The admin page's
-Download config.toml writes such a key commented.
+`sources.security.url: not used by fail2ban` (and `verify_tls`), and `sources.security.database:
+not used by mybans` with a provider file of your own, `mybans`, of the security kind. The admin
+page's Download config.toml writes such a key commented.
+
+`verify_tls` is on every section that reads a service over `http` or `https`, and `true` by
+default: the certificate of an `https` `url` is checked, as it always was. `false` reads a
+service whose certificate is self-signed, as a Pi-hole's or a NAS's usually is; the connection is
+still encrypted, but nothing proves it reaches the service named, so a credential sent over it is
+only as safe as the network between. It is refused with an `http` `url`
+(`sources.adblock.verify_tls: only applies with an https url`), where it would do nothing.
+
+### Pi-hole
+
+`from = "pihole"` reads Pi-hole 6 through its API, logging in with a password:
+
+```toml
+[sources.adblock]
+from = "pihole"
+url = "https://192.0.2.53"
+verify_tls = false           # its certificate is self-signed
+fly_every_s = 300            # reads KNIGHTWATCHER_PIHOLE_PASSWORD
+```
+
+Give it an app password (in Pi-hole: Settings, Web interface / API, Configure app password) in
+`KNIGHTWATCHER_PIHOLE_PASSWORD`. The web password works too, but not once two-factor
+authentication is on, since the collector cannot give a code. The collector logs in once and keeps
+that one session, one of the 16 Pi-hole allows by default, and logs out as it stops; the session
+is never written anywhere. A refused
+password, all 16 sessions taken, or more than three password tries in a second pause the source
+for `auth_backoff_s`, as for any refused credential. Pi-hole 5 is not supported, and is told so
+(`not Pi-hole 6 (version 5 is not supported)`). A Pi-hole with no password set cannot be read:
+the collector says so, `Pi-hole has no password set; the collector needs one`, when the url is
+an address, and Pi-hole refuses it outright (`password refused, or Pi-hole has none set`) when the
+url is a name Pi-hole does not know as its own.
 
 `host` should be read at least as often as the shorter averaging window; when it is read less
 often, an average reaches back to the previous read instead.
