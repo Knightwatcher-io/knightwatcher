@@ -66,6 +66,9 @@ class Source:
         """
         return []
 
+    def close(self) -> None:
+        """End anything the source holds open, such as a session. Best effort; never raises."""
+
 
 class MissingCredentials(Source):
     """A source whose credentials the environment lacks, taken up while the collector runs.
@@ -137,6 +140,9 @@ class KindSource(Source):
 
     def observe(self, reading: Reading, memory: dict, now: dt.datetime) -> list[dict]:
         return self.kind.observe(reading, memory, self.settings, self.config, now)
+
+    def close(self) -> None:
+        self.provider.close()
 
 
 def _variables(problems: list[str]) -> list[str]:

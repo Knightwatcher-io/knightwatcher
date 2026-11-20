@@ -1,0 +1,36 @@
+{
+ "about": "Every session seat taken (16 by default), or more than three password tries in a second: HTTP 429, and the source pauses.",
+ "settings": {},
+ "credentials": [
+  "password"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "POST",
+    "path": "/api/auth",
+    "headers": {
+     "Content-Type": "application/json"
+    },
+    "json": {
+     "password": "{credential.password}"
+    }
+   },
+   "reply": {
+    "status": 429,
+    "json": {
+     "error": {
+      "key": "api_seats_exceeded",
+      "message": "API seats exceeded",
+      "hint": "increase webserver.api.max_sessions"
+     },
+     "took": 2e-05
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "Pi-hole's sessions are all taken, or too many logins"
+ }
+}

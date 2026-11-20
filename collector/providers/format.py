@@ -25,6 +25,11 @@ MAX_VARS = 64
 MAX_CASES = 16
 MAX_TRIES = 8
 MAX_MESSAGE = 80
+# Where a credential may be used, as a problem says it.
+CREDENTIAL_PLACES = "a credential may be used only in a request's query or headers, or in [auth]"
+# A session login's JSON body: the most members in all, and the deepest nesting of its tables.
+MAX_BODY_MEMBERS = 16
+MAX_BODY_DEPTH = 4
 
 ID = re.compile(r"^[a-z][a-z0-9_]{0,23}$")
 _VAR = ID
@@ -44,7 +49,7 @@ _HEADERS_REFUSED = {
     "user-agent",
 }
 # The settings every section of a kind has, which a provider cannot declare as its own.
-COMMON_SETTINGS = ("enabled", "every_s", "from", "url", "secret")
+COMMON_SETTINGS = ("enabled", "every_s", "from", "url", "secret", "verify_tls")
 TYPES = ("int", "number", "string", "bool", "time", "raw")
 REQUIRE_TYPES = ("object", "list", "string", "number")
 SETTING_TYPES = ("string", "integer", "number", "boolean")
@@ -120,6 +125,24 @@ class Basic:
 
 
 @dataclass(frozen=True)
+class Session:
+    """A session login: one POST of a JSON body, the session's id read from its reply and sent
+    with every request after, and an optional DELETE that ends it."""
+
+    login: Template  # the login's path
+    body: dict  # the JSON body: names to a Template, a literal, or a table of the same
+    body_text: dict  # the body as the file writes it, with its templates unfilled
+    sid: Path  # where the login's reply holds the session's id
+    valid_s: Path | None  # where it holds the seconds the session lasts, or None
+    header: str | None  # the header the id is sent in, or None
+    query: str | None  # the query parameter it is sent in, or None
+    logout: Template | None  # the path a DELETE ends the session at, or None
+    statuses: dict
+    not_json: str | None
+    require: tuple  # of Require, checked on the login's reply
+
+
+@dataclass(frozen=True)
 class Scalar:
     """A scalar field: a constant, or the first value a path finds."""
 
@@ -189,7 +212,7 @@ class Spec:
     docs: str
     credentials: dict  # field -> help
     settings: dict  # key -> its declaration
-    auth: Basic | None
+    auth: Basic | Session | None
     requests: tuple  # of Request
     fill: dict  # field -> Scalar | Values | Group | Items
     digest: str = ""
@@ -243,7 +266,7 @@ class _Checker:
         for ref in t.refs:
             if ref.space not in spaces:
                 if ref.space == "credential":
-                    self.bad(at, "a credential may be used only in a request's query or headers")
+                    self.bad(at, CREDENTIAL_PLACES)
                 else:
                     self.bad(at, f"{{{ref.space}.{ref.name}}} cannot be used here")
             elif ref.name not in spaces[ref.space]:
@@ -336,7 +359,7 @@ def check(data: Any, where: str, expect_id: str | None = None) -> Spec:
     settings = _settings(c, data.get("settings", {}))
     request_spaces = {"credential": set(credentials), "setting": set(settings)}
     auth = _auth(c, data.get("auth"), request_spaces)
-    requests = _requests(c, data.get("request"), request_spaces, auth is not None)
+    requests = _requests(c, data.get("request"), request_spaces, auth)
     # The ids the file gives its requests, whether or not each request passed, so that a fault in
     # one is reported once rather than again at every part of the fill that reads it.
     given = data.get("request")
@@ -407,7 +430,7 @@ def _settings(c: _Checker, table: Any) -> dict:
     return out
 
 
-def _auth(c: _Checker, table: Any, spaces: dict) -> Basic | None:
+def _auth(c: _Checker, table: Any, spaces: dict) -> Basic | Session | None:
     if table is None:
         return None
     if not isinstance(table, dict):
@@ -415,10 +438,9 @@ def _auth(c: _Checker, table: Any, spaces: dict) -> Basic | None:
         return None
     method = table.get("method")
     if method == "session":
-        c.bad("auth.method", '"session" is not supported by this version; use "basic"')
-        return None
+        return _session(c, table, spaces)
     if method != "basic":
-        c.bad("auth.method", 'use "basic"')
+        c.bad("auth.method", 'use "basic" or "session"')
         return None
     c.keys("auth", table, ("method", "username", "password"), ("username", "password"))
     user = c.template("auth.username", table.get("username", ""), spaces)
@@ -428,10 +450,109 @@ def _auth(c: _Checker, table: Any, spaces: dict) -> Basic | None:
     return Basic(user, password)
 
 
+_SESSION_KEYS = ("method", "login", "sid", "valid_s", "send", "logout", "statuses", "not_json")
+_SESSION_KEYS += ("require",)
+
+
+def _session(c: _Checker, table: dict, spaces: dict) -> Session | None:
+    c.keys("auth", table, _SESSION_KEYS, ("login", "sid", "send"))
+    before = len(c.problems)
+    path_spaces = {"setting": spaces["setting"]}
+    login, body, body_text = None, {}, {}
+    given = table.get("login")
+    if "login" in table and not isinstance(given, dict):
+        c.bad("auth.login", "expected a table with path and json")
+    elif isinstance(given, dict):
+        c.keys("auth.login", given, ("path", "json"), ("path", "json"))
+        login = _request_path(c, "auth.login.path", given.get("path"), path_spaces)
+        if "json" in given:
+            if isinstance(given["json"], dict):
+                body = _body(c, "auth.login.json", given["json"], spaces, 1, [0])
+                body_text = given["json"]
+            else:
+                c.bad("auth.login.json", "expected a table")
+    sid = c.path("auth.sid", table["sid"]) if "sid" in table else None
+    valid_s = c.path("auth.valid_s", table["valid_s"]) if "valid_s" in table else None
+    header = query = None
+    send = table.get("send")
+    if "send" in table and (not isinstance(send, dict) or len(send) != 1):
+        c.bad("auth.send", "a table of one: header or query")
+    elif isinstance(send, dict):
+        c.keys("auth.send", send, ("header", "query"))
+        if "header" in send:
+            header = send["header"]
+            low = header.lower() if isinstance(header, str) else ""
+            if not isinstance(header, str) or not _HEADER_NAME.match(header):
+                c.bad("auth.send.header", "a header's name is letters, digits and -")
+            elif low in _HEADERS_REFUSED or low.startswith("proxy-"):
+                c.bad("auth.send.header", "this header cannot be set")
+        elif "query" in send:
+            query = send["query"]
+            if not isinstance(query, str) or not query or not _PRINTABLE.match(query):
+                c.bad("auth.send.query", "a name of printable ASCII")
+    logout = None
+    if "logout" in table:
+        out = table["logout"]
+        if not isinstance(out, dict):
+            c.bad("auth.logout", "expected a table with path")
+        else:
+            c.keys("auth.logout", out, ("path",), ("path",))
+            logout = _request_path(c, "auth.logout.path", out.get("path"), path_spaces)
+    statuses = _statuses(c, "auth.statuses", table.get("statuses", {}))
+    not_json = c.text("auth.not_json", table["not_json"]) if "not_json" in table else None
+    require = _require(c, "auth.require", table.get("require", []))
+    if len(c.problems) > before or login is None or sid is None:
+        return None
+    return Session(
+        login, body, body_text, sid, valid_s, header, query, logout, statuses, not_json, require
+    )
+
+
+def _body(c: _Checker, at: str, table: dict, spaces: dict, depth: int, members: list) -> dict:
+    """A login's JSON body: text (a template, which may hold credentials and settings), a number,
+    true or false, or a table of the same."""
+    if depth > MAX_BODY_DEPTH:
+        c.bad(at, f"tables nested at most {MAX_BODY_DEPTH} deep")
+        return {}
+    out: dict[str, Any] = {}
+    for key, value in table.items():
+        members[0] += 1
+        if members[0] == MAX_BODY_MEMBERS + 1:
+            c.bad(at, f"at most {MAX_BODY_MEMBERS} members in the body")
+        kat = _at(at, key)
+        if isinstance(value, dict):
+            out[key] = _body(c, kat, value, spaces, depth + 1, members)
+        elif isinstance(value, str):
+            if not value.isprintable():
+                c.bad(kat, "printable text alone")
+                continue
+            t = c.template(kat, value, spaces)
+            if t is not None:
+                out[key] = t
+        elif isinstance(value, (bool, int, float)):
+            out[key] = value
+        else:
+            c.bad(kat, "text, a number, true or false, or a table")
+    return out
+
+
+def _statuses(c: _Checker, at: str, s: Any) -> dict:
+    statuses: dict[int, str] = {}
+    if not isinstance(s, dict):
+        c.bad(at, "expected a table")
+        return statuses
+    for key, value in s.items():
+        if not re.fullmatch(r"[1-5][0-9][0-9]", str(key)):
+            c.bad(f"{at}.{key}", "an HTTP status, from 100 to 599")
+        elif c.text(f"{at}.{key}", value):
+            statuses[int(key)] = value
+    return statuses
+
+
 _REQUEST_KEYS = ("id", "path", "query", "headers", "statuses", "not_json", "require")
 
 
-def _requests(c: _Checker, given: Any, spaces: dict, has_auth: bool) -> list[Request]:
+def _requests(c: _Checker, given: Any, spaces: dict, auth) -> list[Request]:
     if given is None:
         return []
     if not isinstance(given, list) or not given or not all(isinstance(r, dict) for r in given):
@@ -463,6 +584,8 @@ def _requests(c: _Checker, given: Any, spaces: dict, has_auth: bool) -> list[Req
             for key, value in q.items():
                 if not key or not _PRINTABLE.match(key):
                     c.bad(f"{at}.query", f"{key!r}: a name of printable ASCII")
+                elif isinstance(auth, Session) and key == auth.query:
+                    c.bad(f"{at}.query.{key}", "[auth] sends the session in this parameter")
                 t = c.template(f"{at}.query.{key}", value, spaces)
                 if t is not None:
                     query.append((key, t))
@@ -479,8 +602,10 @@ def _requests(c: _Checker, given: Any, spaces: dict, has_auth: bool) -> list[Req
                     c.bad(hat, "a header's name is letters, digits and -")
                 elif low in _HEADERS_REFUSED or low.startswith("proxy-"):
                     c.bad(hat, "this header cannot be set")
-                elif low == "authorization" and has_auth:
+                elif low == "authorization" and isinstance(auth, Basic):
                     c.bad(hat, "[auth] sets this header")
+                elif isinstance(auth, Session) and low == (auth.header or "").lower():
+                    c.bad(hat, "[auth] sends the session in this header")
                 elif low in names:
                     c.bad(hat, "the same header twice")
                 names.add(low)
@@ -490,16 +615,7 @@ def _requests(c: _Checker, given: Any, spaces: dict, has_auth: bool) -> list[Req
                 t = c.template(hat, value, spaces)
                 if t is not None:
                     headers.append((key, t))
-        statuses = {}
-        s = r.get("statuses", {})
-        if not isinstance(s, dict):
-            c.bad(f"{at}.statuses", "expected a table")
-        else:
-            for key, value in s.items():
-                if not re.fullmatch(r"[1-5][0-9][0-9]", str(key)):
-                    c.bad(f"{at}.statuses.{key}", "an HTTP status, from 100 to 599")
-                elif c.text(f"{at}.statuses.{key}", value):
-                    statuses[int(key)] = value
+        statuses = _statuses(c, f"{at}.statuses", r.get("statuses", {}))
         not_json = None
         if "not_json" in r:
             not_json = c.text(f"{at}.not_json", r["not_json"])

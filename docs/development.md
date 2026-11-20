@@ -72,7 +72,7 @@ tools/
                      contact standard (its scripts in contact-sweep/, which the page's tests share)
   capped.sh          runs a command within a ceiling on CPU and memory, for the checks
   throwaway/         scripts that start a real service from its published image, read it with the
-                     collector, and remove everything again (fail2ban.sh)
+                     collector, and remove everything again (fail2ban.sh, pihole.sh)
   check-private.sh   the check that no private detail is tracked
   private-patterns.example.txt  the template of the patterns check-private.sh reads
 docs/                this documentation
@@ -170,6 +170,7 @@ containers, the network and its scratch folder however it ends:
 
 ```bash
 tools/throwaway/fail2ban.sh     # crazymax/fail2ban: a ban, the attack, an unban, a rebuilt file
+tools/throwaway/pihole.sh       # pihole/pihole: flies, one session, a wrong password, https, v5
 ```
 
 The page:

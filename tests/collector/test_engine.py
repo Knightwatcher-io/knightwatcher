@@ -6,6 +6,7 @@ import base64
 import datetime as dt
 import json
 import secrets
+import threading
 import unittest
 
 from collector.net import AuthError, SourceError
@@ -435,9 +436,327 @@ class EngineTest(unittest.TestCase):
         p.read(T0)
         self.assertEqual(
             p.record,
-            [{"request": "", "url": self.http.url + "/now", "headers": {}, "reply": {"items": []}}],
+            [
+                {
+                    "request": "",
+                    "method": "GET",
+                    "url": self.http.url + "/now",
+                    "headers": {},
+                    "reply": {"items": []},
+                }
+            ],
         )
         json.dumps(p.record)
+
+    def test_a_certificate_is_checked_unless_verify_tls_is_false(self):
+        https = FakeHttp(tls=True)
+        self.addCleanup(https.close)
+        https.routes["/now"] = (200, {"items": []})
+        data = streams({"sessions": {"each": "$.items[*]"}})
+        with self.assertRaises(SourceError) as cm:
+            provider(data, {"url": https.url}).read(T0)
+        self.assertEqual(str(cm.exception), "TLS error")
+        self.assertEqual(https.requests, [])
+        fill = provider(data, {"url": https.url, "verify_tls": False}).read(T0)
+        self.assertEqual(fill, {"sessions": []})
+        self.assertEqual(len(https.requests), 1)
+
+
+SID = "Zm9vYmFyYmF6cXV4cXV1eA="
+
+
+def session_file(**auth):
+    """An adblock provider that logs in by session, as the Pi-hole file does."""
+    return {
+        "kind": "adblock",
+        "credentials": {"password": "Its password."},
+        "auth": {
+            "method": "session",
+            "login": {"path": "/api/auth", "json": {"password": "{credential.password}"}},
+            "sid": "$.session.sid",
+            "valid_s": "$.session.validity",
+            "send": {"header": "X-FTL-SID"},
+            "logout": {"path": "/api/auth"},
+            **auth,
+        },
+        "request": [{"path": "/stats"}],
+        "fill": {"blocked": {"path": "$.blocked", "required": "no count"}},
+    }
+
+
+def sid_of(headers):
+    """The session id a request carried: header names arrive in another case than sent."""
+    return {k.lower(): v for k, v in headers.items()}.get("x-ftl-sid")
+
+
+class Clock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def __call__(self):
+        return self.now
+
+
+class SessionTest(unittest.TestCase):
+    """[auth] method = "session": the login, the session reused, made again, refused and ended."""
+
+    def setUp(self):
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+        self.password = secrets.token_urlsafe(12)
+        self.sids = []
+        self.validity = 1800
+        self.known: set[str] = set()
+
+        def login(handler):
+            sid = f"{SID[:-1]}{len(self.sids)}"
+            self.sids.append(sid)
+            self.known.add(sid)
+            return {"session": {"valid": True, "sid": sid, "validity": self.validity}}
+
+        def stats(handler):
+            if handler.headers.get("X-FTL-SID") not in self.known:
+                handler.send_response(401)
+                handler.send_header("Content-Length", "2")
+                handler.end_headers()
+                handler.wfile.write(b"{}")
+                return None
+            return {"blocked": 7}
+
+        self.http.routes["POST /api/auth"] = (200, login)
+        self.http.routes["DELETE /api/auth"] = (204, None)
+        self.http.routes["/stats"] = (200, stats)
+        self.clock = Clock()
+
+    def make(self, data=None, settings=None):
+        data = data or session_file()
+        p = provider(data, {"url": self.http.url, **(settings or {})}, {"password": self.password},
+                     ADBLOCK)  # fmt: skip
+        p.clock = self.clock
+        return p
+
+    def methods(self):
+        return [(m, path) for m, path, _, _ in self.http.calls]
+
+    def test_one_login_then_the_session_with_every_read(self):
+        p = self.make()
+        for _ in range(3):
+            self.assertEqual(p.read(T0), {"blocked": 7})
+            self.clock.now += 30
+        self.assertEqual(
+            self.methods(),
+            [("POST", "/api/auth"), ("GET", "/stats"), ("GET", "/stats"), ("GET", "/stats")],
+        )
+        _, _, headers, body = self.http.calls[0]
+        self.assertEqual(body, {"password": self.password})
+        self.assertEqual(headers["Content-Type"], "application/json")
+        self.assertIsNone(sid_of(headers))
+        for _, _, headers, body in self.http.calls[1:]:
+            self.assertEqual(sid_of(headers), self.sids[0])
+            self.assertIsNone(body)
+
+    def test_the_session_is_sent_in_the_query_when_the_file_says(self):
+        p = self.make(session_file(send={"query": "sid"}))
+        self.known.add(None)  # the fake reads the header; here it is the query that carries it
+        p.read(T0)
+        self.assertEqual(self.http.requests[0][0], "/stats?sid=" + SID[:-1] + "0")
+
+    def test_a_session_near_its_end_is_made_again(self):
+        p = self.make()
+        p.read(T0)
+        # Used 30 s before its end at the latest; each use counts its lifetime from then.
+        self.clock.now += 1800 - 31
+        p.read(T0)
+        self.clock.now += 1800 - 31
+        p.read(T0)
+        self.assertEqual(len(self.sids), 1)
+        self.clock.now += 1800 - 29
+        p.read(T0)
+        self.assertEqual(len(self.sids), 2)
+        self.assertEqual(sid_of(self.http.calls[-1][2]), self.sids[1])
+
+    def test_a_short_session_is_used_for_half_its_life(self):
+        self.validity = 40
+        p = self.make()
+        p.read(T0)
+        self.clock.now += 19
+        p.read(T0)
+        self.clock.now += 21
+        p.read(T0)
+        self.assertEqual(len(self.sids), 2)
+
+    def test_a_login_with_no_lifetime_keeps_its_session(self):
+        p = self.make(session_file(valid_s="$.session.nothing"))
+        p.read(T0)
+        self.clock.now += 10**7
+        p.read(T0)
+        self.assertEqual(len(self.sids), 1)
+
+    def test_a_session_the_service_forgot_is_made_again_once_in_the_same_read(self):
+        p = self.make()
+        p.read(T0)
+        self.known.clear()  # the service restarted
+        self.assertEqual(p.read(T0), {"blocked": 7})
+        self.assertEqual(
+            self.methods()[1:],
+            [("GET", "/stats"), ("GET", "/stats"), ("POST", "/api/auth"), ("GET", "/stats")],
+        )
+        self.assertEqual(sid_of(self.http.calls[-1][2]), self.sids[1])
+
+    def test_a_new_session_refused_is_refused_credentials_and_not_tried_again(self):
+        p = self.make()
+        self.http.routes["/stats"] = (401, {})
+        with self.assertRaises(AuthError) as cm:
+            p.read(T0)
+        self.assertEqual(cm.exception.status, 401)
+        self.assertEqual(self.methods(), [("POST", "/api/auth"), ("GET", "/stats")])
+        # The session is dropped: the next read logs in afresh.
+        self.http.routes["/stats"] = (200, {"blocked": 1})
+        p.read(T0)
+        self.assertEqual(len(self.sids), 2)
+
+    def test_a_second_401_after_logging_in_again_is_refused_credentials(self):
+        p = self.make()
+        p.read(T0)
+        self.http.routes["/stats"] = (401, {})
+        with self.assertRaises(AuthError):
+            p.read(T0)
+        self.assertEqual(
+            self.methods()[2:], [("GET", "/stats"), ("POST", "/api/auth"), ("GET", "/stats")]
+        )
+
+    def test_a_refused_login_is_refused_credentials_with_the_files_words(self):
+        for status, said in ((401, "password refused"), (429, "too many logins")):
+            self.http.routes["POST /api/auth"] = (status, {"session": {"valid": False}})
+            p = self.make(session_file(statuses={"401": "password refused",
+                                                 "429": "too many logins"}))  # fmt: skip
+            with self.assertRaises(AuthError) as cm:
+                p.read(T0)
+            self.assertEqual((str(cm.exception), cm.exception.status), (said, status))
+        self.assertNotIn(("GET", "/stats"), self.methods())
+
+    def test_a_login_not_found_or_not_json_takes_the_files_words(self):
+        old = "not version 6 (version 5 is not supported)"
+        data = session_file(statuses={"404": old}, not_json=old)
+        self.http.routes["POST /api/auth"] = (404, b"<html>Not Found</html>")
+        with self.assertRaises(SourceError) as cm:
+            self.make(data).read(T0)
+        self.assertEqual(str(cm.exception), old)
+        self.assertNotIsInstance(cm.exception, AuthError)
+        self.http.routes["POST /api/auth"] = (200, b"<html>admin</html>")
+        with self.assertRaises(SourceError) as cm:
+            self.make(data).read(T0)
+        self.assertEqual(str(cm.exception), old)
+
+    def test_a_login_with_no_session_id(self):
+        for sid in (None, "", 7, "has space", "x" * 513):
+            self.http.routes["POST /api/auth"] = (200, {"session": {"valid": True, "sid": sid}})
+            with self.assertRaises(SourceError) as cm:
+                self.make().read(T0)
+            self.assertEqual(str(cm.exception), "the login gave no session id", sid)
+        require = [{"path": "$.session.sid", "type": "string", "message": "no password set"}]
+        self.http.routes["POST /api/auth"] = (200, {"session": {"valid": True, "sid": None}})
+        with self.assertRaises(SourceError) as cm:
+            self.make(session_file(require=require)).read(T0)
+        self.assertEqual(str(cm.exception), "no password set")
+        self.assertNotIn(("GET", "/stats"), self.methods())
+
+    def test_the_login_body_holds_settings_numbers_and_tables(self):
+        data = session_file(login={"path": "/api/auth", "json": {
+            "user": {"name": "{setting.who}", "secret": "{credential.password}"},
+            "remember": True, "tries": 1}})  # fmt: skip
+        data["settings"] = {"who": {"type": "string", "default": "kw", "help": "Who."}}
+        self.make(data).read(T0)
+        self.assertEqual(
+            self.http.calls[0][3],
+            {"user": {"name": "kw", "secret": self.password}, "remember": True, "tries": 1},
+        )
+
+    def test_close_logs_out_once_and_reads_no_more(self):
+        p = self.make()
+        p.read(T0)
+        p.close()
+        p.close()
+        self.assertEqual(self.methods()[-1], ("DELETE", "/api/auth"))
+        self.assertEqual(sid_of(self.http.calls[-1][2]), self.sids[0])
+        self.assertEqual(self.methods().count(("DELETE", "/api/auth")), 1)
+        with self.assertRaises(SourceError) as cm:
+            p.read(T0)
+        self.assertEqual(str(cm.exception), "provider closed")
+
+    def test_close_without_a_session_or_a_logout_sends_nothing(self):
+        self.make().close()
+        data = session_file()
+        del data["auth"]["logout"]
+        p = self.make(data)
+        p.read(T0)
+        p.close()
+        self.make(data).close()
+        self.assertNotIn("DELETE", [m for m, _ in self.methods()])
+        p = self.make()
+        p.read(T0)
+        self.clock.now += 1800  # expired: nothing to end
+        p.close()
+        self.assertNotIn("DELETE", [m for m, _ in self.methods()])
+
+    def test_a_logout_that_fails_is_left_alone(self):
+        p = self.make()
+        p.read(T0)
+        self.http.routes["DELETE /api/auth"] = (500, {})
+        p.close()
+        self.http.close()
+        q = self.make()
+        q._sid, q._until = "x", self.clock.now + 60
+        q.close()  # nothing answers: no error either
+
+    def test_close_during_a_read_logs_out_when_the_read_ends(self):
+        p = self.make()
+        p.read(T0)
+        started, release = threading.Event(), threading.Event()
+
+        def slow(handler):
+            started.set()
+            release.wait(5)
+            return {"blocked": 8}
+
+        self.http.routes["/stats"] = (200, slow)
+        out = {}
+        reader = threading.Thread(target=lambda: out.update(fill=p.read(T0)))
+        reader.start()
+        self.assertTrue(started.wait(5))
+        p.close()
+        self.assertNotIn(("DELETE", "/api/auth"), self.methods())
+        release.set()
+        reader.join(5)
+        self.assertEqual(out["fill"], {"blocked": 8})
+        self.assertEqual(self.methods()[-1], ("DELETE", "/api/auth"))
+
+    def test_the_recording_names_the_session_and_masks_the_login(self):
+        p = self.make()
+        p.record = []
+        p.read(T0)
+        p.close()
+        text = json.dumps(p.record)
+        self.assertNotIn(self.sids[0], text)
+        self.assertNotIn(self.password, text)
+        login, read, logout = p.record
+        self.assertEqual(
+            (login["request"], login["method"], login["json"]),
+            ("auth.login", "POST", {"password": "{credential.password}"}),
+        )
+        self.assertEqual(
+            login["reply"], {"session": {"valid": True, "sid": "<string 23>", "validity": 1800}}
+        )
+        self.assertEqual(read["headers"], {"X-FTL-SID": "{session.sid}"})
+        self.assertEqual(
+            (logout["request"], logout["method"], logout["headers"]),
+            ("auth.logout", "DELETE", {"X-FTL-SID": "{session.sid}"}),
+        )
+        q = self.make(session_file(send={"query": "sid"}))
+        self.known.add(None)
+        q.record = []
+        q.read(T0)
+        self.assertTrue(q.record[1]["url"].endswith("/stats?sid={session.sid}"))
 
 
 if __name__ == "__main__":

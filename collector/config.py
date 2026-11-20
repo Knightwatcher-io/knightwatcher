@@ -11,12 +11,13 @@ state.json. Where they take the long name of a part from a pack, "<pack>/<id>", 
 checked here. The sections read through a kind (collector/kinds/) take their provider from
 `from`, or the provider of their own name, and the provider's file names the credentials it needs
 and any settings of its own, which the section may then set; a key of the section that its
-provider does not use (url with fail2ban, database with any other) is refused by name. An old
-[sources.security] that still reads the fail2ban summary (a url with no `from`, or
-from = "summary") is refused with a message that names fail2ban's own database instead. The
-providers are the built-in ones and the user's own files in the providers folder
-(collector.providers_dir, beside config.toml), read by collector/providers/__init__.py's scan();
-a `from` naming a file that was left out is no problem here, and that source fails at every read.
+provider does not use (url and verify_tls with fail2ban, database with any other) is refused by
+name, and verify_tls = false needs an https url. An old [sources.security] that still reads the
+fail2ban summary (a url with no `from`, or from = "summary") is refused with a message that names
+fail2ban's own database instead. The providers are the built-in ones and the user's own files in
+the providers folder (collector.providers_dir, beside config.toml), read by
+collector/providers/__init__.py's scan(); a `from` naming a file that was left out is no problem
+here, and that source fails at every read.
 Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>, where SECRET is
 the source's `secret` setting, the provider's id unless it is set; no message ever carries a
 credential's value.
@@ -282,6 +283,13 @@ def _validate_source(name: str, s: dict, problems: list[str], registry) -> None:
     for key in ("url",):
         if key not in unused and s.get(key) and not re.match(r"^https?://", s[key]):
             problems.append(f"sources.{name}.{key}: must start with http:// or https://")
+    if (
+        "verify_tls" not in unused
+        and s.get("verify_tls") is False
+        and isinstance(s.get("url"), str)
+        and s["url"].startswith("http://")
+    ):
+        problems.append(f"sources.{name}.verify_tls: only applies with an https url")
     if "secret" in s and not _SECRET_NAME.match(s["secret"]):
         problems.append(f"sources.{name}.secret: use letters, digits and underscores")
     if "from" in s:
@@ -355,7 +363,7 @@ def unused_keys(section: str, settings: dict, registry) -> set[str]:
         if users is not None and spec.id not in users:
             out.add(s["key"])
     if not providers_mod.takes_address(spec):
-        out.add("url")
+        out |= {"url", "verify_tls"}
     return out
 
 

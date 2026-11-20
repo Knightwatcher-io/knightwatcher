@@ -70,11 +70,28 @@ def check(data, expect="myflix"):
     return fmt.check(data, "myflix.toml", expect)
 
 
+def with_session():
+    """The valid file, logging in by session."""
+    data = copy.deepcopy(VALID)
+    data["auth"] = {
+        "method": "session",
+        "login": {"path": "/login", "json": {"password": "{credential.token}", "keep": True}},
+        "sid": "$.session.id",
+        "valid_s": "$.session.seconds",
+        "send": {"header": "X-Session"},
+        "logout": {"path": "/login"},
+        "statuses": {"404": "not My Flix"},
+        "not_json": "not My Flix",
+        "require": [{"path": "$.session.id", "type": "string", "message": "no session"}],
+    }
+    return data
+
+
 class BuiltInTest(unittest.TestCase):
     def test_the_built_in_files_pass(self):
         found = providers.builtin()
         files = {p: s for p, s in found.items() if not isinstance(s, providers.Adapter)}
-        self.assertEqual(sorted(files), ["adguard", "radarr", "sonarr", "tautulli"])
+        self.assertEqual(sorted(files), ["adguard", "pihole", "radarr", "sonarr", "tautulli"])
         for pid, spec in files.items():
             self.assertEqual(spec.id, pid)
             self.assertEqual(len(spec.digest), 20)
@@ -112,8 +129,8 @@ class BuiltInTest(unittest.TestCase):
 
 
 class RefusedTest(unittest.TestCase):
-    def refused(self, change, problem):
-        data = copy.deepcopy(VALID)
+    def refused(self, change, problem, base=VALID):
+        data = copy.deepcopy(base)
         change(data)
         with self.assertRaises(fmt.FormatError) as cm:
             check(data)
@@ -162,10 +179,8 @@ class RefusedTest(unittest.TestCase):
 
     def test_auth(self):
         self.refused(
-            lambda d: d.update(auth={"method": "session"}),
-            'auth.method: "session" is not supported by this version; use "basic"',
+            lambda d: d.update(auth={"method": "digest"}), 'auth.method: use "basic" or "session"'
         )
-        self.refused(lambda d: d.update(auth={"method": "digest"}), 'auth.method: use "basic"')
         self.refused(
             lambda d: d.update(
                 auth={"method": "basic", "username": "{credential.user}", "password": "x"}
@@ -178,6 +193,95 @@ class RefusedTest(unittest.TestCase):
                 d["request"][0]["headers"].update(Authorization="x"),
             ),
             "request[0].headers.Authorization: [auth] sets this header",
+        )
+
+    def test_a_session(self):
+        spec = check(with_session())
+        auth = spec.auth
+        self.assertIsInstance(auth, fmt.Session)
+        self.assertEqual((auth.header, auth.query, auth.login.text), ("X-Session", None, "/login"))
+        self.assertEqual(auth.body_text, {"password": "{credential.token}", "keep": True})
+        self.assertEqual(auth.statuses, {404: "not My Flix"})
+        session = lambda d: d["auth"]  # noqa: E731
+        r = lambda change, problem: self.refused(change, problem, with_session())  # noqa: E731
+        for key in ("login", "sid", "send"):
+            r(lambda d, k=key: session(d).pop(k), f"auth.{key}: required")
+        r(lambda d: session(d).update(body="x"), "auth.body: unknown field")
+        r(
+            lambda d: session(d).update(login="/login"),
+            "auth.login: expected a table with path and json",
+        )
+        r(lambda d: session(d)["login"].pop("json"), "auth.login.json: required")
+        r(
+            lambda d: session(d)["login"].update(path="https://evil.example/login"),
+            "auth.login.path: must start with /",
+        )
+        r(
+            lambda d: session(d)["login"].update(path="/{credential.token}"),
+            "auth.login.path: a credential may be used only in a request's query or headers, "
+            "or in [auth]",
+        )
+        r(
+            lambda d: session(d)["login"]["json"].update(user="{credential.username}"),
+            "auth.login.json.user: {credential.username} is not declared",
+        )
+        r(
+            lambda d: session(d)["login"]["json"].update(list=[1]),
+            "auth.login.json.list: text, a number, true or false, or a table",
+        )
+        r(
+            lambda d: session(d)["login"]["json"].update(a={"b": {"c": {"d": {"e": "x"}}}}),
+            "auth.login.json.a.b.c.d: tables nested at most 4 deep",
+        )
+        r(
+            lambda d: session(d)["login"]["json"].update({f"k{i}": i for i in range(16)}),
+            "auth.login.json: at most 16 members in the body",
+        )
+        r(lambda d: session(d).update(sid="$..sid"), 'auth.sid: unexpected ".." at character 2')
+        r(
+            lambda d: session(d).update(send={"header": "X-A", "query": "a"}),
+            "auth.send: a table of one: header or query",
+        )
+        r(lambda d: session(d).update(send={"cookie": "sid"}), "auth.send.cookie: unknown field")
+        r(
+            lambda d: session(d).update(send={"header": "Cookie"}),
+            "auth.send.header: this header cannot be set",
+        )
+        r(
+            lambda d: session(d).update(send={"header": "X Bad"}),
+            "auth.send.header: a header's name is letters, digits and -",
+        )
+        r(
+            lambda d: session(d).update(send={"query": ""}),
+            "auth.send.query: a name of printable ASCII",
+        )
+        r(
+            lambda d: d["request"][0]["headers"].update({"x-session": "x"}),
+            "request[0].headers.x-session: [auth] sends the session in this header",
+        )
+        r(
+            lambda d: session(d).update(send={"query": "all"}),
+            "request[0].query.all: [auth] sends the session in this parameter",
+        )
+        r(lambda d: session(d).update(logout="/logout"), "auth.logout: expected a table with path")
+        r(
+            lambda d: session(d).update(logout={"path": "/x", "method": "POST"}),
+            "auth.logout.method: unknown field",
+        )
+        r(
+            lambda d: session(d)["statuses"].update({"600": "x"}),
+            "auth.statuses.600: an HTTP status, from 100 to 599",
+        )
+        r(
+            lambda d: session(d).update(require=[{"path": "$.ok"}]),
+            "auth.require[0]: give exactly one of equals, type or present",
+        )
+        r(lambda d: session(d).update(not_json=""), "auth.not_json: expected text")
+        r(
+            lambda d: d["settings"].update(
+                verify_tls={"type": "boolean", "default": True, "help": "x"}
+            ),
+            "settings.verify_tls: taken by the section's own settings",
         )
 
     # Requests
@@ -220,7 +324,7 @@ class RefusedTest(unittest.TestCase):
             )
         self.refused(
             lambda d: d["request"][0].update(path="/{credential.token}"),
-            "request[0].path: a credential may be used only in a request's query or headers",
+            "request[0].path: " + fmt.CREDENTIAL_PLACES,
         )
 
     def test_headers(self):
@@ -442,7 +546,7 @@ class RefusedTest(unittest.TestCase):
         self.refused(
             lambda d: t(d)[1].update(**{"try": ["{credential.token}"]}),
             "fill.sessions.title[1].try[0]: a credential may be used only in a request's query "
-            "or headers",
+            "or headers, or in [auth]",
         )
         self.refused(
             lambda d: t(d)[1].update(**{"try": ["{setting.page_size}"]}),

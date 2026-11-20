@@ -133,6 +133,11 @@ def _make_self_signed() -> tuple[str | None, str]:
 class FakeHttp:
     """A local HTTP server answering from a routes table: path -> (status, body or callable).
 
+    A GET is answered from the route of its path; a POST or a DELETE from the route of
+    "POST <path>" or "DELETE <path>" alone. requests holds each GET as (path, headers), and calls
+    every request as (method, path, headers, the body parsed as JSON or None). A body of None is
+    sent as no body at all, as a 204 is.
+
     With tls true it serves https with a self-signed certificate, and skips the calling test
     when that cannot be made.
     """
@@ -140,21 +145,43 @@ class FakeHttp:
     def __init__(self, tls: bool = False):
         self.routes: dict[str, tuple[int, object]] = {}
         self.requests: list[tuple[str, dict]] = []
+        self.calls: list[tuple[str, str, dict, object]] = []
         outer = self
 
         class Handler(BaseHTTPRequestHandler):
-            def do_GET(self):
-                outer.requests.append((self.path, dict(self.headers)))
+            def answer(self, method):
+                length = int(self.headers.get("Content-Length") or 0)
+                raw = self.rfile.read(length) if length else b""
+                sent = json.loads(raw) if raw else None
+                outer.calls.append((method, self.path, dict(self.headers), sent))
                 path = self.path.split("?", 1)[0]
-                status, body = outer.routes.get(path, (404, {"error": "not found"}))
+                if method == "GET":
+                    outer.requests.append((self.path, dict(self.headers)))
+                    route = outer.routes.get(path)
+                else:
+                    route = outer.routes.get(f"{method} {path}")
+                status, body = route or (404, {"error": "not found"})
                 if callable(body):
                     body = body(self)
-                data = body if isinstance(body, bytes) else json.dumps(body).encode()
                 self.send_response(status)
-                self.send_header("Content-Type", "application/json")
+                if body is None:
+                    self.end_headers()
+                    return
+                data = body if isinstance(body, bytes) else json.dumps(body).encode()
+                kind = "text/html" if isinstance(body, bytes) else "application/json"
+                self.send_header("Content-Type", kind)
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
+
+            def do_GET(self):
+                self.answer("GET")
+
+            def do_POST(self):
+                self.answer("POST")
+
+            def do_DELETE(self):
+                self.answer("DELETE")
 
             def log_message(self, *args):
                 pass

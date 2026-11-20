@@ -92,11 +92,18 @@ does not carry, whatever its version.
 The services are read through provider files ([providers.md](./providers.md)), which are data:
 nothing in one runs as code. Every request a provider makes goes to the scheme, host and port of
 the source's `url` with the file's path appended, with no redirect and no proxy; a file holds no
-address and cannot build one, no request is built from a reply, and a credential is put only into
-that provider's own requests, in a header, the query or a basic login, never into the fill, a
-message or the state file. `--probe` prints a provider's fill with every text masked, and its
-`--record` writes the service's replies, which are private, to a file of mode 600 with each
-credential replaced by its field's name.
+address and cannot build one, no request is built from a reply but for a session's id, and a
+credential is put only into that provider's own requests, in a header, the query, a basic login or
+a session login's body, never into the fill, a message or the state file. Every request is a GET
+but a session's login, one POST, and its logout, one DELETE, both to that same address. A session's
+id (Pi-hole's) is a credential too: the provider keeps it in memory alone and sends it only where
+its file says, and it is never logged or written to the state or memory file. The certificate of
+an `https` service is checked unless its section sets `verify_tls = false`, for a self-signed one;
+the connection is then still encrypted, but a machine that takes the service's address on the
+network could receive the credential. `--probe` prints a provider's fill with every text masked,
+and its `--record` writes the service's replies, which are private, to a file of mode 600 with each
+credential replaced by its field's name, the session's id by `{session.sid}`, and every text of a
+session login's reply masked.
 
 Provider files of the user's own, in the providers folder beside `config.toml`
 ([providers.md](./providers.md#your-own-provider-files)), are held to the same rules by the same

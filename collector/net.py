@@ -25,7 +25,10 @@ AUTH_STATUSES = {401, 403, 429}
 
 
 class SourceError(Exception):
-    """A read failed. The message is short and safe to show on the page."""
+    """A read failed. The message is short and safe to show on the page. status is the HTTP
+    status that failed it, when one did."""
+
+    status: int | None = None
 
 
 class AuthError(SourceError):
@@ -51,7 +54,23 @@ def _opener(context: ssl.SSLContext) -> urllib.request.OpenerDirector:
     return opener
 
 
-_opener_checked = _opener(ssl.create_default_context())
+def _tls(verify: bool) -> ssl.SSLContext:
+    if verify:
+        return ssl.create_default_context()
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    return context
+
+
+_TLS = {True: _tls(True), False: _tls(False)}
+# One opener checks certificates, the other does not, for a service whose section sets
+# verify_tls = false: its certificate is self-signed, and the connection is still encrypted.
+_opener_checked = _opener(_TLS[True])
+_opener_unchecked = _opener(_TLS[False])
+# The methods a request may use: GET for every read, POST for a session login, DELETE for its
+# logout.
+METHODS = ("GET", "POST", "DELETE")
 
 
 def basic_auth(username: str, password: str) -> dict[str, str]:
@@ -61,16 +80,41 @@ def basic_auth(username: str, password: str) -> dict[str, str]:
     return {"Authorization": f"Basic {token}"}
 
 
-def fetch(url: str, timeout: float, headers: dict[str, str] | None = None) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "knightwatcher", **(headers or {})})
+def fetch(
+    url: str,
+    timeout: float,
+    headers: dict[str, str] | None = None,
+    *,
+    method: str = "GET",
+    json_body: Any = None,
+    verify_tls: bool = True,
+) -> bytes:
+    """One request, its reply's body, cut at MAX_BODY.
+
+    A json_body is sent as JSON with its Content-Type. With verify_tls false an https address must
+    complete the TLS handshake but its certificate is not checked. An HTTP error status raises
+    SourceError, or AuthError for 401, 403 and 429; no message carries the address.
+    """
+    if method not in METHODS:
+        raise ValueError(method)
+    data = None
+    sent = {"User-Agent": "knightwatcher", **(headers or {})}
+    if json_body is not None:
+        data = json.dumps(json_body, separators=(",", ":")).encode("utf-8")
+        sent["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=sent, method=method)
+    opener = _opener_checked if verify_tls else _opener_unchecked
     try:
-        with _opener_checked.open(req, timeout=timeout) as resp:
+        with opener.open(req, timeout=timeout) as resp:
             body = resp.read(MAX_BODY + 1)
     except urllib.error.HTTPError as exc:
         exc.close()
         if exc.code in AUTH_STATUSES:
-            raise AuthError(f"HTTP {exc.code}: credentials refused") from None
-        raise SourceError(f"HTTP {exc.code}") from None
+            failed = AuthError(f"HTTP {exc.code}: credentials refused")
+        else:
+            failed = SourceError(f"HTTP {exc.code}")
+        failed.status = exc.code
+        raise failed from None
     except urllib.error.URLError as exc:
         raise SourceError(describe_os_error(exc.reason)) from None
     except TimeoutError:
@@ -233,16 +277,6 @@ def tcp_any(host: str, ports: list[int], timeout: float, refused_counts: bool = 
     return refused and refused_counts
 
 
-def _tls(verify: bool) -> ssl.SSLContext:
-    if verify:
-        return ssl.create_default_context()
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_NONE
-    return context
-
-
-_TLS = {True: _tls(True), False: _tls(False)}
 _STATUS_LINE = re.compile(rb"^HTTP/\d(?:\.\d)? \d{3}(?:[ \r\n]|$)")
 STATUS_LINE_MAX = 64
 
