@@ -379,7 +379,7 @@ Whether the DNS server answers.
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `server` | an address | `"127.0.0.1"` | household | DNS server to ask. |
+| `server` | an address | `"127.0.0.53"` | household | DNS server to ask. The default is the resolver most Linux hosts run, systemd-resolved, which answers on 127.0.0.53; a host that runs its own DNS server, such as AdGuard Home or Pi-hole, often turns that off, so give that server's address instead. |
 | `port` | a whole number | `53` | household | Its port. |
 | `name` | a domain name | `"example.com"` | household | Name to look up. An answer of no error or of "no such name" counts as up. |
 
