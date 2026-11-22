@@ -51,13 +51,13 @@ class FakeProc:
     def __init__(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.root = self._tmp.name
-        os.makedirs(os.path.join(self.root, "net"))
+        os.makedirs(os.path.join(self.root, "1", "net"))
         self.set_stat(1000, 9000, cores=4)
         self.set_meminfo(total_kb=16_000_000, available_kb=8_000_000)
         self.write("loadavg", "1.50 1.20 1.00 2/300 12345\n")
         self.write("locks", "")
-        self.write("net/tcp", self.TCP_HEADER)
-        self.write("net/tcp6", self.TCP_HEADER)
+        self.write("1/net/tcp", self.TCP_HEADER)
+        self.write("1/net/tcp6", self.TCP_HEADER)
 
     TCP_HEADER = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt\n"
 

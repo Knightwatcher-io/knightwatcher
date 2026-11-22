@@ -386,7 +386,7 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `backup` | `backup.py` | the tail of the backup log | `backup` |
 | `pi` | `devices.py` | a TCP connection to every port at once; a refusal counts as an answer | `pi` |
 | `updates` | `updates.py` | the host's lock table, `/proc/locks`, and the command line of each process holding a lock | `updates` |
-| `ssh` | `ssh.py` | established connections to the SSH port in `/proc/net/tcp` and `tcp6` | `ssh` |
+| `ssh` | `ssh.py` | established connections to the SSH port in the host's `/proc/1/net/tcp` and `tcp6` | `ssh` |
 | `streams` | the streams kind, `kinds/streams.py`, through its `from` provider, `tautulli` by default | Tautulli's `get_activity`, or Plex Media Server's `/status/sessions` with the owner's token: of each stream its title, and its user's name only when `show` is `names` | `streams` |
 | `adblock` | the adblock kind, `kinds/adblock.py`, through its `from` provider, `adguard` by default | AdGuard Home's `/control/stats`, Pi-hole 6's `/api/stats/summary` and `/api/history` through a session, or Technitium's `/api/dashboard/stats/get` for the last hour and the last day, with an API token | `adblock` |
 | `security` | the security kind, `kinds/security.py`, through its `from` provider, `fail2ban` (`providers/fail2ban.py`) by default | the `bans` table of fail2ban's SQLite database, read-only | `security` |
