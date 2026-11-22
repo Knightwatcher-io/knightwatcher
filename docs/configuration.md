@@ -97,9 +97,9 @@ source needs may be left empty or out; the collector's check names any it needs 
 
 A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals.
 Its provider names the fields (Tautulli's is `api_key`, AdGuard Home's `username` and `password`,
-Pi-hole's `password`; [Providers](#providers) lists them), and `SECRET` is the source's `secret`
-setting, which is the provider's id unless set: `tautulli`, `adguard`, `pihole`, `sonarr` or
-`radarr`. A source given
+Pi-hole's `password`, Technitium's `token`; [Providers](#providers) lists them), and `SECRET` is
+the source's `secret` setting, which is the provider's id unless set: `tautulli`, `adguard`,
+`pihole`, `technitium`, `sonarr` or `radarr`. A source given
 `secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and a source reading a
 provider file of your own with the id `myflix` and a `token` reads `KNIGHTWATCHER_MYFLIX_TOKEN`.
 
@@ -428,16 +428,16 @@ Streams playing, from the service its provider reads: Tautulli by default.
 
 ### [sources.adblock]
 
-Blocked adverts, from the service its provider reads: AdGuard Home by default, or Pi-hole 6.
+Blocked adverts, from the service its provider reads: AdGuard Home by default, Pi-hole 6, or Technitium DNS Server 15 or later.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `from` | `"adguard"` or `"pihole"`: a provider of the adblock kind (see Providers below) | `"adguard"` | household | The provider the blocked queries are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
+| `from` | `"adguard"`, `"pihole"` or `"technitium"`: a provider of the adblock kind (see Providers below) | `"adguard"` | household | The provider the blocked queries are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD). Left out, it is the provider's id. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD, Technitium's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
 | `fly_every_s` | a number of seconds, zero or more | `300.0` | household | Average seconds between flies while blocking runs at the household's normal rate, which the service's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query. |
 
 ### [sources.security]
@@ -578,6 +578,7 @@ The services the sections read through a kind can read, each by its provider. A 
 | `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]` | `KNIGHTWATCHER_RADARR_API_KEY` |
 | `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]` | `KNIGHTWATCHER_SONARR_API_KEY` |
 | `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KNIGHTWATCHER_TAUTULLI_API_KEY` |
+| `technitium` | adblock | [Technitium DNS Server](https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md) | `[sources.adblock]` with `from = "technitium"` | `KNIGHTWATCHER_TECHNITIUM_TOKEN` |
 
 ### .env
 
@@ -598,6 +599,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_PIHOLE_PASSWORD` | credential | a password, such as `an-invented-app-password` | none | A Pi-hole 6 app password, for the pihole provider, which [sources.adblock] reads with from = "pihole". In Pi-hole: Settings, Web interface / API, Configure app password. The web password works too, but not with two-factor authentication on, since the collector cannot give a code. Version 5 is not supported. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_TECHNITIUM_TOKEN` | credential | 64 hexadecimal characters, such as `0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef` | none | A Technitium DNS Server API token, for the technitium provider, which [sources.adblock] reads with from = "technitium". In Technitium, signed in as a user of its own in no group but Everyone, which can view but change nothing: the user menu, Create API Token. The token does not expire. It is sent in the Authorization header, which needs Technitium 15 or later. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_SONARR_API_KEY` | credential | 32 hexadecimal characters, such as `fedcba9876543210fedcba9876543210` | none | Sonarr's API key, for the sonarr provider, which [sources.sonarr] reads. In Sonarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_RADARR_API_KEY` | credential | 32 hexadecimal characters, such as `00112233445566778899aabbccddeeff` | none | Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 
@@ -676,6 +678,33 @@ for `auth_backoff_s`, as for any refused credential. Pi-hole 5 is not supported,
 the collector says so, `Pi-hole has no password set; the collector needs one`, when the url is
 an address, and Pi-hole refuses it outright (`password refused, or Pi-hole has none set`) when the
 url is a name Pi-hole does not know as its own.
+
+### Technitium DNS Server
+
+`from = "technitium"` reads Technitium DNS Server 15 or later through its API, with an API token:
+
+```toml
+[sources.adblock]
+from = "technitium"
+url = "http://192.0.2.53:5380"   # the web console's address and port
+fly_every_s = 300                # reads KNIGHTWATCHER_TECHNITIUM_TOKEN
+```
+
+Make a user of its own in Technitium (Administration, Users), in no group but Everyone, which can
+view the dashboard but change nothing. Sign in as that user, then from the user menu choose
+Create API Token, and put the token in `KNIGHTWATCHER_TECHNITIUM_TOKEN`. The token does not
+expire; deleting its session in Technitium (Administration, Sessions) ends it. It is sent in the
+`Authorization` header, which Technitium reads from version 15.0; an older version reads the
+token from the query alone, so it refuses every read, and the collector says
+`API token refused, or Technitium is older than version 15`, pausing the source for
+`auth_backoff_s` as for any refused credential.
+
+The flies come from Technitium's last hour, a minute at a time: each minute is counted once it
+has ended and Technitium has finished counting it, about 20 seconds later, so a blocked query
+brings its flies within a minute and a half, usually sooner. The normal rate and the first count
+of the day come from its last 24 hours. With Technitium's in-memory statistics on
+(`DNS_SERVER_STATS_ENABLE_IN_MEMORY_STATS`), it keeps no hours, so a fly is 50 blocked queries
+and the count of the day starts from nothing.
 
 `host` should be read at least as often as the shorter averaging window; when it is read less
 often, an average reaches back to the previous read instead.

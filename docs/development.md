@@ -72,7 +72,8 @@ tools/
                      contact standard (its scripts in contact-sweep/, which the page's tests share)
   capped.sh          runs a command within a ceiling on CPU and memory, for the checks
   throwaway/         scripts that start a real service from its published image, read it with the
-                     collector, and remove everything again (fail2ban.sh, pihole.sh)
+                     collector, and remove everything again (fail2ban.sh, pihole.sh,
+                     technitium.sh)
   check-private.sh   the check that no private detail is tracked
   private-patterns.example.txt  the template of the patterns check-private.sh reads
 docs/                this documentation
@@ -163,7 +164,8 @@ check.
 A provider proved against the real service runs from `tools/throwaway/`, outside the default
 checks since it needs Docker and pulls an image. Each script starts the service from its
 published image on a Docker network of its own with nothing published, caps every container at 2
-CPUs and 1 GB, sets the service up through files it mounts rather than with `docker exec` (which,
+CPUs and 1 GB, sets the service up through files it mounts or its own API rather than with
+`docker exec` (which,
 like installing anything in a running container, trips a host's runtime security alerts), runs
 the collector from the image it is built on with this checkout's code, and removes the
 containers, the network and its scratch folder however it ends:
@@ -171,6 +173,7 @@ containers, the network and its scratch folder however it ends:
 ```bash
 tools/throwaway/fail2ban.sh     # crazymax/fail2ban: a ban, the attack, an unban, a rebuilt file
 tools/throwaway/pihole.sh       # pihole/pihole: flies, one session, a wrong password, https, v5
+tools/throwaway/technitium.sh   # technitium/dns-server: a token by API, flies, a wrong token, v14
 ```
 
 The page:

@@ -97,7 +97,10 @@ credential is put only into that provider's own requests, in a header, the query
 a session login's body, never into the fill, a message or the state file. Every request is a GET
 but a session's login, one POST, and its logout, one DELETE, both to that same address. A session's
 id (Pi-hole's) is a credential too: the provider keeps it in memory alone and sends it only where
-its file says, and it is never logged or written to the state or memory file. The certificate of
+its file says, and it is never logged or written to the state or memory file. Technitium's API
+token goes in the `Authorization` header alone, never in the query, where a token would end up in
+an access log; it does not expire, so it is best made by a user of its own in no group but
+Everyone, which can view but change nothing. The certificate of
 an `https` service is checked unless its section sets `verify_tls = false`, for a self-signed one;
 the connection is then still encrypted, but a machine that takes the service's address on the
 network could receive the credential. `--probe` prints a provider's fill with every text masked,

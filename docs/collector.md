@@ -52,7 +52,8 @@ entry says `first read still running`.
 A service that answers 401, 403 or 429 is not called again for `auth_backoff_s` (20 minutes at
 least). AdGuard Home locks an address out of its API for 15 minutes after five bad logins, and
 this rule keeps the collector well short of that; Pi-hole answers 429 after more than three
-password tries in a second, or when its sessions are all taken. The pause is kept in the memory
+password tries in a second, or when its sessions are all taken. Technitium answers HTTP 200 with
+the status `invalid-token`, which its provider marks as refused credentials. The pause is kept in the memory
 file, so restarting the container does not end it, and `sources` shows when it ends. Credentials
 are sent with the first request: urllib's own handler would send one request without them first,
 then retry.
@@ -287,6 +288,17 @@ leaves it; Pi-hole's covers the last 24 hours and falls each time Pi-hole drops 
 than that, every ten minutes. A fall raises nothing and resets the marker, so the blocks of the
 read that saw it are not counted.
 
+Technitium DNS Server gives no count that only rises: its freshest figures are the last hour, a
+minute a bucket, and the difference of two sums of that sliding hour would miss whatever left it
+between the reads. The `technitium` provider gives the minutes themselves (the adblock kind's
+`recent` mode), and each read adds the minutes later than the newest one already counted, whose
+time is the marker, `recent_at`. A minute counts once 20 seconds have passed since it ended:
+Technitium finishes a minute's count up to ten seconds after it ends, and until then shows that
+bucket's count from an hour before. So a blocked query brings its flies 20 to 80 seconds after the
+minute it falls in began, plus the time to the next read. A marker of the other mode is dropped,
+so moving `from` between AdGuard Home and Technitium counts nothing twice, and a marker later than
+the collector's clock (the clock went back) is taken as first sight.
+
 The security kind knows a ban by its jail, address and time, since fail2ban can write a ban after
 one with a later time, and reuses row numbers after an unban. The keys of the bans it lists are
 its markers, kept as `seen` in memory, the newest 2,000 of them; when more are listed, it keeps
@@ -295,8 +307,9 @@ the time of the oldest kept as `floor`, and a ban no newer than that is never ne
 A fly stands for one helping of the household's normal blocking, so that normal traffic gives a
 fly every `fly_every_s` (300 seconds by default) on average and a burst gives a swarm. The
 normal rate is read afresh from the service's statistics on every read, AdGuard Home's
-`/control/stats` for the `adguard` provider and Pi-hole's `/api/history` for `pihole`: the
-blocked count divided by the length of the
+`/control/stats` for the `adguard` provider, Pi-hole's `/api/history` for `pihole` and
+Technitium's last 24 hours (`LastDay`) for `technitium`: the blocked count (for Technitium, the
+sum of those hours) divided by the length of the
 statistics window, counted from the first day or hour with any DNS queries to the current one, so
 a new install's mostly empty window does not understate it.
 One fly is then `rate * fly_every_s` blocked queries, and never fewer than one. Each read's rise
@@ -312,7 +325,8 @@ date changes. On first sight, or on the first poll after an upgrade from a versi
 count, it starts from the service's own figures for today: with buckets of a day, the last one;
 with shorter ones, those since local midnight (AdGuard Home's hourly statistics give the hours
 since midnight and the current one, Pi-hole's ten-minute slots the slots since midnight and the
-current one).
+current one, Technitium's hourly statistics the hours since midnight without the current one, which
+they leave out).
 
 The backup log is rotated by truncation, which leaves it without a completion line for a few
 hours each week. The last completion seen is kept in memory and reported until a newer one
@@ -345,7 +359,7 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `updates` | `updates.py` | the host's lock table, `/proc/locks`, and the command line of each process holding a lock | `updates` |
 | `ssh` | `ssh.py` | established connections to the SSH port in `/proc/net/tcp` and `tcp6` | `ssh` |
 | `streams` | the streams kind, `kinds/streams.py`, through its `from` provider, `tautulli` by default | Tautulli's `get_activity`: of each stream its title, and its user's name only when `show` is `names` | `streams` |
-| `adblock` | the adblock kind, `kinds/adblock.py`, through its `from` provider, `adguard` by default | AdGuard Home's `/control/stats`, or Pi-hole 6's `/api/stats/summary` and `/api/history` through a session | `adblock` |
+| `adblock` | the adblock kind, `kinds/adblock.py`, through its `from` provider, `adguard` by default | AdGuard Home's `/control/stats`, Pi-hole 6's `/api/stats/summary` and `/api/history` through a session, or Technitium's `/api/dashboard/stats/get` for the last hour and the last day, with an API token | `adblock` |
 | `security` | the security kind, `kinds/security.py`, through its `from` provider, `fail2ban` (`providers/fail2ban.py`) by default | the `bans` table of fail2ban's SQLite database, read-only | `security` |
 | `sonarr`, `radarr` | the imports kind, `kinds/imports.py`, through the provider of each one's name | the last ten import records in each one's history | none |
 | `device:<name>` | `devices.py` | a TCP connection to every port at once, or one `GET` to a web address | none; `devices` is built from the conditions |
@@ -382,7 +396,7 @@ a file fail2ban replaces is read afresh.
 | Section | Kind | `from` | Built-in providers |
 |---|---|---|---|
 | `[sources.streams]` | streams | `tautulli` by default, or a file of the user's own | `tautulli` |
-| `[sources.adblock]` | adblock | `adguard` by default, `pihole`, or a file of the user's own | `adguard`, `pihole` |
+| `[sources.adblock]` | adblock | `adguard` by default, `pihole`, `technitium`, or a file of the user's own | `adguard`, `pihole`, `technitium` |
 | `[sources.security]` | security | `fail2ban` by default, or a file of the user's own | `fail2ban` (a code adapter) |
 | `[sources.sonarr]`, `[sources.radarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr` |
 

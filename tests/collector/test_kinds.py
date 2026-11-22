@@ -23,6 +23,7 @@ SECRETS = {
     "KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-example",
     "KNIGHTWATCHER_SONARR_API_KEY": "sk-example",
     "KNIGHTWATCHER_RADARR_API_KEY": "rk-example",
+    "KNIGHTWATCHER_TECHNITIUM_TOKEN": "tok-example",
 }
 
 
@@ -235,6 +236,243 @@ class AdblockTest(unittest.TestCase):
             s.fetch(T0)
         self.assertNotIn("pw-example", str(cm.exception))
         self.assertNotIn("127.0.0.1", str(cm.exception))
+
+
+def minutes(end, counts):
+    """Technitium's last hour as its API gives it: a bucket a minute, each labelled with its end,
+    the last one ending at end, with the blocked queries of each from counts (oldest first)."""
+    labels = [
+        (end - dt.timedelta(minutes=len(counts) - 1 - i)).strftime("%Y-%m-%dT%H:%M:%S.0000000Z")
+        for i in range(len(counts))
+    ]
+    return {
+        "status": "ok",
+        "response": {
+            "mainChartData": {
+                "labels": labels,
+                "datasets": [
+                    {"label": "Total", "data": [c * 4 for c in counts]},
+                    {"label": "Blocked", "data": list(counts)},
+                ],
+            }
+        },
+    }
+
+
+class RecentTest(unittest.TestCase):
+    """The adblock kind's recent mode, through the technitium provider against an invented
+    Technitium DNS Server: finished minutes over a sliding hour, added up as they appear."""
+
+    def setUp(self):
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+        # The last finished minute ends at T0, read at T0 + 30 s.
+        self.hour = minutes(T0, [0] * 60)
+        self.day = {"status": "ok", "response": {"mainChartData": {"labels": [], "datasets": []}}}
+        self.http.routes["/api/dashboard/stats/get"] = (
+            200,
+            lambda h: self.hour if "type=LastHour" in h.path else self.day,
+        )
+
+    def make(self, raw=None, **settings):
+        settings = {"url": self.http.url, "from": "technitium", "fly_every_s": 0, **settings}
+        return source("adblock", settings, raw)
+
+    def poll(self, s, memory, end, counts, when=None):
+        """A read at when (30 seconds after end by default) of an hour ending at end."""
+        self.hour = minutes(end, counts)
+        when = when or end + dt.timedelta(seconds=30)
+        r = s.fetch(when)
+        return s.observe(r, memory, when), r.facts["blocked_today"]
+
+    def test_the_token_goes_in_the_authorization_header(self):
+        self.make().fetch(at(30))
+        self.assertEqual(
+            [p for p, _ in self.http.requests],
+            [
+                "/api/dashboard/stats/get?type=LastHour&utc=true",
+                "/api/dashboard/stats/get?type=LastDay&utc=true",
+            ],
+        )
+        for _, headers in self.http.requests:
+            self.assertEqual(headers["Authorization"], "Bearer tok-example")
+
+    def test_first_sight_records_the_newest_and_adds_nothing(self):
+        s, memory = self.make(), {}
+        events, today = self.poll(s, memory, T0, [3] * 60)
+        self.assertEqual((events, today), ([], 0))
+        self.assertEqual(memory["recent_at"], "2026-01-15T21:00:00+00:00")
+        self.assertNotIn("blocked", memory)
+
+    def test_new_minutes_are_added_as_they_appear(self):
+        s, memory = self.make(), {}
+        self.poll(s, memory, T0, [3] * 60)
+        # A minute later the window has slid by one: the oldest minute left, one new one came.
+        later = T0 + dt.timedelta(minutes=1)
+        events, today = self.poll(s, memory, later, [3] * 59 + [5])
+        self.assertEqual(events, [{"type": "ad_blocked", "count": 5, "text": ""}])
+        self.assertEqual(today, 5)
+        # The same hour read again adds nothing.
+        self.assertEqual(self.poll(s, memory, later, [3] * 59 + [5])[0], [])
+        # Two minutes more, read together.
+        later += dt.timedelta(minutes=2)
+        events, today = self.poll(s, memory, later, [3] * 57 + [5, 2, 4])
+        self.assertEqual(events, [{"type": "ad_blocked", "count": 6, "text": ""}])
+        self.assertEqual((today, memory["today"]), (11, 11))
+
+    def test_a_minute_with_nothing_blocked_raises_nothing(self):
+        s, memory = self.make(), {}
+        self.poll(s, memory, T0, [3] * 60)
+        later = T0 + dt.timedelta(minutes=1)
+        self.assertEqual(self.poll(s, memory, later, [3] * 59 + [0]), ([], 0))
+        self.assertEqual(memory["recent_at"], "2026-01-15T21:01:00+00:00")
+
+    def test_a_minute_counts_only_once_it_has_settled(self):
+        # Technitium shows a minute's count from an hour before until it has finished counting,
+        # up to ten seconds after the minute ends: a bucket younger than 20 seconds is left.
+        s, memory = self.make(), {}
+        self.poll(s, memory, T0, [3] * 60)
+        later = T0 + dt.timedelta(minutes=1)
+        stale = self.poll(s, memory, later, [3] * 59 + [9], when=later + dt.timedelta(seconds=5))
+        self.assertEqual(stale, ([], 0))
+        self.assertEqual(memory["recent_at"], "2026-01-15T21:00:00+00:00")
+        events, today = self.poll(
+            s, memory, later, [3] * 59 + [2], when=later + dt.timedelta(seconds=20)
+        )
+        self.assertEqual((events[0]["count"], today), (2, 2))
+
+    def test_first_sight_leaves_a_minute_not_yet_settled_for_later(self):
+        s, memory = self.make(), {}
+        self.poll(s, memory, T0, [3] * 60, when=T0 + dt.timedelta(seconds=10))
+        self.assertEqual(memory["recent_at"], "2026-01-15T20:59:00+00:00")
+        events, _ = self.poll(s, memory, T0, [3] * 59 + [7])
+        self.assertEqual(events[0]["count"], 7)
+
+    def test_a_gap_longer_than_the_window_adds_every_minute_listed(self):
+        s, memory = self.make({}, fly_every_s=300), {}
+        self.poll(s, memory, T0, [0] * 60)
+        later = T0 + dt.timedelta(hours=3)
+        events, today = self.poll(s, memory, later, [1] * 60)
+        self.assertEqual(today, 60)
+        # With no rate, 50 blocked queries a fly.
+        self.assertEqual(events[0]["count"], 1)
+        self.assertEqual(memory["carry"], 10)
+
+    def test_rate_and_seed_from_the_day(self):
+        # 24 finished hours, the last ending at 21:00 UTC; the current hour is left out. 4 blocked
+        # an hour in the last 20 hours with queries is 80 over 72,000 seconds.
+        self.day = {
+            "status": "ok",
+            "response": {
+                "mainChartData": {
+                    "labels": [f"h{i}" for i in range(24)],
+                    "datasets": [
+                        {"label": "Total", "data": [0] * 4 + [10] * 20},
+                        {"label": "Blocked", "data": [0] * 4 + [4] * 20},
+                    ],
+                }
+            },
+        }
+        s, memory = self.make(fly_every_s=900), {}
+        reading = s.fetch(T0 + dt.timedelta(seconds=30))
+        self.assertAlmostEqual(reading.data["rate"], 80 / 72000)
+        # 21:00:30 UTC: 21 finished hours since midnight.
+        self.assertEqual(reading.data["seed"], 4 * 20)
+        events, today = self.poll(s, memory, T0, [0] * 60)
+        self.assertEqual((events, today), ([], 80))
+        # A fly every 900 seconds at that rate is one for each blocked query.
+        events, today = self.poll(s, memory, T0 + dt.timedelta(minutes=1), [0] * 59 + [3])
+        self.assertEqual((events[0]["count"], today), (3, 83))
+
+    def test_unknown_day_gives_no_rate_and_no_seed(self):
+        s = self.make()
+        reading = s.fetch(T0 + dt.timedelta(seconds=30))
+        self.assertIsNone(reading.data["rate"])
+        self.assertEqual(reading.data["seed"], 0)
+
+    def test_today_resets_at_local_midnight(self):
+        s, memory = self.make({"collector": {"timezone": "Europe/Berlin"}}), {}
+        # 22:59 UTC is 23:59 in Berlin.
+        end = T0 + dt.timedelta(minutes=118)
+        self.poll(s, memory, end, [1] * 60)
+        self.assertEqual(self.poll(s, memory, end + dt.timedelta(minutes=1), [1] * 60)[1], 1)
+        self.assertEqual(memory["day"], "2026-01-15")
+        midnight = end + dt.timedelta(minutes=2)
+        self.assertEqual(self.poll(s, memory, midnight, [1] * 60)[1], 1)
+        self.assertEqual(memory["day"], "2026-01-16")
+
+    def test_a_marker_from_the_other_mode_is_dropped(self):
+        # Memory left by AdGuard Home's rolling count, then the recent mode, then back.
+        s, memory = self.make(), {"blocked": 4800, "day": "2026-01-15", "today": 12, "carry": 0}
+        self.assertEqual(self.poll(s, memory, T0, [3] * 60), ([], 12))
+        self.assertNotIn("blocked", memory)
+        self.assertIn("recent_at", memory)
+        adguard = FakeHttp()
+        self.addCleanup(adguard.close)
+        adguard.routes["/control/stats"] = (200, {"num_blocked_filtering": 100})
+        a = source("adblock", {"url": adguard.url, "fly_every_s": 0})
+        self.assertEqual(a.observe(a.fetch(T0), memory, T0), [])
+        self.assertNotIn("recent_at", memory)
+        self.assertEqual(memory["blocked"], 100)
+
+    def test_a_marker_that_cannot_be_true_starts_again_from_first_sight(self):
+        for marker in ("2026-01-16T00:00:00+00:00", "yesterday", 7):
+            s, memory = self.make(), {"recent_at": marker, "day": "2026-01-15", "today": 0}
+            self.assertEqual(self.poll(s, memory, T0, [3] * 60), ([], 0), marker)
+            self.assertEqual(memory["recent_at"], "2026-01-15T21:00:00+00:00")
+
+    def test_an_empty_hour_keeps_the_marker(self):
+        s, memory = self.make(), {}
+        self.poll(s, memory, T0, [3] * 60)
+        self.assertEqual(self.poll(s, memory, T0, []), ([], 0))
+        self.assertEqual(memory["recent_at"], "2026-01-15T21:00:00+00:00")
+
+    def test_fly_every_s_paces_the_flies_as_with_a_rolling_count(self):
+        s, memory = self.make({}, fly_every_s=300), {}
+        self.poll(s, memory, T0, [0] * 60)
+        events, _ = self.poll(s, memory, T0 + dt.timedelta(minutes=1), [0] * 59 + [49])
+        self.assertEqual(events, [])
+        events, _ = self.poll(s, memory, T0 + dt.timedelta(minutes=2), [0] * 58 + [49, 1])
+        self.assertEqual(events, [{"type": "ad_blocked", "count": 1, "text": ""}])
+        self.assertEqual(memory["carry"], 0)
+
+    def test_an_error_status_and_a_refused_token(self):
+        s = self.make()
+        self.hour = {"status": "error", "errorMessage": "something broke"}
+        with self.assertRaises(SourceError) as cm:
+            s.fetch(at(30))
+        self.assertEqual(str(cm.exception), "Technitium reported an error")
+        self.assertNotIsInstance(cm.exception, AuthError)
+        # A token Technitium does not know, and version 14, which reads no Authorization header.
+        for message, status in (
+            ("Invalid token or session expired.", "invalid-token"),
+            ("Parameter 'token' missing.", "error"),
+        ):
+            self.hour = {"status": status, "errorMessage": message}
+            with self.assertRaises(AuthError) as cm:
+                s.fetch(at(30))
+            self.assertEqual(
+                str(cm.exception), "API token refused, or Technitium is older than version 15"
+            )
+
+    def test_lists_of_different_lengths_fail_the_read(self):
+        s = self.make()
+        self.hour = minutes(T0, [1] * 60)
+        self.hour["response"]["mainChartData"]["labels"].pop()
+        with self.assertRaises(SourceError) as cm:
+            s.fetch(at(30))
+        self.assertEqual(str(cm.exception), "the lists of recent differ in length")
+
+    def test_a_fill_with_neither_count_is_refused(self):
+        kind = kind_class("adblock")()
+        config = make_config()
+        with self.assertRaises(SourceError) as cm:
+            kind.reading({}, {"fly_every_s": 0}, config, T0)
+        self.assertEqual(str(cm.exception), "provider gave neither blocked nor recent")
+        too_many = [{"at": T0, "blocked": 1}] * 1441
+        with self.assertRaises(SourceError) as cm:
+            check_fill(kind.FILL, {"recent": too_many}, kind.allowed({}))
+        self.assertEqual(str(cm.exception), "provider gave more than 1440 recent")
 
 
 class ImportsTest(unittest.TestCase):

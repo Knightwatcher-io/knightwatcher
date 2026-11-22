@@ -133,8 +133,9 @@ def _make_self_signed() -> tuple[str | None, str]:
 class FakeHttp:
     """A local HTTP server answering from a routes table: path -> (status, body or callable).
 
-    A GET is answered from the route of its path; a POST or a DELETE from the route of
-    "POST <path>" or "DELETE <path>" alone. requests holds each GET as (path, headers), and calls
+    A GET is answered from the route of its path with its query, when there is one, else from the
+    route of its path alone; a POST or a DELETE from the route of "POST <path>" or
+    "DELETE <path>" alone. requests holds each GET as (path, headers), and calls
     every request as (method, path, headers, the body parsed as JSON or None). A body of None is
     sent as no body at all, as a 204 is.
 
@@ -157,7 +158,7 @@ class FakeHttp:
                 path = self.path.split("?", 1)[0]
                 if method == "GET":
                     outer.requests.append((self.path, dict(self.headers)))
-                    route = outer.routes.get(path)
+                    route = outer.routes.get(self.path) or outer.routes.get(path)
                 else:
                     route = outer.routes.get(f"{method} {path}")
                 status, body = route or (404, {"error": "not found"})

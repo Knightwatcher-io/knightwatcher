@@ -125,7 +125,8 @@ secret = "tautulli"          # reads KNIGHTWATCHER_TAUTULLI_API_KEY from .env
 [sources.adblock]
 enabled = true
 every_s = 30
-from = "adguard"             # the default; "pihole" reads Pi-hole 6 (KNIGHTWATCHER_PIHOLE_PASSWORD)
+from = "adguard"             # the default; "pihole" reads Pi-hole 6 (KNIGHTWATCHER_PIHOLE_PASSWORD),
+                             # "technitium" Technitium 15 or later (KNIGHTWATCHER_TECHNITIUM_TOKEN)
 url = "http://192.0.2.53"
 # verify_tls = true          # false for an https url with a self-signed certificate, as a Pi-hole's
 secret = "adguard"           # reads KNIGHTWATCHER_ADGUARD_USERNAME and _PASSWORD

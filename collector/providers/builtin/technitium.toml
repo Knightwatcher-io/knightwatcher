@@ -1,0 +1,58 @@
+# Blocked DNS queries, from Technitium DNS Server's dashboard statistics, version 15 or later.
+format = 1
+id = "technitium"
+kind = "adblock"
+name = "Technitium DNS Server"
+docs = "https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md"
+
+[credentials]
+token = "An API token, which does not expire. Technitium: the user menu, Create API Token, signed in as a user of its own in no group but Everyone, which can view but change nothing."
+
+# The token goes in the Authorization header, which Technitium reads from version 15.0. Every
+# answer of its API is HTTP 200 with a status: ok, or invalid-token ("Invalid token or session
+# expired.") for a token it does not know, or error with an errorMessage. Version 14 and earlier
+# read the token from the query alone, and answer error, "Parameter 'token' missing.". Both are
+# refused credentials, which pause the source rather than asking again.
+[[request]]
+id = "hour"
+path = "/api/dashboard/stats/get"
+query = { type = "LastHour", utc = "true" }
+headers = { Authorization = "Bearer {credential.token}" }
+not_json = "not Technitium DNS Server's API (its web console's port, 5380 by default)"
+
+[[request.require]]
+path = "$.status"
+equals = "ok"
+message = "Technitium reported an error"
+auth = { path = "$.errorMessage", contains = "token", ignore_case = true, message = "API token refused, or Technitium is older than version 15" }
+
+[[request]]
+id = "day"
+path = "/api/dashboard/stats/get"
+query = { type = "LastDay", utc = "true" }
+headers = { Authorization = "Bearer {credential.token}" }
+not_json = "not Technitium DNS Server's API (its web console's port, 5380 by default)"
+
+[[request.require]]
+path = "$.status"
+equals = "ok"
+message = "Technitium reported an error"
+auth = { path = "$.errorMessage", contains = "token", ignore_case = true, message = "API token refused, or Technitium is older than version 15" }
+
+[fill]
+# Technitium's only fresh counts: the last hour, a minute a bucket, oldest first. The current
+# minute is left out, and each label is the minute's end. Technitium finishes a minute's count up
+# to ten seconds after it ends, and until then shows that bucket's count from an hour before, so a
+# bucket counts only once 20 seconds have passed since its end.
+recent = { from = "hour", zip = true, at = { path = "$.response.mainChartData.labels[*]", type = "time" }, blocked = { path = "$.response.mainChartData.datasets[?@.label == 'Blocked'].data[*]", type = "int" } }
+settle_s = 20
+
+# The last 24 hours, an hour a bucket, oldest first, the current hour left out. Technitium keeps no
+# hours with in-memory statistics on: the list is then all zeros, and the kind falls back to 50
+# blocked queries a fly.
+[fill.window]
+from = "day"
+queries = { path = "$.response.mainChartData.datasets[?@.label == 'Total'].data[*]", type = "number" }
+blocked = { path = "$.response.mainChartData.datasets[?@.label == 'Blocked'].data[*]", type = "number" }
+unit_s = 3600
+current = false

@@ -91,7 +91,9 @@ class BuiltInTest(unittest.TestCase):
     def test_the_built_in_files_pass(self):
         found = providers.builtin()
         files = {p: s for p, s in found.items() if not isinstance(s, providers.Adapter)}
-        self.assertEqual(sorted(files), ["adguard", "pihole", "radarr", "sonarr", "tautulli"])
+        self.assertEqual(
+            sorted(files), ["adguard", "pihole", "radarr", "sonarr", "tautulli", "technitium"]
+        )
         for pid, spec in files.items():
             self.assertEqual(spec.id, pid)
             self.assertEqual(len(spec.digest), 20)
@@ -482,6 +484,52 @@ class RefusedTest(unittest.TestCase):
             fmt.check(data, "myads.toml", "myads")
         self.assertEqual(
             cm.exception.problems, ["myads.toml: fill.window.queries.type: must be number"]
+        )
+
+    def test_adblock_takes_one_of_blocked_and_recent(self):
+        data = {
+            "format": 1, "id": "myads", "kind": "adblock", "name": "My Ads",
+            "request": [{"path": "/stats"}],
+            "fill": {"window": {"unit_s": 60, "current": False}},
+        }  # fmt: skip
+
+        def problems(fill):
+            d = copy.deepcopy(data)
+            d["fill"].update(fill)
+            try:
+                fmt.check(d, "myads.toml", "myads")
+            except fmt.FormatError as exc:
+                return exc.problems
+            return []
+
+        recent = {
+            "zip": True,
+            "at": {"path": "$.minutes[*].end", "type": "time"},
+            "blocked": {"path": "$.minutes[*].blocked", "type": "int"},
+        }
+        blocked = {"path": "$.blocked", "required": "no count"}
+        self.assertEqual(problems({}), ["myads.toml: fill: give one of blocked and recent"])
+        self.assertEqual(
+            problems({"blocked": blocked, "recent": recent}),
+            ["myads.toml: fill.recent: give one of blocked and recent, not both"],
+        )
+        self.assertEqual(problems({"blocked": blocked}), [])
+        self.assertEqual(problems({"recent": recent, "settle_s": 20}), [])
+        # The one given is required, as a field the kind always needs is.
+        self.assertEqual(
+            problems({"blocked": {"path": "$.blocked"}}),
+            [
+                "myads.toml: fill.blocked: required by the kind: give required, the message for "
+                "when it is missing"
+            ],
+        )
+        self.assertEqual(
+            problems({"recent": {"zip": True, "at": recent["at"]}}),
+            ["myads.toml: fill.recent.blocked: required by the kind"],
+        )
+        self.assertEqual(
+            problems({"recent": recent, "settle_s": "soon"}),
+            ["myads.toml: fill.settle_s: a constant here must be int"],
         )
 
     def test_items(self):
