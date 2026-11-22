@@ -11,8 +11,9 @@ token = "The Plex token of the server's owner, whose sessions list Plex keeps to
 # The token goes in the X-Plex-Token header, where Plex's documentation says it is expected, and
 # not in the query, which Plex also reads, so that it stays out of any access log on the way. JSON
 # comes only for Accept: application/json; Plex's default is XML. Plex's documentation says a
-# client identifier is typically required, so one is sent. A token Plex does not take is HTTP 401
-# with a small HTML page, whether it is wrong or missing.
+# client identifier is typically required, so one is sent, though Plex Media Server 1.43 answers
+# this call without it. A token Plex does not take is HTTP 401 with a small HTML page, whether it
+# is wrong or missing.
 [[request]]
 path = "/status/sessions"
 headers = { Accept = "application/json", X-Plex-Token = "{credential.token}", X-Plex-Client-Identifier = "knightwatcher", X-Plex-Product = "Knightwatcher" }
@@ -39,8 +40,8 @@ season = { path = "$.parentIndex", type = "int" }
 episode = { path = "$.index", type = "int" }
 title = { path = "$.title", type = "string" }
 user = { path = "$.User.title", type = "string" }
-# The session's number, which rises as streams start: the same number Tautulli lists as its
-# session_key.
+# The session's number, as text of digits, which rises as streams start: the same number Tautulli
+# lists as its session_key.
 key = "$.sessionKey"
 
 [fill.sessions.fields]

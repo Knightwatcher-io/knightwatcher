@@ -53,8 +53,8 @@ A service that answers 401, 403 or 429 is not called again for `auth_backoff_s` 
 least). AdGuard Home locks an address out of its API for 15 minutes after five bad logins, and
 this rule keeps the collector well short of that; Pi-hole answers 429 after more than three
 password tries in a second, or when its sessions are all taken. Plex answers 401 for a token it
-does not take, wrong or missing, and Tracearr 401 for a key it does not take and 403 for one that
-is not the owner's. Technitium answers HTTP 200 with
+does not take, wrong or missing, Tracearr 401 for a key it does not take and 403 for one that
+is not the owner's, and Jellyfin 401, with no body, for a key it does not take, wrong or missing. Technitium answers HTTP 200 with
 the status `invalid-token`, which its provider marks as refused credentials. The pause is kept in the memory
 file, so restarting the container does not end it, and `sources` shows when it ends. Credentials
 are sent with the first request: urllib's own handler would send one request without them first,
@@ -388,7 +388,7 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `pi` | `devices.py` | a TCP connection to every port at once; a refusal counts as an answer | `pi` |
 | `updates` | `updates.py` | the host's lock table, `/proc/locks`, and the command line of each process holding a lock | `updates` |
 | `ssh` | `ssh.py` | established connections to the SSH port in the host's `/proc/1/net/tcp` and `tcp6` | `ssh` |
-| `streams` | the streams kind, `kinds/streams.py`, through its `from` provider, `tautulli` by default | Tautulli's `get_activity`, Plex Media Server's `/status/sessions` with the owner's token, or Tracearr's `/api/v2/public/streams` with its API key: of each stream its title, and its user's name only when `show` is `names` | `streams` |
+| `streams` | the streams kind, `kinds/streams.py`, through its `from` provider, `tautulli` by default | Tautulli's `get_activity`, Plex Media Server's `/status/sessions` with the owner's token, Tracearr's `/api/v2/public/streams` with its API key, or Jellyfin's `/Sessions` with an API key: of each stream its title, and its user's name only when `show` is `names` | `streams` |
 | `adblock` | the adblock kind, `kinds/adblock.py`, through its `from` provider, `adguard` by default | AdGuard Home's `/control/stats`, Pi-hole 6's `/api/stats/summary` and `/api/history` through a session, or Technitium's `/api/dashboard/stats/get` for the last hour and the last day, with an API token | `adblock` |
 | `security` | the security kind, `kinds/security.py`, through its `from` provider, `fail2ban` (`providers/fail2ban.py`) by default | the `bans` table of fail2ban's SQLite database, read-only | `security` |
 | `sonarr`, `radarr`, `lidarr` | the imports kind, `kinds/imports.py`, through the provider of each one's name | the last ten import records in each one's history; for Lidarr, its album records alone (`eventType=8`), so an album is one import | none |
@@ -427,7 +427,7 @@ a file fail2ban replaces is read afresh.
 
 | Section | Kind | `from` | Built-in providers |
 |---|---|---|---|
-| `[sources.streams]` | streams | `tautulli` by default, `plex`, `tracearr`, or a file of the user's own | `tautulli`, `plex`, `tracearr` |
+| `[sources.streams]` | streams | `tautulli` by default, `plex`, `tracearr`, `jellyfin`, or a file of the user's own | `tautulli`, `plex`, `tracearr`, `jellyfin` |
 | `[sources.adblock]` | adblock | `adguard` by default, `pihole`, `technitium`, or a file of the user's own | `adguard`, `pihole`, `technitium` |
 | `[sources.security]` | security | `fail2ban` by default, or a file of the user's own | `fail2ban` (a code adapter) |
 | `[sources.sonarr]`, `[sources.radarr]`, `[sources.lidarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr`, `lidarr` |
@@ -462,8 +462,8 @@ The streams kind lists the streams in the order they started, so a new stream jo
 the others keep their places. Tautulli and Plex give a number that rises as streams start (Plex's
 session key, which Tautulli passes on), and the kind sorts by it. Tracearr gives the moment each
 stream started, which the kind sorts by in the same way, ties by the stream's id. For a provider
-whose service gives neither, the file fills each stream's `key` instead, and the kind lists those streams
-in the order it first saw each key, ties by the key. It keeps that in the running process alone:
+whose service gives neither, as Jellyfin's, the file fills each stream's `key` instead (Jellyfin's
+session id), and the kind lists those streams in the order it first saw each key, ties by the key. It keeps that in the running process alone:
 never in the memory file, and only for the keys playing at the last read, so a stream that ends
 and comes back joins the end, and a restart starts the order afresh.
 
@@ -580,7 +580,10 @@ pointed at the same folder exits at once.
 
 The container definition is `compose.yaml`: a non-root user of its own (uid and gid 10001), a
 read-only root filesystem, no capabilities, `no-new-privileges`, the host's network, no
-published port and no Docker socket. Its health check runs `--health`, which at the default
+published port and no Docker socket. A `compose.override.yaml` may put it on bridge networks
+instead, to reach services by their container names; a service on the host's network, such as a
+Plex Media Server run with `network_mode: host`, is then reached at the host's address
+([configuration.md](./configuration.md#plex-media-server)). Its health check runs `--health`, which at the default
 interval fails once the file is more than 30 seconds old. Every host path is bound with
 `create_host_path: false`, so a missing path stops the container rather than leaving Docker to
 create an empty folder there. The providers folder, mounted read-only at

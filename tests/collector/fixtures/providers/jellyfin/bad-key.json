@@ -1,0 +1,26 @@
+{
+ "about": "A key Jellyfin does not take, wrong or missing: HTTP 401 with no body, as Jellyfin 12.4 answers it. The source pauses.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/Sessions",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "MediaBrowser Token=\"{credential.api_key}\""
+    }
+   },
+   "reply": {
+    "status": 401
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "API key refused"
+ }
+}

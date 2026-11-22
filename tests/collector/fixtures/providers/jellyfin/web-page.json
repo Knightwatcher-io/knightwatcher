@@ -1,0 +1,27 @@
+{
+ "about": "An address that is not Jellyfin's own, such as a proxy's sign-in page: HTTP 200 and HTML.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/Sessions",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "MediaBrowser Token=\"{credential.api_key}\""
+    }
+   },
+   "reply": {
+    "status": 200,
+    "body": "<!DOCTYPE html>\n<html><head><title>Sign in</title></head><body></body></html>\n"
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "Jellyfin sent something other than JSON: is the address Jellyfin's own?"
+ }
+}

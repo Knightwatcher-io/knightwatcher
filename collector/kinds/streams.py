@@ -8,9 +8,9 @@ stream for `count`. No other detail of a stream (device, quality, progress) is i
 Streams are listed in the order they started, so a new stream joins the end and the page's cycle
 through them keeps its place. A provider whose service gives a number that rises as streams start
 (Tautulli's and Plex's session key), or the moment each stream started (Tracearr's), fills
-`order`. One whose service gives neither fills `key`, the stream's identity, and the kind lists
-those streams in the order it first saw each key, which it keeps in the running process alone,
-never in the memory file.
+`order`. One whose service gives neither (Jellyfin) fills `key`, the stream's identity, and the
+kind lists those streams in the order it first saw each key, which it keeps in the running process
+alone, never in the memory file.
 """
 
 from __future__ import annotations

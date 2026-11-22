@@ -26,6 +26,7 @@ SECRETS = {
     "KNIGHTWATCHER_TECHNITIUM_TOKEN": "tok-example",
     "KNIGHTWATCHER_PLEX_TOKEN": "plex-example",
     "KNIGHTWATCHER_TRACEARR_API_KEY": "trr_pub_example",
+    "KNIGHTWATCHER_JELLYFIN_API_KEY": "jf-example",
 }
 
 
@@ -1022,6 +1023,96 @@ class TracearrTest(unittest.TestCase):
         self.http.routes["/api/v2/public/streams"] = (401, body)
         with self.assertRaises(AuthError) as cm:
             source("streams", {"url": self.http.url, "from": "tracearr"}).fetch(T0)
+        self.assertEqual(str(cm.exception), "API key refused")
+
+
+class JellyfinTest(unittest.TestCase):
+    """The streams kind through the jellyfin provider, against an invented Jellyfin."""
+
+    FILM: ClassVar[dict] = {
+        "Id": "3c8a1f6e0d2b4c7a9e5f1b8d4a6c2e07", "UserName": "Sam",
+        "NowPlayingItem": {"Type": "Movie", "Name": "Harbour of Glass"},
+    }  # fmt: skip
+    EPISODE: ClassVar[dict] = {
+        "Id": "7b3e5d2a9c4f4e8b8a1d6c0f2e9b5a13", "UserName": "Robin",
+        "NowPlayingItem": {
+            "Type": "Episode", "Name": "The Tide Bell", "SeriesName": "The Lantern Keepers",
+            "ParentIndexNumber": 1, "IndexNumber": 3,
+        },
+    }  # fmt: skip
+    TRACK: ClassVar[dict] = {
+        "Id": "0f2a9c4e6b8d4a1c9e3f5b7d1a2c4e68", "UserName": "alex",
+        "NowPlayingItem": {
+            "Type": "Audio", "Name": "Low Tide", "AlbumArtist": "Fen Owls",
+            "Artists": ["Fen Owls"],
+        },
+    }  # fmt: skip
+    # A session with nothing playing, which Jellyfin lists among the others.
+    IDLE: ClassVar[dict] = {
+        "Id": "e9d1c3b5a7f94e2d8c6b0a4f2e8d6c19", "UserName": "Sam", "Client": "Jellyfin Web",
+    }  # fmt: skip
+
+    def setUp(self):
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+        self.reply = [self.EPISODE, self.IDLE, self.FILM]
+        self.http.routes["/Sessions"] = (200, lambda _h: self.reply)
+
+    def make(self, show="names"):
+        return source("streams", {"url": self.http.url, "from": "jellyfin", "show": show})
+
+    def test_streams_in_the_order_first_seen_at_each_show(self):
+        streams = self.make()
+        # Seen at the same read, the two are ordered by their ids; the idle session is no stream.
+        self.assertEqual(
+            streams.fetch(T0).facts,
+            {
+                "count": 2,
+                "titles": ["Harbour of Glass", "The Lantern Keepers S01E03"],
+                "sessions": [
+                    {"who": "Sam", "title": "Harbour of Glass"},
+                    {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+                ],
+            },
+        )
+        # Jellyfin lists by last activity, which moves at every report of progress, and a new
+        # stream joins the end though its id comes first.
+        self.reply = [self.TRACK, self.FILM, self.IDLE, self.EPISODE]
+        both = ["Harbour of Glass", "The Lantern Keepers S01E03", "Fen Owls - Low Tide"]
+        self.assertEqual(streams.fetch(T0).facts["titles"], both)
+        self.reply = [self.EPISODE, self.TRACK, self.FILM]
+        self.assertEqual(streams.fetch(T0).facts["titles"], both)
+        # A stream that ends leaves the others in their places.
+        self.reply = [self.TRACK, self.FILM]
+        self.assertEqual(
+            streams.fetch(T0).facts["titles"], ["Harbour of Glass", "Fen Owls - Low Tide"]
+        )
+        # A source made afresh, as a change of show makes it, starts its order afresh.
+        self.reply = [self.EPISODE, self.IDLE, self.FILM]
+        titles = self.make("titles").fetch(T0).facts
+        self.assertEqual(titles["titles"], ["Harbour of Glass", "The Lantern Keepers S01E03"])
+        for name in ("Sam", "Robin"):
+            self.assertNotIn(name, json.dumps(titles))
+        self.assertEqual(self.make("count").fetch(T0).facts, {"count": 2})
+
+    def test_the_key_goes_in_the_authorization_header_with_json_asked_for(self):
+        self.make().fetch(T0)
+        ((path, headers),) = self.http.requests
+        headers = {k.lower(): v for k, v in headers.items()}
+        self.assertEqual(path, "/Sessions")
+        self.assertEqual(headers["authorization"], 'MediaBrowser Token="jf-example"')
+        self.assertEqual(headers["accept"], "application/json")
+
+    def test_nothing_playing(self):
+        self.reply = [self.IDLE, {**self.FILM, "NowPlayingItem": None}]
+        self.assertEqual(self.make().fetch(T0).facts, {"count": 0, "titles": []})
+        self.reply = []
+        self.assertEqual(self.make().fetch(T0).facts, {"count": 0, "titles": []})
+
+    def test_a_refused_key_is_an_auth_error(self):
+        self.http.routes["/Sessions"] = (401, None)
+        with self.assertRaises(AuthError) as cm:
+            self.make().fetch(T0)
         self.assertEqual(str(cm.exception), "API key refused")
 
 
