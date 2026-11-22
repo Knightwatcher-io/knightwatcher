@@ -7,12 +7,15 @@ stream for `count`. No other detail of a stream (device, quality, progress) is i
 
 Streams are listed in the order they started, so a new stream joins the end and the page's cycle
 through them keeps its place. A provider whose service gives a number that rises as streams start
-(Tautulli's and Plex's session key) fills `order`. One whose service gives no such number fills
-`key`, the stream's identity, and the kind lists those streams in the order it first saw each key,
-which it keeps in the running process alone, never in the memory file.
+(Tautulli's and Plex's session key), or the moment each stream started (Tracearr's), fills
+`order`. One whose service gives neither fills `key`, the stream's identity, and the kind lists
+those streams in the order it first saw each key, which it keeps in the running process alone,
+never in the memory file.
 """
 
 from __future__ import annotations
+
+import datetime as dt
 
 from collector import text
 from collector.kinds import Kind
@@ -46,17 +49,29 @@ def _digits(value) -> int | None:
     return int(said) if said.isdigit() else None
 
 
+def _tie(key) -> tuple:
+    """Where a key puts a session among those level with it: digits by their number, before other
+    text, and no key last."""
+    if key is None:
+        return (2, 0, "")
+    tie = _digits(key)
+    return (0, tie, "") if tie is not None else (1, 0, key)
+
+
 def _order(session: dict, seen: dict[str, int]) -> tuple:
-    """Where a session is listed. First the sessions with an order of digits, by its number, which
-    rises as streams start; then those with a key, by the read that first saw it, ties by the key
-    (digits by their number, before other text); then the rest, keeping their places."""
-    number = _digits(session.get("order"))
+    """Where a session is listed. First the sessions with an order: of digits, by its number, which
+    rises as streams start, or a time, the moment the stream started, ties by the key; then those
+    with a key, by the read that first saw it, ties by the key; then the rest, keeping their
+    places. A number and a time compare as numbers, so a provider gives one sort of order."""
+    order = session.get("order")
+    if isinstance(order, dt.datetime):
+        return (0, order.timestamp(), _tie(session.get("key")))
+    number = _digits(order)
     if number is not None:
         return (0, number, ())
     key = session.get("key")
     if key is not None and key in seen:
-        tie = _digits(key)
-        return (1, seen[key], (0, tie, "") if tie is not None else (1, 0, key))
+        return (1, seen[key], _tie(key))
     return (2, 0, ())
 
 
@@ -105,7 +120,8 @@ class StreamsKind(Kind):
                 "title": {"type": "string", "show": "titles"},
                 # Who is watching.
                 "who": {"type": "string", "show": "names"},
-                # A key that rises as streams start: digits sort by their number, others after.
+                # A key that rises as streams start: digits sort by their number, a time by its
+                # moment, others after.
                 "order": {"type": "raw", "show": "titles"},
                 # The stream's identity, for a service with no such key: streams are then listed
                 # in the order the kind first saw each.

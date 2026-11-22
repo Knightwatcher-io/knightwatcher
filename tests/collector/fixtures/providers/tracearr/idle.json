@@ -1,0 +1,48 @@
+{
+ "about": "Nothing playing: an empty list, and a summary of no streams with an idle bitrate of a dash.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2/public/streams",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "Bearer {credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "data": [],
+     "summary": {
+      "total": 0,
+      "transcodes": 0,
+      "audio_transcodes": 0,
+      "direct_streams": 0,
+      "direct_plays": 0,
+      "total_bitrate": "—",
+      "by_server": []
+     }
+    }
+   }
+  }
+ ],
+ "fill": {
+  "names": {
+   "count": 0,
+   "sessions": []
+  },
+  "titles": {
+   "count": 0,
+   "sessions": []
+  },
+  "count": {
+   "count": 0,
+   "sessions": []
+  }
+ }
+}

@@ -1,0 +1,66 @@
+# Streams playing now, from Tracearr's public API, version 2 (Tracearr 2.0 or later).
+format = 1
+id = "tracearr"
+kind = "streams"
+name = "Tracearr"
+docs = "https://github.com/connorgallopo/Tracearr/blob/main/apps/server/src/routes/publicV2.openapi.ts"
+
+[credentials]
+api_key = "Tracearr's public API key, made by the owner: Settings, Data & API, API, Generate Key. It starts trr_pub_. Tracearr keeps one key, and Regenerate ends the old one."
+
+# The key goes in the Authorization header as a bearer token, the only place Tracearr reads it.
+# Tracearr answers a key it does not take with HTTP 401 and JSON, whether it is missing, of the
+# wrong form or unknown, and a key that is not the owner's with 403. A path it does not have under
+# /api/ is HTTP 404 with JSON, as is this one on Tracearr 1, which has no version 2 of the API. A
+# path outside /api/, as when the address carries a path Tracearr does not serve under, is its web
+# page.
+[[request]]
+path = "/api/v2/public/streams"
+headers = { Accept = "application/json", Authorization = "Bearer {credential.api_key}" }
+statuses = { 401 = "API key refused", 403 = "API key refused: it is not the owner's", 404 = "no such call: is this Tracearr 2.0 or later?", 429 = "too many calls with this API key" }
+not_json = "Tracearr sent something other than JSON: is the address Tracearr's own?"
+
+[[request.require]]
+path = "$.summary"
+type = "object"
+message = "unexpected reply from Tracearr"
+
+[fill]
+# How many streams play, on every server Tracearr watches. Without it, the kind counts the sessions.
+count = { path = "$.summary.total", type = "int" }
+
+# One item a stream, in no particular order: Tracearr lists them as its cache holds them.
+[fill.sessions]
+each = "$.data[*]"
+
+[fill.sessions.vars]
+type = "$.media_type"
+grand = { path = "$.show_title", type = "string" }
+season = { path = "$.season_number", type = "int" }
+episode = { path = "$.episode_number", type = "int" }
+artist = { path = "$.artist_name", type = "string" }
+title = { path = "$.media_title", type = "string" }
+# The display name set in Tracearr, else the user's name on the media server.
+user = { path = "$.username", type = "string" }
+# When the stream began, which orders the streams as they started.
+started = { path = "$.started_at", type = "time" }
+# The session's id, which never changes while it plays.
+id = { path = "$.id", type = "string" }
+
+[fill.sessions.fields]
+who = { pick = ["user"] }
+order = "started"
+key = "id"
+
+# An episode is the show and its numbers, either alone when the other is missing, else its own
+# title; a track is the artist and the track, either alone; anything else its title.
+[[fill.sessions.title]]
+when = { type = "episode" }
+try = ["{grand} S{season:02}E{episode:02}", "S{season:02}E{episode:02}", "{grand}", "{title}"]
+
+[[fill.sessions.title]]
+when = { type = "track" }
+try = ["{artist} - {title}", "{artist}", "{title}"]
+
+[[fill.sessions.title]]
+try = ["{title}"]

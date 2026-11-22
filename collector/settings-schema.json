@@ -346,7 +346,7 @@
     },
     {
       "table": "sources.streams",
-      "help": "Streams playing, from the service its provider reads: Tautulli by default, or Plex Media Server.",
+      "help": "Streams playing, from the service its provider reads: Tautulli by default, Plex Media Server, or Tracearr.",
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "On" } }, "editable": true,
@@ -368,7 +368,7 @@
           "help": "What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's is API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone." }
+          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's and Tracearr's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone." }
       ]
     },
     {
@@ -783,7 +783,9 @@
     { "id": "tautulli", "kind": "streams", "name": "Tautulli", "docs": "https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference",
       "default": true, "credentials": ["api_key"], "settings": [] },
     { "id": "technitium", "kind": "adblock", "name": "Technitium DNS Server", "docs": "https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md",
-      "default": false, "credentials": ["token"], "settings": [] }
+      "default": false, "credentials": ["token"], "settings": [] },
+    { "id": "tracearr", "kind": "streams", "name": "Tracearr", "docs": "https://github.com/connorgallopo/Tracearr/blob/main/apps/server/src/routes/publicV2.openapi.ts",
+      "default": false, "credentials": ["api_key"], "settings": [] }
   ],
   "env": [
     { "name": "KNIGHTWATCHER_OUT", "scope": "path", "required": true, "default": null, "mount": "/out", "services": ["collector", "server"], "example": "./var/out",
@@ -824,6 +826,10 @@
       "example": "AbCdEfGhIjKlMnOpQrSt", "form": "a Plex token",
       "gui": { "admin": { "section": "Credentials", "label": "Plex token" } }, "editable": false,
       "help": "The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = \"plex\". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password." },
+    { "name": "KNIGHTWATCHER_TRACEARR_API_KEY", "scope": "credential", "provider": "tracearr", "field": "api_key", "secret": "tracearr", "default": null,
+      "example": "trr_pub_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE", "form": "trr_pub_ and 43 letters, digits, - and _",
+      "gui": { "admin": { "section": "Credentials", "label": "Tracearr API key" } }, "editable": false,
+      "help": "Tracearr's public API key, for the tracearr provider, which [sources.streams] reads with from = \"tracearr\". Made by Tracearr's owner: Settings, Data & API, API, Generate Key. It is sent in the Authorization header as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a stream: keep it as you would the password. Tracearr keeps one key, and Regenerate ends the old one for whatever else uses it." },
     { "name": "KNIGHTWATCHER_ADGUARD_USERNAME", "scope": "credential", "provider": "adguard", "field": "username", "secret": "adguard", "default": null,
       "example": "knightwatcher", "form": "a user name",
       "gui": { "admin": { "section": "Credentials", "label": "AdGuard Home user name" } }, "editable": false,

@@ -1,0 +1,344 @@
+{
+ "about": "Three streams as Tracearr's public API v2 lists them, every value invented: an episode, a film and a track, in no particular order. The same streams as plex/sessions.json and tautulli/activity.json, so the three providers give the same reading; started_at orders them as Plex's session keys do.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2/public/streams",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "Bearer {credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "data": [
+      {
+       "id": "00000000-0000-4000-8000-00000000138b",
+       "server_id": "00000000-0000-4000-8000-0000000005e1",
+       "server_name": "Invented Server",
+       "server_type": "plex",
+       "username": "Robin",
+       "user_thumb": "https://plex.tv/users/0a1b2c3d4e5f138b/avatar?c=1731000000",
+       "user_avatar_url": "https://plex.tv/users/0a1b2c3d4e5f138b/avatar?c=1731000000",
+       "media_title": "The Tide Bell",
+       "media_type": "episode",
+       "show_title": "The Lantern Keepers",
+       "season_number": 1,
+       "episode_number": 3,
+       "year": 2024,
+       "artist_name": null,
+       "album_name": null,
+       "track_number": null,
+       "disc_number": null,
+       "thumb_path": "/library/metadata/5003/thumb/1731000000",
+       "poster_url": "/api/v1/images/proxy?server=00000000-0000-4000-8000-0000000005e1&url=%2Flibrary%2Fmetadata%2F5003%2Fthumb%2F1731000000&width=300&height=450&fallback=poster",
+       "duration_ms": 2700000,
+       "state": "playing",
+       "progress_ms": 1107000,
+       "started_at": "2026-11-21T19:05:12.000Z",
+       "is_transcode": false,
+       "video_decision": "directplay",
+       "audio_decision": "directplay",
+       "bitrate": 8000,
+       "source_video_codec": "h264",
+       "source_audio_codec": "aac",
+       "source_audio_channels": 2,
+       "source_video_width": 1920,
+       "source_video_height": 1080,
+       "source_video_details": {
+        "bitrate": 7600,
+        "framerate": "23.976",
+        "dynamicRange": "SDR",
+        "aspectRatio": 1.78,
+        "profile": "high",
+        "level": "4.1"
+       },
+       "source_audio_details": {
+        "bitrate": 384,
+        "channelLayout": "stereo",
+        "language": "eng"
+       },
+       "stream_video_codec": "h264",
+       "stream_audio_codec": "aac",
+       "stream_video_details": {
+        "bitrate": 7600,
+        "width": 1920,
+        "height": 1080,
+        "framerate": "23.976",
+        "dynamicRange": "SDR"
+       },
+       "stream_audio_details": {
+        "bitrate": 384,
+        "channels": 2,
+        "language": "eng"
+       },
+       "transcode_info": null,
+       "subtitle_info": null,
+       "resolution": "1080p",
+       "source_video_codec_display": "H.264",
+       "source_audio_codec_display": "AAC",
+       "audio_channels_display": "Stereo",
+       "stream_video_codec_display": "H.264",
+       "stream_audio_codec_display": "AAC",
+       "device": "Invented TV",
+       "player": "Invented player 5003",
+       "product": "Plex for Roku",
+       "platform": "Roku",
+       "media_id": "00000000-0000-4000-9000-00000000138b",
+       "show_media_id": "00000000-0000-4000-9000-000000001773",
+       "imdb_id": null,
+       "tmdb_id": null,
+       "tvdb_id": null,
+       "rating_key": "5003",
+       "parent_rating_key": "5002",
+       "grandparent_rating_key": "5001",
+       "library_id": "2",
+       "genres": null
+      },
+      {
+       "id": "00000000-0000-4000-8000-0000000017d4",
+       "server_id": "00000000-0000-4000-8000-0000000005e1",
+       "server_name": "Invented Server",
+       "server_type": "plex",
+       "username": "Sam",
+       "user_thumb": "https://plex.tv/users/0a1b2c3d4e5f17d4/avatar?c=1731000000",
+       "user_avatar_url": "https://plex.tv/users/0a1b2c3d4e5f17d4/avatar?c=1731000000",
+       "media_title": "Harbour of Glass",
+       "media_type": "movie",
+       "show_title": null,
+       "season_number": null,
+       "episode_number": null,
+       "year": 2023,
+       "artist_name": null,
+       "album_name": null,
+       "track_number": null,
+       "disc_number": null,
+       "thumb_path": "/library/metadata/6100/thumb/1731000000",
+       "poster_url": "/api/v1/images/proxy?server=00000000-0000-4000-8000-0000000005e1&url=%2Flibrary%2Fmetadata%2F6100%2Fthumb%2F1731000000&width=300&height=450&fallback=poster",
+       "duration_ms": 2700000,
+       "state": "paused",
+       "progress_ms": 1107000,
+       "started_at": "2026-11-21T18:41:30.000Z",
+       "is_transcode": true,
+       "video_decision": "transcode",
+       "audio_decision": "copy",
+       "bitrate": 4000,
+       "source_video_codec": "h264",
+       "source_audio_codec": "aac",
+       "source_audio_channels": 2,
+       "source_video_width": 1920,
+       "source_video_height": 1080,
+       "source_video_details": {
+        "bitrate": 7600,
+        "framerate": "23.976",
+        "dynamicRange": "SDR",
+        "aspectRatio": 1.78,
+        "profile": "high",
+        "level": "4.1"
+       },
+       "source_audio_details": {
+        "bitrate": 384,
+        "channelLayout": "stereo",
+        "language": "eng"
+       },
+       "stream_video_codec": "h264",
+       "stream_audio_codec": "aac",
+       "stream_video_details": {
+        "bitrate": 3600,
+        "width": 1280,
+        "height": 720,
+        "framerate": "23.976",
+        "dynamicRange": "SDR"
+       },
+       "stream_audio_details": {
+        "bitrate": 384,
+        "channels": 2,
+        "language": "eng"
+       },
+       "transcode_info": {
+        "containerDecision": "transcode",
+        "sourceContainer": "mkv",
+        "streamContainer": "mp4",
+        "hwRequested": true,
+        "hwDecoding": "vaapi",
+        "hwEncoding": "vaapi",
+        "speed": 3.1,
+        "throttled": false
+       },
+       "subtitle_info": null,
+       "resolution": "1080p",
+       "source_video_codec_display": "H.264",
+       "source_audio_codec_display": "AAC",
+       "audio_channels_display": "Stereo",
+       "stream_video_codec_display": "H.264",
+       "stream_audio_codec_display": "AAC",
+       "device": "Invented TV",
+       "player": "Invented player 6100",
+       "product": "Plex for Roku",
+       "platform": "Roku",
+       "media_id": "00000000-0000-4000-9000-0000000017d4",
+       "show_media_id": null,
+       "imdb_id": null,
+       "tmdb_id": null,
+       "tvdb_id": null,
+       "rating_key": "6100",
+       "parent_rating_key": null,
+       "grandparent_rating_key": null,
+       "library_id": "2",
+       "genres": null
+      },
+      {
+       "id": "00000000-0000-4000-8000-000000001b5b",
+       "server_id": "00000000-0000-4000-8000-0000000005e1",
+       "server_name": "Invented Server",
+       "server_type": "plex",
+       "username": "alex",
+       "user_thumb": "https://plex.tv/users/0a1b2c3d4e5f1b5b/avatar?c=1731000000",
+       "user_avatar_url": "https://plex.tv/users/0a1b2c3d4e5f1b5b/avatar?c=1731000000",
+       "media_title": "Low Tide",
+       "media_type": "track",
+       "show_title": "Fen Owls",
+       "season_number": null,
+       "episode_number": null,
+       "year": null,
+       "artist_name": "Fen Owls",
+       "album_name": "Night Lines",
+       "track_number": 4,
+       "disc_number": 1,
+       "thumb_path": "/library/metadata/7003/thumb/1731000000",
+       "poster_url": "/api/v1/images/proxy?server=00000000-0000-4000-8000-0000000005e1&url=%2Flibrary%2Fmetadata%2F7003%2Fthumb%2F1731000000&width=300&height=450&fallback=poster",
+       "duration_ms": 2700000,
+       "state": "playing",
+       "progress_ms": 1107000,
+       "started_at": "2026-11-21T19:22:47.512Z",
+       "is_transcode": false,
+       "video_decision": null,
+       "audio_decision": "directplay",
+       "bitrate": 8000,
+       "source_video_codec": null,
+       "source_audio_codec": "flac",
+       "source_audio_channels": 2,
+       "source_video_width": null,
+       "source_video_height": null,
+       "source_video_details": null,
+       "source_audio_details": {
+        "bitrate": 384,
+        "channelLayout": "stereo",
+        "language": "eng"
+       },
+       "stream_video_codec": null,
+       "stream_audio_codec": "flac",
+       "stream_video_details": null,
+       "stream_audio_details": {
+        "bitrate": 384,
+        "channels": 2,
+        "language": "eng"
+       },
+       "transcode_info": null,
+       "subtitle_info": null,
+       "resolution": null,
+       "source_video_codec_display": null,
+       "source_audio_codec_display": "FLAC",
+       "audio_channels_display": "Stereo",
+       "stream_video_codec_display": null,
+       "stream_audio_codec_display": "FLAC",
+       "device": "Invented TV",
+       "player": "Invented player 7003",
+       "product": "Plex for Roku",
+       "platform": "Roku",
+       "media_id": "00000000-0000-4000-9000-000000001b5b",
+       "show_media_id": null,
+       "imdb_id": null,
+       "tmdb_id": null,
+       "tvdb_id": null,
+       "rating_key": "7003",
+       "parent_rating_key": "7002",
+       "grandparent_rating_key": "7001",
+       "library_id": "2",
+       "genres": null
+      }
+     ],
+     "summary": {
+      "total": 3,
+      "transcodes": 1,
+      "audio_transcodes": 0,
+      "direct_streams": 0,
+      "direct_plays": 2,
+      "total_bitrate": "20.0 Mbps",
+      "by_server": [
+       {
+        "server_id": "00000000-0000-4000-8000-0000000005e1",
+        "server_name": "Invented Server",
+        "total": 3,
+        "transcodes": 1,
+        "audio_transcodes": 0,
+        "direct_streams": 0,
+        "direct_plays": 2,
+        "total_bitrate": "20.0 Mbps"
+       }
+      ]
+     }
+    }
+   }
+  }
+ ],
+ "fill": {
+  "names": {
+   "count": 3,
+   "sessions": [
+    {
+     "title": "The Lantern Keepers S01E03",
+     "who": "Robin",
+     "order": "2026-11-21T19:05:12Z",
+     "key": "00000000-0000-4000-8000-00000000138b"
+    },
+    {
+     "title": "Harbour of Glass",
+     "who": "Sam",
+     "order": "2026-11-21T18:41:30Z",
+     "key": "00000000-0000-4000-8000-0000000017d4"
+    },
+    {
+     "title": "Fen Owls - Low Tide",
+     "who": "alex",
+     "order": "2026-11-21T19:22:47Z",
+     "key": "00000000-0000-4000-8000-000000001b5b"
+    }
+   ]
+  },
+  "titles": {
+   "count": 3,
+   "sessions": [
+    {
+     "title": "The Lantern Keepers S01E03",
+     "order": "2026-11-21T19:05:12Z",
+     "key": "00000000-0000-4000-8000-00000000138b"
+    },
+    {
+     "title": "Harbour of Glass",
+     "order": "2026-11-21T18:41:30Z",
+     "key": "00000000-0000-4000-8000-0000000017d4"
+    },
+    {
+     "title": "Fen Owls - Low Tide",
+     "order": "2026-11-21T19:22:47Z",
+     "key": "00000000-0000-4000-8000-000000001b5b"
+    }
+   ]
+  },
+  "count": {
+   "count": 3,
+   "sessions": [
+    {},
+    {},
+    {}
+   ]
+  }
+ }
+}

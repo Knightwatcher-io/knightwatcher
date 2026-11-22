@@ -294,10 +294,12 @@ level; its source is `json:nas-temp`. Only that source is shown:
   - `titles`, with `show` `names` or `titles`: what each stream plays, sorted as `sessions` is.
     Episodes read `The Night Shift S02E04` and tracks `<artist> - <track>`.
   - `sessions`, with `show` `names` or `titles`, when any stream has a name or a title to show:
-    1 to 32 of them, in the order the streams started (the provider's order, the session key of
-    Tautulli and of Plex), so a new stream joins the end and the others keep their places. Each is
-    an object with `title`, 1 to 60 characters, and `who`, 1 to 16: for Tautulli its friendly name
-    for the user, else the user, else the user name; for Plex the user's Plex name. Either is cut with an ellipsis at its limit. `who` is there with `show` `names` alone, and each key is
+    1 to 32 of them, in the order the streams started (the provider's order: the session key of
+    Tautulli and of Plex, or the start time Tracearr gives), so a new stream joins the end and the
+    others keep their places. Each is an object with `title`, 1 to 60 characters, and `who`, 1 to
+    16: for Tautulli its friendly name for the user, else the user, else the user name; for Plex
+    the user's Plex name; for Tracearr the display name set in Tracearr, else the user's name on the
+    media server. Either is cut with an ellipsis at its limit. `who` is there with `show` `names` alone, and each key is
     left out when the stream has none; a stream with neither is counted and not listed.
   - With `show` `count` there is `count` and nothing else.
 

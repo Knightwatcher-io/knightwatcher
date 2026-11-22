@@ -1,0 +1,29 @@
+{
+ "about": "A path Tracearr does not serve under /api/, as Tracearr 1 answers this one, having no version 2 of the API: HTTP 404 with JSON.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2/public/streams",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "Bearer {credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 404,
+    "json": {
+     "error": "Not Found"
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "no such call: is this Tracearr 2.0 or later?"
+ }
+}

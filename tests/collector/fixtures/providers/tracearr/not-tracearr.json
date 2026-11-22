@@ -1,0 +1,29 @@
+{
+ "about": "JSON that is not Tracearr's list of streams: no summary.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2/public/streams",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "Bearer {credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "status": "ok"
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "unexpected reply from Tracearr"
+ }
+}

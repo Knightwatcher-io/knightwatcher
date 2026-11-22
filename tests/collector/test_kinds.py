@@ -25,6 +25,7 @@ SECRETS = {
     "KNIGHTWATCHER_RADARR_API_KEY": "rk-example",
     "KNIGHTWATCHER_TECHNITIUM_TOKEN": "tok-example",
     "KNIGHTWATCHER_PLEX_TOKEN": "plex-example",
+    "KNIGHTWATCHER_TRACEARR_API_KEY": "trr_pub_example",
 }
 
 
@@ -832,6 +833,29 @@ class FirstSeenTest(unittest.TestCase):
             ["four", "thirty", "keyed", "keyed later", "neither", "an order not of digits"],
         )
 
+    def test_a_start_time_orders_by_its_moment_ties_by_the_key(self):
+        def started(minute, second=0):
+            return dt.datetime(2026, 11, 21, 19, minute, second, tzinfo=dt.UTC)
+
+        sessions = [
+            {"key": "k9", "title": "keyed"},
+            {"order": started(30), "key": "b", "title": "half past, b"},
+            {"order": started(5), "key": "z", "title": "five past"},
+            {"order": started(30), "key": "a", "title": "half past, a"},
+            {"order": started(30), "title": "half past, no key"},
+            {"title": "neither"},
+        ]
+        facts = self.kind.reading({"sessions": sessions}, {"show": "titles"}, self.config, T0).facts
+        self.assertEqual(
+            facts["titles"],
+            ["five past", "half past, a", "half past, b", "half past, no key", "keyed", "neither"],
+        )
+        # The order a time gives holds from read to read, whatever order the service lists in.
+        again = self.kind.reading(
+            {"sessions": list(reversed(sessions))}, {"show": "titles"}, self.config, T0
+        ).facts
+        self.assertEqual(again["titles"], facts["titles"])
+
     def test_the_key_and_its_order_never_leave_the_kind(self):
         sessions = [{"key": "secret-key-1", "title": "A", "who": "Robin"}]
         reading = self.kind.reading({"sessions": sessions}, {"show": "names"}, self.config, T0)
@@ -906,6 +930,75 @@ class PlexTest(unittest.TestCase):
         with self.assertRaises(AuthError) as cm:
             source("streams", {"url": self.http.url, "from": "plex"}).fetch(T0)
         self.assertEqual(str(cm.exception), "Plex token refused")
+
+
+class TracearrTest(unittest.TestCase):
+    """The streams kind through the tracearr provider, against an invented Tracearr."""
+
+    def setUp(self):
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+        film = {
+            "id": "00000000-0000-4000-8000-000000006100", "media_type": "movie",
+            "media_title": "Harbour of Glass", "username": "Sam",
+            "started_at": "2026-11-21T18:41:30.000Z",
+        }  # fmt: skip
+        episode = {
+            "id": "00000000-0000-4000-8000-000000005003", "media_type": "episode",
+            "media_title": "The Tide Bell", "show_title": "The Lantern Keepers",
+            "season_number": 1, "episode_number": 3, "username": "Robin",
+            "started_at": "2026-11-21T19:05:12.000Z",
+        }  # fmt: skip
+        self.film, self.episode = film, episode
+        self.reply = {"data": [episode, film], "summary": {"total": 2}}
+        self.http.routes["/api/v2/public/streams"] = (200, lambda _h: self.reply)
+
+    def fetch(self, show="names"):
+        # A source afresh each time, as after a restart: the order is the start times', never the
+        # order of first sight, which by the ids would put the episode first.
+        settings = {"url": self.http.url, "from": "tracearr", "show": show}
+        return source("streams", settings).fetch(T0).facts
+
+    def test_streams_in_the_order_they_started_at_each_show(self):
+        both = ["Harbour of Glass", "The Lantern Keepers S01E03"]
+        self.assertEqual(
+            self.fetch(),
+            {
+                "count": 2,
+                "titles": both,
+                "sessions": [
+                    {"who": "Sam", "title": "Harbour of Glass"},
+                    {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+                ],
+            },
+        )
+        # Tracearr lists its streams in no particular order; the start times keep them in place.
+        self.reply = {"data": [self.film, self.episode], "summary": {"total": 2}}
+        self.assertEqual(self.fetch()["titles"], both)
+        titles = self.fetch("titles")
+        self.assertEqual(titles["titles"], both)
+        for name in ("Sam", "Robin"):
+            self.assertNotIn(name, json.dumps(titles))
+        self.assertEqual(self.fetch("count"), {"count": 2})
+
+    def test_the_key_goes_in_the_authorization_header_with_json_asked_for(self):
+        self.fetch()
+        ((path, headers),) = self.http.requests
+        headers = {k.lower(): v for k, v in headers.items()}
+        self.assertEqual(path, "/api/v2/public/streams")
+        self.assertEqual(headers["authorization"], "Bearer trr_pub_example")
+        self.assertEqual(headers["accept"], "application/json")
+
+    def test_nothing_playing(self):
+        self.reply = {"data": [], "summary": {"total": 0}}
+        self.assertEqual(self.fetch(), {"count": 0, "titles": []})
+
+    def test_a_refused_key_is_an_auth_error(self):
+        body = {"statusCode": 401, "error": "UnauthorizedError", "message": "Invalid API key"}
+        self.http.routes["/api/v2/public/streams"] = (401, body)
+        with self.assertRaises(AuthError) as cm:
+            source("streams", {"url": self.http.url, "from": "tracearr"}).fetch(T0)
+        self.assertEqual(str(cm.exception), "API key refused")
 
 
 # A provider file of a user's own for the security kind, against an invented service.

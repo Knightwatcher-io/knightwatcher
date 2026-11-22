@@ -29,6 +29,7 @@ SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-pr
 |---|---|---|---|
 | `tautulli` | streams | Tautulli's `get_activity` | `[sources.streams]`, the default for `from` |
 | `plex` | streams | Plex Media Server's `/status/sessions`, with the owner's token in the `X-Plex-Token` header | `[sources.streams]` with `from = "plex"` |
+| `tracearr` | streams | Tracearr's `/api/v2/public/streams` (Tracearr 2.0 or later), with its API key as a bearer token | `[sources.streams]` with `from = "tracearr"` |
 | `adguard` | adblock | AdGuard Home's `/control/stats` | `[sources.adblock]`, the default for `from` |
 | `pihole` | adblock | Pi-hole 6's `/api/stats/summary` and `/api/history`, through a session | `[sources.adblock]` with `from = "pihole"` |
 | `technitium` | adblock | Technitium DNS Server's dashboard statistics (version 15 or later), with an API token | `[sources.adblock]` with `from = "technitium"` |
@@ -64,14 +65,17 @@ kind cleans it), `bool` true or false, `time` a moment, and `raw` a value the ki
 | `sessions` | list of objects | yes, may be empty | any (its length alone with `count`) | one for each stream playing |
 | `sessions[].title` | string | no | `titles`, `names` | what plays, composed by the provider (`The Night Shift S02E04`) |
 | `sessions[].who` | string | no | `names` | who is watching |
-| `sessions[].order` | raw | no | `titles`, `names` | a key that rises as streams start: a value whose text is all digits sorts by its number, others after |
-| `sessions[].key` | string | no | `titles`, `names` | the stream's identity, for a service that gives no `order` |
+| `sessions[].order` | raw | no | `titles`, `names` | a key that rises as streams start: a value whose text is all digits sorts by its number, a time (a var of type `time`) by its moment, others after |
+| `sessions[].key` | string | no | `titles`, `names` | the stream's identity, for a service that gives no `order`; with a time as `order`, it breaks ties |
 
 The streams are listed in the order they started. A provider whose service gives a number that
 rises as streams start (Tautulli's and Plex's session key) fills `order`, and the kind sorts by it.
-One whose service gives none fills `key`, the stream's identity as the service gives it, and the
-kind lists those streams in the order it first saw each key, keys seen at the same read by the key
-(digits by their number, before other text). That order is kept by the running collector alone,
+One whose service gives the moment each stream started (Tracearr's `started_at`) fills `order`
+with that time, a var of type `time`, and the kind sorts by the moment; it fills `key` too, the
+stream's identity, which orders streams that started at the same moment. One whose service gives
+neither fills `key` alone, the stream's identity as the service gives it, and the kind lists those
+streams in the order it first saw each key, keys seen at the same read by the key (digits by their
+number, before other text), as streams of one moment are. That order is kept by the running collector alone,
 only for the keys playing at the last read, and never in the memory file. Streams with an `order`
 come first, then those with a `key`, then the rest in the order the provider gave them.
 

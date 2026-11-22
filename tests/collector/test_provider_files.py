@@ -118,7 +118,9 @@ class ScanTest(Folder):
             (spec.kind, spec.name, list(spec.credentials)), ("streams", "Myflix", ["token"])
         )
         self.assertTrue(spec.digest)
-        self.assertEqual([p.id for p in found.of_kind("streams")], ["plex", "tautulli", "myflix"])
+        self.assertEqual(
+            [p.id for p in found.of_kind("streams")], ["plex", "tautulli", "tracearr", "myflix"]
+        )
         self.assertIs(found.get("tautulli"), providers.get("tautulli"))
         self.assertFalse(found.is_refused("myflix"))
 
@@ -248,7 +250,10 @@ class ConfigTest(Folder):
             self.config({"from": "plx"})
         self.assertEqual(
             cm.exception.problems,
-            ['sources.streams.from: unknown provider "plx"; use plex, tautulli or myflix'],
+            [
+                'sources.streams.from: unknown provider "plx"; '
+                "use plex, tautulli, tracearr or myflix"
+            ],
         )
 
     def test_a_file_of_another_kind_is_refused_by_name(self):
@@ -277,7 +282,7 @@ class ConfigTest(Folder):
             self.config({"from": "myflix"})
         self.assertEqual(
             cm.exception.problems,
-            ['sources.streams.from: unknown provider "myflix"; use plex or tautulli'],
+            ['sources.streams.from: unknown provider "myflix"; use plex, tautulli or tracearr'],
         )
 
     def test_the_built_ins_alone_without_a_folder(self):
@@ -529,7 +534,7 @@ class TakingUpTest(Folder):
         self.assertIsInstance(self.streams(), KindSource)
         self.assertEqual(
             self.runner.config_note["problems"],
-            ['sources.streams.from: unknown provider "myflix"; use plex or tautulli'],
+            ['sources.streams.from: unknown provider "myflix"; use plex, tautulli or tracearr'],
         )
         self.assertIn("refused", self.runner.config_note)
 
