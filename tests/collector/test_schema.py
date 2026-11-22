@@ -46,11 +46,12 @@ def example_keys() -> dict[str, set[str]]:
     with open(os.path.join(ROOT, "config.example.toml"), encoding="utf-8") as fh:
         text = fh.read()
     # A commented setting is "# key = value", "# [[device]]", "# [[sources.imports]]",
-    # "# [[sources.json]]" or the header of a defaults table; "# or: key = value" is a setting that
-    # replaces another in its table, so it is counted here but left commented when the example's
-    # tables are loaded uncommented (test_config).
+    # "# [[sources.json]]", the header of a source's table, such as "# [sources.streams]", or the
+    # header of a defaults table; "# or: key = value" is a setting that replaces another in its
+    # table, so it is counted here but left commented when the example's tables are loaded
+    # uncommented (test_config).
     setting = re.compile(
-        r"^# (?:or: )?(\[\[device\]\]|\[\[sources\.(?:imports|json)\]\]"
+        r"^# (?:or: )?(\[\[device\]\]|\[\[sources\.(?:imports|json)\]\]|\[sources\.[a-z]+\]"
         r"|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]|[a-z_]+ = .+)$"
     )
     lines = [m.group(1) if (m := setting.match(line)) else line for line in text.splitlines()]

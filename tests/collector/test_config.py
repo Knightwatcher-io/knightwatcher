@@ -1005,9 +1005,10 @@ class LoadTest(unittest.TestCase):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         env = read_env_file(os.path.join(root, ".env.example"))
         c = load(os.path.join(root, "config.example.toml"), env)
-        self.assertEqual(len(c.sources), 14)
-        # The examples of devices are commented out, so the Pi is the only device.
-        self.assertEqual([t["name"] for t in c.devices], ["Pi"])
+        # The general sources alone are on: each source that reads a service is commented out.
+        self.assertEqual(sorted(c.sources), ["backup", "dns", "host", "ssh", "updates", "wan"])
+        # So are the Pi and the examples of devices, so there is no device.
+        self.assertEqual(c.devices, [])
         self.assertIn("device_down", c.conditions["priority"])
         # So are the settings screen's defaults, so the file sets none of them.
         self.assertEqual(c.defaults, EMPTY)
@@ -1017,9 +1018,10 @@ class LoadTest(unittest.TestCase):
         with open(os.path.join(root, "config.example.toml"), encoding="utf-8") as fh:
             example = fh.read()
         # A commented setting is "# key = value", "# [[device]]", "# [[sources.imports]]",
-        # "# [[sources.json]]" or the header of a defaults table; a commented note is not.
+        # "# [[sources.json]]", the header of a source's table or the header of a defaults table;
+        # a commented note is not.
         setting = re.compile(
-            r"^# (\[\[device\]\]|\[\[sources\.(?:imports|json)\]\]"
+            r"^# (\[\[device\]\]|\[\[sources\.(?:imports|json)\]\]|\[sources\.[a-z]+\]"
             r"|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]|[a-z_]+ = .+)$"
         )
         lines = [
@@ -1032,6 +1034,16 @@ class LoadTest(unittest.TestCase):
         # So does the check's header.
         env["KNIGHTWATCHER_NAS_HEADER"] = "an-invented-header"
         c = load(cfg, env)
+        # Every source's table is there to uncomment, the services' among them.
+        self.assertEqual(
+            sorted(name for name in c.sources if ":" not in name),
+            sorted(
+                [
+                    *("host", "containers", "wan", "dns", "backup", "pi", "updates", "ssh"),
+                    *("streams", "adblock", "security", "sonarr", "radarr", "lidarr"),
+                ]
+            ),
+        )
         self.assertEqual(c.sources["imports:sonarr-4k"]["from"], "sonarr")
         self.assertEqual(c.sources["json:nas-temp"]["as"], "cpu_hot")
         self.assertEqual(c.secret("json:nas-temp"), {"header": "an-invented-header"})

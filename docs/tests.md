@@ -47,7 +47,7 @@ out.
 | `tests/tools/sign-pack.test.js` | the signing tool, and the shipped packs' signatures |
 | `tests/collector/test_cli.py` | `--check-config`, `--once` and `--health` |
 | `tests/collector/test_conditions.py` | the conditions the collector judges: holding and clearing, CPU and memory, and the rest |
-| `tests/collector/test_config.py` | reading `config.toml`: defaults, paces, ranges, removed and unknown settings |
+| `tests/collector/test_config.py` | reading `config.toml`: defaults, paces, ranges, removed and unknown settings; the committed example as it stands (the general sources alone) and with every commented table taken in |
 | `tests/collector/test_contract.py` | the contract check against [state.md](./state.md): devices, `device_down`, defaults and the parts, and its examples, a check's `as` among them |
 | `tests/collector/test_devices.py` | the checks behind devices, against local sockets and a local HTTP server |
 | `tests/collector/test_reload.py` | `admin.json` laid over `config.toml`, the start and reload rules, the credentials' names, the providers folder watched and moved |
@@ -183,6 +183,11 @@ source paused, the next poll not asking again and a `--probe` not reading. An al
 be made there, since Lidarr writes one only for a download client's finished download of an album
 its library holds, and the library needs MusicBrainz, which the network cannot reach; the album
 record rests on the fixture. Given a folder, it copies the recording there. No key is printed.
+
+`tools/clean-start.sh`, beside them, starts no service of its own: it runs the README's quick
+start in a scratch copy of the checkout, with `config.example.toml` and `.env.example` as they are,
+both containers on an internal network of their own, and checks within two minutes that the
+install starts cleanly ([development.md](./development.md#the-clean-start)).
 
 ## The page's tests
 

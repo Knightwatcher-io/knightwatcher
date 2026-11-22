@@ -52,17 +52,23 @@ setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server
 The containers run as uid 10001, and the last two lines let it write in those three folders
 ([configuration.md](docs/configuration.md#the-accounts)). Then, in `.env`, point
 `KNIGHTWATCHER_BACKUP_LOG` at your backup log and `KNIGHTWATCHER_DATA_DISK` at any folder on the
-disk to watch. Both must exist. With no backup log yet, `touch var/backup.log` and point at that,
-and set `enabled = false` under `[sources.backup]` in `config.toml`. Then:
+disk to watch. Both must exist. With no backup log yet, `touch var/backup.log` and point at that
+(`./var/backup.log`): an empty log is read cleanly and raises nothing until it records a
+completed backup. Then:
 
 ```bash
 docker compose up -d
 ```
 
 and open `http://<this machine>:8080/` in a browser. The knight appears at once and the collector's
-first readings within a minute. The example config names services at invented addresses, so
-those sources say they cannot be reached until you point them at your own, or turn them off,
-in `config.toml` ([Configuration](docs/configuration.md)); the credentials go in `.env`.
+first readings within a minute. The example config turns on only the general sources, which read
+this machine (its CPU, memory, disk, backup log, updates and SSH sessions) or ask a fixed address
+(the internet and a DNS server). Each source that reads a service (the containers through a
+Docker API proxy, a second machine, the streams, the adverts blocked, the bans and the imports)
+is written out in `config.toml` but commented: remove the `# ` before its lines and point it at
+your own address ([Configuration](docs/configuration.md)), with its credential in `.env`.
+`tools/clean-start.sh` runs these steps in a scratch copy, on a Docker network with no route out,
+and checks that the install starts cleanly ([Development](docs/development.md#the-clean-start)).
 
 The page is open to anyone on your network, with no login. Read [The server](docs/server.md#security)
 before you let it be reached from anywhere else, and never publish it to the internet without a

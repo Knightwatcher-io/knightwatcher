@@ -2,9 +2,11 @@
 # Every value here is invented. docs/configuration.md describes each setting. Credentials are
 # never set here: they go in .env (see .env.example), named by each source's `secret`.
 # A source runs when its [sources.*] table is present and `enabled` is not false. Each source is
-# read every `every_s` seconds; between reads its last reading stands. The settings screen's
-# defaults and the devices, at the end, are commented out. A setting changed on the bundled
-# server's admin page is kept there, over this file, and its Download config.toml writes them all.
+# read every `every_s` seconds; between reads its last reading stands. As it stands the file turns
+# on the general sources alone, which read this host or a fixed address; each source that reads a
+# service, the settings screen's defaults and the devices are written out but commented. A setting
+# changed on the bundled server's admin page is kept there, over this file, and its Download
+# config.toml writes them all.
 
 [collector]
 interval_s = 10
@@ -63,16 +65,13 @@ min_streams = 1
 start = "23:00"
 end = "07:00"
 
+# The general sources: they read this host's own /proc, a log file on it, or a fixed address, so
+# they work on any Linux host with Docker, and they are on.
+
 [sources.host]
 enabled = true
 every_s = 10
 disks = [{ mount = "/data", path = "/host/disks/data" }]
-
-[sources.containers]
-enabled = true
-every_s = 10
-url = "http://192.0.2.10:2375"
-ignore = ["*-run-*", "knightwatcher-collector-*"]
 
 [sources.wan]
 enabled = true
@@ -94,12 +93,6 @@ pattern = 'Backup completed: (.+)$'
 timezone = "UTC"
 read_bytes = 262144
 
-[sources.pi]
-enabled = true
-every_s = 30
-host = "192.0.2.4"
-ports = [22]
-
 [sources.updates]
 enabled = true
 every_s = 10
@@ -113,55 +106,75 @@ every_s = 10
 port = 22
 ignore_sources = []
 
-[sources.streams]
-enabled = true
-every_s = 30
-from = "tautulli"            # the default; "plex" reads Plex Media Server itself (KNIGHTWATCHER_PLEX_TOKEN),
-                             # "tracearr" reads Tracearr 2.0 or later (KNIGHTWATCHER_TRACEARR_API_KEY)
-url = "http://192.0.2.20:8181"
-# verify_tls = true          # with an https url, whether its certificate is checked
-show = "names"               # who and what; "titles" for what alone, "count" for how many
-secret = "tautulli"          # reads KNIGHTWATCHER_TAUTULLI_API_KEY from .env
+# The sources that read a service: each needs that service, at your own address, and most a
+# credential in .env. Each is written out here but commented. Remove the "# " before a table's
+# lines to use it, the table's name included; a line starting "# or:" stays commented, since it
+# replaces another.
 
-[sources.adblock]
-enabled = true
-every_s = 30
-from = "adguard"             # the default; "pihole" reads Pi-hole 6 (KNIGHTWATCHER_PIHOLE_PASSWORD),
-                             # "technitium" Technitium 15 or later (KNIGHTWATCHER_TECHNITIUM_TOKEN)
-url = "http://192.0.2.53"
-# verify_tls = true          # false for an https url with a self-signed certificate, as a Pi-hole's
-secret = "adguard"           # reads KNIGHTWATCHER_ADGUARD_USERNAME and _PASSWORD
-fly_every_s = 300
+# Container health, through a read-only proxy of the Docker API (docs/configuration.md).
+# [sources.containers]
+# enabled = true
+# every_s = 10
+# url = "http://192.0.2.10:2375"
+# ignore = ["*-run-*", "knightwatcher-collector-*"]
 
-[sources.security]
-enabled = true
-every_s = 30
-from = "fail2ban"            # the default; needs a mount and a read grant (docs/configuration.md)
-database = "/host/fail2ban/fail2ban.sqlite3"   # the default, inside the collector's container
+# A second machine, such as a Raspberry Pi, the older way; a [[device]] table at the end is the
+# newer one.
+# [sources.pi]
+# enabled = true
+# every_s = 30
+# host = "192.0.2.4"
+# ports = [22]
+
+# [sources.streams]
+# enabled = true
+# every_s = 30
+# from = "tautulli"            # the default; "plex" reads Plex Media Server itself (KNIGHTWATCHER_PLEX_TOKEN),
+#                              # "tracearr" reads Tracearr 2.0 or later (KNIGHTWATCHER_TRACEARR_API_KEY)
+# url = "http://192.0.2.20:8181"
+# verify_tls = true            # with an https url, whether its certificate is checked
+# show = "names"               # who and what; "titles" for what alone, "count" for how many
+# secret = "tautulli"          # reads KNIGHTWATCHER_TAUTULLI_API_KEY from .env
+
+# [sources.adblock]
+# enabled = true
+# every_s = 30
+# from = "adguard"             # the default; "pihole" reads Pi-hole 6 (KNIGHTWATCHER_PIHOLE_PASSWORD),
+#                              # "technitium" Technitium 15 or later (KNIGHTWATCHER_TECHNITIUM_TOKEN)
+# url = "http://192.0.2.53"
+# verify_tls = true            # false for an https url with a self-signed certificate, as a Pi-hole's
+# secret = "adguard"           # reads KNIGHTWATCHER_ADGUARD_USERNAME and _PASSWORD
+# fly_every_s = 300
+
+# [sources.security]
+# enabled = true
+# every_s = 30
+# from = "fail2ban"            # the default; needs a mount and a read grant (docs/configuration.md)
+# database = "/host/fail2ban/fail2ban.sqlite3"   # the default, inside the collector's container
 # or: url = "http://192.0.2.40:8080"   # in place of database, for a provider file of your own
-# or: verify_tls = true      # with that url, as for the other sections
-# secret = "fail2ban"        # fail2ban needs no credential
+# or: verify_tls = true        # with that url, as for the other sections
+# secret = "fail2ban"          # fail2ban needs no credential
 
-[sources.sonarr]
-enabled = true
-every_s = 30
-url = "http://192.0.2.30:8989"
-# verify_tls = true          # with an https url, whether its certificate is checked
-secret = "sonarr"            # reads KNIGHTWATCHER_SONARR_API_KEY
+# [sources.sonarr]
+# enabled = true
+# every_s = 30
+# url = "http://192.0.2.30:8989"
+# verify_tls = true            # with an https url, whether its certificate is checked
+# secret = "sonarr"            # reads KNIGHTWATCHER_SONARR_API_KEY
 
-[sources.radarr]
-enabled = true
-every_s = 30
-url = "http://192.0.2.31:7878"
-# verify_tls = true          # with an https url, whether its certificate is checked
-secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
+# [sources.radarr]
+# enabled = true
+# every_s = 30
+# url = "http://192.0.2.31:7878"
+# verify_tls = true            # with an https url, whether its certificate is checked
+# secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 
-[sources.lidarr]
-enabled = true
-every_s = 30
-url = "http://192.0.2.32:8686"
-# verify_tls = true          # with an https url, whether its certificate is checked
-secret = "lidarr"            # reads KNIGHTWATCHER_LIDARR_API_KEY; one crate for each album
+# [sources.lidarr]
+# enabled = true
+# every_s = 30
+# url = "http://192.0.2.32:8686"
+# verify_tls = true            # with an https url, whether its certificate is checked
+# secret = "lidarr"            # reads KNIGHTWATCHER_LIDARR_API_KEY; one crate for each album
 
 # More services whose imports are read, each a [[sources.imports]] table: another Sonarr, Radarr
 # or Lidarr, or a service a provider file of your own reads. Each is the source imports:<name>.
