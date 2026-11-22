@@ -538,7 +538,7 @@ class SettingsTest(AdminCase):
         # A source that is off is not checked until it is turned on, as for its other settings.
         set_up = {"sources.streams.url": "http://192.0.2.20:8181", "sources.streams.enabled": False}
         for chosen, words in (
-            ("plx", 'sources.streams.from: unknown provider "plx"; use tautulli'),
+            ("plx", 'sources.streams.from: unknown provider "plx"; use plex or tautulli'),
             ("adguard", 'sources.streams.from: "adguard" reads adblock, not streams'),
         ):
             status, _, body = self.patch({"set": {**set_up, "sources.streams.from": chosen}})
@@ -778,7 +778,7 @@ class OwnProvidersTest(AdminCase):
         self.assertEqual(status, 400)
         self.assertEqual(
             body["problems"],
-            ['sources.streams.from: unknown provider "plx"; use tautulli or myflix'],
+            ['sources.streams.from: unknown provider "plx"; use plex, tautulli or myflix'],
         )
         # A file that was left out may be named: that source fails, and the collector runs.
         status, _, body = self.patch({"set": {"sources.streams.from": "spare"}})

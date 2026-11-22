@@ -1,0 +1,61 @@
+# Streams playing now, from Plex Media Server's own list of sessions.
+format = 1
+id = "plex"
+kind = "streams"
+name = "Plex Media Server"
+docs = "https://developer.plex.tv/pms/"
+
+[credentials]
+token = "The Plex token of the server's owner, whose sessions list Plex keeps to the owner. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens."
+
+# The token goes in the X-Plex-Token header, where Plex's documentation says it is expected, and
+# not in the query, which Plex also reads, so that it stays out of any access log on the way. JSON
+# comes only for Accept: application/json; Plex's default is XML. Plex's documentation says a
+# client identifier is typically required, so one is sent. A token Plex does not take is HTTP 401
+# with a small HTML page, whether it is wrong or missing.
+[[request]]
+path = "/status/sessions"
+headers = { Accept = "application/json", X-Plex-Token = "{credential.token}", X-Plex-Client-Identifier = "knightwatcher", X-Plex-Product = "Knightwatcher" }
+statuses = { 401 = "Plex token refused", 404 = "no such call: is this Plex Media Server?" }
+not_json = "Plex sent something other than JSON"
+
+[[request.require]]
+path = "$.MediaContainer"
+type = "object"
+message = "unexpected reply from Plex"
+
+[fill]
+# How many streams play. Without it, the kind counts the sessions.
+count = { path = "$.MediaContainer.size", type = "int" }
+
+# One item a stream. With nothing playing, Plex leaves the list out, which reads as no streams.
+[fill.sessions]
+each = "$.MediaContainer.Metadata[*]"
+
+[fill.sessions.vars]
+type = "$.type"
+grand = { path = "$.grandparentTitle", type = "string" }
+season = { path = "$.parentIndex", type = "int" }
+episode = { path = "$.index", type = "int" }
+title = { path = "$.title", type = "string" }
+user = { path = "$.User.title", type = "string" }
+# The session's number, which rises as streams start: the same number Tautulli lists as its
+# session_key.
+key = "$.sessionKey"
+
+[fill.sessions.fields]
+who = { pick = ["user"] }
+order = "key"
+
+# An episode is the show and its numbers, either alone when the other is missing, else its own
+# title; a track is the artist and the track, either alone; anything else its title.
+[[fill.sessions.title]]
+when = { type = "episode" }
+try = ["{grand} S{season:02}E{episode:02}", "S{season:02}E{episode:02}", "{grand}", "{title}"]
+
+[[fill.sessions.title]]
+when = { type = "track" }
+try = ["{grand} - {title}", "{grand}", "{title}"]
+
+[[fill.sessions.title]]
+try = ["{title}"]

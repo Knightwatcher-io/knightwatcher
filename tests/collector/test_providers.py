@@ -147,6 +147,34 @@ class FixturesTest(unittest.TestCase):
             else:
                 self.run_fixture(pid, case, fixture)
 
+    def test_plex_and_tautulli_give_the_same_reading_of_the_same_streams(self):
+        # The two fixtures list the same three invented streams, each in its service's own shape.
+        cases = {(pid, case): fixture for pid, case, fixture in fixtures()}
+        plex, tautulli = cases[("plex", "sessions")], cases[("tautulli", "activity")]
+        kind = kinds.kind_class("streams")()
+        config = make_config({})
+        for show in ("names", "titles", "count"):
+            readings = []
+            for pid, fixture in (("plex", plex), ("tautulli", tautulli)):
+                _, fill = self.run_fixture(pid, "same", fixture, show)
+                readings.append(kind.reading(fill, {"show": show}, config, T0).facts)
+            self.assertEqual(readings[0], readings[1], show)
+        self.assertEqual(readings[0], {"count": 3}, "with count, nothing but the number of streams")
+
+    def test_plex_sends_its_token_in_a_header_and_never_in_the_address(self):
+        (fixture,) = [f for pid, case, f in fixtures() if (pid, case) == ("plex", "sessions")]
+        http = FakeHttp()
+        self.addCleanup(http.close)
+        http.routes["/status/sessions"] = (200, fixture["exchanges"][0]["reply"]["json"])
+        token = secrets.token_urlsafe(15)
+        spec = providers.get("plex")
+        settings = {"url": http.url, "show": "names"}
+        allowed = kinds.kind_class("streams")().allowed(settings)
+        DataProvider(spec, settings, {"token": token}, 2.0, allowed).read(T0)
+        ((method, path, headers, _),) = http.calls
+        self.assertEqual((method, path), ("GET", "/status/sessions"))
+        self.assertEqual({k.lower(): v for k, v in headers.items()}["x-plex-token"], token)
+
     def test_names_are_never_read_unless_show_is_names(self):
         for pid, case, fixture in fixtures():
             spec = providers.get(pid)
@@ -198,7 +226,7 @@ class FromTest(unittest.TestCase):
     def test_a_from_that_names_no_provider_of_the_kind_is_refused(self):
         self.assertEqual(
             self.problems("streams", {"from": "plx"}),
-            ['sources.streams.from: unknown provider "plx"; use tautulli'],
+            ['sources.streams.from: unknown provider "plx"; use plex or tautulli'],
         )
         self.assertEqual(
             self.problems("streams", {"from": "adguard"}),
@@ -244,6 +272,20 @@ class FromTest(unittest.TestCase):
         self.assertEqual(
             self.problems("streams", {"from": "pihole"}),
             ['sources.streams.from: "pihole" reads adblock, not streams'],
+        )
+
+    def test_plex_reads_its_token(self):
+        env = {"KNIGHTWATCHER_PLEX_TOKEN": "tok-invented"}
+        c = self.build("streams", {"from": "plex", "url": "http://192.0.2.20:32400"}, env)
+        self.assertEqual(c.sources["streams"]["secret"], "plex")
+        self.assertEqual(c.secret("streams"), {"token": "tok-invented"})
+        self.assertEqual(
+            self.problems("streams", {"from": "plex"}, {}),
+            [".env: KNIGHTWATCHER_PLEX_TOKEN missing (for streams)"],
+        )
+        self.assertEqual(
+            self.problems("adblock", {"from": "plex"}),
+            ['sources.adblock.from: "plex" reads streams, not adblock'],
         )
 
     def test_technitium_reads_its_token(self):
@@ -292,6 +334,7 @@ class FromTest(unittest.TestCase):
 
     def test_the_credentials_each_provider_reads(self):
         self.assertEqual(config_mod.provider_credentials("tautulli"), ["api_key"])
+        self.assertEqual(config_mod.provider_credentials("plex"), ["token"])
         self.assertEqual(config_mod.provider_credentials("adguard"), ["username", "password"])
         self.assertEqual(config_mod.provider_credentials("pihole"), ["password"])
         self.assertEqual(config_mod.provider_credentials("technitium"), ["token"])

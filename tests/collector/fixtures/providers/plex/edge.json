@@ -1,0 +1,138 @@
+{
+ "about": "Streams with parts missing, every value invented: an episode without its show and one without its numbers, a track without its artist, a trailer, a film without a title; a session key given as a number; a user missing and one with no name.",
+ "settings": {},
+ "credentials": [
+  "token"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/status/sessions",
+    "headers": {
+     "Accept": "application/json",
+     "X-Plex-Token": "{credential.token}",
+     "X-Plex-Client-Identifier": "knightwatcher",
+     "X-Plex-Product": "Knightwatcher"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "MediaContainer": {
+      "size": 5,
+      "Metadata": [
+       {
+        "type": "episode",
+        "sessionKey": 7,
+        "parentIndex": 2,
+        "index": 11,
+        "title": "Pilot"
+       },
+       {
+        "type": "episode",
+        "sessionKey": "8",
+        "grandparentTitle": "The Night Shift",
+        "title": "Unused",
+        "User": {
+         "id": "3",
+         "title": "Robin"
+        }
+       },
+       {
+        "type": "track",
+        "sessionKey": "9",
+        "title": "Song Alone",
+        "User": {
+         "id": "6",
+         "title": ""
+        }
+       },
+       {
+        "type": "clip",
+        "sessionKey": "10",
+        "title": "Trailer of Glass",
+        "User": {
+         "id": "4",
+         "title": "Sam"
+        }
+       },
+       {
+        "type": "movie",
+        "sessionKey": "11",
+        "title": " ",
+        "User": {
+         "id": "5",
+         "title": "Alex"
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ ],
+ "fill": {
+  "names": {
+   "count": 5,
+   "sessions": [
+    {
+     "title": "S02E11",
+     "order": 7
+    },
+    {
+     "title": "The Night Shift",
+     "who": "Robin",
+     "order": "8"
+    },
+    {
+     "title": "Song Alone",
+     "order": "9"
+    },
+    {
+     "title": "Trailer of Glass",
+     "who": "Sam",
+     "order": "10"
+    },
+    {
+     "who": "Alex",
+     "order": "11"
+    }
+   ]
+  },
+  "titles": {
+   "count": 5,
+   "sessions": [
+    {
+     "title": "S02E11",
+     "order": 7
+    },
+    {
+     "title": "The Night Shift",
+     "order": "8"
+    },
+    {
+     "title": "Song Alone",
+     "order": "9"
+    },
+    {
+     "title": "Trailer of Glass",
+     "order": "10"
+    },
+    {
+     "order": "11"
+    }
+   ]
+  },
+  "count": {
+   "count": 5,
+   "sessions": [
+    {},
+    {},
+    {},
+    {},
+    {}
+   ]
+  }
+ }
+}
