@@ -183,6 +183,7 @@ class DevicesContractTest(unittest.TestCase):
             self.assertEqual(contract.validate(d), [])
         self.assertTrue(any(d["facts"].get("devices") for d in documents))
         self.assertTrue(any(c["id"] == "device_down" for d in documents for c in d["conditions"]))
+        self.assertTrue(any("as" in c for d in documents for c in d["conditions"]))
         self.assertTrue(any(any(d["defaults"].values()) for d in documents))
         self.assertTrue(any("quiet_parts" in d for d in documents))
         typed = {e["type"] for d in documents for e in d["events"] if "parts" in e}

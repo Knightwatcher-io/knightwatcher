@@ -16,7 +16,8 @@ from collector import config, kinds, providers, schema
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 S = schema.SCHEMA
-TYPES = {"integer", "number", "string", "boolean", "list", "table"}
+# scalar: text, a number, or true or false, as a check's value takes.
+TYPES = {"integer", "number", "string", "boolean", "list", "table", "scalar"}
 SETTING_FIELDS = {
     "key", "type", "items", "item_keys", "keys", "values", "values_from", "kind", "long", "acts",
     "min", "above", "max", "min_items", "max_items", "problem", "default", "default_note",
@@ -44,12 +45,12 @@ def example_keys() -> dict[str, set[str]]:
     """Every key config.example.toml sets, by table, its commented settings included."""
     with open(os.path.join(ROOT, "config.example.toml"), encoding="utf-8") as fh:
         text = fh.read()
-    # A commented setting is "# key = value", "# [[device]]", "# [[sources.imports]]" or the
-    # header of a defaults table; "# or: key = value" is a setting that replaces another in its
-    # table, so it is counted here but left commented when the example's tables are loaded
-    # uncommented (test_config).
+    # A commented setting is "# key = value", "# [[device]]", "# [[sources.imports]]",
+    # "# [[sources.json]]" or the header of a defaults table; "# or: key = value" is a setting that
+    # replaces another in its table, so it is counted here but left commented when the example's
+    # tables are loaded uncommented (test_config).
     setting = re.compile(
-        r"^# (?:or: )?(\[\[device\]\]|\[\[sources\.imports\]\]"
+        r"^# (?:or: )?(\[\[device\]\]|\[\[sources\.(?:imports|json)\]\]"
         r"|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]|[a-z_]+ = .+)$"
     )
     lines = [m.group(1) if (m := setting.match(line)) else line for line in text.splitlines()]
@@ -254,9 +255,17 @@ class CollectorAgreesTest(unittest.TestCase):
             t["table"][8:] for t in S["tables"] if any(s["key"] == "secret" for s in t["settings"])
         }
         self.assertEqual(with_secret, set(kinds.SECTIONS) | set(kinds.LISTS))
-        # A list's entry names its provider, of the list's kind, and has no default one.
+        # A list's entry names its provider, of the list's kind, and has no default one; a check
+        # of [[sources.json]] is compiled into a provider of its own.
         for name, kind in kinds.LISTS.items():
             table = f"sources.{name}"
+            self.assertTrue(schema.TABLES[table]["many"], table)
+            self.assertFalse(any(s["editable"] for s in schema.settings(table)), table)
+            if kind == "check":
+                keys = {s["key"] for s in schema.settings(table)}
+                self.assertNotIn("from", keys)
+                self.assertNotIn("check", kinds.KINDS, "no provider file can name the check kind")
+                continue
             chosen = schema.setting(table, "from")
             self.assertEqual((chosen["values_from"], chosen["kind"]), ("providers", kind))
             self.assertIsNone(chosen["default"], table)

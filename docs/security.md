@@ -130,6 +130,17 @@ of `[[sources.imports]]` given a `secret` of its own, such as a second Sonarr's:
 credential is. An entry reads the address it names with the credential it names, as a section
 does, and the list is set in `config.toml` alone: the admin page shows it and cannot change it.
 
+A generic check of `[[sources.json]]` reads the one address its entry gives, whole, through the
+engine with its rules: one GET, no redirect followed, no proxy, the reply cut at 4 MiB and read
+within `http_timeout_s`, and the request held to a provider file's rules (no user name or password
+in the address, and none of the headers a provider file cannot set). Its one header takes its
+value from `.env` by name, `KNIGHTWATCHER_<SECRET>_HEADER`, which reaches the collector only once
+`compose.override.yaml` names it; the value is never written to the state file, the memory file or
+a log, is scrubbed from every message as every credential is, and `--probe` and `--record` show
+the header by name with its value masked. The check writes only its own words, and the value it
+read where its `detail` asks for it, cleaned and cut to 60 characters: what a check shows on a
+wall is what its entry chose to show. The list is set in `config.toml` alone.
+
 ## The server's privileges
 
 The bundled server ([server.md](./server.md)) serves the page and `state.json`, keeps the

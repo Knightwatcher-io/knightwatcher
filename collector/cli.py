@@ -100,8 +100,9 @@ def _record(folder: str, name: str, source, exchanges: list, values: dict, now) 
     """The exchanges of a probe, written to a file of their own; each credential value replaced by
     its field's name wherever it appears, in a reply or an error as well as in a request (a
     service may echo a request's address back), as written or percent-encoded, and the address
-    by the setting's name."""
-    base = source.settings["url"].rstrip("/")
+    by the setting's name. A check's address is its url's scheme, host and port, so that its
+    path and query are kept in the recording."""
+    base = source.provider_settings["url"].rstrip("/")
     forms = []
     for field, value in values.items():
         if not value:
@@ -230,6 +231,9 @@ def _probe(config, name: str, record: str | None) -> int:
     print(json.dumps(_mask(fill), ensure_ascii=False, indent=1))
     print("facts:")
     print(json.dumps(_mask(reading.facts), ensure_ascii=False, indent=1))
+    if source.kind.name == "check":
+        holds = "holds" if reading.data["holds"] else "does not hold"
+        print(f"test: {settings['test']} {holds}")
     return 0
 
 

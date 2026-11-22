@@ -163,12 +163,42 @@ and `sources` the parts come from are shown:
 }
 ```
 
+A generic check of `[[sources.json]]` that holds, a NAS's disk over 70 degrees, borrowing the
+scene of `cpu_hot`. Its entry names the condition it borrows in `as` and has that condition's
+level; its source is `json:nas-temp`. Only that source is shown:
+
+```json
+{
+  "schema": 1,
+  "generated_at": "2026-01-16T21:31:10Z",
+  "interval_s": 10,
+  "conditions": [
+    {
+      "id": "check:nas-temp",
+      "as": "cpu_hot",
+      "level": "warning",
+      "since": "2026-01-16T21:30:02Z",
+      "headline": "NAS HOT",
+      "detail": "disk at 71 C"
+    }
+  ],
+  "quiet_line": "ALL QUIET · 29 up · backup 03:12 · 11.3k ads blocked",
+  "events": [],
+  "facts": {},
+  "sources": {
+    "json:nas-temp": { "ok": true, "at": "2026-01-16T21:31:02Z", "error": "" }
+  },
+  "defaults": { "look": {}, "display": {}, "quiet": {}, "scenes": {} }
+}
+```
+
 ## Fields
 
 - **`schema`** is `1`. A page that meets a number it does not know shows NO SIGNAL once it has had
   a valid file; see [page.md](./page.md). Fields added later without changing it, such as
   `quiet_parts`, an event's `parts` and `facts.streams.sessions`, are optional: a page from before them ignores them, and a
-  file from a collector before them lacks them.
+  file from a collector before them lacks them. So are the conditions `check:<name>`, which a
+  page from before them skips as ids it does not know.
 - **`generated_at`** and **`interval_s`**: when the file was written and how often it should be,
   the collector's real interval (10 seconds by default). The page treats the file as stale once
   it is older than three intervals, and says so on screen.
@@ -179,11 +209,20 @@ and `sources` the parts come from are shown:
   counts the rest. An empty list means all is quiet.
   - `id` is one of: `attack`, `wan_down`, `container_unhealthy`, `disk_full`, `backup_overdue`,
     `pi_silent`, `device_down`, `cpu_hot`, `memory_tight`, `ssh_session`, `updating`, `streaming`,
-    `night`. The page ignores an id it does not know.
+    `night`; or `check:<name>` for a generic check of `[[sources.json]]` that holds, `<name>` 1 to
+    20 of `a-z`, `0-9` and `-`, starting with a letter or digit. The page ignores an id it does
+    not know, so a page from before the checks shows none of them.
+  - `as` is on a check alone: the condition it borrows, any of those ids but `device_down`. The
+    page acts the check as that condition, in its scene and with its knight, but with the check's
+    own words, and never with the facts tied to that condition (the streams, the pie's dish, the
+    place a device stands in). A check has the level of the condition it borrows and comes
+    straight after it, checks in the order of `config.toml`
+    ([configuration.md](./configuration.md#generic-checks)).
   - `level` is `critical`, `warning`, `work`, `quiet` or `sleep`. It sets the text colour.
   - `since` is when the cause began, as a UTC timestamp. For `cpu_hot` and `memory_tight` that is
     the start of the averaging window at the poll that raised it.
-  - `headline` is at most 16 characters, in capitals. `detail` is at most 60 characters.
+  - `headline` is at most 16 characters, in capitals. `detail` is at most 60 characters. A
+    check's are its own, its `{value}` filled with what it read.
   - `devices` is on `device_down` alone, and says which devices are down: one or more
     positions in `facts.devices.list`, counted from 0, in the order their silences began. The page
     finds each one as `facts.devices.list[i]`. Where an entry stands in the scene depends on its
@@ -292,7 +331,9 @@ and `sources` the parts come from are shown:
   slow read is still running or the source is paused after refused credentials. Each device
   has an entry of its own, `device:<name>`, and the Pi of `[sources.pi]` keeps `pi`; so does each
   entry of `[[sources.imports]]`, `imports:<name>`, whose new imports are `import` events like
-  those of `sonarr`, `radarr` and `lidarr`. A device's
+  those of `sonarr`, `radarr` and `lidarr`, and each check of `[[sources.json]]`, `json:<name>`,
+  which fails when its address cannot be read or its path finds nothing, its check then not
+  raised. A device's
   check that ran but got no answer is `ok: true`, since the check worked; its `ok` is
   false only while its first check is still running (`first read still running`) and when a
   check ran out of time (`timed out`, then `previous read still running` while it hangs on).

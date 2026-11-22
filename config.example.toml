@@ -178,6 +178,30 @@ secret = "lidarr"            # reads KNIGHTWATCHER_LIDARR_API_KEY; one crate for
 # verify_tls = true          # with an https url, whether its certificate is checked
 # enabled = true
 
+# Generic checks, each a [[sources.json]] table: one value read from a JSON reply and tested. A
+# check that holds raises check:<name>, which the display acts as the condition named in `as`,
+# with the check's own words. Each is the source json:<name>. Set them here; the admin page lists
+# them. Remove the "# " before each line to use one.
+
+# A disk temperature from a NAS's status page, shown in the yard as cpu_hot is. The header's value
+# reads a variable no built-in provider names, which reaches the collector only when
+# compose.override.yaml names it in the collector's environment (docs/configuration.md).
+# [[sources.json]]
+# name = "nas-temp"          # 1 to 20 of a-z, 0-9 and -
+# url = "http://192.0.2.40:8080/api/status"   # the whole address, with its path and query
+# path = "$.disks[0].temp_c" # where the value is, as provider files write paths
+# test = "above"             # equals, above, below, contains or missing
+# value = 70                 # what it is compared with; not with missing
+# headline = "NAS HOT"       # 1 to 16 characters, shown in capitals
+# detail = "disk at {value} C"   # up to 60 characters; {value} is what the path found
+# as = "cpu_hot"             # any condition but device_down, and one in conditions.priority
+# every_s = 60               # 10 to 3600
+# for_s = 0                  # how long the test must hold first
+# header = "X-Api-Key"       # optional: one header, its value from .env
+# secret = "nas"             # with header: reads KNIGHTWATCHER_NAS_HEADER; else the name, - as _
+# verify_tls = true          # with an https url, whether its certificate is checked
+# enabled = true
+
 # The household defaults for the display's settings screen. Every display starts from these; a
 # choice made on a wall's settings screen or the admin page is saved over them, for the whole
 # deployment. A setting left out takes the page's own default. Remove the "# " before a table and

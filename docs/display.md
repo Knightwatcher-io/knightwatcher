@@ -26,6 +26,12 @@ hides the review bar and drives the display:
   the table in [design.md](./design.md), its `level` the text colour (critical red, warning
   amber, work blue, quiet green, sleep dim green), and its `headline` and `detail` the words. An
   id the page does not know is skipped and plays no part in the badge.
+- A generic check, `check:<name>` with the condition it borrows in `as`, is acted as that
+  condition: the same scene (or the one `[scenes]` and the settings choose for it), the same state
+  of the knight and the same rank, under the check's own words and level. It never takes what is
+  tied to the condition it borrows: one acted as `streaming` keeps its own detail, turns on no
+  television and raises no streams' badge, and one acted as `pi_silent` leaves the pie in its
+  dish. A check whose `as` is `device_down`, or a condition the page does not know, is skipped.
 - The "+N MORE" badge counts the other known conditions at warning or critical, and turns red
   when any of them is critical.
 - While `streaming` is shown, the detail line takes each stream in `facts.streams.sessions` in
@@ -773,3 +779,5 @@ something.
 before the collector. A new page reads files from an old collector and from a new one, while an
 old page skips what it does not know: a page from before devices ignores `facts.devices` and
 `device_down`, so behind a new collector it would show nothing when a watched machine goes down.
+A page from before the generic checks skips a `check:<name>` condition in the same way, and shows
+the next condition it knows, or the quiet scene.

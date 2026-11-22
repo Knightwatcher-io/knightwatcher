@@ -11,6 +11,12 @@ Devices are judged apart, each by its own watch: a check that ran out of time co
 silence for them, since a machine that cannot answer in time has not answered. `pi_silent` and
 `device_down` are raised from the watches. `pi_silent` keeps the rule it had before there were
 devices: raised once the Pi has not answered at every poll for `for_s`.
+
+The generic checks of [[sources.json]] each raise a condition of their own, `check:<name>`, while
+their test holds on what their source read (collector/kinds/check.py), once it has held for their
+`for_s`. Each borrows another condition (`as`): it takes that condition's level, sits straight
+after it in the priority, checks in their order in config.toml, and its entry in the state file
+names it in `as` beside the check's own words.
 """
 
 from __future__ import annotations
@@ -23,7 +29,7 @@ from typing import Any
 
 from collector import text
 from collector.config import Config
-from collector.kinds import streams
+from collector.kinds import check, kind_of, streams
 from collector.sources import Reading
 
 log = logging.getLogger("collector")
@@ -67,6 +73,9 @@ OTHER_KIND_WORD = "DOWN"
 FIRST_READ = "first read still running"
 # What makes a device the same device across a change of configuration.
 _CHECK_KEYS = ("kind", "host", "ports", "url", "refused_counts", "verify_tls", "legacy")
+# What makes a generic check the same check across a change: what it reads, how it tests it, and
+# what it borrows. A change of its words or of for_s keeps its state.
+_SAME_CHECK = ("url", "path", "test", "value", "header", "secret", "verify_tls", "as")
 
 
 class Tracker:
@@ -218,6 +227,9 @@ class Conditions:
         # reading. None until the first reading.
         self.ssh_seen: dict[tuple[str, int], dt.datetime | None] | None = None
         self.causes: dict[str, Cause] = {}
+        # The generic checks, by their condition's id, check:<name>, in config.toml's order.
+        self.checks: dict[str, dict] = {}
+        self._take_checks(config)
 
     def reconfigure(self, config: Config) -> None:
         """Take up a new configuration between polls, keeping what is known.
@@ -238,6 +250,7 @@ class Conditions:
             self.trackers[cid].clear_after_s = clear
         self.trackers["wan_down"].for_reads = c["wan_down"]["failed_checks"]
         self.trackers["pi_silent"].for_s = c["pi_silent"]["for_s"]
+        self._take_checks(config)
         old = {w.device["source"]: w for w in self.watches}
         watches = []
         for i, t in enumerate(config.devices):
@@ -266,7 +279,48 @@ class Conditions:
             show = config.sources["streams"]["show"] if "streams" in config.sources else "count"
             held.context = streams.shown(held.context, show)
 
+    def _take_checks(self, config: Config) -> None:
+        """The generic checks of a configuration. A check keeps its state while what it reads,
+        tests and borrows stays the same, taking up a new for_s and words; one changed or added
+        starts afresh, and one taken away is forgotten."""
+        clear = config.conditions["clear_after_s"]
+        checks: dict[str, dict] = {}
+        for name, settings in config.sources.items():
+            if kind_of(name) != "check":
+                continue
+            cid = f"check:{settings['name']}"
+            checks[cid] = {"source": name, "settings": settings}
+            held = self.checks.get(cid)
+            same = held is not None and all(held["settings"][k] == settings[k] for k in _SAME_CHECK)
+            if not same:
+                self.trackers[cid] = Tracker(clear_after_s=clear)
+                self.causes.pop(cid, None)
+            self.trackers[cid].for_s = settings["for_s"]
+            self.trackers[cid].clear_after_s = clear
+        for cid in self.checks:
+            if cid not in checks:
+                self.trackers.pop(cid, None)
+                self.causes.pop(cid, None)
+        self.checks = checks
+
+    def order(self) -> list[str]:
+        """The conditions judged, highest first: the priority list, each condition followed by
+        the checks that borrow it, in config.toml's order."""
+        out = []
+        for cid in self.priority:
+            out.append(cid)
+            out += [k for k, c in self.checks.items() if c["settings"]["as"] == cid]
+        return out
+
     # Causes -----------------------------------------------------------------------------------
+
+    def _check(self, cid: str, r) -> Cause:
+        """A generic check's cause: its test held at its source's last read. A read that failed,
+        or has not finished, counts as the test failing."""
+        d = _data(r, self.checks[cid]["source"])
+        if d is None:
+            return Cause(False)
+        return Cause(bool(d["holds"]), context=d["value"])
 
     def _attack(self, r, now) -> Cause:
         d = _data(r, "security")
@@ -416,6 +470,8 @@ class Conditions:
 
     def _words(self, cid: str, cause: Cause, since: dt.datetime, now: dt.datetime):
         ctx = cause.context
+        if cid in self.checks:
+            return check.words(self.checks[cid]["settings"], ctx)
         held = text.duration((now - since).total_seconds())
         if cid == "attack":
             jail = ctx["last_jail"] if ctx.get("jail_ban") else ""
@@ -519,9 +575,12 @@ class Conditions:
             self.started = now
         self.watch(readings, status or {}, now)
         out = []
-        for cid in self.priority:
+        for cid in self.order():
             try:
-                cause = getattr(self, f"_{cid}")(readings, now)
+                if cid in self.checks:
+                    cause = self._check(cid, readings)
+                else:
+                    cause = getattr(self, f"_{cid}")(readings, now)
             except Exception:
                 log.exception("condition %s could not be judged", cid)
                 cause = Cause(False)
@@ -546,13 +605,17 @@ class Conditions:
             shown = self.causes[cid]
             since = tracker.since or now
             head, det = self._words(cid, shown, since, now)
-            entry = {
-                "id": cid,
-                "level": LEVELS[cid],
-                "since": text.iso(since),
-                "headline": text.headline(head),
-                "detail": text.detail(det),
-            }
+            borrowed = self.checks[cid]["settings"]["as"] if cid in self.checks else None
+            entry = {"id": cid}
+            if borrowed is not None:
+                # A check is acted as the condition it borrows, and takes its level.
+                entry["as"] = borrowed
+            entry.update(
+                level=LEVELS[borrowed or cid],
+                since=text.iso(since),
+                headline=text.headline(head),
+                detail=text.detail(det),
+            )
             if cid == "device_down":
                 # Where the page finds the devices: their positions in facts.devices.list.
                 entry["devices"] = [d["index"] for d in shown.context]

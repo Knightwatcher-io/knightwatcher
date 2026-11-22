@@ -149,8 +149,9 @@
   const subOf = t => (t.id === 'streaming' && t.streams ? ST.streamWords(t.streams, streamClock()).line || t.sub : t.sub);
   let capTimer = 0, lastShow = null; if (freeze) cap.style.transition = 'none';
   KW.ui = {
-    /* t: { st, hl, sub, quiet, more: { n, crit } }, and with a condition shown its id, the streams
-       the file reports (KW.state.map's streams) and behind, whether streaming is up behind it.
+    /* t: { st, hl, sub, quiet, more: { n, crit } }, and with a condition shown its id, the file's
+       own (check:<name> for a check acted as streaming, whose detail is its own), the streams the
+       file reports (KW.state.map's streams) and behind, whether streaming is up behind it.
        With no headline the screen is quiet and shows the quiet line instead of the detail. */
     show(t) {
       lastShow = t;
@@ -224,7 +225,7 @@
   /* Shows a valid view's state; its events are played separately. */
   function showLive(v) {
     E.input = Object.assign({ w: v.w || ST.IDLE, is: 'auto', turnMs: LIVE_TURN_MS, devices: v.devices, tv: v.tv, helmet: S.h }, KW.ui.extras(LIVE_TURN_MS));
-    showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more, id: v.w.id, streams: v.streams, behind: v.streamsBehind }
+    showOnce(v.w ? { st: v.w.st, hl: v.w.hl, sub: v.w.sub, quiet: '', more: v.more, id: v.w.file, streams: v.streams, behind: v.streamsBehind }
       : { st: 'ok', hl: '', sub: '', quiet: quietOf(v), more: { n: 0, crit: false } });
   }
   function onView(v) {

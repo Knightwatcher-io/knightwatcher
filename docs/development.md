@@ -22,7 +22,8 @@ collector/           the collector: Python, standard library only (overlay.py re
                      page's admin.json and lays it over config.toml, reload.py takes up a change
                      between polls)
   sources/           one module per source, and KindSource for the sections read through a kind
-  kinds/             one module per kind: the shape of a sort of reading, its facts and events
+  kinds/             one module per kind: the shape of a sort of reading, its facts and events;
+                     check.py compiles each [[sources.json]] entry into a provider of its own
   providers/         the engine that runs provider files, the path syntax, the format's checks,
                      the reading of the providers folder, and the code adapters (fail2ban.py)
     builtin/         the built-in provider files, one for each service

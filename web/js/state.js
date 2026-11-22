@@ -27,6 +27,14 @@
     night:               { lv: 1, level: 'sleep',    scene: 'house' }
   };
 
+  /* A generic check's condition: check:<name>, which the page acts as the condition its entry
+     names in as (any but device_down, which needs devices to look towards), with the check's own
+     words. */
+  const CHECK_ID = /^check:[a-z0-9][a-z0-9-]{0,19}$/;
+  const isCheck = c => CHECK_ID.test(str(c.id)) && has(CONDITIONS, c.as) && c.as !== 'device_down';
+  /* Whether the page knows a condition of the file: one of CONDITIONS, or a check it can act. */
+  const knownCondition = c => isObj(c) && (has(CONDITIONS, c.id) || isCheck(c));
+
   /* What each event type plays: flies, or one of the engine's events. */
   const EVENTS = { ad_blocked: 'flies', ip_banned: 'goblin', import: 'crate', backup_done: 'feast' };
 
@@ -115,10 +123,14 @@
   }
 
   /* The engine's record of one condition: its id, lv and scene from the table above, its colour
-     from the file's level (or the design's when the file has none), and the file's words. */
+     from the file's level (or the design's when the file has none), and the file's words. file is
+     the file's own id. A check is acted as the condition it borrows: its id, lv and scene are that
+     condition's, and file is check:<name>, which is what the places that read facts tied to a
+     condition test, so that a check never empties the pie's dish, turns on the television or takes
+     the streams' detail. */
   function condition(c) {
-    const k = CONDITIONS[c.id], level = has(LEVELS, c.level) ? c.level : k.level;
-    return { id: c.id, lv: k.lv, level, st: LEVELS[level], scene: k.scene, hl: str(c.headline), sub: str(c.detail) };
+    const id = isCheck(c) ? c.as : c.id, k = CONDITIONS[id], level = has(LEVELS, c.level) ? c.level : k.level;
+    return { id, file: c.id, lv: k.lv, level, st: LEVELS[level], scene: k.scene, hl: str(c.headline), sub: str(c.detail) };
   }
 
   /* The class of place a kind stands in: the first Pi's pie has its own place, a camera is
@@ -154,7 +166,7 @@
     const sec = facts.devices;
     if (isObj(sec) && Array.isArray(sec.list)) return arrange(sec.list);
     const piUp = isObj(facts.pi) ? facts.pi.up : undefined;
-    return { devices: [{ place: 'pie', kind: 'pi', ok: piUp !== false && !known.some(c => c.id === 'pi_silent'), alert: true }], at: [] };
+    return { devices: [{ place: 'pie', kind: 'pi', ok: piUp !== false && !known.some(c => c.file === 'pi_silent'), alert: true }], at: [] };
   }
 
   /* The place the knight looks towards for device_down: that of the first position among those
@@ -178,9 +190,11 @@
   /* Turns a parsed state file into what the page shows, at the time nowMs.
      Returns ok false with a problem ('malformed', 'schema' or 'stale') when the page must not act
      on the file, and generatedAt (ms) whenever the file says when it was written. Otherwise:
-       w          the first condition with a known id, or null when there is none. For
-                  device_down it also carries place, the name of the place the knight looks
-                  towards, or null (see lookPlace)
+       w          the first condition with a known id, or a check the page can act, or null
+                  when there is none: { id, file, lv, level, st, scene, hl, sub }, id the condition
+                  acted and file the file's own id, check:<name> for a check. For device_down it
+                  also carries place, the name of the place the knight looks towards, or null (see
+                  lookPlace)
        more       { n, crit }: the other known conditions at warning or critical, and whether any
                   of them is critical
        streams    the streams the file reports, { n, sessions } (see streamsOf), or null
@@ -209,13 +223,13 @@
     const ageS = (nowMs - generatedAt) / 1000;
     if (ageS > 3 * interval) return { ok: false, problem: 'stale', generatedAt, ageS };
 
-    const raw = (Array.isArray(file.conditions) ? file.conditions : []).filter(c => isObj(c) && has(CONDITIONS, c.id));
+    const raw = (Array.isArray(file.conditions) ? file.conditions : []).filter(knownCondition);
     const known = raw.map(condition);
     const rest = known.slice(1).filter(c => c.level === 'warning' || c.level === 'critical');
     const facts = isObj(file.facts) ? file.facts : {};
     const streams = isObj(facts.streams) ? facts.streams.count : 0, drawn = placed(facts, known);
     let w = known[0] || null;
-    if (w && w.id === 'device_down') w = Object.assign(w, { place: lookPlace(raw[0].devices, drawn.at) });
+    if (w && w.file === 'device_down') w = Object.assign(w, { place: lookPlace(raw[0].devices, drawn.at) });
 
     const events = [];
     let maxSeq = null;
@@ -231,10 +245,10 @@
     return {
       ok: true, problem: '', generatedAt, ageS, w,
       more: { n: rest.length, crit: rest.some(c => c.level === 'critical') },
-      streams: streamsOf(facts.streams), streamsBehind: known.slice(1).some(c => c.id === 'streaming'),
+      streams: streamsOf(facts.streams), streamsBehind: known.slice(1).some(c => c.file === 'streaming'),
       quietLine: str(file.quiet_line), quietParts: quietParts(file.quiet_parts),
       devices: drawn.devices,
-      tv: (typeof streams === 'number' && streams > 0) || known.some(c => c.id === 'streaming'),
+      tv: (typeof streams === 'number' && streams > 0) || known.some(c => c.file === 'streaming'),
       events, maxSeq, intervalS: interval,
       defaults: isObj(file.defaults) ? file.defaults : null,
       sources: isObj(file.sources) ? Object.keys(file.sources).filter(k => isObj(file.sources[k])).map(k => {

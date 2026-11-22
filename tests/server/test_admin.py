@@ -886,6 +886,77 @@ class ImportsListTest(AdminCase):
         self.assertNotIn("imports", tomllib.loads(text)["sources"])
 
 
+class ChecksListTest(AdminCase):
+    """[[sources.json]] is set in config.toml alone, as [[sources.imports]] is: the page is given
+    it, cannot set it, every change is checked with it, and the export keeps it, value and all."""
+
+    ENTRIES = (
+        '\n[[sources.json]]\nname = "nas-temp"\nurl = "http://192.0.2.40:8080/api/status"\n'
+        'path = "$.disks[0].temp_c"\ntest = "above"\nvalue = 70.5\nheadline = "NAS HOT"\n'
+        'detail = "disk at {value} C"\nas = "cpu_hot"\nheader = "X-Api-Key"\nsecret = "nas"\n'
+        '\n[[sources.json]]\nname = "raid"\nurl = "http://192.0.2.40:8080/api/raid"\n'
+        'path = "$.state"\ntest = "equals"\nvalue = "degraded"\nheadline = "RAID"\n'
+        'as = "disk_full"\n'
+    )
+
+    def setUp(self):
+        super().setUp()
+        self.cookie = self.s.sign_in()
+        with open(self.s.config_path, "a", encoding="utf-8") as fh:
+            fh.write(self.ENTRIES)
+
+    def patch(self, payload):
+        return self.s.json_call("PATCH", "/api/admin/settings", payload, self.cookie)
+
+    def credentials(self, **extra):
+        with open(os.path.join(self.s.out, "credentials.json"), "w", encoding="utf-8") as fh:
+            json.dump({**CREDENTIALS, **extra}, fh)
+
+    def test_the_page_is_given_the_list_and_cannot_set_it(self):
+        body = self.s.json_call("GET", "/api/admin/settings", cookie=self.cookie)[2]
+        self.assertEqual(
+            [(e["name"], e["as"]) for e in body["file"]["sources"]["json"]],
+            [("nas-temp", "cpu_hot"), ("raid", "disk_full")],
+        )
+        status, _, body = self.patch({"set": {"sources.json.headline": "X"}})
+        self.assertEqual(status, 400)
+        self.assertEqual(body["problems"], ["sources.json.headline: not set on the admin page"])
+
+    def test_a_change_is_checked_with_the_list(self):
+        self.credentials()
+        status, _, body = self.patch({"set": {"collector.interval_s": 15}})
+        self.assertEqual(status, 400)
+        self.assertEqual(
+            body["problems"], [".env: KNIGHTWATCHER_NAS_HEADER missing (for json:nas-temp)"]
+        )
+        self.credentials(KNIGHTWATCHER_NAS_HEADER=True)
+        status, _, body = self.patch({"set": {"collector.interval_s": 15}})
+        self.assertEqual(status, 200, body)
+        # A priority set here that leaves out a condition a check borrows is refused.
+        priority = [c for c in config.CONDITION_IDS if c != "disk_full"]
+        status, _, body = self.patch({"set": {"conditions.priority": priority}})
+        self.assertEqual(status, 400)
+        self.assertEqual(
+            body["problems"],
+            [
+                'sources.json[1].as: conditions.priority leaves out "disk_full", so this check '
+                "would never be raised; add it there, or borrow another"
+            ],
+        )
+
+    def test_the_export_keeps_the_list(self):
+        text = self.s.json_call("GET", "/api/admin/export", cookie=self.cookie)[2].decode("utf-8")
+        self.assertIn('[[sources.json]]\nname = "nas-temp"\n', text)
+        raw = tomllib.loads(text)
+        self.assertEqual(
+            raw["sources"]["json"], tomllib.loads(CONFIG + self.ENTRIES)["sources"]["json"]
+        )
+        env = {"KNIGHTWATCHER_NAS_HEADER": "an-invented-header"}
+        c = config.build(raw, env)
+        self.assertEqual(c.sources["json:nas-temp"]["value"], 70.5)
+        self.assertEqual(c.secret("json:nas-temp"), {"header": "an-invented-header"})
+
+
 class PageTest(unittest.TestCase):
     def test_the_admin_page_is_served_at_admin_and_stamped_with_the_rest(self):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

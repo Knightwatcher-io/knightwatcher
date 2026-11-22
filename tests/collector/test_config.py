@@ -1016,10 +1016,10 @@ class LoadTest(unittest.TestCase):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         with open(os.path.join(root, "config.example.toml"), encoding="utf-8") as fh:
             example = fh.read()
-        # A commented setting is "# key = value", "# [[device]]", "# [[sources.imports]]" or the
-        # header of a defaults table; a commented note is not.
+        # A commented setting is "# key = value", "# [[device]]", "# [[sources.imports]]",
+        # "# [[sources.json]]" or the header of a defaults table; a commented note is not.
         setting = re.compile(
-            r"^# (\[\[device\]\]|\[\[sources\.imports\]\]"
+            r"^# (\[\[device\]\]|\[\[sources\.(?:imports|json)\]\]"
             r"|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]|[a-z_]+ = .+)$"
         )
         lines = [
@@ -1029,8 +1029,12 @@ class LoadTest(unittest.TestCase):
         env = read_env_file(os.path.join(root, ".env.example"))
         # The second Sonarr reads a variable of its own, which .env.example does not list.
         env["KNIGHTWATCHER_SONARR_4K_API_KEY"] = "an-invented-key"
+        # So does the check's header.
+        env["KNIGHTWATCHER_NAS_HEADER"] = "an-invented-header"
         c = load(cfg, env)
         self.assertEqual(c.sources["imports:sonarr-4k"]["from"], "sonarr")
+        self.assertEqual(c.sources["json:nas-temp"]["as"], "cpu_hot")
+        self.assertEqual(c.secret("json:nas-temp"), {"header": "an-invented-header"})
         self.assertEqual(c.secret("imports:sonarr-4k"), {"api_key": "an-invented-key"})
         self.assertEqual(
             [t["name"] for t in c.devices], ["Pi", "Vault", "Gate cam", "Study laptop"]
