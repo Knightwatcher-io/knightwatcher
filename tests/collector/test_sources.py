@@ -289,7 +289,7 @@ class SshTest(unittest.TestCase):
             # established on another port
             "   4: 0300000A:01BB 0A0200C0:C73B 01 0 0 0\n",
         ]
-        self.proc.write("net/tcp", FakeProc.TCP_HEADER + "".join(rows))
+        self.proc.write("1/net/tcp", FakeProc.TCP_HEADER + "".join(rows))
         raw = {"collector": {"proc_root": self.proc.root}}
         s = source(SshSource, "ssh", {"port": 22}, raw)
         r = s.fetch(T0)
@@ -305,9 +305,9 @@ class SshTest(unittest.TestCase):
             "   0: 0300000A:0016 0A0200C0:C738 01 0 0 0\n",
             "   1: 0300000A:0016 0A0200C0:C740 01 0 0 0\n",
         ]
-        self.proc.write("net/tcp", FakeProc.TCP_HEADER + "".join(rows))
+        self.proc.write("1/net/tcp", FakeProc.TCP_HEADER + "".join(rows))
         tcp6 = "   0: 0000000000000000FFFF0000057100CB:0016 B80D0120000000000000000001000000:C741"
-        self.proc.write("net/tcp6", FakeProc.TCP_HEADER + tcp6 + " 01 0 0 0\n")
+        self.proc.write("1/net/tcp6", FakeProc.TCP_HEADER + tcp6 + " 01 0 0 0\n")
         raw = {"collector": {"proc_root": self.proc.root}}
         r = source(SshSource, "ssh", {"port": 22}, raw).fetch(T0)
         self.assertEqual(r.facts, {"count": 3, "sources": ["192.0.2.10", "2001:db8::1"]})

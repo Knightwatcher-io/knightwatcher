@@ -1,8 +1,10 @@
 """Open SSH sessions: established TCP connections to the SSH port, from the host's own table.
 
-The container shares the host's network namespace, so /proc/net/tcp is the host's table. Each
-connection is reported by its remote address and port in `data`, so that the ssh_session
-condition can tell a new session from one already open.
+The table is read from the host's /proc as /proc/1/net/tcp, the network namespace of the host's
+first process. /proc/net resolves through /proc/self, the reader's own namespace, which is the
+host's only while the container shares the host's network; /proc/1/net is the host's either
+way. Each connection is reported by its remote address and port in `data`, so that the
+ssh_session condition can tell a new session from one already open.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ ESTABLISHED = "01"
 
 
 def decode_address(hex_addr: str) -> str:
-    """Turn the hex form in /proc/net/tcp{,6} into an address string."""
+    """Turn the hex form in /proc/1/net/tcp{,6} into an address string."""
     raw = bytes.fromhex(hex_addr)
     # The kernel prints each 32-bit word in host byte order.
     words = [
@@ -57,7 +59,7 @@ class SshSource(Source):
 
     def __init__(self, settings, config):
         super().__init__(settings, config)
-        self.net = os.path.join(config.collector["proc_root"], "net")
+        self.net = os.path.join(config.collector["proc_root"], "1", "net")
         self.ignore = [ipaddress.ip_network(n, strict=False) for n in settings["ignore_sources"]]
 
     def _kept(self, addr: str) -> bool:
