@@ -1221,13 +1221,14 @@ class FillTest(unittest.TestCase):
                 "lidarr": "imports",
             },
         )
-        self.assertEqual(LISTS, {"imports": "imports"})
+        self.assertEqual(LISTS, {"imports": "imports", "json": "check"})
         self.assertEqual(provider_of("streams", {"from": "tautulli"}), "tautulli")
         self.assertEqual(provider_of("sonarr", {}), "sonarr")
         self.assertEqual(provider_of("imports:sonarr-4k", {"from": "sonarr"}), "sonarr")
         self.assertEqual(kind_of("lidarr"), "imports")
         self.assertEqual(kind_of("imports:sonarr-4k"), "imports")
-        for name in ("host", "device:Vault", "json:nas", "imports"):
+        self.assertEqual(kind_of("json:nas"), "check")
+        for name in ("host", "device:Vault", "check:nas", "imports", "json"):
             self.assertIsNone(kind_of(name), name)
 
     def test_a_kind_reads_the_time_it_is_given(self):

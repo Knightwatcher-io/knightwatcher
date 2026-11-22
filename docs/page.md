@@ -120,7 +120,7 @@ the interface.
 
 | Field | Meaning |
 |---|---|
-| `w` | the winning condition: `{ id, lv, st, scene, hl, sub }`, or the idle one with id `idle` |
+| `w` | the winning condition: `{ id, file, lv, st, scene, hl, sub }`, or the idle one with id `idle`. `id` is the condition acted, and `file` the state file's own id: the same, but for a generic check, whose `id` is the condition it borrows and whose `file` is `check:<name>`. A scene reads `id` alone, so a check plays exactly as the condition it borrows |
 | `devices` | the devices standing in the places, each `{ place, kind, ok, alert }` with `place` the name of one of the scene's places |
 | `places` | the scene's `places` |
 | `tv` | whether the television is on |
@@ -266,7 +266,8 @@ The headline, the detail, the "+N MORE" badge, the streams' badge, the quiet lin
 the clock are HTML text over the canvas, in VT323. `KW.ui.show` and `KW.ui.caption` in `main.js`
 write them with `textContent`, never as markup. The headline, the detail and the badge are the
 collector's words as they come. The detail of `streaming` and the streams' badge are worded on the
-page from `facts.streams`, by `KW.state.streamWords(streams, nowMs)` alone, in the collector's own
+page from `facts.streams` (`streaming` by the file's own id, so a check acted as `streaming` keeps
+its own detail and raises no badge), by `KW.state.streamWords(streams, nowMs)` alone, in the collector's own
 words and to its own rule (`line()` in `collector/kinds/streams.py`); no world words them yet,
 and `KW.ui.streamTick`, called each second with the clock, moves the line on. The quiet line and the captions are the world's: `KW.state.map` keeps the collector's
 `quiet_parts` and each event's `type` and `parts` beside its text, and `main.js` passes them to
@@ -311,7 +312,8 @@ page does not judge. `alert` is true only for `alert === true`.
 **The fallback.** When `facts.devices` is absent, `null` or not an object with a `list` array (a
 collector from before devices), `devices` is the pie alone in its place,
 `{ place: 'pie', kind: 'pi', ok, alert: true }`, with `ok` false while `facts.pi.up === false` or a
-`pi_silent` condition is in the list, as before there were devices. A file with a devices list
+`pi_silent` condition is in the list, as before there were devices; a check acted as `pi_silent`
+is not one. A file with a devices list
 takes the pie's state from the list alone, so the pie leaves its dish when the Pi is judged down
 and not at the first missed check.
 

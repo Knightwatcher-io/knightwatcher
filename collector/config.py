@@ -22,6 +22,10 @@ A list of tables under [sources], [[sources.imports]], holds more sources read t
 entry is the source "imports:<name>", with a name of its own and a `from` it must give, checked as
 a section is and named by its place (sources.imports[0]) in its problems. Its name is never a
 section's, and two enabled sources that read one provider at one address are refused.
+[[sources.json]] holds the generic checks: each entry is the source "json:<name>", one value read
+from a JSON reply and tested, compiled into a provider of the check kind (collector/kinds/check.py)
+rather than naming one. It borrows the scene of a condition (`as`), which must be in the priority
+list, and its one header, if it has one, reads its value from KNIGHTWATCHER_<SECRET>_HEADER.
 Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>, where SECRET is
 the source's `secret` setting, the provider's id unless it is set; no message ever carries a
 credential's value.
@@ -67,6 +71,16 @@ LIST_DEFAULTS: dict[str, dict[str, Any]] = {
 LIST_MAX: dict[str, int] = {name: schema.TABLES[f"sources.{name}"]["max"] for name in LISTS}
 # An entry's name: 1 to 20 of a-z, 0-9 and -, starting with a letter or digit.
 _ENTRY_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,19}$")
+
+# [[sources.json]]: the generic checks. Their settings are checked here rather than through a
+# provider, since each entry is compiled into a provider of its own.
+_CHECK = {s["key"]: s for s in schema.settings("sources.json")}
+CHECK_TESTS = tuple(_CHECK["test"]["values"])
+# The conditions a check may borrow: every one but device_down, which needs the positions of
+# devices that a check does not have.
+CHECK_BORROWS = tuple(_CHECK["as"]["values"])
+CHECK_HEADLINE_MAX = 16
+CHECK_DETAIL_MAX = 60
 
 # Settings a source cannot run without.
 REQUIRED = {
@@ -445,7 +459,10 @@ def _chosen(section: str, settings: dict, registry):
 
 def _section_credentials(section: str, settings: dict, registry) -> list[str]:
     """The credential fields a section's provider needs; none when it reads no provider, or names
-    one that is not of its kind, which is a problem of its own."""
+    one that is not of its kind, which is a problem of its own. A check needs its header's value,
+    when it has a header."""
+    if kind_of(section) == "check":
+        return ["header"] if settings.get("header") else []
     spec = _chosen(section, settings, registry)
     return list(spec.credentials) if spec is not None else []
 
@@ -963,6 +980,148 @@ def _list_entries(
     return out, places
 
 
+def _check_entries(raw: Any, problems: list[str]) -> tuple[dict[str, dict], dict[str, str]]:
+    """[[sources.json]], checked as far as an entry stands alone: (every enabled entry as the
+    source "json:<name>", with its defaults filled in; where each is set, sources.json[0]). Every
+    entry, on or off, needs a name of its own; the rest of an enabled one is checked after the
+    merge, by _validate_check."""
+    out: dict[str, dict] = {}
+    places: dict[str, str] = {}
+    table = "sources.json"
+    if not isinstance(raw, list) or not all(isinstance(t, dict) for t in raw):
+        problems.append(f"{table}: expected [[{table}]] tables")
+        return out, places
+    if len(raw) > LIST_MAX["json"]:
+        problems.append(f"{table}: at most {LIST_MAX['json']}")
+    named: dict[str, int] = {}
+    for i, given in enumerate(raw):
+        w = f"{table}[{i}]"
+        entry = given.get("name")
+        if "name" not in given:
+            problems.append(f"{w}.name: required")
+            continue
+        if not isinstance(entry, str) or not _ENTRY_NAME.match(entry):
+            problems.append(f"{w}.name: 1 to 20 of a-z, 0-9 and -, starting with a letter or digit")
+            continue
+        if entry in named:
+            problems.append(f'{w}.name: "{entry}" is already the name of {table}[{named[entry]}]')
+            continue
+        named[entry] = i
+        # value takes text, a number, or true or false, which a merge by the default's type
+        # cannot hold; it is checked with the test it goes with.
+        rest = {k: v for k, v in given.items() if k != "value"}
+        merged = _merge(w, LIST_DEFAULTS["json"], rest, problems)
+        merged["value"] = given.get("value")
+        if "secret" not in given:
+            # A secret left out is the check's name, its - made _.
+            merged["secret"] = entry.replace("-", "_")
+        elif not given.get("header") and merged["enabled"] is True:
+            problems.append(f"{w}.secret: only applies with header")
+        if merged["enabled"] is True:
+            out[f"json:{entry}"] = merged
+            places[f"json:{entry}"] = w
+    return out, places
+
+
+def _check_url_problem(url: Any) -> str | None:
+    """What is wrong with a check's url, given whole, or None: a web address a provider file's
+    request can make, its path and query included."""
+    why = _url_problem(url)
+    if why:
+        return why
+    parts = urllib.parse.urlsplit(url)
+    if "#" in url:
+        return "must not carry a fragment (#)"
+    path = parts.path
+    if path.startswith("//"):
+        return "not a valid web address"
+    if "@" in path or "\\" in path:
+        return "its path cannot hold @ or \\"
+    names = [k for k, _ in urllib.parse.parse_qsl(parts.query, keep_blank_values=True)]
+    if len(names) != len(set(names)):
+        return "its query gives a name twice; give each once"
+    return None
+
+
+def _validate_check(w: str, s: dict, priority: list[str], problems: list[str]) -> None:
+    """One enabled entry of [[sources.json]], named in its problems by its place, w."""
+    from collector.kinds import check
+    from collector.providers.format import _HEADER_NAME, _HEADERS_REFUSED, FormatError
+    from collector.providers.path import PathError, compile_path
+
+    before = len(problems)
+    _check_ranges(w, s, "sources.json", problems)
+    for key in ("url", "path", "test", "headline", "as"):
+        if not s[key]:
+            problems.append(f"{w}.{key}: required")
+    if s["url"]:
+        why = _check_url_problem(s["url"])
+        if why:
+            problems.append(f"{w}.url: {why}")
+        elif s["verify_tls"] is False and s["url"].startswith("http://"):
+            problems.append(f"{w}.verify_tls: only applies with an https url")
+    if s["path"]:
+        try:
+            compile_path(s["path"])
+        except PathError as exc:
+            problems.append(f"{w}.path: {exc}")
+    test, value = s["test"], s["value"]
+    if test:
+        _choice(f"{w}.test", test, CHECK_TESTS, problems)
+    if test == "missing":
+        if value is not None:
+            problems.append(f"{w}.value: not used with missing, which holds when nothing is found")
+    elif test in CHECK_TESTS:
+        number = isinstance(value, (int, float)) and not isinstance(value, bool)
+        if value is None:
+            problems.append(f"{w}.value: required with {test}")
+        elif test in ("above", "below") and not number:
+            problems.append(f"{w}.value: a number, for {test}")
+        elif not (number or isinstance(value, (str, bool))):
+            problems.append(f"{w}.value: text, a number, or true or false")
+    headline = s["headline"]
+    if headline and (
+        len(headline) > CHECK_HEADLINE_MAX or not headline.isprintable() or not headline.strip()
+    ):
+        problems.append(f"{w}.headline: 1 to {CHECK_HEADLINE_MAX} printable characters")
+    detail = s["detail"]
+    if len(detail) > CHECK_DETAIL_MAX or not detail.isprintable():
+        problems.append(f"{w}.detail: at most {CHECK_DETAIL_MAX} printable characters")
+    elif "{" in detail.replace(check.VALUE, "") or "}" in detail.replace(check.VALUE, ""):
+        problems.append(f"{w}.detail: only {check.VALUE} may stand in braces")
+    elif check.VALUE in detail and test == "missing":
+        problems.append(
+            f"{w}.detail: {check.VALUE} cannot be used with missing, which finds nothing"
+        )
+    borrowed = s["as"]
+    if borrowed == "device_down":
+        problems.append(
+            f'{w}.as: "device_down" cannot be borrowed, since a check has no device to look towards'
+        )
+    elif borrowed:
+        _choice(f"{w}.as", borrowed, CHECK_BORROWS, problems)
+        if borrowed in CHECK_BORROWS and borrowed not in priority:
+            problems.append(
+                f'{w}.as: conditions.priority leaves out "{borrowed}", so this check would never '
+                "be raised; add it there, or borrow another"
+            )
+    header = s["header"]
+    if header:
+        low = header.lower()
+        if not _HEADER_NAME.match(header):
+            problems.append(f"{w}.header: a header's name is letters, digits and -")
+        elif low in _HEADERS_REFUSED or low.startswith("proxy-"):
+            problems.append(f"{w}.header: this header cannot be set")
+        if not _SECRET_NAME.match(s["secret"]):
+            problems.append(f"{w}.secret: use letters, digits and underscores")
+    if len(problems) == before:
+        # The rules of a provider file's request, which an entry that passed should always keep.
+        try:
+            check.compile_entry(s)
+        except FormatError as exc:
+            problems += [f"{w}: {p}" for p in exc.problems]
+
+
 def _same_service(sources: dict[str, dict], places: dict[str, str], problems: list[str]) -> None:
     """Two enabled sources of one kind that read one provider at one address would raise every
     event twice: the second is refused, an entry of a list rather than a section."""
@@ -971,7 +1130,8 @@ def _same_service(sources: dict[str, dict], places: dict[str, str], problems: li
     for name in sorted(sources, key=lambda n: n in places):
         s = sources[name]
         kind = kind_of(name)
-        address = _address(s.get("url")) if kind else None
+        # Checks are read whole, path and test, so two may well read one address.
+        address = _address(s.get("url")) if kind and kind != "check" else None
         if address is None or not s.get("url"):
             continue
         key = (kind, provider_of(name, s), address)
@@ -1014,6 +1174,11 @@ def build(
     sources: dict[str, dict] = {}
     places: dict[str, str] = {}
     for name, given in raw.get("sources", {}).items():
+        if name == "json":
+            entries, where = _check_entries(given, problems)
+            sources.update(entries)
+            places.update(where)
+            continue
         if name in LISTS:
             entries, where = _list_entries(name, given, registry, problems)
             sources.update(entries)
@@ -1041,7 +1206,10 @@ def build(
         _validate_collector(collector, problems)
         _validate_conditions(conditions, problems)
         for name, s in sources.items():
-            _validate_source(name, s, problems, registry, places.get(name))
+            if kind_of(name) == "check":
+                _validate_check(places[name], s, conditions["priority"], problems)
+            else:
+                _validate_source(name, s, problems, registry, places.get(name))
         _same_service(sources, places, problems)
     devices = _devices(raw.get("device"), sources, conditions, problems)
     defaults = _defaults(raw, problems)

@@ -76,7 +76,8 @@ page's list is reset. A source that `config.toml` does not set up can be set up 
 gets a table of its own there. The folders (`output_dir`, `state_dir`, `proc_root`,
 `providers_dir`), the backup log's path and each source's `secret` are set in `config.toml` alone,
 since they follow what `compose.yaml` mounts and passes, and so are the settings a provider file
-of your own declares and the entries of `[[sources.imports]]`, which the page lists.
+of your own declares and the entries of `[[sources.imports]]` and `[[sources.json]]`, which the
+page lists.
 
 The admin page's Download config.toml writes every setting as the collector uses it into one
 `config.toml`, comments included and credentials left out, to keep what was set there in the file.
@@ -102,7 +103,10 @@ and `SECRET` is the source's `secret` setting, which is the provider's id unless
 `plex`, `adguard`, `pihole`, `technitium`, `sonarr`, `radarr` or `lidarr`. A source given
 `secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and a source reading a
 provider file of your own with the id `myflix` and a `token` reads `KNIGHTWATCHER_MYFLIX_TOKEN`.
-The same holds for each entry of `[[sources.imports]]` ([More imports](#more-imports)).
+The same holds for each entry of `[[sources.imports]]` ([More imports](#more-imports)). A check of
+`[[sources.json]]` with a `header` reads that header's value from `KNIGHTWATCHER_<SECRET>_HEADER`,
+its `secret` being the check's name with each `-` made `_` unless set
+([Generic checks](#generic-checks)).
 
 The collector's container gets only the variables `compose.yaml` names, so a name of your own must
 be named for it as well. Put it in `compose.override.yaml` beside `compose.yaml` (ignored by git,
@@ -185,7 +189,8 @@ config: sources.streams.from: provider myflix refused, as above
 ```
 
 An entry of `[[sources.imports]]` is named by its place in the list:
-`config: sources.imports[0].from: provider shelf refused, as above`.
+`config: sources.imports[0].from: provider shelf refused, as above`, and so is a check of
+`[[sources.json]]`: `config: sources.json[0].path: unexpected ".." at character 2`.
 
 The problems of a file no section names are printed as warnings, and the exit stays 0:
 
@@ -509,6 +514,27 @@ More services whose imports are read, each a [[sources.imports]] table under [so
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. Only with an https url. |
 | `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. |
 
+### [[sources.json]]
+
+Generic checks, each a [[sources.json]] table under [sources] in config.toml: one value read from a JSON reply and tested. A check that holds raises a condition of its own, check:<name>, which the display acts as the condition it borrows (as), in that condition's scene and colour, with the check's own words. There can be 16. Each is a source of its own, json:<name> in the state file, read at its own pace; one whose address cannot be read is failing, and its check is not raised. Set in config.toml alone; the admin page lists them.
+
+| Key | Values | Default | Scope | What it does |
+|---|---|---|---|---|
+| `name` | 1 to 20 of a-z, 0-9 and -, starting with a letter or digit | required | household | The check's own name: json:<name> among the sources and check:<name> among the conditions of the state file. Unique among the checks. |
+| `url` | an http:// or https:// address, given whole | required | household | The whole address read, path and query included, with one GET and no redirect followed. No user name or password in it, no fragment, and each name of its query once. |
+| `path` | a JSONPath of the subset docs/providers.md describes | required | household | Where the value is in the reply, such as $.disks[0].temp_c. The first value it finds is tested. For every test but missing, a path that finds nothing, or null, or an object or a list where a value is needed, fails the read. |
+| `test` | `"equals"`, `"above"`, `"below"`, `"contains"` or `"missing"` | required | household | When the check holds. equals: the value equals value (numbers by number, text exactly, true and false as themselves). above and below: the value is a number, or text holding a decimal number, greater or less than value. contains: the value is text holding value, case kept, or a list with an element equal to value. missing: the path finds nothing, or null. |
+| `value` | text, a number, or true or false; a number for above and below | none; required by every test but missing | household | What the test compares the value found with. Not used with missing. |
+| `headline` | 1 to 16 printable characters | required | household | The headline while the check holds, shown in capitals. |
+| `detail` | at most 60 printable characters | `""` | household | The line under the headline. {value} in it is the value found, cleaned and cut to fit, a number as the collector writes it and true or false as themselves; no other braces. Not {value} with missing. |
+| `as` | `"attack"`, `"wan_down"`, `"container_unhealthy"`, `"disk_full"`, `"backup_overdue"`, `"pi_silent"`, `"cpu_hot"`, `"memory_tight"`, `"ssh_session"`, `"updating"`, `"streaming"` or `"night"` | required | household | The condition whose scene, knight and colour the check borrows; any but device_down, which needs devices to look towards. The check takes that condition's level and sits straight after it in the priority, checks in their order here. The condition must be in conditions.priority, or the check is refused, since it would never be raised. The scene [scenes] chooses for that condition is the check's too. |
+| `every_s` | a whole number of seconds, from 10 to 3600 | `60` | household | How often the address is read. |
+| `for_s` | a whole number of seconds, from 0 to 86400 | `0` | household | How long the test must hold before the check is raised. It clears once the test has failed for conditions.clear_after_s, as every condition does; a read that fails counts as the test failing. |
+| `header` | a header's name: letters, digits and - | none | household | One header sent with the request, such as X-Api-Key or Authorization, its value read from .env as KNIGHTWATCHER_<SECRET>_HEADER and never written anywhere. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header. |
+| `secret` | letters, digits and underscores | the check's name, each - made _ | household | With header: the name its value is read under in .env, KNIGHTWATCHER_<SECRET>_HEADER, in capitals. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. Only with header. |
+| `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. Only with an https url. |
+| `enabled` | `true` or `false` | `true` | household | Whether the check is read. Off (false) keeps the table for when it is turned on again. |
+
 ### [[device]]
 
 Machines on the network to watch, each a [[device]] table at the top level of config.toml. There can be 32, the Pi of [sources.pi] included. A device has exactly one check: an address with one or more ports (host with port or ports), or a web address (url).
@@ -733,6 +759,94 @@ service whose certificate is self-signed, as a Pi-hole's or a NAS's usually is; 
 still encrypted, but nothing proves it reaches the service named, so a credential sent over it is
 only as safe as the network between. It is refused with an `http` `url`
 (`sources.adblock.verify_tls: only applies with an https url`), where it would do nothing.
+
+### Generic checks
+
+`[[sources.json]]` watches anything that answers in JSON, without a provider: each entry reads one
+value at an address, tests it, and while the test holds raises a condition of its own,
+`check:<name>`. The display acts it as a condition you choose, in that condition's scene, with the
+check's own words. Each entry is a table of its own, at most 16, and a source of its own,
+`json:<name>`:
+
+```toml
+[[sources.json]]
+name = "nas-temp"                          # the source json:nas-temp, the condition check:nas-temp
+url = "http://192.0.2.40:8080/api/status"  # the whole address, http:// or https://
+path = "$.disks[0].temp_c"                 # where the value is in the reply
+test = "above"                             # equals, above, below, contains or missing
+value = 70                                 # not with missing
+headline = "NAS HOT"                       # 1 to 16 characters, shown in capitals
+detail = "disk at {value} C"               # up to 60 characters; {value} is what the path found
+as = "cpu_hot"                             # the condition whose scene it borrows
+every_s = 60                               # 10 to 3600, default 60
+for_s = 0                                  # how long the test must hold first, default 0
+header = "X-Api-Key"                       # optional
+secret = "nas"                             # with header: reads KNIGHTWATCHER_NAS_HEADER
+
+[[sources.json]]
+name = "raid"
+url = "http://192.0.2.40:8080/api/raid?pool=tank"
+path = "$.state"
+test = "equals"
+value = "degraded"
+headline = "RAID DEGRADED"
+detail = "pool tank is {value}"
+as = "disk_full"
+```
+
+- **The read.** `url` is the whole address, path and query included, read with one GET by the
+  same engine that runs provider files ([providers.md](./providers.md)), with its limits: no
+  redirect followed, no proxy, the reply cut at 4 MiB, `http_timeout_s`, and `User-Agent:
+  knightwatcher` with `Accept: application/json`. It is refused with a user name or password in
+  it, a fragment (`#`), an `@` or `\` in its path, or a name its query gives twice.
+- **`path`** is a path of the subset provider files use
+  ([The path syntax](./providers.md#the-path-syntax)), and the first value it finds is tested.
+- **The tests.** `equals`: the value equals `value`, numbers by number, text exactly, `true` and
+  `false` as themselves. `above` and `below`: the value is a number, or text holding a decimal
+  number (`"71.5"`), greater or less than `value`, which must be a number. `contains`: the value
+  is text holding `value`, case kept, or a list with an element equal to it. `missing`: the path
+  finds nothing, or `null`; it takes no `value`.
+- **When the read fails.** For every test but `missing`, a path that finds nothing or `null`
+  fails the read (`nothing at $.disks[0].temp_c`), and so does an object, or a list where
+  `contains` is not the test (`an object at $.disks, where a value is needed`), so that a wrong
+  path shows as the source failing rather than as all well. A read that fails for any reason, the
+  address down included, counts as the test failing, as for every source: the check is not
+  raised, and `json:<name>` in the state file's `sources` says why. Watching that a machine
+  answers is what [devices](#devices) are for.
+- **The words.** `headline` is shown in capitals; `detail` may hold `{value}`, the value found
+  with its control characters made spaces and cut to fit, a number as the collector writes it
+  (`71`, `71.5`) and `true` or `false` as themselves. For a list that `contains` the value it is
+  the element found. `{value}` is refused with `missing`, and no other braces are allowed.
+- **`as`** names the condition whose scene, knight, colour and level the check borrows: any but
+  `device_down`, which needs devices to look towards. The check comes straight after that
+  condition in the priority, checks in their order in `config.toml`, and the condition must be in
+  `conditions.priority`, or the check is refused, since it would never be raised:
+  `sources.json[0].as: conditions.priority leaves out "cpu_hot", so this check would never be
+  raised; add it there, or borrow another`. The scene `[scenes]` or a display's settings choose
+  for that condition is the check's too. A check borrows the look alone, never the facts: one
+  acted as `streaming` does not turn on the television, one acted as `pi_silent` leaves the pie's
+  dish, and one acted as `attack` raises no `attack`.
+- **Holding and clearing.** The check is raised once its test has held for `for_s`, and clears
+  once it has failed for `conditions.clear_after_s`, its last words standing meanwhile, as every
+  condition does. Changing its words or `for_s` keeps it raised; changing what it reads, its test,
+  its `value` or `as` starts it afresh.
+- **`header`**, when given, is one header sent with the request, such as `X-Api-Key` or
+  `Authorization`, its value read from `.env` as `KNIGHTWATCHER_<SECRET>_HEADER` and never written
+  anywhere: not in the state file, the memory file, the status page, nor what `--probe` and
+  `--record` print. `secret` is the check's name with each `-` made `_` unless set, so
+  `nas-temp` reads `KNIGHTWATCHER_NAS_TEMP_HEADER`; it is refused without a `header`. No built-in
+  provider names that variable, so it reaches the collector only when `compose.override.yaml`
+  names it ([.env](#env-host-paths-the-servers-address-and-credentials) has the snippet). For
+  `Authorization`, the variable holds the whole value, `Bearer <token>` for instance. `Host`,
+  `Cookie`, `Connection`, `Content-Length`, `Transfer-Encoding`, `User-Agent` and `Proxy-` headers
+  are refused.
+- **Its name** is 1 to 20 of `a-z`, `0-9` and `-`, starting with a letter or digit, unique among
+  the checks, and is what `--probe` takes (`--probe json:nas-temp`, which prints the value masked
+  and whether the test holds). An entry that is off needs only its name.
+
+The admin page lists the checks with what each reads, the condition it acts as, its words and how
+it is doing, but they are set in `config.toml` alone; its Download config.toml writes them as the
+file has them.
 
 ### Plex Media Server
 

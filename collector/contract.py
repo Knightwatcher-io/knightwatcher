@@ -40,6 +40,10 @@ _DEVICE_NAME = re.compile(r"^[!-~](?:[ -~]{0,18}[!-~])?$")
 _TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 # The version of admin.json: 20 hex characters (collector/overlay.py).
 _VERSION = re.compile(r"^[0-9a-f]{20}$")
+# A generic check's condition: check:<name>, the name as [[sources.json]] allows it.
+_CHECK_ID = re.compile(r"^check:[a-z0-9][a-z0-9-]{0,19}$")
+# The conditions a check may borrow, in `as`: every one but device_down.
+BORROWS = [cid for cid in CONDITION_IDS if cid != "device_down"]
 
 
 def _ts(value: Any) -> bool:
@@ -200,8 +204,14 @@ def validate(state: Any) -> list[str]:
         if not isinstance(c, dict):
             p.append(f"{w} is not an object")
             continue
-        if c.get("id") not in CONDITION_IDS:
+        cid = c.get("id")
+        is_check = isinstance(cid, str) and bool(_CHECK_ID.match(cid))
+        if cid not in CONDITION_IDS and not is_check:
             p.append(f"{w}.id is unknown")
+        if is_check and c.get("as") not in BORROWS:
+            p.append(f"{w}.as is not a condition a check may borrow")
+        elif cid in CONDITION_IDS and "as" in c:
+            p.append(f"{w}.as is on a condition that is not a check")
         if c.get("level") not in LEVELS:
             p.append(f"{w}.level is unknown")
         if not _ts(c.get("since")):

@@ -144,6 +144,34 @@ that shows the cause (`attack`, `disk_full`, `backup_overdue`, `ssh_session`, `u
   fresh read of the `wan` source, so a poll that reuses the last reading does not count, and two
   checks are 30 seconds apart at the default pace.
 - `cpu_hot` and `memory_tight` are judged on averages, below.
+- A generic check, `check:<name>`, needs its test to have held for its own `for_s` (none by
+  default); see [Generic checks](#generic-checks).
+
+### Generic checks
+
+Each entry of `[[sources.json]]` ([configuration.md](./configuration.md#generic-checks)) is a
+source of its own, `json:<name>`, read at its own pace through the check kind
+(`collector/kinds/check.py`): the entry is compiled in memory into a provider file of one GET to
+its address, which the engine runs as any other ([Kinds and providers](#kinds-and-providers)). Its
+reading says whether its test holds on the value its path found. A path that finds nothing, or
+`null`, or an object or a list where a value is needed, fails the read for every test but
+`missing`.
+
+While the test holds, the check raises a condition of its own, `check:<name>`, through a tracker
+of its own with its `for_s` and the common `clear_after_s`. A read that fails, the address
+unreachable included, counts as the cause absent, as for every source. The condition borrows
+another (`as`, any but `device_down`): it takes that condition's level, and sits straight after it
+in the order the conditions are judged and written, checks in their order in `config.toml`, so a
+check never outranks the condition it borrows. `config.toml` refuses a check whose borrowed
+condition is left out of `conditions.priority`. Its words are its own: `headline` in capitals, cut
+to 16, and `detail` with `{value}` filled by the value found (cleaned and cut, a number as Python
+writes it, `true` and `false` as themselves), the whole cut to 60. Its entry in `conditions` names
+the borrowed condition in `as`. A check reads nothing of what the borrowed condition reads, so one
+acted as `attack` leaves `facts.security.attack` alone.
+
+When a change is taken up, a check whose address, path, test, `value`, header and `as` stay the
+same keeps its state, taking up new words and a new `for_s`; any other change starts it afresh,
+and a check taken away is forgotten.
 
 ### CPU and memory
 
@@ -364,6 +392,7 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `security` | the security kind, `kinds/security.py`, through its `from` provider, `fail2ban` (`providers/fail2ban.py`) by default | the `bans` table of fail2ban's SQLite database, read-only | `security` |
 | `sonarr`, `radarr`, `lidarr` | the imports kind, `kinds/imports.py`, through the provider of each one's name | the last ten import records in each one's history; for Lidarr, its album records alone (`eventType=8`), so an album is one import | none |
 | `imports:<name>` | the imports kind, through the provider its entry of `[[sources.imports]]` names | as its provider reads | none |
+| `json:<name>` | the check kind, `kinds/check.py`, through the provider its entry of `[[sources.json]]` is compiled into | one `GET` to the entry's address, and the first value its path finds | none; the condition `check:<name>` |
 | `device:<name>` | `devices.py` | a TCP connection to every port at once, or one `GET` to a web address | none; `devices` is built from the conditions |
 
 Modules are in `collector/sources/` unless the table says otherwise.
@@ -402,11 +431,15 @@ a file fail2ban replaces is read afresh.
 | `[sources.security]` | security | `fail2ban` by default, or a file of the user's own | `fail2ban` (a code adapter) |
 | `[sources.sonarr]`, `[sources.radarr]`, `[sources.lidarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr`, `lidarr` |
 | each entry of `[[sources.imports]]` | imports | required, any provider of the kind, a file of the user's own included | `sonarr`, `radarr`, `lidarr` |
+| each entry of `[[sources.json]]` | check | none: the entry is compiled into a provider of its own | none |
 
-An entry of a list of tables under `[sources]` is the source `<list>:<name>`, `imports:sonarr-4k`:
-that is its key in the state file's `sources`, in the memory file and in `--probe`, and the
-problems of its settings name its place, `sources.imports[0]`. `LISTS` in `collector/kinds/` names
-the lists and the kind each reads, and `kind_of()` gives the kind of any source.
+An entry of a list of tables under `[sources]` is the source `<list>:<name>`, `imports:sonarr-4k`
+or `json:nas-temp`: that is its key in the state file's `sources`, in the memory file and in
+`--probe`, and the problems of its settings name its place, `sources.imports[0]`. `LISTS` in
+`collector/kinds/` names the lists and the kind each reads, and `kind_of()` gives the kind of any
+source. A kind gives the provider a source reads with `provider_spec()`: the one its `from` or its
+name names, or for the check kind, the entry compiled, with its `url` cut to the scheme, host and
+port the compiled path is appended to.
 
 To the runner each of these sections is a source like any other (`KindSource` in
 `collector/sources/__init__.py`), with the same pace, time limit, back-off and status entry. One
@@ -505,17 +538,19 @@ python3 -m collector                    # poll until stopped
 ```
 
 `--probe <source>` reads one source read through a provider (`streams`, `adblock`, `security`,
-`sonarr`, `radarr` or `lidarr`, or an entry of `[[sources.imports]]` by its source's name,
-`imports:<name>`) once, with the settings in use, and prints the provider's fill and the facts the kind
-would write with every text replaced by its type and length (`<string 21>`), so that a provider is
+`sonarr`, `radarr` or `lidarr`, or an entry of `[[sources.imports]]` or `[[sources.json]]` by its
+source's name, `imports:<name>` or `json:<name>`) once, with the settings in use, and prints the
+provider's fill and the facts the kind
+would write with every text replaced by its type and length (`<string 21>`), and for a check
+whether its test holds (`test: above holds`), so that a provider is
 proved against a live service without anyone reading what is being watched. It writes nothing of
 the collector's own, and a source the running collector has paused after refused credentials is
 not read until the pause ends. Run it in the container, where the credentials come from `.env`
 through compose: `docker compose run --rm collector --probe streams`. On the host, `--env-file
 PATH` takes the credentials from a `.env` file instead of the environment, so a probe can run with
 a config of its own without the wall's container or its config. `--record FOLDER` also writes the
-exchanges to a file in that folder (named after the source, `imports-<name>-` for an entry of the
-list), mode 600, each credential replaced by its field's name wherever
+exchanges to a file in that folder (named after the source, `imports-<name>-` or `json-<name>-`
+for an entry of a list, a check's path and query kept and its header's value masked), mode 600, each credential replaced by its field's name wherever
 it appears, as written or percent-encoded, in a reply or an error as well as in the request; the
 replies in it are the service's own, private, and never committed as they are. A
 section whose provider is a file that was left out is not read: the probe prints the file's

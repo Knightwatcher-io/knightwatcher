@@ -139,7 +139,12 @@ three are set in `config.toml` ([configuration.md](./configuration.md#fail2bans-
 entries of `[[sources.imports]]` ([configuration.md](./configuration.md#more-imports)) are listed
 below the sources, read-only: each with its name and source (`imports:<name>`), the provider and
 address it reads, whether it is reading or failing, and the credential variables it reads; they are
-set in `config.toml` alone, and every change made on the page is still checked with them.
+set in `config.toml` alone, and every change made on the page is still checked with them. The
+checks of `[[sources.json]]` ([configuration.md](./configuration.md#generic-checks)) are listed
+the same way: each with its name and source (`json:<name>`), its path, test and address, whether
+it is reading or failing, the condition it acts as, its words and its pace, and its header's
+variable when it has a header; a priority set on the page that leaves out a condition a check
+borrows is refused, as `config.toml` would be.
 Download config.toml writes a setting
 the chosen provider does not use as a comment, and the list's entries as `config.toml` has them. The page itself is described in
 [display.md](./display.md#the-admin-page).
@@ -205,7 +210,7 @@ A path is a setting's table and key, as `check-config` names them: `collector.in
 list of devices: set here, each replaces `config.toml`'s whole. A path into a source that
 `config.toml` does not set up creates its table. Only the collector's settings that the schema
 marks editable can be set; the folders, `proc_root`, the backup log, each source's `secret` and
-every setting of `[[sources.imports]]` are fixed (`sources.imports.url: not set on the admin page`), and the look, display, quiet scenes and scenes are set through `PUT /api/settings`, as the
+every setting of `[[sources.imports]]` and `[[sources.json]]` are fixed (`sources.imports.url: not set on the admin page`), and the look, display, quiet scenes and scenes are set through `PUT /api/settings`, as the
 walls set them.
 
 ### The check before a change is kept

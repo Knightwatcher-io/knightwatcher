@@ -478,14 +478,17 @@
     return c;
   }
   /* ---- A list of tables under [sources], read-only ----------------------------------------- */
-  /* Its entries as config.toml has them, and the sources the enabled ones are: imports:<name>. */
+  /* Its entries as config.toml has them, and the sources the enabled ones are: imports:<name>, or
+     json:<name> for a check. */
   const entriesOf = list => { const e = (file().sources || {})[list]; return Array.isArray(e) ? e.filter(x => x && typeof x === 'object' && !Array.isArray(x)) : []; };
   const listSources = () => LISTS.flatMap(l => entriesOf(l).filter(e => e.enabled !== false && typeof e.name === 'string').map(e => l + ':' + e.name));
   function listCard(l) {
     const t = TABLES['sources.' + l], entries = entriesOf(l), spec = k => SPEC['sources.' + l + '.' + k];
     const c = card(groupOf(t.settings[0].gui.admin.section), '[[sources.' + l + ']]', t.help);
-    if (!entries.length) c.appendChild(rich('p', 'ghelp', 'None in config.toml. Each is a `[[sources.' + l + ']]` table there, with a `name`, a `from` and a `url`; config.example.toml has one.'));
+    const checks = l === 'json';
+    if (!entries.length) c.appendChild(rich('p', 'ghelp', 'None in config.toml. Each is a `[[sources.' + l + ']]` table there, with ' + (checks ? 'a `name`, a `url`, a `path`, a `test`, a `headline` and the condition it acts as, `as`' : 'a `name`, a `from` and a `url`') + '; config.example.toml has one.'));
     for (const e of entries) {
+      if (checks) { c.appendChild(checkRow(l, e, spec)); continue; }
       const name = typeof e.name === 'string' ? e.name : '?', src = l + ':' + name, on = e.enabled !== false;
       const r = el('div', 'row'), lab = el('div', 'lab');
       lab.appendChild(el('b', '', name)); lab.appendChild(el('code', '', src)); r.appendChild(lab);
@@ -506,6 +509,31 @@
       c.appendChild(r);
     }
     return c;
+  }
+  /* One check of [[sources.json]]: what it reads and tests, the condition it acts as, its words,
+     and its source's state; its header's variable, when it has a header. */
+  const testWords = { equals: 'equals', above: 'is above', below: 'is below', contains: 'contains', missing: 'is missing' };
+  function checkRow(l, e, spec) {
+    const name = typeof e.name === 'string' ? e.name : '?', src = l + ':' + name, on = e.enabled !== false;
+    const r = el('div', 'row'), lab = el('div', 'lab');
+    lab.appendChild(el('b', '', name)); lab.appendChild(el('code', '', src)); r.appendChild(lab);
+    const ctl = el('div', 'ctl'), line = el('div', 'line');
+    const test = testWords[e.test] || String(e.test), value = e.test === 'missing' || e.value === undefined ? '' : ' ' + JSON.stringify(e.value);
+    line.appendChild(el('span', 'ro', (typeof e.path === 'string' ? e.path : '?') + ' ' + test + value + ' at ' + (typeof e.url === 'string' ? e.url : '?')));
+    const stt = status() && status().sources[src];
+    if (!on) line.appendChild(el('span', 'tag off', 'Off'));
+    else if (!stt) line.appendChild(el('span', 'tag', 'Not read yet'));
+    else line.appendChild(el('span', 'tag ' + (stt.ok ? 'ok' : 'bad'), stt.ok ? 'Reading, last read at ' + clockOf(stt.at) : 'Failing: ' + (stt.error || 'no reason given')));
+    const secret = typeof e.secret === 'string' && e.secret ? e.secret : name.replace(/-/g, '_');
+    if (typeof e.header === 'string' && e.header) line.appendChild(credTag(varOf(secret, 'header'), on));
+    ctl.appendChild(line);
+    const as = COND[e.as] ? COND[e.as].name + ' (' + e.as + ')' : String(e.as);
+    const every = typeof e.every_s === 'number' ? e.every_s : spec('every_s').default, held = typeof e.for_s === 'number' && e.for_s ? ', once it has held for ' + e.for_s + ' seconds' : '';
+    const words = (typeof e.headline === 'string' ? e.headline.toUpperCase() : '') + (typeof e.detail === 'string' && e.detail ? ' · ' + e.detail : '');
+    ctl.appendChild(rich('p', 'help', 'Acts as ' + as + held + ', showing "' + words + '". Read every ' + every + ' seconds' + (e.verify_tls === false ? ', its certificate not checked' : '') + (e.header ? '. Its `' + e.header + '` header is read from .env under `' + secret + '`; one no built-in provider names reaches the collector only when compose.override.yaml names it' : '') + '.'));
+    r.appendChild(ctl);
+    const w = el('div', 'where'); w.appendChild(el('span', 'from file', 'config.toml')); r.appendChild(w);
+    return r;
   }
   function pageSources(m) { for (const n of SOURCES) m.appendChild(srcCard(n)); for (const l of LISTS) m.appendChild(listCard(l)); }
 

@@ -11,7 +11,9 @@ how to prove one against a live service, and where files of your own go. Choosin
 
 A **kind** is the fixed shape of one sort of reading. The kind owns everything after the service
 has answered: cleaning and cutting the words, the markers kept in the memory file, the events and
-the facts written to `state.json`. There are four, each a module in `collector/kinds/`.
+the facts written to `state.json`. There are four a provider file can fill, each a module in
+`collector/kinds/`, and a fifth, `check`, filled by the generic checks of `[[sources.json]]` alone
+([The check kind](#the-check-kind)).
 
 A **provider** fills a kind's shape from one service. A provider is a TOML file: the requests to
 make, the login, and paths into the JSON replies mapped onto the kind's fields. One engine,
@@ -123,6 +125,26 @@ the ban the attack's words name. A ban whose key it has not seen is new, and eac
 bans gives one `ip_banned` event naming the newest ([collector.md](./collector.md#attacks)). A
 lifted ban should leave the list, as fail2ban deletes its rows.
 
+### The check kind
+
+Each entry of `[[sources.json]]` ([configuration.md](./configuration.md#generic-checks)) is
+compiled in memory into a provider file of the check kind, by `collector/kinds/check.py`: one
+request to the entry's address, with `Accept: application/json` and the entry's one header, if
+it has one, filled from the credential `header`; and a fill of one field, `value`, from the
+entry's path. The engine runs it as any other file, under the same rules (the request's path,
+query and header are held to the rules below, with the address given whole), the same limits and
+the same error text, so a check can ask for no more than a provider file can. No provider file
+can name the check kind.
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `value` | raw | no | the first value the entry's path finds; absent when it finds nothing, or `null` |
+
+The kind has no facts and no events. It applies the entry's test to the value and hands the
+condition `check:<name>` whether the test holds and the value its words show. A value absent, an
+object, or a list where the test is not `contains` fails the read, except with `missing`, which
+holds exactly when the value is absent.
+
 ### imports
 
 | Field | Type | Required | Meaning |
@@ -201,7 +223,7 @@ try = ["{title}", "{full}"]
 |---|---|---|
 | `format` | yes | the format's version, 1 |
 | `id` | yes | 1 to 24 of `a` to `z`, `0` to `9` and `_`, starting with a letter; the file's name without `.toml`, and the default `secret` |
-| `kind` | yes | `streams`, `adblock`, `imports` or `security` |
+| `kind` | yes | `streams`, `adblock`, `imports` or `security`; `check` is for `[[sources.json]]` alone |
 | `name` | yes | what the admin page and messages call the service, up to 60 characters |
 | `docs` | no | the address of the API reference the file was written from |
 

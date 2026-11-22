@@ -20,8 +20,10 @@ one then required (adblock's rolling `blocked` count or its `recent` buckets).
 
 SECTIONS names the sections of config.toml that a kind reads, and LISTS the lists of tables whose
 every entry is read through a kind, each a source named "<list>:<name>" ([[sources.imports]]:
-imports:<name>); kind_of gives the kind of any of them. docs/providers.md describes the provider
-files that fill them.
+imports:<name>, and [[sources.json]]: json:<name>); kind_of gives the kind of any of them.
+docs/providers.md describes the provider files that fill them. The check kind is filled by the
+entries of [[sources.json]] alone, each compiled into a provider file of its own
+(collector/kinds/check.py), and a provider file cannot name it.
 """
 
 from __future__ import annotations
@@ -45,13 +47,17 @@ SECTIONS = {
 }
 
 # The lists of tables under [sources] whose entries are read through a kind, with the kind each
-# reads. Every entry names its provider in `from`, and is the source "<list>:<name>".
+# reads. Each entry is the source "<list>:<name>". An entry of [[sources.imports]] names its
+# provider in `from`; an entry of [[sources.json]] is compiled into a provider of its own.
 LISTS = {
     "imports": "imports",
+    "json": "check",
 }
 
-# Every kind, by name, with its module in this package.
+# The kinds a provider file may fill, by name, each with its module in this package.
 KINDS = ("streams", "adblock", "imports", "security")
+# Every kind: those, and the check kind of [[sources.json]].
+ALL_KINDS = (*KINDS, "check")
 
 
 def kind_of(source: str) -> str | None:
@@ -79,6 +85,11 @@ class Kind:
     #: The fill's declaration.
     FILL: dict[str, dict[str, Any]] = {}  # noqa: RUF012 - each kind's own, read only
 
+    def provider_spec(self, name: str, settings: dict[str, Any], registry) -> tuple[Any, dict]:
+        """The compiled file of the provider a source reads, from the providers its configuration
+        can name, and the settings that provider is made with: the source's own."""
+        return registry.get(provider_of(name, settings)), settings
+
     def allowed(self, settings: dict[str, Any]) -> frozenset[str]:
         """The fill's fields that may be read, by dotted name; every declared field by default."""
         return frozenset(_names(self.FILL))
@@ -92,7 +103,7 @@ class Kind:
 
 def kind_class(name: str) -> type[Kind]:
     """The class of a kind, by name."""
-    if name not in KINDS:
+    if name not in ALL_KINDS:
         raise KeyError(name)
     module = importlib.import_module(f"collector.kinds.{name}")
     return module.KIND

@@ -14,6 +14,8 @@ const BLOCKS = [...doc.matchAll(/```json\n([\s\S]*?)\n```/g)].map(m => JSON.pars
 const EXAMPLE = Object.assign(BLOCKS[0], { interval_s: 30 });
 // The second example in the docs: a NAS and a camera down, under one device_down.
 const DOWN = Object.assign(BLOCKS[1], { interval_s: 30 });
+// The fourth: a generic check that holds, acted as cpu_hot.
+const CHECK = Object.assign(BLOCKS[3], { interval_s: 30 });
 const GEN = Date.parse(EXAMPLE.generated_at);
 
 // A copy of the example with some fields replaced.
@@ -25,7 +27,7 @@ test('the example in docs/state.md maps to the unhealthy container in the house'
   const v = ST.map(EXAMPLE, at(10));
   assert.equal(v.ok, true);
   assert.equal(v.problem, '');
-  assert.deepEqual(v.w, { id: 'container_unhealthy', lv: 3, level: 'warning', st: 'warn', scene: 'house', hl: 'RADARR UNWELL', sub: 'unhealthy for 12 min · restarted twice' });
+  assert.deepEqual(v.w, { id: 'container_unhealthy', file: 'container_unhealthy', lv: 3, level: 'warning', st: 'warn', scene: 'house', hl: 'RADARR UNWELL', sub: 'unhealthy for 12 min · restarted twice' });
   assert.deepEqual(v.more, { n: 0, crit: false });
   assert.equal(v.quietLine, EXAMPLE.quiet_line);
   assert.deepEqual(v.devices, [
@@ -199,7 +201,7 @@ test('each field of an entry is read on its own, and only "down" draws a device 
 
 test('device_down from the docs: the quiet scene, the words, and the place the knight looks to', () => {
   const v = ST.map(DOWN, Date.parse(DOWN.generated_at));
-  assert.deepEqual(v.w, { id: 'device_down', lv: 3, level: 'warning', st: 'warn', scene: null, hl: '2 DOWN', sub: 'Vault, Gate cam', place: 'g1' });
+  assert.deepEqual(v.w, { id: 'device_down', file: 'device_down', lv: 3, level: 'warning', st: 'warn', scene: null, hl: '2 DOWN', sub: 'Vault, Gate cam', place: 'g1' });
   assert.deepEqual(v.devices, [
     { place: 'pie', kind: 'pi', ok: true, alert: true }, { place: 'g1', kind: 'machine', ok: false, alert: true },
     { place: 'h1', kind: 'camera', ok: false, alert: true }, { place: 'g2', kind: 'machine', ok: true, alert: false }]);
@@ -242,6 +244,55 @@ test('the dv= hook gives a list in the contract\'s shape, placed by the same rul
   const r = ST.arrange(ST.listFromHook('camera,pi,machine-,camera!'));
   assert.deepEqual(r.at, ['h1', 'pie', 'g1', 'h2']);
   assert.equal(ST.lookPlace([2, 3], r.at), 'g1');
+});
+
+test('a check from the docs is acted as the condition it borrows, with its own words', () => {
+  const v = ST.map(CHECK, Date.parse(CHECK.generated_at));
+  assert.equal(v.ok, true);
+  assert.deepEqual(v.w, { id: 'cpu_hot', file: 'check:nas-temp', lv: 3, level: 'warning', st: 'warn', scene: 'yard', hl: 'NAS HOT', sub: 'disk at 71 C' });
+  assert.deepEqual(v.more, { n: 0, crit: false });
+});
+
+test('a check borrows the scene and rank of any condition but device_down', () => {
+  const check = (as, over = {}) => Object.assign({ id: 'check:nas', as, level: ST.CONDITIONS[as] ? ST.CONDITIONS[as].level : 'warning', since: EXAMPLE.generated_at, headline: 'NAS', detail: 'its words' }, over);
+  for (const [as, k] of Object.entries(ST.CONDITIONS)) {
+    const v = ST.map(file({ conditions: [check(as)] }), at(0));
+    if (as === 'device_down') { assert.equal(v.w, null, as); continue; }
+    assert.deepEqual(v.w, { id: as, file: 'check:nas', lv: k.lv, level: k.level, st: ST.LEVELS[k.level], scene: k.scene, hl: 'NAS', sub: 'its words' }, as);
+  }
+  // one the page cannot act is skipped, and the next condition is used
+  for (const bad of [check('nas_hot'), check(undefined), check('cpu_hot', { id: 'check:NAS' }), check('cpu_hot', { id: 'check:' + 'x'.repeat(21) }), check('cpu_hot', { id: 'nas' }), check('__proto__')]) {
+    const v = ST.map(file({ conditions: [bad, cond('ssh_session', 'work')] }), at(0));
+    assert.equal(v.w.id, 'ssh_session', JSON.stringify(bad));
+  }
+  // its colour is the file's level, as for any condition
+  assert.equal(ST.map(file({ conditions: [check('cpu_hot', { level: 'critical' })] }), at(0)).w.st, 'crit');
+});
+
+test('a check counts in the badge by its level, and sits where the file puts it', () => {
+  const check = (name, as, level) => ({ id: 'check:' + name, as, level, since: EXAMPLE.generated_at, headline: name.toUpperCase(), detail: '' });
+  const v = ST.map(file({ conditions: [cond('disk_full', 'warning'), check('raid', 'disk_full', 'warning'), check('ups', 'attack', 'critical'), check('door', 'ssh_session', 'work')] }), at(0));
+  assert.equal(v.w.file, 'disk_full');
+  assert.deepEqual(v.more, { n: 2, crit: true });
+  const first = ST.map(file({ conditions: [check('raid', 'disk_full', 'warning'), cond('cpu_hot', 'warning')] }), at(0));
+  assert.deepEqual([first.w.id, first.w.file, first.w.hl], ['disk_full', 'check:raid', 'RAID']);
+});
+
+test('a check never reads the facts of the condition it borrows', () => {
+  const check = as => ({ id: 'check:x', as, level: ST.CONDITIONS[as].level, since: EXAMPLE.generated_at, headline: 'X', detail: 'its own' });
+  // borrowing streaming: no television, no streams badge, and its own detail
+  const noStreams = Object.assign({}, EXAMPLE.facts, { streams: { count: 0 } });
+  let v = ST.map(file({ facts: noStreams, conditions: [check('streaming')] }), at(0));
+  assert.deepEqual([v.w.id, v.w.file, v.w.sub, v.tv], ['streaming', 'check:x', 'its own', false]);
+  v = ST.map(file({ facts: noStreams, conditions: [cond('attack', 'critical'), check('streaming')] }), at(0));
+  assert.equal(v.streamsBehind, false);
+  // borrowing pi_silent: the pie keeps its dish while the Pi answers
+  const noDevices = Object.assign({}, EXAMPLE.facts, { devices: undefined, pi: { up: true } });
+  v = ST.map(file({ facts: noDevices, conditions: [check('pi_silent')] }), at(0));
+  assert.deepEqual(v.devices, [{ place: 'pie', kind: 'pi', ok: true, alert: true }]);
+  assert.equal(ST.map(file({ facts: noDevices, conditions: [cond('pi_silent', 'warning')] }), at(0)).devices[0].ok, false);
+  // and one borrowing a condition with a place never carries one
+  assert.equal('place' in ST.map(file({ conditions: [check('cpu_hot')] }), at(0)).w, false);
 });
 
 test('the television is on while something streams', () => {

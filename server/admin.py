@@ -589,9 +589,9 @@ def export_toml(
     shared settings over its look, display, quiet scenes and scenes. A section also keeps the
     settings its provider declares, with the provider file's help, and writes a key of its own that
     its provider does not use (url with fail2ban, database with any other) commented, so that the
-    file reads back. A list of tables under [sources], such as [[sources.imports]], is set in
-    config.toml alone and written as raw has it. found is the providers folder, or None for the
-    built-in providers alone."""
+    file reads back. A list of tables under [sources], [[sources.imports]] or [[sources.json]], is
+    set in config.toml alone and written as raw has it. found is the providers folder, or None for
+    the built-in providers alone."""
     found = found if found is not None else providers.builtin_only()
     stamp = when.astimezone(dt.UTC).strftime("%d %B %Y at %H:%M UTC").lstrip("0")
     out = _comment(

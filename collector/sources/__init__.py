@@ -1,6 +1,6 @@
 """Sources: one module per thing the collector reads, and KindSource for the sections read through
 a kind and a provider (collector/kinds/, collector/providers/), and for each entry of a list such
-as [[sources.imports]], the source "imports:<name>".
+as [[sources.imports]], the source "imports:<name>", or [[sources.json]], "json:<name>".
 
 Every source follows the interface of `Source`. The runner calls `fetch` in a worker thread with
 a deadline, and `observe` afterwards in the main thread. A source that raises is marked not ok
@@ -115,11 +115,15 @@ class KindSource(Source):
         self.name = name
         self.kind = kinds.kind_class(kinds.kind_of(name))()
         self.section = self.kind.section
-        self.spec = config.providers.get(kinds.provider_of(name, settings))
+        # The provider, and the settings it is made with: the section's own, or for a check, its
+        # entry with the url cut to the address the compiled file's path is appended to.
+        self.spec, self.provider_settings = self.kind.provider_spec(
+            name, settings, config.providers
+        )
         self.allowed = self.kind.allowed(settings)
         self.provider = providers.make(
             self.spec,
-            settings,
+            self.provider_settings,
             config.secret(name),
             self.timeout,
             self.allowed,

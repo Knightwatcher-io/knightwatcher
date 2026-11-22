@@ -31,7 +31,11 @@ fail2ban makes, from its own database ([fail2ban's database](docs/configuration.
 Each of these services is read through a provider, a small file that maps
 the service's answers onto the shape the display needs ([Providers](docs/providers.md)). Another service that answers with JSON
 can be read through a provider file of your own, dropped into the `providers/` folder beside
-`config.toml`; it is data, checked by the same rules, and never runs as code.
+`config.toml`; it is data, checked by the same rules, and never runs as code. For one value
+alone, such as a NAS's disk temperature or a pool's state, a generic check needs no file: a
+`[[sources.json]]` table in `config.toml` names the address, where the value is, a test and the
+words to show, and the display acts it as a condition of your choice, in that condition's scene
+([Generic checks](docs/configuration.md#generic-checks)).
 
 ## Quick start
 
