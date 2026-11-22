@@ -3,8 +3,9 @@
 Knightwatcher comes with a small web server of its own, run beside the collector by
 `docker compose up`. It serves the page, the collector's `state.json` and the downloaded packs in
 `data/packs/`, keeps the settings chosen on the displays' settings screens for the whole deployment,
-so that every display shows the same knight, and serves the admin page, where the household's
-sources, thresholds and devices are set behind a password. It is written in Python with the
+so that every display shows the same knight, serves the admin page, where the household's
+sources, thresholds and devices are set behind a password, and counts the displays that show the
+page, for the collector's usage counts. It is written in Python with the
 standard library alone, in `server/`, and runs from the same image as the collector.
 
 The server is optional. The page still works from any web server of your own (see
@@ -21,6 +22,7 @@ page.
 | `/data/state.json` | the collector's latest state file | `no-cache` |
 | `/data/packs/<name>.json` | the downloaded packs, in the `packs` folder of the collector's output folder, each by a plain name | `no-cache` |
 | `/api/settings` | the shared settings: `GET` and `PUT` | `no-cache` |
+| `/api/displays` | where each page posts its display id: `POST` alone | never kept (`no-store`) |
 | `/admin` | sends the browser on to `admin/`, the admin page | `no-cache` |
 | `/admin/` | the admin page, stamped with the page's version | `no-cache` |
 | `/api/admin/...` | the admin page's API, below | never kept (`no-store`) |
@@ -46,8 +48,8 @@ server reads each afresh, since the collector rewrites them.
 answer also says `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and a
 content security policy that lets the page load only from its own address.
 
-**Methods.** `GET` and `HEAD` everywhere, `PUT` at `/api/settings` alone, and `POST` and `PATCH`
-at the admin addresses that take them (below). Any other method is `405 Method not allowed`, with
+**Methods.** `GET` and `HEAD` everywhere but `/api/displays`, `PUT` at `/api/settings` alone,
+`POST` at `/api/displays`, and `POST` and `PATCH` at the admin addresses that take them (below). Any other method is `405 Method not allowed`, with
 an `Allow` header naming what is.
 
 ## The settings API
@@ -120,6 +122,49 @@ any other address. A request with no `Origin`, such as one from `curl`, is not a
 taken. So a page on another site, opened in a browser on your LAN, cannot change the settings.
 Behind a reverse proxy the proxy must pass the original `Host` on, which Caddy does by itself; see
 [Behind a reverse proxy](#behind-a-reverse-proxy).
+
+## The displays
+
+### POST /api/displays
+
+Each page the server serves makes a random id once, keeps it in its browser's storage, and posts
+it here at load and every 30 minutes ([display.md](./display.md#modes)):
+
+```http
+POST /api/displays HTTP/1.1
+Content-Type: application/json
+Content-Length: 41
+
+{"id":"3f9c0d12ab45e6789a0b3f9c0d12ab45"}
+
+HTTP/1.1 204 No Content
+Cache-Control: no-store
+```
+
+The id is 32 lowercase hexadecimal characters and the body holds it alone. Anyone on the LAN can
+post, so a post can do nothing but record an id as seen now: a body over 256 bytes is refused
+with `413`, another form of id or any other key with `400`, and the rest as a write to
+`/api/settings` is refused (`403` from another site, `411`, `415`). No post is logged, taken or
+refused, since every display sends one every half hour and a flood would fill the log. Any other
+method is `405`, with `Allow: POST`.
+
+### The displays store
+
+The server keeps the time it last saw each id in `displays.json` in its own folder, and in memory:
+
+```json
+{"v":1,"seen":{"3f9c0d12ab45e6789a0b3f9c0d12ab45":"2026-01-15T21:42:10Z"}}
+```
+
+It holds at most 1,000 ids, the one seen longest ago dropped for a new one, and it is written whole,
+to a temporary name, renamed into place, mode 640, at most once a minute (a post inside the minute
+is written at its end, and what is pending is written as the server stops). A file that cannot
+be read counts as none seen. The server reads it at start; it never serves it, and the ids never
+leave the host. The collector, which mounts the folder read-only, counts the ids seen in the last
+six hours and sends the count alone in its heartbeat
+([configuration.md](./configuration.md#usage-counts)). `collector/displays.py` holds the file's
+form, and both read it with the same code. To forget every display, stop the server and delete the
+file.
 
 ## The admin page
 
@@ -330,7 +375,8 @@ To start again with nothing saved, stop the server, delete `settings.json` and s
 The page tells the server is there by asking `api/settings` when it starts. With an answer in the
 form above, the settings saved there are the level the settings screen writes to, for every
 display; with a `404`, or anything else, the page keeps choices in its own browser, as it does
-from disk. The levels, the carry-over of a browser's earlier choices and the rest are in
+from disk. Served over HTTP, it also posts its display id to `api/displays`
+([The displays](#the-displays)); another server's error changes nothing. The levels, the carry-over of a browser's earlier choices and the rest are in
 [display.md](./display.md#settings).
 
 ## Running it
@@ -344,7 +390,7 @@ does it from nothing. The server's part of `compose.yaml`:
   read-only at `/etc/knightwatcher/config.toml` and the providers folder (`KW_PROVIDERS`)
   read-only at `/etc/knightwatcher/providers`, for the admin page's checks, and the server's own
   folder (`KW_SERVER_VAR`) at `/var/lib/knightwatcher-server`, the one place it writes
-  (`settings.json`, `admin.json` and the admin page's `sessions.json`);
+  (`settings.json`, `admin.json`, the admin page's `sessions.json` and `displays.json`);
 - `KW_ADMIN_PASSWORD` from `.env`, its one variable, which it reads once at start and
   takes out of its own environment;
 - inside the container it listens on port 8080, published on the host at
@@ -361,7 +407,8 @@ without it, and says so.
 collector.interval_s`), each refused write with its reason, `admin sign-in refused` for each wrong
 password, `admin sign-in paused for 1 minute`, `admin signed in` and `admin signed out`, and its
 errors. It never logs the admin password or what was typed. It does not log ordinary requests,
-since every display asks every five seconds, and it logs no client address.
+since every display asks every five seconds, nor a display's post, and it logs no client
+address.
 
 **Outside Docker**, for development, from the repository's root:
 
@@ -407,7 +454,9 @@ environment.
 
 **What a write can do.** A `PUT` to `/api/settings`, open to anyone who reaches the server,
 changes how the knight looks, the words' size and clock, the quiet scenes and where some conditions
-play, for every display. It cannot change a source, a threshold, a device or a credential.
+play, for every display. It cannot change a source, a threshold, a device or a credential. A `POST` to
+`/api/displays`, open in the same way, records an id as seen and nothing else: at most it can add
+to the count of displays the collector sends, up to the 1,000 the store keeps.
 A signed-in write on the admin page can: it reaches every source's address, the thresholds and the
 whole watch list, so the collector can be pointed at any address on the LAN that the host reaches.
 It still cannot change a credential, a folder or what the collector mounts, and every change is
@@ -477,5 +526,9 @@ the reset, the export read back and built by the collector (the world and the `i
 `devices` tables among it, written as inline tables), `credentials.json` never served, the
 admin page stamped and served at `/admin/`, and that the password never reaches a log, an answer
 or the environment once read.
+`tests/server/test_displays.py` checks `/api/displays`: a post recorded and answered `204`, every
+other form of id and body refused with nothing kept or logged, the size, type and origin checks,
+`POST` alone, the ids never served, the store read again at start, the 1,000 ids kept, the oldest
+dropped, the write at most once a minute and on stop, and a broken file counted as none.
 `tests/server/test_stamp.py` stamps a copy of `web/` and checks it is byte for byte what
 `tools/deploy.sh` makes of it.

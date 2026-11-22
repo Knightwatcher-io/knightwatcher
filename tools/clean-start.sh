@@ -28,8 +28,10 @@
 # 0; both containers' health checks pass; state.json keeps the contract (collector/contract.py);
 # the enabled sources are the general ones of config.example.toml and every one of them is read
 # (ok: true); wan and dns are read as down (facts.wan.up and facts.dns.up false), because nothing
-# outside answers, and wan_down is raised; and the page and data/state.json load from the server.
-# It exits 0 when all of that holds and 1 otherwise, with the containers' last log lines.
+# outside answers, and wan_down is raised; the usage counts are on (analytics.on in state.json, as
+# .env.example leaves them) and the collector's first heartbeat failed with a warning, nothing
+# outside answering, without holding anything else up; and the page and data/state.json load from
+# the server. It exits 0 when all of that holds and 1 otherwise, with the containers' last log lines.
 #
 # The containers, the network, the image and the scratch folder are removed when the script ends,
 # whatever happens, and the listings that prove it are printed. Files the containers made are
@@ -226,6 +228,11 @@ sys.path.insert(0, copy)
 from collector import contract  # noqa: E402
 
 
+def logs(name):
+    out = subprocess.run(["docker", "logs", name], capture_output=True, text=True)
+    return (out.stdout + out.stderr).splitlines()
+
+
 def health(name):
     out = subprocess.run(["docker", "inspect", "-f", "{{.State.Health.Status}}", name],
                          capture_output=True, text=True)
@@ -262,6 +269,12 @@ def judge():
         " ".join(f"{n} {json.dumps(facts.get(n))}" for n in sorted(down)))
     ids = [c.get("id") for c in state.get("conditions", [])]
     found["wan_down raised"] = "wan_down" in ids, " ".join(ids) or "none"
+    # The usage counts are on, as .env.example leaves them: the first heartbeat goes at start and
+    # fails here, with no route out, without holding anything up.
+    found["usage counts on"] = state.get("analytics") == {"on": True}, json.dumps(state.get("analytics"))
+    tried = [ln for ln in logs(collector) if "usage counts" in ln]
+    sent = any("usage counts not sent" in ln for ln in tried)
+    found["the heartbeat tried and failed"] = sent, f"{len(tried)} lines"
     status, body = fetch("/")
     found["the page loads"] = status == 200 and b"kw-version" in body, f"HTTP {status}"
     status, body = fetch("/data/state.json")
@@ -286,6 +299,9 @@ if state:
     print("the conditions:")
     for c in state.get("conditions", []):
         print(f"  {c['id']} ({c['level']}): {c['headline']} | {c['detail']}")
+print("the collector's lines on the usage counts:")
+for line in (ln for ln in logs(collector) if "usage counts" in ln):
+    print("  " + line[:160])
 sys.exit(0 if all(ok for ok, _ in found.values()) else 1)
 EOF
 checks_code=$?

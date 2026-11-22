@@ -212,7 +212,10 @@
                   it has none (a collector from before the settings)
        sources    each source the file lists, { name, ok, at, error }, for the settings screen's
                   status page: ok true only for ok === true, at the time in ms or null, error a
-                  string */
+                  string
+       analytics  whether the collector's usage counts are on, true or false, for the status page,
+                  or null when the file does not say (a collector from before them, or --once
+                  run by hand with an older one) */
   function map(file, nowMs) {
     if (!isObj(file)) return { ok: false, problem: 'malformed', generatedAt: null };
     const gen = typeof file.generated_at === 'string' ? Date.parse(file.generated_at) : NaN;
@@ -254,7 +257,8 @@
       sources: isObj(file.sources) ? Object.keys(file.sources).filter(k => isObj(file.sources[k])).map(k => {
         const e = file.sources[k], at = typeof e.at === 'string' ? Date.parse(e.at) : NaN;
         return { name: k, ok: e.ok === true, at: Number.isFinite(at) ? at : null, error: str(e.error) };
-      }) : []
+      }) : [],
+      analytics: isObj(file.analytics) && typeof file.analytics.on === 'boolean' ? file.analytics.on : null
     };
   }
 
@@ -323,6 +327,47 @@
     return true;
   }
 
+  /* ---- The display's id -----------------------------------------------------------------------
+     Served by the Knightwatcher server, the page tells it that it is showing: it makes a random id
+     once, keeps it in the browser's storage, and posts it to api/displays at load and every
+     DISPLAY_EVERY_MS. The server keeps when it last saw each id, and the collector counts the
+     displays seen in the last six hours for its usage counts; the id never leaves the host
+     (docs/server.md). With no storage the page makes a fresh id at each load. Another web server
+     answers the post with an error, which changes nothing. */
+  const DISPLAY_KEY = 'kw-display', DISPLAY_EVERY_MS = 30 * 60 * 1000, DISPLAY_ID = /^[0-9a-f]{32}$/;
+
+  /* A new id: 16 random bytes as 32 lowercase hex characters. random(n) gives n random bytes. */
+  function newDisplayId(random) {
+    let bytes = null;
+    try { bytes = random(16); } catch (e) { bytes = null; }
+    if (!bytes || bytes.length !== 16) { bytes = []; for (let i = 0; i < 16; i++) bytes.push(Math.floor(Math.random() * 256)); }
+    return Array.from(bytes, b => (b & 255).toString(16).padStart(2, '0')).join('');
+  }
+  /* This display's id: the one storage() holds, or a new one, kept there when it can be. A
+     storage that refuses, or throws, gives a new id that lasts as long as the page. */
+  function displayId(storage, random) {
+    let st = null;
+    try { st = storage(); const held = st && st.getItem(DISPLAY_KEY); if (typeof held === 'string' && DISPLAY_ID.test(held)) return held; } catch (e) { st = null; }
+    const id = newDisplayId(random);
+    try { if (st) st.setItem(DISPLAY_KEY, id); } catch (e) { /* refused: the id lasts for this page */ }
+    return id;
+  }
+  /* Posts this display's id now and every DISPLAY_EVERY_MS: o.fetch as the browser's, o.every as
+     setInterval, o.storage and o.random as displayId takes them. Returns the id. A post that
+     fails is not retried before the next. */
+  function reportDisplay(o) {
+    const id = displayId(o.storage, o.random), body = JSON.stringify({ id });
+    const post = () => {
+      try {
+        const p = o.fetch('api/displays', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, cache: 'no-store' });
+        if (p && p.catch) p.catch(() => {});
+      } catch (e) { /* refused: the next post may get through */ }
+    };
+    post();
+    o.every(post, DISPLAY_EVERY_MS);
+    return id;
+  }
+
   /* Fetches data/state.json now and every 5 seconds after, and hands each result to onView: what
      map() made of it, or { ok: false, problem: 'unreachable' } when it could not be fetched or
      parsed. Browser only. */
@@ -343,7 +388,7 @@
     poll();
   }
 
-  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, PLACES, RELOAD_GUARD_MS, STREAM_MS, map, streamsOf, streamWords, arrange, lookPlace, listFromHook, takeEvents, judge, noSignal, versionOf, reloadDue, start };
+  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, PLACES, RELOAD_GUARD_MS, STREAM_MS, map, streamsOf, streamWords, arrange, lookPlace, listFromHook, takeEvents, judge, noSignal, versionOf, reloadDue, DISPLAY_KEY, DISPLAY_EVERY_MS, displayId, reportDisplay, start };
   KW.state = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? (window.KW = window.KW || {}) : {});

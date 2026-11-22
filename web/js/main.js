@@ -354,6 +354,12 @@
   requestAnimationFrame(frame);
   // Browsers refuse to fetch from disk, so a page opened from disk does not try.
   if (!fromDisk && !forceDemo) ST.start(onView);
+  /* Served, the page tells the server it is showing, by a random id of its own, at load and every
+     30 minutes, so that the collector can count the displays (KW.state.reportDisplay). */
+  if (!fromDisk) {
+    ST.reportDisplay({ fetch: (url, init) => fetch(url, init), every: (f, ms) => setInterval(f, ms), storage: () => window.localStorage,
+      random: n => crypto.getRandomValues(new Uint8Array(n)) });
+  }
   /* The downloaded packs, those placed in data/packs/, fetched once at load in every mode while
      served. From disk the page shows the packs it ships with. The knight adds them, and when any
      came the world starts again at once with every text, those the page ships with and the

@@ -15,7 +15,7 @@ import threading
 import time
 import urllib.parse
 
-from collector import kinds, overlay, reload, text
+from collector import heartbeat, kinds, overlay, reload, text
 from collector.config import ConfigError, credential_names, load, read_env_file
 from collector.net import AuthError, SourceError
 from collector.runner import STATE_FILE, Runner, utcnow
@@ -345,6 +345,8 @@ def main(argv: list[str] | None = None) -> int:
 
     runner = Runner(config, memory)
     runner.config_note = reload.note(said, utcnow())
+    # Whether the usage counts are on, for the status page; only the loop below sends them.
+    runner.analytics = {"on": heartbeat.enabled(env)}
     try:
         names = json.dumps(credential_names(env), indent=1).encode("utf-8")
         atomic_write(os.path.join(config.collector["output_dir"], CREDENTIALS_FILE), names, 0o640)
@@ -358,6 +360,10 @@ def main(argv: list[str] | None = None) -> int:
             runner.close()
         return 0
 
+    # The usage counts (collector/heartbeat.py): the first goes now, after the notice at a first
+    # start, and the next every six hours, each in a thread of its own. The server's folder is the
+    # one admin.json is in.
+    beat = heartbeat.start(env, config.collector["state_dir"], os.path.dirname(args.admin))
     stop = threading.Event()
 
     def _stop(signum, _frame):
@@ -374,6 +380,8 @@ def main(argv: list[str] | None = None) -> int:
             reload.poll(settings, runner, utcnow)
         except Exception:
             log.exception("the settings could not be read again")
+        if beat is not None:
+            beat.tick(runner.config)
         try:
             runner.cycle()
         except Exception:

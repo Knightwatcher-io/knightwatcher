@@ -631,6 +631,17 @@
       foe: L.foe, critter: L.critter, words: L.words, overlay: L.overlay };
   }
 
+  /* The status page's entry for the collector's usage counts, from the last valid state file as
+     KW.state.map reads it (view, or null before one) and the page's mode: lines of [class, text].
+     It is read only: KW_ANALYTICS in the collector's .env is the one control, and the display has
+     no switch for it. */
+  function usageLines(view, mode) {
+    if (!view) return [['quiet', mode === 'demo' ? 'Not known. The display is showing the demo.' : 'Not known yet.']];
+    if (view.analytics === true) return [['', 'On. The collector sends a few counts every six hours.'], ['quiet', 'KW_ANALYTICS=off in .env turns them off.']];
+    if (view.analytics === false) return [['', 'Off. The collector sends nothing.'], ['quiet', 'KW_ANALYTICS in .env turns them on again, set to anything but off or left out.']];
+    return [['quiet', 'Not known: the state file does not say.']];
+  }
+
   /* The clock's words for a time: { time, half }. On the 24-hour clock '09:42' and no half; on the
      12-hour clock '9:42' and 'AM' or 'PM', midnight's hour being 12 AM and noon's 12 PM. */
   function clock(h, m, hours) {
@@ -970,7 +981,7 @@
   }
 
   const api = { SCHEMA, KEY, SHARED_KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, WEAPONS, ONE_HANDED, WEAPON_CHIPS, ITEMS, TABLES, KINDS, BASE_WORLD, LONG,
-    isLong, isPart, itemId, itemChoices, itemsOf, buildsOf, buildName, buildChoices, lookOf, builtIn, worldOf, worldParts, offered, clean, resolve, knightLook, greyed, engineInput, clock,
+    isLong, isPart, itemId, itemChoices, itemsOf, buildsOf, buildName, buildChoices, lookOf, builtIn, worldOf, worldParts, offered, clean, resolve, knightLook, greyed, engineInput, clock, usageLines,
     load, save, sharedOf, create, connect, pageWorld };
   KW.settings = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -1858,6 +1869,7 @@
             ul.appendChild(li);
           }
         });
+        stat('Usage counts', dd => { for (const [cls, text] of usageLines(view, info.mode)) line(dd, cls, text); });
         // the world in use, where each part comes from, and every fallback with its reason
         const r = store.now(), cat = store.catalogue(), pack = K.basePack(), labels = wordLabels(), WK = KW.world || {}, med = WK.status ? WK.status.pack : null;
         const w = cat.worlds[r.world.id] || { name: r.world.id, pack: null };

@@ -69,7 +69,8 @@ Every value below is invented.
     "quiet": {},
     "scenes": { "cpu_hot": "camp" }
   },
-  "config": { "admin": "3f9c0d12ab45e6789a0b", "at": "2026-01-15T21:30:02Z", "problems": [] }
+  "config": { "admin": "3f9c0d12ab45e6789a0b", "at": "2026-01-15T21:30:02Z", "problems": [] },
+  "analytics": { "on": true }
 }
 ```
 
@@ -196,7 +197,7 @@ level; its source is `json:nas-temp`. Only that source is shown:
 
 - **`schema`** is `1`. A page that meets a number it does not know shows NO SIGNAL once it has had
   a valid file; see [page.md](./page.md). Fields added later without changing it, such as
-  `quiet_parts`, an event's `parts` and `facts.streams.sessions`, are optional: a page from before them ignores them, and a
+  `quiet_parts`, an event's `parts`, `facts.streams.sessions` and `analytics`, are optional: a page from before them ignores them, and a
   file from a collector before them lacks them. So are the conditions `check:<name>`, which a
   page from before them skips as ids it does not know.
 - **`generated_at`** and **`interval_s`**: when the file was written and how often it should be,
@@ -418,6 +419,14 @@ level; its source is `json:nas-temp`. Only that source is shown:
 
   The page ignores `config`. A file from a collector older than the admin page has no `config`.
   [collector.md](./collector.md#taking-up-a-change) says when the collector takes up a change.
+
+- **`analytics`** says whether the collector's usage counts are on: `{ "on": true }`, or
+  `{ "on": false }` while `KW_ANALYTICS` in `.env` is `off`
+  ([configuration.md](./configuration.md#usage-counts)). It is an object with `on` alone. The
+  settings screen's Status page shows it, read only; nothing on the page changes it. The
+  collector writes it whenever it runs from its command line, `--once` included, though only its
+  loop sends; a runner made in code with no word on it, as the collector's own tests make, leaves
+  it out, and so does a collector from before the counts. A page shows "not known" without it.
 
 ## Who decides what
 

@@ -445,3 +445,67 @@ test('a reload for one version holds back another for 30 minutes', () => {
   // once on the new version, nothing to do whatever the mark says
   assert.equal(ST.reloadDue('bbbbbbbbbbbb', 'bbbbbbbbbbbb', mark(now), now), false);
 });
+
+// ---- The usage counts and the display's id ----------------------------------------------------
+
+test('the file says whether the usage counts are on, and a file that does not say gives null', () => {
+  assert.equal(ST.map(file({ analytics: { on: true } }), at(10)).analytics, true);
+  assert.equal(ST.map(file({ analytics: { on: false } }), at(10)).analytics, false);
+  for (const bad of [undefined, null, true, 'on', {}, { on: 'yes' }, { on: 1 }, [true]]) {
+    const f = file({}); if (bad !== undefined) f.analytics = bad; else delete f.analytics;
+    assert.equal(ST.map(f, at(10)).analytics, null, JSON.stringify(bad));
+  }
+});
+
+/* A storage like the browser's; get or set may throw, and storage() itself may throw. */
+function idStorage(held, o = {}) {
+  const m = new Map(held === undefined ? [] : [[ST.DISPLAY_KEY, held]]);
+  const st = { getItem: k => { if (o.getThrows) throw new Error('SecurityError'); return m.has(k) ? m.get(k) : null; },
+    setItem: (k, v) => { if (o.setThrows) throw new Error('QuotaExceededError'); m.set(k, v); } };
+  return { m, get: () => { if (o.none) throw new Error('SecurityError'); return st; } };
+}
+const bytes = n => Uint8Array.from({ length: n }, (_, i) => (i * 37 + 11) & 255);
+
+test('a display makes its id once, 32 lowercase hex characters, and keeps it in its storage', () => {
+  const s = idStorage();
+  const id = ST.displayId(s.get, bytes);
+  assert.match(id, /^[0-9a-f]{32}$/);
+  assert.equal(id, Array.from(bytes(16), b => b.toString(16).padStart(2, '0')).join(''));
+  assert.equal(s.m.get(ST.DISPLAY_KEY), id);
+  // the next load finds it and makes none
+  assert.equal(ST.displayId(s.get, () => { throw new Error('not called'); }), id);
+  // a stored value of another form is replaced
+  for (const held of ['', 'ABCDEF0123456789ABCDEF0123456789', 'a'.repeat(31), 'Robin']) {
+    const t = idStorage(held), got = ST.displayId(t.get, bytes);
+    assert.match(got, /^[0-9a-f]{32}$/); assert.equal(t.m.get(ST.DISPLAY_KEY), got, held);
+  }
+});
+
+test('with no storage, or one that refuses, a display makes a fresh id each load', () => {
+  let n = 0;
+  const rnd = k => Uint8Array.from({ length: k }, () => n++ & 255);
+  for (const o of [{ none: true }, { getThrows: true }, { setThrows: true }]) {
+    const s = idStorage(undefined, o), a = ST.displayId(s.get, rnd), b = ST.displayId(s.get, rnd);
+    assert.match(a, /^[0-9a-f]{32}$/); assert.match(b, /^[0-9a-f]{32}$/);
+    assert.notEqual(a, b, JSON.stringify(o));
+  }
+  // a random source that fails still gives an id
+  assert.match(ST.displayId(idStorage().get, () => { throw new Error('no crypto'); }), /^[0-9a-f]{32}$/);
+});
+
+test('the page posts its id to api/displays at load and every 30 minutes, and a failed post changes nothing', async () => {
+  const posts = [], timers = [];
+  const id = ST.reportDisplay({ storage: idStorage().get, random: bytes, every: (f, ms) => timers.push([f, ms]),
+    fetch: (url, init) => { posts.push([url, init]); return Promise.reject(new Error('offline')); } });
+  assert.equal(ST.DISPLAY_EVERY_MS, 30 * 60 * 1000);
+  assert.equal(posts.length, 1);
+  assert.deepEqual(posts[0], ['api/displays', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }), cache: 'no-store' }]);
+  assert.equal(timers.length, 1); assert.equal(timers[0][1], ST.DISPLAY_EVERY_MS);
+  timers[0][0]();
+  assert.equal(posts.length, 2); assert.equal(posts[1][1].body, posts[0][1].body);
+  // the body holds the id alone, well inside the server's 256 bytes
+  assert.deepEqual(Object.keys(JSON.parse(posts[0][1].body)), ['id']);
+  // a fetch that throws at once is swallowed as well
+  assert.doesNotThrow(() => ST.reportDisplay({ storage: idStorage().get, random: bytes, every: () => {}, fetch: () => { throw new Error('refused'); } }));
+  await new Promise(r => setTimeout(r, 0));
+});

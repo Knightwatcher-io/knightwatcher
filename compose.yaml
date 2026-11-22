@@ -25,12 +25,16 @@ services:
       timeout: 10s
       start_period: 60s
       retries: 2
-    # Credentials, read once at start. Each is named here, so that the container gets these from
-    # .env and nothing else in it. One a config does not use may be unset: it arrives empty, and
-    # the collector's own check names any credential it needs and lacks. A variable no built-in
-    # provider reads (a secret of your own, or a provider file's) is named the same way in the
-    # collector's environment in compose.override.yaml; docs/configuration.md has the snippet.
+    # KW_ANALYTICS, the usage counts (docs/telemetry.md): left out, or any value but off, the
+    # collector sends the project a few counts at start and every six hours; off sends nothing.
+    # Then the credentials, read once at start. Each is named here, so that the container gets
+    # these from .env and nothing else in it. One a config does not use may be unset: it arrives
+    # empty, and the collector's own check names any credential it needs and lacks. A variable
+    # no built-in provider reads (a secret of your own, or a provider file's) is named the same
+    # way in the collector's environment in compose.override.yaml; docs/configuration.md has the
+    # snippet.
     environment:
+      KW_ANALYTICS: ${KW_ANALYTICS:-}
       KW_TAUTULLI_API_KEY: ${KW_TAUTULLI_API_KEY:-}
       KW_PLEX_TOKEN: ${KW_PLEX_TOKEN:-}
       KW_TRACEARR_API_KEY: ${KW_TRACEARR_API_KEY:-}

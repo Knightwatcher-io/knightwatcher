@@ -113,12 +113,14 @@ class SchemaShapeTest(unittest.TestCase):
                         self.assertIn(s["page_default"], allowed, where)
         for e in S["env"]:
             self.assertLessEqual(set(e), ENV_FIELDS, e["name"])
-            self.assertIn(e["scope"], ("credential", "path", "server"), e["name"])
+            self.assertIn(e["scope"], ("credential", "path", "server", "collector"), e["name"])
             self.assertLessEqual(set(e.get("services", ["collector"])), set(SERVICES), e["name"])
             if e["scope"] == "credential":
                 self.assertEqual(e.get("services", ["collector"]), ["collector"], e["name"])
-            if e["scope"] == "server":
+            if e["scope"] in ("server", "collector"):
                 self.assertTrue(e["form"] and isinstance(e["default"], str), e["name"])
+            if e["scope"] == "collector":
+                self.assertEqual(e["services"], ["collector"], e["name"])
             self.assertIs(e["editable"], False, f"{e['name']}: the GUI never changes it")
             self.assertTrue(e["help"].strip() and e["example"], e["name"])
             self.assertRegex(e["name"], r"^KW_[A-Z0-9_]+$")
@@ -315,6 +317,15 @@ class TemplatesAgreeTest(unittest.TestCase):
             self.assertEqual(given.get(table, set()), keys, table)
         self.assertEqual(set(given) - set(described), set())
 
+    def test_the_image_takes_the_two_packages_and_the_page_alone(self):
+        # Everything else stays out of the build context, a top-level telemetry/ among it.
+        with open(os.path.join(ROOT, ".dockerignore"), encoding="utf-8") as fh:
+            rules = [ln.strip() for ln in fh if ln.strip() and not ln.startswith("#")]
+        self.assertEqual(rules[0], "*")
+        self.assertEqual(
+            sorted(r[1:] for r in rules if r.startswith("!")), ["collector", "server", "web"]
+        )
+
     def test_env_example_lists_every_variable_and_no_other(self):
         with open(os.path.join(ROOT, ".env.example"), encoding="utf-8") as fh:
             lines = fh.read().splitlines()
@@ -339,11 +350,15 @@ class TemplatesAgreeTest(unittest.TestCase):
         collector = blocks["collector"]
         environment = collector.split("    environment:\n", 1)[1].split("    volumes:\n", 1)[0]
         passed = re.findall(r"^      (KW_[A-Z0-9_]+): \$\{\1:-\}$", environment, re.M)
-        self.assertEqual(passed, [e["name"] for e in schema.credentials()])
+        # The collector's own variables (KW_ANALYTICS), then the credentials.
+        own = [e["name"] for e in S["env"] if e["scope"] == "collector"]
+        self.assertEqual(passed, own + [e["name"] for e in schema.credentials()])
         entries = [
             ln for ln in environment.splitlines() if ln.strip() and not ln.strip().startswith("#")
         ]
-        self.assertEqual(len(entries), len(passed), "the environment names credentials alone")
+        self.assertEqual(
+            len(entries), len(passed), "the environment names its own variables and credentials"
+        )
         for name, block in blocks.items():
             volumes = block.split("    volumes:\n", 1)[1]
             mounted = re.findall(r"\$\{(KW_[A-Z0-9_]+)[:}]", volumes)

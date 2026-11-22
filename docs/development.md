@@ -20,7 +20,8 @@ web/                 the page: static files, no build step (index.html, css/, fo
   packs/             the packs that ship with the page, each a .pack.json and its .pack.js carrier
 collector/           the collector: Python, standard library only (overlay.py reads the admin
                      page's admin.json and lays it over config.toml, reload.py takes up a change
-                     between polls)
+                     between polls, heartbeat.py sends the usage counts, displays.py reads and
+                     counts the server's displays.json)
   sources/           one module per source, and KindSource for the sections read through a kind
   kinds/             one module per kind: the shape of a sort of reading, its facts and events;
                      check.py compiles each [[sources.json]] entry into a provider of its own
@@ -30,15 +31,16 @@ collector/           the collector: Python, standard library only (overlay.py re
   settings-schema.json  every setting of config.toml and every variable of .env
 server/              the bundled server: Python, standard library only, reusing the collector's
                      checks (app.py the HTTP side, store.py the shared settings, admin.py the
-                     admin page's password, sessions, store, checks and export, stamp.py the
-                     page's version stamp at build time)
+                     admin page's password, sessions, store, checks and export, displays.py the
+                     displays seen, stamp.py the page's version stamp at build time)
+telemetry/           the Cloudflare Worker that receives the usage heartbeat; see telemetry/README.md
 tests/
   collector/         unittest tests for the collector
     fixtures/port/   what the collector wrote before the provider engine, for the same polls, which
                      the port proof holds the engine to byte for byte; the Tautulli polls with no
                      stream count were recorded again since (tests.md)
     fixtures/providers/  each built-in provider's exchanges and fill, every value invented
-  server/            unittest tests for the server and the stamp
+  server/            unittest tests for the server, the displays and the stamp
   web/               node tests for the page's scripts
     fixtures/knight/ the stored call record of the knight's drawing
     fixtures/scenes/ the stored call records of the scenes, and of the props the engine draws over
@@ -149,6 +151,11 @@ docker compose config -q
 python3 -m collector --check-config --config config.toml --env-file .env
 ```
 
+No test reaches the project's receiver of the usage counts: `tests/collector/kw_helpers.py`
+points `heartbeat.ENDPOINT` at a closed loopback port for the whole run, and the tests of the
+heartbeat send to a local fake receiver of their own. Only the collector's loop sends, never
+`--once` or a check, so `python3 -m collector --once` on a checkout sends nothing either.
+
 The collector's TLS test needs `openssl` on the path, to make a self-signed certificate that is
 thrown away after the run; without it that test is skipped and says why.
 
@@ -208,6 +215,15 @@ tools/shots.sh compare-worlds /tmp/kw-worlds-ref /tmp/kw-worlds-new
 [tests.md](./tests.md) says what each test file checks, and [shots.md](./shots.md) what the
 screenshots show and what to expect against an older reference.
 
+The receiver of the usage counts, in `telemetry/`, is TypeScript for Cloudflare Workers with its
+own dependencies, kept out of the image by `.dockerignore`. It needs Node 24 or newer:
+
+```bash
+(cd telemetry && npm ci)
+tools/capped.sh npm --prefix telemetry run typecheck
+tools/capped.sh npm --prefix telemetry test
+```
+
 After any change to a weapon, the strike, the goblin or a scene that hosts it, run the contact
 sweep as well. The page's tests hold the swung weapons to the contact standard at a few dozen spots;
 the sweep holds them to it at every spot the knight strolls over, on every build, in about four
@@ -263,7 +279,11 @@ Then, within two minutes of the start, it checks that `--check-config` in a one-
 container exits 0, that both health checks pass, that `state.json` keeps the contract, that the
 enabled sources are host, wan, dns, backup, updates and ssh and every one is read (`ok: true`),
 that wan and dns are read as down (`facts.wan.up` and `facts.dns.up` false, as nothing outside
-answers) with `wan_down` raised, and that the page and `data/state.json` load from the server. An
+answers) with `wan_down` raised, and that the page and `data/state.json` load from the server.
+`.env.example` leaves the usage counts on, so the collector's first heartbeat goes at start and
+fails there, with no route out: the checks hold that `state.json` says the counts are on and that
+the collector logged the failed send, and the other checks pass with it, so a send that fails
+breaks nothing. Its lines on the usage counts are printed. An
 internal network publishes no port, so the page is fetched from the host at the server's address
 on that network; the resolved 127.0.0.1 binding is printed but not bound. It exits 0 when every
 check passes and 1 otherwise, with the containers' last log lines. The containers, the network,

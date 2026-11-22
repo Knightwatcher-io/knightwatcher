@@ -31,8 +31,9 @@ standard library alone, and it runs as a container. Its settings are in
    output folder before renaming it into place. The file is mode 644 so that the web server can
    read it. The memory file is then saved if anything in it changed. Every file also carries
    `defaults`, the settings screen's household defaults, copied unchanged from the `[look]`,
-   `[display]`, `[quiet]` and `[scenes]` tables of `config.toml`, and `config`, which says which
-   settings are in use (see [Taking up a change](#taking-up-a-change)).
+   `[display]`, `[quiet]` and `[scenes]` tables of `config.toml`, `config`, which says which
+   settings are in use (see [Taking up a change](#taking-up-a-change)), and `analytics`, whether
+   the usage counts are on (see [The usage counts](#the-usage-counts)).
 
 Before step 1, the collector looks at whether `config.toml` or the admin page's `admin.json` has
 been written since it last read them, and takes up a change between polls.
@@ -480,6 +481,53 @@ service never holds up a poll; a read still in flight ends it as it finishes), a
 has read. Only a collector killed without the chance leaves its session to expire on its own
 (Pi-hole: 30 minutes after its last use), one of Pi-hole's 16 seats until then.
 
+## The usage counts
+
+The long-running collector sends the project a heartbeat at start and every six hours
+(`collector/heartbeat.py`); [configuration.md](./configuration.md#usage-counts) says what it holds
+and how to turn it off, and [telemetry.md](./telemetry.md) gives every field. `KW_ANALYTICS` is read
+once at start: `off`, trimmed and in any case, means no heartbeat, no connection and no install id,
+and one line in the log, `usage counts off (KW_ANALYTICS=off): nothing is sent`; anything else, or
+nothing, means on. Only the loop of `python -m collector` sends: `--once`, `--probe`,
+`--check-config` and `--health` never make a heartbeat or an install id.
+
+**The install id** is a UUID version 4, made once and kept with the time it was made in
+`install.json` in the memory folder (`collector.state_dir`), mode 640. A file that is missing or
+cannot be read is a first start: a new id is made, and one notice is logged at info that says what
+is sent, where, and that `KW_ANALYTICS=off` in `.env` stops it. The memory file is not touched.
+
+**The payload** is built at each send from the settings in use, so a change taken up between polls
+is in the next one, and held to the receiver's contract (`heartbeat.check`) before it goes; one
+that breaks it is not sent, and the collector says why. Its parts:
+
+- the version, from the `version.json` that `server/stamp.py` writes into the image's copy of
+  `web/` at build time, the same stamp the page and the server report; a checkout, whose `web/` is
+  unstamped, sends `dev`;
+- the household look: what the displays saved in the bundled server's `settings.json`, laid over
+  `[look]` as the page lays them (a world saved there sets every part at its level), each value
+  checked by the config's own rules. A short name of the schema is sent as it is; a long name of a
+  pack that ships with the page (`web/packs/`), for a part that pack holds, as the short name it
+  stands for (`kw.base/build.b` is `b`, `kw.base/deep` is `deep`) or as its own id with dots made
+  underscores (`kw.base/main.longsword` is `main_longsword`); anything else is `custom`. A swatch
+  counts only in its own family, so a plume's colour named as a hair is `custom`. The devices' prop
+  sets are not sent;
+- the sources of `config.sources`: one read by code of its own by its name (`host`), one read
+  through a built-in provider as `<kind>:<provider>` (`streams:jellyfin`, `imports:sonarr`), one
+  through a provider file of the user's own as `<kind>:custom`. The entries of
+  `[[sources.imports]]` and `[[sources.json]]` are counted, and the devices are left out;
+- the displays: the ids in the bundled server's `displays.json` seen in the last six hours
+  (`collector/displays.py`, read from the server's folder, the one `--admin` names).
+
+**Sending.** The loop calls the heartbeat between polls; it never waits on the network. The first
+send is due at once, after the notice; each attempt makes the next due six hours later, or one
+hour later when it failed, after which the six-hour rhythm resumes. A send runs in a thread of its
+own, a `POST` through `collector/net.py` (direct, no proxy, no redirect, the certificate checked)
+with a 10-second timeout, and a second never starts while one is running. A success is logged at
+info with the address; a failure at warning, at most once an hour, with a short reason and never
+the payload. Nothing a send does reaches the wall: `state.json` says only whether the counts are
+on, as `analytics` ([state.md](./state.md#fields)), and that is written by every run from the
+command line, `--once` included.
+
 ## Adding a source
 
 A service that a kind already covers needs a provider file, not code. For one host it is a file in
@@ -539,7 +587,7 @@ python3 -m collector --check-config     # validate config.toml alone, its creden
 python3 -m collector --once             # one poll, write state.json, exit
 python3 -m collector --health           # exit 1 if state.json is older than three intervals
 python3 -m collector --probe streams    # read one source through its provider once, masked
-python3 -m collector                    # poll until stopped
+python3 -m collector                    # poll until stopped, sending the usage counts
 ```
 
 `--probe <source>` reads one source read through a provider (`streams`, `adblock`, `security`,
@@ -588,5 +636,6 @@ interval fails once the file is more than 30 seconds old. Every host path is bou
 `create_host_path: false`, so a missing path stops the container rather than leaving Docker to
 create an empty folder there. The providers folder, mounted read-only at
 `/etc/knightwatcher/providers`, defaults to the repository's own `providers/`, which is tracked
-empty so that every checkout has it. [configuration.md](./configuration.md#the-accounts)
+empty so that every checkout has it. From `.env` the container gets the credentials and
+`KW_ANALYTICS`, and nothing else. [configuration.md](./configuration.md#the-accounts)
 says how that user is given the files it needs.

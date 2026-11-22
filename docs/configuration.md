@@ -11,7 +11,8 @@ Knightwatcher is configured in two files beside `compose.yaml`, both ignored by 
   settings screen's defaults and the devices are written out but commented: remove the `# ` before
   a table's lines to use it. A line starting `# or:` stays commented, since it replaces another.
 - `.env`: the host paths `compose.yaml` mounts, the address and port of the bundled server, the
-  admin page's password, and the credentials of the services the collector reads. The committed
+  admin page's password, the switch for the usage counts ([Usage counts](#usage-counts)), and the
+  credentials of the services the collector reads. The committed
   template is `.env.example`. Keep it to yourself: `chmod 600 .env`.
 
 Every setting of `config.toml` but the folders and the credentials' names can also be set on the
@@ -137,6 +138,36 @@ value holding `$`, `#`, a space or a quote goes in single quotes, such as `'pa$$
 compose takes it exactly as written. Several of these services offer no read-only credential, so
 treat `.env` as you would their own configuration; see [security.md](./security.md).
 
+### Usage counts
+
+The collector sends the project a small heartbeat at start and every six hours after, so that the
+project knows how many installs there are and which of its parts are used. It is on by default.
+`KW_ANALYTICS=off` in `.env`, then `docker compose up -d`, turns it off: the collector then sends
+nothing, makes no connection for it and makes no install id, and says once at start that the
+counts are off. Any other value, or none, leaves it on. It is the only switch: there is none in
+`config.toml`, on the admin page or on a display, and `DO_NOT_TRACK` is not read. The settings
+screen's Status page says whether it is on.
+
+One heartbeat is one JSON object posted to `https://telemetry.knightwatcher.io/v1/heartbeat`:
+
+- a random install id, made once and kept in `install.json` in the collector's memory folder, and
+  how many whole days ago it was made; emptying that folder makes a new one;
+- the version the image is stamped with, and how many whole hours the collector has run;
+- the world, the knight's build, the items and the parts of the household look, each by its
+  built-in id; a world, item or colour of a pack of your own is sent as `custom`;
+- the sources that are on, a source read through a provider with that provider's id
+  (`streams:jellyfin`), and one read through a provider file of your own as `streams:custom`;
+- how many entries of `[[sources.imports]]` and checks of `[[sources.json]]` are on, never their
+  names;
+- how many displays the bundled server has seen in the last six hours.
+
+Nothing else: no name, title, address, URL, device, condition or credential from the config,
+nothing about the host machine, and no time of its own. Only the long-running collector sends;
+`--once`, `--probe`, `--check-config` and `--health` never do. A send has ten seconds and runs
+beside the polls, so a receiver that cannot be reached changes nothing on the wall: the collector
+logs one warning at most once an hour and tries again an hour later.
+[telemetry.md](./telemetry.md) lists every field and its limits, and says what the project keeps.
+
 ### When a change applies
 
 - **A change on the admin page** is checked by the collector's own rules before the server keeps
@@ -225,7 +256,7 @@ How the collector runs. The whole table may be left out to take the defaults.
 |---|---|---|---|---|
 | `interval_s` | a whole number of seconds, at least 5 | `10` | household | Seconds between polls. The displays treat a state file older than three polls as stale and say so. |
 | `output_dir` | a folder inside the container | `"/out"` | household | Folder state.json is written to. compose.yaml mounts KW_OUT here. |
-| `state_dir` | a folder inside the container | `"/var/lib/knightwatcher"` | household | Folder for memory.json and the collector's lock. compose.yaml mounts KW_VAR here. |
+| `state_dir` | a folder inside the container | `"/var/lib/knightwatcher"` | household | Folder for memory.json, the usage counts' install.json and the collector's lock. compose.yaml mounts KW_VAR here. |
 | `timezone` | an IANA time zone, such as "Europe/London" | `"UTC"` | household | Zone for the night hours and the times shown in words. |
 | `http_timeout_s` | a number of seconds, above zero | `5.0` | household | Timeout for each network call. Must be shorter than the time between polls, so a poll every 5 seconds needs it lowered. A device's check uses at most 3 seconds of it for each step. |
 | `auth_backoff_s` | a whole number of seconds, at least 1200 | `1200` | household | Pause after a 401, 403 or 429 before the service is called again. Cannot be set below 1200. |
@@ -652,7 +683,7 @@ The services the sections read through a kind can read, each by its provider. A 
 
 ### .env
 
-Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, the admin password reaches the server alone, and the credentials reach the collector alone.
+Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, the admin password reaches the server alone, `KW_ANALYTICS` turns the collector's usage counts off, and the credentials reach the collector alone.
 
 | Variable | Scope | Values | Default | What it is |
 |---|---|---|---|---|
@@ -665,6 +696,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KW_SERVER_ADDRESS` | server | an address of this host, or empty for all of them, such as `127.0.0.1` | empty | The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network. |
 | `KW_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
 | `KW_ADMIN_PASSWORD` | server | a password of at least 12 characters, or empty to leave the admin page off, such as `a-long-password-of-your-own` | empty | The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out. |
+| `KW_ANALYTICS` | collector | off to send nothing; anything else, or empty, sends the usage counts, such as `on` | empty | The collector's usage counts: at start and every six hours it sends the project a random install id, the version, its uptime, the world and the built-in parts in use, which sources are on, and how many imports, checks and displays there are, never a name, title, address or credential (docs/telemetry.md). Passed to the collector alone. Set to off, it sends nothing and makes no install id. A change needs the containers made again. |
 | `KW_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
 | `KW_PLEX_TOKEN` | credential | a Plex token, such as `AbCdEfGhIjKlMnOpQrSt` | none | The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = "plex". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
 | `KW_TRACEARR_API_KEY` | credential | trr_pub_ and 43 letters, digits, - and _, such as `trr_pub_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE` | none | Tracearr's public API key, for the tracearr provider, which [sources.streams] reads with from = "tracearr". Made by Tracearr's owner: Settings, Data & API, API, Generate Key. It is sent in the Authorization header as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a stream: keep it as you would the password. Tracearr keeps one key, and Regenerate ends the old one for whatever else uses it. Read when the source is enabled; its `secret` setting names the variable. |

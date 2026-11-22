@@ -79,6 +79,9 @@ class Runner:
         # taken up, and the problems of the last change looked at (collector/reload.py). Written
         # to the file as `config`.
         self.config_note: dict = {"admin": None, "at": text.iso(clock()), "problems": []}
+        # Whether the usage counts are on, {"on": true}, written to the file as `analytics` when
+        # the command line sets it (collector/cli.py); left out otherwise.
+        self.analytics: dict | None = None
 
     # Taking up a change ------------------------------------------------------------------------
 
@@ -408,6 +411,8 @@ class Runner:
             # The settings in use, for the admin page.
             "config": copy.deepcopy(self.config_note),
         }
+        if self.analytics is not None:
+            state["analytics"] = dict(self.analytics)
         problems = contract.validate(state)
         for problem in problems:
             log.error("state breaks the contract: %s", problem)
