@@ -1,0 +1,29 @@
+{
+ "about": "XML where JSON was asked for, as from something between the collector and Plex that drops the Accept header.",
+ "settings": {},
+ "credentials": [
+  "token"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/status/sessions",
+    "headers": {
+     "Accept": "application/json",
+     "X-Plex-Token": "{credential.token}",
+     "X-Plex-Client-Identifier": "knightwatcher",
+     "X-Plex-Product": "Knightwatcher"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"0\">\n</MediaContainer>\n"
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "Plex sent something other than JSON"
+ }
+}

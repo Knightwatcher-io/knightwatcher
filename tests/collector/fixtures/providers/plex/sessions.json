@@ -1,0 +1,335 @@
+{
+ "about": "Three streams as Plex lists them, every value invented: an episode, a film and a track, not in the order they started. The same streams as tautulli/activity.json, so both providers give the same reading.",
+ "settings": {},
+ "credentials": [
+  "token"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/status/sessions",
+    "headers": {
+     "Accept": "application/json",
+     "X-Plex-Token": "{credential.token}",
+     "X-Plex-Client-Identifier": "knightwatcher",
+     "X-Plex-Product": "Knightwatcher"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "MediaContainer": {
+      "size": 3,
+      "Metadata": [
+       {
+        "addedAt": 1730000000,
+        "art": "/library/metadata/5001/art/1731000000",
+        "duration": 2700000,
+        "grandparentArt": "/library/metadata/5001/art/1731000000",
+        "grandparentGuid": "plex://show/0000000000000000000a5001",
+        "grandparentKey": "/library/metadata/5001",
+        "grandparentRatingKey": "5001",
+        "grandparentThumb": "/library/metadata/5001/thumb/1731000000",
+        "grandparentTitle": "The Lantern Keepers",
+        "guid": "plex://episode/0000000000000000000a5003",
+        "index": 3,
+        "key": "/library/metadata/5003",
+        "librarySectionID": "2",
+        "librarySectionKey": "/library/sections/2",
+        "librarySectionTitle": "TV Shows",
+        "parentIndex": 1,
+        "parentKey": "/library/metadata/5002",
+        "parentRatingKey": "5002",
+        "parentThumb": "/library/metadata/5002/thumb/1731000000",
+        "parentTitle": "Season 1",
+        "ratingKey": "5003",
+        "sessionKey": "21",
+        "summary": "An invented episode.",
+        "thumb": "/library/metadata/5003/thumb/1731000000",
+        "title": "The Tide Bell",
+        "type": "episode",
+        "updatedAt": 1731000000,
+        "viewOffset": 1107000,
+        "year": 2024,
+        "Media": [
+         {
+          "id": 9001,
+          "duration": 2700000,
+          "bitrate": 8000,
+          "container": "mkv",
+          "selected": true,
+          "Part": [
+           {
+            "id": 9101,
+            "duration": 2700000,
+            "container": "mkv",
+            "file": "/data/media/invented-9001.mkv",
+            "key": "/library/parts/9101/1731000000/file.mkv",
+            "size": 1500000000,
+            "decision": "directplay",
+            "selected": true
+           }
+          ],
+          "videoResolution": "1080",
+          "videoCodec": "h264",
+          "audioCodec": "aac",
+          "width": 1920,
+          "height": 1080
+         }
+        ],
+        "User": {
+         "id": "3",
+         "thumb": "https://plex.tv/users/0a1b2c3d4e5f6003/avatar?c=1731000000",
+         "title": "Robin"
+        },
+        "Player": {
+         "address": "192.0.2.61",
+         "machineIdentifier": "invented-lounge-tv",
+         "model": "",
+         "platform": "Roku",
+         "platformVersion": "1.0",
+         "product": "Plex for Roku",
+         "profile": "Plex for Roku",
+         "remotePublicAddress": "198.51.100.7",
+         "state": "playing",
+         "title": "Lounge TV",
+         "vendor": "",
+         "version": "8.1.0",
+         "local": true,
+         "relayed": false,
+         "secure": true,
+         "userID": 3
+        },
+        "Session": {
+         "id": "invented-session-a",
+         "bandwidth": 8000,
+         "location": "lan"
+        }
+       },
+       {
+        "addedAt": 1729000000,
+        "art": "/library/metadata/6100/art/1731000000",
+        "contentRating": "PG",
+        "duration": 6600000,
+        "guid": "plex://movie/0000000000000000000a6100",
+        "key": "/library/metadata/6100",
+        "librarySectionID": "1",
+        "librarySectionKey": "/library/sections/1",
+        "librarySectionTitle": "Films",
+        "ratingKey": "6100",
+        "sessionKey": "19",
+        "studio": "Invented Pictures",
+        "summary": "An invented film.",
+        "tagline": "Nothing here is real.",
+        "thumb": "/library/metadata/6100/thumb/1731000000",
+        "title": "Harbour of Glass",
+        "type": "movie",
+        "updatedAt": 1731000000,
+        "viewOffset": 4020000,
+        "year": 2023,
+        "Media": [
+         {
+          "id": 9002,
+          "duration": 2700000,
+          "bitrate": 8000,
+          "container": "mkv",
+          "selected": true,
+          "Part": [
+           {
+            "id": 9102,
+            "duration": 2700000,
+            "container": "mkv",
+            "file": "/data/media/invented-9002.mkv",
+            "key": "/library/parts/9102/1731000000/file.mkv",
+            "size": 1500000000,
+            "decision": "directplay",
+            "selected": true
+           }
+          ],
+          "videoResolution": "1080",
+          "videoCodec": "h264",
+          "audioCodec": "aac",
+          "width": 1920,
+          "height": 1080
+         }
+        ],
+        "User": {
+         "id": "4",
+         "thumb": "https://plex.tv/users/0a1b2c3d4e5f6004/avatar?c=1731000000",
+         "title": "Sam"
+        },
+        "Player": {
+         "address": "192.0.2.62",
+         "machineIdentifier": "invented-phone",
+         "model": "",
+         "platform": "Android",
+         "platformVersion": "1.0",
+         "product": "Plex for Android (Mobile)",
+         "profile": "Plex for Android (Mobile)",
+         "remotePublicAddress": "198.51.100.7",
+         "state": "paused",
+         "title": "Phone",
+         "vendor": "",
+         "version": "8.1.0",
+         "local": false,
+         "relayed": false,
+         "secure": true,
+         "userID": 3
+        },
+        "Session": {
+         "id": "invented-session-b",
+         "bandwidth": 4000,
+         "location": "wan"
+        },
+        "TranscodeSession": {
+         "key": "/transcode/sessions/invented-transcode-b",
+         "throttled": false,
+         "complete": false,
+         "progress": 52.5,
+         "speed": 3.1,
+         "duration": 6600000,
+         "videoDecision": "transcode",
+         "audioDecision": "copy",
+         "protocol": "dash",
+         "container": "mp4",
+         "videoCodec": "h264",
+         "audioCodec": "aac",
+         "width": 1280,
+         "height": 720,
+         "transcodeHwRequested": true
+        }
+       },
+       {
+        "addedAt": 1728000000,
+        "duration": 241000,
+        "grandparentGuid": "plex://artist/0000000000000000000a7001",
+        "grandparentKey": "/library/metadata/7001",
+        "grandparentRatingKey": "7001",
+        "grandparentThumb": "/library/metadata/7001/thumb/1731000000",
+        "grandparentTitle": "Fen Owls",
+        "guid": "plex://track/0000000000000000000a7003",
+        "index": 4,
+        "key": "/library/metadata/7003",
+        "librarySectionID": "3",
+        "librarySectionKey": "/library/sections/3",
+        "librarySectionTitle": "Music",
+        "parentIndex": 1,
+        "parentKey": "/library/metadata/7002",
+        "parentRatingKey": "7002",
+        "parentThumb": "/library/metadata/7002/thumb/1731000000",
+        "parentTitle": "Night Lines",
+        "parentYear": 2022,
+        "ratingKey": "7003",
+        "sessionKey": "24",
+        "thumb": "/library/metadata/7002/thumb/1731000000",
+        "title": "Low Tide",
+        "type": "track",
+        "updatedAt": 1731000000,
+        "viewOffset": 90000,
+        "Media": [
+         {
+          "id": 9003,
+          "duration": 2700000,
+          "bitrate": 8000,
+          "container": "flac",
+          "selected": true,
+          "Part": [
+           {
+            "id": 9103,
+            "duration": 2700000,
+            "container": "mkv",
+            "file": "/data/media/invented-9003.mkv",
+            "key": "/library/parts/9103/1731000000/file.mkv",
+            "size": 1500000000,
+            "decision": "directplay",
+            "selected": true
+           }
+          ],
+          "audioCodec": "flac",
+          "audioChannels": 2
+         }
+        ],
+        "User": {
+         "id": "5",
+         "thumb": "https://plex.tv/users/0a1b2c3d4e5f6005/avatar?c=1731000000",
+         "title": "alex"
+        },
+        "Player": {
+         "address": "192.0.2.63",
+         "machineIdentifier": "invented-kitchen-speaker",
+         "model": "",
+         "platform": "Linux",
+         "platformVersion": "1.0",
+         "product": "Plexamp",
+         "profile": "Plexamp",
+         "remotePublicAddress": "198.51.100.7",
+         "state": "playing",
+         "title": "Kitchen speaker",
+         "vendor": "",
+         "version": "8.1.0",
+         "local": true,
+         "relayed": false,
+         "secure": true,
+         "userID": 3
+        },
+        "Session": {
+         "id": "invented-session-c",
+         "bandwidth": 1000,
+         "location": "lan"
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ ],
+ "fill": {
+  "names": {
+   "count": 3,
+   "sessions": [
+    {
+     "title": "The Lantern Keepers S01E03",
+     "who": "Robin",
+     "order": "21"
+    },
+    {
+     "title": "Harbour of Glass",
+     "who": "Sam",
+     "order": "19"
+    },
+    {
+     "title": "Fen Owls - Low Tide",
+     "who": "alex",
+     "order": "24"
+    }
+   ]
+  },
+  "titles": {
+   "count": 3,
+   "sessions": [
+    {
+     "title": "The Lantern Keepers S01E03",
+     "order": "21"
+    },
+    {
+     "title": "Harbour of Glass",
+     "order": "19"
+    },
+    {
+     "title": "Fen Owls - Low Tide",
+     "order": "24"
+    }
+   ]
+  },
+  "count": {
+   "count": 3,
+   "sessions": [
+    {},
+    {},
+    {}
+   ]
+  }
+ }
+}

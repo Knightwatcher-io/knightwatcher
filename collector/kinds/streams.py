@@ -4,6 +4,12 @@ The setting `show` decides what of them leaves the collector: `names`, who is wa
 `titles`, what alone; `count`, how many and nothing else. A field the setting does not let out is
 never read from the service's reply: the engine reads names only for `names`, and nothing of a
 stream for `count`. No other detail of a stream (device, quality, progress) is in the fill.
+
+Streams are listed in the order they started, so a new stream joins the end and the page's cycle
+through them keeps its place. A provider whose service gives a number that rises as streams start
+(Tautulli's and Plex's session key) fills `order`. One whose service gives no such number fills
+`key`, the stream's identity, and the kind lists those streams in the order it first saw each key,
+which it keeps in the running process alone, never in the memory file.
 """
 
 from __future__ import annotations
@@ -21,18 +27,37 @@ SESSIONS_MAX = 32
 
 # The fields of the fill each setting of `show` lets the engine read.
 _SHOWN = {
-    "names": ("count", "sessions", "sessions.title", "sessions.who", "sessions.order"),
-    "titles": ("count", "sessions", "sessions.title", "sessions.order"),
+    "names": (
+        "count",
+        "sessions",
+        "sessions.title",
+        "sessions.who",
+        "sessions.order",
+        "sessions.key",
+    ),
+    "titles": ("count", "sessions", "sessions.title", "sessions.order", "sessions.key"),
     "count": ("count", "sessions"),
 }
 
 
-def _order(session: dict) -> tuple:
-    """Sessions by the provider's order, which rises as streams start, so a new stream joins the
-    end and the others keep their places; a session without a number keeps its place after
-    them."""
-    key = str(session.get("order") or "")
-    return (0, int(key), "") if key.isdigit() else (1, 0, "")
+def _digits(value) -> int | None:
+    """A value whose text is all digits, as its number; None for any other."""
+    said = str(value or "")
+    return int(said) if said.isdigit() else None
+
+
+def _order(session: dict, seen: dict[str, int]) -> tuple:
+    """Where a session is listed. First the sessions with an order of digits, by its number, which
+    rises as streams start; then those with a key, by the read that first saw it, ties by the key
+    (digits by their number, before other text); then the rest, keeping their places."""
+    number = _digits(session.get("order"))
+    if number is not None:
+        return (0, number, ())
+    key = session.get("key")
+    if key is not None and key in seen:
+        tie = _digits(key)
+        return (1, seen[key], (0, tie, "") if tie is not None else (1, 0, key))
+    return (2, 0, ())
 
 
 def line(session: dict, i: int, n: int) -> str:
@@ -82,12 +107,28 @@ class StreamsKind(Kind):
                 "who": {"type": "string", "show": "names"},
                 # A key that rises as streams start: digits sort by their number, others after.
                 "order": {"type": "raw", "show": "titles"},
+                # The stream's identity, for a service with no such key: streams are then listed
+                # in the order the kind first saw each.
+                "key": {"type": "string", "show": "titles"},
             },
         },
     }
 
+    def __init__(self):
+        # The keys of the streams playing at the last read, each with the number of the read that
+        # first saw it. Kept by the running collector alone; a key no longer playing is dropped.
+        self._seen: dict[str, int] = {}
+        self._reads = 0
+
     def allowed(self, settings):
         return frozenset(_SHOWN[settings["show"]])
+
+    def _first_seen(self, sessions: list[dict]) -> dict[str, int]:
+        """The read that first saw each key of this read's sessions, this one for a new key."""
+        self._reads += 1
+        keys = [s["key"] for s in sessions if "key" in s]
+        self._seen = {k: self._seen.get(k, self._reads) for k in keys}
+        return self._seen
 
     def reading(self, fill, settings, config, now):
         sessions = fill["sessions"]
@@ -96,8 +137,9 @@ class StreamsKind(Kind):
         facts: dict = {"count": n}
         if show == "count":
             return Reading(facts)
+        seen = self._first_seen(sessions)
         titles, listed = [], []
-        for s in sorted(sessions, key=_order):
+        for s in sorted(sessions, key=lambda s: _order(s, seen)):
             entry = {}
             if show == "names":
                 who = text.clip(text.clean(s["who"]), NAME_MAX) if "who" in s else ""

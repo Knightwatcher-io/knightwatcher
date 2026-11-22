@@ -24,6 +24,7 @@ SECRETS = {
     "KNIGHTWATCHER_SONARR_API_KEY": "sk-example",
     "KNIGHTWATCHER_RADARR_API_KEY": "rk-example",
     "KNIGHTWATCHER_TECHNITIUM_TOKEN": "tok-example",
+    "KNIGHTWATCHER_PLEX_TOKEN": "plex-example",
 }
 
 
@@ -769,6 +770,144 @@ class StreamsTest(unittest.TestCase):
             s.fetch(T0)
 
 
+class FirstSeenTest(unittest.TestCase):
+    """The streams kind's order for a provider whose service gives no start order: the order in
+    which the running collector first saw each stream's key."""
+
+    def setUp(self):
+        self.kind = kind_class("streams")()
+        self.config = make_config({})
+
+    def read(self, *keys, show="titles"):
+        sessions = [{"key": k, "title": f"Title {k}"} for k in keys]
+        fill = check_fill(self.kind.FILL, {"sessions": sessions}, self.kind.allowed({"show": show}))
+        facts = self.kind.reading(fill, {"show": show}, self.config, T0).facts
+        return [t.removeprefix("Title ") for t in facts.get("titles", [])]
+
+    def test_a_new_stream_joins_the_end_and_the_others_keep_their_places(self):
+        self.assertEqual(self.read("b", "a"), ["a", "b"])  # seen together: by key
+        self.assertEqual(self.read("c", "b", "a"), ["a", "b", "c"])
+        self.assertEqual(self.read("a", "c", "b"), ["a", "b", "c"])  # the service's order moved
+        self.assertEqual(self.read("d", "c", "b"), ["b", "c", "d"])  # a ended, d started
+        # A stream that comes back is a new one.
+        self.assertEqual(self.read("a", "b", "c", "d"), ["b", "c", "d", "a"])
+
+    def test_keys_seen_together_go_by_number_then_by_text(self):
+        self.assertEqual(self.read("x", "10", "9", "a"), ["9", "10", "a", "x"])
+
+    def test_only_the_keys_playing_are_kept(self):
+        self.read(*[str(i) for i in range(40)])
+        self.read("7", "new")
+        self.assertEqual(sorted(self.kind._seen), ["7", "new"])
+        self.read()
+        self.assertEqual(self.kind._seen, {})
+
+    def test_count_reads_no_key_and_leaves_the_order_alone(self):
+        self.read("b")
+        fill = check_fill(
+            self.kind.FILL, {"sessions": [{}, {}]}, self.kind.allowed({"show": "count"})
+        )
+        self.assertEqual(
+            self.kind.reading(fill, {"show": "count"}, self.config, T0).facts, {"count": 2}
+        )
+        self.assertEqual(self.kind._seen, {"b": 1})
+        with self.assertRaises(SourceError):
+            check_fill(
+                self.kind.FILL, {"sessions": [{"key": "b"}]}, self.kind.allowed({"show": "count"})
+            )
+
+    def test_a_start_order_comes_first_then_first_sight_then_the_rest(self):
+        sessions = [
+            {"title": "neither"},
+            {"key": "k2", "title": "keyed later"},
+            {"order": "30", "key": "z", "title": "thirty"},
+            {"key": "k1", "title": "keyed"},
+            {"order": "4", "title": "four"},
+            {"order": "x", "title": "an order not of digits"},
+        ]
+        fill = {"sessions": sessions}
+        facts = self.kind.reading(fill, {"show": "titles"}, self.config, T0).facts
+        self.assertEqual(
+            facts["titles"],
+            ["four", "thirty", "keyed", "keyed later", "neither", "an order not of digits"],
+        )
+
+    def test_the_key_and_its_order_never_leave_the_kind(self):
+        sessions = [{"key": "secret-key-1", "title": "A", "who": "Robin"}]
+        reading = self.kind.reading({"sessions": sessions}, {"show": "names"}, self.config, T0)
+        self.assertNotIn("secret-key-1", json.dumps([reading.facts, reading.data]))
+        memory = {}
+        self.assertEqual(self.kind.observe(reading, memory, {"show": "names"}, self.config, T0), [])
+        self.assertEqual(memory, {})
+
+    def test_a_kind_of_its_own_for_each_source(self):
+        self.read("a")
+        other = kind_class("streams")()
+        self.assertEqual(other._seen, {})
+
+
+class PlexTest(unittest.TestCase):
+    """The streams kind through the plex provider, against an invented Plex Media Server."""
+
+    def setUp(self):
+        self.http = FakeHttp()
+        self.addCleanup(self.http.close)
+        item = {
+            "type": "movie",
+            "sessionKey": "19",
+            "title": "Harbour of Glass",
+            "User": {"title": "Sam"},
+        }
+        episode = {
+            "type": "episode", "sessionKey": "21", "grandparentTitle": "The Lantern Keepers",
+            "parentIndex": 1, "index": 3, "title": "The Tide Bell", "User": {"title": "Robin"},
+        }  # fmt: skip
+        self.reply = {"MediaContainer": {"size": 2, "Metadata": [episode, item]}}
+        self.http.routes["/status/sessions"] = (200, lambda _h: self.reply)
+
+    def fetch(self, show="names"):
+        settings = {"url": self.http.url, "from": "plex", "show": show}
+        return source("streams", settings).fetch(T0).facts
+
+    def test_streams_in_the_order_they_started_at_each_show(self):
+        self.assertEqual(
+            self.fetch(),
+            {
+                "count": 2,
+                "titles": ["Harbour of Glass", "The Lantern Keepers S01E03"],
+                "sessions": [
+                    {"who": "Sam", "title": "Harbour of Glass"},
+                    {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+                ],
+            },
+        )
+        titles = self.fetch("titles")
+        self.assertEqual(titles["titles"], ["Harbour of Glass", "The Lantern Keepers S01E03"])
+        for name in ("Sam", "Robin"):
+            self.assertNotIn(name, json.dumps(titles))
+        self.assertEqual(self.fetch("count"), {"count": 2})
+
+    def test_the_token_goes_in_its_header_with_json_asked_for(self):
+        self.fetch()
+        ((path, headers),) = self.http.requests
+        headers = {k.lower(): v for k, v in headers.items()}
+        self.assertEqual(path, "/status/sessions")
+        self.assertEqual(headers["x-plex-token"], "plex-example")
+        self.assertEqual(headers["accept"], "application/json")
+        self.assertEqual(headers["x-plex-client-identifier"], "knightwatcher")
+
+    def test_nothing_playing(self):
+        self.reply = {"MediaContainer": {"size": 0}}
+        self.assertEqual(self.fetch(), {"count": 0, "titles": []})
+
+    def test_a_refused_token_is_an_auth_error(self):
+        page = b"<html><head><title>Unauthorized</title></head></html>"
+        self.http.routes["/status/sessions"] = (401, page)
+        with self.assertRaises(AuthError) as cm:
+            source("streams", {"url": self.http.url, "from": "plex"}).fetch(T0)
+        self.assertEqual(str(cm.exception), "Plex token refused")
+
+
 # A provider file of a user's own for the security kind, against an invented service.
 MYBANS = """
 format = 1
@@ -1055,11 +1194,18 @@ class FillTest(unittest.TestCase):
         k = kind_class("streams")()
         self.assertEqual(
             k.allowed({"show": "names"}),
-            {"count", "sessions", "sessions.title", "sessions.who", "sessions.order"},
+            {
+                "count",
+                "sessions",
+                "sessions.title",
+                "sessions.who",
+                "sessions.order",
+                "sessions.key",
+            },
         )
         self.assertEqual(
             k.allowed({"show": "titles"}),
-            {"count", "sessions", "sessions.title", "sessions.order"},
+            {"count", "sessions", "sessions.title", "sessions.order", "sessions.key"},
         )
         self.assertEqual(k.allowed({"show": "count"}), {"count", "sessions"})
 

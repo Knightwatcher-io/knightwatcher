@@ -176,6 +176,14 @@ tools/throwaway/pihole.sh       # pihole/pihole: flies, one session, a wrong pas
 tools/throwaway/technitium.sh   # technitium/dns-server: a token by API, flies, a wrong token, v14
 ```
 
+A service with no throwaway, such as Plex Media Server, which needs a Plex account, is proved
+against the live one with `--probe` on the host: a config of the probe's own with that one
+section, `--admin /nonexistent`, and `--env-file .env`, so that neither the wall's config nor its
+container is touched and no credential passes through the command line
+([providers.md](./providers.md#proving-a-provider---probe)). `--record` keeps the exchanges in a
+scratch folder for checking the fixtures' shapes; the recording is private and is deleted once
+the fixtures are checked.
+
 The page:
 
 ```bash

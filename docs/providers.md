@@ -26,6 +26,7 @@ SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-pr
 | Provider | Kind | Service | Read by |
 |---|---|---|---|
 | `tautulli` | streams | Tautulli's `get_activity` | `[sources.streams]`, the default for `from` |
+| `plex` | streams | Plex Media Server's `/status/sessions`, with the owner's token in the `X-Plex-Token` header | `[sources.streams]` with `from = "plex"` |
 | `adguard` | adblock | AdGuard Home's `/control/stats` | `[sources.adblock]`, the default for `from` |
 | `pihole` | adblock | Pi-hole 6's `/api/stats/summary` and `/api/history`, through a session | `[sources.adblock]` with `from = "pihole"` |
 | `technitium` | adblock | Technitium DNS Server's dashboard statistics (version 15 or later), with an API token | `[sources.adblock]` with `from = "technitium"` |
@@ -58,6 +59,15 @@ kind cleans it), `bool` true or false, `time` a moment, and `raw` a value the ki
 | `sessions[].title` | string | no | `titles`, `names` | what plays, composed by the provider (`The Night Shift S02E04`) |
 | `sessions[].who` | string | no | `names` | who is watching |
 | `sessions[].order` | raw | no | `titles`, `names` | a key that rises as streams start: a value whose text is all digits sorts by its number, others after |
+| `sessions[].key` | string | no | `titles`, `names` | the stream's identity, for a service that gives no `order` |
+
+The streams are listed in the order they started. A provider whose service gives a number that
+rises as streams start (Tautulli's and Plex's session key) fills `order`, and the kind sorts by it.
+One whose service gives none fills `key`, the stream's identity as the service gives it, and the
+kind lists those streams in the order it first saw each key, keys seen at the same read by the key
+(digits by their number, before other text). That order is kept by the running collector alone,
+only for the keys playing at the last read, and never in the memory file. Streams with an `order`
+come first, then those with a `key`, then the rest in the order the provider gave them.
 
 The kind keeps the facts of [state.md](./state.md#fields): titles cut to 60 characters, names to
 16, at most 32 sessions listed.
@@ -524,9 +534,20 @@ ends, so a probe never adds to a lockout. It exits 0 with a reading, 1 when the 
 when the source is not one read through a provider, is not set up, its settings do not pass, or
 its provider is a file that was left out.
 
+On the host, outside the container, `--env-file PATH` reads the credentials from a `.env` file
+rather than the environment, and `--config` and `--admin` name a config of the probe's own, so
+the wall's files are not touched:
+
+```bash
+python3 -m collector --config /tmp/probe/config.toml --admin /nonexistent \
+  --env-file .env --probe streams
+```
+
 `--record FOLDER` also writes the read's exchanges to a file in that folder, mode 600: each request
 with each credential replaced by its field's name (`{credential.api_key}`) and a session's id by
-`{session.sid}`, and each request's method and each reply or error. A session login is recorded
+`{session.sid}`, and each request's method and each reply or error. A credential is replaced
+wherever it appears, as written or percent-encoded, in the replies and errors too, since a service
+may echo an address that carries it. A session login is recorded
 with its JSON body as the file writes it, templates unfilled, and every text of its reply masked,
 since a login's reply holds the session's id; its logout follows the read. The replies are the service's own and private: never commit them as they are. A fixture
 for `tests/collector/fixtures/providers/<id>/` is made from one by replacing every value with an

@@ -52,7 +52,8 @@ entry says `first read still running`.
 A service that answers 401, 403 or 429 is not called again for `auth_backoff_s` (20 minutes at
 least). AdGuard Home locks an address out of its API for 15 minutes after five bad logins, and
 this rule keeps the collector well short of that; Pi-hole answers 429 after more than three
-password tries in a second, or when its sessions are all taken. Technitium answers HTTP 200 with
+password tries in a second, or when its sessions are all taken. Plex answers 401 for a token it
+does not take, wrong or missing. Technitium answers HTTP 200 with
 the status `invalid-token`, which its provider marks as refused credentials. The pause is kept in the memory
 file, so restarting the container does not end it, and `sources` shows when it ends. Credentials
 are sent with the first request: urllib's own handler would send one request without them first,
@@ -358,7 +359,7 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `pi` | `devices.py` | a TCP connection to every port at once; a refusal counts as an answer | `pi` |
 | `updates` | `updates.py` | the host's lock table, `/proc/locks`, and the command line of each process holding a lock | `updates` |
 | `ssh` | `ssh.py` | established connections to the SSH port in `/proc/net/tcp` and `tcp6` | `ssh` |
-| `streams` | the streams kind, `kinds/streams.py`, through its `from` provider, `tautulli` by default | Tautulli's `get_activity`: of each stream its title, and its user's name only when `show` is `names` | `streams` |
+| `streams` | the streams kind, `kinds/streams.py`, through its `from` provider, `tautulli` by default | Tautulli's `get_activity`, or Plex Media Server's `/status/sessions` with the owner's token: of each stream its title, and its user's name only when `show` is `names` | `streams` |
 | `adblock` | the adblock kind, `kinds/adblock.py`, through its `from` provider, `adguard` by default | AdGuard Home's `/control/stats`, Pi-hole 6's `/api/stats/summary` and `/api/history` through a session, or Technitium's `/api/dashboard/stats/get` for the last hour and the last day, with an API token | `adblock` |
 | `security` | the security kind, `kinds/security.py`, through its `from` provider, `fail2ban` (`providers/fail2ban.py`) by default | the `bans` table of fail2ban's SQLite database, read-only | `security` |
 | `sonarr`, `radarr` | the imports kind, `kinds/imports.py`, through the provider of each one's name | the last ten import records in each one's history | none |
@@ -395,7 +396,7 @@ a file fail2ban replaces is read afresh.
 
 | Section | Kind | `from` | Built-in providers |
 |---|---|---|---|
-| `[sources.streams]` | streams | `tautulli` by default, or a file of the user's own | `tautulli` |
+| `[sources.streams]` | streams | `tautulli` by default, `plex`, or a file of the user's own | `tautulli`, `plex` |
 | `[sources.adblock]` | adblock | `adguard` by default, `pihole`, `technitium`, or a file of the user's own | `adguard`, `pihole`, `technitium` |
 | `[sources.security]` | security | `fail2ban` by default, or a file of the user's own | `fail2ban` (a code adapter) |
 | `[sources.sonarr]`, `[sources.radarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr` |
@@ -412,6 +413,14 @@ declaration before the kind sees it, so a provider that gives a field of the wro
 403 or 429, or a reply the provider marks as one) raises the back-off of
 [Credentials refused](#credentials-refused). A source whose provider or provider file changes is
 started afresh when a change is taken up, as one whose settings change is.
+
+The streams kind lists the streams in the order they started, so a new stream joins the end and
+the others keep their places. Tautulli and Plex give a number that rises as streams start (Plex's
+session key, which Tautulli passes on), and the kind sorts by it. For a provider whose service
+gives no such number, the file fills each stream's `key` instead, and the kind lists those streams
+in the order it first saw each key, ties by the key. It keeps that in the running process alone:
+never in the memory file, and only for the keys playing at the last read, so a stream that ends
+and comes back joins the end, and a restart starts the order afresh.
 
 A provider that logs in by session (`pihole`) logs in with one POST before its first read and
 keeps the session's id in the provider instance, in memory alone: it is never logged, never in
@@ -494,9 +503,12 @@ would write with every text replaced by its type and length (`<string 21>`), so 
 proved against a live service without anyone reading what is being watched. It writes nothing of
 the collector's own, and a source the running collector has paused after refused credentials is
 not read until the pause ends. Run it in the container, where the credentials come from `.env`
-through compose: `docker compose run --rm collector --probe streams`. `--record FOLDER` also
-writes the exchanges to a file in that folder, mode 600, each credential replaced by its field's
-name; the replies in it are the service's own, private, and never committed as they are. A
+through compose: `docker compose run --rm collector --probe streams`. On the host, `--env-file
+PATH` takes the credentials from a `.env` file instead of the environment, so a probe can run with
+a config of its own without the wall's container or its config. `--record FOLDER` also writes the
+exchanges to a file in that folder, mode 600, each credential replaced by its field's name wherever
+it appears, as written or percent-encoded, in a reply or an error as well as in the request; the
+replies in it are the service's own, private, and never committed as they are. A
 section whose provider is a file that was left out is not read: the probe prints the file's
 problems and exits 2.
 
@@ -514,7 +526,7 @@ and the one the file says is in use, since the admin page may have set another. 
 from `.env` (see [configuration.md](./configuration.md#env-host-paths-the-servers-address-and-credentials)).
 `--check-config --env-file PATH` reads them from a `.env` file instead, for the check alone, so a
 new image can be checked against a host's `.env` before it starts; nothing in the file is
-expanded, and no message carries a value. The collector takes an exclusive lock on its state folder, so a second collector
+expanded, and no message carries a value. `--probe` takes `--env-file` the same way. The collector takes an exclusive lock on its state folder, so a second collector
 pointed at the same folder exits at once.
 
 The container definition is `compose.yaml`: a non-root user of its own (uid and gid 10001), a

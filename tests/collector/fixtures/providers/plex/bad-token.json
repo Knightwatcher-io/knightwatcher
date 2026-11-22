@@ -1,0 +1,29 @@
+{
+ "about": "A token Plex does not take, wrong or missing: HTTP 401 with a small HTML page, as Plex Media Server 1.43 answers. The source pauses.",
+ "settings": {},
+ "credentials": [
+  "token"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/status/sessions",
+    "headers": {
+     "Accept": "application/json",
+     "X-Plex-Token": "{credential.token}",
+     "X-Plex-Client-Identifier": "knightwatcher",
+     "X-Plex-Product": "Knightwatcher"
+    }
+   },
+   "reply": {
+    "status": 401,
+    "body": "<html><head><title>Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>"
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "Plex token refused"
+ }
+}

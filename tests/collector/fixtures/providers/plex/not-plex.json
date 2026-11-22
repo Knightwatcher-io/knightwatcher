@@ -1,0 +1,29 @@
+{
+ "about": "An address that has no such call, as Plex answers a path it does not know: HTTP 404 with a small HTML page.",
+ "settings": {},
+ "credentials": [
+  "token"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/status/sessions",
+    "headers": {
+     "Accept": "application/json",
+     "X-Plex-Token": "{credential.token}",
+     "X-Plex-Client-Identifier": "knightwatcher",
+     "X-Plex-Product": "Knightwatcher"
+    }
+   },
+   "reply": {
+    "status": 404,
+    "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "no such call: is this Plex Media Server?"
+ }
+}

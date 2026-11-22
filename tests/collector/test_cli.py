@@ -123,12 +123,12 @@ class CliTest(unittest.TestCase):
         self.assertEqual(err, f"config: {self.env_file}: line 2: expected NAME=value\n")
         self.assertNotIn(password, out + err)
 
-    def test_env_file_goes_only_with_check_config(self):
+    def test_env_file_goes_only_with_check_config_or_probe(self):
         self.write_env("")
         with contextlib.redirect_stderr(io.StringIO()) as err, self.assertRaises(SystemExit) as cm:
             main(["--config", self.config, "--once", "--env-file", self.env_file])
         self.assertEqual(cm.exception.code, 2)
-        self.assertIn("--env-file goes with --check-config", err.getvalue())
+        self.assertIn("--env-file goes with --check-config or --probe", err.getvalue())
 
     def test_the_secrets_flag_is_gone(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:

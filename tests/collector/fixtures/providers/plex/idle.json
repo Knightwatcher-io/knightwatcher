@@ -1,0 +1,43 @@
+{
+ "about": "Nothing playing: Plex gives the size alone and leaves the list out, which reads as no streams.",
+ "settings": {},
+ "credentials": [
+  "token"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/status/sessions",
+    "headers": {
+     "Accept": "application/json",
+     "X-Plex-Token": "{credential.token}",
+     "X-Plex-Client-Identifier": "knightwatcher",
+     "X-Plex-Product": "Knightwatcher"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "MediaContainer": {
+      "size": 0
+     }
+    }
+   }
+  }
+ ],
+ "fill": {
+  "names": {
+   "count": 0,
+   "sessions": []
+  },
+  "titles": {
+   "count": 0,
+   "sessions": []
+  },
+  "count": {
+   "count": 0,
+   "sessions": []
+  }
+ }
+}

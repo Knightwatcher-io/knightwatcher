@@ -1,0 +1,31 @@
+{
+ "about": "JSON without a MediaContainer: not Plex's sessions list.",
+ "settings": {},
+ "credentials": [
+  "token"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/status/sessions",
+    "headers": {
+     "Accept": "application/json",
+     "X-Plex-Token": "{credential.token}",
+     "X-Plex-Client-Identifier": "knightwatcher",
+     "X-Plex-Product": "Knightwatcher"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "status": "ok"
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "unexpected reply from Plex"
+ }
+}

@@ -96,10 +96,10 @@ characters, the admin page stays off and says why, and the walls work as before.
 source needs may be left empty or out; the collector's check names any it needs and lacks.
 
 A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals.
-Its provider names the fields (Tautulli's is `api_key`, AdGuard Home's `username` and `password`,
-Pi-hole's `password`, Technitium's `token`; [Providers](#providers) lists them), and `SECRET` is
-the source's `secret` setting, which is the provider's id unless set: `tautulli`, `adguard`,
-`pihole`, `technitium`, `sonarr` or `radarr`. A source given
+Its provider names the fields (Tautulli's is `api_key`, Plex's `token`, AdGuard Home's `username`
+and `password`, Pi-hole's `password`, Technitium's `token`; [Providers](#providers) lists them),
+and `SECRET` is the source's `secret` setting, which is the provider's id unless set: `tautulli`,
+`plex`, `adguard`, `pihole`, `technitium`, `sonarr` or `radarr`. A source given
 `secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and a source reading a
 provider file of your own with the id `myflix` and a `token` reads `KNIGHTWATCHER_MYFLIX_TOKEN`.
 
@@ -171,7 +171,8 @@ config: .env: KNIGHTWATCHER_ADGUARD_PASSWORD missing (for adblock)
 
 `--env-file` reads the file for the check alone, without expanding anything in it, so a
 deployment can check a new collector against the host's `.env` before starting it. A line it
-cannot read is named by its number, never by what it holds.
+cannot read is named by its number, never by what it holds. It goes with `--probe` too
+([collector.md](./collector.md#running-it)), and with nothing else.
 
 It checks the provider files in the providers folder beside `config.toml` too. A file that fails
 its checks and that a section's `from` names would leave that source failing, so its problems are
@@ -414,17 +415,17 @@ Open SSH sessions.
 
 ### [sources.streams]
 
-Streams playing, from the service its provider reads: Tautulli by default.
+Streams playing, from the service its provider reads: Tautulli by default, or Plex Media Server.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `from` | `"tautulli"`: a provider of the streams kind (see Providers below) | `"tautulli"` | household | The provider the streams are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
+| `from` | `"plex"` or `"tautulli"`: a provider of the streams kind (see Providers below) | `"tautulli"` | household | The provider the streams are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
 | `show` | `"names"`, `"titles"` or `"count"` | `"names"` | household | What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's is API_KEY). Left out, it is the provider's id. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's is API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
 
 ### [sources.adblock]
 
@@ -575,6 +576,7 @@ The services the sections read through a kind can read, each by its provider. A 
 | `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KNIGHTWATCHER_ADGUARD_USERNAME`, `KNIGHTWATCHER_ADGUARD_PASSWORD` |
 | `fail2ban` | security | [fail2ban](https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py) | `[sources.security]` by default | none |
 | `pihole` | adblock | [Pi-hole 6](https://docs.pi-hole.net/api/) | `[sources.adblock]` with `from = "pihole"` | `KNIGHTWATCHER_PIHOLE_PASSWORD` |
+| `plex` | streams | [Plex Media Server](https://developer.plex.tv/pms/) | `[sources.streams]` with `from = "plex"` | `KNIGHTWATCHER_PLEX_TOKEN` |
 | `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]` | `KNIGHTWATCHER_RADARR_API_KEY` |
 | `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]` | `KNIGHTWATCHER_SONARR_API_KEY` |
 | `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KNIGHTWATCHER_TAUTULLI_API_KEY` |
@@ -596,6 +598,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KNIGHTWATCHER_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
 | `KNIGHTWATCHER_ADMIN_PASSWORD` | server | a password of at least 12 characters, or empty to leave the admin page off, such as `a-long-password-of-your-own` | empty | The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out. |
 | `KNIGHTWATCHER_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_PLEX_TOKEN` | credential | a Plex token, such as `AbCdEfGhIjKlMnOpQrSt` | none | The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = "plex". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_PIHOLE_PASSWORD` | credential | a password, such as `an-invented-app-password` | none | A Pi-hole 6 app password, for the pihole provider, which [sources.adblock] reads with from = "pihole". In Pi-hole: Settings, Web interface / API, Configure app password. The web password works too, but not with two-factor authentication on, since the collector cannot give a code. Version 5 is not supported. Read when the source is enabled; its `secret` setting names the variable. |
@@ -619,7 +622,7 @@ provider, named by `from`: `tautulli`, `adguard` and `fail2ban`, the defaults, s
 ([below](#fail2bans-database)).
 `[sources.sonarr]` and `[sources.radarr]` read the provider of their own name. A `from` that
 names no provider, or a provider of another kind, is refused by name
-(`sources.streams.from: unknown provider "plx"; use tautulli`), so a typo never falls back to the
+(`sources.streams.from: unknown provider "plx"; use plex or tautulli`), so a typo never falls back to the
 default. A source that is off is checked when it is turned on, as for its other settings.
 [providers.md](./providers.md) describes the provider files.
 
@@ -654,6 +657,34 @@ service whose certificate is self-signed, as a Pi-hole's or a NAS's usually is; 
 still encrypted, but nothing proves it reaches the service named, so a credential sent over it is
 only as safe as the network between. It is refused with an `http` `url`
 (`sources.adblock.verify_tls: only applies with an https url`), where it would do nothing.
+
+### Plex Media Server
+
+`from = "plex"` reads the streams from Plex Media Server itself, with a Plex token, rather than
+through Tautulli:
+
+```toml
+[sources.streams]
+from = "plex"
+url = "http://192.0.2.20:32400"  # Plex's own address and port
+show = "titles"                  # reads KNIGHTWATCHER_PLEX_TOKEN
+```
+
+The reading is the same as Tautulli's: the same title of each stream (`The Night Shift S02E04`,
+`<artist> - <track>`, a film's title), the same count, and the streams in the order they started,
+by Plex's session key, which is the number Tautulli lists as its own. `who` is the user's Plex
+name, where Tautulli gives the friendly name set in Tautulli. Plex lists its sessions to the
+server's owner alone, so the token must be the owner's: in Plex Web, signed in as the owner, open
+any library item's menu, Get Info, View XML, and take the `X-Plex-Token` at the end of the address
+it opens. Put it in `KNIGHTWATCHER_PLEX_TOKEN`. A Plex token reaches the owner's whole Plex
+account, so keep it as you would the password. It is sent in the `X-Plex-Token` header, never in
+the address, so it stays out of any access log on the way. A token Plex does not take is answered
+with HTTP 401, which pauses the source for `auth_backoff_s` (`Plex token refused`).
+
+Use `http` and the server's own address where Plex allows it. With Plex's Secure connections
+setting at Required, Plex takes only `https`; its certificate is made out to a name under
+`plex.direct`, not to an address, so an `https` url with an address then needs
+`verify_tls = false`.
 
 ### Pi-hole
 

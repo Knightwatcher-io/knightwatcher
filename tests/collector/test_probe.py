@@ -9,6 +9,7 @@ import secrets
 import stat
 import tempfile
 import unittest
+import urllib.parse
 from unittest import mock
 
 from collector.cli import main
@@ -151,7 +152,9 @@ class ProbeTest(unittest.TestCase):
         self.write_config('from = "plx"')
         code, _, err = self.probe("streams")
         self.assertEqual(code, 2)
-        self.assertIn('config: sources.streams.from: unknown provider "plx"; use tautulli', err)
+        self.assertIn(
+            'config: sources.streams.from: unknown provider "plx"; use plex or tautulli', err
+        )
 
     def test_record_writes_the_exchanges_without_the_credentials(self):
         folder = os.path.join(self.tmp.name, "rec")
@@ -190,6 +193,55 @@ class ProbeTest(unittest.TestCase):
             {"Authorization": "Basic {credential.username}:{credential.password}"},
         )
         self.assertEqual(exchange["error"], "HTTP 401: credentials refused")
+
+    def test_a_probe_reads_the_credentials_from_an_env_file(self):
+        # On the host, with a config of its own: the environment holds none of the credentials.
+        token = "pt+" + secrets.token_urlsafe(12) + "/="
+        env_file = os.path.join(self.tmp.name, "env")
+        with open(env_file, "w", encoding="utf-8") as fh:
+            fh.write(f"# invented\nKNIGHTWATCHER_PLEX_TOKEN='{token}'\n")
+        with open(self.config, "w", encoding="utf-8") as fh:
+            fh.write(
+                f'[collector]\noutput_dir = "{self.out}"\nstate_dir = "{self.var}"\n'
+                f'[sources.streams]\nfrom = "plex"\nurl = "{self.http.url}"\nshow = "titles"\n'
+            )
+        # Plex echoing the token back in an address, as written and percent-encoded.
+        echoed = f"/library/metadata/5003/thumb?X-Plex-Token={token}"
+        encoded = "/photo?url=" + urllib.parse.quote(token, safe="")
+        sessions = {
+            "MediaContainer": {
+                "size": 1,
+                "Metadata": [
+                    {"type": "movie", "sessionKey": "3", "title": "Harbour of Glass",
+                     "thumb": echoed, "art": encoded, "User": {"title": "Robin"}},
+                ],
+            }
+        }  # fmt: skip
+        self.http.routes["/status/sessions"] = (200, sessions)
+        folder = os.path.join(self.tmp.name, "rec")
+        with mock.patch.dict(os.environ, {}, clear=True):
+            code, out, err = self.probe("streams", "--env-file", env_file, "--record", folder)
+        self.assertEqual(code, 0, err)
+        self.assertIn("probe streams: provider plex (Plex Media Server), show = titles", out)
+        self.assertIn("credentials: KNIGHTWATCHER_PLEX_TOKEN", out)
+        self.assertNothingPrivate(out, err)
+        self.assertNotIn(token, out + err)
+        ((_, _, headers, _),) = self.http.calls
+        self.assertEqual({k.lower(): v for k, v in headers.items()}["x-plex-token"], token)
+        (name,) = os.listdir(folder)
+        with open(os.path.join(folder, name), encoding="utf-8") as fh:
+            text = fh.read()
+        for form in (token, urllib.parse.quote(token, safe=""), urllib.parse.quote_plus(token)):
+            self.assertNotIn(form, text)
+        (exchange,) = json.loads(text)["exchanges"]
+        self.assertEqual(exchange["request"]["headers"]["X-Plex-Token"], "{credential.token}")
+        self.assertEqual(exchange["request"]["path"], "/status/sessions")
+        item = exchange["reply"]["json"]["MediaContainer"]["Metadata"][0]
+        self.assertEqual(
+            (item["thumb"], item["art"]),
+            ("/library/metadata/5003/thumb?X-Plex-Token={credential.token}",
+             "/photo?url={credential.token}"),
+        )  # fmt: skip
 
     def test_record_goes_with_probe(self):
         err = io.StringIO()

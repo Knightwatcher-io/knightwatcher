@@ -346,7 +346,7 @@
     },
     {
       "table": "sources.streams",
-      "help": "Streams playing, from the service its provider reads: Tautulli by default.",
+      "help": "Streams playing, from the service its provider reads: Tautulli by default, or Plex Media Server.",
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "On" } }, "editable": true,
@@ -368,7 +368,7 @@
           "help": "What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's is API_KEY). Left out, it is the provider's id. Set in config.toml alone." }
+          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's is API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone." }
       ]
     },
     {
@@ -672,6 +672,8 @@
       "default": true, "credentials": [], "settings": ["database"] },
     { "id": "pihole", "kind": "adblock", "name": "Pi-hole 6", "docs": "https://docs.pi-hole.net/api/",
       "default": false, "credentials": ["password"], "settings": [] },
+    { "id": "plex", "kind": "streams", "name": "Plex Media Server", "docs": "https://developer.plex.tv/pms/",
+      "default": false, "credentials": ["token"], "settings": [] },
     { "id": "radarr", "kind": "imports", "name": "Radarr", "docs": "https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json",
       "default": false, "credentials": ["api_key"], "settings": [] },
     { "id": "sonarr", "kind": "imports", "name": "Sonarr", "docs": "https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json",
@@ -716,6 +718,10 @@
       "example": "0123456789abcdef0123456789abcdef", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Tautulli API key" } }, "editable": false,
       "help": "Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked." },
+    { "name": "KNIGHTWATCHER_PLEX_TOKEN", "scope": "credential", "provider": "plex", "field": "token", "secret": "plex", "default": null,
+      "example": "AbCdEfGhIjKlMnOpQrSt", "form": "a Plex token",
+      "gui": { "admin": { "section": "Credentials", "label": "Plex token" } }, "editable": false,
+      "help": "The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = \"plex\". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password." },
     { "name": "KNIGHTWATCHER_ADGUARD_USERNAME", "scope": "credential", "provider": "adguard", "field": "username", "secret": "adguard", "default": null,
       "example": "knightwatcher", "form": "a user name",
       "gui": { "admin": { "section": "Credentials", "label": "AdGuard Home user name" } }, "editable": false,

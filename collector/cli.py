@@ -13,6 +13,7 @@ import signal
 import sys
 import threading
 import time
+import urllib.parse
 
 from collector import kinds, overlay, reload, text
 from collector.config import ConfigError, credential_names, load, read_env_file
@@ -40,7 +41,8 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--env-file",
         metavar="PATH",
-        help="with --check-config: read the credentials from this .env file, not the environment",
+        help="with --check-config or --probe: read the credentials from this .env file, not the "
+        "environment",
     )
     p.add_argument(
         "--record",
@@ -96,13 +98,32 @@ def _paused(config, name: str, now: dt.datetime) -> dt.datetime | None:
 
 def _record(folder: str, name: str, source, exchanges: list, values: dict, now) -> str:
     """The exchanges of a probe, written to a file of their own; each credential value replaced by
-    its field's name, the address by the setting's name."""
+    its field's name wherever it appears, in a reply or an error as well as in a request (a
+    service may echo a request's address back), as written or percent-encoded, and the address
+    by the setting's name."""
     base = source.settings["url"].rstrip("/")
+    forms = []
+    for field, value in values.items():
+        if not value:
+            continue
+        shown = "{credential." + field + "}"
+        for form in {value, urllib.parse.quote(value, safe=""), urllib.parse.quote_plus(value)}:
+            forms.append((form, shown))
+    forms.sort(key=lambda fs: -len(fs[0]))
 
     def hide(text_: str) -> str:
-        for field, value in sorted(values.items(), key=lambda kv: -len(kv[1])):
-            text_ = text_.replace(value, "{credential." + field + "}")
+        for form, shown in forms:
+            text_ = text_.replace(form, shown)
         return text_
+
+    def hidden(value):
+        if isinstance(value, str):
+            return hide(value)
+        if isinstance(value, dict):
+            return {hide(k): hidden(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [hidden(v) for v in value]
+        return value
 
     out = []
     for e in exchanges:
@@ -124,7 +145,7 @@ def _record(folder: str, name: str, source, exchanges: list, values: dict, now) 
             # A session login's body, as the provider file writes it, its templates unfilled.
             entry["request"]["json"] = e["json"]
         if "reply" in e:
-            entry["reply"] = {"json": e["reply"]}
+            entry["reply"] = {"json": hidden(e["reply"])}
         else:
             entry["error"] = hide(e["error"])
         out.append(entry)
@@ -259,8 +280,8 @@ def _health(config) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
-    if args.env_file and not args.check_config:
-        parser.error("--env-file goes with --check-config")
+    if args.env_file and not (args.check_config or args.probe):
+        parser.error("--env-file goes with --check-config or --probe")
     if args.record and not args.probe:
         parser.error("--record goes with --probe")
     logging.basicConfig(
