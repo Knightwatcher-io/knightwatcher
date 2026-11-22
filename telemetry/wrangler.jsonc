@@ -1,0 +1,57 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "knightwatcher-telemetry",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-04",
+
+  // Off, so no invocation log is kept. A log of each request would hold what the request
+  // carried, the connecting address among it, and the Worker itself logs nothing.
+  "observability": {
+    "enabled": false
+  },
+
+  // Reached at this hostname alone: no workers.dev address and no preview addresses, so
+  // blocking the one name stops every heartbeat.
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "telemetry.knightwatcher.io",
+      "custom_domain": true
+    }
+  ],
+
+  // The same database is bound to the private dashboard Worker, which reads it. This Worker
+  // only writes.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "knightwatcher-telemetry",
+      // PLACEHOLDER: replace with the id that `wrangler d1 create knightwatcher-telemetry`
+      // prints. A deploy fails until it is set.
+      "database_id": "PLACEHOLDER-set-at-setup"
+    }
+  ],
+
+  // A flood guard alone. An install sends four heartbeats a day, and one an hour while failing,
+  // so 20 a minute from one address is far above real use, with room for several installs
+  // behind one address. The key is the connecting address and nothing else. The namespace id
+  // must not be one another Worker in the same Cloudflare account uses, or the two share
+  // counts.
+  "ratelimits": [
+    {
+      "name": "HEARTBEAT_LIMITER",
+      "namespace_id": "2",
+      "simple": {
+        "limit": 20,
+        "period": 60
+      }
+    }
+  ],
+
+  // No scheduled work: no row is ever deleted. Explicit, so a deploy clears any trigger set
+  // by hand in the dashboard.
+  "triggers": {
+    "crons": []
+  }
+}

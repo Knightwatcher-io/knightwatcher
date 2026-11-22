@@ -1,0 +1,21 @@
+{
+  "name": "knightwatcher-telemetry",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Cloudflare Worker that receives Knightwatcher's usage heartbeat",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=2 \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261108.1",
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2",
+    "wrangler": "4.158.0"
+  }
+}
