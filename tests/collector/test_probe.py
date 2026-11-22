@@ -45,11 +45,11 @@ class ProbeTest(unittest.TestCase):
         self.http.routes["/api/v2"] = (200, ACTIVITY)
         self.key = secrets.token_hex(16)
         self.password = secrets.token_urlsafe(12)
-        env = {k: v for k, v in os.environ.items() if not k.startswith("KNIGHTWATCHER_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith("KW_")}
         env.update(
-            KNIGHTWATCHER_TAUTULLI_API_KEY=self.key,
-            KNIGHTWATCHER_ADGUARD_USERNAME="kw",
-            KNIGHTWATCHER_ADGUARD_PASSWORD=self.password,
+            KW_TAUTULLI_API_KEY=self.key,
+            KW_ADGUARD_USERNAME="kw",
+            KW_ADGUARD_PASSWORD=self.password,
         )
         patcher = mock.patch.dict(os.environ, env, clear=True)
         patcher.start()
@@ -85,7 +85,7 @@ class ProbeTest(unittest.TestCase):
         self.assertEqual(
             head,
             "probe streams: provider tautulli (Tautulli), show = names\n"
-            "credentials: KNIGHTWATCHER_TAUTULLI_API_KEY\n",
+            "credentials: KW_TAUTULLI_API_KEY\n",
         )
         fill, facts = rest.split("facts:\n", 1)
         self.assertEqual(
@@ -203,7 +203,7 @@ class ProbeTest(unittest.TestCase):
         token = "pt+" + secrets.token_urlsafe(12) + "/="
         env_file = os.path.join(self.tmp.name, "env")
         with open(env_file, "w", encoding="utf-8") as fh:
-            fh.write(f"# invented\nKNIGHTWATCHER_PLEX_TOKEN='{token}'\n")
+            fh.write(f"# invented\nKW_PLEX_TOKEN='{token}'\n")
         with open(self.config, "w", encoding="utf-8") as fh:
             fh.write(
                 f'[collector]\noutput_dir = "{self.out}"\nstate_dir = "{self.var}"\n'
@@ -227,7 +227,7 @@ class ProbeTest(unittest.TestCase):
             code, out, err = self.probe("streams", "--env-file", env_file, "--record", folder)
         self.assertEqual(code, 0, err)
         self.assertIn("probe streams: provider plex (Plex Media Server), show = titles", out)
-        self.assertIn("credentials: KNIGHTWATCHER_PLEX_TOKEN", out)
+        self.assertIn("credentials: KW_PLEX_TOKEN", out)
         self.assertNothingPrivate(out, err)
         self.assertNotIn(token, out + err)
         ((_, _, headers, _),) = self.http.calls
@@ -261,7 +261,7 @@ class ProbeTest(unittest.TestCase):
         self.http.routes["DELETE /api/auth"] = (204, None)
         self.http.routes["/api/stats/summary"] = (200, {"queries": {"blocked": 12}})
         self.http.routes["/api/history"] = (200, {"history": [{"total": 9, "blocked": 2}]})
-        with mock.patch.dict(os.environ, {"KNIGHTWATCHER_PIHOLE_PASSWORD": self.password}):
+        with mock.patch.dict(os.environ, {"KW_PIHOLE_PASSWORD": self.password}):
             self.write_config(extra='from = "pihole"\n')
             folder = os.path.join(self.tmp.name, "rec")
             code, _, err = self.probe("adblock", "--record", folder)

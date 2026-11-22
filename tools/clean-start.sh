@@ -45,9 +45,13 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 [[ -n "${KW_CAPPED:-}" ]] || exec "$root/tools/capped.sh" "$0" "$@"
 
 # compose reads the caller's environment over .env, and COMPOSE_* could name other files or
-# another project: none of it reaches this run.
+# another project: none of it reaches this run. tools/capped.sh's own KW_CAPPED, KW_CPU and
+# KW_MEM stay, since compose.yaml names none of them and KW_CAPPED says the run is capped already.
 while IFS= read -r name; do
-  case "$name" in KNIGHTWATCHER_* | COMPOSE_*) unset "$name" ;; esac
+  case "$name" in
+    KW_CAPPED | KW_CPU | KW_MEM) ;;
+    KW_* | COMPOSE_*) unset "$name" ;;
+  esac
 done < <(compgen -e)
 
 run_id="$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
@@ -151,10 +155,10 @@ fill() { # name value
   sed -i "s|^$1=.*|$1=$2|" "$copy/.env"
   echo "$1=$2"
 }
-fill KNIGHTWATCHER_BACKUP_LOG ./var/backup.log
-fill KNIGHTWATCHER_DATA_DISK ./var/data
-fill KNIGHTWATCHER_SERVER_ADDRESS 127.0.0.1
-fill KNIGHTWATCHER_SERVER_PORT "$port"
+fill KW_BACKUP_LOG ./var/backup.log
+fill KW_DATA_DISK ./var/data
+fill KW_SERVER_ADDRESS 127.0.0.1
+fill KW_SERVER_PORT "$port"
 cmp -s "$root/config.example.toml" "$copy/config.toml" && echo "config.toml: config.example.toml as it is"
 echo ".env against .env.example:"
 diff "$root/.env.example" "$copy/.env" | sed 's/^/  /' || true

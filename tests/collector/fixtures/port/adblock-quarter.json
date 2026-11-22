@@ -2,7 +2,7 @@
  {
   "at": 0,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_DNS_USERNAME}:{KNIGHTWATCHER_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_DNS_USERNAME}:{KW_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -63,7 +63,7 @@
  {
   "at": 30,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_DNS_USERNAME}:{KNIGHTWATCHER_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_DNS_USERNAME}:{KW_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -132,7 +132,7 @@
  {
   "at": 60,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_DNS_USERNAME}:{KNIGHTWATCHER_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_DNS_USERNAME}:{KW_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -208,7 +208,7 @@
  {
   "at": 90,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_DNS_USERNAME}:{KNIGHTWATCHER_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_DNS_USERNAME}:{KW_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -291,7 +291,7 @@
  {
   "at": 120,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_DNS_USERNAME}:{KNIGHTWATCHER_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_DNS_USERNAME}:{KW_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -381,7 +381,7 @@
  {
   "at": 150,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_DNS_USERNAME}:{KNIGHTWATCHER_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_DNS_USERNAME}:{KW_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -478,7 +478,7 @@
  {
   "at": 180,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_DNS_USERNAME}:{KNIGHTWATCHER_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_DNS_USERNAME}:{KW_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -575,7 +575,7 @@
  {
   "at": 210,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_DNS_USERNAME}:{KNIGHTWATCHER_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_DNS_USERNAME}:{KW_DNS_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",

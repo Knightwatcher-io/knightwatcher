@@ -121,7 +121,7 @@ class SchemaShapeTest(unittest.TestCase):
                 self.assertTrue(e["form"] and isinstance(e["default"], str), e["name"])
             self.assertIs(e["editable"], False, f"{e['name']}: the GUI never changes it")
             self.assertTrue(e["help"].strip() and e["example"], e["name"])
-            self.assertRegex(e["name"], r"^KNIGHTWATCHER_[A-Z0-9_]+$")
+            self.assertRegex(e["name"], r"^KW_[A-Z0-9_]+$")
 
     def test_the_display_settings_appear_on_the_wall_and_the_rest_do_not(self):
         for t in S["tables"]:
@@ -338,7 +338,7 @@ class TemplatesAgreeTest(unittest.TestCase):
         self.assertEqual(sorted(blocks), sorted(SERVICES))
         collector = blocks["collector"]
         environment = collector.split("    environment:\n", 1)[1].split("    volumes:\n", 1)[0]
-        passed = re.findall(r"^      (KNIGHTWATCHER_[A-Z0-9_]+): \$\{\1:-\}$", environment, re.M)
+        passed = re.findall(r"^      (KW_[A-Z0-9_]+): \$\{\1:-\}$", environment, re.M)
         self.assertEqual(passed, [e["name"] for e in schema.credentials()])
         entries = [
             ln for ln in environment.splitlines() if ln.strip() and not ln.strip().startswith("#")
@@ -346,7 +346,7 @@ class TemplatesAgreeTest(unittest.TestCase):
         self.assertEqual(len(entries), len(passed), "the environment names credentials alone")
         for name, block in blocks.items():
             volumes = block.split("    volumes:\n", 1)[1]
-            mounted = re.findall(r"\$\{(KNIGHTWATCHER_[A-Z0-9_]+)[:}]", volumes)
+            mounted = re.findall(r"\$\{(KW_[A-Z0-9_]+)[:}]", volumes)
             paths = [
                 e
                 for e in S["env"]
@@ -368,24 +368,20 @@ class TemplatesAgreeTest(unittest.TestCase):
         entries = [
             ln for ln in environment.splitlines() if ln.strip() and not ln.strip().startswith("#")
         ]
-        self.assertEqual(
-            entries, ["      KNIGHTWATCHER_ADMIN_PASSWORD: ${KNIGHTWATCHER_ADMIN_PASSWORD:-}"]
-        )
-        named = set(re.findall(r"\$\{(KNIGHTWATCHER_[A-Z0-9_]+)", server))
+        self.assertEqual(entries, ["      KW_ADMIN_PASSWORD: ${KW_ADMIN_PASSWORD:-}"])
+        named = set(re.findall(r"\$\{(KW_[A-Z0-9_]+)", server))
         mine = {e["name"] for e in S["env"] if "server" in e.get("services", ["collector"])}
         self.assertEqual(named, mine)
         self.assertNotIn("credential", {e["scope"] for e in S["env"] if e["name"] in named})
         # The admin password reaches the server and nothing else.
-        password = next(e for e in S["env"] if e["name"] == "KNIGHTWATCHER_ADMIN_PASSWORD")
+        password = next(e for e in S["env"] if e["name"] == "KW_ADMIN_PASSWORD")
         self.assertEqual(password["services"], ["server"])
         self.assertEqual(password["scope"], "server")
-        self.assertNotIn("KNIGHTWATCHER_ADMIN_PASSWORD", services(compose_text())["collector"])
+        self.assertNotIn("KW_ADMIN_PASSWORD", services(compose_text())["collector"])
         ports = server.split("    ports:\n", 1)[1].split("    volumes:\n", 1)[0]
-        self.assertIn("${KNIGHTWATCHER_SERVER_ADDRESS:+${KNIGHTWATCHER_SERVER_ADDRESS:-}:}", ports)
-        port = schema.SCHEMA["env"][
-            [e["name"] for e in S["env"]].index("KNIGHTWATCHER_SERVER_PORT")
-        ]
-        self.assertIn("${KNIGHTWATCHER_SERVER_PORT:-" + port["default"] + "}:8080", ports)
+        self.assertIn("${KW_SERVER_ADDRESS:+${KW_SERVER_ADDRESS:-}:}", ports)
+        port = schema.SCHEMA["env"][[e["name"] for e in S["env"]].index("KW_SERVER_PORT")]
+        self.assertIn("${KW_SERVER_PORT:-" + port["default"] + "}:8080", ports)
         for line in (
             "read_only: true",
             "cap_drop: [ALL]",
@@ -395,7 +391,7 @@ class TemplatesAgreeTest(unittest.TestCase):
             self.assertIn(line, server)
         self.assertNotIn("network_mode", server)
         self.assertNotIn("/proc", server)
-        out = re.search(r"\$\{KNIGHTWATCHER_OUT[^\n]*\n\s+target: /out\n\s+read_only: true", server)
+        out = re.search(r"\$\{KW_OUT[^\n]*\n\s+target: /out\n\s+read_only: true", server)
         self.assertIsNotNone(out, "the collector's output is mounted read-only")
         config = re.search(
             r"source: \./config\.toml\n\s+target: /etc/knightwatcher/config\.toml\n"
@@ -409,7 +405,7 @@ class TemplatesAgreeTest(unittest.TestCase):
     def test_the_collector_reads_the_servers_folder_read_only(self):
         collector = services(compose_text())["collector"]
         mount = re.search(
-            r"\$\{KNIGHTWATCHER_SERVER_VAR:-[^}]*\}\n\s+target: (\S+)\n\s+read_only: true",
+            r"\$\{KW_SERVER_VAR:-[^}]*\}\n\s+target: (\S+)\n\s+read_only: true",
             collector,
         )
         self.assertIsNotNone(mount, "the server's folder is mounted read-only in the collector")
@@ -420,7 +416,7 @@ class TemplatesAgreeTest(unittest.TestCase):
     def test_the_providers_folder_is_mounted_read_only_and_never_stops_a_start(self):
         for name, block in services(compose_text()).items():
             mount = re.search(
-                r"source: \$\{KNIGHTWATCHER_PROVIDERS:-\./providers\}\n"
+                r"source: \$\{KW_PROVIDERS:-\./providers\}\n"
                 r"\s+target: /etc/knightwatcher/providers\n\s+read_only: true\n"
                 r"\s+bind: \{ create_host_path: false \}",
                 block,
@@ -435,7 +431,7 @@ class TemplatesAgreeTest(unittest.TestCase):
         # The collector finds it beside config.toml, where compose mounts it.
         spec = schema.setting("collector", "providers_dir")
         self.assertFalse(spec["editable"])
-        variable = next(e for e in S["env"] if e["name"] == "KNIGHTWATCHER_PROVIDERS")
+        variable = next(e for e in S["env"] if e["name"] == "KW_PROVIDERS")
         self.assertEqual(
             os.path.join(os.path.dirname("/etc/knightwatcher/config.toml"), spec["default"]),
             variable["mount"],

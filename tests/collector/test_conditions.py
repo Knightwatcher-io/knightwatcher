@@ -1025,7 +1025,7 @@ class StreamWordsTest(unittest.TestCase):
     """The words for streaming in each of the setting show's modes, and the words held through
     its clearing period after the setting changes."""
 
-    KEY: ClassVar[dict] = {"KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-example"}
+    KEY: ClassVar[dict] = {"KW_TAUTULLI_API_KEY": "tk-example"}
     FACTS: ClassVar[dict] = {
         "count": 3,
         "titles": ["The Lantern Keepers S01E03", "Harbour of Glass", "Fen Owls - Low Tide"],

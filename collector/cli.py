@@ -31,10 +31,10 @@ log = logging.getLogger("collector")
 
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="collector", description="Knightwatcher collector")
-    p.add_argument("--config", default=os.environ.get("KNIGHTWATCHER_CONFIG", DEFAULT_CONFIG))
+    p.add_argument("--config", default=os.environ.get("KW_CONFIG", DEFAULT_CONFIG))
     p.add_argument(
         "--admin",
-        default=os.environ.get("KNIGHTWATCHER_ADMIN_FILE", overlay.DEFAULT_PATH),
+        default=os.environ.get("KW_ADMIN_FILE", overlay.DEFAULT_PATH),
         metavar="PATH",
         help="the admin page's settings, laid over the config (default %(default)s)",
     )
@@ -203,9 +203,7 @@ def _probe(config, name: str, record: str | None) -> int:
     if "show" in settings:
         said.append(f"show = {settings['show']}")
     print(f"probe {name}: " + ", ".join(said))
-    variables = [
-        f"KNIGHTWATCHER_{settings['secret'].upper()}_{f.upper()}" for f in source.spec.credentials
-    ]
+    variables = [f"KW_{settings['secret'].upper()}_{f.upper()}" for f in source.spec.credentials]
     if variables:
         print("credentials: " + ", ".join(variables))
     if record:

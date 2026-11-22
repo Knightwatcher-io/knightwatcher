@@ -2,7 +2,7 @@
  {
   "at": 0,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -63,7 +63,7 @@
  {
   "at": 30,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -132,7 +132,7 @@
  {
   "at": 60,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -208,7 +208,7 @@
  {
   "at": 90,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -291,7 +291,7 @@
  {
   "at": 120,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -381,7 +381,7 @@
  {
   "at": 150,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -471,7 +471,7 @@
  {
   "at": 180,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -561,7 +561,7 @@
  {
   "at": 210,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -658,7 +658,7 @@
  {
   "at": 240,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -762,7 +762,7 @@
  {
   "at": 270,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -873,7 +873,7 @@
  {
   "at": 300,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -977,7 +977,7 @@
  {
   "at": 330,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1081,7 +1081,7 @@
  {
   "at": 360,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1185,7 +1185,7 @@
  {
   "at": 390,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1289,7 +1289,7 @@
  {
   "at": 420,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1393,7 +1393,7 @@
  {
   "at": 450,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1497,7 +1497,7 @@
  {
   "at": 480,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1601,7 +1601,7 @@
  {
   "at": 510,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1719,7 +1719,7 @@
  {
   "at": 540,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1939,7 +1939,7 @@
  {
   "at": 1740,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2064,7 +2064,7 @@
  {
   "at": 1770,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2182,7 +2182,7 @@
  {
   "at": 3000,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2300,7 +2300,7 @@
  {
   "at": 4230,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2440,7 +2440,7 @@
  {
   "at": 7140,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2587,7 +2587,7 @@
  {
   "at": 7170,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2734,7 +2734,7 @@
  {
   "at": 7200,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2888,7 +2888,7 @@
  {
   "at": 7230,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -3049,7 +3049,7 @@
  {
   "at": 7260,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -3217,7 +3217,7 @@
  {
   "at": 7290,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -3392,7 +3392,7 @@
  {
   "at": 7320,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -3574,7 +3574,7 @@
  {
   "at": 7350,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -3763,7 +3763,7 @@
  {
   "at": 7380,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -3959,7 +3959,7 @@
  {
   "at": 7410,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -4162,7 +4162,7 @@
  {
   "at": 7440,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -4372,7 +4372,7 @@
  {
   "at": 7470,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -4582,7 +4582,7 @@
  {
   "at": 7500,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -4792,7 +4792,7 @@
  {
   "at": 7530,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -5002,7 +5002,7 @@
  {
   "at": 7560,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -5212,7 +5212,7 @@
  {
   "at": 7590,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -5422,7 +5422,7 @@
  {
   "at": 7620,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",

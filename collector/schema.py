@@ -70,8 +70,8 @@ def credentials() -> list[dict[str, Any]]:
 
 
 def env_name(secret: str, field: str) -> str:
-    """The variable a credential is read from: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals."""
-    return f"KNIGHTWATCHER_{secret.upper()}_{field.upper()}"
+    """The variable a credential is read from: KW_<SECRET>_<FIELD>, in capitals."""
+    return f"KW_{secret.upper()}_{field.upper()}"
 
 
 def range_problem(s: dict[str, Any], value: float) -> str | None:

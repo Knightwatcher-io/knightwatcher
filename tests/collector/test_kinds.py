@@ -18,15 +18,15 @@ from kw_helpers import T0, FakeHttp, at, make_config
 
 # The credentials the providers log in with, as the environment holds them.
 SECRETS = {
-    "KNIGHTWATCHER_ADGUARD_USERNAME": "kw",
-    "KNIGHTWATCHER_ADGUARD_PASSWORD": "pw-example",
-    "KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-example",
-    "KNIGHTWATCHER_SONARR_API_KEY": "sk-example",
-    "KNIGHTWATCHER_RADARR_API_KEY": "rk-example",
-    "KNIGHTWATCHER_TECHNITIUM_TOKEN": "tok-example",
-    "KNIGHTWATCHER_PLEX_TOKEN": "plex-example",
-    "KNIGHTWATCHER_TRACEARR_API_KEY": "trr_pub_example",
-    "KNIGHTWATCHER_JELLYFIN_API_KEY": "jf-example",
+    "KW_ADGUARD_USERNAME": "kw",
+    "KW_ADGUARD_PASSWORD": "pw-example",
+    "KW_TAUTULLI_API_KEY": "tk-example",
+    "KW_SONARR_API_KEY": "sk-example",
+    "KW_RADARR_API_KEY": "rk-example",
+    "KW_TECHNITIUM_TOKEN": "tok-example",
+    "KW_PLEX_TOKEN": "plex-example",
+    "KW_TRACEARR_API_KEY": "trr_pub_example",
+    "KW_JELLYFIN_API_KEY": "jf-example",
 }
 
 

@@ -65,11 +65,11 @@ STATE = {
 }
 
 CREDENTIALS = {
-    "KNIGHTWATCHER_ADGUARD_PASSWORD": False,
-    "KNIGHTWATCHER_ADGUARD_USERNAME": False,
-    "KNIGHTWATCHER_RADARR_API_KEY": False,
-    "KNIGHTWATCHER_SONARR_API_KEY": False,
-    "KNIGHTWATCHER_TAUTULLI_API_KEY": False,
+    "KW_ADGUARD_PASSWORD": False,
+    "KW_ADGUARD_USERNAME": False,
+    "KW_RADARR_API_KEY": False,
+    "KW_SONARR_API_KEY": False,
+    "KW_TAUTULLI_API_KEY": False,
 }
 
 
@@ -164,11 +164,10 @@ class AdminCase(unittest.TestCase):
 class OffTest(unittest.TestCase):
     def test_off_without_a_password_and_with_a_short_one(self):
         for password, words in (
-            (None, "the admin page is off: .env has no KNIGHTWATCHER_ADMIN_PASSWORD"),
+            (None, "the admin page is off: .env has no KW_ADMIN_PASSWORD"),
             (
                 "x" * 11,
-                "the admin page is off: KNIGHTWATCHER_ADMIN_PASSWORD in .env is shorter than "
-                "12 characters",
+                "the admin page is off: KW_ADMIN_PASSWORD in .env is shorter than 12 characters",
             ),
         ):
             s = AdminRunning(password)
@@ -483,8 +482,8 @@ class SettingsTest(AdminCase):
     def test_a_change_needing_an_absent_credential_names_its_variable(self):
         status, _, body = self.patch({"set": {"sources.sonarr.enabled": True}})
         self.assertEqual(status, 400)
-        self.assertEqual(body["error"], ".env: KNIGHTWATCHER_SONARR_API_KEY missing (for sonarr)")
-        creds = dict(CREDENTIALS, KNIGHTWATCHER_SONARR_API_KEY=True)
+        self.assertEqual(body["error"], ".env: KW_SONARR_API_KEY missing (for sonarr)")
+        creds = dict(CREDENTIALS, KW_SONARR_API_KEY=True)
         with open(os.path.join(self.s.out, "credentials.json"), "w", encoding="utf-8") as fh:
             json.dump(creds, fh)
         status, _, body = self.patch({"set": {"sources.sonarr.enabled": True}})
@@ -532,7 +531,7 @@ class SettingsTest(AdminCase):
         )
         self.assertEqual(status, 200)
         status, _, body = self.patch({"set": {"sources.radarr.enabled": True}})
-        self.assertEqual(body["error"], ".env: KNIGHTWATCHER_RADARR_API_KEY missing (for radarr)")
+        self.assertEqual(body["error"], ".env: KW_RADARR_API_KEY missing (for radarr)")
 
     def test_the_provider_a_source_reads_is_chosen_here_and_checked(self):
         # A source that is off is not checked until it is turned on, as for its other settings.
@@ -552,14 +551,12 @@ class SettingsTest(AdminCase):
         status, _, body = self.patch({"set": {"sources.streams.from": "tautulli"}})
         self.assertEqual(status, 200)
         status, _, body = self.patch({"set": {"sources.streams.enabled": True}})
-        self.assertEqual(
-            body["error"], ".env: KNIGHTWATCHER_TAUTULLI_API_KEY missing (for streams)"
-        )
+        self.assertEqual(body["error"], ".env: KW_TAUTULLI_API_KEY missing (for streams)")
         text = self.s.json_call("GET", "/api/admin/export", cookie=self.cookie)[2].decode("utf-8")
         streams = text.split("[sources.streams]\n", 1)[1].split("\n[", 1)[0]
         self.assertIn('\nfrom = "tautulli"\n', streams)
         self.assertIn(
-            "# Left out: the provider's id, so it reads KNIGHTWATCHER_TAUTULLI_API_KEY from .env.\n"
+            "# Left out: the provider's id, so it reads KW_TAUTULLI_API_KEY from .env.\n"
             '# secret = "tautulli"\n',
             streams,
         )
@@ -572,13 +569,9 @@ class SettingsTest(AdminCase):
         status, _, body = self.patch({"set": {"collector.interval_s": 2}})
         self.assertEqual(status, 400)
         self.assertEqual(body["error"], "collector.interval_s: must be at least 5")
-        self.assertIn(
-            ".env: KNIGHTWATCHER_TAUTULLI_API_KEY missing (for streams)", body["problems"]
-        )
+        self.assertIn(".env: KW_TAUTULLI_API_KEY missing (for streams)", body["problems"])
         answer = self.s.json_call("GET", "/api/admin/settings", cookie=self.cookie)[2]
-        self.assertEqual(
-            answer["problems"], [".env: KNIGHTWATCHER_TAUTULLI_API_KEY missing (for streams)"]
-        )
+        self.assertEqual(answer["problems"], [".env: KW_TAUTULLI_API_KEY missing (for streams)"])
 
     def test_reset_puts_everything_back_the_shared_settings_too(self):
         self.patch({"set": {"collector.interval_s": 15}})
@@ -677,7 +670,7 @@ class SettingsTest(AdminCase):
         self.assertEqual(exported.defaults["display"], {"clock": 12})
         self.assertIn("# Not set up.", text)
         self.assertIn("# [sources.radarr]", text)
-        self.assertIn("reads KNIGHTWATCHER_SONARR_API_KEY from .env", text)
+        self.assertIn("reads KW_SONARR_API_KEY from .env", text)
         self.assertNotIn("api_key =", text.lower())
         self.assertTrue(all(len(line) <= 120 for line in text.splitlines()))
         self.assertNoPassword(text)
@@ -772,10 +765,8 @@ class OwnProvidersTest(AdminCase):
         }
         status, _, body = self.patch(change)
         self.assertEqual(status, 400)
-        self.assertEqual(
-            body["problems"], [".env: KNIGHTWATCHER_MYFLIX_TOKEN missing (for streams)"]
-        )
-        self.credentials(KNIGHTWATCHER_MYFLIX_TOKEN=True)
+        self.assertEqual(body["problems"], [".env: KW_MYFLIX_TOKEN missing (for streams)"])
+        self.credentials(KW_MYFLIX_TOKEN=True)
         status, _, body = self.patch(change)
         self.assertEqual(status, 200, body)
         status, _, body = self.patch({"set": {"sources.streams.from": "plx"}})
@@ -801,7 +792,7 @@ class OwnProvidersTest(AdminCase):
         self.assertIn(
             "# Sessions read per call. Declared by the myflix provider.\npage_size = 20\n", text
         )
-        self.assertIn("so it reads KNIGHTWATCHER_MYFLIX_TOKEN from .env.", text)
+        self.assertIn("so it reads KW_MYFLIX_TOKEN from .env.", text)
         found = self.s.admin.providers(None)
         exported = config.build(tomllib.loads(text), providers=found)
         self.assertEqual(exported.sources["streams"]["page_size"], 20)
@@ -850,9 +841,9 @@ class ImportsListTest(AdminCase):
         self.assertEqual(status, 400)
         self.assertEqual(
             body["problems"],
-            [".env: KNIGHTWATCHER_SONARR_4K_API_KEY missing (for imports:sonarr-4k)"],
+            [".env: KW_SONARR_4K_API_KEY missing (for imports:sonarr-4k)"],
         )
-        self.credentials(KNIGHTWATCHER_SONARR_4K_API_KEY=True)
+        self.credentials(KW_SONARR_4K_API_KEY=True)
         status, _, body = self.patch({"set": {"collector.interval_s": 15}})
         self.assertEqual(status, 200, body)
         # A section turned on here at the entry's address reads the service twice: refused.
@@ -882,7 +873,7 @@ class ImportsListTest(AdminCase):
         self.assertEqual(
             raw["sources"]["imports"], tomllib.loads(CONFIG + self.ENTRIES)["sources"]["imports"]
         )
-        env = {"KNIGHTWATCHER_SONARR_4K_API_KEY": "an-invented-key"}
+        env = {"KW_SONARR_4K_API_KEY": "an-invented-key"}
         self.assertEqual(config.build(raw, env).sources["imports:sonarr-4k"]["secret"], "sonarr_4k")
 
     def test_an_export_without_entries_says_so(self):
@@ -933,10 +924,8 @@ class ChecksListTest(AdminCase):
         self.credentials()
         status, _, body = self.patch({"set": {"collector.interval_s": 15}})
         self.assertEqual(status, 400)
-        self.assertEqual(
-            body["problems"], [".env: KNIGHTWATCHER_NAS_HEADER missing (for json:nas-temp)"]
-        )
-        self.credentials(KNIGHTWATCHER_NAS_HEADER=True)
+        self.assertEqual(body["problems"], [".env: KW_NAS_HEADER missing (for json:nas-temp)"])
+        self.credentials(KW_NAS_HEADER=True)
         status, _, body = self.patch({"set": {"collector.interval_s": 15}})
         self.assertEqual(status, 200, body)
         # A priority set here that leaves out a condition a check borrows is refused.
@@ -958,7 +947,7 @@ class ChecksListTest(AdminCase):
         self.assertEqual(
             raw["sources"]["json"], tomllib.loads(CONFIG + self.ENTRIES)["sources"]["json"]
         )
-        env = {"KNIGHTWATCHER_NAS_HEADER": "an-invented-header"}
+        env = {"KW_NAS_HEADER": "an-invented-header"}
         c = config.build(raw, env)
         self.assertEqual(c.sources["json:nas-temp"]["value"], 70.5)
         self.assertEqual(c.secret("json:nas-temp"), {"header": "an-invented-header"})

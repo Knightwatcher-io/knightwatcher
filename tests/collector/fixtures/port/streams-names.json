@@ -2,7 +2,7 @@
  {
   "at": 0,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -85,7 +85,7 @@
  {
   "at": 30,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -218,7 +218,7 @@
  {
   "at": 60,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -454,7 +454,7 @@
  {
   "at": 90,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -516,7 +516,7 @@
  {
   "at": 120,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -599,7 +599,7 @@
  {
   "at": 150,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -682,7 +682,7 @@
  {
   "at": 180,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -744,7 +744,7 @@
  {
   "at": 210,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -827,7 +827,7 @@
  {
   "at": 240,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -889,7 +889,7 @@
  {
   "at": 270,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -946,7 +946,7 @@
  {
   "at": 300,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1019,7 +1019,7 @@
  {
   "at": 330,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1081,7 +1081,7 @@
  {
   "at": 360,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1135,7 +1135,7 @@
  {
   "at": 390,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1189,7 +1189,7 @@
  {
   "at": 420,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1243,7 +1243,7 @@
  {
   "at": 450,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1297,7 +1297,7 @@
  {
   "at": 480,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1351,7 +1351,7 @@
  {
   "at": 510,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1429,7 +1429,7 @@
  {
   "at": 540,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1543,7 +1543,7 @@
  {
   "at": 1740,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1626,7 +1626,7 @@
  {
   "at": 1770,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1688,7 +1688,7 @@
  {
   "at": 3000,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1742,7 +1742,7 @@
  {
   "at": 4230,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1825,7 +1825,7 @@
  {
   "at": 4260,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1887,7 +1887,7 @@
  {
   "at": 4290,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",

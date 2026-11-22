@@ -51,7 +51,7 @@ setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server
 
 The containers run as uid 10001, and the last two lines let it write in those three folders
 ([configuration.md](docs/configuration.md#the-accounts)). Then, in `.env`, point
-`KNIGHTWATCHER_BACKUP_LOG` at your backup log and `KNIGHTWATCHER_DATA_DISK` at any folder on the
+`KW_BACKUP_LOG` at your backup log and `KW_DATA_DISK` at any folder on the
 disk to watch. Both must exist. With no backup log yet, `touch var/backup.log` and point at that
 (`./var/backup.log`): an empty log is read cleanly and raises nothing until it records a
 completed backup. Then:
@@ -75,7 +75,7 @@ before you let it be reached from anywhere else, and never publish it to the int
 login in front.
 
 To change the sources, thresholds and devices from a browser rather than in `config.toml`,
-give `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env` a password of your own of at least 12 characters, run
+give `KW_ADMIN_PASSWORD` in `.env` a password of your own of at least 12 characters, run
 `docker compose up -d` again and open `http://<this machine>:8080/admin`. A change there is checked
 by the collector's own rules and used from its next poll; Download config.toml keeps what is set
 there in a file. Credentials stay in `.env` ([The admin page](docs/server.md#the-admin-page)).

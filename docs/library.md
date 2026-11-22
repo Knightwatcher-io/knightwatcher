@@ -502,7 +502,7 @@ impossible: the poses hold a weapon in both hands at two stations or in one hand
 Besides the packs it ships with, the page reads the packs in `data/packs/`, beside `state.json`,
 which these docs call the downloaded packs. The collector does not download packs yet, and leaves
 the folder as it finds it; the server serves it from the `packs` folder of the collector's output
-folder (`KNIGHTWATCHER_OUT`), so a pack put there by hand is read like any other
+folder (`KW_OUT`), so a pack put there by hand is read like any other
 ([display.md](./display.md#another-world-pack)). The folder holds an index:
 
 ```json

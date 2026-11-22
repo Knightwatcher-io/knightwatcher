@@ -20,12 +20,12 @@ from kw_helpers import T0, FakeHttp, FakeProc, at, closed_port, make_config
 
 # The credentials the sources log in with, as the environment holds them.
 SECRETS = {
-    "KNIGHTWATCHER_ADGUARD_USERNAME": "kw",
-    "KNIGHTWATCHER_ADGUARD_PASSWORD": "pw-example",
-    "KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-example",
-    "KNIGHTWATCHER_SONARR_API_KEY": "sk-example",
-    "KNIGHTWATCHER_RADARR_API_KEY": "rk-example",
-    "KNIGHTWATCHER_LIDARR_API_KEY": "lk-example",
+    "KW_ADGUARD_USERNAME": "kw",
+    "KW_ADGUARD_PASSWORD": "pw-example",
+    "KW_TAUTULLI_API_KEY": "tk-example",
+    "KW_SONARR_API_KEY": "sk-example",
+    "KW_RADARR_API_KEY": "rk-example",
+    "KW_LIDARR_API_KEY": "lk-example",
 }
 
 

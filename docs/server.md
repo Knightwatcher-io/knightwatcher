@@ -149,7 +149,7 @@ Download config.toml writes a setting
 the chosen provider does not use as a comment, and the list's entries as `config.toml` has them. The page itself is described in
 [display.md](./display.md#the-admin-page).
 
-It is behind the admin password, `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env`, which `compose.yaml`
+It is behind the admin password, `KW_ADMIN_PASSWORD` in `.env`, which `compose.yaml`
 gives to the server alone. While it is missing, or shorter than 12 characters, the page is off and
 says why, and the walls work as before. A changed password needs the containers made again
 (`docker compose up -d`), which signs every browser out.
@@ -182,7 +182,7 @@ answers `401 {"error": "sign in first"}` without one. While the page is off, eve
   "file": {"collector": {"timezone": "Europe/London"}, "sources": {"pi": {"host": "192.0.2.4"}}},
   "status": {"generated_at": "2026-01-15T21:42:10Z", "interval_s": 15, "sources": {}, "devices": [],
              "config": {"admin": "3f9c0d12ab45e6789a0b", "at": "2026-01-15T21:42:10Z", "problems": []}},
-  "credentials": {"KNIGHTWATCHER_SONARR_API_KEY": true, "KNIGHTWATCHER_RADARR_API_KEY": false},
+  "credentials": {"KW_SONARR_API_KEY": true, "KW_RADARR_API_KEY": false},
   "problems": [],
   "providers": {"own": [], "refused": [], "problems": []},
   "now": "2026-01-15T21:42:14Z"
@@ -231,7 +231,7 @@ Content-Type: application/json; charset=utf-8
 
 The server has no credential, so it checks credentials by the names the collector reports holding,
 in `credentials.json`, with the same words: turning on Sonarr while `.env` has no key for it is
-refused with `.env: KNIGHTWATCHER_SONARR_API_KEY missing (for sonarr)`. While the collector has
+refused with `.env: KW_SONARR_API_KEY missing (for sonarr)`. While the collector has
 reported none, credentials are not checked here, and a source that turns out to lack one runs and
 fails, saying which ([collector.md](./collector.md#taking-up-a-change)). A provider file that
 failed its checks is not a problem of the settings: `from` may name it, and that source fails at
@@ -300,7 +300,7 @@ or delete `admin.json`: the server and the collector both notice within a poll.
 ## The settings store
 
 The shared settings live in one file, `settings.json`, in the server's own folder
-(`KNIGHTWATCHER_SERVER_VAR`, `./var/server` unless set), in the same shape as the API gives them,
+(`KW_SERVER_VAR`, `./var/server` unless set), in the same shape as the API gives them,
 indented:
 
 ```json
@@ -340,15 +340,15 @@ does it from nothing. The server's part of `compose.yaml`:
 
 - the image's `python -m server`, as uid and gid 10001, with a read-only root filesystem, no
   capabilities and `no-new-privileges`;
-- the collector's output folder (`KNIGHTWATCHER_OUT`) mounted read-only at `/out`, `config.toml`
-  read-only at `/etc/knightwatcher/config.toml` and the providers folder (`KNIGHTWATCHER_PROVIDERS`)
+- the collector's output folder (`KW_OUT`) mounted read-only at `/out`, `config.toml`
+  read-only at `/etc/knightwatcher/config.toml` and the providers folder (`KW_PROVIDERS`)
   read-only at `/etc/knightwatcher/providers`, for the admin page's checks, and the server's own
-  folder (`KNIGHTWATCHER_SERVER_VAR`) at `/var/lib/knightwatcher-server`, the one place it writes
+  folder (`KW_SERVER_VAR`) at `/var/lib/knightwatcher-server`, the one place it writes
   (`settings.json`, `admin.json` and the admin page's `sessions.json`);
-- `KNIGHTWATCHER_ADMIN_PASSWORD` from `.env`, its one variable, which it reads once at start and
+- `KW_ADMIN_PASSWORD` from `.env`, its one variable, which it reads once at start and
   takes out of its own environment;
 - inside the container it listens on port 8080, published on the host at
-  `KNIGHTWATCHER_SERVER_ADDRESS` and `KNIGHTWATCHER_SERVER_PORT` (all addresses and 8080 unless
+  `KW_SERVER_ADDRESS` and `KW_SERVER_PORT` (all addresses and 8080 unless
   set);
 - a health check, `python -m server --health`, which asks the server for the page and the
   settings and fails unless both answer.
@@ -367,7 +367,7 @@ since every display asks every five seconds, and it logs no client address.
 
 ```bash
 python3 -m server.stamp /tmp/kw-page   # a copy of web/, made first with cp -r web /tmp/kw-page
-KNIGHTWATCHER_ADMIN_PASSWORD='a-long-password-of-your-own' \
+KW_ADMIN_PASSWORD='a-long-password-of-your-own' \
 python3 -m server --web /tmp/kw-page --out /path/to/the/collectors/output --data /tmp/kw-data \
   --config config.toml --address 127.0.0.1 --port 8080
 ```
@@ -386,7 +386,7 @@ display has no keyboard to log in with. Choose it knowingly:
 
 - **Never publish the server to the internet without a login in front of it.** Put it behind your
   own reverse proxy with authentication, as below, or a VPN.
-- To keep it to one machine, set `KNIGHTWATCHER_SERVER_ADDRESS=127.0.0.1`: a reverse proxy or a
+- To keep it to one machine, set `KW_SERVER_ADDRESS=127.0.0.1`: a reverse proxy or a
   monitor on the same host can still reach it, and nothing else can.
 - Docker publishes ports with its own firewall rules, which go around a host firewall such as
   `ufw`. Binding to an address, as above, is the reliable way to limit who can reach it.
@@ -419,8 +419,8 @@ To reach the display as `https://knightwatcher.<your domain>`, publish the serve
 address and let the reverse proxy you already run add TLS and a login. In `.env`:
 
 ```bash
-KNIGHTWATCHER_SERVER_ADDRESS=127.0.0.1
-KNIGHTWATCHER_SERVER_PORT=8080
+KW_SERVER_ADDRESS=127.0.0.1
+KW_SERVER_PORT=8080
 ```
 
 Caddy, with a login (make the hash with `caddy hash-password`):

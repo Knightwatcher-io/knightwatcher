@@ -2,7 +2,7 @@
  {
   "at": 0,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_FILMS_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_FILMS_API_KEY}"
   ],
   "state": [
    "{",
@@ -56,7 +56,7 @@
  {
   "at": 30,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_FILMS_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_FILMS_API_KEY}"
   ],
   "state": [
    "{",
@@ -121,7 +121,7 @@
  {
   "at": 60,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_FILMS_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_FILMS_API_KEY}"
   ],
   "state": [
    "{",
@@ -256,7 +256,7 @@
  {
   "at": 90,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_FILMS_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_FILMS_API_KEY}"
   ],
   "state": [
    "{",
@@ -411,7 +411,7 @@
  {
   "at": 120,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_FILMS_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_FILMS_API_KEY}"
   ],
   "state": [
    "{",

@@ -252,8 +252,9 @@ It copies the files git would commit (so no `config.toml`, `.env` or `var/`) to 
 and follows the README's quick start there: `config.example.toml` and `.env.example` copied as
 they are, `var/out` and `var/server` made and granted to uid 10001, a touched backup log. In `.env`
 it fills the backup log and the data disk's folder (both under `var/`) and the server's address
-and port (127.0.0.1 and a free one), and nothing else; no `KNIGHTWATCHER_` or `COMPOSE_` variable
-of the caller's reaches compose. `compose.yaml` is used as it is under a layer of the run's own: an
+and port (127.0.0.1 and a free one), and nothing else; no `COMPOSE_` variable of the caller's
+reaches compose, and no `KW_` one but the `KW_CAPPED`, `KW_CPU` and `KW_MEM` of `tools/capped.sh`,
+which compose does not read. `compose.yaml` is used as it is under a layer of the run's own: an
 image tag, a project name and container names of the run, so nothing of a running deployment is
 named, and both containers on one internal Docker network, the collector taken off the host's
 network for it. The image is built from the copy.
@@ -333,4 +334,4 @@ provider files) from the project directory: the folder `docker compose` runs in,
 with `--project-directory`. A deployment that builds from a clean export but runs compose against
 another checkout must bring that checkout up to the same commit first, so that it has
 `providers/` with its `.gitkeep`; otherwise the providers mount has no source and neither container
-is created. Setting `KNIGHTWATCHER_PROVIDERS` in `.env` to a folder that exists does as well.
+is created. Setting `KW_PROVIDERS` in `.env` to a folder that exists does as well.

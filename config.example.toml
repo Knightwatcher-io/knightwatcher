@@ -129,22 +129,22 @@ ignore_sources = []
 # [sources.streams]
 # enabled = true
 # every_s = 30
-# from = "tautulli"            # the default; "plex" reads Plex Media Server itself (KNIGHTWATCHER_PLEX_TOKEN),
-#                              # "tracearr" reads Tracearr 2.0 or later (KNIGHTWATCHER_TRACEARR_API_KEY),
-#                              # "jellyfin" reads Jellyfin itself (KNIGHTWATCHER_JELLYFIN_API_KEY)
+# from = "tautulli"            # the default; "plex" reads Plex Media Server itself (KW_PLEX_TOKEN),
+#                              # "tracearr" reads Tracearr 2.0 or later (KW_TRACEARR_API_KEY),
+#                              # "jellyfin" reads Jellyfin itself (KW_JELLYFIN_API_KEY)
 # url = "http://192.0.2.20:8181"
 # verify_tls = true            # with an https url, whether its certificate is checked
 # show = "names"               # who and what; "titles" for what alone, "count" for how many
-# secret = "tautulli"          # reads KNIGHTWATCHER_TAUTULLI_API_KEY from .env
+# secret = "tautulli"          # reads KW_TAUTULLI_API_KEY from .env
 
 # [sources.adblock]
 # enabled = true
 # every_s = 30
-# from = "adguard"             # the default; "pihole" reads Pi-hole 6 (KNIGHTWATCHER_PIHOLE_PASSWORD),
-#                              # "technitium" Technitium 15 or later (KNIGHTWATCHER_TECHNITIUM_TOKEN)
+# from = "adguard"             # the default; "pihole" reads Pi-hole 6 (KW_PIHOLE_PASSWORD),
+#                              # "technitium" Technitium 15 or later (KW_TECHNITIUM_TOKEN)
 # url = "http://192.0.2.53"
 # verify_tls = true            # false for an https url with a self-signed certificate, as a Pi-hole's
-# secret = "adguard"           # reads KNIGHTWATCHER_ADGUARD_USERNAME and _PASSWORD
+# secret = "adguard"           # reads KW_ADGUARD_USERNAME and _PASSWORD
 # fly_every_s = 300
 
 # [sources.security]
@@ -161,21 +161,21 @@ ignore_sources = []
 # every_s = 30
 # url = "http://192.0.2.30:8989"
 # verify_tls = true            # with an https url, whether its certificate is checked
-# secret = "sonarr"            # reads KNIGHTWATCHER_SONARR_API_KEY
+# secret = "sonarr"            # reads KW_SONARR_API_KEY
 
 # [sources.radarr]
 # enabled = true
 # every_s = 30
 # url = "http://192.0.2.31:7878"
 # verify_tls = true            # with an https url, whether its certificate is checked
-# secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
+# secret = "radarr"            # reads KW_RADARR_API_KEY
 
 # [sources.lidarr]
 # enabled = true
 # every_s = 30
 # url = "http://192.0.2.32:8686"
 # verify_tls = true            # with an https url, whether its certificate is checked
-# secret = "lidarr"            # reads KNIGHTWATCHER_LIDARR_API_KEY; one crate for each album
+# secret = "lidarr"            # reads KW_LIDARR_API_KEY; one crate for each album
 
 # More services whose imports are read, each a [[sources.imports]] table: another Sonarr, Radarr
 # or Lidarr, or a service a provider file of your own reads. Each is the source imports:<name>.
@@ -188,7 +188,7 @@ ignore_sources = []
 # name = "sonarr-4k"         # 1 to 20 of a-z, 0-9 and -; not sonarr, radarr or lidarr
 # from = "sonarr"            # any imports provider: sonarr, radarr, lidarr or a file of your own
 # url = "http://192.0.2.34:8989"
-# secret = "sonarr_4k"       # reads KNIGHTWATCHER_SONARR_4K_API_KEY; the provider's id when left out
+# secret = "sonarr_4k"       # reads KW_SONARR_4K_API_KEY; the provider's id when left out
 # every_s = 30
 # verify_tls = true          # with an https url, whether its certificate is checked
 # enabled = true
@@ -213,7 +213,7 @@ ignore_sources = []
 # every_s = 60               # 10 to 3600
 # for_s = 0                  # how long the test must hold first
 # header = "X-Api-Key"       # optional: one header, its value from .env
-# secret = "nas"             # with header: reads KNIGHTWATCHER_NAS_HEADER; else the name, - as _
+# secret = "nas"             # with header: reads KW_NAS_HEADER; else the name, - as _
 # verify_tls = true          # with an https url, whether its certificate is checked
 # enabled = true
 

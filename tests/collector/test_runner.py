@@ -63,8 +63,8 @@ class RunnerTest(unittest.TestCase):
                 }
             },
             {
-                "KNIGHTWATCHER_ADGUARD_USERNAME": "kw",
-                "KNIGHTWATCHER_ADGUARD_PASSWORD": "s3cret-example",
+                "KW_ADGUARD_USERNAME": "kw",
+                "KW_ADGUARD_PASSWORD": "s3cret-example",
             },
         )
         self.clock = Clock()

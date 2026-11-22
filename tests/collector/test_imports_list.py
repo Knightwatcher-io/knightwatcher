@@ -98,7 +98,7 @@ class ListConfigTest(unittest.TestCase):
 
     def build(self, entries, sources=None, env=None, **kw):
         raw = {"sources": {**(sources or {}), "imports": entries}}
-        return build(raw, {"KNIGHTWATCHER_SONARR_API_KEY": self.key} if env is None else env, **kw)
+        return build(raw, {"KW_SONARR_API_KEY": self.key} if env is None else env, **kw)
 
     def problems(self, entries, sources=None, env=None):
         with self.assertRaises(ConfigError) as cm:
@@ -136,13 +136,13 @@ class ListConfigTest(unittest.TestCase):
             self.assertEqual((s.kind.name, s.spec.id, s.section), ("imports", "sonarr", None))
 
     def test_a_secret_of_its_own(self):
-        env = {"KNIGHTWATCHER_SONARR_4K_API_KEY": "an-invented-key"}
+        env = {"KW_SONARR_4K_API_KEY": "an-invented-key"}
         entry = {"name": "sonarr-4k", "from": "sonarr", "url": "http://192.0.2.34:8989"}
         c = self.build([{**entry, "secret": "sonarr_4k"}], env=env)
         self.assertEqual(c.secret("imports:sonarr-4k"), {"api_key": "an-invented-key"})
         self.assertEqual(
             self.problems([entry], env=env),
-            [".env: KNIGHTWATCHER_SONARR_API_KEY missing (for imports:sonarr-4k)"],
+            [".env: KW_SONARR_API_KEY missing (for imports:sonarr-4k)"],
         )
         self.assertEqual(
             self.problems([{**entry, "secret": "sonarr-4k"}], env=env),
@@ -152,7 +152,7 @@ class ListConfigTest(unittest.TestCase):
         c = self.build([entry], env=env, missing="report")
         (source,) = build_sources(c)
         self.assertIsInstance(source, MissingCredentials)
-        self.assertEqual(source.variables, ["KNIGHTWATCHER_SONARR_API_KEY"])
+        self.assertEqual(source.variables, ["KW_SONARR_API_KEY"])
 
     def test_names(self):
         url = {"from": "sonarr", "url": "http://192.0.2.34:8989"}
@@ -216,7 +216,7 @@ class ListConfigTest(unittest.TestCase):
         # The entry is refused, wherever the section is written.
         raw = {"sources": {"imports": [same], **sonarr}}
         with self.assertRaises(ConfigError) as cm:
-            build(raw, {"KNIGHTWATCHER_SONARR_API_KEY": self.key})
+            build(raw, {"KW_SONARR_API_KEY": self.key})
         self.assertEqual(cm.exception.problems, self.problems([same], sonarr))
         other = {**same, "name": "tv2", "url": "http://192.0.2.30:8989"}
         self.assertEqual(
@@ -304,7 +304,7 @@ class OwnProviderTest(unittest.TestCase):
 
     def config(self):
         raw = {"sources": {"imports": [{"name": "books", "from": "shelf", "url": self.http.url}]}}
-        return build(raw, {"KNIGHTWATCHER_SHELF_API_KEY": self.key}, providers=scan(self.folder))
+        return build(raw, {"KW_SHELF_API_KEY": self.key}, providers=scan(self.folder))
 
     def test_its_own_provider_file_under_its_own_name(self):
         self.write(SHELF)
@@ -343,7 +343,7 @@ class LidarrTest(unittest.TestCase):
     def source(self):
         c = build(
             {"sources": {"lidarr": {"url": self.http.url}}},
-            {"KNIGHTWATCHER_LIDARR_API_KEY": self.key},
+            {"KW_LIDARR_API_KEY": self.key},
         )
         self.assertEqual(c.sources["lidarr"]["secret"], "lidarr")
         (source,) = build_sources(c)
@@ -380,13 +380,9 @@ class LidarrTest(unittest.TestCase):
     def test_the_lidarr_key_is_required_and_its_own(self):
         with self.assertRaises(ConfigError) as cm:
             build({"sources": {"lidarr": {"url": "http://192.0.2.32:8686"}}}, {})
-        self.assertEqual(
-            cm.exception.problems, [".env: KNIGHTWATCHER_LIDARR_API_KEY missing (for lidarr)"]
-        )
+        self.assertEqual(cm.exception.problems, [".env: KW_LIDARR_API_KEY missing (for lidarr)"])
         with self.assertRaises(ConfigError) as cm:
-            build(
-                {"sources": {"lidarr": {"from": "sonarr"}}}, {"KNIGHTWATCHER_LIDARR_API_KEY": "k"}
-            )
+            build({"sources": {"lidarr": {"from": "sonarr"}}}, {"KW_LIDARR_API_KEY": "k"})
         self.assertEqual(cm.exception.problems, ["sources.lidarr.from: unknown setting"])
 
 
@@ -406,8 +402,8 @@ class CommandLineTest(unittest.TestCase):
         self.addCleanup(self.http.close)
         self.key = secrets.token_hex(16)
         self.config_path = os.path.join(self.root, "config.toml")
-        clean = {k: v for k, v in os.environ.items() if not k.startswith("KNIGHTWATCHER_")}
-        env = {**clean, "KNIGHTWATCHER_LIDARR_TWO_API_KEY": self.key}
+        clean = {k: v for k, v in os.environ.items() if not k.startswith("KW_")}
+        env = {**clean, "KW_LIDARR_TWO_API_KEY": self.key}
         patcher = mock.patch.dict(os.environ, env, clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -437,7 +433,7 @@ class CommandLineTest(unittest.TestCase):
         code, out, err = self.run_cli("--probe", "imports:lidarr-two", "--record", folder)
         self.assertEqual(code, 0, err)
         self.assertIn("probe imports:lidarr-two: provider lidarr (Lidarr)\n", out)
-        self.assertIn("credentials: KNIGHTWATCHER_LIDARR_TWO_API_KEY\n", out)
+        self.assertIn("credentials: KW_LIDARR_TWO_API_KEY\n", out)
         self.assertNotIn("Night Lines", out)
         (name,) = os.listdir(folder)
         self.assertTrue(name.startswith("imports-lidarr-two-"), name)
