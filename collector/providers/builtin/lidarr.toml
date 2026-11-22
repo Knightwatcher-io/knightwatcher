@@ -1,0 +1,38 @@
+# Albums imported, from the last ten album import records in Lidarr's history.
+format = 1
+id = "lidarr"
+kind = "imports"
+name = "Lidarr"
+docs = "https://github.com/Lidarr/Lidarr/blob/develop/src/Lidarr.Api.V1/openapi.json"
+
+[credentials]
+api_key = "Lidarr's API key. In Lidarr: Settings, General, Security, API Key."
+
+# eventType 8 is downloadImported: one record for each album of a download, written once every
+# track of it has imported. Event 3, trackFileImported, is written once for each track, so an
+# album of twelve tracks would be twelve imports. includeTrack is left out: an album's record has
+# no track.
+[[request]]
+path = "/api/v1/history"
+query = { page = "1", pageSize = "10", eventType = "8", sortKey = "date", sortDirection = "descending", includeArtist = "true", includeAlbum = "true" }
+headers = { X-Api-Key = "{credential.api_key}" }
+
+[[request.require]]
+path = "$.records"
+type = "list"
+message = "unexpected reply from the history call"
+
+[fill.records]
+each = "$.records[*]"
+
+[fill.records.vars]
+id = { path = "$.id", type = "int", strict = true }
+artist = { path = "$.artist.artistName", nonzero = true }
+album = { path = "$.album.title", nonzero = true }
+source = { path = "$.sourceTitle", nonzero = true }
+
+[fill.records.fields]
+id = "id"
+
+[[fill.records.title]]
+try = ["{artist} - {album}", "{album}", "{source}"]

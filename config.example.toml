@@ -155,6 +155,29 @@ url = "http://192.0.2.31:7878"
 # verify_tls = true          # with an https url, whether its certificate is checked
 secret = "radarr"            # reads KNIGHTWATCHER_RADARR_API_KEY
 
+[sources.lidarr]
+enabled = true
+every_s = 30
+url = "http://192.0.2.32:8686"
+# verify_tls = true          # with an https url, whether its certificate is checked
+secret = "lidarr"            # reads KNIGHTWATCHER_LIDARR_API_KEY; one crate for each album
+
+# More services whose imports are read, each a [[sources.imports]] table: another Sonarr, Radarr
+# or Lidarr, or a service a provider file of your own reads. Each is the source imports:<name>.
+# Set them here; the admin page lists them. Remove the "# " before each line to use one.
+
+# A second Sonarr, for a 4K library. Its key needs a secret of its own, and the collector gets a
+# variable no built-in provider reads only when compose.override.yaml names it in the collector's
+# environment (docs/configuration.md has the snippet).
+# [[sources.imports]]
+# name = "sonarr-4k"         # 1 to 20 of a-z, 0-9 and -; not sonarr, radarr or lidarr
+# from = "sonarr"            # any imports provider: sonarr, radarr, lidarr or a file of your own
+# url = "http://192.0.2.34:8989"
+# secret = "sonarr_4k"       # reads KNIGHTWATCHER_SONARR_4K_API_KEY; the provider's id when left out
+# every_s = 30
+# verify_tls = true          # with an https url, whether its certificate is checked
+# enabled = true
+
 # The household defaults for the display's settings screen. Every display starts from these; a
 # choice made on a wall's settings screen or the admin page is saved over them, for the whole
 # deployment. A setting left out takes the page's own default. Remove the "# " before a table and

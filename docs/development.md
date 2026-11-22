@@ -174,6 +174,7 @@ containers, the network and its scratch folder however it ends:
 tools/throwaway/fail2ban.sh     # crazymax/fail2ban: a ban, the attack, an unban, a rebuilt file
 tools/throwaway/pihole.sh       # pihole/pihole: flies, one session, a wrong password, https, v5
 tools/throwaway/technitium.sh   # technitium/dns-server: a token by API, flies, a wrong token, v14
+tools/throwaway/lidarr.sh       # linuxserver/lidarr: its key from config.xml, an empty history, a list entry, a wrong key
 ```
 
 A service with no throwaway, such as Plex Media Server, which needs a Plex account, is proved

@@ -27,7 +27,9 @@ services:
       retries: 2
     # Credentials, read once at start. Each is named here, so that the container gets these from
     # .env and nothing else in it. One a config does not use may be unset: it arrives empty, and
-    # the collector's own check names any credential it needs and lacks.
+    # the collector's own check names any credential it needs and lacks. A variable no built-in
+    # provider reads (a secret of your own, or a provider file's) is named the same way in the
+    # collector's environment in compose.override.yaml; docs/configuration.md has the snippet.
     environment:
       KNIGHTWATCHER_TAUTULLI_API_KEY: ${KNIGHTWATCHER_TAUTULLI_API_KEY:-}
       KNIGHTWATCHER_PLEX_TOKEN: ${KNIGHTWATCHER_PLEX_TOKEN:-}
@@ -37,6 +39,7 @@ services:
       KNIGHTWATCHER_TECHNITIUM_TOKEN: ${KNIGHTWATCHER_TECHNITIUM_TOKEN:-}
       KNIGHTWATCHER_SONARR_API_KEY: ${KNIGHTWATCHER_SONARR_API_KEY:-}
       KNIGHTWATCHER_RADARR_API_KEY: ${KNIGHTWATCHER_RADARR_API_KEY:-}
+      KNIGHTWATCHER_LIDARR_API_KEY: ${KNIGHTWATCHER_LIDARR_API_KEY:-}
     volumes:
       # Settings, read at start and again whenever the file is written in place.
       - type: bind

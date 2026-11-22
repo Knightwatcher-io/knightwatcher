@@ -1,0 +1,199 @@
+{
+ "about": "Lidarr's history of album imports (eventType 8, downloadImported), newest first, every value invented: one record for each album, with its artist and album as includeArtist and includeAlbum add them. The second has no artist, so the album's title stands alone; the third an empty album title, so the release's name stands; the last no id, so it is left out.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/history?page=1&pageSize=10&eventType=8&sortKey=date&sortDirection=descending&includeArtist=true&includeAlbum=true",
+    "headers": {
+     "X-Api-Key": "{credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "page": 1,
+     "pageSize": 10,
+     "sortKey": "date",
+     "sortDirection": "descending",
+     "totalRecords": 4,
+     "records": [
+      {
+       "albumId": 18,
+       "artistId": 41,
+       "trackId": 0,
+       "sourceTitle": "Alex Rowan - Night Lines (2025) [FLAC]",
+       "quality": {
+        "quality": {
+         "id": 6,
+         "name": "FLAC"
+        },
+        "revision": {
+         "version": 1,
+         "real": 0,
+         "isRepack": false
+        }
+       },
+       "customFormats": [],
+       "customFormatScore": 0,
+       "qualityCutoffNotMet": false,
+       "date": "2026-01-15T21:04:10Z",
+       "downloadId": "0A1B2C3D4E5F60718293A4B5C6D7E8F9000000D4",
+       "eventType": "downloadImported",
+       "data": {
+        "releaseGroup": null
+       },
+       "album": {
+        "title": "Night Lines",
+        "albumType": "Album",
+        "artistId": 41,
+        "id": 18,
+        "foreignAlbumId": "00000000-0000-4000-8000-000000000018"
+       },
+       "artist": {
+        "artistName": "Alex Rowan",
+        "sortName": "alex rowan",
+        "id": 41,
+        "foreignArtistId": "00000000-0000-4000-8000-000000000041"
+       },
+       "id": 212
+      },
+      {
+       "albumId": 17,
+       "artistId": 41,
+       "trackId": 0,
+       "sourceTitle": "Sam Vale - Harbour of Glass (2024) [FLAC]",
+       "quality": {
+        "quality": {
+         "id": 6,
+         "name": "FLAC"
+        },
+        "revision": {
+         "version": 1,
+         "real": 0,
+         "isRepack": false
+        }
+       },
+       "customFormats": [],
+       "customFormatScore": 0,
+       "qualityCutoffNotMet": false,
+       "date": "2026-01-15T20:41:52Z",
+       "downloadId": "0A1B2C3D4E5F60718293A4B5C6D7E8F9000000D3",
+       "eventType": "downloadImported",
+       "data": {
+        "releaseGroup": null
+       },
+       "album": {
+        "title": "Harbour of Glass",
+        "albumType": "Album",
+        "artistId": 41,
+        "id": 17,
+        "foreignAlbumId": "00000000-0000-4000-8000-000000000017"
+       },
+       "id": 211
+      },
+      {
+       "albumId": 16,
+       "artistId": 41,
+       "trackId": 0,
+       "sourceTitle": "Robin.Ash-Lanterns-WEB-2023",
+       "quality": {
+        "quality": {
+         "id": 6,
+         "name": "FLAC"
+        },
+        "revision": {
+         "version": 1,
+         "real": 0,
+         "isRepack": false
+        }
+       },
+       "customFormats": [],
+       "customFormatScore": 0,
+       "qualityCutoffNotMet": false,
+       "date": "2026-01-15T19:02:33Z",
+       "downloadId": "0A1B2C3D4E5F60718293A4B5C6D7E8F9000000D2",
+       "eventType": "downloadImported",
+       "data": {
+        "releaseGroup": null
+       },
+       "album": {
+        "title": "",
+        "albumType": "Album",
+        "artistId": 41,
+        "id": 16,
+        "foreignAlbumId": "00000000-0000-4000-8000-000000000016"
+       },
+       "artist": {
+        "artistName": "Robin Ash",
+        "sortName": "robin ash",
+        "id": 41,
+        "foreignArtistId": "00000000-0000-4000-8000-000000000041"
+       },
+       "id": 210
+      },
+      {
+       "albumId": 15,
+       "artistId": 41,
+       "trackId": 0,
+       "sourceTitle": "Robin Ash - Paper Tide",
+       "quality": {
+        "quality": {
+         "id": 6,
+         "name": "FLAC"
+        },
+        "revision": {
+         "version": 1,
+         "real": 0,
+         "isRepack": false
+        }
+       },
+       "customFormats": [],
+       "customFormatScore": 0,
+       "qualityCutoffNotMet": false,
+       "date": "2026-01-15T18:00:00Z",
+       "downloadId": "0A1B2C3D4E5F60718293A4B5C6D7E8F9000000D1",
+       "eventType": "downloadImported",
+       "data": {
+        "releaseGroup": null
+       },
+       "album": {
+        "title": "Paper Tide",
+        "albumType": "Album",
+        "artistId": 41,
+        "id": 15,
+        "foreignAlbumId": "00000000-0000-4000-8000-000000000015"
+       },
+       "artist": {
+        "artistName": "Robin Ash",
+        "sortName": "robin ash",
+        "id": 41,
+        "foreignArtistId": "00000000-0000-4000-8000-000000000041"
+       }
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "fill": {
+  "records": [
+   {
+    "id": 212,
+    "title": "Alex Rowan - Night Lines"
+   },
+   {
+    "id": 211,
+    "title": "Harbour of Glass"
+   },
+   {
+    "id": 210,
+    "title": "Robin.Ash-Lanterns-WEB-2023"
+   }
+  ]
+ }
+}

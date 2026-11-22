@@ -55,6 +55,7 @@ class BuildTest(unittest.TestCase):
                 "security": 30,
                 "sonarr": 30,
                 "radarr": 30,
+                "lidarr": 30,
             },
         )
         c = build({"sources": {"wan": {"every_s": 5}}})
@@ -1004,7 +1005,7 @@ class LoadTest(unittest.TestCase):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         env = read_env_file(os.path.join(root, ".env.example"))
         c = load(os.path.join(root, "config.example.toml"), env)
-        self.assertEqual(len(c.sources), 13)
+        self.assertEqual(len(c.sources), 14)
         # The examples of devices are commented out, so the Pi is the only device.
         self.assertEqual([t["name"] for t in c.devices], ["Pi"])
         self.assertIn("device_down", c.conditions["priority"])
@@ -1015,17 +1016,22 @@ class LoadTest(unittest.TestCase):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         with open(os.path.join(root, "config.example.toml"), encoding="utf-8") as fh:
             example = fh.read()
-        # A commented setting is "# key = value", "# [[device]]" or the header of a defaults
-        # table; a commented note is not.
+        # A commented setting is "# key = value", "# [[device]]", "# [[sources.imports]]" or the
+        # header of a defaults table; a commented note is not.
         setting = re.compile(
-            r"^# (\[\[device\]\]|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]"
-            r"|[a-z_]+ = .+)$"
+            r"^# (\[\[device\]\]|\[\[sources\.imports\]\]"
+            r"|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]|[a-z_]+ = .+)$"
         )
         lines = [
             m.group(1) if (m := setting.match(line)) else line for line in example.splitlines()
         ]
         cfg = self._write("config.toml", "\n".join(lines) + "\n")
-        c = load(cfg, read_env_file(os.path.join(root, ".env.example")))
+        env = read_env_file(os.path.join(root, ".env.example"))
+        # The second Sonarr reads a variable of its own, which .env.example does not list.
+        env["KNIGHTWATCHER_SONARR_4K_API_KEY"] = "an-invented-key"
+        c = load(cfg, env)
+        self.assertEqual(c.sources["imports:sonarr-4k"]["from"], "sonarr")
+        self.assertEqual(c.secret("imports:sonarr-4k"), {"api_key": "an-invented-key"})
         self.assertEqual(
             [t["name"] for t in c.devices], ["Pi", "Vault", "Gate cam", "Study laptop"]
         )

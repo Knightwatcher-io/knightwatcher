@@ -26,7 +26,7 @@ down looks broken, with a question mark blinking over it;
 [Devices](docs/configuration.md#devices) says how to list them.
 
 Beside the host's own figures, the collector reads the streams playing from Tautulli or from Plex Media Server itself ([Plex](docs/configuration.md#plex-media-server)), the adverts
-blocked from AdGuard Home, Pi-hole 6 ([Pi-hole](docs/configuration.md#pi-hole)) or Technitium DNS Server ([Technitium](docs/configuration.md#technitium-dns-server)), the films and episodes imported from Radarr and Sonarr, and the bans
+blocked from AdGuard Home, Pi-hole 6 ([Pi-hole](docs/configuration.md#pi-hole)) or Technitium DNS Server ([Technitium](docs/configuration.md#technitium-dns-server)), the films, episodes and albums imported from Radarr, Sonarr and Lidarr (and from more of them, or any service of your own, through [More imports](docs/configuration.md#more-imports)), and the bans
 fail2ban makes, from its own database ([fail2ban's database](docs/configuration.md#fail2bans-database)).
 Each of these services is read through a provider, a small file that maps
 the service's answers onto the shape the display needs ([Providers](docs/providers.md)). Another service that answers with JSON

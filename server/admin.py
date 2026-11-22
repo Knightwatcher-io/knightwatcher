@@ -589,7 +589,9 @@ def export_toml(
     shared settings over its look, display, quiet scenes and scenes. A section also keeps the
     settings its provider declares, with the provider file's help, and writes a key of its own that
     its provider does not use (url with fail2ban, database with any other) commented, so that the
-    file reads back; found is the providers folder, or None for the built-in providers alone."""
+    file reads back. A list of tables under [sources], such as [[sources.imports]], is set in
+    config.toml alone and written as raw has it. found is the providers folder, or None for the
+    built-in providers alone."""
     found = found if found is not None else providers.builtin_only()
     stamp = when.astimezone(dt.UTC).strftime("%d %B %Y at %H:%M UTC").lstrip("0")
     out = _comment(
@@ -616,6 +618,24 @@ def export_toml(
                 for s in t["settings"]:
                     if s["key"] in device:
                         out += _line(s["key"], device[s["key"]], s["type"])
+            continue
+        if t.get("many"):
+            # A list of tables under [sources], such as [[sources.imports]]: set in config.toml
+            # alone, so written as the file has it, each entry's keys in the schema's order and
+            # then any its provider declares.
+            entries = (raw.get("sources") or {}).get(table[len("sources.") :]) or []
+            if not isinstance(entries, list):
+                entries = []
+            if not entries:
+                out.append("# None.")
+            keys = [s["key"] for s in t["settings"]]
+            kinds = {s["key"]: s["type"] for s in t["settings"]}
+            for i, entry in enumerate(e for e in entries if isinstance(e, dict)):
+                if i:
+                    out.append("")
+                out.append(f"[[{table}]]")
+                for key in [*[k for k in keys if k in entry], *[k for k in entry if k not in keys]]:
+                    out += _line(key, entry[key], kinds.get(key))
             continue
         if not t["settings"]:
             out.append(f"[{table}]")

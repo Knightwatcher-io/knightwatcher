@@ -290,7 +290,9 @@ and `sources` the parts come from are shown:
   why not. Between reads the entry stays as the last read left it, so `at` can be older than
   `generated_at` by the source's own pace (a minute for the backup log), and by longer while a
   slow read is still running or the source is paused after refused credentials. Each device
-  has an entry of its own, `device:<name>`, and the Pi of `[sources.pi]` keeps `pi`. A device's
+  has an entry of its own, `device:<name>`, and the Pi of `[sources.pi]` keeps `pi`; so does each
+  entry of `[[sources.imports]]`, `imports:<name>`, whose new imports are `import` events like
+  those of `sonarr`, `radarr` and `lidarr`. A device's
   check that ran but got no answer is `ok: true`, since the check worked; its `ok` is
   false only while its first check is still running (`first read still running`) and when a
   check ran out of time (`timed out`, then `previous read still running` while it hangs on).

@@ -150,7 +150,9 @@ def _record(folder: str, name: str, source, exchanges: list, values: dict, now) 
             entry["error"] = hide(e["error"])
         out.append(entry)
     os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, f"{name}-{now.astimezone(dt.UTC):%Y%m%dT%H%M%SZ}.json")
+    # imports:whisparr is written imports-whisparr, a name every file system takes.
+    stem = name.replace(":", "-")
+    path = os.path.join(folder, f"{stem}-{now.astimezone(dt.UTC):%Y%m%dT%H%M%SZ}.json")
     doc = {"source": name, "provider": source.spec.id, "exchanges": out}
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
@@ -161,12 +163,18 @@ def _record(folder: str, name: str, source, exchanges: list, values: dict, now) 
 def _probe(config, name: str, record: str | None) -> int:
     from collector.sources import KindSource
 
-    if name not in kinds.SECTIONS:
+    if kinds.kind_of(name) is None:
         names = ", ".join(kinds.SECTIONS)
-        print(f"probe: {name} is not read through a provider; use {names}", file=sys.stderr)
+        lists = ", ".join(f"{n}:<name> for an entry of [[sources.{n}]]" for n in kinds.LISTS)
+        print(
+            f"probe: {name} is not read through a provider; use {names}, or {lists}",
+            file=sys.stderr,
+        )
         return 2
     if name not in config.sources:
-        print(f"probe: [sources.{name}] is not set up, or is off", file=sys.stderr)
+        head, colon, entry = name.partition(":")
+        what = f'no [[sources.{head}]] entry named "{entry}"' if colon else f"[sources.{name}]"
+        print(f"probe: {what} is not set up, or is off", file=sys.stderr)
         return 2
     if name in config.missing:
         for problem in config.missing[name]:
@@ -241,7 +249,9 @@ def _check(config) -> int:
         if problem not in filed:
             print(f"warning: {problem}", file=sys.stderr)
     for name, pid in used.items():
-        print(f"config: sources.{name}.from: provider {pid} refused, as above", file=sys.stderr)
+        print(
+            f"config: {config.where(name)}.from: provider {pid} refused, as above", file=sys.stderr
+        )
     if used:
         return 2
     names = ", ".join(config.sources) or "none"

@@ -146,7 +146,8 @@ class ProbeTest(unittest.TestCase):
         code, _, err = self.probe("host")
         self.assertEqual((code, err), (2, "probe: host is not read through a provider; use "
                                            "streams, adblock, security, sonarr, "
-                                           "radarr\n"))  # fmt: skip
+                                           "radarr, lidarr, or imports:<name> for an entry "
+                                           "of [[sources.imports]]\n"))  # fmt: skip
         code, _, err = self.probe("sonarr")
         self.assertEqual((code, err), (2, "probe: [sources.sonarr] is not set up, or is off\n"))
         self.write_config('from = "plx"')

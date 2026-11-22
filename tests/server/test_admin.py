@@ -801,6 +801,91 @@ class OwnProvidersTest(AdminCase):
         self.assertEqual(exported.sources["streams"]["from"], "myflix")
 
 
+class ImportsListTest(AdminCase):
+    """[[sources.imports]] is set in config.toml alone: the page is given it as the file has it,
+    the admin page cannot set it, every change is still checked with it, and the export keeps it."""
+
+    ENTRIES = (
+        '\n[[sources.imports]]\nname = "sonarr-4k"\nfrom = "sonarr"\n'
+        'url = "http://192.0.2.34:8989"\nsecret = "sonarr_4k"\n'
+        '\n[[sources.imports]]\nname = "old"\nfrom = "radarr"\nenabled = false\n'
+    )
+
+    def setUp(self):
+        super().setUp()
+        self.cookie = self.s.sign_in()
+        with open(self.s.config_path, "a", encoding="utf-8") as fh:
+            fh.write(self.ENTRIES)
+
+    def patch(self, payload):
+        return self.s.json_call("PATCH", "/api/admin/settings", payload, self.cookie)
+
+    def credentials(self, **extra):
+        with open(os.path.join(self.s.out, "credentials.json"), "w", encoding="utf-8") as fh:
+            json.dump({**CREDENTIALS, **extra}, fh)
+
+    def test_the_page_is_given_the_list_and_cannot_set_it(self):
+        body = self.s.json_call("GET", "/api/admin/settings", cookie=self.cookie)[2]
+        self.assertEqual(
+            [(e["name"], e["from"]) for e in body["file"]["sources"]["imports"]],
+            [("sonarr-4k", "sonarr"), ("old", "radarr")],
+        )
+        for path in ("sources.imports.enabled", "sources.imports.url", "sources.imports"):
+            status, _, body = self.patch({"set": {path: True}})
+            self.assertEqual(status, 400, path)
+        status, _, body = self.patch({"set": {"sources.imports.enabled": False}})
+        self.assertEqual(body["problems"], ["sources.imports.enabled: not set on the admin page"])
+
+    def test_a_change_is_checked_with_the_list(self):
+        # The entry's own variable is checked by name, as the collector reports it.
+        self.credentials()
+        status, _, body = self.patch({"set": {"collector.interval_s": 15}})
+        self.assertEqual(status, 400)
+        self.assertEqual(
+            body["problems"],
+            [".env: KNIGHTWATCHER_SONARR_4K_API_KEY missing (for imports:sonarr-4k)"],
+        )
+        self.credentials(KNIGHTWATCHER_SONARR_4K_API_KEY=True)
+        status, _, body = self.patch({"set": {"collector.interval_s": 15}})
+        self.assertEqual(status, 200, body)
+        # A section turned on here at the entry's address reads the service twice: refused.
+        status, _, body = self.patch(
+            {
+                "set": {
+                    "sources.sonarr.enabled": True,
+                    "sources.sonarr.url": "http://192.0.2.34:8989",
+                }
+            }
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(
+            body["problems"][0],
+            "sources.imports[0].url: sonarr at this address is read by [sources.sonarr] already; "
+            "remove one",
+        )
+
+    def test_the_export_keeps_the_list(self):
+        text = self.s.json_call("GET", "/api/admin/export", cookie=self.cookie)[2].decode("utf-8")
+        self.assertIn(
+            '[[sources.imports]]\nname = "sonarr-4k"\nfrom = "sonarr"\n'
+            'url = "http://192.0.2.34:8989"\nsecret = "sonarr_4k"\n',
+            text,
+        )
+        raw = tomllib.loads(text)
+        self.assertEqual(
+            raw["sources"]["imports"], tomllib.loads(CONFIG + self.ENTRIES)["sources"]["imports"]
+        )
+        env = {"KNIGHTWATCHER_SONARR_4K_API_KEY": "an-invented-key"}
+        self.assertEqual(config.build(raw, env).sources["imports:sonarr-4k"]["secret"], "sonarr_4k")
+
+    def test_an_export_without_entries_says_so(self):
+        with open(self.s.config_path, "w", encoding="utf-8") as fh:
+            fh.write(CONFIG)
+        text = self.s.json_call("GET", "/api/admin/export", cookie=self.cookie)[2].decode("utf-8")
+        self.assertIn("\n# None.\n", text)
+        self.assertNotIn("imports", tomllib.loads(text)["sources"])
+
+
 class PageTest(unittest.TestCase):
     def test_the_admin_page_is_served_at_admin_and_stamped_with_the_rest(self):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
