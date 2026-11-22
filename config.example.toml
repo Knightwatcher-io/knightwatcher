@@ -81,7 +81,7 @@ urls = ["https://1.1.1.1/cdn-cgi/trace"]
 [sources.dns]
 enabled = true
 every_s = 30
-server = "127.0.0.1"
+server = "127.0.0.53"          # systemd-resolved on most Linux hosts; or your own DNS server's address
 port = 53
 name = "example.com"
 
