@@ -61,13 +61,16 @@
     draft: null, confirm: null, menu: false, exp: null, resetAsk: false, scrollTo: null, reveal: false, dirty: false };
 
   /* ---- The schema ------------------------------------------------------------------------------- */
-  let TABLES, SPEC, COND, SCENE, SOURCES, CREDS, PROVIDERS, PRIORITY;
+  let TABLES, SPEC, COND, SCENE, SOURCES, LISTS, CREDS, PROVIDERS, PRIORITY;
   function readSchema(schema) {
     S = schema; TABLES = {}; SPEC = {}; COND = {}; SCENE = {};
     for (const t of S.tables) { TABLES[t.table] = t; for (const s of t.settings) SPEC[t.table + '.' + s.key] = Object.assign({ table: t.table }, s); }
     for (const c of S.conditions) COND[c.id] = c;
     for (const c of S.scenes) SCENE[c.id] = c.name;
-    SOURCES = S.tables.filter(t => t.table.startsWith('sources.')).map(t => t.table.slice(8));
+    SOURCES = S.tables.filter(t => t.table.startsWith('sources.') && !t.many).map(t => t.table.slice(8));
+    /* The lists of tables under [sources], such as [[sources.imports]]: set in config.toml alone,
+       and listed here read-only. */
+    LISTS = S.tables.filter(t => t.table.startsWith('sources.') && t.many).map(t => t.table.slice(8));
     CREDS = S.env.filter(e => e.scope === 'credential');
     PROVIDERS = S.providers || [];
     PRIORITY = SPEC['conditions.priority'].default;
@@ -341,7 +344,7 @@
 
   /* ---- The sections ------------------------------------------------------------------------------ */
   const setCount = pre => (WALL.includes(pre) ? Object.keys(W[pre] || {}).length : Object.keys(A.set).filter(p => p === pre || p.startsWith(pre + '.')).length);
-  const failing = () => SOURCES.filter(n => srcOn(n) && status() && status().sources[n] && !status().sources[n].ok);
+  const failing = () => SOURCES.concat(listSources()).filter(n => (SOURCES.includes(n) ? srcOn(n) : true) && status() && status().sources[n] && !status().sources[n].ok);
   const PAGES = [
     { id: 'collector', name: 'Collector', count: () => setCount('collector') },
     { id: 'conditions', name: 'Conditions', count: () => setCount('conditions') },
@@ -474,7 +477,37 @@
     c.appendChild(rows);
     return c;
   }
-  function pageSources(m) { for (const n of SOURCES) m.appendChild(srcCard(n)); }
+  /* ---- A list of tables under [sources], read-only ----------------------------------------- */
+  /* Its entries as config.toml has them, and the sources the enabled ones are: imports:<name>. */
+  const entriesOf = list => { const e = (file().sources || {})[list]; return Array.isArray(e) ? e.filter(x => x && typeof x === 'object' && !Array.isArray(x)) : []; };
+  const listSources = () => LISTS.flatMap(l => entriesOf(l).filter(e => e.enabled !== false && typeof e.name === 'string').map(e => l + ':' + e.name));
+  function listCard(l) {
+    const t = TABLES['sources.' + l], entries = entriesOf(l), spec = k => SPEC['sources.' + l + '.' + k];
+    const c = card(groupOf(t.settings[0].gui.admin.section), '[[sources.' + l + ']]', t.help);
+    if (!entries.length) c.appendChild(rich('p', 'ghelp', 'None in config.toml. Each is a `[[sources.' + l + ']]` table there, with a `name`, a `from` and a `url`; config.example.toml has one.'));
+    for (const e of entries) {
+      const name = typeof e.name === 'string' ? e.name : '?', src = l + ':' + name, on = e.enabled !== false;
+      const r = el('div', 'row'), lab = el('div', 'lab');
+      lab.appendChild(el('b', '', name)); lab.appendChild(el('code', '', src)); r.appendChild(lab);
+      const ctl = el('div', 'ctl'), line = el('div', 'line');
+      const p = providers().find(x => x.id === e.from);
+      line.appendChild(el('span', 'ro', (p ? p.name + (p.own ? ' (your file)' : '') : String(e.from)) + ' at ' + (typeof e.url === 'string' ? e.url : '?')));
+      const stt = status() && status().sources[src];
+      if (!on) line.appendChild(el('span', 'tag off', 'Off'));
+      else if (!stt) line.appendChild(el('span', 'tag', 'Not read yet'));
+      else line.appendChild(el('span', 'tag ' + (stt.ok ? 'ok' : 'bad'), stt.ok ? 'Reading, last read at ' + clockOf(stt.at) : 'Failing: ' + (stt.error || 'no reason given')));
+      const secret = typeof e.secret === 'string' && e.secret ? e.secret : String(e.from);
+      for (const f of (p ? p.credentials : [])) line.appendChild(credTag(varOf(secret, typeof f === 'string' ? f : f.field), on));
+      ctl.appendChild(line);
+      const every = typeof e.every_s === 'number' ? e.every_s : spec('every_s').default;
+      ctl.appendChild(rich('p', 'help', 'Read every ' + every + ' seconds' + (e.verify_tls === false ? ', its certificate not checked' : '') + '. Its credentials are read under `' + secret + '`; one no built-in provider names reaches the collector only when compose.override.yaml names it.'));
+      r.appendChild(ctl);
+      const w = el('div', 'where'); w.appendChild(el('span', 'from file', 'config.toml')); r.appendChild(w);
+      c.appendChild(r);
+    }
+    return c;
+  }
+  function pageSources(m) { for (const n of SOURCES) m.appendChild(srcCard(n)); for (const l of LISTS) m.appendChild(listCard(l)); }
 
   /* ---- Devices ---------------------------------------------------------------------------- */
   const devices = () => val('device') || [];

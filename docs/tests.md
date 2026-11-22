@@ -59,13 +59,14 @@ out.
 | `tests/collector/test_path.py` | the path syntax: every allowed form, the RFC's results on its own examples, every refused form with its position, the limit on values found |
 | `tests/collector/test_provider_format.py` | the provider file format: the built-in files pass, each rule is held to a refused file with its message, and an adblock file gives exactly one of `blocked` and `recent` |
 | `tests/collector/test_engine.py` | the engine against a local HTTP server: the requests built, `statuses`, `not_json`, `require`, nesting and the limits, scalar, list, object, item, case and zipped fields, the vars read only when allowed, the recording, and a certificate checked unless `verify_tls` is `false`; session logins: one login then the session with every read, in a header or the query, made again near its end or when the service forgot it (once in a read), a refused login, a new session refused, a login with no session id, the login's JSON body, the logout at `close()` (once, after a read in flight, never for an expired session) and the recording with the session's id named and the login's reply masked |
+| `tests/collector/test_imports_list.py` | `[[sources.imports]]`: each entry the source `imports:<name>`, its defaults and its `secret` (the provider's id when left out), a missing key failing that source alone, names (the form, twice, a section's name), `from` (required, unknown, another kind), the same provider at the same address twice refused and a second Sonarr allowed, the rest checked as a section's, the list's limit and shape, a provider file of the user's own read under its own name and a refused one; `[sources.lidarr]` giving one crate for each album and its key; `--check-config` and `--probe imports:<name>` with `--record`, a refused file named by the entry's place, and the state and memory files keeping the entry under its own name |
 | `tests/collector/test_providers.py` | every built-in provider against its fixtures (each request's method, path, headers and login body, the logout when the provider is closed), at every `show` for streams with no name read unless `show` is `names` and nothing of a stream with `count`; Plex and Tautulli giving the same reading of the same streams at every `show`, and Plex's token sent in its header and never in the address; `from`, `secret` and `verify_tls` in `config.toml`, the password Pi-hole is read with, and the tokens of Plex and Technitium |
 | `tests/collector/test_provider_files.py` | provider files of the user's own: which files are read and which left out (bad TOML, a broken rule, a name that is not the id, a built-in's id, a link, a folder, the size and count limits), a `from` naming one or a refused one and the source that then fails, the settings a file declares, a file read through the engine like a built-in, `--check-config`'s exit codes and warnings, `--probe`, `config.problems` in the state file, and a change taken up between polls |
 | `tests/collector/test_port.py` | [the port proof](#the-port-proof): today's four services read through the engine, against what the collector wrote before, byte for byte |
 | `tests/collector/test_probe.py` | `--probe` and `--record`, a probe on the host with `--env-file` and a config of its own, a credential masked in a reply that echoes it as written and percent-encoded, and a session provider's probe logging out, its login recorded with its method and body and the session's id named |
 | `tests/collector/test_text.py` | clipping, joining and formatting the collector's words |
 | `tests/server/test_server.py` | the bundled server on the loopback |
-| `tests/server/test_admin.py` | the admin page's side of the server, provider files of the user's own in its checks, its answer and the export included |
+| `tests/server/test_admin.py` | the admin page's side of the server, provider files of the user's own in its checks, `[[sources.imports]]` given to the page, never set there and kept by the export, its answer and the export included |
 | `tests/server/test_stamp.py` | the version stamp, `server/stamp.py`, against `tools/deploy.sh` |
 
 `tests/collector/kw_helpers.py` holds helpers the collector's tests share. The collector's
@@ -77,7 +78,10 @@ fill, by `show` for streams, or the error. Pi-hole's are in the shapes a throwaw
 sent: a read with its login and logout, a wrong password, every session taken, a Pi-hole 5, and a
 Pi-hole with no password. Technitium's are in the shapes a throwaway Technitium 15.6.2 sent: a read
 of the last hour and the last day, a token refused, a Technitium 14 that reads no `Authorization`
-header, and an error of the service. Plex's are in the shapes of Plex's API documentation, the
+header, and an error of the service. Lidarr's are in the shapes of its `openapi.json`, the empty
+history and the 401 as a throwaway Lidarr 3.1.6 sent them: album records with their artist and
+album (one without an artist, one with an empty title, one without an id), an empty history, and
+a key refused. Plex's are in the shapes of Plex's API documentation, the
 401 and 404 pages as Plex Media Server 1.43 sent them: three streams (the same as Tautulli's
 `activity.json`), nothing playing, streams with parts missing and a session key given as a
 number, a token refused, a path Plex does not have, XML in place of JSON, and JSON that is not
@@ -154,6 +158,24 @@ the recording each read, as uid 10001, for the token, found in none; a wrong tok
 source paused, the next poll not asking again; and a Technitium 14 (`technitium/dns-server`
 14.3.0) given a token of its own, told plainly. Given a folder, it copies the recording there, for
 making fixtures. No password or token is printed.
+
+`tools/throwaway/lidarr.sh` starts `lscr.io/linuxserver/lidarr` 3.1.6.5079-ls46 (Lidarr publishes
+no image of its own) on an internal network of its own with nothing published, its config folder
+a scratch folder of the run owned by the user running it (`PUID` and `PGID`), with the five
+capabilities its start scripts need to hand that folder to its account and start Lidarr as it
+(`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETUID`, `SETGID`) and `no-new-privileges`. Lidarr makes its
+API key at its first start and writes it to `config.xml` there, where the script reads it into a
+variable. It prints, in order: the collector reading every 5 seconds and the empty history read
+cleanly, the source ok with no imports; a `--probe`, and a `--probe --record` with the key recorded
+as `{credential.api_key}` and the reply's shape; the same Lidarr, under a second network name, as
+an entry of `[[sources.imports]]` with a `secret` of its own, checked, probed as
+`imports:lidarr-two` and read beside `[sources.lidarr]`, and the same address given to both refused
+by `--check-config`; the collector stopped, and its log, state file, memory file and the
+recording each read, as uid 10001, for the key, found in none; and a wrong key refused and the
+source paused, the next poll not asking again and a `--probe` not reading. An album import cannot
+be made there, since Lidarr writes one only for a download client's finished download of an album
+its library holds, and the library needs MusicBrainz, which the network cannot reach; the album
+record rests on the fixture. Given a folder, it copies the recording there. No key is printed.
 
 ## The page's tests
 

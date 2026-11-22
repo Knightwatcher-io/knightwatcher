@@ -124,7 +124,11 @@ names, carrying the credential its section names, which is the power `config.tom
 already give whoever writes them. The folder is mounted read-only, and should be writable by the
 operator alone, as `config.toml` is. A user's own credential reaches the collector only once the
 operator names its variable in the collector's `environment`, in `compose.override.yaml`, so the
-rule that the container gets only the variables it names still holds.
+rule that the container gets only the variables it names still holds. The same goes for an entry
+of `[[sources.imports]]` given a `secret` of its own, such as a second Sonarr's: its key goes in
+`.env` and its name in `compose.override.yaml`, and it is scrubbed from every message as every
+credential is. An entry reads the address it names with the credential it names, as a section
+does, and the list is set in `config.toml` alone: the admin page shows it and cannot change it.
 
 ## The server's privileges
 

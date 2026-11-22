@@ -1,0 +1,32 @@
+{
+ "about": "An empty history, as Lidarr 3.1.6 answers it with nothing imported yet: the shape recorded from the throwaway Lidarr.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/history?page=1&pageSize=10&eventType=8&sortKey=date&sortDirection=descending&includeArtist=true&includeAlbum=true",
+    "headers": {
+     "X-Api-Key": "{credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "page": 1,
+     "pageSize": 10,
+     "sortKey": "date",
+     "sortDirection": "descending",
+     "totalRecords": 0,
+     "records": []
+    }
+   }
+  }
+ ],
+ "fill": {
+  "records": []
+ }
+}

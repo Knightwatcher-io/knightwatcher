@@ -44,12 +44,13 @@ def example_keys() -> dict[str, set[str]]:
     """Every key config.example.toml sets, by table, its commented settings included."""
     with open(os.path.join(ROOT, "config.example.toml"), encoding="utf-8") as fh:
         text = fh.read()
-    # A commented setting is "# key = value", "# [[device]]" or the header of a defaults table;
-    # "# or: key = value" is a setting that replaces another in its table, so it is counted here
-    # but left commented when the example's tables are loaded uncommented (test_config).
+    # A commented setting is "# key = value", "# [[device]]", "# [[sources.imports]]" or the
+    # header of a defaults table; "# or: key = value" is a setting that replaces another in its
+    # table, so it is counted here but left commented when the example's tables are loaded
+    # uncommented (test_config).
     setting = re.compile(
-        r"^# (?:or: )?(\[\[device\]\]|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]"
-        r"|[a-z_]+ = .+)$"
+        r"^# (?:or: )?(\[\[device\]\]|\[\[sources\.imports\]\]"
+        r"|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]|[a-z_]+ = .+)$"
     )
     lines = [m.group(1) if (m := setting.match(line)) else line for line in text.splitlines()]
     raw = tomllib.loads("\n".join(lines) + "\n")
@@ -61,6 +62,8 @@ def example_keys() -> dict[str, set[str]]:
             for k, v in value.items():
                 if isinstance(v, dict):
                     out[f"{key}.{k}"] = set(v)
+                elif key == "sources" and k in kinds.LISTS:
+                    out[f"{key}.{k}"] = {name for t in v for name in t}
                 else:
                     out.setdefault(key, set()).add(k)
         else:
@@ -182,10 +185,16 @@ class CollectorAgreesTest(unittest.TestCase):
         })  # fmt: skip
 
     def test_tables_and_defaults(self):
+        sources = [t for t in S["tables"] if t["table"].startswith("sources.")]
         self.assertEqual(
             sorted(config.SOURCE_DEFAULTS),
-            sorted(t["table"][8:] for t in S["tables"] if t["table"].startswith("sources.")),
+            sorted(t["table"][8:] for t in sources if not t.get("many")),
         )
+        # A list of tables under [sources] is one whose entries are read through a kind.
+        self.assertEqual(
+            sorted(config.LIST_DEFAULTS), sorted(t["table"][8:] for t in sources if t.get("many"))
+        )
+        self.assertEqual(sorted(config.LIST_DEFAULTS), sorted(kinds.LISTS))
         self.assertEqual(config.COLLECTOR_DEFAULTS, schema.defaults("collector"))
         self.assertEqual(
             set(config.CONDITION_DEFAULTS), {"priority", "clear_after_s", *config.CONDITION_IDS}
@@ -244,7 +253,17 @@ class CollectorAgreesTest(unittest.TestCase):
         with_secret = {
             t["table"][8:] for t in S["tables"] if any(s["key"] == "secret" for s in t["settings"])
         }
-        self.assertEqual(with_secret, set(kinds.SECTIONS))
+        self.assertEqual(with_secret, set(kinds.SECTIONS) | set(kinds.LISTS))
+        # A list's entry names its provider, of the list's kind, and has no default one.
+        for name, kind in kinds.LISTS.items():
+            table = f"sources.{name}"
+            chosen = schema.setting(table, "from")
+            self.assertEqual((chosen["values_from"], chosen["kind"]), ("providers", kind))
+            self.assertIsNone(chosen["default"], table)
+            self.assertTrue(chosen["required"] and schema.setting(table, "name")["required"])
+            self.assertTrue(schema.TABLES[table]["many"], table)
+            # Set in config.toml alone: nothing of it is set on the admin page.
+            self.assertFalse(any(s["editable"] for s in schema.settings(table)), table)
 
     def test_a_setting_marked_with_its_providers_names_built_ins_of_its_kind(self):
         built = providers.builtin()

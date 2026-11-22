@@ -468,6 +468,56 @@
       ]
     },
     {
+      "table": "sources.lidarr",
+      "help": "Albums imported, from Lidarr.",
+      "settings": [
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: Lidarr", "label": "On" } }, "editable": true,
+          "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Lidarr", "label": "Read every" } }, "editable": true,
+          "help": "How often the source is read." },
+        { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Lidarr", "label": "Address" } }, "editable": true,
+          "help": "Base URL of Lidarr." },
+        { "key": "verify_tls", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: Lidarr", "label": "Check the certificate" } }, "editable": true,
+          "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
+        { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
+          "gui": { "admin": { "section": "Sources: Lidarr", "label": "Credential name" } }, "editable": false,
+          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
+      ]
+    },
+    {
+      "table": "sources.imports",
+      "many": true,
+      "max": 16,
+      "help": "More services whose imports are read, each a [[sources.imports]] table under [sources] in config.toml: another Sonarr, Radarr or Lidarr, or a service that a provider file of your own reads. There can be 16. Each is a source of its own, imports:<name> in the state file, and each new import it lists is one event, as for [sources.sonarr]. Set in config.toml alone; the admin page lists them.",
+      "settings": [
+        { "key": "name", "type": "string", "default": null, "required": true, "form": "1 to 20 of a-z, 0-9 and -, starting with a letter or digit", "scope": "household",
+          "gui": { "admin": { "section": "Sources: more imports", "label": "Name" } }, "editable": false,
+          "help": "The source's own name: imports:<name> in the state file, and in its memory. Unique among the list, and not sonarr, radarr or lidarr, which have sections of their own." },
+        { "key": "from", "type": "string", "default": null, "required": true, "values_from": "providers", "kind": "imports", "scope": "household",
+          "gui": { "admin": { "section": "Sources: more imports", "label": "Read from" } }, "editable": false,
+          "help": "The provider it is read through, by its id: a built-in one, or a provider file of your own of the imports kind. Two sources that read one provider at one url are refused, since each import would be raised twice." },
+        { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: more imports", "label": "On" } }, "editable": false,
+          "help": "Whether the source is read. Off (false) keeps the table for when it is turned on again." },
+        { "key": "every_s", "type": "integer", "default": 30, "above": 0, "unit": "seconds", "scope": "household",
+          "gui": { "admin": { "section": "Sources: more imports", "label": "Read every" } }, "editable": false,
+          "help": "How often the source is read." },
+        { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
+          "gui": { "admin": { "section": "Sources: more imports", "label": "Address" } }, "editable": false,
+          "help": "Base URL of the service the provider reads." },
+        { "key": "verify_tls", "type": "boolean", "default": true, "scope": "household",
+          "gui": { "admin": { "section": "Sources: more imports", "label": "Check the certificate" } }, "editable": false,
+          "help": "Whether the certificate of an https url is checked. Only with an https url." },
+        { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
+          "gui": { "admin": { "section": "Sources: more imports", "label": "Credential name" } }, "editable": false,
+          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment." }
+      ]
+    },
+    {
       "table": "device",
       "many": true,
       "max": 32,
@@ -670,6 +720,8 @@
       "default": true, "credentials": ["username", "password"], "settings": [] },
     { "id": "fail2ban", "kind": "security", "name": "fail2ban", "docs": "https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py",
       "default": true, "credentials": [], "settings": ["database"] },
+    { "id": "lidarr", "kind": "imports", "name": "Lidarr", "docs": "https://github.com/Lidarr/Lidarr/blob/develop/src/Lidarr.Api.V1/openapi.json",
+      "default": false, "credentials": ["api_key"], "settings": [] },
     { "id": "pihole", "kind": "adblock", "name": "Pi-hole 6", "docs": "https://docs.pi-hole.net/api/",
       "default": false, "credentials": ["password"], "settings": [] },
     { "id": "plex", "kind": "streams", "name": "Plex Media Server", "docs": "https://developer.plex.tv/pms/",
@@ -745,6 +797,10 @@
     { "name": "KNIGHTWATCHER_RADARR_API_KEY", "scope": "credential", "provider": "radarr", "field": "api_key", "secret": "radarr", "default": null,
       "example": "00112233445566778899aabbccddeeff", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Radarr API key" } }, "editable": false,
-      "help": "Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key." }
+      "help": "Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key." },
+    { "name": "KNIGHTWATCHER_LIDARR_API_KEY", "scope": "credential", "provider": "lidarr", "field": "api_key", "secret": "lidarr", "default": null,
+      "example": "0f1e2d3c4b5a69780f1e2d3c4b5a6978", "form": "32 hexadecimal characters",
+      "gui": { "admin": { "section": "Credentials", "label": "Lidarr API key" } }, "editable": false,
+      "help": "Lidarr's API key, for the lidarr provider, which [sources.lidarr] reads. In Lidarr: Settings, General, Security, API Key." }
   ]
 }

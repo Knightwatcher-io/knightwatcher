@@ -268,7 +268,7 @@ rather than the memory file, and starts again when the collector restarts.
 |---|---|---|---|
 | `ad_blocked` | enough blocked queries have built up for at least one fly | the flies, at most 8 unless `fly_every_s` is 0 | empty |
 | `ip_banned` | a read of `[sources.security]` finds bans it has not seen, and names the newest | the new bans | `BANNED 203.0.113.77 · sshd` |
-| `import` | a new import record appears in Sonarr's or Radarr's history | 1 each | `IMPORTED · The Night Shift S02E04` |
+| `import` | a new import record appears in the history of Sonarr, Radarr, Lidarr (one for each album) or an entry of `[[sources.imports]]` | 1 each | `IMPORTED · The Night Shift S02E04` |
 | `backup_done` | the backup log shows a completion newer than the last one seen | 1 | `BACKUP DONE 03:12` |
 
 Every caption is cut to 44 characters, with runs of spaces, tabs and line breaks made one space,
@@ -362,7 +362,8 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `streams` | the streams kind, `kinds/streams.py`, through its `from` provider, `tautulli` by default | Tautulli's `get_activity`, or Plex Media Server's `/status/sessions` with the owner's token: of each stream its title, and its user's name only when `show` is `names` | `streams` |
 | `adblock` | the adblock kind, `kinds/adblock.py`, through its `from` provider, `adguard` by default | AdGuard Home's `/control/stats`, Pi-hole 6's `/api/stats/summary` and `/api/history` through a session, or Technitium's `/api/dashboard/stats/get` for the last hour and the last day, with an API token | `adblock` |
 | `security` | the security kind, `kinds/security.py`, through its `from` provider, `fail2ban` (`providers/fail2ban.py`) by default | the `bans` table of fail2ban's SQLite database, read-only | `security` |
-| `sonarr`, `radarr` | the imports kind, `kinds/imports.py`, through the provider of each one's name | the last ten import records in each one's history | none |
+| `sonarr`, `radarr`, `lidarr` | the imports kind, `kinds/imports.py`, through the provider of each one's name | the last ten import records in each one's history; for Lidarr, its album records alone (`eventType=8`), so an album is one import | none |
+| `imports:<name>` | the imports kind, through the provider its entry of `[[sources.imports]]` names | as its provider reads | none |
 | `device:<name>` | `devices.py` | a TCP connection to every port at once, or one `GET` to a web address | none; `devices` is built from the conditions |
 
 Modules are in `collector/sources/` unless the table says otherwise.
@@ -399,7 +400,13 @@ a file fail2ban replaces is read afresh.
 | `[sources.streams]` | streams | `tautulli` by default, `plex`, or a file of the user's own | `tautulli`, `plex` |
 | `[sources.adblock]` | adblock | `adguard` by default, `pihole`, `technitium`, or a file of the user's own | `adguard`, `pihole`, `technitium` |
 | `[sources.security]` | security | `fail2ban` by default, or a file of the user's own | `fail2ban` (a code adapter) |
-| `[sources.sonarr]`, `[sources.radarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr` |
+| `[sources.sonarr]`, `[sources.radarr]`, `[sources.lidarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr`, `lidarr` |
+| each entry of `[[sources.imports]]` | imports | required, any provider of the kind, a file of the user's own included | `sonarr`, `radarr`, `lidarr` |
+
+An entry of a list of tables under `[sources]` is the source `<list>:<name>`, `imports:sonarr-4k`:
+that is its key in the state file's `sources`, in the memory file and in `--probe`, and the
+problems of its settings name its place, `sources.imports[0]`. `LISTS` in `collector/kinds/` names
+the lists and the kind each reads, and `kind_of()` gives the kind of any source.
 
 To the runner each of these sections is a source like any other (`KindSource` in
 `collector/sources/__init__.py`), with the same pace, time limit, back-off and status entry. One
@@ -442,8 +449,8 @@ the providers folder ([providers.md](./providers.md#your-own-provider-files)); t
 Knightwatcher, write it in `collector/providers/builtin/`, add it to the `providers` list of `collector/settings-schema.json`
 with its credentials in `env`, give it fixtures in `tests/collector/fixtures/providers/<id>/`, and
 run `node tools/settings-schema.js`. A new sort of reading is a kind: a module in
-`collector/kinds/` with its fill's declaration, `reading` and `observe`, named in `SECTIONS` and
-`KINDS` there. Anything else is a source of its own.
+`collector/kinds/` with its fill's declaration, `reading` and `observe`, named in `SECTIONS` (or
+`LISTS`, for a list of tables) and `KINDS` there. Anything else is a source of its own.
 
 A source is a class in `collector/sources/` with two methods:
 
@@ -497,8 +504,9 @@ python3 -m collector --probe streams    # read one source through its provider o
 python3 -m collector                    # poll until stopped
 ```
 
-`--probe <source>` reads one section read through a provider (`streams`, `adblock`, `sonarr` or
-`radarr`) once, with the settings in use, and prints the provider's fill and the facts the kind
+`--probe <source>` reads one source read through a provider (`streams`, `adblock`, `security`,
+`sonarr`, `radarr` or `lidarr`, or an entry of `[[sources.imports]]` by its source's name,
+`imports:<name>`) once, with the settings in use, and prints the provider's fill and the facts the kind
 would write with every text replaced by its type and length (`<string 21>`), so that a provider is
 proved against a live service without anyone reading what is being watched. It writes nothing of
 the collector's own, and a source the running collector has paused after refused credentials is
@@ -506,7 +514,8 @@ not read until the pause ends. Run it in the container, where the credentials co
 through compose: `docker compose run --rm collector --probe streams`. On the host, `--env-file
 PATH` takes the credentials from a `.env` file instead of the environment, so a probe can run with
 a config of its own without the wall's container or its config. `--record FOLDER` also writes the
-exchanges to a file in that folder, mode 600, each credential replaced by its field's name wherever
+exchanges to a file in that folder (named after the source, `imports-<name>-` for an entry of the
+list), mode 600, each credential replaced by its field's name wherever
 it appears, as written or percent-encoded, in a reply or an error as well as in the request; the
 replies in it are the service's own, private, and never committed as they are. A
 section whose provider is a file that was left out is not read: the probe prints the file's

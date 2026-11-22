@@ -1,0 +1,25 @@
+{
+ "about": "A key Lidarr does not know: HTTP 401, as the throwaway Lidarr 3.1.6 answered it, and the source pauses.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/history?page=1&pageSize=10&eventType=8&sortKey=date&sortDirection=descending&includeArtist=true&includeAlbum=true",
+    "headers": {
+     "X-Api-Key": "{credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 401
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "HTTP 401: credentials refused"
+ }
+}

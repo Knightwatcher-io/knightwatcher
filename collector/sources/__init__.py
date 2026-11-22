@@ -1,5 +1,6 @@
 """Sources: one module per thing the collector reads, and KindSource for the sections read through
-a kind and a provider (collector/kinds/, collector/providers/).
+a kind and a provider (collector/kinds/, collector/providers/), and for each entry of a list such
+as [[sources.imports]], the source "imports:<name>".
 
 Every source follows the interface of `Source`. The runner calls `fetch` in a worker thread with
 a deadline, and `observe` afterwards in the main thread. A source that raises is marked not ok
@@ -103,15 +104,16 @@ class RefusedProvider(Source):
 
 
 class KindSource(Source):
-    """A section read through a kind: its provider fills the kind's shape, and the kind makes the
-    reading and the events. What the runner sees is a source like any other."""
+    """A section read through a kind, or an entry of a list of them: its provider fills the kind's
+    shape, and the kind makes the reading and the events. What the runner sees is a source like
+    any other."""
 
     def __init__(self, name: str, settings: dict[str, Any], config: Config):
         from collector import kinds, providers
 
         super().__init__(settings, config)
         self.name = name
-        self.kind = kinds.kind_class(kinds.SECTIONS[name])()
+        self.kind = kinds.kind_class(kinds.kind_of(name))()
         self.section = self.kind.section
         self.spec = config.providers.get(kinds.provider_of(name, settings))
         self.allowed = self.kind.allowed(settings)
@@ -151,7 +153,7 @@ def _variables(problems: list[str]) -> list[str]:
 
 
 def build_sources(config: Config) -> list[Source]:
-    from collector.kinds import SECTIONS, provider_of
+    from collector.kinds import kind_of, provider_of
     from collector.sources import (
         backup,
         containers,
@@ -181,9 +183,9 @@ def build_sources(config: Config) -> list[Source]:
         elif name in config.missing:
             variables = _variables(config.missing[name])
             built.append(MissingCredentials(name, settings, config, variables))
-        elif name in SECTIONS and config.providers.is_refused(provider_of(name, settings)):
+        elif kind_of(name) and config.providers.is_refused(provider_of(name, settings)):
             built.append(RefusedProvider(name, settings, config, provider_of(name, settings)))
-        elif name in SECTIONS:
+        elif kind_of(name):
             built.append(KindSource(name, settings, config))
         else:
             built.append(classes[name](settings, config))

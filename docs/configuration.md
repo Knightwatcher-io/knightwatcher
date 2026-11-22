@@ -76,7 +76,7 @@ page's list is reset. A source that `config.toml` does not set up can be set up 
 gets a table of its own there. The folders (`output_dir`, `state_dir`, `proc_root`,
 `providers_dir`), the backup log's path and each source's `secret` are set in `config.toml` alone,
 since they follow what `compose.yaml` mounts and passes, and so are the settings a provider file
-of your own declares.
+of your own declares and the entries of `[[sources.imports]]`, which the page lists.
 
 The admin page's Download config.toml writes every setting as the collector uses it into one
 `config.toml`, comments included and credentials left out, to keep what was set there in the file.
@@ -99,9 +99,10 @@ A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>
 Its provider names the fields (Tautulli's is `api_key`, Plex's `token`, AdGuard Home's `username`
 and `password`, Pi-hole's `password`, Technitium's `token`; [Providers](#providers) lists them),
 and `SECRET` is the source's `secret` setting, which is the provider's id unless set: `tautulli`,
-`plex`, `adguard`, `pihole`, `technitium`, `sonarr` or `radarr`. A source given
+`plex`, `adguard`, `pihole`, `technitium`, `sonarr`, `radarr` or `lidarr`. A source given
 `secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and a source reading a
 provider file of your own with the id `myflix` and a `token` reads `KNIGHTWATCHER_MYFLIX_TOKEN`.
+The same holds for each entry of `[[sources.imports]]` ([More imports](#more-imports)).
 
 The collector's container gets only the variables `compose.yaml` names, so a name of your own must
 be named for it as well. Put it in `compose.override.yaml` beside `compose.yaml` (ignored by git,
@@ -182,6 +183,9 @@ listed and the exit is 2:
 config: providers/myflix.toml: request[0].path: must start with /
 config: sources.streams.from: provider myflix refused, as above
 ```
+
+An entry of `[[sources.imports]]` is named by its place in the list:
+`config: sources.imports[0].from: provider shelf refused, as above`.
 
 The problems of a file no section names are printed as warnings, and the exit stays 0:
 
@@ -479,6 +483,32 @@ Films imported, from Radarr.
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
 | `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
 
+### [sources.lidarr]
+
+Albums imported, from Lidarr.
+
+| Key | Values | Default | Scope | What it does |
+|---|---|---|---|---|
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
+| `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
+| `url` | an http:// or https:// address | required | household | Base URL of Lidarr. |
+| `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
+
+### [[sources.imports]]
+
+More services whose imports are read, each a [[sources.imports]] table under [sources] in config.toml: another Sonarr, Radarr or Lidarr, or a service that a provider file of your own reads. There can be 16. Each is a source of its own, imports:<name> in the state file, and each new import it lists is one event, as for [sources.sonarr]. Set in config.toml alone; the admin page lists them.
+
+| Key | Values | Default | Scope | What it does |
+|---|---|---|---|---|
+| `name` | 1 to 20 of a-z, 0-9 and -, starting with a letter or digit | required | household | The source's own name: imports:<name> in the state file, and in its memory. Unique among the list, and not sonarr, radarr or lidarr, which have sections of their own. |
+| `from` | `"lidarr"`, `"radarr"` or `"sonarr"`: a provider of the imports kind (see Providers below) | required | household | The provider it is read through, by its id: a built-in one, or a provider file of your own of the imports kind. Two sources that read one provider at one url are refused, since each import would be raised twice. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false) keeps the table for when it is turned on again. |
+| `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
+| `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
+| `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. Only with an https url. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. |
+
 ### [[device]]
 
 Machines on the network to watch, each a [[device]] table at the top level of config.toml. There can be 32, the Pi of [sources.pi] included. A device has exactly one check: an address with one or more ports (host with port or ports), or a web address (url).
@@ -569,16 +599,17 @@ Where the knight acts out each condition that more than one scene can play, for 
 
 ### Providers
 
-The services the sections read through a kind can read, each by its provider. A section with `from` reads the provider it names, of its own kind; any other reads the provider of its own name. A provider names the credentials it reads from `.env`, `KNIGHTWATCHER_<SECRET>_<FIELD>`, where `<SECRET>` is the section's `secret`, the provider's id when it is left out. [providers.md](./providers.md) describes the provider files.
+The services the sections read through a kind can read, each by its provider. A section with `from` reads the provider it names, of its own kind; any other reads the provider of its own name. Each entry of a list such as `[[sources.imports]]` names its provider in `from`. A provider names the credentials it reads from `.env`, `KNIGHTWATCHER_<SECRET>_<FIELD>`, where `<SECRET>` is the section's `secret`, the provider's id when it is left out. [providers.md](./providers.md) describes the provider files.
 
 | Provider | Kind | Service | Read by | Credentials |
 |---|---|---|---|---|
 | `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KNIGHTWATCHER_ADGUARD_USERNAME`, `KNIGHTWATCHER_ADGUARD_PASSWORD` |
 | `fail2ban` | security | [fail2ban](https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py) | `[sources.security]` by default | none |
+| `lidarr` | imports | [Lidarr](https://github.com/Lidarr/Lidarr/blob/develop/src/Lidarr.Api.V1/openapi.json) | `[sources.lidarr]`, `[[sources.imports]]` with `from = "lidarr"` | `KNIGHTWATCHER_LIDARR_API_KEY` |
 | `pihole` | adblock | [Pi-hole 6](https://docs.pi-hole.net/api/) | `[sources.adblock]` with `from = "pihole"` | `KNIGHTWATCHER_PIHOLE_PASSWORD` |
 | `plex` | streams | [Plex Media Server](https://developer.plex.tv/pms/) | `[sources.streams]` with `from = "plex"` | `KNIGHTWATCHER_PLEX_TOKEN` |
-| `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]` | `KNIGHTWATCHER_RADARR_API_KEY` |
-| `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]` | `KNIGHTWATCHER_SONARR_API_KEY` |
+| `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]`, `[[sources.imports]]` with `from = "radarr"` | `KNIGHTWATCHER_RADARR_API_KEY` |
+| `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]`, `[[sources.imports]]` with `from = "sonarr"` | `KNIGHTWATCHER_SONARR_API_KEY` |
 | `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KNIGHTWATCHER_TAUTULLI_API_KEY` |
 | `technitium` | adblock | [Technitium DNS Server](https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md) | `[sources.adblock]` with `from = "technitium"` | `KNIGHTWATCHER_TECHNITIUM_TOKEN` |
 
@@ -605,6 +636,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KNIGHTWATCHER_TECHNITIUM_TOKEN` | credential | 64 hexadecimal characters, such as `0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef` | none | A Technitium DNS Server API token, for the technitium provider, which [sources.adblock] reads with from = "technitium". In Technitium, signed in as a user of its own in no group but Everyone, which can view but change nothing: the user menu, Create API Token. The token does not expire. It is sent in the Authorization header, which needs Technitium 15 or later. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_SONARR_API_KEY` | credential | 32 hexadecimal characters, such as `fedcba9876543210fedcba9876543210` | none | Sonarr's API key, for the sonarr provider, which [sources.sonarr] reads. In Sonarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_RADARR_API_KEY` | credential | 32 hexadecimal characters, such as `00112233445566778899aabbccddeeff` | none | Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_LIDARR_API_KEY` | credential | 32 hexadecimal characters, such as `0f1e2d3c4b5a69780f1e2d3c4b5a6978` | none | Lidarr's API key, for the lidarr provider, which [sources.lidarr] reads. In Lidarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 
 <!-- settings-reference:end -->
 
@@ -620,7 +652,9 @@ means every poll.
 provider, named by `from`: `tautulli`, `adguard` and `fail2ban`, the defaults, so a table without
 `from` reads the default. `[sources.security]` reads fail2ban's own database
 ([below](#fail2bans-database)).
-`[sources.sonarr]` and `[sources.radarr]` read the provider of their own name. A `from` that
+`[sources.sonarr]`, `[sources.radarr]` and `[sources.lidarr]` read the provider of their own
+name. `[sources.lidarr]` gives one import for each album, once every track of it has imported,
+never one for each track. A `from` that
 names no provider, or a provider of another kind, is refused by name
 (`sources.streams.from: unknown provider "plx"; use plex or tautulli`), so a typo never falls back to the
 default. A source that is off is checked when it is turned on, as for its other settings.
@@ -643,13 +677,55 @@ out takes the file's default. A key that the chosen provider does not declare is
 (`sources.streams.page_size: not used by tautulli`). A `from` naming a file that failed its checks
 is not refused: that source runs and fails at every read
 (`provider myflix refused; see the settings problems`) while the file's problems are in the state
-file and on the admin page. Only `[sources.streams]`, `[sources.adblock]` and `[sources.security]`
-take `from`, so a file of the imports kind is checked but cannot be chosen yet.
+file and on the admin page. A file of the imports kind is chosen by an entry of
+`[[sources.imports]]` ([below](#more-imports)).
 
 A key of the section itself that the chosen provider does not use is refused by name too:
 `sources.security.url: not used by fail2ban` (and `verify_tls`), and `sources.security.database:
 not used by mybans` with a provider file of your own, `mybans`, of the security kind. The admin
 page's Download config.toml writes such a key commented.
+
+### More imports
+
+`[[sources.imports]]` reads more services whose imports are wanted, beyond the three sections: a
+second Sonarr, Radarr or Lidarr, or a service a provider file of your own of the imports kind
+reads. Each entry is a table of its own, at most 16, and a source of its own:
+
+```toml
+[[sources.imports]]
+name = "sonarr-4k"                 # the source imports:sonarr-4k
+from = "sonarr"                    # any imports provider: sonarr, radarr, lidarr or your own
+url = "http://192.0.2.34:8989"
+secret = "sonarr_4k"               # reads KNIGHTWATCHER_SONARR_4K_API_KEY
+
+[[sources.imports]]
+name = "books"
+from = "shelf"                     # providers/shelf.toml; reads KNIGHTWATCHER_SHELF_API_KEY
+url = "http://192.0.2.36:8080"
+```
+
+- **Its name** is 1 to 20 of `a-z`, `0-9` and `-`, starting with a letter or digit, and makes the
+  source `imports:<name>`: its entry in the state file's `sources`, its markers in the memory file,
+  and the name `--probe` takes (`--probe imports:sonarr-4k`). Two entries with one name are
+  refused, and so are `sonarr`, `radarr` and `lidarr`, the names of the sections, so that two
+  sources never look alike.
+- **`from`** is required and names a provider of the imports kind, by its id; there is no default.
+  A file of your own that failed its checks is not refused here, as for a section: that source
+  fails at every read.
+- **`secret`** is the provider's id when left out, as for a section, so an entry `from = "sonarr"`
+  reads `KNIGHTWATCHER_SONARR_API_KEY`. A second Sonarr has a key of its own, so it needs a
+  `secret` of its own, and its variable reaches the collector only when `compose.override.yaml`
+  names it ([.env](#env-host-paths-the-servers-address-and-credentials) has the snippet).
+- **One service once.** Two enabled sources that read one provider at one address would raise
+  every import twice, so the entry is refused
+  (`sources.imports[0].url: sonarr at this address is read by [sources.sonarr] already; remove
+  one`). The host is compared in any case and the path without a final slash; a second Sonarr at
+  another address is no clash.
+- **The rest** (`enabled`, `every_s`, `url`, `verify_tls` and any setting its provider declares)
+  is checked as for a section, and an entry that is off needs only its name and `from`.
+
+The admin page lists the entries with what each reads and how it is doing, but they are set in
+`config.toml` alone; its Download config.toml writes them as the file has them.
 
 `verify_tls` is on every section that reads a service over `http` or `https`, and `true` by
 default: the certificate of an `https` `url` is checked, as it always was. `false` reads a

@@ -18,6 +18,10 @@ fail2ban's own database instead. The providers are the built-in ones and the use
 the providers folder (collector.providers_dir, beside config.toml), read by
 collector/providers/__init__.py's scan(); a `from` naming a file that was left out is no problem
 here, and that source fails at every read.
+A list of tables under [sources], [[sources.imports]], holds more sources read through a kind: each
+entry is the source "imports:<name>", with a name of its own and a `from` it must give, checked as
+a section is and named by its place (sources.imports[0]) in its problems. Its name is never a
+section's, and two enabled sources that read one provider at one address are refused.
 Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>, where SECRET is
 the source's `secret` setting, the provider's id unless it is set; no message ever carries a
 credential's value.
@@ -37,7 +41,7 @@ from typing import Any
 
 from collector import providers as providers_mod
 from collector import schema
-from collector.kinds import SECTIONS, provider_of
+from collector.kinds import LISTS, SECTIONS, kind_of, provider_of
 
 CONDITION_IDS = schema.condition_ids()
 
@@ -48,9 +52,21 @@ CONDITION_DEFAULTS: dict[str, Any] = {
     **{cid: schema.defaults(f"conditions.{cid}") for cid in CONDITION_IDS},
 }
 
+# The sections of [sources]; a list of tables, such as [[sources.imports]], is not one of them.
 SOURCE_DEFAULTS: dict[str, dict[str, Any]] = {
-    name: schema.defaults(f"sources.{name}") for name in schema.source_names()
+    name: schema.defaults(f"sources.{name}")
+    for name in schema.source_names()
+    if not schema.TABLES[f"sources.{name}"].get("many")
 }
+
+# The lists of tables under [sources] whose entries are read through a kind: [[sources.imports]].
+# Each entry is the source "<list>:<name>", with the defaults of its table.
+LIST_DEFAULTS: dict[str, dict[str, Any]] = {
+    name: schema.defaults(f"sources.{name}") for name in LISTS
+}
+LIST_MAX: dict[str, int] = {name: schema.TABLES[f"sources.{name}"]["max"] for name in LISTS}
+# An entry's name: 1 to 20 of a-z, 0-9 and -, starting with a letter or digit.
+_ENTRY_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,19}$")
 
 # Settings a source cannot run without.
 REQUIRED = {
@@ -58,6 +74,16 @@ REQUIRED = {
     for name in SOURCE_DEFAULTS
 }
 REQUIRED = {name: keys for name, keys in REQUIRED.items() if keys}
+# The settings an entry of a list cannot run without, besides its name and from, which are
+# checked for every entry, on or off.
+LIST_REQUIRED = {
+    name: [
+        s["key"]
+        for s in schema.settings(f"sources.{name}")
+        if s.get("required") and s["key"] not in ("name", "from")
+    ]
+    for name in LISTS
+}
 
 # The fields a credential may have, the last part of KNIGHTWATCHER_<SECRET>_<FIELD>. The set is
 # fixed so that the credentials' names are known whatever the provider.
@@ -181,6 +207,9 @@ class Config:
 
     # The providers its sections could name: the built-ins and the providers folder's files.
     providers: Any = field(default_factory=providers_mod.builtin_only, repr=False)
+    # Each source of a list of tables, by its name, with where config.toml sets it:
+    # {"imports:whisparr": "sources.imports[0]"}.
+    places: dict[str, str] = field(default_factory=dict)
 
     def secret_values(self) -> list[str]:
         """Every secret string, so that error text can be scrubbed of them."""
@@ -188,12 +217,18 @@ class Config:
         return list(dict.fromkeys(used + self.scrub))
 
     def refused_in_use(self) -> list[str]:
-        """The enabled sections whose `from` names a provider file that was left out."""
+        """The enabled sources read through a kind whose `from` names a provider file that was
+        left out."""
         return [
             name
             for name, s in self.sources.items()
-            if name in SECTIONS and self.providers.is_refused(provider_of(name, s))
+            if kind_of(name) and self.providers.is_refused(provider_of(name, s))
         ]
+
+    def where(self, source: str) -> str:
+        """Where config.toml sets a source, as its problems name it: sources.streams, or for an
+        entry of a list, sources.imports[2]."""
+        return self.places.get(source, f"sources.{source}")
 
 
 def _type_ok(default: Any, value: Any) -> bool:
@@ -267,35 +302,45 @@ def _validate_conditions(c: dict, problems: list[str]) -> None:
             problems.append(f"conditions.night.{key}: expected HH:MM, 24-hour")
 
 
-def _validate_source(name: str, s: dict, problems: list[str], registry) -> None:
-    table = f"sources.{name}"
-    _check_ranges(table, s, table, problems)
+def _table_of(source: str) -> str:
+    """The schema's table of a source: sources.<name>, or for "<list>:<name>", sources.<list>."""
+    head, colon, _ = source.partition(":")
+    return f"sources.{head}" if colon else f"sources.{source}"
+
+
+def _validate_source(name: str, s: dict, problems: list[str], registry, where=None) -> None:
+    """One enabled source's settings. where is how its problems name it: sources.<name>, or for
+    an entry of a list, sources.<list>[<index>], whose name and from are checked already."""
+    table = _table_of(name)
+    where = where or table
+    _check_ranges(where, s, table, problems)
     for spec in schema.settings(table):
         if spec["type"] == "string" and "values" in spec:
-            _choice(f"{table}.{spec['key']}", s[spec["key"]], tuple(spec["values"]), problems)
+            _choice(f"{where}.{spec['key']}", s[spec["key"]], tuple(spec["values"]), problems)
     unused = unused_keys(name, s, registry)
-    for key in REQUIRED.get(name, []):
+    required = REQUIRED.get(name) or LIST_REQUIRED.get(name.partition(":")[0], [])
+    for key in required:
         if key in unused:
             continue
         if not s[key]:
             why = schema.setting(table, key).get("required_problem")
-            problems.append(f"{table}.{key}: {why or 'required when the source is enabled'}")
+            problems.append(f"{where}.{key}: {why or 'required when the source is enabled'}")
     for key in ("url",):
         if key not in unused and s.get(key) and not re.match(r"^https?://", s[key]):
-            problems.append(f"sources.{name}.{key}: must start with http:// or https://")
+            problems.append(f"{where}.{key}: must start with http:// or https://")
     if (
         "verify_tls" not in unused
         and s.get("verify_tls") is False
         and isinstance(s.get("url"), str)
         and s["url"].startswith("http://")
     ):
-        problems.append(f"sources.{name}.verify_tls: only applies with an https url")
+        problems.append(f"{where}.verify_tls: only applies with an https url")
     if "secret" in s and not _SECRET_NAME.match(s["secret"]):
-        problems.append(f"sources.{name}.secret: use letters, digits and underscores")
+        problems.append(f"{where}.secret: use letters, digits and underscores")
     if "from" in s:
         why = _provider_problem(name, s["from"], registry)
         if why:
-            problems.append(f"sources.{name}.from: {why}")
+            problems.append(f"{where}.from: {why}")
     if name == "host":
         for i, d in enumerate(s["disks"]):
             if (
@@ -358,7 +403,7 @@ def unused_keys(section: str, settings: dict, registry) -> set[str]:
     if spec is None:
         return set()
     out = set()
-    for s in schema.settings(f"sources.{section}"):
+    for s in schema.settings(_table_of(section)):
         users = s.get("providers")
         if users is not None and spec.id not in users:
             out.add(s["key"])
@@ -367,16 +412,19 @@ def unused_keys(section: str, settings: dict, registry) -> set[str]:
     return out
 
 
-def _check_unused(name: str, given: dict, settings: dict, registry, problems: list[str]) -> None:
+def _check_unused(
+    name: str, given: dict, settings: dict, registry, problems: list[str], where=None
+) -> None:
     """A key given that the section's provider does not use is refused by name, so that a change
     of provider never leaves a stale setting doing nothing."""
     pid = provider_of(name, settings)
+    where = where or f"sources.{name}"
     for key in sorted(unused_keys(name, settings, registry) & set(given), key=list(given).index):
         if name == "security" and key == "url" and "from" not in given:
             # A url with no `from` is a [sources.security] written for the fail2ban summary.
-            problems.append(f"sources.{name}.{key}: {SUMMARY_GONE}")
+            problems.append(f"{where}.{key}: {SUMMARY_GONE}")
             continue
-        problems.append(f"sources.{name}.{key}: not used by {pid}")
+        problems.append(f"{where}.{key}: not used by {pid}")
 
 
 def provider_credentials(pid: str, registry=None) -> list[str]:
@@ -388,10 +436,11 @@ def provider_credentials(pid: str, registry=None) -> list[str]:
 def _chosen(section: str, settings: dict, registry):
     """The compiled file of the provider a section reads, or None when it reads no provider, names
     one that does not exist or was left out, or names one of another kind."""
-    if section not in SECTIONS:
+    kind = kind_of(section)
+    if kind is None:
         return None
     spec = registry.get(provider_of(section, settings))
-    return spec if spec is not None and spec.kind == SECTIONS[section] else None
+    return spec if spec is not None and spec.kind == kind else None
 
 
 def _section_credentials(section: str, settings: dict, registry) -> list[str]:
@@ -404,7 +453,7 @@ def _section_credentials(section: str, settings: dict, registry) -> list[str]:
 def _provider_problem(section: str, pid: str, registry) -> str | None:
     """What is wrong with the provider a section's `from` names, or None. A provider file that
     was left out is not a problem of the configuration: that source fails at every read."""
-    kind = SECTIONS[section]
+    kind = kind_of(section)
     spec = registry.get(pid)
     if spec is None:
         if registry.is_refused(pid):
@@ -436,16 +485,19 @@ def _setting_ok(kind: str, value: Any) -> bool:
     return isinstance(value, bool)
 
 
-def _provider_settings(name: str, given: dict, registry, problems: list[str]) -> tuple[dict, dict]:
+def _provider_settings(
+    name: str, given: dict, registry, problems: list[str], where=None
+) -> tuple[dict, dict]:
     """A kind's section split in two: (its own settings, the settings its provider declares,
     checked against the provider file's declaration). A key that is neither is a problem: "not
     used by" the provider when another provider of the kind declares it, else unknown. While the
     section names a provider file that was left out, its other keys are kept out unchecked, since
-    that source fails anyway."""
-    own = SOURCE_DEFAULTS[name]
-    extra = {
-        k: v for k, v in given.items() if k not in own and f"sources.{name}.{k}" not in REPLACED
-    }
+    that source fails anyway. name is the source's, "<list>:<name>" for an entry of a list, and
+    where how its problems name it."""
+    table = _table_of(name)
+    where = where or table
+    own = schema.defaults(table)
+    extra = {k: v for k, v in given.items() if k not in own and f"{table}.{k}" not in REPLACED}
     if not extra:
         return given, {}
     base = {k: v for k, v in given.items() if k not in extra}
@@ -454,10 +506,10 @@ def _provider_settings(name: str, given: dict, registry, problems: list[str]) ->
         return base, {}
     spec = _chosen(name, {**own, **given}, registry)
     declared = spec.settings if spec is not None else {}
-    others = {k for p in registry.of_kind(SECTIONS[name]) for k in p.settings}
+    others = {k for p in registry.of_kind(kind_of(name)) for k in p.settings}
     out: dict[str, Any] = {}
     for key, value in extra.items():
-        w = f"sources.{name}.{key}"
+        w = f"{where}.{key}"
         if key not in declared:
             problems.append(f"{w}: not used by {pid}" if key in others else f"{w}: unknown setting")
             continue
@@ -844,6 +896,96 @@ def _credentials(
     return out
 
 
+def _address(url: Any) -> tuple | None:
+    """A service's address, to tell two sources that read one service: the scheme, the host and
+    port as written in any case, and the path without a final slash."""
+    if not isinstance(url, str):
+        return None
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
+        return None
+    return (parts.scheme.lower(), parts.netloc.lower(), parts.path.rstrip("/"))
+
+
+def _list_entries(
+    name: str, raw: Any, registry, problems: list[str]
+) -> tuple[dict[str, dict], dict[str, str]]:
+    """A list of tables under [sources], such as [[sources.imports]], checked: (every enabled
+    entry as a source, "<list>:<name>", with its defaults filled in; where each is set, as its
+    problems name it). Every entry, on or off, needs a name of its own and a from; the rest is
+    checked for the enabled entries alone, after the merge, as a section's is."""
+    out: dict[str, dict] = {}
+    places: dict[str, str] = {}
+    table = f"sources.{name}"
+    if not isinstance(raw, list) or not all(isinstance(t, dict) for t in raw):
+        problems.append(f"{table}: expected [[{table}]] tables")
+        return out, places
+    if len(raw) > LIST_MAX[name]:
+        problems.append(f"{table}: at most {LIST_MAX[name]}")
+    named: dict[str, int] = {}
+    for i, given in enumerate(raw):
+        w = f"{table}[{i}]"
+        entry = given.get("name")
+        if "name" not in given:
+            problems.append(f"{w}.name: required")
+            continue
+        if not isinstance(entry, str) or not _ENTRY_NAME.match(entry):
+            problems.append(f"{w}.name: 1 to 20 of a-z, 0-9 and -, starting with a letter or digit")
+            continue
+        if entry in named:
+            problems.append(f'{w}.name: "{entry}" is already the name of {table}[{named[entry]}]')
+            continue
+        named[entry] = i
+        if kind_of(entry) == LISTS[name]:
+            problems.append(
+                f'{w}.name: "{entry}" is the name of [sources.{entry}]; give this one another'
+            )
+            continue
+        chosen = given.get("from")
+        if "from" not in given:
+            problems.append(f"{w}.from: required")
+            continue
+        if not isinstance(chosen, str) or not chosen:
+            problems.append(f"{w}.from: expected the id of a provider")
+            continue
+        source = f"{name}:{entry}"
+        given, declared = _provider_settings(source, given, registry, problems, w)
+        merged = _merge(w, LIST_DEFAULTS[name], given, problems)
+        merged.update(declared)
+        _check_unused(source, given, merged, registry, problems, w)
+        if "secret" not in given:
+            # A secret left out is the provider's id.
+            merged["secret"] = chosen
+        if merged["enabled"] is True:
+            out[source] = merged
+            places[source] = w
+    return out, places
+
+
+def _same_service(sources: dict[str, dict], places: dict[str, str], problems: list[str]) -> None:
+    """Two enabled sources of one kind that read one provider at one address would raise every
+    event twice: the second is refused, an entry of a list rather than a section."""
+    seen: dict[tuple, str] = {}
+    # The sections first, so that the entry of a list is the one refused.
+    for name in sorted(sources, key=lambda n: n in places):
+        s = sources[name]
+        kind = kind_of(name)
+        address = _address(s.get("url")) if kind else None
+        if address is None or not s.get("url"):
+            continue
+        key = (kind, provider_of(name, s), address)
+        if key in seen:
+            first = seen[key]
+            said = places.get(first, f"[sources.{first}]")
+            problems.append(
+                f"{places.get(name, 'sources.' + name)}.url: {key[1]} at this address is read "
+                f"by {said} already; remove one"
+            )
+        else:
+            seen[key] = name
+
+
 def build(
     raw: dict,
     env: Mapping[str, str] | None = None,
@@ -870,7 +1012,13 @@ def build(
     collector = _merge("collector", COLLECTOR_DEFAULTS, raw.get("collector", {}), problems)
     conditions = _merge("conditions", CONDITION_DEFAULTS, raw.get("conditions", {}), problems)
     sources: dict[str, dict] = {}
+    places: dict[str, str] = {}
     for name, given in raw.get("sources", {}).items():
+        if name in LISTS:
+            entries, where = _list_entries(name, given, registry, problems)
+            sources.update(entries)
+            places.update(where)
+            continue
         if name not in SOURCE_DEFAULTS:
             problems.append(f"sources.{name}: unknown source")
             continue
@@ -893,7 +1041,8 @@ def build(
         _validate_collector(collector, problems)
         _validate_conditions(conditions, problems)
         for name, s in sources.items():
-            _validate_source(name, s, problems, registry)
+            _validate_source(name, s, problems, registry, places.get(name))
+        _same_service(sources, places, problems)
     devices = _devices(raw.get("device"), sources, conditions, problems)
     defaults = _defaults(raw, problems)
     lacking: dict[str, list[str]] = {}
@@ -906,7 +1055,7 @@ def build(
     if problems:
         raise ConfigError(problems)
     return Config(
-        collector, conditions, sources, secrets, devices, defaults, scrub, lacking, registry
+        collector, conditions, sources, secrets, devices, defaults, scrub, lacking, registry, places
     )
 
 

@@ -25,6 +25,7 @@ SECRETS = {
     "KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-example",
     "KNIGHTWATCHER_SONARR_API_KEY": "sk-example",
     "KNIGHTWATCHER_RADARR_API_KEY": "rk-example",
+    "KNIGHTWATCHER_LIDARR_API_KEY": "lk-example",
 }
 
 
@@ -454,7 +455,7 @@ class InterfaceTest(unittest.TestCase):
         from collector.contract import FACT_SECTIONS
 
         raw = {"sources": {n: {"enabled": True} for n in SOURCE_DEFAULTS}}
-        for name in ("containers", "streams", "adblock", "sonarr", "radarr"):
+        for name in ("containers", "streams", "adblock", "sonarr", "radarr", "lidarr"):
             raw["sources"][name]["url"] = "http://192.0.2.1"
         raw["sources"]["pi"]["host"] = "192.0.2.4"
         raw["sources"]["updates"]["holders"] = [{"name": "x", "pattern": "x"}]

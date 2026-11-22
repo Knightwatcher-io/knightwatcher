@@ -135,8 +135,13 @@ the user's own among them, and each source names the credential variables its pr
 settings a provider file declares are set in `config.toml` alone. Security shows its Read from,
 Address and Database without letting them be changed: reading fail2ban's database needs a mount
 and a read grant on the host, and only a provider file of the user's own reads an address, so all
-three are set in `config.toml` ([configuration.md](./configuration.md#fail2bans-database)). Download config.toml writes a setting
-the chosen provider does not use as a comment. The page itself is described in
+three are set in `config.toml` ([configuration.md](./configuration.md#fail2bans-database)). The
+entries of `[[sources.imports]]` ([configuration.md](./configuration.md#more-imports)) are listed
+below the sources, read-only: each with its name and source (`imports:<name>`), the provider and
+address it reads, whether it is reading or failing, and the credential variables it reads; they are
+set in `config.toml` alone, and every change made on the page is still checked with them.
+Download config.toml writes a setting
+the chosen provider does not use as a comment, and the list's entries as `config.toml` has them. The page itself is described in
 [display.md](./display.md#the-admin-page).
 
 It is behind the admin password, `KNIGHTWATCHER_ADMIN_PASSWORD` in `.env`, which `compose.yaml`
@@ -199,8 +204,8 @@ A path is a setting's table and key, as `check-config` names them: `collector.in
 `conditions.cpu_hot.pct`, `sources.sonarr.enabled`. A list is one value, and `device` is the whole
 list of devices: set here, each replaces `config.toml`'s whole. A path into a source that
 `config.toml` does not set up creates its table. Only the collector's settings that the schema
-marks editable can be set; the folders, `proc_root`, the backup log and each source's `secret` are
-fixed, and the look, display, quiet scenes and scenes are set through `PUT /api/settings`, as the
+marks editable can be set; the folders, `proc_root`, the backup log, each source's `secret` and
+every setting of `[[sources.imports]]` are fixed (`sources.imports.url: not set on the admin page`), and the look, display, quiet scenes and scenes are set through `PUT /api/settings`, as the
 walls set them.
 
 ### The check before a change is kept

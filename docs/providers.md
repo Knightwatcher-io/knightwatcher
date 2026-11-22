@@ -31,11 +31,15 @@ SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-pr
 | `pihole` | adblock | Pi-hole 6's `/api/stats/summary` and `/api/history`, through a session | `[sources.adblock]` with `from = "pihole"` |
 | `technitium` | adblock | Technitium DNS Server's dashboard statistics (version 15 or later), with an API token | `[sources.adblock]` with `from = "technitium"` |
 | `fail2ban` | security | fail2ban's database, a code adapter | `[sources.security]`, the default for `from` |
-| `sonarr` | imports | Sonarr's import history | `[sources.sonarr]` |
-| `radarr` | imports | Radarr's import history | `[sources.radarr]` |
+| `sonarr` | imports | Sonarr's import history | `[sources.sonarr]`, or an entry of `[[sources.imports]]` |
+| `radarr` | imports | Radarr's import history | `[sources.radarr]`, or an entry of `[[sources.imports]]` |
+| `lidarr` | imports | Lidarr's history of album imports, one record for each album | `[sources.lidarr]`, or an entry of `[[sources.imports]]` |
 
 `[sources.streams]`, `[sources.adblock]` and `[sources.security]` name their provider with `from`,
-a built-in's id or one of your own; `[sources.sonarr]` and `[sources.radarr]` read the provider of their own name. Every request a provider makes goes to the
+a built-in's id or one of your own; `[sources.sonarr]`, `[sources.radarr]` and `[sources.lidarr]`
+read the provider of their own name. Each entry of `[[sources.imports]]` names any provider of the
+imports kind with `from`, a built-in's or one of your own, and is a source of its own,
+`imports:<name>` ([configuration.md](./configuration.md#more-imports)). Every request a provider makes goes to the
 section's `url`, and its credentials are read from `.env` as `KNIGHTWATCHER_<SECRET>_<FIELD>`, where
 `<SECRET>` is the section's `secret`, the provider's id when it is left out, and `<FIELD>` each
 credential the file names.
@@ -126,6 +130,12 @@ lifted ban should leave the list, as fail2ban deletes its rows.
 | `records` | list of objects, at most 50 | yes | the newest import records the service lists |
 | `records[].id` | int, a JSON integer | yes; a record without one is left out | the rising record number |
 | `records[].title` | string | no | the caption's title, composed by the provider |
+
+Each new record is one `import` event, so a provider should list one record for each thing the
+display should show once. Lidarr writes a record for each track it imports and another for each
+album once all of its tracks have imported; the `lidarr` file asks its history for the album
+records alone (`eventType=8`, `downloadImported`), so an album is one crate, not one for each of
+its tracks.
 
 ## The file
 
@@ -484,10 +494,20 @@ url = "http://192.0.2.20:8080"
 page_size = 20
 ```
 
-Only `[sources.streams]`, `[sources.adblock]` and `[sources.security]` take `from` for now, so a
-file of the imports kind is checked but cannot be chosen. Its credentials are read as any provider's, from
-`KNIGHTWATCHER_<SECRET>_<FIELD>` with the section's `secret`, the file's id when left out:
-`KNIGHTWATCHER_MYFLIX_TOKEN` here. The collector's container gets only the variables compose names,
+A file of the imports kind is chosen by an entry of `[[sources.imports]]`, under a name of its
+own:
+
+```toml
+[[sources.imports]]
+name = "books"
+from = "shelf"
+url = "http://192.0.2.36:8080"
+```
+
+That source is `imports:books` in the state file and in the memory file. The credentials of
+either are read as any provider's, from `KNIGHTWATCHER_<SECRET>_<FIELD>` with the section's or the
+entry's `secret`, the file's id when left out: `KNIGHTWATCHER_MYFLIX_TOKEN` and
+`KNIGHTWATCHER_SHELF_API_KEY` here. The collector's container gets only the variables compose names,
 so the name also goes in the collector's `environment` in `compose.override.yaml`
 ([configuration.md](./configuration.md#env-host-paths-the-servers-address-and-credentials) has
 the snippet).
@@ -523,7 +543,8 @@ every text masked. A file that was left out makes the probe print its problems a
 docker compose run --rm collector --probe streams
 ```
 
-reads one source once through its provider, built-in or your own, with the settings in use, and
+reads one source once through its provider, built-in or your own, with the settings in use (an
+entry of `[[sources.imports]]` by its source's name, `--probe imports:books`), and
 prints the fill and the facts the kind would write with every text replaced by its type and length
 (`<string 21>`). Numbers and true or false are shown as they are, and no credential is printed,
 only the names of the variables read. It runs inside the container, so the credentials come from `.env` through

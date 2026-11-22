@@ -18,8 +18,10 @@ A declaration maps each field to a dictionary:
 A kind may also name ONE_OF, top-level fields of which a provider file gives exactly one, that
 one then required (adblock's rolling `blocked` count or its `recent` buckets).
 
-SECTIONS names the sections of config.toml that a kind reads, and docs/providers.md describes the
-provider files that fill them.
+SECTIONS names the sections of config.toml that a kind reads, and LISTS the lists of tables whose
+every entry is read through a kind, each a source named "<list>:<name>" ([[sources.imports]]:
+imports:<name>); kind_of gives the kind of any of them. docs/providers.md describes the provider
+files that fill them.
 """
 
 from __future__ import annotations
@@ -39,10 +41,26 @@ SECTIONS = {
     "security": "security",
     "sonarr": "imports",
     "radarr": "imports",
+    "lidarr": "imports",
+}
+
+# The lists of tables under [sources] whose entries are read through a kind, with the kind each
+# reads. Every entry names its provider in `from`, and is the source "<list>:<name>".
+LISTS = {
+    "imports": "imports",
 }
 
 # Every kind, by name, with its module in this package.
 KINDS = ("streams", "adblock", "imports", "security")
+
+
+def kind_of(source: str) -> str | None:
+    """The kind a source is read through: its section's, its list's for "<list>:<name>", or None
+    for a source read by code of its own."""
+    if source in SECTIONS:
+        return SECTIONS[source]
+    head, colon, _ = source.partition(":")
+    return LISTS.get(head) if colon else None
 
 
 def provider_of(section: str, settings: dict[str, Any]) -> str:

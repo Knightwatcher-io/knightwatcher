@@ -1,4 +1,5 @@
-"""Imports, from Sonarr's and Radarr's history: each new import record is one event."""
+"""Imports, from the history of Sonarr, Radarr, Lidarr or any provider of the kind: each new import
+record is one event."""
 
 from __future__ import annotations
 

@@ -9,7 +9,7 @@ import json
 import unittest
 from typing import ClassVar
 
-from collector.kinds import SECTIONS, check_fill, kind_class, provider_of
+from collector.kinds import LISTS, SECTIONS, check_fill, kind_class, kind_of, provider_of
 from collector.kinds.adblock import blocked_since_midnight, normal_rate
 from collector.kinds.streams import line, shown
 from collector.net import AuthError, SourceError
@@ -1218,10 +1218,17 @@ class FillTest(unittest.TestCase):
                 "security": "security",
                 "sonarr": "imports",
                 "radarr": "imports",
+                "lidarr": "imports",
             },
         )
+        self.assertEqual(LISTS, {"imports": "imports"})
         self.assertEqual(provider_of("streams", {"from": "tautulli"}), "tautulli")
         self.assertEqual(provider_of("sonarr", {}), "sonarr")
+        self.assertEqual(provider_of("imports:sonarr-4k", {"from": "sonarr"}), "sonarr")
+        self.assertEqual(kind_of("lidarr"), "imports")
+        self.assertEqual(kind_of("imports:sonarr-4k"), "imports")
+        for name in ("host", "device:Vault", "json:nas", "imports"):
+            self.assertIsNone(kind_of(name), name)
 
     def test_a_kind_reads_the_time_it_is_given(self):
         k = kind_class("adblock")()
