@@ -75,7 +75,9 @@ tools/
   capped.sh          runs a command within a ceiling on CPU and memory, for the checks
   throwaway/         scripts that start a real service from its published image, read it with the
                      collector, and remove everything again (fail2ban.sh, pihole.sh,
-                     technitium.sh)
+                     technitium.sh, lidarr.sh)
+  clean-start.sh     the README's quick start in a scratch copy, both containers on a network
+                     with no route out, checked and removed
   check-private.sh   the check that no private detail is tracked
   private-patterns.example.txt  the template of the patterns check-private.sh reads
 docs/                this documentation
@@ -235,6 +237,39 @@ matched without regard to case; copy `tools/private-patterns.example.txt` and fi
 any does. It exits 2 when the pattern file is missing or empty, and when `git grep` itself fails,
 as it does on a pattern it cannot read, saying so on stderr, so a check that did not run never
 passes as clean ([security.md](./security.md#what-never-enters-the-repository)).
+
+### The clean start
+
+`tools/clean-start.sh` checks that a new install starts cleanly on a machine that is not the
+operator's. It needs Docker with its compose plugin, `setfacl` and `python3`, and runs within the
+ceiling of `tools/capped.sh`, each container capped at 2 CPUs and 1 GB:
+
+```bash
+tools/clean-start.sh
+```
+
+It copies the files git would commit (so no `config.toml`, `.env` or `var/`) to a scratch folder
+and follows the README's quick start there: `config.example.toml` and `.env.example` copied as
+they are, `var/out` and `var/server` made and granted to uid 10001, a touched backup log. In `.env`
+it fills the backup log and the data disk's folder (both under `var/`) and the server's address
+and port (127.0.0.1 and a free one), and nothing else; no `KNIGHTWATCHER_` or `COMPOSE_` variable
+of the caller's reaches compose. `compose.yaml` is used as it is under a layer of the run's own: an
+image tag, a project name and container names of the run, so nothing of a running deployment is
+named, and both containers on one internal Docker network, the collector taken off the host's
+network for it. The image is built from the copy.
+
+Then, within two minutes of the start, it checks that `--check-config` in a one-off collector
+container exits 0, that both health checks pass, that `state.json` keeps the contract, that the
+enabled sources are host, wan, dns, backup, updates and ssh and every one is read (`ok: true`),
+that wan and dns are read as down (`facts.wan.up` and `facts.dns.up` false, as nothing outside
+answers) with `wan_down` raised, and that the page and `data/state.json` load from the server. An
+internal network publishes no port, so the page is fetched from the host at the server's address
+on that network; the resolved 127.0.0.1 binding is printed but not bound. It exits 0 when every
+check passes and 1 otherwise, with the containers' last log lines. The containers, the network,
+the image and the scratch folder are removed however it ends, and it prints `docker ps -a`,
+`docker network ls` and `docker images` filtered to the run's names, each empty, and the running
+deployment's containers with their start times before and after. A run takes about 40 seconds
+once the base image is pulled.
 
 ## The logo and the icons
 

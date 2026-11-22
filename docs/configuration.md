@@ -3,7 +3,13 @@
 Knightwatcher is configured in two files beside `compose.yaml`, both ignored by git:
 
 - `config.toml`: every setting of the collector and the household defaults of the displays. The
-  committed template is `config.example.toml`.
+  committed template is `config.example.toml`. As it stands it turns on the general sources
+  alone, which read this host or a fixed address and so work on any Linux host with Docker:
+  `host`, `wan`, `dns`, `backup`, `updates` and `ssh`. Every source that reads a service
+  (`containers`, which needs a Docker API proxy, the Pi, `streams`, `adblock`, `security`,
+  `sonarr`, `radarr` and `lidarr`), the entries of `[[sources.imports]]` and `[[sources.json]]`, the
+  settings screen's defaults and the devices are written out but commented: remove the `# ` before
+  a table's lines to use it. A line starting `# or:` stays commented, since it replaces another.
 - `.env`: the host paths `compose.yaml` mounts, the address and port of the bundled server, the
   admin page's password, and the credentials of the services the collector reads. The committed
   template is `.env.example`. Keep it to yourself: `chmod 600 .env`.
