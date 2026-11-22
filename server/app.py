@@ -1,6 +1,6 @@
 """The bundled server: the page, the collector's output and the shared settings, over plain HTTP.
 
-It serves four things and nothing else:
+It serves five things and nothing else:
 
   - the page, the files of web/ as the image holds them (stamped with their version by
     server/stamp.py), read into memory once at start, so that an address is looked up by name and
@@ -10,10 +10,13 @@ It serves four things and nothing else:
   - the shared settings at api/settings: GET gives them, PUT replaces one or more sections (see
     server/store.py);
   - the admin page's API under api/admin/, behind the admin password (see server/admin.py); the
-    admin page itself is one of the page's files, at admin/.
+    admin page itself is one of the page's files, at admin/;
+  - api/displays, where each page posts its random id now and then, so that the collector can
+    count the displays seen lately (see server/displays.py); the ids are never served.
 
-No directory is ever listed. GET and HEAD are answered everywhere, PUT at api/settings alone, POST
-and PATCH at the admin addresses that take them, and every other method is refused. A write must
+No directory is ever listed. GET and HEAD are answered everywhere but api/displays, PUT at
+api/settings alone, POST at api/displays and POST and PATCH at the admin addresses that take them,
+and every other method is refused. A write must
 be JSON, of a bounded size, and, when the browser says where it came from, come from a page of
 this server's own address. docs/server.md describes the server, its API and how to run it behind a
 reverse proxy.
@@ -36,8 +39,11 @@ import time
 import urllib.parse
 import urllib.request
 
+from collector import displays as displays_mod
 from collector import schema
 from server import admin as admin_mod
+from server.displays import MAX_BODY as MAX_DISPLAY_BODY
+from server.displays import Displays
 from server.stamp import stamp_index
 from server.store import Refused, Store
 
@@ -50,6 +56,8 @@ PORT = 8080
 
 API = "/api/settings"
 MAX_BODY = 16 * 1024
+# Where a page posts its display id: POST alone.
+DISPLAYS = "/api/displays"
 # The admin page, its API, and what a request to each may be.
 ADMIN_PAGE = "/admin"
 ADMIN_API = "/api/admin/"
@@ -238,9 +246,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             {"Cache-Control": "no-store", **(headers or {})},
         )
 
+    # What a refused write is logged as; None logs nothing, as for a display's post, which anyone
+    # on the LAN can send.
+    refused_as: str | None = "settings not saved"
+
     def _refuse(self, status: int, problems: list[str], headers: dict | None = None) -> None:
         """A refused write, with the reason in the words the page shows after "Not saved: "."""
-        log.warning("settings not saved (%d): %s", status, "; ".join(problems))
+        if self.refused_as:
+            log.warning("%s (%d): %s", self.refused_as, status, "; ".join(problems))
         self._json(status, {"error": problems[0], "problems": problems}, headers)
 
     def _not_found(self) -> None:
@@ -279,6 +292,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         address = _address(self.path)
         if address is None:
             self._not_found()
+        elif address == DISPLAYS:
+            self._not_allowed(address)
         elif address == ADMIN_PAGE and "/admin/" in self.server.web:
             # The page's own addresses are relative, so it is served from /admin/.
             self._send(302, b"", TYPES[".txt"], {"Location": "admin/", "Cache-Control": "no-cache"})
@@ -504,7 +519,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _not_allowed(self, address: str | None = None) -> None:
         if address is None:
             address = _address(self.path)
-        allow = "GET, HEAD, PUT" if address == API else "GET, HEAD"
+        allow = {API: "GET, HEAD, PUT", DISPLAYS: "POST"}.get(address, "GET, HEAD")
         self.close_connection = True
         self._send(
             405,
@@ -515,12 +530,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         address = _address(self.path)
+        if address == DISPLAYS:
+            self._display()
+        elif address is not None and address.startswith(ADMIN_API):
+            self._admin(address)
+        else:
+            self._not_allowed(address)
+
+    def do_PATCH(self) -> None:
+        address = _address(self.path)
         if address is not None and address.startswith(ADMIN_API):
             self._admin(address)
         else:
             self._not_allowed(address)
 
-    do_PATCH = do_POST
+    # ---- Displays ----------------------------------------------------------------------------
+
+    def _display(self) -> None:
+        """A page says it is showing: {"id": "<32 hex>"}, kept as seen now and answered 204.
+        Nothing else is read or kept, and nothing is logged, for a post taken or refused."""
+        self.refused_as = None
+        body = self._body(MAX_DISPLAY_BODY, "display ids")
+        if body is _NO_BODY:
+            return
+        if not isinstance(body, dict) or set(body) != {"id"} or not displays_mod.is_id(body["id"]):
+            self._refuse(400, ['send {"id": ...} with 32 lowercase hexadecimal characters'])
+            return
+        self.server.displays.seen(body["id"])
+        self._send(204, b"", TYPES[".txt"], {"Cache-Control": "no-store"})
 
     def do_DELETE(self) -> None:
         address = _address(self.path)
@@ -550,10 +587,12 @@ class Server(http.server.ThreadingHTTPServer):
         out: str,
         store: Store,
         admin: admin_mod.Admin | None = None,
+        displays: Displays | None = None,
     ):
         if ":" in address[0]:
             self.address_family = socket.AF_INET6
         self.web, self.out, self.store, self.admin = web, out, store, admin
+        self.displays = displays if displays is not None else Displays(store.folder)
         super().__init__(address, Handler)
 
 
@@ -651,5 +690,6 @@ def main(argv: list[str] | None = None) -> int:
     try:
         httpd.serve_forever()
     finally:
+        httpd.displays.close()
         httpd.server_close()
     return 0

@@ -297,6 +297,14 @@ def validate(state: Any) -> list[str]:
 
     if "config" in state:
         p += _config(state["config"])
+    if "analytics" in state:
+        analytics = state["analytics"]
+        if (
+            not isinstance(analytics, dict)
+            or set(analytics) != {"on"}
+            or not isinstance(analytics["on"], bool)
+        ):
+            p.append("analytics is not an object with on, true or false, alone")
 
     sources = state.get("sources")
     if not isinstance(sources, dict):

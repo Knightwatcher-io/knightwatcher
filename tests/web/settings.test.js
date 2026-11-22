@@ -833,3 +833,16 @@ test('every gear choice renders on every build with each kind of weapon, from th
   }
   assert.equal(n, 3 * (3 + 4 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 5));
 });
+
+test('the status page says whether the usage counts are on, read only, and how .env changes it', () => {
+  const on = SET.usageLines({ analytics: true }, 'live'), off = SET.usageLines({ analytics: false }, 'live');
+  assert.match(on[0][1], /^On\./); assert.match(on[1][1], /KW_ANALYTICS=off in \.env/);
+  assert.match(off[0][1], /^Off\./); assert.match(off[1][1], /KW_ANALYTICS in \.env/);
+  assert.deepEqual(SET.usageLines({ analytics: null }, 'live'), [['quiet', 'Not known: the state file does not say.']]);
+  assert.deepEqual(SET.usageLines(null, 'demo'), [['quiet', 'Not known. The display is showing the demo.']]);
+  assert.deepEqual(SET.usageLines(null, 'wait'), [['quiet', 'Not known yet.']]);
+  // the store has no setting for it: no switch on the display
+  const { s } = store();
+  assert.equal(s.choose('analytics', 'on', false), false);
+  assert.ok(!Object.keys(SET.SCHEMA).includes('analytics'));
+});

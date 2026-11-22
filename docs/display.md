@@ -56,6 +56,12 @@ hides the review bar and drives the display:
 - The file's `defaults` go to the settings (see [Settings](#settings)), which apply any change at
   once. With each fetch of the state file the page also asks `api/settings` for the shared
   settings (see [The shared settings](#the-shared-settings)).
+- Served over HTTP, in every mode, the page makes a random id of its own once, 32 hex characters
+  kept in its browser's storage under `kw-display` (a fresh one each load where the storage
+  refuses), and posts it to `api/displays` at load and every 30 minutes, so that the bundled
+  server can count the displays for the collector's usage counts
+  ([server.md](./server.md#post-apidisplays)). The id never leaves the host. Another web server
+  answers the post with an error, which changes nothing. From disk it posts nothing.
 - The devices come from `facts.devices`, and without it the pie stands alone as before
   there were devices; see [Devices](./page.md#devices). `facts.streams.count > 0`, or a
   `streaming` condition, turns the television on.
@@ -558,7 +564,10 @@ showing.
 
 **Status**, read only: the page's version (the deploy's hash, or `dev`), how long ago the state file
 was written and how often the collector writes it, the sources in it (all working, or each failing
-one with its error and the time of its last read), then three entries for the world, and the packs
+one with its error and the time of its last read), whether the collector's usage counts are on
+(On., or Off., with a line saying that `KW_ANALYTICS` in `.env` changes it; "Not known" before a
+state file, or from a collector that does not say; [configuration.md](./configuration.md#usage-counts)),
+then three entries for the world, and the packs
 refused, each with its step and reason. The world's entries:
 
 - **World**: the world in use, its pack's id and version and whether it is signed, and where it

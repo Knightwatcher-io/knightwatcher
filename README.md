@@ -70,6 +70,11 @@ your own address ([Configuration](docs/configuration.md)), with its credential i
 `tools/clean-start.sh` runs these steps in a scratch copy, on a Docker network with no route out,
 and checks that the install starts cleanly ([Development](docs/development.md#the-clean-start)).
 
+The collector sends the project a few usage counts at start and every six hours: a random install
+id, the version, the built-in parts and sources in use and how many displays there are, never a
+name, an address or a credential. Put `KW_ANALYTICS=off` in `.env` to turn them off
+([Usage counts](docs/configuration.md#usage-counts), [telemetry.md](docs/telemetry.md)).
+
 The page is open to anyone on your network, with no login. Read [The server](docs/server.md#security)
 before you let it be reached from anywhere else, and never publish it to the internet without a
 login in front.
@@ -111,7 +116,7 @@ on a `dev` page; [The display](docs/display.md#another-world-pack) says where to
 A small collector, run as a container, reads the homelab and writes `state.json`. A static page
 under `web/` fetches that file and draws the knight. The collector knows nothing of knights and the
 page knows nothing of Docker or DNS. A small server, a second container from the same image,
-serves the page and the file, keeps the settings the displays choose, and serves the admin page,
+serves the page and the file, keeps the settings the displays choose, counts the displays for the usage counts, and serves the admin page,
 where the household's settings are changed behind a password. Any other web server can serve the
 page instead, with each browser then keeping its own settings and no admin page.
 
@@ -124,6 +129,7 @@ For people running it:
 - [The display](docs/display.md): the modes, the settings and worlds, the settings screen, the address's hooks, the admin page and deploying
 - [The server](docs/server.md): what it serves, the settings API and store, the admin page, its security, and a reverse proxy in front
 - [Security](docs/security.md): what never enters this repository, and the collector's and the server's privileges
+- [Usage counts](docs/telemetry.md): every field of the heartbeat the collector sends, and what the project keeps
 - [A monitor on the host](docs/monitor.md): showing the display on a screen wired to a headless host
 
 For people making packs:

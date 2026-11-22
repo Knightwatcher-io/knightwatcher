@@ -372,6 +372,9 @@ goblin holds its brace for 16 ms after a blade's blow (`goblin-bonk`, `goblin-ca
 bounce, so the greatsword stands otherwise in the return (`goblin-poof`, `orbit-glitch-poof`), and
 the test world's prod, held in both hands, differs in both ways (`orbit-fire-prod-bonk`); and the
 arming sword meets the goblin by its tapered point, a few ms later, so the four `arm-goblin-` shots
-are timed to the new hits. Every other shot is the same.
+are timed to the new hits. Against a reference from before the usage counts, `settings-status` and
+`settings-status-world` differ: the status page gained a Usage counts entry under Sources ("Not
+known. The display is showing the demo.", since a page opened from disk has no state file), and the
+entries under it move down. Every other shot is the same.
 A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.

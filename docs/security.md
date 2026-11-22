@@ -30,7 +30,8 @@ protects.
 ## The collector's privileges
 
 The collector reads and never writes, except for its output folder (`state.json`, the packs it
-downloads and `credentials.json`) and its memory folder.
+downloads and `credentials.json`) and its memory folder (`memory.json`, and `install.json`, the
+usage counts' install id).
 
 - It has no Docker socket. Container state comes from a Docker API proxy that allows read calls
   alone.
@@ -40,8 +41,12 @@ downloads and `credentials.json`) and its memory folder.
   set on the admin page, and the providers folder read-only, for provider files of the user's
   own.
 - It opens no listening port.
-- It connects only to the addresses in its configuration: the services it reads, and the
-  machines listed as devices. A device gets a TCP connection, or one `GET` with no
+- It connects only to the addresses in its configuration, the services it reads and the
+  machines listed as devices, and to one address of the project's own: the usage counts go to
+  `https://telemetry.knightwatcher.io/v1/heartbeat` at start and every six hours, a `POST` of a
+  few counts and built-in ids with no name, address, title or credential in it, its certificate
+  checked ([configuration.md](./configuration.md#usage-counts), [telemetry.md](./telemetry.md)).
+  `KW_ANALYTICS=off` in `.env` stops it, and the collector then makes no connection there at all. A device gets a TCP connection, or one `GET` with no
   credentials, at the pace set for it. No request goes through a proxy named in the
   environment, and only `http` and `https` addresses are opened. A web address's certificate is
   not checked unless its `verify_tls` is `true`. The check sends nothing and trusts nothing it
@@ -166,6 +171,10 @@ port, so it gets less than the collector:
   `no-new-privileges`, on Docker's network for the project rather than the host's.
 - It serves the page's files from memory, looked up by name, and two kinds of file from the
   output folder, so no address reaches anything else; the tests try the usual ways.
+- A display's post to `api/displays` is an id of 32 hex characters in a body of at most 256
+  bytes, under the same origin check. It records the id as seen and nothing else; the store keeps
+  at most 1,000 ids, is written at most once a minute, is never served, and no post is logged.
+  The collector sends the count alone, never an id.
 - A write to the shared settings is JSON of at most 16 KiB, checked by the collector's own rules,
   and refused when a browser says it comes from a page at another address. It can change only how
   the displays look.
@@ -183,8 +192,9 @@ port, so it gets less than the collector:
 ## The page
 
 The page fetches `state.json` and, served, `api/settings` from its own origin and nothing else,
-loads no third-party script, and sends nothing anywhere but the settings chosen on its screen, to
-its own server.
+loads no third-party script, and sends nothing anywhere but the settings chosen on its screen and
+its random display id, to its own server. Only the collector contacts anything outside the
+host, for the usage counts; the page and the server never do.
 
 `state.json` is not public information. The bundled server is open to anyone who can reach its
 port, with no login, by default; put authentication in front of it, or bind it to the loopback

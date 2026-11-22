@@ -16,10 +16,15 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from collector import heartbeat
 from collector.config import build
 
 # Keep expected warnings out of the test output; assertLogs still sees them.
 logging.getLogger("collector").addHandler(logging.NullHandler())
+
+# No test reaches the project's receiver: every send of a heartbeat goes to the loopback, where
+# nothing listens on the discard port, unless a test points it at a fake receiver of its own.
+heartbeat.ENDPOINT = "http://127.0.0.1:9/v1/heartbeat"
 
 T0 = dt.datetime(2026, 1, 15, 21, 0, 0, tzinfo=dt.UTC)
 

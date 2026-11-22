@@ -392,7 +392,10 @@ A small Python program with no third-party dependencies, run as a container:
   HTTP, DNS or a TCP connection, and the machines listed as devices by a TCP connection
   or one web request each;
 - one output, written atomically: `state.json` in a folder the bundled server, or a web server
-  of your own, serves.
+  of your own, serves;
+- one message out of the host, the usage counts: a few counts and built-in ids sent to the project
+  at start and every six hours, never a name, an address or a credential, and nothing at all with
+  `KW_ANALYTICS=off` ([configuration.md](./configuration.md#usage-counts)).
 
 It keeps the short history that its judgements need (a CPU averaging 85 percent or more over the
 last 30 seconds is a condition; a spike of a few seconds is not), so the page stays stateless.
@@ -404,8 +407,8 @@ a module and leaves the rest alone.
 ## Serving
 
 The page is static files, and `docker compose up` serves it with the bundled server, a second
-container from the same image: the page, `state.json`, and the settings saved for every display
-([server.md](./server.md)). It holds no credential, mounts no secret and writes only its own
+container from the same image: the page, `state.json`, the settings saved for every display, and
+the count of displays the collector sends with its usage counts ([server.md](./server.md)). It holds no credential, mounts no secret and writes only its own
 folder. It is open to the LAN with no login by default; it is the operator's job to put
 authentication in front of it before it is reached from anywhere else, since `state.json` holds
 container names, addresses and what is being watched. Any other web server will do instead, with
