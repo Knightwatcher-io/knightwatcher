@@ -35,7 +35,8 @@ server/              the bundled server: Python, standard library only, reusing 
 tests/
   collector/         unittest tests for the collector
     fixtures/port/   what the collector wrote before the provider engine, for the same polls, which
-                     the port proof holds the engine to byte for byte
+                     the port proof holds the engine to byte for byte; the Tautulli polls with no
+                     stream count were recorded again since (tests.md)
     fixtures/providers/  each built-in provider's exchanges and fill, every value invented
   server/            unittest tests for the server and the stamp
   web/               node tests for the page's scripts

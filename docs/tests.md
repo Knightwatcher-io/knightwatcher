@@ -111,7 +111,9 @@ what the readers before the engine wrote for each poll: `state.json` and `memory
 byte, and the requests made, with each credential replaced by its variable's name. The record was
 made once from those readers, and a difference from it is a change in what the wall shows. One
 that is not wanted is put right; one that is wanted changes the scenario's record in the commit
-that makes it, and the commit says why.
+that makes it, and the commit says why. That has happened once: when a Tautulli reply with no
+`stream_count`, which the readers read as the sessions it listed, became a failed read
+(`Tautulli cannot reach Plex`), the polls that send one were recorded again.
 
 ## The throwaway services
 

@@ -7,9 +7,10 @@ these services send, and the edge cases the readers handled (refused keys and th
 them, errors, empty and malformed replies, counts that fall, a day that turns, first sight, memory
 from an older version). The fixtures in fixtures/port/ hold what the earlier readers wrote for
 the same polls, byte for byte: state.json and memory.json after each poll, and the requests made,
-with each credential replaced by its variable's name. They were recorded once from those readers
-and are never written from the current code; a difference here is a change in what the wall
-shows, never something to record again.
+with each credential replaced by its variable's name. They were recorded once from those readers,
+and a difference here is a change in what the wall shows. One change was wanted since: a Tautulli
+reply with no stream_count, which the readers read as the sessions it listed (none when Tautulli
+cannot reach Plex), now fails the read, and the polls that send one were recorded again.
 """
 
 from __future__ import annotations
@@ -135,7 +136,8 @@ def streams_polls() -> list[dict]:
         {"at": 150, "routes": {route: activity(THREE, 2.9)}},
         {"at": 180, "routes": {route: activity(THREE, None)}},
         {"at": 210, "routes": {route: tautulli({"stream_count": None, "sessions": THREE})}},
-        # Tautulli cannot reach Plex: success with no data.
+        # Tautulli cannot reach Plex: success with no data. This poll, those at 90 and 180 and the
+        # one at 360 send no stream_count, and fail the read.
         {"at": 240, "routes": {route: tautulli({})}},
         {"at": 270, "routes": {route: activity([], "0")}},
         {"at": 300, "routes": {route: activity(THREE[:1], "1")}},
