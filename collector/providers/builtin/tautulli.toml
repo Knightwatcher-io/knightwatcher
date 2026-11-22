@@ -18,8 +18,16 @@ equals = "success"
 message = "Tautulli reported an error"
 auth = { path = "$.response.message", contains = "key", ignore_case = true, message = "API key refused" }
 
+# Tautulli that cannot reach Plex still answers success, with no stream_count in its data. The
+# filter finds the response when its data has the member, whatever its value.
+[[request.require]]
+path = "$[?@.data.stream_count]"
+present = true
+message = "Tautulli cannot reach Plex"
+
 [fill]
-# Tautulli sends the count as text. Without it, the kind counts the sessions.
+# Tautulli sends the count as text. Text that is no number, or null, leaves the kind counting the
+# sessions.
 count = { path = "$.response.data.stream_count", type = "int" }
 
 [fill.sessions]

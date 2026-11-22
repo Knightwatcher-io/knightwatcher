@@ -187,6 +187,11 @@ equals = "success"
 message = "Tautulli reported an error"
 auth = { path = "$.response.message", contains = "key", ignore_case = true, message = "API key refused" }
 
+[[request.require]]
+path = "$[?@.data.stream_count]"
+present = true
+message = "Tautulli cannot reach Plex"
+
 [fill]
 count = { path = "$.response.data.stream_count", type = "int" }
 
@@ -328,6 +333,12 @@ A `require` fails the read with its `message` unless the value its `path` finds 
 (`object`, `list`, `string` or `number`), or `present = true` (found, and not `null`). It may carry
 `auth`, a second test on its own `path` that turns the failure into refused credentials, with the
 back-off: `contains` a piece of text (with `ignore_case = true` if wanted), or `equals` a literal.
+
+A filter in the path tests whether a member exists, whatever its value. Tautulli answers `success`
+with empty data when it cannot reach Plex, so its second `require` finds the response only when
+the data has a `stream_count` (`$[?@.data.stream_count]`) and fails the read otherwise, rather
+than read no streams. A `stream_count` that is there but that `int` cannot read, `null` or text
+that is no number, passes it, and the kind counts the sessions instead.
 
 ### [fill]
 

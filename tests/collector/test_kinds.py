@@ -594,6 +594,30 @@ class StreamsTest(unittest.TestCase):
         )
         self.assertIn("apikey=tk-example", self.http.requests[0][0])
 
+    def reply(self, data):
+        self.http.routes["/api/v2"] = (200, {"response": {"result": "success", "data": data}})
+        return source("streams", {"url": self.http.url})
+
+    def test_a_reply_without_a_stream_count_is_a_failed_read(self):
+        # Tautulli that cannot reach Plex answers success with empty data: a failed read, never
+        # no streams, and not refused credentials either, so the source is not paused.
+        for data in ({}, {"sessions": []}, {"sessions": self.SESSIONS}):
+            with self.subTest(data=data), self.assertRaises(SourceError) as cm:
+                self.reply(data).fetch(T0)
+            self.assertNotIsInstance(cm.exception, AuthError)
+            self.assertEqual(str(cm.exception), "Tautulli cannot reach Plex")
+        # an error Tautulli reports keeps its own words
+        self.http.routes["/api/v2"] = (200, {"response": {"result": "error", "data": {}}})
+        with self.assertRaises(SourceError) as cm:
+            source("streams", {"url": self.http.url}).fetch(T0)
+        self.assertEqual(str(cm.exception), "Tautulli reported an error")
+
+    def test_a_stream_count_that_is_no_number_falls_back_to_the_sessions(self):
+        for count, n in (("abc", 3), (None, 3), (True, 1), (2.9, 2), ("", 3), ("0", 0)):
+            with self.subTest(count=count):
+                facts = self.reply({"stream_count": count, "sessions": self.SESSIONS}).fetch(T0)
+                self.assertEqual(facts.facts["count"], n)
+
     # Three invented streams, as Tautulli lists them: not in the order they started.
     SESSIONS: ClassVar[list] = [
         {

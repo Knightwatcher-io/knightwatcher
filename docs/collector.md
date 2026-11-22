@@ -452,7 +452,10 @@ reading only the fields the kind allows: for streams, a name is read from the re
 declaration before the kind sees it, so a provider that gives a field of the wrong type, or one
 `show` holds back, fails the read with a message naming the field. A refused credential (HTTP 401,
 403 or 429, or a reply the provider marks as one) raises the back-off of
-[Credentials refused](#credentials-refused). A source whose provider or provider file changes is
+[Credentials refused](#credentials-refused). Any other failed check of a reply is an ordinary
+failed read, tried again at the source's own pace: Tautulli answers `success` with no
+`stream_count` when it cannot reach Plex, and its file fails that read with `Tautulli cannot
+reach Plex` rather than show no streams. A source whose provider or provider file changes is
 started afresh when a change is taken up, as one whose settings change is.
 
 The streams kind lists the streams in the order they started, so a new stream joins the end and

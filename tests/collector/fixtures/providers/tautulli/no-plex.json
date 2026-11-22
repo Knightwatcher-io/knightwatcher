@@ -1,5 +1,5 @@
 {
- "about": "Tautulli when it cannot reach Plex: success with no data, which reads as no streams.",
+ "about": "Tautulli when it cannot reach Plex: success with no data, a failed read rather than no streams.",
  "settings": {},
  "credentials": [
   "api_key"
@@ -23,15 +23,8 @@
    }
   }
  ],
- "fill": {
-  "names": {
-   "sessions": []
-  },
-  "titles": {
-   "sessions": []
-  },
-  "count": {
-   "sessions": []
-  }
+ "error": {
+  "auth": false,
+  "message": "Tautulli cannot reach Plex"
  }
 }
