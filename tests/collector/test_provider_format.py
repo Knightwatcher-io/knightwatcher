@@ -95,6 +95,7 @@ class BuiltInTest(unittest.TestCase):
             sorted(files),
             [
                 "adguard",
+                "jellyfin",
                 "lidarr",
                 "pihole",
                 "plex",

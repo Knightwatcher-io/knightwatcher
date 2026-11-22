@@ -155,7 +155,8 @@ class ProbeTest(unittest.TestCase):
         code, _, err = self.probe("streams")
         self.assertEqual(code, 2)
         self.assertIn(
-            'config: sources.streams.from: unknown provider "plx"; use plex, tautulli or tracearr',
+            'config: sources.streams.from: unknown provider "plx"; '
+            "use jellyfin, plex, tautulli or tracearr",
             err,
         )
 

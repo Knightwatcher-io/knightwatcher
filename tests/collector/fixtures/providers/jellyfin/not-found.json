@@ -1,0 +1,26 @@
+{
+ "about": "A service at the address with no such call: HTTP 404.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/Sessions",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "MediaBrowser Token=\"{credential.api_key}\""
+    }
+   },
+   "reply": {
+    "status": 404
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "no such call: is this Jellyfin?"
+ }
+}

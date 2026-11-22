@@ -130,7 +130,8 @@ ignore_sources = []
 # enabled = true
 # every_s = 30
 # from = "tautulli"            # the default; "plex" reads Plex Media Server itself (KNIGHTWATCHER_PLEX_TOKEN),
-#                              # "tracearr" reads Tracearr 2.0 or later (KNIGHTWATCHER_TRACEARR_API_KEY)
+#                              # "tracearr" reads Tracearr 2.0 or later (KNIGHTWATCHER_TRACEARR_API_KEY),
+#                              # "jellyfin" reads Jellyfin itself (KNIGHTWATCHER_JELLYFIN_API_KEY)
 # url = "http://192.0.2.20:8181"
 # verify_tls = true            # with an https url, whether its certificate is checked
 # show = "names"               # who and what; "titles" for what alone, "count" for how many

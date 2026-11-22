@@ -1,0 +1,62 @@
+# Streams playing now, from Jellyfin's list of sessions.
+format = 1
+id = "jellyfin"
+kind = "streams"
+name = "Jellyfin"
+docs = "https://api.jellyfin.org/"
+
+[credentials]
+api_key = "An API key made by a Jellyfin administrator: Dashboard, API Keys, the + button. A key sees every user's sessions."
+
+# The key goes in the Authorization header in Jellyfin's own form, the one Jellyfin 10.9 and later
+# read; Jellyfin 12 no longer takes the older X-Emby-Token header or the api_key query parameter
+# unless its administrator turns them back on. A key Jellyfin does not take is HTTP 401 with no
+# body, whether it is wrong or missing.
+[[request]]
+path = "/Sessions"
+headers = { Accept = "application/json", Authorization = 'MediaBrowser Token="{credential.api_key}"' }
+statuses = { 401 = "API key refused", 404 = "no such call: is this Jellyfin?" }
+not_json = "Jellyfin sent something other than JSON: is the address Jellyfin's own?"
+
+[[request.require]]
+path = "$"
+type = "list"
+message = "unexpected reply from Jellyfin"
+
+# No count: the kind counts the sessions playing. One item a stream: Jellyfin lists every session
+# it holds, the idle ones too, with no playing item, and the filter keeps those whose playing item
+# has a type. With no client connected the list is empty.
+[fill.sessions]
+each = "$[?@.NowPlayingItem.Type]"
+
+[fill.sessions.vars]
+type = "$.NowPlayingItem.Type"
+series = { path = "$.NowPlayingItem.SeriesName", type = "string" }
+season = { path = "$.NowPlayingItem.ParentIndexNumber", type = "int" }
+episode = { path = "$.NowPlayingItem.IndexNumber", type = "int" }
+title = { path = "$.NowPlayingItem.Name", type = "string" }
+artist = { path = "$.NowPlayingItem.AlbumArtist", type = "string" }
+first_artist = { path = "$.NowPlayingItem.Artists[0]", type = "string" }
+user = { path = "$.UserName", type = "string" }
+# The session's id, which never changes while it plays. Jellyfin gives no start time, and lists
+# its sessions by their last activity, which changes at every report of progress, so the kind
+# keeps them in the order it first saw each id.
+id = { path = "$.Id", type = "string" }
+
+[fill.sessions.fields]
+who = { pick = ["user"] }
+key = "id"
+
+# An episode is the series and its numbers, either alone when the other is missing, else its own
+# title; a track is the album's artist and the track, else the first artist's, else the track;
+# anything else its title.
+[[fill.sessions.title]]
+when = { type = "Episode" }
+try = ["{series} S{season:02}E{episode:02}", "S{season:02}E{episode:02}", "{series}", "{title}"]
+
+[[fill.sessions.title]]
+when = { type = "Audio" }
+try = ["{artist} - {title}", "{first_artist} - {title}", "{title}"]
+
+[[fill.sessions.title]]
+try = ["{title}"]

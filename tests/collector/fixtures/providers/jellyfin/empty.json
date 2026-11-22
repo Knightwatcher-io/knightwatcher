@@ -1,0 +1,34 @@
+{
+ "about": "No client connected: an empty list, as Jellyfin 12.4 answers then.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/Sessions",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "MediaBrowser Token=\"{credential.api_key}\""
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": []
+   }
+  }
+ ],
+ "fill": {
+  "names": {
+   "sessions": []
+  },
+  "titles": {
+   "sessions": []
+  },
+  "count": {
+   "sessions": []
+  }
+ }
+}

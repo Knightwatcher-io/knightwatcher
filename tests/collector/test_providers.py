@@ -147,13 +147,14 @@ class FixturesTest(unittest.TestCase):
             else:
                 self.run_fixture(pid, case, fixture)
 
-    def test_plex_tautulli_and_tracearr_give_the_same_reading_of_the_same_streams(self):
-        # The three fixtures list the same three invented streams, each in its service's own shape.
+    def test_every_streams_provider_gives_the_same_reading_of_the_same_streams(self):
+        # The four fixtures list the same three invented streams, each in its service's own shape.
         cases = {(pid, case): fixture for pid, case, fixture in fixtures()}
         same = (
             ("plex", cases[("plex", "sessions")]),
             ("tautulli", cases[("tautulli", "activity")]),
             ("tracearr", cases[("tracearr", "streams")]),
+            ("jellyfin", cases[("jellyfin", "sessions")]),
         )
         config = make_config({})
         for show in ("names", "titles", "count"):
@@ -163,8 +164,8 @@ class FixturesTest(unittest.TestCase):
                 kind = kinds.kind_class("streams")()
                 _, fill = self.run_fixture(pid, "same", fixture, show)
                 readings.append(kind.reading(fill, {"show": show}, config, T0).facts)
-            self.assertEqual(readings[0], readings[1], show)
-            self.assertEqual(readings[0], readings[2], show)
+            for pid, reading in zip([pid for pid, _ in same], readings, strict=True):
+                self.assertEqual(reading, readings[0], f"{pid} at show = {show}")
         self.assertEqual(readings[0], {"count": 3}, "with count, nothing but the number of streams")
 
     def test_plex_sends_its_token_in_a_header_and_never_in_the_address(self):
@@ -196,6 +197,24 @@ class FixturesTest(unittest.TestCase):
         self.assertEqual(
             {k.lower(): v for k, v in headers.items()}["authorization"], f"Bearer {key}"
         )
+        self.assertNotIn(key, path)
+
+    def test_jellyfin_sends_its_key_in_its_own_authorization_form_and_never_in_the_address(self):
+        (fixture,) = [f for pid, case, f in fixtures() if (pid, case) == ("jellyfin", "sessions")]
+        http = FakeHttp()
+        self.addCleanup(http.close)
+        http.routes["/Sessions"] = (200, fixture["exchanges"][0]["reply"]["json"])
+        key = secrets.token_hex(16)
+        spec = providers.get("jellyfin")
+        settings = {"url": http.url, "show": "names"}
+        allowed = kinds.kind_class("streams")().allowed(settings)
+        DataProvider(spec, settings, {"api_key": key}, 2.0, allowed).read(T0)
+        ((method, path, headers, _),) = http.calls
+        self.assertEqual((method, path), ("GET", "/Sessions"))
+        headers = {k.lower(): v for k, v in headers.items()}
+        self.assertEqual(headers["authorization"], f'MediaBrowser Token="{key}"')
+        # Jellyfin 12 no longer reads the older header, so the key goes in the one place alone.
+        self.assertNotIn("x-emby-token", headers)
         self.assertNotIn(key, path)
 
     def test_names_are_never_read_unless_show_is_names(self):
@@ -249,7 +268,10 @@ class FromTest(unittest.TestCase):
     def test_a_from_that_names_no_provider_of_the_kind_is_refused(self):
         self.assertEqual(
             self.problems("streams", {"from": "plx"}),
-            ['sources.streams.from: unknown provider "plx"; use plex, tautulli or tracearr'],
+            [
+                'sources.streams.from: unknown provider "plx"; '
+                "use jellyfin, plex, tautulli or tracearr"
+            ],
         )
         self.assertEqual(
             self.problems("streams", {"from": "adguard"}),
@@ -325,6 +347,20 @@ class FromTest(unittest.TestCase):
             ['sources.adblock.from: "tracearr" reads streams, not adblock'],
         )
 
+    def test_jellyfin_reads_its_api_key(self):
+        env = {"KNIGHTWATCHER_JELLYFIN_API_KEY": "jf-invented"}
+        c = self.build("streams", {"from": "jellyfin", "url": "http://192.0.2.20:8096"}, env)
+        self.assertEqual(c.sources["streams"]["secret"], "jellyfin")
+        self.assertEqual(c.secret("streams"), {"api_key": "jf-invented"})
+        self.assertEqual(
+            self.problems("streams", {"from": "jellyfin"}, {}),
+            [".env: KNIGHTWATCHER_JELLYFIN_API_KEY missing (for streams)"],
+        )
+        self.assertEqual(
+            self.problems("adblock", {"from": "jellyfin"}),
+            ['sources.adblock.from: "jellyfin" reads streams, not adblock'],
+        )
+
     def test_technitium_reads_its_token(self):
         env = {"KNIGHTWATCHER_TECHNITIUM_TOKEN": "tok-invented"}
         c = self.build("adblock", {"from": "technitium"}, env)
@@ -376,6 +412,7 @@ class FromTest(unittest.TestCase):
         self.assertEqual(config_mod.provider_credentials("pihole"), ["password"])
         self.assertEqual(config_mod.provider_credentials("technitium"), ["token"])
         self.assertEqual(config_mod.provider_credentials("tracearr"), ["api_key"])
+        self.assertEqual(config_mod.provider_credentials("jellyfin"), ["api_key"])
         self.assertEqual(config_mod.provider_credentials("nothing"), [])
 
     def test_credential_names_know_every_field(self):

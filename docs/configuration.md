@@ -103,10 +103,10 @@ characters, the admin page stays off and says why, and the walls work as before.
 source needs may be left empty or out; the collector's check names any it needs and lacks.
 
 A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals.
-Its provider names the fields (Tautulli's and Tracearr's are `api_key`, Plex's `token`, AdGuard Home's `username`
+Its provider names the fields (Tautulli's, Tracearr's and Jellyfin's are `api_key`, Plex's `token`, AdGuard Home's `username`
 and `password`, Pi-hole's `password`, Technitium's `token`; [Providers](#providers) lists them),
 and `SECRET` is the source's `secret` setting, which is the provider's id unless set: `tautulli`,
-`plex`, `tracearr`, `adguard`, `pihole`, `technitium`, `sonarr`, `radarr` or `lidarr`. A source given
+`plex`, `tracearr`, `jellyfin`, `adguard`, `pihole`, `technitium`, `sonarr`, `radarr` or `lidarr`. A source given
 `secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and a source reading a
 provider file of your own with the id `myflix` and a `token` reads `KNIGHTWATCHER_MYFLIX_TOKEN`.
 The same holds for each entry of `[[sources.imports]]` ([More imports](#more-imports)). A check of
@@ -430,17 +430,17 @@ Open SSH sessions.
 
 ### [sources.streams]
 
-Streams playing, from the service its provider reads: Tautulli by default, Plex Media Server, or Tracearr.
+Streams playing, from the service its provider reads: Tautulli by default, Plex Media Server, Tracearr, or Jellyfin.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `from` | `"plex"`, `"tautulli"` or `"tracearr"`: a provider of the streams kind (see Providers below) | `"tautulli"` | household | The provider the streams are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
+| `from` | `"jellyfin"`, `"plex"`, `"tautulli"` or `"tracearr"`: a provider of the streams kind (see Providers below) | `"tautulli"` | household | The provider the streams are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
 | `show` | `"names"`, `"titles"` or `"count"` | `"names"` | household | What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's and Tracearr's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's, Tracearr's and Jellyfin's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
 
 ### [sources.adblock]
 
@@ -637,6 +637,7 @@ The services the sections read through a kind can read, each by its provider. A 
 |---|---|---|---|---|
 | `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KNIGHTWATCHER_ADGUARD_USERNAME`, `KNIGHTWATCHER_ADGUARD_PASSWORD` |
 | `fail2ban` | security | [fail2ban](https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py) | `[sources.security]` by default | none |
+| `jellyfin` | streams | [Jellyfin](https://api.jellyfin.org/) | `[sources.streams]` with `from = "jellyfin"` | `KNIGHTWATCHER_JELLYFIN_API_KEY` |
 | `lidarr` | imports | [Lidarr](https://github.com/Lidarr/Lidarr/blob/develop/src/Lidarr.Api.V1/openapi.json) | `[sources.lidarr]`, `[[sources.imports]]` with `from = "lidarr"` | `KNIGHTWATCHER_LIDARR_API_KEY` |
 | `pihole` | adblock | [Pi-hole 6](https://docs.pi-hole.net/api/) | `[sources.adblock]` with `from = "pihole"` | `KNIGHTWATCHER_PIHOLE_PASSWORD` |
 | `plex` | streams | [Plex Media Server](https://developer.plex.tv/pms/) | `[sources.streams]` with `from = "plex"` | `KNIGHTWATCHER_PLEX_TOKEN` |
@@ -664,6 +665,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KNIGHTWATCHER_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_PLEX_TOKEN` | credential | a Plex token, such as `AbCdEfGhIjKlMnOpQrSt` | none | The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = "plex". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_TRACEARR_API_KEY` | credential | trr_pub_ and 43 letters, digits, - and _, such as `trr_pub_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE` | none | Tracearr's public API key, for the tracearr provider, which [sources.streams] reads with from = "tracearr". Made by Tracearr's owner: Settings, Data & API, API, Generate Key. It is sent in the Authorization header as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a stream: keep it as you would the password. Tracearr keeps one key, and Regenerate ends the old one for whatever else uses it. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_JELLYFIN_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | A Jellyfin API key, for the jellyfin provider, which [sources.streams] reads with from = "jellyfin". Made by a Jellyfin administrator: Dashboard, API Keys, the + button. It is sent in the Authorization header, never in the address. A key sees every user's sessions and has an administrator's rights over all of Jellyfin: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_PIHOLE_PASSWORD` | credential | a password, such as `an-invented-app-password` | none | A Pi-hole 6 app password, for the pihole provider, which [sources.adblock] reads with from = "pihole". In Pi-hole: Settings, Web interface / API, Configure app password. The web password works too, but not with two-factor authentication on, since the collector cannot give a code. Version 5 is not supported. Read when the source is enabled; its `secret` setting names the variable. |
@@ -690,7 +692,7 @@ provider, named by `from`: `tautulli`, `adguard` and `fail2ban`, the defaults, s
 name. `[sources.lidarr]` gives one import for each album, once every track of it has imported,
 never one for each track. A `from` that
 names no provider, or a provider of another kind, is refused by name
-(`sources.streams.from: unknown provider "plx"; use plex, tautulli or tracearr`), so a typo never falls back to the
+(`sources.streams.from: unknown provider "plx"; use jellyfin, plex, tautulli or tracearr`), so a typo never falls back to the
 default. A source that is off is checked when it is turned on, as for its other settings.
 [providers.md](./providers.md) describes the provider files.
 
@@ -877,12 +879,22 @@ any library item's menu, Get Info, View XML, and take the `X-Plex-Token` at the 
 it opens. Put it in `KNIGHTWATCHER_PLEX_TOKEN`. A Plex token reaches the owner's whole Plex
 account, so keep it as you would the password. It is sent in the `X-Plex-Token` header, never in
 the address, so it stays out of any access log on the way. A token Plex does not take is answered
-with HTTP 401, which pauses the source for `auth_backoff_s` (`Plex token refused`).
+with HTTP 401, which pauses the source for `auth_backoff_s` (`Plex token refused`). Plex gives
+each session's key as text of digits (`"21"`). It needs no `X-Plex-Client-Identifier` for this
+call, though the collector sends one.
 
-Use `http` and the server's own address where Plex allows it. With Plex's Secure connections
-setting at Required, Plex takes only `https`; its certificate is made out to a name under
-`plex.direct`, not to an address, so an `https` url with an address then needs
-`verify_tls = false`.
+Use `http` and the server's own address where Plex allows it: Plex Media Server 1.43 answers
+`http` with no redirect to `https`. With Plex's Secure connections setting at Required, Plex
+takes only `https`; its certificate is made out to a name under `plex.direct`, not to an address,
+so an `https` url with an address then needs `verify_tls = false`.
+
+`compose.yaml` runs the collector on the host's network, so it reaches a Plex that is on the
+host's network too (`network_mode: host`) at the host's own address. A collector moved onto a
+bridge network, in `compose.override.yaml`, reaches such a Plex at the host's address on the local
+network (`http://192.0.2.20:32400`) or at the bridge's gateway, the host's address on that bridge
+(`docker network inspect <network>` gives it as `Gateway`), as long as the host's firewall lets
+the bridge through to port 32400. The name `host.docker.internal` is not defined on Linux unless
+the service adds it with `extra_hosts: ["host.docker.internal:host-gateway"]`.
 
 ### Tracearr
 
@@ -914,6 +926,37 @@ uses the key; reading every 30 seconds takes two. A Tracearr served under a path
 Tracearr does not serve under is answered with its web page (`Tracearr sent something other than
 JSON`). Tracearr 1 has no version 2 of the API and answers 404 (`no such call: is this Tracearr
 2.0 or later?`).
+
+### Jellyfin
+
+`from = "jellyfin"` reads the streams from Jellyfin itself, with an API key:
+
+```toml
+[sources.streams]
+from = "jellyfin"
+url = "http://192.0.2.20:8096"   # Jellyfin's own address and port
+show = "titles"                  # reads KNIGHTWATCHER_JELLYFIN_API_KEY
+```
+
+The reading is of the same kind as Tautulli's, Plex's and Tracearr's: the same title of each stream
+(`The Night Shift S02E04`, `<artist> - <track>`, a film's title), the count, and `who`, the user's
+Jellyfin name. Jellyfin lists every session it holds, those of clients that are connected but play
+nothing among them; only those playing something are streams, and the count is theirs. With no
+client connected the list is empty. Jellyfin gives no start time and lists its sessions by their
+last activity, which moves at every report of progress, so the collector lists the streams in the
+order it first saw each session, a new one at the end. It keeps that order in the running process
+alone: a restart, or a change to the section's settings, starts it afresh, and streams first seen
+at the same read are ordered by their session ids.
+
+The key is made by a Jellyfin administrator: Dashboard, API Keys, the + button, with a name of its
+own such as Knightwatcher. Put it in `KNIGHTWATCHER_JELLYFIN_API_KEY`. It is sent in the
+`Authorization` header in Jellyfin's own form, `MediaBrowser Token="..."`, never in the address;
+Jellyfin 12 no longer reads the older `X-Emby-Token` header or the `api_key` query parameter unless
+its administrator turns them back on, and 10.9 and later read this form. An API key sees every
+user's sessions and has an administrator's rights over all of Jellyfin, so keep it as you would the
+password. A key Jellyfin does not take, wrong or missing, is answered with HTTP 401 and no body,
+which pauses the source for `auth_backoff_s` (`API key refused`). An address that is not
+Jellyfin's, such as a proxy's sign-in page, is `Jellyfin sent something other than JSON`.
 
 ### Pi-hole
 

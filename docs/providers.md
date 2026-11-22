@@ -30,6 +30,7 @@ SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-pr
 | `tautulli` | streams | Tautulli's `get_activity` | `[sources.streams]`, the default for `from` |
 | `plex` | streams | Plex Media Server's `/status/sessions`, with the owner's token in the `X-Plex-Token` header | `[sources.streams]` with `from = "plex"` |
 | `tracearr` | streams | Tracearr's `/api/v2/public/streams` (Tracearr 2.0 or later), with its API key as a bearer token | `[sources.streams]` with `from = "tracearr"` |
+| `jellyfin` | streams | Jellyfin's `/Sessions`, with an API key in the `Authorization` header | `[sources.streams]` with `from = "jellyfin"` |
 | `adguard` | adblock | AdGuard Home's `/control/stats` | `[sources.adblock]`, the default for `from` |
 | `pihole` | adblock | Pi-hole 6's `/api/stats/summary` and `/api/history`, through a session | `[sources.adblock]` with `from = "pihole"` |
 | `technitium` | adblock | Technitium DNS Server's dashboard statistics (version 15 or later), with an API token | `[sources.adblock]` with `from = "technitium"` |
@@ -66,21 +67,44 @@ kind cleans it), `bool` true or false, `time` a moment, and `raw` a value the ki
 | `sessions[].title` | string | no | `titles`, `names` | what plays, composed by the provider (`The Night Shift S02E04`) |
 | `sessions[].who` | string | no | `names` | who is watching |
 | `sessions[].order` | raw | no | `titles`, `names` | a key that rises as streams start: a value whose text is all digits sorts by its number, a time (a var of type `time`) by its moment, others after |
-| `sessions[].key` | string | no | `titles`, `names` | the stream's identity, for a service that gives no `order`; with a time as `order`, it breaks ties |
+| `sessions[].key` | string | no | `titles`, `names` | the stream's identity, for a service that gives no `order` (Jellyfin's session id); with a time as `order`, it breaks ties |
 
 The streams are listed in the order they started. A provider whose service gives a number that
 rises as streams start (Tautulli's and Plex's session key) fills `order`, and the kind sorts by it.
 One whose service gives the moment each stream started (Tracearr's `started_at`) fills `order`
 with that time, a var of type `time`, and the kind sorts by the moment; it fills `key` too, the
 stream's identity, which orders streams that started at the same moment. One whose service gives
-neither fills `key` alone, the stream's identity as the service gives it, and the kind lists those
-streams in the order it first saw each key, keys seen at the same read by the key (digits by their
+neither (Jellyfin) fills `key` alone, the stream's identity as the service gives it (Jellyfin's
+session id), and the kind lists those streams in the order it first saw each key, keys seen at the same read by the key (digits by their
 number, before other text), as streams of one moment are. That order is kept by the running collector alone,
 only for the keys playing at the last read, and never in the memory file. Streams with an `order`
 come first, then those with a `key`, then the rest in the order the provider gave them.
 
 The kind keeps the facts of [state.md](./state.md#fields): titles cut to 60 characters, names to
 16, at most 32 sessions listed.
+
+A service may list more than its streams. Jellyfin's `/Sessions` lists every session it holds,
+those of clients connected but playing nothing among them, with no playing item: left out, or
+`null`. The built-in Jellyfin file keeps only the sessions whose playing item has a type, with a
+filter in its `each` (below), and gives no `count`, so the kind counts the sessions kept:
+
+```toml
+[fill.sessions]
+each = "$[?@.NowPlayingItem.Type]"
+
+[fill.sessions.vars]
+type = "$.NowPlayingItem.Type"
+user = { path = "$.UserName", type = "string" }
+id = { path = "$.Id", type = "string" }
+
+[fill.sessions.fields]
+who = { pick = ["user"] }
+key = "id"
+```
+
+Its key goes in the `Authorization` header in Jellyfin's own form, written in a TOML literal
+string so that the quotes need no escaping:
+`Authorization = 'MediaBrowser Token="{credential.api_key}"'`.
 
 ### adblock
 
@@ -600,6 +624,13 @@ the wall's files are not touched:
 python3 -m collector --config /tmp/probe/config.toml --admin /nonexistent \
   --env-file .env --probe streams
 ```
+
+A probe reaches what its network reaches. `docker compose run` puts it on the collector's own
+networks; a probe in a throwaway container (`docker run --rm`) needs the same `--network` as the
+collector, and the service's address as the collector sees it: a container's name on a shared
+bridge network (`http://jellyfin:8096`), or for a service on the host's network, such as a Plex
+run with `network_mode: host`, the host's address
+([configuration.md](./configuration.md#plex-media-server)).
 
 `--record FOLDER` also writes the read's exchanges to a file in that folder, mode 600: each request
 with each credential replaced by its field's name (`{credential.api_key}`) and a session's id by

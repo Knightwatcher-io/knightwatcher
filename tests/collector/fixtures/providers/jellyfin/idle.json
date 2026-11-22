@@ -1,0 +1,151 @@
+{
+ "about": "Nothing playing: two sessions with no playing item, one leaving it out and one giving it as null, which reads as no streams either way.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/Sessions",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "MediaBrowser Token=\"{credential.api_key}\""
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": [
+     {
+      "PlayState": {
+       "CanSeek": false,
+       "IsPaused": false,
+       "IsMuted": false,
+       "RepeatMode": "RepeatNone",
+       "PlaybackOrder": "Default"
+      },
+      "AdditionalUsers": [],
+      "Capabilities": {
+       "PlayableMediaTypes": [
+        "Audio",
+        "Video"
+       ],
+       "SupportedCommands": [
+        "MoveUp",
+        "MoveDown",
+        "Select",
+        "Back",
+        "SetVolume",
+        "DisplayMessage",
+        "Play",
+        "PlayState"
+       ],
+       "SupportsMediaControl": true,
+       "SupportsPersistentIdentifier": true
+      },
+      "RemoteEndPoint": "192.0.2.64",
+      "PlayableMediaTypes": [
+       "Audio",
+       "Video"
+      ],
+      "Id": "e9d1c3b5a7f94e2d8c6b0a4f2e8d6c19",
+      "UserId": "0a1b2c3d4e5f60040a1b2c3d4e5f6004",
+      "UserName": "Sam",
+      "Client": "Jellyfin Web",
+      "LastActivityDate": "2026-11-21T19:28:40.0000000Z",
+      "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+      "DeviceName": "Firefox",
+      "DeviceId": "invented-browser",
+      "ApplicationVersion": "12.4.0",
+      "IsActive": true,
+      "SupportsMediaControl": true,
+      "SupportsRemoteControl": true,
+      "HasCustomDeviceName": false,
+      "ServerId": "f0e1d2c3b4a5968778695a4b3c2d1e0f",
+      "SupportedCommands": [
+       "MoveUp",
+       "MoveDown",
+       "Select",
+       "Back",
+       "SetVolume",
+       "DisplayMessage",
+       "Play",
+       "PlayState"
+      ]
+     },
+     {
+      "PlayState": {
+       "CanSeek": false,
+       "IsPaused": false,
+       "IsMuted": false,
+       "RepeatMode": "RepeatNone",
+       "PlaybackOrder": "Default"
+      },
+      "AdditionalUsers": [],
+      "Capabilities": {
+       "PlayableMediaTypes": [
+        "Audio",
+        "Video"
+       ],
+       "SupportedCommands": [
+        "MoveUp",
+        "MoveDown",
+        "Select",
+        "Back",
+        "SetVolume",
+        "DisplayMessage",
+        "Play",
+        "PlayState"
+       ],
+       "SupportsMediaControl": true,
+       "SupportsPersistentIdentifier": true
+      },
+      "RemoteEndPoint": "192.0.2.61",
+      "PlayableMediaTypes": [
+       "Audio",
+       "Video"
+      ],
+      "Id": "d4a6c8e0b2f44a6c8e0b2d4f6a8c0e21",
+      "UserId": "0a1b2c3d4e5f60030a1b2c3d4e5f6003",
+      "UserName": "Robin",
+      "Client": "Jellyfin Android TV",
+      "LastActivityDate": "2026-11-21T19:20:11.0000000Z",
+      "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+      "DeviceName": "Lounge TV",
+      "DeviceId": "invented-lounge-tv",
+      "ApplicationVersion": "12.4.0",
+      "IsActive": true,
+      "SupportsMediaControl": true,
+      "SupportsRemoteControl": true,
+      "HasCustomDeviceName": false,
+      "ServerId": "f0e1d2c3b4a5968778695a4b3c2d1e0f",
+      "SupportedCommands": [
+       "MoveUp",
+       "MoveDown",
+       "Select",
+       "Back",
+       "SetVolume",
+       "DisplayMessage",
+       "Play",
+       "PlayState"
+      ],
+      "NowPlayingItem": null,
+      "NowViewingItem": null
+     }
+    ]
+   }
+  }
+ ],
+ "fill": {
+  "names": {
+   "sessions": []
+  },
+  "titles": {
+   "sessions": []
+  },
+  "count": {
+   "sessions": []
+  }
+ }
+}
