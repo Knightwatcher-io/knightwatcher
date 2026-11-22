@@ -54,12 +54,12 @@ out.
 | `tests/collector/test_runner.py` | one poll: the file it writes, the defaults, failing and slow sources, each source's pace; a source replaced or taken away by a change closed, one kept not, and every source closed as the collector stops |
 | `tests/collector/test_schema.py` | the settings schema against the collector, the example files and `compose.yaml`, the providers folder's mount, its `.gitkeep` and its lines in `.gitignore` |
 | `tests/collector/test_sources.py` | each source of its own against invented answers |
-| `tests/collector/test_kinds.py` | the streams, adblock and imports kinds through their built-in providers against invented answers; the security kind from fills (the counts, the window, a watched jail's ban, new bans by key, one event a read, first sight, a restart, the memory's cap and floor) and from a provider file of a user's own; the fill's checks, and when a source read through a provider starts afresh |
+| `tests/collector/test_kinds.py` | the streams, adblock and imports kinds through their built-in providers against invented answers; the adblock kind's `recent` mode through the technitium provider (first sight, minutes added as they appear and never twice, a minute left until it has settled, a gap longer than the hour, the rate and the first count from the last day, midnight, a marker of the other mode dropped, a marker that cannot be true, the token in the `Authorization` header, an error and a refused token); the security kind from fills (the counts, the window, a watched jail's ban, new bans by key, one event a read, first sight, a restart, the memory's cap and floor) and from a provider file of a user's own; the fill's checks, and when a source read through a provider starts afresh |
 | `tests/collector/test_fail2ban.py` | the fail2ban adapter against databases made with fail2ban's own `CREATE TABLE` statements: rows and late rows, an unban, an empty table, rows without an address, the 5,000-row cut, the file left untouched with nothing written beside it, a file replaced between reads, a missing, unreadable, locked or damaged file, a folder in its place and a database without the `bans` table; `from`, `url` and `database` in `config.toml` and a section written for the old fail2ban summary refused, the export of the admin page, a whole collector raising the attack and the events and coming back after a restart, and `--probe security` |
 | `tests/collector/test_path.py` | the path syntax: every allowed form, the RFC's results on its own examples, every refused form with its position, the limit on values found |
-| `tests/collector/test_provider_format.py` | the provider file format: the built-in files pass, and each rule is held to a refused file with its message |
+| `tests/collector/test_provider_format.py` | the provider file format: the built-in files pass, each rule is held to a refused file with its message, and an adblock file gives exactly one of `blocked` and `recent` |
 | `tests/collector/test_engine.py` | the engine against a local HTTP server: the requests built, `statuses`, `not_json`, `require`, nesting and the limits, scalar, list, object, item, case and zipped fields, the vars read only when allowed, the recording, and a certificate checked unless `verify_tls` is `false`; session logins: one login then the session with every read, in a header or the query, made again near its end or when the service forgot it (once in a read), a refused login, a new session refused, a login with no session id, the login's JSON body, the logout at `close()` (once, after a read in flight, never for an expired session) and the recording with the session's id named and the login's reply masked |
-| `tests/collector/test_providers.py` | every built-in provider against its fixtures (each request's method, path, headers and login body, the logout when the provider is closed), at every `show` for streams with no name read unless `show` is `names`; `from`, `secret` and `verify_tls` in `config.toml`, and the password Pi-hole is read with |
+| `tests/collector/test_providers.py` | every built-in provider against its fixtures (each request's method, path, headers and login body, the logout when the provider is closed), at every `show` for streams with no name read unless `show` is `names`; `from`, `secret` and `verify_tls` in `config.toml`, the password Pi-hole is read with and Technitium's token |
 | `tests/collector/test_provider_files.py` | provider files of the user's own: which files are read and which left out (bad TOML, a broken rule, a name that is not the id, a built-in's id, a link, a folder, the size and count limits), a `from` naming one or a refused one and the source that then fails, the settings a file declares, a file read through the engine like a built-in, `--check-config`'s exit codes and warnings, `--probe`, `config.problems` in the state file, and a change taken up between polls |
 | `tests/collector/test_port.py` | [the port proof](#the-port-proof): today's four services read through the engine, against what the collector wrote before, byte for byte |
 | `tests/collector/test_probe.py` | `--probe` and `--record`, and a session provider's probe logging out, its login recorded with its method and body and the session's id named |
@@ -75,7 +75,10 @@ path, headers and a session login's JSON body), with each credential written as
 `{credential.<field>}`, the replies in the service's shapes with every value invented, and the
 fill, by `show` for streams, or the error. Pi-hole's are in the shapes a throwaway Pi-hole 6.8
 sent: a read with its login and logout, a wrong password, every session taken, a Pi-hole 5, and a
-Pi-hole with no password. The fixtures are in
+Pi-hole with no password. Technitium's are in the shapes a throwaway Technitium 15.6.2 sent: a read
+of the last hour and the last day, a token refused, a Technitium 14 that reads no `Authorization`
+header, and an error of the service. A fixture whose requests share a path and differ in their
+query is answered by the whole of it, query included. The fixtures are in
 `tests/web/fixtures/`: the knight's stored record (`knight/calls.json`, and `knight/idle.log`, the
 full record of one pose, idle at 2 300 ms, compared call by call), the scenes'
 (`scenes/<scene>.json`, one for each of the seven scenes, and `scenes/cast.json`), the test world
@@ -131,6 +134,22 @@ password refused and the source paused, and the next poll not asking again; `htt
 self-signed certificate refused (`TLS error`) and then read with `verify_tls = false`; and a
 Pi-hole 5 (`pihole/pihole` 2024.07.0) and a Pi-hole 6 with no password, each told plainly. No
 password or session id is printed.
+
+`tools/throwaway/technitium.sh` starts `technitium/dns-server` 15.6.2 on an internal network of its
+own with nothing published, its admin password made for the run and passed by environment alone,
+with `NET_BIND_SERVICE` its one capability, and `no-new-privileges`. The helper, `python:3.13-slim`
+with this checkout's code read-only like the collector, sets it up through its API alone: signed
+in as admin, a user of its own with a password made for the run, in no group but Everyone; an API
+token that user makes; and one domain, under `example.net`, in the blocked zones (a name under
+`.test` would not do, since Technitium answers for that domain itself and counts nothing as
+blocked). It prints, in order: the collector reading every 5 seconds; six queries for the domain
+and the seconds until the six flies come, twice (between 20 and 85 seconds, as the minute the
+queries fall in must end and settle first); a `--probe`, and a `--probe --record` with the token
+recorded as `{credential.token}`; the collector stopped, and its log, state file, memory file and
+the recording each read, as uid 10001, for the token, found in none; a wrong token refused and the
+source paused, the next poll not asking again; and a Technitium 14 (`technitium/dns-server`
+14.3.0) given a token of its own, told plainly. Given a folder, it copies the recording there, for
+making fixtures. No password or token is printed.
 
 ## The page's tests
 

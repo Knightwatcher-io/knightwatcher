@@ -15,6 +15,9 @@ A declaration maps each field to a dictionary:
   min, max  for int and number: the range; for a list: the most items
   show      the least `show` setting that lets the field be read (streams)
 
+A kind may also name ONE_OF, top-level fields of which a provider file gives exactly one, that
+one then required (adblock's rolling `blocked` count or its `recent` buckets).
+
 SECTIONS names the sections of config.toml that a kind reads, and docs/providers.md describes the
 provider files that fill them.
 """

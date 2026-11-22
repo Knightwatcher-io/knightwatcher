@@ -366,7 +366,8 @@ def check(data: Any, where: str, expect_id: str | None = None) -> Spec:
     ids = [r.get("id", "") for r in given if isinstance(r, dict)] if isinstance(given, list) else []
     fill = {}
     if kind is not None and "fill" in data:
-        fill = _fill(c, data["fill"], kind_class(kind).FILL, ids)
+        cls = kind_class(kind)
+        fill = _fill(c, data["fill"], cls.FILL, ids, getattr(cls, "ONE_OF", ()))
     if c.problems:
         raise FormatError(c.problems)
     return Spec(pid, kind, name, docs, credentials, settings, auth, tuple(requests), fill)
@@ -728,10 +729,20 @@ def _from(c: _Checker, at: str, table: dict, ids: list[str], inherited: str | No
     return ids[0] if ids else ""
 
 
-def _fill(c: _Checker, table: Any, declaration: dict, ids: list[str]) -> dict:
+def _fill(c: _Checker, table: Any, declaration: dict, ids: list[str], one_of: tuple = ()) -> dict:
     if not isinstance(table, dict):
         c.bad("fill", "expected a table")
         return {}
+    if one_of:
+        # A kind that takes one of several fields: exactly one must be given, and that one is then
+        # required, as a field the kind always needs is.
+        given = [k for k in one_of if k in table]
+        if not given:
+            c.bad("fill", f"give one of {' and '.join(one_of)}")
+        elif len(given) > 1:
+            c.bad(f"fill.{given[1]}", f"give one of {' and '.join(one_of)}, not both")
+        else:
+            declaration = {**declaration, given[0]: {**declaration[given[0]], "required": True}}
     return _fields(c, "fill", table, declaration, ids, None)
 
 

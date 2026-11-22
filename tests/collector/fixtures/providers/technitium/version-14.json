@@ -1,0 +1,31 @@
+{
+ "about": "Technitium 14, which reads the token from the query alone and so finds none: HTTP 200 with the status error, and the source pauses. Shape from Technitium DNS Server 14.3.",
+ "settings": {},
+ "credentials": [
+  "token"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/dashboard/stats/get?type=LastHour&utc=true",
+    "headers": {
+     "Authorization": "Bearer {credential.token}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "server": "dns-server",
+     "status": "error",
+     "errorMessage": "Parameter 'token' missing.",
+     "stackTrace": "   at an invented frame\n   at another invented frame"
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "API token refused, or Technitium is older than version 15"
+ }
+}

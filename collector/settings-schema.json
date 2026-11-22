@@ -373,7 +373,7 @@
     },
     {
       "table": "sources.adblock",
-      "help": "Blocked adverts, from the service its provider reads: AdGuard Home by default, or Pi-hole 6.",
+      "help": "Blocked adverts, from the service its provider reads: AdGuard Home by default, Pi-hole 6, or Technitium DNS Server 15 or later.",
       "settings": [
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "On" } }, "editable": true,
@@ -392,7 +392,7 @@
           "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD). Left out, it is the provider's id. Set in config.toml alone." },
+          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD, Technitium's TOKEN). Left out, it is the provider's id. Set in config.toml alone." },
         { "key": "fly_every_s", "type": "number", "default": 300.0, "min": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "A fly every" } }, "editable": true,
           "help": "Average seconds between flies while blocking runs at the household's normal rate, which the service's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query." }
@@ -677,7 +677,9 @@
     { "id": "sonarr", "kind": "imports", "name": "Sonarr", "docs": "https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json",
       "default": false, "credentials": ["api_key"], "settings": [] },
     { "id": "tautulli", "kind": "streams", "name": "Tautulli", "docs": "https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference",
-      "default": true, "credentials": ["api_key"], "settings": [] }
+      "default": true, "credentials": ["api_key"], "settings": [] },
+    { "id": "technitium", "kind": "adblock", "name": "Technitium DNS Server", "docs": "https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md",
+      "default": false, "credentials": ["token"], "settings": [] }
   ],
   "env": [
     { "name": "KNIGHTWATCHER_OUT", "scope": "path", "required": true, "default": null, "mount": "/out", "services": ["collector", "server"], "example": "./var/out",
@@ -726,6 +728,10 @@
       "example": "an-invented-app-password", "form": "a password",
       "gui": { "admin": { "section": "Credentials", "label": "Pi-hole password" } }, "editable": false,
       "help": "A Pi-hole 6 app password, for the pihole provider, which [sources.adblock] reads with from = \"pihole\". In Pi-hole: Settings, Web interface / API, Configure app password. The web password works too, but not with two-factor authentication on, since the collector cannot give a code. Version 5 is not supported." },
+    { "name": "KNIGHTWATCHER_TECHNITIUM_TOKEN", "scope": "credential", "provider": "technitium", "field": "token", "secret": "technitium", "default": null,
+      "example": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "form": "64 hexadecimal characters",
+      "gui": { "admin": { "section": "Credentials", "label": "Technitium API token" } }, "editable": false,
+      "help": "A Technitium DNS Server API token, for the technitium provider, which [sources.adblock] reads with from = \"technitium\". In Technitium, signed in as a user of its own in no group but Everyone, which can view but change nothing: the user menu, Create API Token. The token does not expire. It is sent in the Authorization header, which needs Technitium 15 or later." },
     { "name": "KNIGHTWATCHER_SONARR_API_KEY", "scope": "credential", "provider": "sonarr", "field": "api_key", "secret": "sonarr", "default": null,
       "example": "fedcba9876543210fedcba9876543210", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Sonarr API key" } }, "editable": false,

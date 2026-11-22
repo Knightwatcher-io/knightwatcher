@@ -11,6 +11,7 @@ and the vars behind a name must never be read unless `show` is `names`.
 """
 
 import base64
+import datetime as dt
 import json
 import os
 import secrets
@@ -18,7 +19,7 @@ import unittest
 from typing import ClassVar
 
 from collector import config as config_mod
-from collector import kinds, providers
+from collector import kinds, providers, text
 from collector.config import ConfigError, credential_names
 from collector.net import AuthError, SourceError
 from collector.providers.engine import DataProvider
@@ -43,6 +44,17 @@ def _filled(text, credentials):
     for field, value in credentials.items():
         text = text.replace("{credential." + field + "}", value)
     return text
+
+
+def _plain(value):
+    """A fill as a fixture writes it: each time as ISO 8601 text, to the second."""
+    if isinstance(value, dt.datetime):
+        return text.iso(value)
+    if isinstance(value, dict):
+        return {k: _plain(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_plain(v) for v in value]
+    return value
 
 
 def _reply(reply):
@@ -77,9 +89,12 @@ class FixturesTest(unittest.TestCase):
         self.assertEqual(sorted(credentials), sorted(spec.credentials), f"{pid}/{case}")
         http = FakeHttp()
         self.addCleanup(http.close)
-        for e in fixture["exchanges"]:
+        bare = [e["request"]["path"].split("?", 1)[0] for e in fixture["exchanges"]]
+        for e, path in zip(fixture["exchanges"], bare, strict=True):
             want = e["request"]
-            path = want["path"].split("?", 1)[0]
+            if bare.count(path) > 1:
+                # Requests to one path that differ in their query are answered by the whole of it.
+                path = _filled(want["path"], credentials)
             key = path if want["method"] == "GET" else f"{want['method']} {path}"
             http.routes[key] = (e["reply"]["status"], _reply(e["reply"]))
         settings = {"url": http.url, **fixture["settings"]}
@@ -115,7 +130,7 @@ class FixturesTest(unittest.TestCase):
             return provider, None
         self.assertIsNone(error, f"{where}: {error}")
         want = fixture["fill"][show] if show is not None else fixture["fill"]
-        self.assertEqual(fill, want, where)
+        self.assertEqual(_plain(fill), want, where)
         return provider, fill
 
     def test_every_built_in_provider_file_has_fixtures(self):
@@ -231,6 +246,20 @@ class FromTest(unittest.TestCase):
             ['sources.streams.from: "pihole" reads adblock, not streams'],
         )
 
+    def test_technitium_reads_its_token(self):
+        env = {"KNIGHTWATCHER_TECHNITIUM_TOKEN": "tok-invented"}
+        c = self.build("adblock", {"from": "technitium"}, env)
+        self.assertEqual(c.sources["adblock"]["secret"], "technitium")
+        self.assertEqual(c.secret("adblock"), {"token": "tok-invented"})
+        self.assertEqual(
+            self.problems("adblock", {"from": "technitium"}, {}),
+            [".env: KNIGHTWATCHER_TECHNITIUM_TOKEN missing (for adblock)"],
+        )
+        self.assertEqual(
+            self.problems("streams", {"from": "technitium"}),
+            ['sources.streams.from: "technitium" reads adblock, not streams'],
+        )
+
     def test_verify_tls(self):
         env = {"KNIGHTWATCHER_PIHOLE_PASSWORD": "pw-invented"}
         https = {"from": "pihole", "url": "https://192.0.2.53"}
@@ -265,6 +294,7 @@ class FromTest(unittest.TestCase):
         self.assertEqual(config_mod.provider_credentials("tautulli"), ["api_key"])
         self.assertEqual(config_mod.provider_credentials("adguard"), ["username", "password"])
         self.assertEqual(config_mod.provider_credentials("pihole"), ["password"])
+        self.assertEqual(config_mod.provider_credentials("technitium"), ["token"])
         self.assertEqual(config_mod.provider_credentials("nothing"), [])
 
     def test_credential_names_know_every_field(self):

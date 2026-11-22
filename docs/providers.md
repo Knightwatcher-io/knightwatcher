@@ -28,6 +28,7 @@ SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-pr
 | `tautulli` | streams | Tautulli's `get_activity` | `[sources.streams]`, the default for `from` |
 | `adguard` | adblock | AdGuard Home's `/control/stats` | `[sources.adblock]`, the default for `from` |
 | `pihole` | adblock | Pi-hole 6's `/api/stats/summary` and `/api/history`, through a session | `[sources.adblock]` with `from = "pihole"` |
+| `technitium` | adblock | Technitium DNS Server's dashboard statistics (version 15 or later), with an API token | `[sources.adblock]` with `from = "technitium"` |
 | `fail2ban` | security | fail2ban's database, a code adapter | `[sources.security]`, the default for `from` |
 | `sonarr` | imports | Sonarr's import history | `[sources.sonarr]` |
 | `radarr` | imports | Radarr's import history | `[sources.radarr]` |
@@ -65,18 +66,31 @@ The kind keeps the facts of [state.md](./state.md#fields): titles cut to 60 char
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
-| `blocked` | int | yes | queries blocked over the service's own window; it rises as queries are blocked and may fall when the window moves |
+| `blocked` | int | one of `blocked` and `recent` | queries blocked over the service's own window; it rises as queries are blocked and may fall when the window moves |
+| `recent` | list of objects, oldest first, at most 1,440 | one of `blocked` and `recent` | finished time buckets, for a service whose only fresh counts are buckets over a sliding window |
+| `recent[].at` | time | yes | the bucket's time, as the service labels it; a later bucket has a later time |
+| `recent[].blocked` | int, 0 or more | yes | the queries it blocked |
+| `settle_s` | int, 0 to 3,600 | no | with `recent`: the seconds after a bucket's `at` before the service's count of it is final |
 | `window` | object | no | the service's statistics window, for the normal rate and today's first count |
 | `window.queries` | list of numbers | no | all queries per bucket, oldest first |
 | `window.blocked` | list of numbers | no | blocked queries per bucket, oldest first |
 | `window.unit_s` | int | with `window` | the bucket's length in seconds |
 | `window.current` | bool | with `window` | whether the last bucket is the current, unfinished one |
 
-The normal rate is `blocked` divided by the window counted from its first bucket with any queries.
+A file gives exactly one of `blocked` and `recent`. With `blocked`, each read's rise is counted
+and a fall raises nothing. With `recent`, each read adds the buckets whose `at` is later than the
+newest one already counted, which is kept in the memory file; on first sight the newest is noted
+and nothing is added. A bucket younger than `settle_s` (its `at` later than the collector's clock
+less `settle_s`) is left for a later read, for a service that finishes a bucket's count a little
+after the bucket ends; Technitium's file sets 20 seconds. Subtracting two sums of a sliding window
+would undercount whatever left the window between the reads, which is why `recent` exists.
+
+The normal rate is `blocked` (with `recent`, the sum of `window.blocked`) divided by the window
+counted from its first bucket with any queries.
 Today's first count is the last bucket when a bucket is a day or more, else the buckets since
 local midnight: the last `floor(seconds since midnight / unit_s) + 1`, one fewer when `current` is
-false. Without `window.queries`, a fly is 50 blocked queries; without `window.blocked`, the count
-for today starts from nothing.
+false. Without `window.queries`, and with `recent` without `window.blocked` as well, a fly is 50
+blocked queries; without `window.blocked`, the count for today starts from nothing.
 
 ### security
 

@@ -1,0 +1,30 @@
+{
+ "about": "A token Technitium does not know: HTTP 200 with the status invalid-token, and the source pauses. Shape from Technitium DNS Server 15.6.2.",
+ "settings": {},
+ "credentials": [
+  "token"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/dashboard/stats/get?type=LastHour&utc=true",
+    "headers": {
+     "Authorization": "Bearer {credential.token}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "server": "dns-server",
+     "status": "invalid-token",
+     "errorMessage": "Invalid token or session expired."
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "API token refused, or Technitium is older than version 15"
+ }
+}
