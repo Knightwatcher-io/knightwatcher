@@ -25,8 +25,8 @@ section's, and two enabled sources that read one provider at one address are ref
 [[sources.json]] holds the generic checks: each entry is the source "json:<name>", one value read
 from a JSON reply and tested, compiled into a provider of the check kind (collector/kinds/check.py)
 rather than naming one. It borrows the scene of a condition (`as`), which must be in the priority
-list, and its one header, if it has one, reads its value from KNIGHTWATCHER_<SECRET>_HEADER.
-Credentials come from environment variables named KNIGHTWATCHER_<SECRET>_<FIELD>, where SECRET is
+list, and its one header, if it has one, reads its value from KW_<SECRET>_HEADER.
+Credentials come from environment variables named KW_<SECRET>_<FIELD>, where SECRET is
 the source's `secret` setting, the provider's id unless it is set; no message ever carries a
 credential's value.
 """
@@ -99,7 +99,7 @@ LIST_REQUIRED = {
     for name in LISTS
 }
 
-# The fields a credential may have, the last part of KNIGHTWATCHER_<SECRET>_<FIELD>. The set is
+# The fields a credential may have, the last part of KW_<SECRET>_<FIELD>. The set is
 # fixed so that the credentials' names are known whatever the provider.
 CREDENTIAL_FIELDS = ("api_key", "token", "username", "password", "header")
 # A source's `secret` names variables, so it is letters, digits and underscores.
@@ -1256,11 +1256,9 @@ def load(config_path: str, env: Mapping[str, str] | None) -> Config:
     return build(raw, env, providers=providers_mod.scan(providers_folder(raw, config_path)))
 
 
-# The fields a credential variable ends with: KNIGHTWATCHER_<SECRET>_<FIELD>.
+# The fields a credential variable ends with: KW_<SECRET>_<FIELD>.
 _CREDENTIAL = re.compile(
-    r"^KNIGHTWATCHER_[A-Z0-9_]+_(?:"
-    + "|".join(sorted(f.upper() for f in CREDENTIAL_FIELDS))
-    + r")$"
+    r"^KW_[A-Z0-9_]+_(?:" + "|".join(sorted(f.upper() for f in CREDENTIAL_FIELDS)) + r")$"
 )
 
 
@@ -1268,7 +1266,7 @@ def credential_names(env: Mapping[str, str]) -> dict[str, bool]:
     """Which credential variables env holds, by name and never by value.
 
     Every variable the schema names is listed, true when it holds a value; so is any other
-    variable of the form KNIGHTWATCHER_<SECRET>_<FIELD> that holds one, such as the variables a
+    variable of the form KW_<SECRET>_<FIELD> that holds one, such as the variables a
     source's own `secret` names. The bundled server reads this to check a change on the admin
     page, since it gets no credential itself.
     """

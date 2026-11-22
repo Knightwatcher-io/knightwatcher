@@ -36,10 +36,10 @@
           "help": "Seconds between polls. The displays treat a state file older than three polls as stale and say so." },
         { "key": "output_dir", "type": "string", "default": "/out", "form": "a folder inside the container", "scope": "household",
           "gui": { "admin": { "section": "Collector", "label": "Output folder" } }, "editable": false,
-          "help": "Folder state.json is written to. compose.yaml mounts KNIGHTWATCHER_OUT here." },
+          "help": "Folder state.json is written to. compose.yaml mounts KW_OUT here." },
         { "key": "state_dir", "type": "string", "default": "/var/lib/knightwatcher", "form": "a folder inside the container", "scope": "household",
           "gui": { "admin": { "section": "Collector", "label": "Memory folder" } }, "editable": false,
-          "help": "Folder for memory.json and the collector's lock. compose.yaml mounts KNIGHTWATCHER_VAR here." },
+          "help": "Folder for memory.json and the collector's lock. compose.yaml mounts KW_VAR here." },
         { "key": "timezone", "type": "string", "default": "UTC", "form": "an IANA time zone, such as \"Europe/London\"", "scope": "household",
           "gui": { "admin": { "section": "Collector", "label": "Time zone" } }, "editable": true,
           "help": "Zone for the night hours and the times shown in words." },
@@ -54,7 +54,7 @@
           "help": "Where the host's /proc is mounted, for CPU, memory, load and the lock table." },
         { "key": "providers_dir", "type": "string", "default": "providers", "form": "a folder, relative to the one config.toml is in, or absolute", "scope": "household",
           "gui": { "admin": { "section": "Collector", "label": "Provider files folder" } }, "editable": false,
-          "help": "The folder of provider files of your own, one provider each, each named after its id with .toml (myflix.toml). Relative, it is taken from the folder config.toml is in, so the default is /etc/knightwatcher/providers in the containers, where compose.yaml mounts KNIGHTWATCHER_PROVIDERS. A folder that does not exist holds none. Read at start and again whenever a file in it changes." }
+          "help": "The folder of provider files of your own, one provider each, each named after its id with .toml (myflix.toml). Relative, it is taken from the folder config.toml is in, so the default is /etc/knightwatcher/providers in the containers, where compose.yaml mounts KW_PROVIDERS. A folder that does not exist holds none. Read at start and again whenever a file in it changes." }
       ]
     },
     {
@@ -280,7 +280,7 @@
           "help": "How often the source is read." },
         { "key": "log", "type": "string", "default": "/host/backup.log", "form": "a file inside the container", "scope": "household",
           "gui": { "admin": { "section": "Sources: backup", "label": "Log" } }, "editable": false,
-          "help": "The backup log, inside the container. compose.yaml mounts KNIGHTWATCHER_BACKUP_LOG here." },
+          "help": "The backup log, inside the container. compose.yaml mounts KW_BACKUP_LOG here." },
         { "key": "pattern", "type": "string", "default": "System Backup Completed: (.+)$", "form": "a regular expression with one group", "scope": "household",
           "gui": { "admin": { "section": "Sources: backup", "label": "Completion line" } }, "editable": true,
           "help": "Regular expression for a completion line; its first group is the date, in ISO 8601 or the form date prints, such as Thu 15 Jan 03:12:00 UTC 2026." },
@@ -368,7 +368,7 @@
           "help": "What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's, Tracearr's and Jellyfin's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone." }
+          "help": "The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's, Tracearr's and Jellyfin's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone." }
       ]
     },
     {
@@ -392,7 +392,7 @@
           "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD, Technitium's TOKEN). Left out, it is the provider's id. Set in config.toml alone." },
+          "help": "The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD, Technitium's TOKEN). Left out, it is the provider's id. Set in config.toml alone." },
         { "key": "fly_every_s", "type": "number", "default": 300.0, "min": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "A fly every" } }, "editable": true,
           "help": "Average seconds between flies while blocking runs at the household's normal rate, which the service's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query." }
@@ -422,7 +422,7 @@
           "help": "fail2ban's database, as the collector's container sees it through the mount of fail2ban's folder. Read by fail2ban alone, and refused with any other provider. Set in config.toml alone, with the mount." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: security", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names. fail2ban needs none; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone." }
+          "help": "The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals, for each field its provider names. fail2ban needs none; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone." }
       ]
     },
     {
@@ -443,7 +443,7 @@
           "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: Sonarr", "label": "Credential name" } }, "editable": false,
-          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
+          "help": "The name its API key is read under in .env: KW_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
       ]
     },
     {
@@ -464,7 +464,7 @@
           "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: Radarr", "label": "Credential name" } }, "editable": false,
-          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
+          "help": "The name its API key is read under in .env: KW_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
       ]
     },
     {
@@ -485,7 +485,7 @@
           "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: Lidarr", "label": "Credential name" } }, "editable": false,
-          "help": "The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
+          "help": "The name its API key is read under in .env: KW_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
       ]
     },
     {
@@ -514,7 +514,7 @@
           "help": "Whether the certificate of an https url is checked. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: more imports", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment." }
+          "help": "The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment." }
       ]
     },
     {
@@ -555,10 +555,10 @@
           "help": "How long the test must hold before the check is raised. It clears once the test has failed for conditions.clear_after_s, as every condition does; a read that fails counts as the test failing." },
         { "key": "header", "type": "string", "default": null, "form": "a header's name: letters, digits and -", "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Header" } }, "editable": false,
-          "help": "One header sent with the request, such as X-Api-Key or Authorization, its value read from .env as KNIGHTWATCHER_<SECRET>_HEADER and never written anywhere. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header." },
+          "help": "One header sent with the request, such as X-Api-Key or Authorization, its value read from .env as KW_<SECRET>_HEADER and never written anywhere. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the check's name, each - made _", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Credential name" } }, "editable": false,
-          "help": "With header: the name its value is read under in .env, KNIGHTWATCHER_<SECRET>_HEADER, in capitals. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. Only with header." },
+          "help": "With header: the name its value is read under in .env, KW_<SECRET>_HEADER, in capitals. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. Only with header." },
         { "key": "verify_tls", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Check the certificate" } }, "editable": false,
           "help": "Whether the certificate of an https url is checked. Only with an https url." },
@@ -790,77 +790,77 @@
       "default": false, "credentials": ["api_key"], "settings": [] }
   ],
   "env": [
-    { "name": "KNIGHTWATCHER_OUT", "scope": "path", "required": true, "default": null, "mount": "/out", "services": ["collector", "server"], "example": "./var/out",
+    { "name": "KW_OUT", "scope": "path", "required": true, "default": null, "mount": "/out", "services": ["collector", "server"], "example": "./var/out",
       "gui": { "admin": { "section": "Host", "label": "Output folder" } }, "editable": false,
       "help": "The host folder the collector writes state.json to. Mounted at /out in both containers, read-only in the server's, which serves it as data/: state.json, and the packs placed in its packs/ folder, which the page reads. Must exist and be writable by the collector's account." },
-    { "name": "KNIGHTWATCHER_BACKUP_LOG", "scope": "path", "required": true, "default": null, "mount": "/host/backup.log", "example": "/var/log/backup.log",
+    { "name": "KW_BACKUP_LOG", "scope": "path", "required": true, "default": null, "mount": "/host/backup.log", "example": "/var/log/backup.log",
       "gui": { "admin": { "section": "Host", "label": "Backup log" } }, "editable": false,
       "help": "The host's backup log, a single file. Mounted read-only at /host/backup.log." },
-    { "name": "KNIGHTWATCHER_DATA_DISK", "scope": "path", "required": true, "default": null, "mount": "/host/disks/data", "example": "/data/lost+found",
+    { "name": "KW_DATA_DISK", "scope": "path", "required": true, "default": null, "mount": "/host/disks/data", "example": "/data/lost+found",
       "gui": { "admin": { "section": "Host", "label": "Data disk" } }, "editable": false,
       "help": "Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size." },
-    { "name": "KNIGHTWATCHER_VAR", "scope": "path", "required": false, "default": "./var", "mount": "/var/lib/knightwatcher", "example": "./var",
+    { "name": "KW_VAR", "scope": "path", "required": false, "default": "./var", "mount": "/var/lib/knightwatcher", "example": "./var",
       "gui": { "admin": { "section": "Host", "label": "Memory folder" } }, "editable": false,
       "help": "The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account." },
-    { "name": "KNIGHTWATCHER_PROVIDERS", "scope": "path", "required": false, "default": "./providers", "mount": "/etc/knightwatcher/providers", "services": ["collector", "server"], "example": "./providers",
+    { "name": "KW_PROVIDERS", "scope": "path", "required": false, "default": "./providers", "mount": "/etc/knightwatcher/providers", "services": ["collector", "server"], "example": "./providers",
       "gui": { "admin": { "section": "Host", "label": "Provider files" } }, "editable": false,
       "help": "The host folder of provider files of your own, for services no built-in provider reads. Mounted read-only at /etc/knightwatcher/providers in both containers: the collector reads the files, and the server checks a change on the admin page by them. Must exist and be readable by uid 10001; the repository's own providers folder, empty, is the default." },
-    { "name": "KNIGHTWATCHER_SERVER_VAR", "scope": "path", "required": false, "default": "./var/server", "mount": "/var/lib/knightwatcher-server", "services": ["collector", "server"], "example": "./var/server",
+    { "name": "KW_SERVER_VAR", "scope": "path", "required": false, "default": "./var/server", "mount": "/var/lib/knightwatcher-server", "services": ["collector", "server"], "example": "./var/server",
       "gui": { "admin": { "section": "Server", "label": "Server folder" } }, "editable": false,
       "help": "The host folder for the bundled server's own files: the settings saved for every display, in settings.json, and those set on the admin page, in admin.json, with the admin page's sessions. Mounted at /var/lib/knightwatcher-server, the one place the server writes, and read-only at the same place in the collector, which takes up admin.json. Must exist and be writable by the server's account." },
-    { "name": "KNIGHTWATCHER_SERVER_ADDRESS", "scope": "server", "required": false, "default": "", "services": ["server"], "example": "127.0.0.1",
+    { "name": "KW_SERVER_ADDRESS", "scope": "server", "required": false, "default": "", "services": ["server"], "example": "127.0.0.1",
       "form": "an address of this host, or empty for all of them",
       "gui": { "admin": { "section": "Server", "label": "Address" } }, "editable": false,
       "help": "The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network." },
-    { "name": "KNIGHTWATCHER_SERVER_PORT", "scope": "server", "required": false, "default": "8080", "services": ["server"], "example": "8080",
+    { "name": "KW_SERVER_PORT", "scope": "server", "required": false, "default": "8080", "services": ["server"], "example": "8080",
       "form": "a TCP port number from 1 to 65535",
       "gui": { "admin": { "section": "Server", "label": "Port" } }, "editable": false,
       "help": "The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is." },
-    { "name": "KNIGHTWATCHER_ADMIN_PASSWORD", "scope": "server", "required": false, "default": "", "services": ["server"], "example": "a-long-password-of-your-own",
+    { "name": "KW_ADMIN_PASSWORD", "scope": "server", "required": false, "default": "", "services": ["server"], "example": "a-long-password-of-your-own",
       "form": "a password of at least 12 characters, or empty to leave the admin page off",
       "gui": { "admin": { "section": "Admin", "label": "Admin password" } }, "editable": false,
       "help": "The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out." },
-    { "name": "KNIGHTWATCHER_TAUTULLI_API_KEY", "scope": "credential", "provider": "tautulli", "field": "api_key", "secret": "tautulli", "default": null,
+    { "name": "KW_TAUTULLI_API_KEY", "scope": "credential", "provider": "tautulli", "field": "api_key", "secret": "tautulli", "default": null,
       "example": "0123456789abcdef0123456789abcdef", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Tautulli API key" } }, "editable": false,
       "help": "Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked." },
-    { "name": "KNIGHTWATCHER_PLEX_TOKEN", "scope": "credential", "provider": "plex", "field": "token", "secret": "plex", "default": null,
+    { "name": "KW_PLEX_TOKEN", "scope": "credential", "provider": "plex", "field": "token", "secret": "plex", "default": null,
       "example": "AbCdEfGhIjKlMnOpQrSt", "form": "a Plex token",
       "gui": { "admin": { "section": "Credentials", "label": "Plex token" } }, "editable": false,
       "help": "The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = \"plex\". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password." },
-    { "name": "KNIGHTWATCHER_TRACEARR_API_KEY", "scope": "credential", "provider": "tracearr", "field": "api_key", "secret": "tracearr", "default": null,
+    { "name": "KW_TRACEARR_API_KEY", "scope": "credential", "provider": "tracearr", "field": "api_key", "secret": "tracearr", "default": null,
       "example": "trr_pub_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE", "form": "trr_pub_ and 43 letters, digits, - and _",
       "gui": { "admin": { "section": "Credentials", "label": "Tracearr API key" } }, "editable": false,
       "help": "Tracearr's public API key, for the tracearr provider, which [sources.streams] reads with from = \"tracearr\". Made by Tracearr's owner: Settings, Data & API, API, Generate Key. It is sent in the Authorization header as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a stream: keep it as you would the password. Tracearr keeps one key, and Regenerate ends the old one for whatever else uses it." },
-    { "name": "KNIGHTWATCHER_JELLYFIN_API_KEY", "scope": "credential", "provider": "jellyfin", "field": "api_key", "secret": "jellyfin", "default": null,
+    { "name": "KW_JELLYFIN_API_KEY", "scope": "credential", "provider": "jellyfin", "field": "api_key", "secret": "jellyfin", "default": null,
       "example": "0123456789abcdef0123456789abcdef", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Jellyfin API key" } }, "editable": false,
       "help": "A Jellyfin API key, for the jellyfin provider, which [sources.streams] reads with from = \"jellyfin\". Made by a Jellyfin administrator: Dashboard, API Keys, the + button. It is sent in the Authorization header, never in the address. A key sees every user's sessions and has an administrator's rights over all of Jellyfin: keep it as you would the password." },
-    { "name": "KNIGHTWATCHER_ADGUARD_USERNAME", "scope": "credential", "provider": "adguard", "field": "username", "secret": "adguard", "default": null,
+    { "name": "KW_ADGUARD_USERNAME", "scope": "credential", "provider": "adguard", "field": "username", "secret": "adguard", "default": null,
       "example": "knightwatcher", "form": "a user name",
       "gui": { "admin": { "section": "Credentials", "label": "AdGuard Home user name" } }, "editable": false,
       "help": "The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface." },
-    { "name": "KNIGHTWATCHER_ADGUARD_PASSWORD", "scope": "credential", "provider": "adguard", "field": "password", "secret": "adguard", "default": null,
+    { "name": "KW_ADGUARD_PASSWORD", "scope": "credential", "provider": "adguard", "field": "password", "secret": "adguard", "default": null,
       "example": "an-invented-password", "form": "a password",
       "gui": { "admin": { "section": "Credentials", "label": "AdGuard Home password" } }, "editable": false,
       "help": "That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins." },
-    { "name": "KNIGHTWATCHER_PIHOLE_PASSWORD", "scope": "credential", "provider": "pihole", "field": "password", "secret": "pihole", "default": null,
+    { "name": "KW_PIHOLE_PASSWORD", "scope": "credential", "provider": "pihole", "field": "password", "secret": "pihole", "default": null,
       "example": "an-invented-app-password", "form": "a password",
       "gui": { "admin": { "section": "Credentials", "label": "Pi-hole password" } }, "editable": false,
       "help": "A Pi-hole 6 app password, for the pihole provider, which [sources.adblock] reads with from = \"pihole\". In Pi-hole: Settings, Web interface / API, Configure app password. The web password works too, but not with two-factor authentication on, since the collector cannot give a code. Version 5 is not supported." },
-    { "name": "KNIGHTWATCHER_TECHNITIUM_TOKEN", "scope": "credential", "provider": "technitium", "field": "token", "secret": "technitium", "default": null,
+    { "name": "KW_TECHNITIUM_TOKEN", "scope": "credential", "provider": "technitium", "field": "token", "secret": "technitium", "default": null,
       "example": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "form": "64 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Technitium API token" } }, "editable": false,
       "help": "A Technitium DNS Server API token, for the technitium provider, which [sources.adblock] reads with from = \"technitium\". In Technitium, signed in as a user of its own in no group but Everyone, which can view but change nothing: the user menu, Create API Token. The token does not expire. It is sent in the Authorization header, which needs Technitium 15 or later." },
-    { "name": "KNIGHTWATCHER_SONARR_API_KEY", "scope": "credential", "provider": "sonarr", "field": "api_key", "secret": "sonarr", "default": null,
+    { "name": "KW_SONARR_API_KEY", "scope": "credential", "provider": "sonarr", "field": "api_key", "secret": "sonarr", "default": null,
       "example": "fedcba9876543210fedcba9876543210", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Sonarr API key" } }, "editable": false,
       "help": "Sonarr's API key, for the sonarr provider, which [sources.sonarr] reads. In Sonarr: Settings, General, Security, API Key." },
-    { "name": "KNIGHTWATCHER_RADARR_API_KEY", "scope": "credential", "provider": "radarr", "field": "api_key", "secret": "radarr", "default": null,
+    { "name": "KW_RADARR_API_KEY", "scope": "credential", "provider": "radarr", "field": "api_key", "secret": "radarr", "default": null,
       "example": "00112233445566778899aabbccddeeff", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Radarr API key" } }, "editable": false,
       "help": "Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key." },
-    { "name": "KNIGHTWATCHER_LIDARR_API_KEY", "scope": "credential", "provider": "lidarr", "field": "api_key", "secret": "lidarr", "default": null,
+    { "name": "KW_LIDARR_API_KEY", "scope": "credential", "provider": "lidarr", "field": "api_key", "secret": "lidarr", "default": null,
       "example": "0f1e2d3c4b5a69780f1e2d3c4b5a6978", "form": "32 hexadecimal characters",
       "gui": { "admin": { "section": "Credentials", "label": "Lidarr API key" } }, "editable": false,
       "help": "Lidarr's API key, for the lidarr provider, which [sources.lidarr] reads. In Lidarr: Settings, General, Security, API Key." }

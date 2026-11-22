@@ -35,11 +35,11 @@ BACKOFF_S = 1200
 def _env() -> dict[str, str]:
     """Invented credentials, made afresh for each run so that none is ever written down."""
     return {
-        "KNIGHTWATCHER_TAUTULLI_API_KEY": secrets.token_hex(16),
-        "KNIGHTWATCHER_ADGUARD_USERNAME": "kw-" + secrets.token_hex(4),
-        "KNIGHTWATCHER_ADGUARD_PASSWORD": secrets.token_urlsafe(12),
-        "KNIGHTWATCHER_SONARR_API_KEY": secrets.token_hex(16),
-        "KNIGHTWATCHER_RADARR_API_KEY": secrets.token_hex(16),
+        "KW_TAUTULLI_API_KEY": secrets.token_hex(16),
+        "KW_ADGUARD_USERNAME": "kw-" + secrets.token_hex(4),
+        "KW_ADGUARD_PASSWORD": secrets.token_urlsafe(12),
+        "KW_SONARR_API_KEY": secrets.token_hex(16),
+        "KW_RADARR_API_KEY": secrets.token_hex(16),
     }
 
 
@@ -360,8 +360,8 @@ SCENARIOS: dict[str, dict] = {
     "adblock-quarter": {
         "sources": {"adblock": {"fly_every_s": 0.5, "secret": "dns"}},
         "env": {
-            "KNIGHTWATCHER_DNS_USERNAME": "kw-" + secrets.token_hex(4),
-            "KNIGHTWATCHER_DNS_PASSWORD": secrets.token_urlsafe(12),
+            "KW_DNS_USERNAME": "kw-" + secrets.token_hex(4),
+            "KW_DNS_PASSWORD": secrets.token_urlsafe(12),
         },
         "polls": {"adblock": adblock_polls()[:8]},
     },
@@ -422,7 +422,7 @@ SCENARIOS: dict[str, dict] = {
     },
     "radarr": {
         "sources": {"radarr": {"secret": "films"}},
-        "env": {"KNIGHTWATCHER_FILMS_API_KEY": secrets.token_hex(16)},
+        "env": {"KW_FILMS_API_KEY": secrets.token_hex(16)},
         "polls": {"radarr": radarr_polls()},
     },
     # All four at once, as a wall reads them: the quiet line, the streaming words and the events

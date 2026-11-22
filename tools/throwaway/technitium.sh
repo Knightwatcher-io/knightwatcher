@@ -174,7 +174,7 @@ collector() { # dir [docker run options...] -- [collector arguments...]
   shift
   docker run --network "$NET" "${CAPS[@]}" --read-only \
     --user 10001:10001 -w /app -e PYTHONDONTWRITEBYTECODE=1 \
-    -e KNIGHTWATCHER_TECHNITIUM_TOKEN \
+    -e KW_TECHNITIUM_TOKEN \
     -v "$root/collector:/app/collector:ro" \
     -v "$dir/config.toml:/etc/knightwatcher/config.toml:ro" \
     -v "$dir/out:/out" -v "$dir/var:/var/lib/knightwatcher" -v "$dir/rec:/rec" \
@@ -251,12 +251,12 @@ as_collector() { # folder command...
   local folder="$1"
   shift
   docker run --rm --network none "${CAPS[@]}" --read-only --user 10001:10001 \
-    -e KNIGHTWATCHER_TECHNITIUM_TOKEN -v "$folder:/scan:ro" "$PYTHON_IMAGE" "$@"
+    -e KW_TECHNITIUM_TOKEN -v "$folder:/scan:ro" "$PYTHON_IMAGE" "$@"
 }
 holds_token() { # what folder
   as_collector "$2" python -c '
 import os, sys
-token = os.environ["KNIGHTWATCHER_TECHNITIUM_TOKEN"].encode()
+token = os.environ["KW_TECHNITIUM_TOKEN"].encode()
 files = [os.path.join(d, f) for d, _, names in os.walk("/scan") for f in names]
 held = [f for f in files if token in open(f, "rb").read()]
 names = ", ".join(sorted(os.path.relpath(f, "/scan") for f in files))
@@ -275,8 +275,8 @@ start_technitium "$NAME" "$TECHNITIUM_IMAGE"
 helper "$NAME" wait
 
 say "1. a user, its API token and a blocked domain, through the API"
-KNIGHTWATCHER_TECHNITIUM_TOKEN="$(helper "$NAME" setup "$DOMAIN")"
-export KNIGHTWATCHER_TECHNITIUM_TOKEN
+KW_TECHNITIUM_TOKEN="$(helper "$NAME" setup "$DOMAIN")"
+export KW_TECHNITIUM_TOKEN
 
 say "2. the collector started"
 run="$scratch/run"
@@ -339,7 +339,7 @@ wrong="$scratch/wrong"
 state_dirs "$wrong"
 write_config "$wrong/config.toml" "http://$NAME:5380"
 (
-  KNIGHTWATCHER_TECHNITIUM_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+  KW_TECHNITIUM_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
   collector "$wrong" --rm -- --once
   show_state "$wrong"
   collector "$wrong" --rm -- --once
@@ -353,8 +353,8 @@ old="$scratch/old"
 state_dirs "$old"
 write_config "$old/config.toml" "http://$NAME14:5380"
 (
-  KNIGHTWATCHER_TECHNITIUM_TOKEN="$(helper "$NAME14" setup "$DOMAIN")"
-  export KNIGHTWATCHER_TECHNITIUM_TOKEN
+  KW_TECHNITIUM_TOKEN="$(helper "$NAME14" setup "$DOMAIN")"
+  export KW_TECHNITIUM_TOKEN
   collector "$old" --rm -- --probe adblock || echo "(exit $?)"
 )
 

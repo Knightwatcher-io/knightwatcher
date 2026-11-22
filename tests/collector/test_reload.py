@@ -121,14 +121,12 @@ class MissingCredentialsTest(unittest.TestCase):
         with self.assertRaises(ConfigError) as caught:
             build(self.RAW, {})
         self.assertEqual(
-            caught.exception.problems, [".env: KNIGHTWATCHER_SONARR_API_KEY missing (for sonarr)"]
+            caught.exception.problems, [".env: KW_SONARR_API_KEY missing (for sonarr)"]
         )
 
     def test_reported_it_leaves_the_source_failing_with_the_variables_name(self):
         c = build(self.RAW, {}, missing="report")
-        self.assertEqual(
-            c.missing, {"sonarr": [".env: KNIGHTWATCHER_SONARR_API_KEY missing (for sonarr)"]}
-        )
+        self.assertEqual(c.missing, {"sonarr": [".env: KW_SONARR_API_KEY missing (for sonarr)"]})
         from collector.sources import build_sources
 
         (source,) = build_sources(c)
@@ -136,7 +134,7 @@ class MissingCredentialsTest(unittest.TestCase):
         self.assertEqual(source.name, "sonarr")
         with self.assertRaises(Exception) as caught:
             source.fetch(None)
-        self.assertEqual(str(caught.exception), "KNIGHTWATCHER_SONARR_API_KEY missing")
+        self.assertEqual(str(caught.exception), "KW_SONARR_API_KEY missing")
 
     def test_other_problems_are_still_refused(self):
         raw = {"collector": {"interval_s": 2}, **self.RAW}
@@ -149,19 +147,19 @@ class CredentialNamesTest(unittest.TestCase):
         value = secrets.token_hex(16)
         names = credential_names(
             {
-                "KNIGHTWATCHER_SONARR_API_KEY": value,
-                "KNIGHTWATCHER_SONARR_4K_API_KEY": value,
-                "KNIGHTWATCHER_RADARR_API_KEY": "",
-                "KNIGHTWATCHER_ADMIN_PASSWORD": value,
-                "KNIGHTWATCHER_OUT": "/out",
+                "KW_SONARR_API_KEY": value,
+                "KW_SONARR_4K_API_KEY": value,
+                "KW_RADARR_API_KEY": "",
+                "KW_ADMIN_PASSWORD": value,
+                "KW_OUT": "/out",
                 "PATH": "/usr/bin",
             }
         )
-        self.assertTrue(names["KNIGHTWATCHER_SONARR_API_KEY"])
-        self.assertTrue(names["KNIGHTWATCHER_SONARR_4K_API_KEY"])
-        self.assertFalse(names["KNIGHTWATCHER_RADARR_API_KEY"])
-        self.assertFalse(names["KNIGHTWATCHER_TAUTULLI_API_KEY"])
-        for absent in ("KNIGHTWATCHER_ADMIN_PASSWORD", "KNIGHTWATCHER_OUT", "PATH"):
+        self.assertTrue(names["KW_SONARR_API_KEY"])
+        self.assertTrue(names["KW_SONARR_4K_API_KEY"])
+        self.assertFalse(names["KW_RADARR_API_KEY"])
+        self.assertFalse(names["KW_TAUTULLI_API_KEY"])
+        for absent in ("KW_ADMIN_PASSWORD", "KW_OUT", "PATH"):
             self.assertNotIn(absent, names)
         self.assertNotIn(value, json.dumps(names))
         self.assertTrue(all(v in (True, False) for v in names.values()))
@@ -211,7 +209,7 @@ class SettingsTest(unittest.TestCase):
         write_admin(self.admin_path, {"sources.sonarr.enabled": False})
         with self.assertRaises(ConfigError) as caught:
             self.settings.start()
-        self.assertIn("KNIGHTWATCHER_SONARR_API_KEY missing", caught.exception.problems[0])
+        self.assertIn("KW_SONARR_API_KEY missing", caught.exception.problems[0])
 
     def test_a_credential_the_store_needs_is_reported_and_the_rest_runs(self):
         self.write_config('[sources.sonarr]\nenabled = false\nurl = "http://192.0.2.30:8989"\n')
@@ -220,9 +218,7 @@ class SettingsTest(unittest.TestCase):
             c, said = self.settings.start()
         self.assertIn("sonarr", c.missing)
         self.assertEqual(said["admin"], version)
-        self.assertEqual(
-            said["problems"], [".env: KNIGHTWATCHER_SONARR_API_KEY missing (for sonarr)"]
-        )
+        self.assertEqual(said["problems"], [".env: KW_SONARR_API_KEY missing (for sonarr)"])
 
     def test_a_change_to_either_file_is_seen_and_taken_up(self):
         running, _ = self.settings.start()
@@ -444,11 +440,9 @@ class ReconfigureTest(unittest.TestCase):
         self.runner.cycle()
         s = self.state()
         self.assertEqual(s["config"]["admin"], version)
-        self.assertEqual(
-            s["config"]["problems"], [".env: KNIGHTWATCHER_SONARR_API_KEY missing (for sonarr)"]
-        )
+        self.assertEqual(s["config"]["problems"], [".env: KW_SONARR_API_KEY missing (for sonarr)"])
         self.assertEqual(s["sources"]["sonarr"]["ok"], False)
-        self.assertEqual(s["sources"]["sonarr"]["error"], "KNIGHTWATCHER_SONARR_API_KEY missing")
+        self.assertEqual(s["sources"]["sonarr"]["error"], "KW_SONARR_API_KEY missing")
         self.assertEqual(s["sources"]["host"]["ok"], True, "the rest carries on")
 
 
@@ -493,8 +487,8 @@ class CliTest(unittest.TestCase):
                 f'proc_root = "{self.proc.root}"\n[sources.ssh]\n'
             )
         self.value = secrets.token_hex(16)
-        clean = {k: v for k, v in os.environ.items() if not k.startswith("KNIGHTWATCHER_")}
-        clean["KNIGHTWATCHER_SONARR_API_KEY"] = self.value
+        clean = {k: v for k, v in os.environ.items() if not k.startswith("KW_")}
+        clean["KW_SONARR_API_KEY"] = self.value
         patcher = mock.patch.dict(os.environ, clean, clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -515,8 +509,8 @@ class CliTest(unittest.TestCase):
         self.assertNotIn(self.value, text)
         self.assertNotIn(self.value, err)
         names = json.loads(text)
-        self.assertIs(names["KNIGHTWATCHER_SONARR_API_KEY"], True)
-        self.assertIs(names["KNIGHTWATCHER_RADARR_API_KEY"], False)
+        self.assertIs(names["KW_SONARR_API_KEY"], True)
+        self.assertIs(names["KW_RADARR_API_KEY"], False)
         self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o640)
         with open(os.path.join(self.out, "state.json"), encoding="utf-8") as fh:
             state = json.load(fh)
@@ -598,7 +592,7 @@ class StreamsShowTest(unittest.TestCase):
                 f'[sources.streams]\nurl = "{self.http.url}"\n'
             )
         self.clock = Clock()
-        key = {"KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-" + secrets.token_hex(8)}
+        key = {"KW_TAUTULLI_API_KEY": "tk-" + secrets.token_hex(8)}
         self.settings = reload.Settings(config_path, self.admin_path, key)
         c, _said = self.settings.start()
         self.runner = Runner(c, Memory(self.var), clock=self.clock)

@@ -90,7 +90,7 @@ class Folder(unittest.TestCase):
         os.mkdir(self.folder)
         self.config_path = os.path.join(self.root, "config.toml")
         self.token = secrets.token_hex(16)
-        self.env = {"KNIGHTWATCHER_MYFLIX_TOKEN": self.token}
+        self.env = {"KW_MYFLIX_TOKEN": self.token}
 
     def scan(self) -> providers.Providers:
         return providers.scan(self.folder)
@@ -236,12 +236,10 @@ class ConfigTest(Folder):
         write(self.folder, "myflix.toml", MYFLIX)
         with self.assertRaises(ConfigError) as cm:
             self.config({"from": "myflix"}, env={})
-        self.assertEqual(
-            cm.exception.problems, [".env: KNIGHTWATCHER_MYFLIX_TOKEN missing (for streams)"]
-        )
+        self.assertEqual(cm.exception.problems, [".env: KW_MYFLIX_TOKEN missing (for streams)"])
         config = self.config(
             {"from": "myflix", "secret": "flix_two"},
-            env={"KNIGHTWATCHER_FLIX_TWO_TOKEN": self.token},
+            env={"KW_FLIX_TWO_TOKEN": self.token},
         )
         self.assertEqual(config.secret("streams"), {"token": self.token})
 
@@ -369,7 +367,7 @@ class CommandLineTest(Folder):
         self.http = FakeHttp()
         self.addCleanup(self.http.close)
         self.http.routes["/api/sessions"] = (200, REPLY)
-        clean = {k: v for k, v in os.environ.items() if not k.startswith("KNIGHTWATCHER_")}
+        clean = {k: v for k, v in os.environ.items() if not k.startswith("KW_")}
         patcher = mock.patch.dict(os.environ, {**clean, **self.env}, clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -425,7 +423,7 @@ class CommandLineTest(Folder):
         code, out, err = self.run_cli("--probe", "streams")
         self.assertEqual(code, 0, err)
         self.assertIn("probe streams: provider myflix (Myflix), show = names\n", out)
-        self.assertIn("credentials: KNIGHTWATCHER_MYFLIX_TOKEN\n", out)
+        self.assertIn("credentials: KW_MYFLIX_TOKEN\n", out)
         self.assertNotIn("Robin", out)
         self.assertNotIn(self.token, out + err)
 

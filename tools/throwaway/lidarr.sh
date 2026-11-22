@@ -71,7 +71,7 @@ BASE = "http://" + sys.argv[1] + ":8686"
 for _ in range(180):
     try:
         req = urllib.request.Request(BASE + "/api/v1/system/status",
-                                     headers={"X-Api-Key": os.environ["KNIGHTWATCHER_LIDARR_API_KEY"]})
+                                     headers={"X-Api-Key": os.environ["KW_LIDARR_API_KEY"]})
         with urllib.request.urlopen(req, timeout=5) as resp:
             status = json.loads(resp.read())
         print(f"Lidarr {status['version']} answers, its branch {status['branch']}")
@@ -124,7 +124,7 @@ collector() { # dir [docker run options...] -- [collector arguments...]
   shift
   docker run --network "$NET" "${CAPS[@]}" --read-only \
     --user 10001:10001 -w /app -e PYTHONDONTWRITEBYTECODE=1 \
-    -e KNIGHTWATCHER_LIDARR_API_KEY -e KNIGHTWATCHER_LIDARR_TWO_API_KEY \
+    -e KW_LIDARR_API_KEY -e KW_LIDARR_TWO_API_KEY \
     -v "$root/collector:/app/collector:ro" \
     -v "$dir/config.toml:/etc/knightwatcher/config.toml:ro" \
     -v "$dir/out:/out" -v "$dir/var:/var/lib/knightwatcher" -v "$dir/rec:/rec" \
@@ -134,7 +134,7 @@ collector() { # dir [docker run options...] -- [collector arguments...]
 
 helper() {
   docker run --rm --network "$NET" "${CAPS[@]}" --read-only -w /app \
-    -e PYTHONDONTWRITEBYTECODE=1 -e KNIGHTWATCHER_LIDARR_API_KEY \
+    -e PYTHONDONTWRITEBYTECODE=1 -e KW_LIDARR_API_KEY \
     -v "$scratch/tools:/tools:ro" "$PYTHON_IMAGE" python /tools/helper.py "$@"
 }
 
@@ -174,12 +174,12 @@ as_collector() { # folder command...
   local folder="$1"
   shift
   docker run --rm --network none "${CAPS[@]}" --read-only --user 10001:10001 \
-    -e KNIGHTWATCHER_LIDARR_API_KEY -v "$folder:/scan:ro" "$PYTHON_IMAGE" "$@"
+    -e KW_LIDARR_API_KEY -v "$folder:/scan:ro" "$PYTHON_IMAGE" "$@"
 }
 holds_key() { # what folder
   as_collector "$2" python -c '
 import os, sys
-key = os.environ["KNIGHTWATCHER_LIDARR_API_KEY"].encode()
+key = os.environ["KW_LIDARR_API_KEY"].encode()
 files = [os.path.join(d, f) for d, _, names in os.walk("/scan") for f in names]
 held = [f for f in files if key in open(f, "rb").read()]
 names = ", ".join(sorted(os.path.relpath(f, "/scan") for f in files))
@@ -194,20 +194,20 @@ docker run -d --name "$NAME" --network "$NET" --network-alias "$ALIAS" "${CAPS[@
   -v "$scratch/config:/config" "$LIDARR_IMAGE" >/dev/null
 # The key Lidarr made on its first start, read from the config.xml it wrote. Never printed.
 for _ in $(seq 120); do
-  KNIGHTWATCHER_LIDARR_API_KEY="$(python3 - "$scratch/config/config.xml" <<'EOF' 2>/dev/null || true
+  KW_LIDARR_API_KEY="$(python3 - "$scratch/config/config.xml" <<'EOF' 2>/dev/null || true
 import sys, xml.etree.ElementTree as ET
 key = ET.parse(sys.argv[1]).getroot().findtext("ApiKey") or ""
 print(key)
 EOF
 )"
-  [[ -n "$KNIGHTWATCHER_LIDARR_API_KEY" ]] && break
+  [[ -n "$KW_LIDARR_API_KEY" ]] && break
   sleep 1
 done
-[[ -n "$KNIGHTWATCHER_LIDARR_API_KEY" ]] || { echo "Lidarr wrote no API key" >&2; exit 1; }
+[[ -n "$KW_LIDARR_API_KEY" ]] || { echo "Lidarr wrote no API key" >&2; exit 1; }
 # The entry of [[sources.imports]] reads the same key under a secret of its own.
-KNIGHTWATCHER_LIDARR_TWO_API_KEY="$KNIGHTWATCHER_LIDARR_API_KEY"
-export KNIGHTWATCHER_LIDARR_API_KEY KNIGHTWATCHER_LIDARR_TWO_API_KEY
-echo "config.xml written; its API key is ${#KNIGHTWATCHER_LIDARR_API_KEY} characters"
+KW_LIDARR_TWO_API_KEY="$KW_LIDARR_API_KEY"
+export KW_LIDARR_API_KEY KW_LIDARR_TWO_API_KEY
+echo "config.xml written; its API key is ${#KW_LIDARR_API_KEY} characters"
 helper "$NAME"
 
 say "1. the collector started; the empty history"
@@ -271,7 +271,7 @@ wrong="$scratch/wrong"
 state_dirs "$wrong"
 write_config "$wrong/config.toml" "http://$NAME:8686"
 (
-  KNIGHTWATCHER_LIDARR_API_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+  KW_LIDARR_API_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
   collector "$wrong" --rm -- --once
   show_state "$wrong"
   collector "$wrong" --rm -- --once

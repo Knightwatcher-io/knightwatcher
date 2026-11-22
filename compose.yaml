@@ -31,17 +31,17 @@ services:
     # provider reads (a secret of your own, or a provider file's) is named the same way in the
     # collector's environment in compose.override.yaml; docs/configuration.md has the snippet.
     environment:
-      KNIGHTWATCHER_TAUTULLI_API_KEY: ${KNIGHTWATCHER_TAUTULLI_API_KEY:-}
-      KNIGHTWATCHER_PLEX_TOKEN: ${KNIGHTWATCHER_PLEX_TOKEN:-}
-      KNIGHTWATCHER_TRACEARR_API_KEY: ${KNIGHTWATCHER_TRACEARR_API_KEY:-}
-      KNIGHTWATCHER_JELLYFIN_API_KEY: ${KNIGHTWATCHER_JELLYFIN_API_KEY:-}
-      KNIGHTWATCHER_ADGUARD_USERNAME: ${KNIGHTWATCHER_ADGUARD_USERNAME:-}
-      KNIGHTWATCHER_ADGUARD_PASSWORD: ${KNIGHTWATCHER_ADGUARD_PASSWORD:-}
-      KNIGHTWATCHER_PIHOLE_PASSWORD: ${KNIGHTWATCHER_PIHOLE_PASSWORD:-}
-      KNIGHTWATCHER_TECHNITIUM_TOKEN: ${KNIGHTWATCHER_TECHNITIUM_TOKEN:-}
-      KNIGHTWATCHER_SONARR_API_KEY: ${KNIGHTWATCHER_SONARR_API_KEY:-}
-      KNIGHTWATCHER_RADARR_API_KEY: ${KNIGHTWATCHER_RADARR_API_KEY:-}
-      KNIGHTWATCHER_LIDARR_API_KEY: ${KNIGHTWATCHER_LIDARR_API_KEY:-}
+      KW_TAUTULLI_API_KEY: ${KW_TAUTULLI_API_KEY:-}
+      KW_PLEX_TOKEN: ${KW_PLEX_TOKEN:-}
+      KW_TRACEARR_API_KEY: ${KW_TRACEARR_API_KEY:-}
+      KW_JELLYFIN_API_KEY: ${KW_JELLYFIN_API_KEY:-}
+      KW_ADGUARD_USERNAME: ${KW_ADGUARD_USERNAME:-}
+      KW_ADGUARD_PASSWORD: ${KW_ADGUARD_PASSWORD:-}
+      KW_PIHOLE_PASSWORD: ${KW_PIHOLE_PASSWORD:-}
+      KW_TECHNITIUM_TOKEN: ${KW_TECHNITIUM_TOKEN:-}
+      KW_SONARR_API_KEY: ${KW_SONARR_API_KEY:-}
+      KW_RADARR_API_KEY: ${KW_RADARR_API_KEY:-}
+      KW_LIDARR_API_KEY: ${KW_LIDARR_API_KEY:-}
     volumes:
       # Settings, read at start and again whenever the file is written in place.
       - type: bind
@@ -52,7 +52,7 @@ services:
       # Provider files of the user's own, beside config.toml, read at start and again whenever one
       # changes. Left out of .env, it is the repository's providers folder, which ships empty.
       - type: bind
-        source: ${KNIGHTWATCHER_PROVIDERS:-./providers}
+        source: ${KW_PROVIDERS:-./providers}
         target: /etc/knightwatcher/providers
         read_only: true
         bind: { create_host_path: false }
@@ -64,30 +64,30 @@ services:
         bind: { create_host_path: false }
       # The backup log, a single file rotated in place.
       - type: bind
-        source: ${KNIGHTWATCHER_BACKUP_LOG:?set KNIGHTWATCHER_BACKUP_LOG in .env}
+        source: ${KW_BACKUP_LOG:?set KW_BACKUP_LOG in .env}
         target: /host/backup.log
         read_only: true
         bind: { create_host_path: false }
       # Any small folder on the data volume, so statvfs can see the volume's size.
       - type: bind
-        source: ${KNIGHTWATCHER_DATA_DISK:?set KNIGHTWATCHER_DATA_DISK in .env}
+        source: ${KW_DATA_DISK:?set KW_DATA_DISK in .env}
         target: /host/disks/data
         read_only: true
         bind: { create_host_path: false }
       # Where state.json is written, for the server to serve.
       - type: bind
-        source: ${KNIGHTWATCHER_OUT:?set KNIGHTWATCHER_OUT in .env}
+        source: ${KW_OUT:?set KW_OUT in .env}
         target: /out
         bind: { create_host_path: false }
       # What survives a restart: the event sequence and the last-seen markers.
       - type: bind
-        source: ${KNIGHTWATCHER_VAR:-./var}
+        source: ${KW_VAR:-./var}
         target: /var/lib/knightwatcher
         bind: { create_host_path: false }
       # The server's folder, read only: what is set on the admin page, in admin.json, laid over
       # config.toml and taken up between polls.
       - type: bind
-        source: ${KNIGHTWATCHER_SERVER_VAR:-./var/server}
+        source: ${KW_SERVER_VAR:-./var/server}
         target: /var/lib/knightwatcher-server
         read_only: true
         bind: { create_host_path: false }
@@ -114,16 +114,16 @@ services:
     # The admin page's password, and nothing else from .env. Left empty, or shorter than 12
     # characters, the admin page stays off.
     environment:
-      KNIGHTWATCHER_ADMIN_PASSWORD: ${KNIGHTWATCHER_ADMIN_PASSWORD:-}
+      KW_ADMIN_PASSWORD: ${KW_ADMIN_PASSWORD:-}
     # Inside the container it listens on 8080; on the host, at the address and port in .env. With
     # no address it is published on all of the host's addresses.
     ports:
-      - "${KNIGHTWATCHER_SERVER_ADDRESS:+${KNIGHTWATCHER_SERVER_ADDRESS:-}:}${KNIGHTWATCHER_SERVER_PORT:-8080}:8080"
+      - "${KW_SERVER_ADDRESS:+${KW_SERVER_ADDRESS:-}:}${KW_SERVER_PORT:-8080}:8080"
     volumes:
       # The collector's output: state.json, the packs it downloaded, and the names of the
       # credentials it holds (credentials.json, read and never served). Read only.
       - type: bind
-        source: ${KNIGHTWATCHER_OUT:?set KNIGHTWATCHER_OUT in .env}
+        source: ${KW_OUT:?set KW_OUT in .env}
         target: /out
         read_only: true
         bind: { create_host_path: false }
@@ -136,13 +136,13 @@ services:
         bind: { create_host_path: false }
       # The provider files, read only, for the same checks: a source's `from` may name one.
       - type: bind
-        source: ${KNIGHTWATCHER_PROVIDERS:-./providers}
+        source: ${KW_PROVIDERS:-./providers}
         target: /etc/knightwatcher/providers
         read_only: true
         bind: { create_host_path: false }
       # The server's own folder, where the shared settings and the admin page's are kept: the one
       # place it writes.
       - type: bind
-        source: ${KNIGHTWATCHER_SERVER_VAR:-./var/server}
+        source: ${KW_SERVER_VAR:-./var/server}
         target: /var/lib/knightwatcher-server
         bind: { create_host_path: false }

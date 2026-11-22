@@ -79,7 +79,7 @@
   const isWall = path => WALL.includes(path.split('.')[0]);
   /* The admin section's place, "Conditions: under attack": the page, and the group within it. */
   const groupOf = section => { const i = section.indexOf(': '); return i < 0 ? section : cap(section.slice(i + 2)); };
-  const varOf = (secret, field) => 'KNIGHTWATCHER_' + secret.toUpperCase() + '_' + field.toUpperCase();
+  const varOf = (secret, field) => 'KW_' + secret.toUpperCase() + '_' + field.toUpperCase();
   /* The provider a source reads: its from, or the provider of its own name. A provider names the
      credentials it reads. */
   const providerOf = name => (SPEC['sources.' + name + '.from'] ? val('sources.' + name + '.from') || SPEC['sources.' + name + '.from'].default : name);
@@ -869,9 +869,9 @@
   }
 
   function pageEnv(m) {
-    const pw = S.env.find(e => e.name === 'KNIGHTWATCHER_ADMIN_PASSWORD');
+    const pw = S.env.find(e => e.name === 'KW_ADMIN_PASSWORD');
     const a = card('Admin password', null, 'The password for this page. It is set in .env and nowhere else, and this page cannot change it.');
-    const r0 = el('div', 'envrow'), l0 = el('div', 'lab'); l0.appendChild(el('b', '', 'Admin password')); l0.appendChild(el('code', '', 'KNIGHTWATCHER_ADMIN_PASSWORD')); r0.appendChild(l0);
+    const r0 = el('div', 'envrow'), l0 = el('div', 'lab'); l0.appendChild(el('b', '', 'Admin password')); l0.appendChild(el('code', '', 'KW_ADMIN_PASSWORD')); r0.appendChild(l0);
     const c0 = el('div', 'ctl'); c0.appendChild(rich('p', 'help', pw ? pw.help : '')); r0.appendChild(c0);
     const s0 = el('div', 'st'); s0.appendChild(el('span', 'tag ok', 'Set')); r0.appendChild(s0); a.appendChild(r0);
     m.appendChild(a);
@@ -994,7 +994,7 @@
       c.appendChild(rich('p', '', short12 ? 'The admin password in .env is shorter than 12 characters, so this page stays shut. The wall displays and their settings screens work as before.'
         : /has no/.test(auth.error) ? 'The server has no admin password in .env, so this page stays shut. The wall displays and their settings screens work as before.'
           : 'The server says: ' + auth.error + '. The wall displays and their settings screens work as before.'));
-      c.appendChild(rich('p', '', 'To turn it on, give `KNIGHTWATCHER_ADMIN_PASSWORD` a password of your own of at least 12 characters in .env beside compose.yaml (.env.example shows the line), then make the containers again:'));
+      c.appendChild(rich('p', '', 'To turn it on, give `KW_ADMIN_PASSWORD` a password of your own of at least 12 characters in .env beside compose.yaml (.env.example shows the line), then make the containers again:'));
       c.appendChild(el('pre', 'cmd', 'docker compose up -d'));
       c.appendChild(el('p', 'note', 'Until then the collector\'s settings are changed in config.toml, as before.'));
       g.appendChild(c); return g;

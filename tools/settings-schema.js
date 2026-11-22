@@ -124,7 +124,7 @@ function reference(schema) {
     for (const s of t.settings) out.push('| ' + [code(s.key), valuesText(s, schema), defaultText(s), s.scope, s.help].map(cell).join(' | ') + ' |');
     out.push('');
   }
-  out.push('### Providers', '', 'The services the sections read through a kind can read, each by its provider. A section with `from` reads the provider it names, of its own kind; any other reads the provider of its own name. Each entry of a list such as `[[sources.imports]]` names its provider in `from`. A provider names the credentials it reads from `.env`, `KNIGHTWATCHER_<SECRET>_<FIELD>`, where `<SECRET>` is the section\'s `secret`, the provider\'s id when it is left out. [providers.md](./providers.md) describes the provider files.', '');
+  out.push('### Providers', '', 'The services the sections read through a kind can read, each by its provider. A section with `from` reads the provider it names, of its own kind; any other reads the provider of its own name. Each entry of a list such as `[[sources.imports]]` names its provider in `from`. A provider names the credentials it reads from `.env`, `KW_<SECRET>_<FIELD>`, where `<SECRET>` is the section\'s `secret`, the provider\'s id when it is left out. [providers.md](./providers.md) describes the provider files.', '');
   out.push('| Provider | Kind | Service | Read by | Credentials |', '|---|---|---|---|---|');
   for (const p of schema.providers || []) {
     const by = [];
@@ -134,7 +134,7 @@ function reference(schema) {
       if (from && from.kind === p.kind) by.push(code(heading(t)) + (from.default === p.id ? ' by default' : ' with ' + code('from = ' + toml(p.id))));
       else if (!from && t.table === 'sources.' + p.id) by.push(code('[' + t.table + ']'));
     }
-    const vars = p.credentials.map(f => code('KNIGHTWATCHER_' + p.id.toUpperCase() + '_' + f.toUpperCase()));
+    const vars = p.credentials.map(f => code('KW_' + p.id.toUpperCase() + '_' + f.toUpperCase()));
     out.push('| ' + [code(p.id), p.kind, '[' + p.name + '](' + p.docs + ')', by.join(', ') || 'none', vars.join(', ') || 'none'].map(cell).join(' | ') + ' |');
   }
   out.push('');

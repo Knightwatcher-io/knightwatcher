@@ -186,7 +186,7 @@ class BuildTest(unittest.TestCase):
         )
 
     def test_streams_show_is_names_titles_or_count(self):
-        env = {"KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-example"}
+        env = {"KW_TAUTULLI_API_KEY": "tk-example"}
         url = "http://192.0.2.20:8181"
         c = build({"sources": {"streams": {"url": url}}}, env)
         self.assertEqual(c.sources["streams"]["show"], "names")
@@ -211,18 +211,12 @@ class BuildTest(unittest.TestCase):
         raw = {"sources": {"adblock": {"url": "http://192.0.2.1"}}}
         password = secrets.token_urlsafe(16)
         with self.assertRaises(ConfigError) as cm:
-            build(raw, {"KNIGHTWATCHER_ADGUARD_USERNAME": "kw"})
-        self.assertEqual(
-            cm.exception.problems, [".env: KNIGHTWATCHER_ADGUARD_PASSWORD missing (for adblock)"]
-        )
+            build(raw, {"KW_ADGUARD_USERNAME": "kw"})
+        self.assertEqual(cm.exception.problems, [".env: KW_ADGUARD_PASSWORD missing (for adblock)"])
         with self.assertRaises(ConfigError) as cm:
-            build(
-                raw, {"KNIGHTWATCHER_ADGUARD_USERNAME": "kw", "KNIGHTWATCHER_ADGUARD_PASSWORD": ""}
-            )
-        self.assertEqual(
-            cm.exception.problems, [".env: KNIGHTWATCHER_ADGUARD_PASSWORD missing (for adblock)"]
-        )
-        env = {"KNIGHTWATCHER_ADGUARD_USERNAME": "kw", "KNIGHTWATCHER_ADGUARD_PASSWORD": password}
+            build(raw, {"KW_ADGUARD_USERNAME": "kw", "KW_ADGUARD_PASSWORD": ""})
+        self.assertEqual(cm.exception.problems, [".env: KW_ADGUARD_PASSWORD missing (for adblock)"])
+        env = {"KW_ADGUARD_USERNAME": "kw", "KW_ADGUARD_PASSWORD": password}
         c = build(raw, env)
         self.assertEqual(c.secret("adblock"), {"username": "kw", "password": password})
         self.assertEqual(c.secret_values(), ["kw", password])
@@ -231,12 +225,10 @@ class BuildTest(unittest.TestCase):
         raw = {"sources": {"sonarr": {"url": "http://192.0.2.30:8989", "secret": "sonarr_4k"}}}
         key = secrets.token_hex(16)
         with self.assertRaises(ConfigError) as cm:
-            build(raw, {"KNIGHTWATCHER_SONARR_API_KEY": key})
-        self.assertEqual(
-            cm.exception.problems, [".env: KNIGHTWATCHER_SONARR_4K_API_KEY missing (for sonarr)"]
-        )
+            build(raw, {"KW_SONARR_API_KEY": key})
+        self.assertEqual(cm.exception.problems, [".env: KW_SONARR_4K_API_KEY missing (for sonarr)"])
         self.assertNotIn(key, str(cm.exception))
-        c = build(raw, {"KNIGHTWATCHER_SONARR_4K_API_KEY": key})
+        c = build(raw, {"KW_SONARR_4K_API_KEY": key})
         self.assertEqual(c.secret("sonarr"), {"api_key": key})
         with self.assertRaises(ConfigError) as cm:
             build({"sources": {"sonarr": {"url": "http://192.0.2.30:8989", "secret": "sonarr-4k"}}})
@@ -246,7 +238,7 @@ class BuildTest(unittest.TestCase):
 
     def test_unused_credentials_may_be_unset_and_are_still_scrubbed(self):
         key = secrets.token_hex(16)
-        c = build({"sources": {"wan": {}}}, {"KNIGHTWATCHER_RADARR_API_KEY": key, "OTHER": "x"})
+        c = build({"sources": {"wan": {}}}, {"KW_RADARR_API_KEY": key, "OTHER": "x"})
         self.assertEqual(c.secrets, {})
         self.assertEqual(c.secret_values(), [key])
 
@@ -941,7 +933,7 @@ class LoadTest(unittest.TestCase):
     def test_load_reads_the_config_and_the_credentials(self):
         cfg = self._write("config.toml", '[sources.streams]\nurl = "http://192.0.2.5:8181"\n')
         key = secrets.token_hex(16)
-        c = load(cfg, {"KNIGHTWATCHER_TAUTULLI_API_KEY": key})
+        c = load(cfg, {"KW_TAUTULLI_API_KEY": key})
         self.assertIn("streams", c.sources)
         self.assertEqual(c.secret("streams"), {"api_key": key})
 
@@ -1030,9 +1022,9 @@ class LoadTest(unittest.TestCase):
         cfg = self._write("config.toml", "\n".join(lines) + "\n")
         env = read_env_file(os.path.join(root, ".env.example"))
         # The second Sonarr reads a variable of its own, which .env.example does not list.
-        env["KNIGHTWATCHER_SONARR_4K_API_KEY"] = "an-invented-key"
+        env["KW_SONARR_4K_API_KEY"] = "an-invented-key"
         # So does the check's header.
-        env["KNIGHTWATCHER_NAS_HEADER"] = "an-invented-header"
+        env["KW_NAS_HEADER"] = "an-invented-header"
         c = load(cfg, env)
         # Every source's table is there to uncomment, the services' among them.
         self.assertEqual(

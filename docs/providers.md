@@ -44,7 +44,7 @@ a built-in's id or one of your own; `[sources.sonarr]`, `[sources.radarr]` and `
 read the provider of their own name. Each entry of `[[sources.imports]]` names any provider of the
 imports kind with `from`, a built-in's or one of your own, and is a source of its own,
 `imports:<name>` ([configuration.md](./configuration.md#more-imports)). Every request a provider makes goes to the
-section's `url`, and its credentials are read from `.env` as `KNIGHTWATCHER_<SECRET>_<FIELD>`, where
+section's `url`, and its credentials are read from `.env` as `KW_<SECRET>_<FIELD>`, where
 `<SECRET>` is the section's `secret`, the provider's id when it is left out, and `<FIELD>` each
 credential the file names.
 
@@ -539,7 +539,7 @@ GET requests with JSON and the file format can describe it.
 **The folder.** Files go in `providers/` beside `config.toml`, one provider each, named after the
 provider's id with `.toml`: `providers/myflix.toml` holds `id = "myflix"`. The repository ships
 the folder empty, with a `.gitkeep`, and git ignores everything else in it. `compose.yaml` mounts
-it read-only at `/etc/knightwatcher/providers` in both containers, from `KNIGHTWATCHER_PROVIDERS`
+it read-only at `/etc/knightwatcher/providers` in both containers, from `KW_PROVIDERS`
 in `.env` (`./providers` when left out): the collector reads the files, and the bundled server
 checks a change on the admin page by them. The collector's `providers_dir` setting names the
 folder, relative to the one `config.toml` is in; a folder that does not exist holds no files and
@@ -566,9 +566,9 @@ url = "http://192.0.2.36:8080"
 ```
 
 That source is `imports:books` in the state file and in the memory file. The credentials of
-either are read as any provider's, from `KNIGHTWATCHER_<SECRET>_<FIELD>` with the section's or the
-entry's `secret`, the file's id when left out: `KNIGHTWATCHER_MYFLIX_TOKEN` and
-`KNIGHTWATCHER_SHELF_API_KEY` here. The collector's container gets only the variables compose names,
+either are read as any provider's, from `KW_<SECRET>_<FIELD>` with the section's or the
+entry's `secret`, the file's id when left out: `KW_MYFLIX_TOKEN` and
+`KW_SHELF_API_KEY` here. The collector's container gets only the variables compose names,
 so the name also goes in the collector's `environment` in `compose.override.yaml`
 ([configuration.md](./configuration.md#env-host-paths-the-servers-address-and-credentials) has
 the snippet).

@@ -72,7 +72,7 @@ mounts read-only in the collector at `/var/lib/knightwatcher-server`
 not start, as it always has; `check-config` checks the same. `admin.json` is then laid over it. When
 the result passes, it is used. When it needs a credential that the environment lacks, it is used
 all the same, and that source runs and fails at every read with the variable's name
-(`KNIGHTWATCHER_SONARR_API_KEY missing`), so a mistake in `.env` stops one source rather than the
+(`KW_SONARR_API_KEY missing`), so a mistake in `.env` stops one source rather than the
 display. When it fails for any other reason, the collector runs on `config.toml` alone and says
 why in the state file.
 
@@ -115,13 +115,13 @@ use by the collector since".
 ### Credentials by name
 
 At start the collector writes `credentials.json` beside `state.json`, mode 640: the name of every
-credential variable the schema lists and of any other `KNIGHTWATCHER_<SECRET>_<FIELD>` variable in
+credential variable the schema lists and of any other `KW_<SECRET>_<FIELD>` variable in
 its environment, each `true` when it holds a value, and nothing else. Never a value.
 
 ```json
-{"KNIGHTWATCHER_ADGUARD_PASSWORD": true, "KNIGHTWATCHER_ADGUARD_USERNAME": true,
- "KNIGHTWATCHER_RADARR_API_KEY": false, "KNIGHTWATCHER_SONARR_API_KEY": true,
- "KNIGHTWATCHER_TAUTULLI_API_KEY": true}
+{"KW_ADGUARD_PASSWORD": true, "KW_ADGUARD_USERNAME": true,
+ "KW_RADARR_API_KEY": false, "KW_SONARR_API_KEY": true,
+ "KW_TAUTULLI_API_KEY": true}
 ```
 
 The bundled server reads it to check a change on the admin page and to say which credentials
@@ -514,7 +514,7 @@ Then:
    `"required": true` on any it cannot run without. `collector/config.py` builds
    `SOURCE_DEFAULTS` and `REQUIRED` from the schema. A service that logs in is read through a
    provider, whose file names its credentials (above); each is an entry in `env`, named
-   `KNIGHTWATCHER_<SECRET>_<FIELD>`, added to `.env.example` and to the `environment` list in
+   `KW_<SECRET>_<FIELD>`, added to `.env.example` and to the `environment` list in
    `compose.yaml`. Register the class in `build_sources` in `collector/sources/__init__.py`.
 2. If it brings a new `facts` section or event type, change [state.md](./state.md) and the
    lists in `collector/contract.py` in the same commit. An event type whose caption the page may
@@ -566,9 +566,9 @@ that was left out; the problems of a file no section names are printed as warnin
 is 0 ([configuration.md](./configuration.md#checking)).
 
 `--config` names the settings file. It defaults to the environment variable
-`KNIGHTWATCHER_CONFIG`, and where that is unset to `/etc/knightwatcher/config.toml`, the path
+`KW_CONFIG`, and where that is unset to `/etc/knightwatcher/config.toml`, the path
 inside the container. `--admin` names the admin page's `admin.json`, laid over it; it defaults to
-`KNIGHTWATCHER_ADMIN_FILE`, and where that is unset to
+`KW_ADMIN_FILE`, and where that is unset to
 `/var/lib/knightwatcher-server/admin.json`, the path inside the container. A missing file sets
 nothing. `--health` measures the state file's age against the larger of `config.toml`'s interval
 and the one the file says is in use, since the admin page may have set another. Credentials come from environment variables, which `compose.yaml` passes

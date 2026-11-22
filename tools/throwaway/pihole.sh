@@ -56,10 +56,10 @@ PIHOLE_ENV=(-e TZ=UTC -e FTLCONF_dns_listeningMode=ALL -e FTLCONF_ntp_ipv4_activ
   -e FTLCONF_ntp_ipv6_active=false -e FTLCONF_ntp_sync_active=false)
 
 # The password, made for this run and passed by environment alone, never on a command line.
-KNIGHTWATCHER_PIHOLE_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
-FTLCONF_webserver_api_password="$KNIGHTWATCHER_PIHOLE_PASSWORD"
-WEBPASSWORD="$KNIGHTWATCHER_PIHOLE_PASSWORD"
-export KNIGHTWATCHER_PIHOLE_PASSWORD FTLCONF_webserver_api_password WEBPASSWORD
+KW_PIHOLE_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
+FTLCONF_webserver_api_password="$KW_PIHOLE_PASSWORD"
+WEBPASSWORD="$KW_PIHOLE_PASSWORD"
+export KW_PIHOLE_PASSWORD FTLCONF_webserver_api_password WEBPASSWORD
 
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/kw-pihole.XXXXXX")"
 cleanup() {
@@ -77,7 +77,7 @@ cat >"$scratch/tools/helper.py" <<'EOF'
 import json, os, sys, time, urllib.error, urllib.request
 
 BASE = "http://" + sys.argv[1]
-PASSWORD = os.environ.get("KNIGHTWATCHER_PIHOLE_PASSWORD", "")
+PASSWORD = os.environ.get("KW_PIHOLE_PASSWORD", "")
 
 
 def call(method, path, body=None, sid=None):
@@ -189,7 +189,7 @@ collector() { # dir [docker run options...] -- [collector arguments...]
   shift
   docker run --network "$NET" "${CAPS[@]}" --read-only \
     --user 10001:10001 -w /app -e PYTHONDONTWRITEBYTECODE=1 \
-    -e KNIGHTWATCHER_PIHOLE_PASSWORD \
+    -e KW_PIHOLE_PASSWORD \
     -v "$root/collector:/app/collector:ro" \
     -v "$dir/config.toml:/etc/knightwatcher/config.toml:ro" \
     -v "$dir/out:/out" -v "$dir/var:/var/lib/knightwatcher" \
@@ -199,7 +199,7 @@ collector() { # dir [docker run options...] -- [collector arguments...]
 
 helper() {
   docker run --rm --network "$NET" "${CAPS[@]}" --read-only -w /app \
-    -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPATH=/app -e KNIGHTWATCHER_PIHOLE_PASSWORD \
+    -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPATH=/app -e KW_PIHOLE_PASSWORD \
     -v "$root/collector:/app/collector:ro" -v "$scratch/tools:/tools:ro" \
     "$PYTHON_IMAGE" python /tools/helper.py "$@"
 }
@@ -299,7 +299,7 @@ helper "$NAME" sessions
 say "4. the collector stopped"
 docker stop -t 10 "$RUNNER" >/dev/null
 docker logs "$RUNNER" 2>&1 | tail -2 | sed 's/^/collector: /'
-if docker logs "$RUNNER" 2>&1 | grep -q -F -f <(printf '%s\n' "$KNIGHTWATCHER_PIHOLE_PASSWORD"); then
+if docker logs "$RUNNER" 2>&1 | grep -q -F -f <(printf '%s\n' "$KW_PIHOLE_PASSWORD"); then
   echo "the collector's log holds the password"
 else
   echo "the collector's log holds no password"
@@ -318,7 +318,7 @@ wrong="$scratch/wrong"
 state_dirs "$wrong"
 write_config "$wrong/config.toml" "http://$NAME"
 (
-  KNIGHTWATCHER_PIHOLE_PASSWORD="not-$KNIGHTWATCHER_PIHOLE_PASSWORD"
+  KW_PIHOLE_PASSWORD="not-$KW_PIHOLE_PASSWORD"
   collector "$wrong" --rm -- --once
   show_state "$wrong"
   collector "$wrong" --rm -- --once

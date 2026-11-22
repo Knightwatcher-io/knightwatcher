@@ -93,26 +93,29 @@ displays' screens, so that `config.toml` and the defaults rule again.
 ### .env: host paths, the server's address and credentials
 
 `compose.yaml` reads `.env` beside it. The host paths become the containers' mounts, and
-`compose.yaml` refuses to start while a required one is missing. `KNIGHTWATCHER_SERVER_ADDRESS`
-and `KNIGHTWATCHER_SERVER_PORT` say where the bundled server is published on the host: all
+`compose.yaml` refuses to start while a required one is missing. `KW_SERVER_ADDRESS`
+and `KW_SERVER_PORT` say where the bundled server is published on the host: all
 addresses and port 8080 unless set ([server.md](./server.md#security) says when to narrow it).
 Each credential is passed to the collector's container by name, so the container gets those
 variables and nothing else from the file, and the server gets none. The server gets one variable,
-`KNIGHTWATCHER_ADMIN_PASSWORD`, the admin page's password: left empty, or shorter than 12
+`KW_ADMIN_PASSWORD`, the admin page's password: left empty, or shorter than 12
 characters, the admin page stays off and says why, and the walls work as before. A credential that no enabled
 source needs may be left empty or out; the collector's check names any it needs and lacks.
 
-A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals.
+A source that logs in reads its credentials from `KW_<SECRET>_<FIELD>`, in capitals.
 Its provider names the fields (Tautulli's, Tracearr's and Jellyfin's are `api_key`, Plex's `token`, AdGuard Home's `username`
 and `password`, Pi-hole's `password`, Technitium's `token`; [Providers](#providers) lists them),
 and `SECRET` is the source's `secret` setting, which is the provider's id unless set: `tautulli`,
 `plex`, `tracearr`, `jellyfin`, `adguard`, `pihole`, `technitium`, `sonarr`, `radarr` or `lidarr`. A source given
-`secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and a source reading a
-provider file of your own with the id `myflix` and a `token` reads `KNIGHTWATCHER_MYFLIX_TOKEN`.
+`secret = "sonarr_4k"` therefore reads `KW_SONARR_4K_API_KEY`, and a source reading a
+provider file of your own with the id `myflix` and a `token` reads `KW_MYFLIX_TOKEN`.
 The same holds for each entry of `[[sources.imports]]` ([More imports](#more-imports)). A check of
-`[[sources.json]]` with a `header` reads that header's value from `KNIGHTWATCHER_<SECRET>_HEADER`,
+`[[sources.json]]` with a `header` reads that header's value from `KW_<SECRET>_HEADER`,
 its `secret` being the check's name with each `-` made `_` unless set
 ([Generic checks](#generic-checks)).
+
+docker compose takes a variable already set in the shell it runs from over the same name in
+`.env`, so a `KW_*` variable exported in the shell is used instead of the file's value.
 
 The collector's container gets only the variables `compose.yaml` names, so a name of your own must
 be named for it as well. Put it in `compose.override.yaml` beside `compose.yaml` (ignored by git,
@@ -123,8 +126,8 @@ read by docker compose by itself, and kept when `compose.yaml` is updated), then
 services:
   collector:
     environment:
-      KNIGHTWATCHER_MYFLIX_TOKEN: ${KNIGHTWATCHER_MYFLIX_TOKEN:-}
-      KNIGHTWATCHER_SONARR_4K_API_KEY: ${KNIGHTWATCHER_SONARR_4K_API_KEY:-}
+      KW_MYFLIX_TOKEN: ${KW_MYFLIX_TOKEN:-}
+      KW_SONARR_4K_API_KEY: ${KW_SONARR_4K_API_KEY:-}
 ```
 
 with the values themselves in `.env`, as for every other credential.
@@ -177,7 +180,7 @@ unknown setting is an error, so a typo does not silently fall back to a default.
 container. A message names a missing credential by its variable and never shows a value:
 
 ```
-config: .env: KNIGHTWATCHER_ADGUARD_PASSWORD missing (for adblock)
+config: .env: KW_ADGUARD_PASSWORD missing (for adblock)
 ```
 
 `--env-file` reads the file for the check alone, without expanding anything in it, so a
@@ -221,13 +224,13 @@ How the collector runs. The whole table may be left out to take the defaults.
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `interval_s` | a whole number of seconds, at least 5 | `10` | household | Seconds between polls. The displays treat a state file older than three polls as stale and say so. |
-| `output_dir` | a folder inside the container | `"/out"` | household | Folder state.json is written to. compose.yaml mounts KNIGHTWATCHER_OUT here. |
-| `state_dir` | a folder inside the container | `"/var/lib/knightwatcher"` | household | Folder for memory.json and the collector's lock. compose.yaml mounts KNIGHTWATCHER_VAR here. |
+| `output_dir` | a folder inside the container | `"/out"` | household | Folder state.json is written to. compose.yaml mounts KW_OUT here. |
+| `state_dir` | a folder inside the container | `"/var/lib/knightwatcher"` | household | Folder for memory.json and the collector's lock. compose.yaml mounts KW_VAR here. |
 | `timezone` | an IANA time zone, such as "Europe/London" | `"UTC"` | household | Zone for the night hours and the times shown in words. |
 | `http_timeout_s` | a number of seconds, above zero | `5.0` | household | Timeout for each network call. Must be shorter than the time between polls, so a poll every 5 seconds needs it lowered. A device's check uses at most 3 seconds of it for each step. |
 | `auth_backoff_s` | a whole number of seconds, at least 1200 | `1200` | household | Pause after a 401, 403 or 429 before the service is called again. Cannot be set below 1200. |
 | `proc_root` | a folder inside the container | `"/host/proc"` | household | Where the host's /proc is mounted, for CPU, memory, load and the lock table. |
-| `providers_dir` | a folder, relative to the one config.toml is in, or absolute | `"providers"` | household | The folder of provider files of your own, one provider each, each named after its id with .toml (myflix.toml). Relative, it is taken from the folder config.toml is in, so the default is /etc/knightwatcher/providers in the containers, where compose.yaml mounts KNIGHTWATCHER_PROVIDERS. A folder that does not exist holds none. Read at start and again whenever a file in it changes. |
+| `providers_dir` | a folder, relative to the one config.toml is in, or absolute | `"providers"` | household | The folder of provider files of your own, one provider each, each named after its id with .toml (myflix.toml). Relative, it is taken from the folder config.toml is in, so the default is /etc/knightwatcher/providers in the containers, where compose.yaml mounts KW_PROVIDERS. A folder that does not exist holds none. Read at start and again whenever a file in it changes. |
 
 ### [conditions]
 
@@ -391,7 +394,7 @@ The last completed backup, from the backup log.
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `60` | household | How often the source is read. |
-| `log` | a file inside the container | `"/host/backup.log"` | household | The backup log, inside the container. compose.yaml mounts KNIGHTWATCHER_BACKUP_LOG here. |
+| `log` | a file inside the container | `"/host/backup.log"` | household | The backup log, inside the container. compose.yaml mounts KW_BACKUP_LOG here. |
 | `pattern` | a regular expression with one group | `"System Backup Completed: (.+)$"` | household | Regular expression for a completion line; its first group is the date, in ISO 8601 or the form date prints, such as Thu 15 Jan 03:12:00 UTC 2026. |
 | `timezone` | an IANA time zone | `"UTC"` | household | Zone for a date printed without one. |
 | `read_bytes` | a whole number of bytes | `262144` | household | How much of the end of the log to read. |
@@ -440,7 +443,7 @@ Streams playing, from the service its provider reads: Tautulli by default, Plex 
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
 | `show` | `"names"`, `"titles"` or `"count"` | `"names"` | household | What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's, Tracearr's and Jellyfin's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's, Tracearr's and Jellyfin's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
 
 ### [sources.adblock]
 
@@ -453,7 +456,7 @@ Blocked adverts, from the service its provider reads: AdGuard Home by default, P
 | `from` | `"adguard"`, `"pihole"` or `"technitium"`: a provider of the adblock kind (see Providers below) | `"adguard"` | household | The provider the blocked queries are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD, Technitium's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD, Technitium's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
 | `fly_every_s` | a number of seconds, zero or more | `300.0` | household | Average seconds between flies while blocking runs at the household's normal rate, which the service's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query. |
 
 ### [sources.security]
@@ -468,7 +471,7 @@ Bans, and the attack they may add up to, from the provider its from names: fail2
 | `url` | an http:// or https:// address | required | household | Base URL of the service a provider file of your own reads, and required by one. Refused with fail2ban, which reads database instead. Set in config.toml alone, with from. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. Refused with fail2ban, which reads no address. Set in config.toml alone, with from. |
 | `database` | a path inside the collector's container | `"/host/fail2ban/fail2ban.sqlite3"` | household | fail2ban's database, as the collector's container sees it through the mount of fail2ban's folder. Read by fail2ban alone, and refused with any other provider. Set in config.toml alone, with the mount. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names. fail2ban needs none; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals, for each field its provider names. fail2ban needs none; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone. |
 
 ### [sources.sonarr]
 
@@ -480,7 +483,7 @@ Episodes imported, from Sonarr.
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Sonarr. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KW_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
 
 ### [sources.radarr]
 
@@ -492,7 +495,7 @@ Films imported, from Radarr.
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Radarr. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KW_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
 
 ### [sources.lidarr]
 
@@ -504,7 +507,7 @@ Albums imported, from Lidarr.
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of Lidarr. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KNIGHTWATCHER_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its API key is read under in .env: KW_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone. |
 
 ### [[sources.imports]]
 
@@ -518,7 +521,7 @@ More services whose imports are read, each a [[sources.imports]] table under [so
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. Only with an https url. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. |
 
 ### [[sources.json]]
 
@@ -536,8 +539,8 @@ Generic checks, each a [[sources.json]] table under [sources] in config.toml: on
 | `as` | `"attack"`, `"wan_down"`, `"container_unhealthy"`, `"disk_full"`, `"backup_overdue"`, `"pi_silent"`, `"cpu_hot"`, `"memory_tight"`, `"ssh_session"`, `"updating"`, `"streaming"` or `"night"` | required | household | The condition whose scene, knight and colour the check borrows; any but device_down, which needs devices to look towards. The check takes that condition's level and sits straight after it in the priority, checks in their order here. The condition must be in conditions.priority, or the check is refused, since it would never be raised. The scene [scenes] chooses for that condition is the check's too. |
 | `every_s` | a whole number of seconds, from 10 to 3600 | `60` | household | How often the address is read. |
 | `for_s` | a whole number of seconds, from 0 to 86400 | `0` | household | How long the test must hold before the check is raised. It clears once the test has failed for conditions.clear_after_s, as every condition does; a read that fails counts as the test failing. |
-| `header` | a header's name: letters, digits and - | none | household | One header sent with the request, such as X-Api-Key or Authorization, its value read from .env as KNIGHTWATCHER_<SECRET>_HEADER and never written anywhere. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header. |
-| `secret` | letters, digits and underscores | the check's name, each - made _ | household | With header: the name its value is read under in .env, KNIGHTWATCHER_<SECRET>_HEADER, in capitals. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. Only with header. |
+| `header` | a header's name: letters, digits and - | none | household | One header sent with the request, such as X-Api-Key or Authorization, its value read from .env as KW_<SECRET>_HEADER and never written anywhere. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header. |
+| `secret` | letters, digits and underscores | the check's name, each - made _ | household | With header: the name its value is read under in .env, KW_<SECRET>_HEADER, in capitals. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. Only with header. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. Only with an https url. |
 | `enabled` | `true` or `false` | `true` | household | Whether the check is read. Off (false) keeps the table for when it is turned on again. |
 
@@ -631,21 +634,21 @@ Where the knight acts out each condition that more than one scene can play, for 
 
 ### Providers
 
-The services the sections read through a kind can read, each by its provider. A section with `from` reads the provider it names, of its own kind; any other reads the provider of its own name. Each entry of a list such as `[[sources.imports]]` names its provider in `from`. A provider names the credentials it reads from `.env`, `KNIGHTWATCHER_<SECRET>_<FIELD>`, where `<SECRET>` is the section's `secret`, the provider's id when it is left out. [providers.md](./providers.md) describes the provider files.
+The services the sections read through a kind can read, each by its provider. A section with `from` reads the provider it names, of its own kind; any other reads the provider of its own name. Each entry of a list such as `[[sources.imports]]` names its provider in `from`. A provider names the credentials it reads from `.env`, `KW_<SECRET>_<FIELD>`, where `<SECRET>` is the section's `secret`, the provider's id when it is left out. [providers.md](./providers.md) describes the provider files.
 
 | Provider | Kind | Service | Read by | Credentials |
 |---|---|---|---|---|
-| `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KNIGHTWATCHER_ADGUARD_USERNAME`, `KNIGHTWATCHER_ADGUARD_PASSWORD` |
+| `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KW_ADGUARD_USERNAME`, `KW_ADGUARD_PASSWORD` |
 | `fail2ban` | security | [fail2ban](https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py) | `[sources.security]` by default | none |
-| `jellyfin` | streams | [Jellyfin](https://api.jellyfin.org/) | `[sources.streams]` with `from = "jellyfin"` | `KNIGHTWATCHER_JELLYFIN_API_KEY` |
-| `lidarr` | imports | [Lidarr](https://github.com/Lidarr/Lidarr/blob/develop/src/Lidarr.Api.V1/openapi.json) | `[sources.lidarr]`, `[[sources.imports]]` with `from = "lidarr"` | `KNIGHTWATCHER_LIDARR_API_KEY` |
-| `pihole` | adblock | [Pi-hole 6](https://docs.pi-hole.net/api/) | `[sources.adblock]` with `from = "pihole"` | `KNIGHTWATCHER_PIHOLE_PASSWORD` |
-| `plex` | streams | [Plex Media Server](https://developer.plex.tv/pms/) | `[sources.streams]` with `from = "plex"` | `KNIGHTWATCHER_PLEX_TOKEN` |
-| `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]`, `[[sources.imports]]` with `from = "radarr"` | `KNIGHTWATCHER_RADARR_API_KEY` |
-| `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]`, `[[sources.imports]]` with `from = "sonarr"` | `KNIGHTWATCHER_SONARR_API_KEY` |
-| `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KNIGHTWATCHER_TAUTULLI_API_KEY` |
-| `technitium` | adblock | [Technitium DNS Server](https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md) | `[sources.adblock]` with `from = "technitium"` | `KNIGHTWATCHER_TECHNITIUM_TOKEN` |
-| `tracearr` | streams | [Tracearr](https://github.com/connorgallopo/Tracearr/blob/main/apps/server/src/routes/publicV2.openapi.ts) | `[sources.streams]` with `from = "tracearr"` | `KNIGHTWATCHER_TRACEARR_API_KEY` |
+| `jellyfin` | streams | [Jellyfin](https://api.jellyfin.org/) | `[sources.streams]` with `from = "jellyfin"` | `KW_JELLYFIN_API_KEY` |
+| `lidarr` | imports | [Lidarr](https://github.com/Lidarr/Lidarr/blob/develop/src/Lidarr.Api.V1/openapi.json) | `[sources.lidarr]`, `[[sources.imports]]` with `from = "lidarr"` | `KW_LIDARR_API_KEY` |
+| `pihole` | adblock | [Pi-hole 6](https://docs.pi-hole.net/api/) | `[sources.adblock]` with `from = "pihole"` | `KW_PIHOLE_PASSWORD` |
+| `plex` | streams | [Plex Media Server](https://developer.plex.tv/pms/) | `[sources.streams]` with `from = "plex"` | `KW_PLEX_TOKEN` |
+| `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]`, `[[sources.imports]]` with `from = "radarr"` | `KW_RADARR_API_KEY` |
+| `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]`, `[[sources.imports]]` with `from = "sonarr"` | `KW_SONARR_API_KEY` |
+| `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KW_TAUTULLI_API_KEY` |
+| `technitium` | adblock | [Technitium DNS Server](https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md) | `[sources.adblock]` with `from = "technitium"` | `KW_TECHNITIUM_TOKEN` |
+| `tracearr` | streams | [Tracearr](https://github.com/connorgallopo/Tracearr/blob/main/apps/server/src/routes/publicV2.openapi.ts) | `[sources.streams]` with `from = "tracearr"` | `KW_TRACEARR_API_KEY` |
 
 ### .env
 
@@ -653,26 +656,26 @@ Every variable the project reads from `.env`. The host paths are the folders and
 
 | Variable | Scope | Values | Default | What it is |
 |---|---|---|---|---|
-| `KNIGHTWATCHER_OUT` | path | a host path, such as `./var/out` | required | The host folder the collector writes state.json to. Mounted at /out in both containers, read-only in the server's, which serves it as data/: state.json, and the packs placed in its packs/ folder, which the page reads. Must exist and be writable by the collector's account. |
-| `KNIGHTWATCHER_BACKUP_LOG` | path | a host path, such as `/var/log/backup.log` | required | The host's backup log, a single file. Mounted read-only at /host/backup.log. |
-| `KNIGHTWATCHER_DATA_DISK` | path | a host path, such as `/data/lost+found` | required | Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size. |
-| `KNIGHTWATCHER_VAR` | path | a host path, such as `./var` | `./var` | The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account. |
-| `KNIGHTWATCHER_PROVIDERS` | path | a host path, such as `./providers` | `./providers` | The host folder of provider files of your own, for services no built-in provider reads. Mounted read-only at /etc/knightwatcher/providers in both containers: the collector reads the files, and the server checks a change on the admin page by them. Must exist and be readable by uid 10001; the repository's own providers folder, empty, is the default. |
-| `KNIGHTWATCHER_SERVER_VAR` | path | a host path, such as `./var/server` | `./var/server` | The host folder for the bundled server's own files: the settings saved for every display, in settings.json, and those set on the admin page, in admin.json, with the admin page's sessions. Mounted at /var/lib/knightwatcher-server, the one place the server writes, and read-only at the same place in the collector, which takes up admin.json. Must exist and be writable by the server's account. |
-| `KNIGHTWATCHER_SERVER_ADDRESS` | server | an address of this host, or empty for all of them, such as `127.0.0.1` | empty | The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network. |
-| `KNIGHTWATCHER_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
-| `KNIGHTWATCHER_ADMIN_PASSWORD` | server | a password of at least 12 characters, or empty to leave the admin page off, such as `a-long-password-of-your-own` | empty | The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out. |
-| `KNIGHTWATCHER_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_PLEX_TOKEN` | credential | a Plex token, such as `AbCdEfGhIjKlMnOpQrSt` | none | The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = "plex". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_TRACEARR_API_KEY` | credential | trr_pub_ and 43 letters, digits, - and _, such as `trr_pub_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE` | none | Tracearr's public API key, for the tracearr provider, which [sources.streams] reads with from = "tracearr". Made by Tracearr's owner: Settings, Data & API, API, Generate Key. It is sent in the Authorization header as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a stream: keep it as you would the password. Tracearr keeps one key, and Regenerate ends the old one for whatever else uses it. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_JELLYFIN_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | A Jellyfin API key, for the jellyfin provider, which [sources.streams] reads with from = "jellyfin". Made by a Jellyfin administrator: Dashboard, API Keys, the + button. It is sent in the Authorization header, never in the address. A key sees every user's sessions and has an administrator's rights over all of Jellyfin: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_PIHOLE_PASSWORD` | credential | a password, such as `an-invented-app-password` | none | A Pi-hole 6 app password, for the pihole provider, which [sources.adblock] reads with from = "pihole". In Pi-hole: Settings, Web interface / API, Configure app password. The web password works too, but not with two-factor authentication on, since the collector cannot give a code. Version 5 is not supported. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_TECHNITIUM_TOKEN` | credential | 64 hexadecimal characters, such as `0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef` | none | A Technitium DNS Server API token, for the technitium provider, which [sources.adblock] reads with from = "technitium". In Technitium, signed in as a user of its own in no group but Everyone, which can view but change nothing: the user menu, Create API Token. The token does not expire. It is sent in the Authorization header, which needs Technitium 15 or later. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_SONARR_API_KEY` | credential | 32 hexadecimal characters, such as `fedcba9876543210fedcba9876543210` | none | Sonarr's API key, for the sonarr provider, which [sources.sonarr] reads. In Sonarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_RADARR_API_KEY` | credential | 32 hexadecimal characters, such as `00112233445566778899aabbccddeeff` | none | Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
-| `KNIGHTWATCHER_LIDARR_API_KEY` | credential | 32 hexadecimal characters, such as `0f1e2d3c4b5a69780f1e2d3c4b5a6978` | none | Lidarr's API key, for the lidarr provider, which [sources.lidarr] reads. In Lidarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_OUT` | path | a host path, such as `./var/out` | required | The host folder the collector writes state.json to. Mounted at /out in both containers, read-only in the server's, which serves it as data/: state.json, and the packs placed in its packs/ folder, which the page reads. Must exist and be writable by the collector's account. |
+| `KW_BACKUP_LOG` | path | a host path, such as `/var/log/backup.log` | required | The host's backup log, a single file. Mounted read-only at /host/backup.log. |
+| `KW_DATA_DISK` | path | a host path, such as `/data/lost+found` | required | Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size. |
+| `KW_VAR` | path | a host path, such as `./var` | `./var` | The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account. |
+| `KW_PROVIDERS` | path | a host path, such as `./providers` | `./providers` | The host folder of provider files of your own, for services no built-in provider reads. Mounted read-only at /etc/knightwatcher/providers in both containers: the collector reads the files, and the server checks a change on the admin page by them. Must exist and be readable by uid 10001; the repository's own providers folder, empty, is the default. |
+| `KW_SERVER_VAR` | path | a host path, such as `./var/server` | `./var/server` | The host folder for the bundled server's own files: the settings saved for every display, in settings.json, and those set on the admin page, in admin.json, with the admin page's sessions. Mounted at /var/lib/knightwatcher-server, the one place the server writes, and read-only at the same place in the collector, which takes up admin.json. Must exist and be writable by the server's account. |
+| `KW_SERVER_ADDRESS` | server | an address of this host, or empty for all of them, such as `127.0.0.1` | empty | The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network. |
+| `KW_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
+| `KW_ADMIN_PASSWORD` | server | a password of at least 12 characters, or empty to leave the admin page off, such as `a-long-password-of-your-own` | empty | The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out. |
+| `KW_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_PLEX_TOKEN` | credential | a Plex token, such as `AbCdEfGhIjKlMnOpQrSt` | none | The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = "plex". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_TRACEARR_API_KEY` | credential | trr_pub_ and 43 letters, digits, - and _, such as `trr_pub_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE` | none | Tracearr's public API key, for the tracearr provider, which [sources.streams] reads with from = "tracearr". Made by Tracearr's owner: Settings, Data & API, API, Generate Key. It is sent in the Authorization header as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a stream: keep it as you would the password. Tracearr keeps one key, and Regenerate ends the old one for whatever else uses it. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_JELLYFIN_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | A Jellyfin API key, for the jellyfin provider, which [sources.streams] reads with from = "jellyfin". Made by a Jellyfin administrator: Dashboard, API Keys, the + button. It is sent in the Authorization header, never in the address. A key sees every user's sessions and has an administrator's rights over all of Jellyfin: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_PIHOLE_PASSWORD` | credential | a password, such as `an-invented-app-password` | none | A Pi-hole 6 app password, for the pihole provider, which [sources.adblock] reads with from = "pihole". In Pi-hole: Settings, Web interface / API, Configure app password. The web password works too, but not with two-factor authentication on, since the collector cannot give a code. Version 5 is not supported. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_TECHNITIUM_TOKEN` | credential | 64 hexadecimal characters, such as `0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef` | none | A Technitium DNS Server API token, for the technitium provider, which [sources.adblock] reads with from = "technitium". In Technitium, signed in as a user of its own in no group but Everyone, which can view but change nothing: the user menu, Create API Token. The token does not expire. It is sent in the Authorization header, which needs Technitium 15 or later. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_SONARR_API_KEY` | credential | 32 hexadecimal characters, such as `fedcba9876543210fedcba9876543210` | none | Sonarr's API key, for the sonarr provider, which [sources.sonarr] reads. In Sonarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_RADARR_API_KEY` | credential | 32 hexadecimal characters, such as `00112233445566778899aabbccddeeff` | none | Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_LIDARR_API_KEY` | credential | 32 hexadecimal characters, such as `0f1e2d3c4b5a69780f1e2d3c4b5a6978` | none | Lidarr's API key, for the lidarr provider, which [sources.lidarr] reads. In Lidarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 
 <!-- settings-reference:end -->
 
@@ -697,7 +700,7 @@ default. A source that is off is checked when it is turned on, as for its other 
 [providers.md](./providers.md) describes the provider files.
 
 `from` may also name a provider file of your own, by its id: a file in the providers folder beside
-`config.toml` (`providers_dir`, mounted from `KNIGHTWATCHER_PROVIDERS`), described in
+`config.toml` (`providers_dir`, mounted from `KW_PROVIDERS`), described in
 [providers.md](./providers.md#your-own-provider-files). Such a file may declare settings of its
 own, which the section that chooses it may then set:
 
@@ -705,7 +708,7 @@ own, which the section that chooses it may then set:
 [sources.streams]
 from = "myflix"                    # providers/myflix.toml
 url = "http://192.0.2.20:8080"
-page_size = 20                     # declared by myflix.toml; reads KNIGHTWATCHER_MYFLIX_TOKEN
+page_size = 20                     # declared by myflix.toml; reads KW_MYFLIX_TOKEN
 ```
 
 Each is checked against the file's declaration (its type, `min`, `max` and `values`), and one left
@@ -732,11 +735,11 @@ reads. Each entry is a table of its own, at most 16, and a source of its own:
 name = "sonarr-4k"                 # the source imports:sonarr-4k
 from = "sonarr"                    # any imports provider: sonarr, radarr, lidarr or your own
 url = "http://192.0.2.34:8989"
-secret = "sonarr_4k"               # reads KNIGHTWATCHER_SONARR_4K_API_KEY
+secret = "sonarr_4k"               # reads KW_SONARR_4K_API_KEY
 
 [[sources.imports]]
 name = "books"
-from = "shelf"                     # providers/shelf.toml; reads KNIGHTWATCHER_SHELF_API_KEY
+from = "shelf"                     # providers/shelf.toml; reads KW_SHELF_API_KEY
 url = "http://192.0.2.36:8080"
 ```
 
@@ -749,7 +752,7 @@ url = "http://192.0.2.36:8080"
   A file of your own that failed its checks is not refused here, as for a section: that source
   fails at every read.
 - **`secret`** is the provider's id when left out, as for a section, so an entry `from = "sonarr"`
-  reads `KNIGHTWATCHER_SONARR_API_KEY`. A second Sonarr has a key of its own, so it needs a
+  reads `KW_SONARR_API_KEY`. A second Sonarr has a key of its own, so it needs a
   `secret` of its own, and its variable reaches the collector only when `compose.override.yaml`
   names it ([.env](#env-host-paths-the-servers-address-and-credentials) has the snippet).
 - **One service once.** Two enabled sources that read one provider at one address would raise
@@ -791,7 +794,7 @@ as = "cpu_hot"                             # the condition whose scene it borrow
 every_s = 60                               # 10 to 3600, default 60
 for_s = 0                                  # how long the test must hold first, default 0
 header = "X-Api-Key"                       # optional
-secret = "nas"                             # with header: reads KNIGHTWATCHER_NAS_HEADER
+secret = "nas"                             # with header: reads KW_NAS_HEADER
 
 [[sources.json]]
 name = "raid"
@@ -841,10 +844,10 @@ as = "disk_full"
   condition does. Changing its words or `for_s` keeps it raised; changing what it reads, its test,
   its `value` or `as` starts it afresh.
 - **`header`**, when given, is one header sent with the request, such as `X-Api-Key` or
-  `Authorization`, its value read from `.env` as `KNIGHTWATCHER_<SECRET>_HEADER` and never written
+  `Authorization`, its value read from `.env` as `KW_<SECRET>_HEADER` and never written
   anywhere: not in the state file, the memory file, the status page, nor what `--probe` and
   `--record` print. `secret` is the check's name with each `-` made `_` unless set, so
-  `nas-temp` reads `KNIGHTWATCHER_NAS_TEMP_HEADER`; it is refused without a `header`. No built-in
+  `nas-temp` reads `KW_NAS_TEMP_HEADER`; it is refused without a `header`. No built-in
   provider names that variable, so it reaches the collector only when `compose.override.yaml`
   names it ([.env](#env-host-paths-the-servers-address-and-credentials) has the snippet). For
   `Authorization`, the variable holds the whole value, `Bearer <token>` for instance. `Host`,
@@ -867,7 +870,7 @@ through Tautulli:
 [sources.streams]
 from = "plex"
 url = "http://192.0.2.20:32400"  # Plex's own address and port
-show = "titles"                  # reads KNIGHTWATCHER_PLEX_TOKEN
+show = "titles"                  # reads KW_PLEX_TOKEN
 ```
 
 The reading is the same as Tautulli's: the same title of each stream (`The Night Shift S02E04`,
@@ -876,7 +879,7 @@ by Plex's session key, which is the number Tautulli lists as its own. `who` is t
 name, where Tautulli gives the friendly name set in Tautulli. Plex lists its sessions to the
 server's owner alone, so the token must be the owner's: in Plex Web, signed in as the owner, open
 any library item's menu, Get Info, View XML, and take the `X-Plex-Token` at the end of the address
-it opens. Put it in `KNIGHTWATCHER_PLEX_TOKEN`. A Plex token reaches the owner's whole Plex
+it opens. Put it in `KW_PLEX_TOKEN`. A Plex token reaches the owner's whole Plex
 account, so keep it as you would the password. It is sent in the `X-Plex-Token` header, never in
 the address, so it stays out of any access log on the way. A token Plex does not take is answered
 with HTTP 401, which pauses the source for `auth_backoff_s` (`Plex token refused`). Plex gives
@@ -905,7 +908,7 @@ its API key:
 [sources.streams]
 from = "tracearr"
 url = "http://192.0.2.20:3000"   # Tracearr's own address and port
-show = "titles"                  # reads KNIGHTWATCHER_TRACEARR_API_KEY
+show = "titles"                  # reads KW_TRACEARR_API_KEY
 ```
 
 The reading is of the same kind as Tautulli's and Plex's: the same title of each stream
@@ -915,7 +918,7 @@ Tracearr, else the user's name on the media server. The streams are those of eve
 Tracearr watches, Plex, Jellyfin and Emby alike, and the count is theirs together.
 
 The key is made by Tracearr's owner: Settings, Data & API, API, Generate Key. It starts
-`trr_pub_`; put it in `KNIGHTWATCHER_TRACEARR_API_KEY`. It is sent in the `Authorization` header
+`trr_pub_`; put it in `KW_TRACEARR_API_KEY`. It is sent in the `Authorization` header
 as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a
 stream, so keep it as you would the password. Tracearr keeps one key: Regenerate makes a new one
 and ends the old one for whatever else uses it. A key Tracearr does not take is answered with
@@ -935,7 +938,7 @@ JSON`). Tracearr 1 has no version 2 of the API and answers 404 (`no such call: i
 [sources.streams]
 from = "jellyfin"
 url = "http://192.0.2.20:8096"   # Jellyfin's own address and port
-show = "titles"                  # reads KNIGHTWATCHER_JELLYFIN_API_KEY
+show = "titles"                  # reads KW_JELLYFIN_API_KEY
 ```
 
 The reading is of the same kind as Tautulli's, Plex's and Tracearr's: the same title of each stream
@@ -949,7 +952,7 @@ alone: a restart, or a change to the section's settings, starts it afresh, and s
 at the same read are ordered by their session ids.
 
 The key is made by a Jellyfin administrator: Dashboard, API Keys, the + button, with a name of its
-own such as Knightwatcher. Put it in `KNIGHTWATCHER_JELLYFIN_API_KEY`. It is sent in the
+own such as Knightwatcher. Put it in `KW_JELLYFIN_API_KEY`. It is sent in the
 `Authorization` header in Jellyfin's own form, `MediaBrowser Token="..."`, never in the address;
 Jellyfin 12 no longer reads the older `X-Emby-Token` header or the `api_key` query parameter unless
 its administrator turns them back on, and 10.9 and later read this form. An API key sees every
@@ -967,11 +970,11 @@ Jellyfin's, such as a proxy's sign-in page, is `Jellyfin sent something other th
 from = "pihole"
 url = "https://192.0.2.53"
 verify_tls = false           # its certificate is self-signed
-fly_every_s = 300            # reads KNIGHTWATCHER_PIHOLE_PASSWORD
+fly_every_s = 300            # reads KW_PIHOLE_PASSWORD
 ```
 
 Give it an app password (in Pi-hole: Settings, Web interface / API, Configure app password) in
-`KNIGHTWATCHER_PIHOLE_PASSWORD`. The web password works too, but not once two-factor
+`KW_PIHOLE_PASSWORD`. The web password works too, but not once two-factor
 authentication is on, since the collector cannot give a code. The collector logs in once and keeps
 that one session, one of the 16 Pi-hole allows by default, and logs out as it stops; the session
 is never written anywhere. A refused
@@ -990,12 +993,12 @@ url is a name Pi-hole does not know as its own.
 [sources.adblock]
 from = "technitium"
 url = "http://192.0.2.53:5380"   # the web console's address and port
-fly_every_s = 300                # reads KNIGHTWATCHER_TECHNITIUM_TOKEN
+fly_every_s = 300                # reads KW_TECHNITIUM_TOKEN
 ```
 
 Make a user of its own in Technitium (Administration, Users), in no group but Everyone, which can
 view the dashboard but change nothing. Sign in as that user, then from the user menu choose
-Create API Token, and put the token in `KNIGHTWATCHER_TECHNITIUM_TOKEN`. The token does not
+Create API Token, and put the token in `KW_TECHNITIUM_TOKEN`. The token does not
 expire; deleting its session in Technitium (Administration, Sessions) ends it. It is sent in the
 `Authorization` header, which Technitium reads from version 15.0; an older version reads the
 token from the query alone, so it refuses every read, and the collector says

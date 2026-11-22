@@ -2,7 +2,7 @@
  {
   "at": 0,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -56,7 +56,7 @@
  {
   "at": 30,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -110,7 +110,7 @@
  {
   "at": 60,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -185,7 +185,7 @@
  {
   "at": 90,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -334,7 +334,7 @@
  {
   "at": 120,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -483,7 +483,7 @@
  {
   "at": 150,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -642,7 +642,7 @@
  {
   "at": 180,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -801,7 +801,7 @@
  {
   "at": 210,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -960,7 +960,7 @@
  {
   "at": 240,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -1119,7 +1119,7 @@
  {
   "at": 270,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -1278,7 +1278,7 @@
  {
   "at": 300,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -1437,7 +1437,7 @@
  {
   "at": 330,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -1606,7 +1606,7 @@
  {
   "at": 360,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",
@@ -1942,7 +1942,7 @@
  {
   "at": 1560,
   "requests": [
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}"
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}"
   ],
   "state": [
    "{",

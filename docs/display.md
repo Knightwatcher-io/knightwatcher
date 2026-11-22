@@ -313,7 +313,7 @@ saving nothing, for a world the page has not loaded. `catalogue()` gives what th
 
 The page ships the medieval world. Another world comes as a world pack, a `.pack.json` file. Behind
 the bundled server, put the file in the `packs` folder of the collector's output folder (the folder
-`KNIGHTWATCHER_OUT` names, `var/out/packs/` in the quick start), and name it in `index.json` in the
+`KW_OUT` names, `var/out/packs/` in the quick start), and name it in `index.json` in the
 same folder:
 
 ```json

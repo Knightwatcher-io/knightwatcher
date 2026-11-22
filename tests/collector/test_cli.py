@@ -27,7 +27,7 @@ class CliTest(unittest.TestCase):
         self.env_file = os.path.join(self.tmp.name, ".env")
         self.write_config("")
         # No credential from the environment the tests run in reaches them.
-        clean = {k: v for k, v in os.environ.items() if not k.startswith("KNIGHTWATCHER_")}
+        clean = {k: v for k, v in os.environ.items() if not k.startswith("KW_")}
         patcher = mock.patch.dict(os.environ, clean, clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -69,13 +69,13 @@ class CliTest(unittest.TestCase):
         self.write_config('[sources.adblock]\nurl = "http://192.0.2.53"\n')
         code, _, err = self.run_cli("--check-config")
         self.assertEqual(code, 2)
-        self.assertIn("config: .env: KNIGHTWATCHER_ADGUARD_USERNAME missing (for adblock)", err)
-        self.assertIn("config: .env: KNIGHTWATCHER_ADGUARD_PASSWORD missing (for adblock)", err)
+        self.assertIn("config: .env: KW_ADGUARD_USERNAME missing (for adblock)", err)
+        self.assertIn("config: .env: KW_ADGUARD_PASSWORD missing (for adblock)", err)
 
     def test_check_config_reads_the_process_environment(self):
         self.write_config('[sources.streams]\nurl = "http://192.0.2.20:8181"\n')
         key = secrets.token_hex(16)
-        with mock.patch.dict(os.environ, {"KNIGHTWATCHER_TAUTULLI_API_KEY": key}):
+        with mock.patch.dict(os.environ, {"KW_TAUTULLI_API_KEY": key}):
             code, out, err = self.run_cli("--check-config")
         self.assertEqual(code, 0, err)
         self.assertNotIn(key, out + err)
@@ -89,13 +89,13 @@ class CliTest(unittest.TestCase):
         quoted = password.replace("'", "")
         self.write_env(
             "# credentials for the check\n"
-            f"KNIGHTWATCHER_TAUTULLI_API_KEY={key}\n"
-            "KNIGHTWATCHER_ADGUARD_USERNAME=knightwatcher\n"
-            f"KNIGHTWATCHER_ADGUARD_PASSWORD='{quoted}'\n"
-            "KNIGHTWATCHER_OUT=/srv/www/knightwatcher/data\n"
+            f"KW_TAUTULLI_API_KEY={key}\n"
+            "KW_ADGUARD_USERNAME=knightwatcher\n"
+            f"KW_ADGUARD_PASSWORD='{quoted}'\n"
+            "KW_OUT=/srv/www/knightwatcher/data\n"
         )
         # The process environment holds other values, which the file replaces.
-        with mock.patch.dict(os.environ, {"KNIGHTWATCHER_TAUTULLI_API_KEY": ""}):
+        with mock.patch.dict(os.environ, {"KW_TAUTULLI_API_KEY": ""}):
             code, out, err = self.run_cli("--check-config", "--env-file", self.env_file)
         self.assertEqual(code, 0, err)
         self.assertIn("config ok: 5 sources enabled", out)
@@ -105,19 +105,15 @@ class CliTest(unittest.TestCase):
     def test_a_missing_credential_names_the_variable_never_a_value(self):
         self.write_config('[sources.adblock]\nurl = "http://192.0.2.53"\n')
         password = secrets.token_urlsafe(18)
-        self.write_env(
-            f"KNIGHTWATCHER_ADGUARD_PASSWORD={password}\nKNIGHTWATCHER_ADGUARD_USERNAME=\n"
-        )
+        self.write_env(f"KW_ADGUARD_PASSWORD={password}\nKW_ADGUARD_USERNAME=\n")
         code, out, err = self.run_cli("--check-config", "--env-file", self.env_file)
         self.assertEqual(code, 2)
-        self.assertEqual(
-            err, "config: .env: KNIGHTWATCHER_ADGUARD_USERNAME missing (for adblock)\n"
-        )
+        self.assertEqual(err, "config: .env: KW_ADGUARD_USERNAME missing (for adblock)\n")
         self.assertNotIn(password, out + err)
 
     def test_a_bad_env_file_names_the_line_never_its_content(self):
         password = secrets.token_urlsafe(18)
-        self.write_env(f"# a comment\nKNIGHTWATCHER_ADGUARD_PASSWORD {password}\n")
+        self.write_env(f"# a comment\nKW_ADGUARD_PASSWORD {password}\n")
         code, out, err = self.run_cli("--check-config", "--env-file", self.env_file)
         self.assertEqual(code, 2)
         self.assertEqual(err, f"config: {self.env_file}: line 2: expected NAME=value\n")

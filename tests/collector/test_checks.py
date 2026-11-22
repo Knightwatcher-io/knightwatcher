@@ -90,22 +90,20 @@ class ConfigTest(unittest.TestCase):
 
     def test_the_header_reads_its_value_from_env_by_name(self):
         value = secrets.token_hex(12)
-        c = config(entry(header="X-Api-Key"), env={"KNIGHTWATCHER_NAS_TEMP_HEADER": value})
+        c = config(entry(header="X-Api-Key"), env={"KW_NAS_TEMP_HEADER": value})
         self.assertEqual(c.secret("json:nas-temp"), {"header": value})
         self.assertIn(value, c.secret_values())
-        c = config(
-            entry(header="Authorization", secret="nas"), env={"KNIGHTWATCHER_NAS_HEADER": value}
-        )
+        c = config(entry(header="Authorization", secret="nas"), env={"KW_NAS_HEADER": value})
         self.assertEqual(c.secret("json:nas-temp"), {"header": value})
         self.assertEqual(
             self.problems(entry(header="X-Api-Key")),
-            [".env: KNIGHTWATCHER_NAS_TEMP_HEADER missing (for json:nas-temp)"],
+            [".env: KW_NAS_TEMP_HEADER missing (for json:nas-temp)"],
         )
         # Taken up while the collector runs, it fails at every read, naming the variable.
         c = config(entry(header="X-Api-Key"), missing="report")
         [source] = build_sources(c)
         self.assertIsInstance(source, MissingCredentials)
-        with self.assertRaisesRegex(SourceError, "KNIGHTWATCHER_NAS_TEMP_HEADER missing"):
+        with self.assertRaisesRegex(SourceError, "KW_NAS_TEMP_HEADER missing"):
             source.fetch(T0)
 
     def test_an_entry_that_is_off_needs_only_its_name(self):
@@ -227,12 +225,12 @@ class ConfigTest(unittest.TestCase):
     def test_the_header_and_its_secret(self):
         for name in ("Host", "Cookie", "User-Agent", "Proxy-Authorization", "Content-Length"):
             self.assertEqual(
-                self.problems(entry(header=name), env={"KNIGHTWATCHER_NAS_TEMP_HEADER": "v"}),
+                self.problems(entry(header=name), env={"KW_NAS_TEMP_HEADER": "v"}),
                 ["sources.json[0].header: this header cannot be set"],
                 name,
             )
         self.assertEqual(
-            self.problems(entry(header="X Key"), env={"KNIGHTWATCHER_NAS_TEMP_HEADER": "v"}),
+            self.problems(entry(header="X Key"), env={"KW_NAS_TEMP_HEADER": "v"}),
             ["sources.json[0].header: a header's name is letters, digits and -"],
         )
         self.assertEqual(
@@ -374,7 +372,7 @@ class LoopbackTest(unittest.TestCase):
             "conditions": {"clear_after_s": 60, **(conditions or {})},
             "sources": {"json": list(entries)},
         }
-        return build(raw, {"KNIGHTWATCHER_NAS_TEMP_HEADER": self.header})
+        return build(raw, {"KW_NAS_TEMP_HEADER": self.header})
 
     def runner(self, *entries, **kw):
         c = self.make(*entries, **kw)
@@ -603,8 +601,8 @@ class CommandLineTest(unittest.TestCase):
         self.addCleanup(self.http.close)
         self.http.routes["/api/status"] = (200, nas(71))
         self.header = secrets.token_hex(16)
-        env = {k: v for k, v in os.environ.items() if not k.startswith("KNIGHTWATCHER_")}
-        env["KNIGHTWATCHER_NAS_HEADER"] = self.header
+        env = {k: v for k, v in os.environ.items() if not k.startswith("KW_")}
+        env["KW_NAS_HEADER"] = self.header
         patcher = mock.patch.dict(os.environ, env, clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -638,7 +636,7 @@ class CommandLineTest(unittest.TestCase):
         self.assertEqual(
             out,
             "probe json:nas-temp: provider check (the check nas-temp)\n"
-            "credentials: KNIGHTWATCHER_NAS_HEADER\n"
+            "credentials: KW_NAS_HEADER\n"
             'fill:\n{\n "value": "<string 3>"\n}\nfacts:\nnull\ntest: equals holds\n',
         )
         self.assertNotIn(self.header, out)

@@ -2,10 +2,10 @@
  {
   "at": 0,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_RADARR_API_KEY}",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_RADARR_API_KEY}",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -110,10 +110,10 @@
  {
   "at": 30,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_RADARR_API_KEY}",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_RADARR_API_KEY}",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -286,10 +286,10 @@
  {
   "at": 60,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_RADARR_API_KEY}",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_RADARR_API_KEY}",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -662,10 +662,10 @@
  {
   "at": 90,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_RADARR_API_KEY}",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_RADARR_API_KEY}",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -941,10 +941,10 @@
  {
   "at": 120,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_RADARR_API_KEY}",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeMovie=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_RADARR_API_KEY}",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1238,9 +1238,9 @@
  {
   "at": 150,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1534,9 +1534,9 @@
  {
   "at": 180,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -1809,9 +1809,9 @@
  {
   "at": 210,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2102,9 +2102,9 @@
  {
   "at": 240,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2371,9 +2371,9 @@
  {
   "at": 270,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2632,9 +2632,9 @@
  {
   "at": 300,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -2902,9 +2902,9 @@
  {
   "at": 330,
   "requests": [
-   "GET /api/v2?apikey={KNIGHTWATCHER_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
-   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KNIGHTWATCHER_SONARR_API_KEY}",
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /api/v2?apikey={KW_TAUTULLI_API_KEY}&cmd=get_activity\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher",
+   "GET /api/v3/history?page=1&pageSize=10&eventType=3&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true\nAccept-Encoding: identity\nConnection: close\nUser-Agent: knightwatcher\nX-Api-Key: {KW_SONARR_API_KEY}",
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",

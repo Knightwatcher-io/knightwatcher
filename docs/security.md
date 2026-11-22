@@ -142,7 +142,7 @@ A generic check of `[[sources.json]]` reads the one address its entry gives, who
 engine with its rules: one GET, no redirect followed, no proxy, the reply cut at 4 MiB and read
 within `http_timeout_s`, and the request held to a provider file's rules (no user name or password
 in the address, and none of the headers a provider file cannot set). Its one header takes its
-value from `.env` by name, `KNIGHTWATCHER_<SECRET>_HEADER`, which reaches the collector only once
+value from `.env` by name, `KW_<SECRET>_HEADER`, which reaches the collector only once
 `compose.override.yaml` names it; the value is never written to the state file, the memory file or
 a log, is scrubbed from every message as every credential is, and `--probe` and `--record` show
 the header by name with its value masked. The check writes only its own words, and the value it

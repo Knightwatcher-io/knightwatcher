@@ -328,7 +328,7 @@ class ConfigTest(unittest.TestCase):
             with open(os.path.join(folder, "mybans.toml"), "w", encoding="utf-8") as fh:
                 fh.write(MYBANS)
             found = providers.scan(folder)
-        env = {"KNIGHTWATCHER_MYBANS_TOKEN": "an-invented-token"}
+        env = {"KW_MYBANS_TOKEN": "an-invented-token"}
         own = {"from": "mybans", "url": "http://192.0.2.40:8080"}
         config = config_mod.build({"sources": {"security": own}}, env, providers=found)
         self.assertEqual(config.sources["security"]["url"], "http://192.0.2.40:8080")

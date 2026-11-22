@@ -106,7 +106,7 @@
  {
   "at": 600,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",
@@ -175,7 +175,7 @@
  {
   "at": 630,
   "requests": [
-   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KNIGHTWATCHER_ADGUARD_USERNAME}:{KNIGHTWATCHER_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
+   "GET /control/stats\nAccept-Encoding: identity\nAuthorization: Basic {KW_ADGUARD_USERNAME}:{KW_ADGUARD_PASSWORD}\nConnection: close\nUser-Agent: knightwatcher"
   ],
   "state": [
    "{",

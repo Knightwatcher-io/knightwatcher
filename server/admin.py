@@ -1,7 +1,7 @@
 """The admin page's side of the server: the password, the sessions, admin.json and the checks.
 
 The admin page changes what the collector watches, so it is behind a password, set in .env as
-KNIGHTWATCHER_ADMIN_PASSWORD and given to the server alone. While it is missing, or shorter than
+KW_ADMIN_PASSWORD and given to the server alone. While it is missing, or shorter than
 MIN_PASSWORD characters, the page is off and says why; the walls are not affected.
 
   - Gate holds the password, the sessions and the limit on wrong passwords. A session is a random
@@ -45,7 +45,7 @@ from collector import overlay, providers, schema
 from collector.config import ConfigError
 from collector.store import atomic_write
 
-PASSWORD_VARIABLE = "KNIGHTWATCHER_ADMIN_PASSWORD"
+PASSWORD_VARIABLE = "KW_ADMIN_PASSWORD"
 MIN_PASSWORD = 12
 SESSION_S = 30 * 24 * 3600
 # A session's cookie is sent again, to renew it in the browser, at most this often.

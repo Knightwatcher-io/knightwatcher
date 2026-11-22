@@ -245,9 +245,9 @@ class FromTest(unittest.TestCase):
     """`from` and `secret` in config.toml."""
 
     ENV: ClassVar[dict[str, str]] = {
-        "KNIGHTWATCHER_TAUTULLI_API_KEY": "tk-invented",
-        "KNIGHTWATCHER_ADGUARD_USERNAME": "kw",
-        "KNIGHTWATCHER_ADGUARD_PASSWORD": "pw-invented",
+        "KW_TAUTULLI_API_KEY": "tk-invented",
+        "KW_ADGUARD_USERNAME": "kw",
+        "KW_ADGUARD_PASSWORD": "pw-invented",
     }
 
     def build(self, section, settings, env=None):
@@ -285,17 +285,17 @@ class FromTest(unittest.TestCase):
             self.problems("adblock", {"from": 3}), ["sources.adblock.from: expected str"]
         )
         self.assertEqual(
-            self.problems("sonarr", {"from": "sonarr"}, {"KNIGHTWATCHER_SONARR_API_KEY": "x"}),
+            self.problems("sonarr", {"from": "sonarr"}, {"KW_SONARR_API_KEY": "x"}),
             ["sources.sonarr.from: unknown setting"],
         )
 
     def test_the_secret_is_the_providers_id_unless_it_is_set(self):
-        env = {"KNIGHTWATCHER_PLEXPASS_API_KEY": "tk-other"}
+        env = {"KW_PLEXPASS_API_KEY": "tk-other"}
         c = self.build("streams", {"secret": "plexpass"}, env)
         self.assertEqual(c.secret("streams"), {"api_key": "tk-other"})
         self.assertEqual(
             self.problems("streams", {}, env),
-            [".env: KNIGHTWATCHER_TAUTULLI_API_KEY missing (for streams)"],
+            [".env: KW_TAUTULLI_API_KEY missing (for streams)"],
         )
         self.assertEqual(
             self.problems("streams", {"secret": ""}),
@@ -306,13 +306,13 @@ class FromTest(unittest.TestCase):
         self.assertEqual(c.secret_values(), ["tk-invented", "kw", "pw-invented"])
 
     def test_pihole_reads_its_password(self):
-        env = {"KNIGHTWATCHER_PIHOLE_PASSWORD": "pw-invented"}
+        env = {"KW_PIHOLE_PASSWORD": "pw-invented"}
         c = self.build("adblock", {"from": "pihole"}, env)
         self.assertEqual(c.sources["adblock"]["secret"], "pihole")
         self.assertEqual(c.secret("adblock"), {"password": "pw-invented"})
         self.assertEqual(
             self.problems("adblock", {"from": "pihole"}, {}),
-            [".env: KNIGHTWATCHER_PIHOLE_PASSWORD missing (for adblock)"],
+            [".env: KW_PIHOLE_PASSWORD missing (for adblock)"],
         )
         self.assertEqual(
             self.problems("streams", {"from": "pihole"}),
@@ -320,13 +320,13 @@ class FromTest(unittest.TestCase):
         )
 
     def test_plex_reads_its_token(self):
-        env = {"KNIGHTWATCHER_PLEX_TOKEN": "tok-invented"}
+        env = {"KW_PLEX_TOKEN": "tok-invented"}
         c = self.build("streams", {"from": "plex", "url": "http://192.0.2.20:32400"}, env)
         self.assertEqual(c.sources["streams"]["secret"], "plex")
         self.assertEqual(c.secret("streams"), {"token": "tok-invented"})
         self.assertEqual(
             self.problems("streams", {"from": "plex"}, {}),
-            [".env: KNIGHTWATCHER_PLEX_TOKEN missing (for streams)"],
+            [".env: KW_PLEX_TOKEN missing (for streams)"],
         )
         self.assertEqual(
             self.problems("adblock", {"from": "plex"}),
@@ -334,13 +334,13 @@ class FromTest(unittest.TestCase):
         )
 
     def test_tracearr_reads_its_api_key(self):
-        env = {"KNIGHTWATCHER_TRACEARR_API_KEY": "trr_pub_invented"}
+        env = {"KW_TRACEARR_API_KEY": "trr_pub_invented"}
         c = self.build("streams", {"from": "tracearr", "url": "http://192.0.2.20:3000"}, env)
         self.assertEqual(c.sources["streams"]["secret"], "tracearr")
         self.assertEqual(c.secret("streams"), {"api_key": "trr_pub_invented"})
         self.assertEqual(
             self.problems("streams", {"from": "tracearr"}, {}),
-            [".env: KNIGHTWATCHER_TRACEARR_API_KEY missing (for streams)"],
+            [".env: KW_TRACEARR_API_KEY missing (for streams)"],
         )
         self.assertEqual(
             self.problems("adblock", {"from": "tracearr"}),
@@ -348,13 +348,13 @@ class FromTest(unittest.TestCase):
         )
 
     def test_jellyfin_reads_its_api_key(self):
-        env = {"KNIGHTWATCHER_JELLYFIN_API_KEY": "jf-invented"}
+        env = {"KW_JELLYFIN_API_KEY": "jf-invented"}
         c = self.build("streams", {"from": "jellyfin", "url": "http://192.0.2.20:8096"}, env)
         self.assertEqual(c.sources["streams"]["secret"], "jellyfin")
         self.assertEqual(c.secret("streams"), {"api_key": "jf-invented"})
         self.assertEqual(
             self.problems("streams", {"from": "jellyfin"}, {}),
-            [".env: KNIGHTWATCHER_JELLYFIN_API_KEY missing (for streams)"],
+            [".env: KW_JELLYFIN_API_KEY missing (for streams)"],
         )
         self.assertEqual(
             self.problems("adblock", {"from": "jellyfin"}),
@@ -362,13 +362,13 @@ class FromTest(unittest.TestCase):
         )
 
     def test_technitium_reads_its_token(self):
-        env = {"KNIGHTWATCHER_TECHNITIUM_TOKEN": "tok-invented"}
+        env = {"KW_TECHNITIUM_TOKEN": "tok-invented"}
         c = self.build("adblock", {"from": "technitium"}, env)
         self.assertEqual(c.sources["adblock"]["secret"], "technitium")
         self.assertEqual(c.secret("adblock"), {"token": "tok-invented"})
         self.assertEqual(
             self.problems("adblock", {"from": "technitium"}, {}),
-            [".env: KNIGHTWATCHER_TECHNITIUM_TOKEN missing (for adblock)"],
+            [".env: KW_TECHNITIUM_TOKEN missing (for adblock)"],
         )
         self.assertEqual(
             self.problems("streams", {"from": "technitium"}),
@@ -376,7 +376,7 @@ class FromTest(unittest.TestCase):
         )
 
     def test_verify_tls(self):
-        env = {"KNIGHTWATCHER_PIHOLE_PASSWORD": "pw-invented"}
+        env = {"KW_PIHOLE_PASSWORD": "pw-invented"}
         https = {"from": "pihole", "url": "https://192.0.2.53"}
         c = self.build("adblock", https, env)
         self.assertIs(c.sources["adblock"]["verify_tls"], True)
@@ -384,7 +384,7 @@ class FromTest(unittest.TestCase):
         self.assertIs(c.sources["adblock"]["verify_tls"], False)
         source = KindSource("adblock", c.sources["adblock"], c)
         self.assertIs(source.provider.verify_tls, False)
-        keys = {"KNIGHTWATCHER_SONARR_API_KEY": "s", "KNIGHTWATCHER_RADARR_API_KEY": "r"}
+        keys = {"KW_SONARR_API_KEY": "s", "KW_RADARR_API_KEY": "r"}
         for section in ("streams", "sonarr", "radarr"):
             got = self.build(section, {}, {**self.ENV, **keys})
             self.assertIs(got.sources[section]["verify_tls"], True)
@@ -417,15 +417,20 @@ class FromTest(unittest.TestCase):
 
     def test_credential_names_know_every_field(self):
         env = {
-            "KNIGHTWATCHER_PLEX_TOKEN": "x",
-            "KNIGHTWATCHER_NAS_HEADER": "y",
-            "KNIGHTWATCHER_NAS_COLOUR": "z",
+            "KW_PLEX_TOKEN": "x",
+            "KW_NAS_HEADER": "y",
+            "KW_NAS_COLOUR": "z",
+            "KW_CAPPED": "400%,4G",
+            "OTHER_PLEX_TOKEN": "w",
         }
         names = credential_names(env)
-        self.assertTrue(names["KNIGHTWATCHER_PLEX_TOKEN"])
-        self.assertTrue(names["KNIGHTWATCHER_NAS_HEADER"])
-        self.assertNotIn("KNIGHTWATCHER_NAS_COLOUR", names)
-        self.assertFalse(names["KNIGHTWATCHER_TAUTULLI_API_KEY"])
+        self.assertTrue(names["KW_PLEX_TOKEN"])
+        self.assertTrue(names["KW_NAS_HEADER"])
+        self.assertNotIn("KW_NAS_COLOUR", names)
+        # only the KW_ prefix names a credential, and the tools' own KW_CAPPED is none
+        self.assertNotIn("KW_CAPPED", names)
+        self.assertNotIn("OTHER_PLEX_TOKEN", names)
+        self.assertFalse(names["KW_TAUTULLI_API_KEY"])
 
 
 if __name__ == "__main__":
