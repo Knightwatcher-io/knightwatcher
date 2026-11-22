@@ -155,7 +155,8 @@ class ProbeTest(unittest.TestCase):
         code, _, err = self.probe("streams")
         self.assertEqual(code, 2)
         self.assertIn(
-            'config: sources.streams.from: unknown provider "plx"; use plex or tautulli', err
+            'config: sources.streams.from: unknown provider "plx"; use plex, tautulli or tracearr',
+            err,
         )
 
     def test_record_writes_the_exchanges_without_the_credentials(self):

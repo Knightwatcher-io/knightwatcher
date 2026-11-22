@@ -87,7 +87,7 @@ reads a user's name from the service's reply only for `names`, and nothing of a 
 passed on; and what the setting holds back is never written to `state.json`, the words of
 `streaming` held through its clearing period included ([state.md](./state.md#fields)). The reply
 itself still arrives whole over the network, as it always has. This holds the same for every
-provider of streams, Tautulli and Plex alike. The page cannot show what the file does not carry,
+provider of streams, Tautulli, Plex and Tracearr alike. The page cannot show what the file does not carry,
 whatever its version.
 
 The services are read through provider files ([providers.md](./providers.md)), which are data:
@@ -104,7 +104,11 @@ an access log; it does not expire, so it is best made by a user of its own in no
 Everyone, which can view but change nothing. Plex's token goes in the `X-Plex-Token` header alone,
 for the same reason, though Plex would also read it from the query. Plex lists its sessions to the
 server's owner alone, so the token is the owner's, and a Plex token reaches the owner's whole Plex
-account rather than this one call; it belongs in `.env` and nowhere else. The certificate of
+account rather than this one call; it belongs in `.env` and nowhere else. Tracearr's API key goes
+in the `Authorization` header alone, as a bearer token, the one place Tracearr reads it. Tracearr
+makes a key for its owner alone and keeps one, and the key reaches more than this one call: it
+reads all of Tracearr's data and can stop a stream, so it too belongs in `.env` and nowhere else.
+The certificate of
 an `https` service is checked unless its section sets `verify_tls = false`, for a self-signed one;
 the connection is then still encrypted, but a machine that takes the service's address on the
 network could receive the credential. `--probe` prints a provider's fill with every text masked,

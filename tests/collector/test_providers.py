@@ -147,18 +147,24 @@ class FixturesTest(unittest.TestCase):
             else:
                 self.run_fixture(pid, case, fixture)
 
-    def test_plex_and_tautulli_give_the_same_reading_of_the_same_streams(self):
-        # The two fixtures list the same three invented streams, each in its service's own shape.
+    def test_plex_tautulli_and_tracearr_give_the_same_reading_of_the_same_streams(self):
+        # The three fixtures list the same three invented streams, each in its service's own shape.
         cases = {(pid, case): fixture for pid, case, fixture in fixtures()}
-        plex, tautulli = cases[("plex", "sessions")], cases[("tautulli", "activity")]
-        kind = kinds.kind_class("streams")()
+        same = (
+            ("plex", cases[("plex", "sessions")]),
+            ("tautulli", cases[("tautulli", "activity")]),
+            ("tracearr", cases[("tracearr", "streams")]),
+        )
         config = make_config({})
         for show in ("names", "titles", "count"):
             readings = []
-            for pid, fixture in (("plex", plex), ("tautulli", tautulli)):
+            for pid, fixture in same:
+                # A kind of its own for each, as each source has, so no first sight is shared.
+                kind = kinds.kind_class("streams")()
                 _, fill = self.run_fixture(pid, "same", fixture, show)
                 readings.append(kind.reading(fill, {"show": show}, config, T0).facts)
             self.assertEqual(readings[0], readings[1], show)
+            self.assertEqual(readings[0], readings[2], show)
         self.assertEqual(readings[0], {"count": 3}, "with count, nothing but the number of streams")
 
     def test_plex_sends_its_token_in_a_header_and_never_in_the_address(self):
@@ -174,6 +180,23 @@ class FixturesTest(unittest.TestCase):
         ((method, path, headers, _),) = http.calls
         self.assertEqual((method, path), ("GET", "/status/sessions"))
         self.assertEqual({k.lower(): v for k, v in headers.items()}["x-plex-token"], token)
+
+    def test_tracearr_sends_its_key_as_a_bearer_token_and_never_in_the_address(self):
+        (fixture,) = [f for pid, case, f in fixtures() if (pid, case) == ("tracearr", "streams")]
+        http = FakeHttp()
+        self.addCleanup(http.close)
+        http.routes["/api/v2/public/streams"] = (200, fixture["exchanges"][0]["reply"]["json"])
+        key = "trr_pub_" + secrets.token_urlsafe(32)
+        spec = providers.get("tracearr")
+        settings = {"url": http.url, "show": "names"}
+        allowed = kinds.kind_class("streams")().allowed(settings)
+        DataProvider(spec, settings, {"api_key": key}, 2.0, allowed).read(T0)
+        ((method, path, headers, _),) = http.calls
+        self.assertEqual((method, path), ("GET", "/api/v2/public/streams"))
+        self.assertEqual(
+            {k.lower(): v for k, v in headers.items()}["authorization"], f"Bearer {key}"
+        )
+        self.assertNotIn(key, path)
 
     def test_names_are_never_read_unless_show_is_names(self):
         for pid, case, fixture in fixtures():
@@ -194,7 +217,7 @@ class FixturesTest(unittest.TestCase):
             self.assertEqual(
                 {v: provider.reads[v] for v in names_only}, dict.fromkeys(names_only, 0)
             )
-            self.assertNotIn('"who"', json.dumps(fill))
+            self.assertNotIn('"who"', json.dumps(_plain(fill)))
             provider, fill = self.run_fixture(pid, case, fixture, "count")
             self.assertEqual(dict(provider.reads), {}, f"{pid}/{case}: count reads no var at all")
 
@@ -226,7 +249,7 @@ class FromTest(unittest.TestCase):
     def test_a_from_that_names_no_provider_of_the_kind_is_refused(self):
         self.assertEqual(
             self.problems("streams", {"from": "plx"}),
-            ['sources.streams.from: unknown provider "plx"; use plex or tautulli'],
+            ['sources.streams.from: unknown provider "plx"; use plex, tautulli or tracearr'],
         )
         self.assertEqual(
             self.problems("streams", {"from": "adguard"}),
@@ -288,6 +311,20 @@ class FromTest(unittest.TestCase):
             ['sources.adblock.from: "plex" reads streams, not adblock'],
         )
 
+    def test_tracearr_reads_its_api_key(self):
+        env = {"KNIGHTWATCHER_TRACEARR_API_KEY": "trr_pub_invented"}
+        c = self.build("streams", {"from": "tracearr", "url": "http://192.0.2.20:3000"}, env)
+        self.assertEqual(c.sources["streams"]["secret"], "tracearr")
+        self.assertEqual(c.secret("streams"), {"api_key": "trr_pub_invented"})
+        self.assertEqual(
+            self.problems("streams", {"from": "tracearr"}, {}),
+            [".env: KNIGHTWATCHER_TRACEARR_API_KEY missing (for streams)"],
+        )
+        self.assertEqual(
+            self.problems("adblock", {"from": "tracearr"}),
+            ['sources.adblock.from: "tracearr" reads streams, not adblock'],
+        )
+
     def test_technitium_reads_its_token(self):
         env = {"KNIGHTWATCHER_TECHNITIUM_TOKEN": "tok-invented"}
         c = self.build("adblock", {"from": "technitium"}, env)
@@ -338,6 +375,7 @@ class FromTest(unittest.TestCase):
         self.assertEqual(config_mod.provider_credentials("adguard"), ["username", "password"])
         self.assertEqual(config_mod.provider_credentials("pihole"), ["password"])
         self.assertEqual(config_mod.provider_credentials("technitium"), ["token"])
+        self.assertEqual(config_mod.provider_credentials("tracearr"), ["api_key"])
         self.assertEqual(config_mod.provider_credentials("nothing"), [])
 
     def test_credential_names_know_every_field(self):

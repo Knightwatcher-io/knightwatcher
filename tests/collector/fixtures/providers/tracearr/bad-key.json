@@ -1,0 +1,31 @@
+{
+ "about": "A key Tracearr does not know: HTTP 401 with JSON, as Tracearr 3.2 answers it. A missing key and one without the trr_pub_ start get the same status with another message. The source pauses.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2/public/streams",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "Bearer {credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 401,
+    "json": {
+     "statusCode": 401,
+     "error": "UnauthorizedError",
+     "message": "Invalid API key"
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "API key refused"
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "about": "A key whose user is no longer the owner: HTTP 403, from Tracearr's source. The source pauses.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2/public/streams",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "Bearer {credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 403,
+    "json": {
+     "statusCode": 403,
+     "error": "ForbiddenError",
+     "message": "API key is not associated with an owner account"
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "API key refused: it is not the owner's"
+ }
+}

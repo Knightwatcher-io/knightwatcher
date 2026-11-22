@@ -178,7 +178,8 @@ tools/throwaway/technitium.sh   # technitium/dns-server: a token by API, flies, 
 tools/throwaway/lidarr.sh       # linuxserver/lidarr: its key from config.xml, an empty history, a list entry, a wrong key
 ```
 
-A service with no throwaway, such as Plex Media Server, which needs a Plex account, is proved
+A service with no throwaway, such as Plex Media Server, which needs a Plex account, or Tracearr,
+which needs a media server to watch, is proved
 against the live one with `--probe` on the host: a config of the probe's own with that one
 section, `--admin /nonexistent`, and `--env-file .env`, so that neither the wall's config nor its
 container is touched and no credential passes through the command line

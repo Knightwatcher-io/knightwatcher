@@ -93,7 +93,17 @@ class BuiltInTest(unittest.TestCase):
         files = {p: s for p, s in found.items() if not isinstance(s, providers.Adapter)}
         self.assertEqual(
             sorted(files),
-            ["adguard", "lidarr", "pihole", "plex", "radarr", "sonarr", "tautulli", "technitium"],
+            [
+                "adguard",
+                "lidarr",
+                "pihole",
+                "plex",
+                "radarr",
+                "sonarr",
+                "tautulli",
+                "technitium",
+                "tracearr",
+            ],
         )
         for pid, spec in files.items():
             self.assertEqual(spec.id, pid)

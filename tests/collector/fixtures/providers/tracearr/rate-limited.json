@@ -1,0 +1,31 @@
+{
+ "about": "The key's budget of calls a minute spent (240 by default, shared by every caller using the key): HTTP 429. The source pauses.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2/public/streams",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "Bearer {credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 429,
+    "json": {
+     "statusCode": 429,
+     "error": "Too Many Requests",
+     "message": "Rate limit exceeded, retry in 1 minute"
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "too many calls with this API key"
+ }
+}

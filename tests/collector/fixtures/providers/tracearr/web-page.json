@@ -1,0 +1,27 @@
+{
+ "about": "An address with a path Tracearr does not serve under: its web page, HTTP 200 and HTML.",
+ "settings": {},
+ "credentials": [
+  "api_key"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v2/public/streams",
+    "headers": {
+     "Accept": "application/json",
+     "Authorization": "Bearer {credential.api_key}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "body": "<!doctype html>\n<html lang=\"en\" class=\"dark\">\n  <head>\n    <base href=\"/\">\n    <meta charset=\"UTF-8\" />\n    <title>Tracearr</title>\n  </head>\n  <body><div id=\"root\"></div></body>\n</html>\n"
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "Tracearr sent something other than JSON: is the address Tracearr's own?"
+ }
+}

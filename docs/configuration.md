@@ -97,10 +97,10 @@ characters, the admin page stays off and says why, and the walls work as before.
 source needs may be left empty or out; the collector's check names any it needs and lacks.
 
 A source that logs in reads its credentials from `KNIGHTWATCHER_<SECRET>_<FIELD>`, in capitals.
-Its provider names the fields (Tautulli's is `api_key`, Plex's `token`, AdGuard Home's `username`
+Its provider names the fields (Tautulli's and Tracearr's are `api_key`, Plex's `token`, AdGuard Home's `username`
 and `password`, Pi-hole's `password`, Technitium's `token`; [Providers](#providers) lists them),
 and `SECRET` is the source's `secret` setting, which is the provider's id unless set: `tautulli`,
-`plex`, `adguard`, `pihole`, `technitium`, `sonarr`, `radarr` or `lidarr`. A source given
+`plex`, `tracearr`, `adguard`, `pihole`, `technitium`, `sonarr`, `radarr` or `lidarr`. A source given
 `secret = "sonarr_4k"` therefore reads `KNIGHTWATCHER_SONARR_4K_API_KEY`, and a source reading a
 provider file of your own with the id `myflix` and a `token` reads `KNIGHTWATCHER_MYFLIX_TOKEN`.
 The same holds for each entry of `[[sources.imports]]` ([More imports](#more-imports)). A check of
@@ -424,17 +424,17 @@ Open SSH sessions.
 
 ### [sources.streams]
 
-Streams playing, from the service its provider reads: Tautulli by default, or Plex Media Server.
+Streams playing, from the service its provider reads: Tautulli by default, Plex Media Server, or Tracearr.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
 | `every_s` | a whole number of seconds, above zero | `30` | household | How often the source is read. |
-| `from` | `"plex"` or `"tautulli"`: a provider of the streams kind (see Providers below) | `"tautulli"` | household | The provider the streams are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
+| `from` | `"plex"`, `"tautulli"` or `"tracearr"`: a provider of the streams kind (see Providers below) | `"tautulli"` | household | The provider the streams are read through, by its id: the service it reads, and the credentials it reads from .env. A provider of another kind, or one that does not exist, is refused by name. |
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url. |
 | `show` | `"names"`, `"titles"` or `"count"` | `"names"` | household | What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file. |
-| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's is API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
+| `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KNIGHTWATCHER_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's and Tracearr's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone. |
 
 ### [sources.adblock]
 
@@ -638,6 +638,7 @@ The services the sections read through a kind can read, each by its provider. A 
 | `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]`, `[[sources.imports]]` with `from = "sonarr"` | `KNIGHTWATCHER_SONARR_API_KEY` |
 | `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KNIGHTWATCHER_TAUTULLI_API_KEY` |
 | `technitium` | adblock | [Technitium DNS Server](https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md) | `[sources.adblock]` with `from = "technitium"` | `KNIGHTWATCHER_TECHNITIUM_TOKEN` |
+| `tracearr` | streams | [Tracearr](https://github.com/connorgallopo/Tracearr/blob/main/apps/server/src/routes/publicV2.openapi.ts) | `[sources.streams]` with `from = "tracearr"` | `KNIGHTWATCHER_TRACEARR_API_KEY` |
 
 ### .env
 
@@ -656,6 +657,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KNIGHTWATCHER_ADMIN_PASSWORD` | server | a password of at least 12 characters, or empty to leave the admin page off, such as `a-long-password-of-your-own` | empty | The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out. |
 | `KNIGHTWATCHER_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_PLEX_TOKEN` | credential | a Plex token, such as `AbCdEfGhIjKlMnOpQrSt` | none | The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = "plex". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
+| `KNIGHTWATCHER_TRACEARR_API_KEY` | credential | trr_pub_ and 43 letters, digits, - and _, such as `trr_pub_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE` | none | Tracearr's public API key, for the tracearr provider, which [sources.streams] reads with from = "tracearr". Made by Tracearr's owner: Settings, Data & API, API, Generate Key. It is sent in the Authorization header as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a stream: keep it as you would the password. Tracearr keeps one key, and Regenerate ends the old one for whatever else uses it. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_USERNAME` | credential | a user name, such as `knightwatcher` | none | The user name of an AdGuard Home login, for the adguard provider, which [sources.adblock] reads by default. AdGuard Home has no API keys: the collector signs in as a user of its web interface. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_ADGUARD_PASSWORD` | credential | a password, such as `an-invented-password` | none | That login's password. AdGuard Home locks an address out for 15 minutes after five bad logins. Read when the source is enabled; its `secret` setting names the variable. |
 | `KNIGHTWATCHER_PIHOLE_PASSWORD` | credential | a password, such as `an-invented-app-password` | none | A Pi-hole 6 app password, for the pihole provider, which [sources.adblock] reads with from = "pihole". In Pi-hole: Settings, Web interface / API, Configure app password. The web password works too, but not with two-factor authentication on, since the collector cannot give a code. Version 5 is not supported. Read when the source is enabled; its `secret` setting names the variable. |
@@ -682,7 +684,7 @@ provider, named by `from`: `tautulli`, `adguard` and `fail2ban`, the defaults, s
 name. `[sources.lidarr]` gives one import for each album, once every track of it has imported,
 never one for each track. A `from` that
 names no provider, or a provider of another kind, is refused by name
-(`sources.streams.from: unknown provider "plx"; use plex or tautulli`), so a typo never falls back to the
+(`sources.streams.from: unknown provider "plx"; use plex, tautulli or tracearr`), so a typo never falls back to the
 default. A source that is off is checked when it is turned on, as for its other settings.
 [providers.md](./providers.md) describes the provider files.
 
@@ -875,6 +877,37 @@ Use `http` and the server's own address where Plex allows it. With Plex's Secure
 setting at Required, Plex takes only `https`; its certificate is made out to a name under
 `plex.direct`, not to an address, so an `https` url with an address then needs
 `verify_tls = false`.
+
+### Tracearr
+
+`from = "tracearr"` reads the streams from Tracearr 2.0 or later, through its public API, with
+its API key:
+
+```toml
+[sources.streams]
+from = "tracearr"
+url = "http://192.0.2.20:3000"   # Tracearr's own address and port
+show = "titles"                  # reads KNIGHTWATCHER_TRACEARR_API_KEY
+```
+
+The reading is of the same kind as Tautulli's and Plex's: the same title of each stream
+(`The Night Shift S02E04`, `<artist> - <track>`, a film's title), the count, and the streams in
+the order they started, by the moment Tracearr says each began. `who` is the display name set in
+Tracearr, else the user's name on the media server. The streams are those of every server
+Tracearr watches, Plex, Jellyfin and Emby alike, and the count is theirs together.
+
+The key is made by Tracearr's owner: Settings, Data & API, API, Generate Key. It starts
+`trr_pub_`; put it in `KNIGHTWATCHER_TRACEARR_API_KEY`. It is sent in the `Authorization` header
+as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a
+stream, so keep it as you would the password. Tracearr keeps one key: Regenerate makes a new one
+and ends the old one for whatever else uses it. A key Tracearr does not take is answered with
+HTTP 401 (`API key refused`), and 403 when its user is not the owner; either pauses the source for
+`auth_backoff_s`. Tracearr allows a key 240 calls a minute by default, shared by everything that
+uses the key; reading every 30 seconds takes two. A Tracearr served under a path of its own (its
+`BASE_PATH`) answers its API with that path in the `url` or without it. An address with a path
+Tracearr does not serve under is answered with its web page (`Tracearr sent something other than
+JSON`). Tracearr 1 has no version 2 of the API and answers 404 (`no such call: is this Tracearr
+2.0 or later?`).
 
 ### Pi-hole
 
