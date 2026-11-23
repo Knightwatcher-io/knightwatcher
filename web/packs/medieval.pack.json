@@ -3,9 +3,9 @@
   "pack": {
     "id": "kw.medieval",
     "name": "Knightwatcher medieval world",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "format": [1, 1],
-    "licence": "Part of Knightwatcher, on the same terms as the rest of the project.",
+    "licence": "Knightwatcher art licence (legal/ART-LICENCE.md). Copyright (C) 2026 Valtora.",
     "provides": ["palettes", "scenes", "cast", "props", "words", "overlays", "stamps", "worlds"],
     "palettes": { "house": { "screen": "#7fe9ff" } },
     "worlds": {
@@ -5946,6 +5946,5 @@
         "seat": { "x": 770, "y": 490, "bubble": [622, 180], "turn": 3200, "mouth": 230 }
       }
     }
-  },
-  "sig": { "alg": "ed25519", "kid": "kw1", "value": "JtfjFJH65kmYgBflZ2zAvrnvYKTAP8lVDH26pHOkyBx7sMz6kvtYYC2T4IWJyXpWF9QvvOYXAYuETA21jFm2BQ==" }
+  }
 }

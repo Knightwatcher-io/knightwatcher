@@ -3,9 +3,9 @@
   "pack": {
     "id": "kw.base",
     "name": "Knightwatcher knight",
-    "version": "1.5.0",
+    "version": "1.5.1",
     "format": [1, 2],
-    "licence": "Part of Knightwatcher, on the same terms as the rest of the project.",
+    "licence": "Knightwatcher art licence (legal/ART-LICENCE.md). Copyright (C) 2026 Valtora.",
     "provides": ["builds", "items", "palettes", "swatches"],
     "palettes": {
       "cloth": { "wool0": "#8a7f95", "wool1": "#625a70", "wool2": "#423c50" }
@@ -1685,6 +1685,5 @@
         ]
       }
     }
-  },
-  "sig": { "alg": "ed25519", "kid": "kw1", "value": "7gzwk1G5bOS33NkGbVwq/cIh5bBo8kcgd89YeQdFtdnFhxPLY0BuG/4frbCojKr4Tz2thK1TKF1eydeuWl9iDQ==" }
+  }
 }

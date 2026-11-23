@@ -67,7 +67,7 @@ test('the base pack unsigned is read on a dev page and refused at the signature 
   const r = PK.read(UNSIGNED, { allowUnsigned: true, verify });
   assert.equal(r.ok, true, r.reason);
   assert.equal(r.id, 'kw.base');
-  assert.equal(r.version, '1.5.0');
+  assert.equal(r.version, '1.5.1');
   assert.deepEqual(r.format, [1, 2]);
   assert.equal(r.signed, false);
   assert.deepEqual(r.provides, ['builds', 'items', 'palettes', 'swatches']);
