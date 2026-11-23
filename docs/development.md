@@ -340,7 +340,7 @@ Version 0.6.0, which lights the pie through its lattice in place of the raspberr
 other devices as an owl, a cauldron, a flask and a chest, was signed the same day. Version 0.7.0,
 which adds the mouser cat and the redesigned scenes and devices, was signed on 17 November. Version 1.5.1 of
 the base pack and version 0.7.1 of the medieval world's pack change only the licence line, to the
-[art licence](../legal/ART-LICENCE.md), and ship unsigned until their signing run. A signed version is drawn from by a deployed
+[art licence](../legal/ART-LICENCE.md), and were both signed on 23 November. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
