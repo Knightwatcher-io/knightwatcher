@@ -47,8 +47,8 @@
     }
   ],
 
-  // No scheduled work: no row is ever deleted. Explicit, so a deploy clears any trigger set
-  // by hand in the dashboard.
+  // No scheduled work: rows past 24 months are deleted as heartbeats are stored
+  // (src/receive.ts). Explicit, so a deploy clears any trigger set by hand in the dashboard.
   "triggers": {
     "crons": []
   }

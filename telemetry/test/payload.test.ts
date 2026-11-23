@@ -5,8 +5,10 @@ import {
   buildRow,
   COLUMNS,
   countryOf,
+  cutoffOf,
   dayOf,
   FIELDS,
+  KEEP_MONTHS,
   parseHeartbeat,
   type Heartbeat,
 } from "../src/payload.ts";
@@ -313,6 +315,42 @@ describe("dayOf", () => {
   it("turns at midnight UTC", () => {
     assert.equal(dayOf(Date.UTC(2026, 10, 22, 23, 59, 59, 999)), "2026-11-22");
     assert.equal(dayOf(Date.UTC(2026, 10, 23, 0, 0, 0, 0)), "2026-11-23");
+  });
+});
+
+describe("cutoffOf", () => {
+  const at = (iso: string) => cutoffOf(Date.parse(iso));
+
+  it("keeps 24 months", () => {
+    assert.equal(KEEP_MONTHS, 24);
+  });
+  it("is the same calendar date two years before the UTC day", () => {
+    assert.equal(cutoffOf(NOON), "2024-11-22");
+    assert.equal(at("2028-11-23T00:00:00Z"), "2026-11-23");
+    assert.equal(at("2028-11-24T09:30:00Z"), "2026-11-24");
+    assert.equal(at("2027-07-31T12:00:00Z"), "2025-07-31");
+  });
+  it("turns at midnight UTC, with the day", () => {
+    assert.equal(at("2028-11-23T23:59:59.999Z"), "2026-11-23");
+    assert.equal(at("2028-11-24T00:00:00.000Z"), "2026-11-24");
+  });
+  it("maps 29 February to 28 February", () => {
+    assert.equal(at("2028-02-29T12:00:00Z"), "2026-02-28");
+    assert.equal(at("2028-02-28T12:00:00Z"), "2026-02-28");
+    assert.equal(at("2028-03-01T00:00:00Z"), "2026-03-01");
+  });
+  it("keeps a leap day's row through 28 February two years on", () => {
+    assert.equal(at("2026-02-28T12:00:00Z"), "2024-02-28");
+    assert.equal(at("2026-03-01T12:00:00Z"), "2024-03-01");
+  });
+  it("crosses a year boundary", () => {
+    assert.equal(at("2027-12-31T23:59:59.999Z"), "2025-12-31");
+    assert.equal(at("2028-01-01T00:00:00Z"), "2026-01-01");
+  });
+  it("sorts as text the way the days do", () => {
+    // The delete compares day < cutoff as text, which is the date order for YYYY-MM-DD.
+    assert.match(at("2028-01-01T00:00:00Z"), /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok("2025-12-31" < at("2028-01-01T00:00:00Z"));
   });
 });
 

@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, it, mock } from "node:test";
 import * as entry from "../src/index.ts";
 import worker from "../src/index.ts";
 import { handle, MAX_BODY_BYTES } from "../src/receive.ts";
-import { COLUMNS } from "../src/payload.ts";
+import { COLUMNS, EXPIRE_SQL, UPSERT_SQL } from "../src/payload.ts";
 import { fakes, NOON, post, request, stream, valid, type Fakes } from "./helpers.ts";
 
 const ADDRESS = "192.0.2.10";
@@ -133,14 +133,75 @@ describe("the upsert", () => {
     assert.equal(row.received_at, NOON);
   });
 
-  it("only ever writes", async () => {
+  it("only ever writes: the upsert, then the delete, and nothing else", async () => {
     await send(post(valid()));
     await send(post(valid()));
-    assert.ok(f.db.statements.length > 0);
+    assert.deepEqual(f.db.statements, [UPSERT_SQL, EXPIRE_SQL, UPSERT_SQL, EXPIRE_SQL]);
+    assert.match(UPSERT_SQL, /^INSERT INTO heartbeats /);
+    assert.match(EXPIRE_SQL, /^DELETE FROM heartbeats WHERE day < \?1$/);
     for (const sql of f.db.statements) {
-      assert.match(sql, /^INSERT INTO heartbeats /);
       assert.doesNotMatch(sql, /\bSELECT\b|\bRETURNING\b/i);
     }
+  });
+});
+
+describe("rows past 24 months", () => {
+  // NOON is on 2026-11-22, so the cutoff is 2024-11-22.
+  const OTHER = "0b9c8d7e-6f5a-4b3c-8d2e-1f0a9b8c7d6e";
+  const SAME = "6f1c2b9e-3d4a-4e8f-9a7b-0c5d1e2f3a4b";
+
+  it("are deleted after a heartbeat is stored, of every install, keeping the cutoff's day", async () => {
+    f.db.seed(SAME, "2024-11-21");
+    f.db.seed(OTHER, "2023-01-01");
+    f.db.seed(OTHER, "2024-11-21");
+    f.db.seed(OTHER, "2024-11-22");
+    f.db.seed(OTHER, "2026-11-01");
+    await assertEmpty(await send(post(valid())), 204);
+    assert.deepEqual(
+      f.db.rows().map((r) => [r.install_id, r.day]),
+      [
+        [OTHER, "2024-11-22"],
+        [OTHER, "2026-11-01"],
+        [SAME, "2026-11-22"],
+      ],
+    );
+  });
+
+  it("are kept through the same date two years on, and gone the day after", async () => {
+    f.db.seed(OTHER, "2026-11-23");
+    await send(post(valid()), Date.parse("2028-11-23T23:00:00Z"));
+    assert.ok(f.db.rows().some((r) => r.install_id === OTHER && r.day === "2026-11-23"));
+    await send(post(valid()), Date.parse("2028-11-24T00:30:00Z"));
+    assert.equal(f.db.rows().some((r) => r.install_id === OTHER), false);
+  });
+
+  it("are not touched by a heartbeat that is refused or limited", async () => {
+    f.db.seed(OTHER, "2020-01-01");
+    await send(post({ ...valid(), schema: 2 }));
+    f.limiter.allow = false;
+    await send(post(valid()));
+    assert.deepEqual(f.db.statements, []);
+    assert.equal(f.db.rows().length, 1);
+  });
+
+  it("are deleted through the day index", () => {
+    const plan = f.db.sqlite.prepare(`EXPLAIN QUERY PLAN ${EXPIRE_SQL}`).all("2024-11-22");
+    assert.ok(
+      plan.some((step) => String(step.detail).includes("idx_heartbeats_day")),
+      JSON.stringify(plan),
+    );
+  });
+
+  it("stay when the delete fails, and the heartbeat is still 204, stored, with nothing logged", async () => {
+    f.db.seed(OTHER, "2020-01-01");
+    f.db.failingOn = /^DELETE /;
+    await assertEmpty(await send(post(valid())), 204);
+    assert.deepEqual(f.db.statements, [UPSERT_SQL, EXPIRE_SQL]);
+    assert.deepEqual(
+      f.db.rows().map((r) => r.day),
+      ["2020-01-01", "2026-11-22"],
+    );
+    assert.deepEqual(consoleCalls, []);
   });
 });
 
@@ -362,5 +423,11 @@ describe("a database failure", () => {
   it("is 500 with no body, and nothing is logged", async () => {
     f.db.failing = true;
     await assertEmpty(await send(post(valid())), 500);
+  });
+
+  it("in the upsert stops before the delete", async () => {
+    f.db.failingOn = /^INSERT /;
+    await assertEmpty(await send(post(valid())), 500);
+    assert.deepEqual(f.db.statements, [UPSERT_SQL]);
   });
 });
