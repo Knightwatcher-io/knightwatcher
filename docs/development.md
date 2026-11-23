@@ -331,14 +331,16 @@ Whether the base pack ships signed today, and what a deployed page draws in each
 [library.md](./library.md#where-the-knight-is-drawn-from). The base pack, `kw.base`, was signed at
 version 1.2.0 on 13 November 2026, at 1.3.0 on 14 November and at 1.4.0, which adds the free
 items, on 15 November. Version 1.5.0, which adds the crossbow and moves the pack to format
-`[1, 2]`, ships unsigned until its signing run. The medieval world's pack, `kw.medieval`, was
+`[1, 2]`, was signed on 18 November. The medieval world's pack, `kw.medieval`, was
 first signed on 15 November 2026 at version 0.1.0, which held the cellar alone, and again the same
 day at version 0.2.0, which adds the camp, the battlement, the yard, the smithy and the house.
 Version 0.3.0, which adds the devices, was signed the same way on 16 November, and version 0.4.0,
 which adds the cast, the same day, as was version 0.5.0, which adds the words and the overlay.
 Version 0.6.0, which lights the pie through its lattice in place of the raspberry and draws the
 other devices as an owl, a cauldron, a flask and a chest, was signed the same day. Version 0.7.0,
-which adds the mouser cat and the redesigned scenes and devices, was signed on 17 November. A signed version is drawn from by a deployed
+which adds the mouser cat and the redesigned scenes and devices, was signed on 17 November. Version 1.5.1 of
+the base pack and version 0.7.1 of the medieval world's pack change only the licence line, to the
+[art licence](../legal/ART-LICENCE.md), and ship unsigned until their signing run. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature

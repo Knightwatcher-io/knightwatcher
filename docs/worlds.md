@@ -26,8 +26,9 @@ the smithy, the house and the court), the devices as the prop set `props.medieva
 three monarchs, the goblin, the fly and the mouser cat), the words, the overlay and the preset
 `world.medieval` ([The medieval world's pack](#the-medieval-worlds-pack)). The page builds the
 quiet line and the events' captions from the parts the collector sends, in the world's words, and
-takes the colours and the font of the words over the scene from the world's overlay. Version 0.7.0
-is signed, so a deployed page and a `dev` page alike draw everything from it.
+takes the colours and the font of the words over the scene from the world's overlay. Version 0.7.1
+ships unsigned until its signing run, so for now a `dev` page draws everything from it and a
+deployed page draws from code ([The medieval world's pack](#the-medieval-worlds-pack)).
 
 Any other world pack the page loads, shipped beside it or downloaded into `data/packs/`, reaches
 the wall through the settings: its scenes, cast, words, overlay, body, swatches and items, under
@@ -375,7 +376,7 @@ preset is complete.
 ## The medieval world's pack
 
 `web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 1]`,
-version 0.7.0, licensed as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+version 0.7.1, under the [art licence](../legal/ART-LICENCE.md) as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([library.md](./library.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
@@ -547,7 +548,8 @@ raspberry off the pie and lights the pie through its lattice, with the last slic
 when the Pi is down, draws the other devices as medieval things, the owl, the cauldron, the flask
 and the chest, and adds the preset `world.medieval`, and is signed too. Version 0.7.0, which adds
 the mouser cat and the redesigned scenes and devices (the crystal in place of the cauldron, the
-ground places along the front of the floor, the crate's stretches), is signed too. A copy changed after signing is refused by a
+ground places along the front of the floor, the crate's stretches), is signed too. Version 0.7.1 changes only the licence line, to the art
+licence, and ships unsigned until its signing run. A copy changed after signing is refused by a
 deployed page until its next run: that page draws every scene, every device and the cast, the cat
 included, from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.

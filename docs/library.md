@@ -204,7 +204,7 @@ One signature over 500 KiB takes about 15 ms under Node, and one over 15 KiB abo
 
 ### The base pack
 
-`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.5.0,
+`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.5.1,
 format `[1, 2]`, which a weapon that fires needs ([packs.md](./packs.md#weapons-that-fire)).
 Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, two more builds, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), the free items of 1.4.0 (two or three more in every slot a user chooses), the crossbow of 1.5.0, and nothing the display does not draw:
 
@@ -375,8 +375,9 @@ base pack's items falls back on any build.
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.7.0. Versions 0.1.0 (the cellar alone) to 0.7.0, which adds the mouser cat and
-the redesigned scenes and devices, are signed with `kw1`. It holds every scene as data, the three
+`[1, 1]`, version 0.7.1. Versions 0.1.0 (the cellar alone) to 0.7.0, which adds the mouser cat and
+the redesigned scenes and devices, are signed with `kw1`; version 0.7.1, which changes only the
+licence line, ships unsigned until its signing run. It holds every scene as data, the three
 monarchs, the goblin, the fly and the mouser cat as its cast, the devices as the prop set
 `props.medieval`, the word set `words.medieval`, the overlay `overlay.phosphor`, the preset
 `world.medieval`, the stamps the scenes and devices use (the sconce, the barrel, the house's peg and
@@ -457,10 +458,10 @@ knight reads every carried text, so while `kw.medieval` ships unsigned (between 
 signature step: sig: is missing, and this page accepts only signed packs`). Where the scenes are
 drawn from is the scene compiler's to say, in a line of its own ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)).
 
-**Today the base pack, version 1.5.0, ships unsigned until its signing run** with `kw1` (see
+**Today the base pack, version 1.5.1, ships unsigned until its signing run** with `kw1` (see
 [development.md](./development.md#signing-the-packs)). Signed, a deployed page draws the knight
 from it as a `dev` page does, in every build and with every item. A version changed after signing
-ships unsigned until the next signing run, as 1.5.0 does now: meanwhile a `dev` page still draws from it, and a deployed
+ships unsigned until the next signing run, as 1.5.1 does now: meanwhile a `dev` page still draws from it, and a deployed
 page refuses it at the `signature` step and draws the knight from the code in `knight.js`, the
 full knight as it shipped before packs, which looks the same as the default look (see
 [When packs fail](#when-packs-fail)).
@@ -472,8 +473,8 @@ refused pack, and one line, `console.info` for the base pack and `console.warn` 
 time the source changes:
 
 ```
-knightwatcher: the knight is drawn from the base pack kw.base 1.5.0, signed
-knightwatcher: the knight is drawn from the base pack kw.base 1.5.0, unsigned
+knightwatcher: the knight is drawn from the base pack kw.base 1.5.1, signed
+knightwatcher: the knight is drawn from the base pack kw.base 1.5.1, unsigned
 knightwatcher: the pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
 knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step
 ```

@@ -455,20 +455,20 @@ function served(texts, dl, dev, o) {
 test('a downloaded kw.medieval of a higher version takes the place of the shipped one at once; a lower or equal one is passed over', () => {
   const higher = edited(p => { p.version = '0.8.0'; p.scenes.camp.can = p.scenes.camp.can.slice(); });
   const s = served([BASE_TEXT, TEXT], got({ 'medieval.pack.json': higher }), true);
-  assert.deepEqual(plain(s.first.pack), { id: 'kw.medieval', version: '0.7.0', signed: false });
+  assert.deepEqual(plain(s.first.pack), { id: 'kw.medieval', version: '0.7.1', signed: false });
   assert.deepEqual(plain(s.st.pack), { id: 'kw.medieval', version: '0.8.0', signed: false });
   assert.match(s.st.note, /drawn from the pack kw\.medieval 0\.8\.0, unsigned$/);
   for (const n of SCENES) assert.equal(s.KW.scenes[n], s.KW.scenes['kw.medieval/' + n], n);
-  for (const v of ['0.6.9', '0.7.0']) {
+  for (const v of ['0.7.0', '0.7.1']) {
     const t = served([BASE_TEXT, TEXT], got({ 'medieval.pack.json': edited(p => { p.version = v; }) }), true);
-    assert.equal(t.st.pack.version, '0.7.0', v);
+    assert.equal(t.st.pack.version, '0.7.1', v);
   }
 });
 
 test('a downloaded world pack is read under the knight\'s rule: a deployed page refuses it unsigned, and the knight alone says so, once', () => {
   const higher = edited(p => { p.version = '0.8.0'; });
   const s = served([signedText(BASE_TEXT), signedText(TEXT)], got({ 'medieval.pack.json': higher }), false, { keys: true });
-  assert.deepEqual(plain(s.st.pack), { id: 'kw.medieval', version: '0.7.0', signed: true }, 'the shipped copy stays');
+  assert.deepEqual(plain(s.st.pack), { id: 'kw.medieval', version: '0.7.1', signed: true }, 'the shipped copy stays');
   assert.equal(s.st.refused, null);
   const said = s.after.filter(l => /refused/.test(l[1]));
   assert.deepEqual(plain(said), [['warn', 'knightwatcher: the pack kw.medieval was refused at the signature step: ' + MISSING]]);

@@ -271,8 +271,9 @@ out byte for byte the same, on a busy machine too, apart from the clock when the
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
 and every scene, device and member of the cast drawn from the medieval world's pack, with its words
 and its overlay. A deployed copy draws from each pack while it ships signed, and from code
-otherwise: today the knight from the base pack and everything else, words and overlay included, from the
-medieval world's pack 0.7.0, both signed.
+otherwise: today the base pack 1.5.1 and the medieval world's pack 0.7.1 ship unsigned until their
+signing run, so a deployed copy draws the knight and every scene, device and member of the cast from
+code, with the collector's own words in `display.css`'s colours.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches
@@ -375,6 +376,8 @@ arming sword meets the goblin by its tapered point, a few ms later, so the four 
 are timed to the new hits. Against a reference from before the usage counts, `settings-status` and
 `settings-status-world` differ: the status page gained a Usage counts entry under Sources ("Not
 known. The display is showing the demo.", since a page opened from disk has no state file), and the
-entries under it move down. Every other shot is the same.
+entries under it move down. Against a reference from base pack 1.5.0 and `kw.medieval` 0.7.0,
+`settings-status` and `settings-status-world` differ where they name the packs' versions, and while
+1.5.1 and 0.7.1 ship unsigned, where they say whether each is signed. Every other shot is the same.
 A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.

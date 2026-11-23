@@ -90,9 +90,9 @@ if (process.env.BASE_READ === 'write') {
   const want = JSON.parse(fs.readFileSync(STORED, 'utf8'));
   const got = snapshot();
 
-  test('the stored read is of the base pack as it ships, version 1.5.0, format [1, 2]', () => {
+  test('the stored read is of the base pack as it ships, version 1.5.1, format [1, 2]', () => {
     assert.equal(want.dev.ok, true);
-    assert.equal(want.dev.version, '1.5.0');
+    assert.equal(want.dev.version, '1.5.1');
     assert.deepEqual(want.dev.format, [1, 2]);
     assert.equal(want.shipped.signed, true);
     assert.equal(Object.keys(want.looks).length, 18);

@@ -880,14 +880,15 @@ that each cost function bounds what the effect draws. [The page's tests](#the-pa
 
 `tests/web/base-read.test.js` reads the shipped base pack with the library as it is and compares the
 whole result with `tests/web/fixtures/base-read.json`, first stored from the library before format
-1.1 and stored again for base packs 1.4.0 and 1.5.0: the read of the file signed (with a key made for the run,
+1.1 and stored again for base packs 1.4.0, 1.5.0 and 1.5.1: the read of the file signed (with a key made for the run,
 which reads as the file signed with `kw1` does), unsigned on a `dev` page and unsigned on a
 deployed page, the SHA-256 and length of the bytes its signature covers, and `resolve()` with every
 record on each build, for the default look, the sword and shield, three looks that wear the 25
 free items between them, and the crossbow of 1.5.0 with the long cloak, its stowed view after the
 cloak in the body's list. Storing it for 1.5.0 changed only the version, the format, the new item
 and its sums, and the empty `world` a pack of format 1.1 or later reads with; every earlier look's
-records and costs stayed as stored. The file as it ships must read as the signed read when it carries a `sig`
+records and costs stayed as stored. Storing it for 1.5.1 changed only the version, the licence line
+and the signed bytes' SHA-256 and length. The file as it ships must read as the signed read when it carries a `sig`
 and as the deployed refusal when it does not, so the test holds in either state. Store it again
 only when the base pack is meant to change, from a library known to read it right:
 
