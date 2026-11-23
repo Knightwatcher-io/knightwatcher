@@ -76,7 +76,11 @@ install id, so the day's last heartbeat is the one kept. A field it does not kno
 never stored. A heartbeat with a documented field missing or malformed is refused and nothing is
 stored.
 
-**Every row is kept, with no time limit.** Nothing is deleted or rolled up.
+**Each row is kept for 24 months from its day, then deleted.** The row for 23 November 2026 is
+kept through 23 November 2028 and deleted from 24 November 2028; a row for 29 February is kept
+through 28 February two years on. The receiver deletes the rows past 24 months each time it stores
+a heartbeat, so a day's rows go at the first heartbeat after midnight UTC once that day is more
+than 24 months old. Nothing is rolled up or kept in any other form.
 
 The connecting address is used for one thing: to limit how many requests one address can make in
 a minute, so a flood cannot crowd out real installs. It is **never stored and never logged**.

@@ -2,8 +2,8 @@
  * The heartbeat's payload: what a valid one is, and the row it becomes.
  *
  * Nothing here touches a Worker runtime API, so it runs and is tested on plain Node. Every
- * decision about what is stored is made in this file. docs/telemetry.md describes it for the
- * people whose installs send it, and the tests hold the two together.
+ * decision about what is stored, and for how long, is made in this file. docs/telemetry.md
+ * describes it for the people whose installs send it, and the tests hold the two together.
  */
 
 /** The one version of the payload this Worker reads. */
@@ -188,6 +188,24 @@ export function dayOf(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+/** How long a row is kept, counted from its day. */
+export const KEEP_MONTHS = 24;
+
+/**
+ * The oldest day still kept at a moment on the Worker's clock: the same calendar date
+ * KEEP_MONTHS before the UTC day, or the month's last day when that date does not exist (29
+ * February maps to 28 February). A row whose day is before it is deleted, so the row for
+ * 2026-11-23 is kept through 2028-11-23 and deleted from 2028-11-24.
+ */
+export function cutoffOf(ms: number): string {
+  const today = new Date(ms);
+  const months = today.getUTCFullYear() * 12 + today.getUTCMonth() - KEEP_MONTHS;
+  const year = Math.floor(months / 12);
+  const month = months - year * 12;
+  const lastOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return dayOf(Date.UTC(year, month, Math.min(today.getUTCDate(), lastOfMonth)));
+}
+
 /**
  * The country Cloudflare gives a request (`request.cf.country`), or null. Cloudflare sends `XX`
  * when it does not know the country and `T1` for the Tor network; neither is a country, so both
@@ -237,3 +255,9 @@ ON CONFLICT (install_id, day) DO UPDATE SET
   ${COLUMNS.filter((c) => c !== "install_id" && c !== "day")
     .map((c) => `${c} = excluded.${c}`)
     .join(",\n  ")}`;
+
+/**
+ * Deletes every row, of any install, whose day is before the cutoff it is bound to. It reads the
+ * day index, so when nothing is that old it touches almost nothing.
+ */
+export const EXPIRE_SQL = "DELETE FROM heartbeats WHERE day < ?1";

@@ -8,7 +8,9 @@
 --
 -- One row per install per UTC day. The primary key is the whole of the deduplication: each
 -- heartbeat upserts its install's row for the day, so a retry or a restart rewrites that row and
--- the day's last heartbeat is the one kept. No row is ever deleted.
+-- the day's last heartbeat is the one kept. A row is kept for 24 months from its day: after each
+-- heartbeat is stored, the Worker deletes every row whose day is before the same date two years
+-- earlier (29 February maps to 28 February), through idx_heartbeats_day. Nothing is scheduled.
 --
 -- The columns are the payload's documented fields and three the Worker adds: day and
 -- received_at from its own clock, and country from Cloudflare's request data. There is no
@@ -36,5 +38,6 @@ CREATE TABLE IF NOT EXISTS heartbeats (
   PRIMARY KEY (install_id, day)
 );
 
--- The daily counts filter on day across every install.
+-- The daily counts filter on day across every install, and the Worker's delete of rows past 24
+-- months reads it too.
 CREATE INDEX IF NOT EXISTS idx_heartbeats_day ON heartbeats (day);

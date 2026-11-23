@@ -71,9 +71,9 @@ out.
 | `tests/server/test_displays.py` | `POST /api/displays` and its store: an id recorded, every other body refused with nothing kept or logged, the size, type and origin checks, `POST` alone, the ids never served, at most 1,000 kept with the oldest dropped, the write at most once a minute and at stop |
 | `tests/server/test_admin.py` | the admin page's side of the server, provider files of the user's own in its checks, `[[sources.imports]]` and `[[sources.json]]` given to the page, never set there, checked with every change and kept by the export, its answer and the export included |
 | `tests/server/test_stamp.py` | the version stamp, `server/stamp.py`, against `tools/deploy.sh` |
-| `telemetry/test/payload.test.ts` | the receiver's check of a heartbeat: every field's limits, and the row it makes |
-| `telemetry/test/worker.test.ts` | the receiver's handler end to end, against `schema.sql` in `node:sqlite` with a fake rate limiter: each answer, the upsert of a day's row, and the connecting address never stored or logged |
-| `telemetry/test/config.test.ts` | `wrangler.jsonc`, `schema.sql`, and the example and the table in [telemetry.md](./telemetry.md), against the fields the receiver accepts |
+| `telemetry/test/payload.test.ts` | the receiver's check of a heartbeat: every field's limits, the row it makes, and the cutoff for rows past 24 months |
+| `telemetry/test/worker.test.ts` | the receiver's handler end to end, against `schema.sql` in `node:sqlite` with a fake rate limiter: each answer, the upsert of a day's row, the delete of rows past 24 months (the cutoff's own day kept, a failed delete still `204`), and the connecting address never stored or logged |
+| `telemetry/test/config.test.ts` | `wrangler.jsonc`, `schema.sql`, and the example and the table in [telemetry.md](./telemetry.md), against the fields the receiver accepts, and the keeping period given there |
 
 `tests/collector/kw_helpers.py` holds helpers the collector's tests share, and points
 `heartbeat.ENDPOINT` at a closed loopback port for the whole run, so that no test can reach the

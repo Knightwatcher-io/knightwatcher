@@ -34,7 +34,10 @@ export function valid(): Record<string, unknown> {
 export class FakeD1 {
   readonly sqlite = new DatabaseSync(":memory:");
   readonly statements: string[] = [];
+  /** Every statement fails, as an unavailable database would. */
   failing = false;
+  /** Only the statements this matches fail. */
+  failingOn: RegExp | null = null;
 
   constructor() {
     this.sqlite.exec(SCHEMA_SQL);
@@ -45,7 +48,7 @@ export class FakeD1 {
     return {
       bind: (...values: SQLInputValue[]) => ({
         run: async () => {
-          if (this.failing) {
+          if (this.failing || this.failingOn?.test(sql)) {
             throw new Error("D1_ERROR: the database is unavailable");
           }
           this.sqlite.prepare(sql).run(...values);
@@ -53,6 +56,15 @@ export class FakeD1 {
         },
       }),
     };
+  }
+
+  /** Puts a row straight into the table, as a heartbeat on that day would have left it. */
+  seed(installId: string, day: string): void {
+    this.sqlite
+      .prepare(
+        `INSERT INTO heartbeats VALUES (?, ?, ?, NULL, 1, 'v', 0, 0, NULL, NULL, '[]', '{}', '[]', 0, 0, 0)`,
+      )
+      .run(installId, day, Date.parse(`${day}T12:00:00Z`));
   }
 
   rows(): Record<string, unknown>[] {

@@ -1,5 +1,6 @@
 /**
- * The request handler: routing, the rate limit, the body's checks and the upsert.
+ * The request handler: routing, the rate limit, the body's checks, the upsert, and the delete of
+ * rows past the keeping period.
  *
  * One route, `POST /v1/heartbeat`, and it only writes. No route returns a row, a count or
  * anything else from the database: the hostname has to stay public for installs to reach it,
@@ -14,7 +15,15 @@
  * the entry module for an entrypoint.
  */
 
-import { buildRow, COLUMNS, countryOf, parseHeartbeat, UPSERT_SQL } from "./payload.ts";
+import {
+  buildRow,
+  COLUMNS,
+  countryOf,
+  cutoffOf,
+  EXPIRE_SQL,
+  parseHeartbeat,
+  UPSERT_SQL,
+} from "./payload.ts";
 
 export interface Env {
   DB: D1Database;
@@ -130,6 +139,16 @@ async function receive(request: Request, env: Env, now: number): Promise<Respons
   await env.DB.prepare(UPSERT_SQL)
     .bind(...COLUMNS.map((column) => row[column]))
     .run();
+
+  // Once the row is stored, the rows past the keeping period go. A statement of its own, not a
+  // batch with the upsert, so a delete that fails cannot take the row back with it. Its failure
+  // is not the heartbeat's: the answer is still 204, nothing is logged, and the next heartbeat
+  // deletes the same rows. It is awaited, so it finishes within this request.
+  try {
+    await env.DB.prepare(EXPIRE_SQL).bind(cutoffOf(now)).run();
+  } catch {
+    // Swallowed on purpose.
+  }
   return empty(204);
 }
 

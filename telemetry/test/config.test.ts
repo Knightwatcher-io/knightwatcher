@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, it } from "node:test";
 
-import { COLUMNS, FIELDS, parseHeartbeat } from "../src/payload.ts";
+import { COLUMNS, FIELDS, KEEP_MONTHS, parseHeartbeat } from "../src/payload.ts";
 import { SCHEMA_SQL } from "./helpers.ts";
 
 /** JSON with comments: drops `//` comments outside strings, then parses. */
@@ -152,6 +152,11 @@ describe("docs/telemetry.md", () => {
   it("has a row for every field", () => {
     const rows = [...doc.matchAll(/^\| `([a-z_]+)` \|/gm)].map((m) => m[1]);
     assert.deepEqual(rows, [...FIELDS]);
+  });
+
+  it("keeps rows for as long as the Worker does", () => {
+    assert.ok(doc.includes(`**Each row is kept for ${KEEP_MONTHS} months from its day, then deleted.**`));
+    assert.equal(/no time limit/i.test(doc), false);
   });
 
   it("names the endpoint and the switch", () => {
