@@ -17,11 +17,12 @@ const SCRIPTS = ['js/draw.js', 'js/sprites.js', 'js/effects.js', 'js/props.js', 
   'js/scenes/battlement.js', 'js/scenes/camp.js', 'js/scenes/house.js', 'js/scenes/yard.js', 'js/scenes/cellar.js', 'js/scenes/smithy.js', 'js/scenes/court.js'];
 
 /* The scripts that hold the kinds and the scenes, in a sandbox drawing into a context that grows
-   one box, [x0, y0, x1, y1], over everything painted until it is read. Canvases of the fake
-   document paint nowhere; a drawImage of one counts its whole size. */
+   one box, [x0, y0, x1, y1], over everything painted until it is read, or with every() keeps each
+   box painted apart. Canvases of the fake document paint nowhere; a drawImage of one counts its
+   whole size. */
 function load() {
-  let bb = null;
-  const grow = (x0, y0, x1, y1) => { bb = bb ? [Math.min(bb[0], x0), Math.min(bb[1], y0), Math.max(bb[2], x1), Math.max(bb[3], y1)] : [x0, y0, x1, y1]; };
+  let bb = null, all = null;
+  const grow = (x0, y0, x1, y1) => { if (all) all.push([x0, y0, x1, y1]); bb = bb ? [Math.min(bb[0], x0), Math.min(bb[1], y0), Math.max(bb[2], x1), Math.max(bb[3], y1)] : [x0, y0, x1, y1]; };
   const ctx = new Proxy({}, {
     set() { return true; },
     get(_, k) {
@@ -39,7 +40,8 @@ function load() {
   const KW = box.window.KW;
   KW.draw.setCtx(ctx);
   const take = f => { bb = null; f(); const r = bb; bb = null; return r; };
-  return { KW, take };
+  const every = f => { all = []; f(); const r = all; all = null; bb = null; return r; };
+  return { KW, take, every };
 }
 
 /* The kinds that may stand in a place of each class: the Pi in the pie's place, cameras in the
@@ -103,4 +105,33 @@ test('a camera\'s question mark is never higher than y 172, clear of the headlin
   for (const [name, sc] of Object.entries(KW.scenes)) {
     for (const [p, pl] of Object.entries(sc.places)) if (pl.cls === 'high') assert.ok(pl.y - mark >= 172, `${name} ${p}: the mark's top at ${pl.y - mark}`);
   }
+});
+
+/* The smithy's acts walk the knight off its spot (scenes/smithy.js): to the forge at 650 and the
+   water at 228 in the quench, and to the bellows at 612 while the CPU runs hot. There the knight,
+   drawn with its tool, fill by fill, covers some places, which the owner accepted: at
+   the forge and at the bellows the head over the high places h1 and h2, and at the water the boots
+   over the third ground place, g3. A device down outranks both acts, so nothing hidden is an alert;
+   with a device down and with the memory tight the knight stays at its spot, clear of every place
+   but the pie's table, beside which it has always stood. */
+const SMITHY_COVERS = {
+  'the forge, quiet t600': ['h1', 'h2'],
+  'the water, quiet t6600': ['g3'],
+  'the bellows, running hot t240': ['h1', 'h2'],
+  'the spot, a device down t2300': [],
+  'the spot, the memory tight t2300': []
+};
+
+test('the smithy\'s acts cover only the places the owner accepted: h1 and h2 at the forge and the bellows, g3 at the water', () => {
+  const { KW, take, every } = load(), K = KW.knight, S = KW.scenes.smithy, got = {};
+  const meet = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+  const at = { 'the forge, quiet t600': ['idle', 600], 'the water, quiet t6600': ['idle', 6600], 'the bellows, running hot t240': ['cpu_hot', 240],
+    'the spot, a device down t2300': ['device_down', 2300], 'the spot, the memory tight t2300': ['memory_tight', 2300] };
+  for (const [label, [id, t]] of Object.entries(at)) {
+    const o = Object.assign(K.pose(id, t), { floor: 530, x: S.spot * 5, helmet: false, sword: false }), s = { w: { id }, kx: S.spot * 5, o, strike: false, dx: 0 };
+    S.act(t, s); o.x = s.kx + s.dx;
+    const fills = every(() => K.draw(o));
+    got[label] = Object.entries(S.places).filter(([p, pl]) => p !== 'pie' && placeBoxes(KW, take, pl).some(({ box: b }) => fills.some(f => meet(f, b)))).map(([p]) => p);
+  }
+  assert.deepEqual(got, SMITHY_COVERS);
 });

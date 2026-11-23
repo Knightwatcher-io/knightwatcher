@@ -124,6 +124,21 @@ SHOTS=(
   "settings-scenes-tablet|bar=0&t=2300&is=battlement&set=scenes&sc=attack:camp|1480,924"
   "scene-cpu-camp|bar=0&t=2300&on=cpu&sc=cpu_hot:camp"
   "scene-pi-battlement|bar=0&t=2300&on=pi&sc=pi_silent:battlement"
+  # the smithy's three acts: the hammer's face on the blade 4 ms into the blow (t 2804) on each
+  # build; the quench at the forge, in the steam at the barrel and as the blank is looked over, and
+  # with every place filled at the forge (the head over h1 and h2) and at the barrel (the boots over
+  # g3), the overlaps docs/page.md accepts; the bellows pressed, with the greatsword on the anvil and
+  # with the arming sword and the shield on the wall
+  "update-strike|bar=0&t=2804&on=update"
+  "bd-b-update-strike|bar=0&t=2804&on=update&bd=b"
+  "bd-c-update-strike|bar=0&t=2804&on=update&bd=c"
+  "is-smithy-forge|bar=0&t=600&is=smithy"
+  "is-smithy-steam|bar=0&t=5950&is=smithy"
+  "is-smithy-look|bar=0&t=8800&is=smithy"
+  "is-smithy-forge-devices|bar=0&t=600&is=smithy&dv=pi,camera,camera,camera,machine,vm,machine"
+  "is-smithy-barrel-devices|bar=0&t=6600&is=smithy&dv=pi,camera,camera,camera,machine,vm,machine"
+  "cpu-smithy|bar=0&t=240&on=cpu&sc=cpu_hot:smithy"
+  "arm-cpu-smithy|bar=0&t=240&on=cpu&sc=cpu_hot:smithy&arm=one"
   # the builds Broad (bd=b) and Slim (bd=c), each in turn: every scene with the knight standing, the
   # attack, the bloat of tight memory, the cellar's crate carried, the smithy's hammering, in bed
   # (the head alone), the sick tint in bed and the hot tint in the yard; the stance with the sword

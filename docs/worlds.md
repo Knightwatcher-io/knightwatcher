@@ -5,8 +5,8 @@ devices, the words and the overlay, and a preset that names one of each. The wat
 that mirrors the homelab, and in the medieval world it is the knight ([design.md](./design.md#terms)).
 This page is for anyone making a world pack. It gives format 1.1, the version of the pack format
 that carries a world as data, its sections, costs and limits, the words, the overlay and the
-presets, and what happens when the settings mix parts of different worlds; and format 1.2, which
-adds weapons and foes that fire. Format 1.0, the checks
+presets, and what happens when the settings mix parts of different worlds; format 1.2, which
+adds weapons and foes that fire; and format 1.3, which adds a scene's quench and bellows. Format 1.0, the checks
 and signing, which hold for every pack, are in [packs.md](./packs.md).
 
 | Part | Section | Described in |
@@ -26,8 +26,10 @@ the smithy, the house and the court), the devices as the prop set `props.medieva
 three monarchs, the goblin, the fly and the mouser cat), the words, the overlay and the preset
 `world.medieval` ([The medieval world's pack](#the-medieval-worlds-pack)). The page builds the
 quiet line and the events' captions from the parts the collector sends, in the world's words, and
-takes the colours and the font of the words over the scene from the world's overlay. Version 0.7.1
-is signed, so a deployed page and a `dev` page alike draw everything from it.
+takes the colours and the font of the words over the scene from the world's overlay. Version 0.8.0,
+which gives the smithy its quench and bellows, ships unsigned until its signing run: meanwhile a
+`dev` page draws everything from it, and a deployed page draws every scene from code
+([The medieval world's pack](#the-medieval-worlds-pack)).
 
 Any other world pack the page loads, shipped beside it or downloaded into `data/packs/`, reaches
 the wall through the settings: its scenes, cast, words, overlay, body, swatches and items, under
@@ -41,8 +43,9 @@ refused or throws, is in [world-loading.md](./world-loading.md); a small world m
 
 Format 1.1 adds the sections a world needs: the scenes, the supporting cast, the drawings of the
 devices, shared shape groups, flavour words, the overlay's look and presets that name one of each.
-The library reads `[1, 1]` beside `[1, 0]` and [`[1, 2]`](#format-12), and refuses `[1, 3]` and
-anything newer at the `format` step (`pack.format: is 1.3, newer than this engine's 1.2`). It checks
+The library reads `[1, 1]` beside `[1, 0]`, [`[1, 2]`](#format-12) and [`[1, 3]`](#format-13), and
+refuses `[1, 4]` and anything newer at the `format` step (`pack.format: is 1.4, newer than this
+engine's 1.3`). It checks
 every new section by the same steps as the rest, in the same order, and keeps it as data in the
 loaded pack's `data`.
 
@@ -159,6 +162,33 @@ the timings and [cast.md](./cast.md#the-cast-on-the-page) the compiled foe.
 `tests/web/fire.test.js` checks the fields and rules of 1.2, and the test world has a copy of
 format 1.2 with a weapon of each use and a foe that fires; see
 [tests.md](./tests.md#the-test-world).
+
+## Format 1.3
+
+Format 1.3 adds two parts a scene may give for acts the format could not name before, on the same
+terms as 1.2: each is a field a pack of 1.0 to 1.2 does not have, refused there at `fields` by name
+(`pack.scenes.smithy.bellows: is not a field here`), and a pack of 1.1 or 1.2 reads exactly as
+before on a page of 1.3. A page of format 1.2 refuses a pack of 1.3 at the `format` step, and
+every part that pack would have set takes the base world's. What 1.3 adds, on a scene:
+
+- `quench`, `{ "water": [x, y], "stand": [fire, water] }`: the quiet act, the watcher heating a
+  blank in the fire, carrying it to the water and quenching it. `water` is where the blank goes in,
+  on the grid, its y the water's face; `stand` the watcher's x at the fire and at the water, each a
+  whole number from 0 to 960. The act plays while all is quiet;
+- `bellows`, `{ "stand", "handle": [x, y], "travel", "div" }`: the act of the CPU running hot, the
+  watcher pumping a bellows. `stand` is the watcher's x (0 to 960), `handle` the middle of the
+  handle's crossbar with the bellows open, `travel` how far it goes down pressed (1 to 120) and
+  `div` the pump's period over 2 pi, in ms (32 to 10 000): the bellows are pumped once every 2 pi
+  times `div` ms, the period of a `wave` of that `div`, so that a glow of the scene keeps time with
+  the pump. The act plays while the CPU runs hot, and the scene's `can` lists `cpu_hot` for it;
+- the named value `pump`, how far the bellows are pressed, 0 open and 1 pressed, which a moving or
+  over layer of a scene with `bellows` may lean on. Its coefficient is the travel of a point, a
+  multiple of 1/8 within an offset: `{ "c": 409, "pump": 30 }` is a point that stands at 409 open
+  and 439 pressed. Anywhere else it is refused at `references` by name.
+
+How the acts play, and what the engine draws for them (the steam, the rings on the water, the drips
+and the glint), is in [scenes.md](./scenes.md#how-a-scene-compiles). `tests/web/world.test.js`
+checks the parts and `pump`, and their refusal in 1.1 and 1.2.
 
 ## Words and the overlay
 
@@ -289,7 +319,7 @@ condition's scene lists the condition.
 
 `kw.medieval`'s preset, `world.medieval`, is the medieval world, which the settings call
 `medieval`: the base world, and the page's own level ([display.md](./display.md#worlds)). Its outfit is
-the base pack's `defaults`, its quiet scenes the four the code turns between (`TURNS` in
+the base pack's `defaults`, its quiet scenes the five the code turns between (`TURNS` in
 `engine.js`, `SCENES` in `settings.js`), and its scene for each condition the one
 `KW.state.CONDITIONS` gives; `tests/web/worlds.test.js` holds the three equal. While the pack gives
 the preset, `KW.settings.pageWorld()` takes the base world's scenes from it; without the pack, from
@@ -374,8 +404,8 @@ preset is complete.
 
 ## The medieval world's pack
 
-`web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 1]`,
-version 0.7.1, under the [art licence](../legal/ART-LICENCE.md) as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+`web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 3]`,
+version 0.8.0, under the [art licence](../legal/ART-LICENCE.md) as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([library.md](./library.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
@@ -422,15 +452,23 @@ loads it after the base pack's. It holds:
   water, the workbench the pie stands on, the forge's hood and chimney (the effect `hood`), its bricks, the hearth
   (a tile of one repeat, below), the mouth of the fire, the floor of slabs and the ash, the anvil,
   and last the gear at rest: the shield on the wall and the weapon across the anvil, each through a
-  `rest` mark. Its first moving layer holds the fire's light, the coals, the three flames, the
-  sparks over them, the hot tip of the blade (a `rest` mark for the weapon at the anvil's rest) and
-  the mark where the devices are drawn; its second, while the hammer strikes (`"when": ["strike"]`),
-  the burst of sparks at the blow, `{ "k": "fx", "fx": "burst", "p": [{ "spot": 1, "c": 132 }, 418]
-  }`. Its places, spot and `can` (`updating` alone) are the code scene's, and so are its rests,
-  `anvil`, `{ "from": "spot", "x": 50, "y": 425, "a": "flat" }`, and `wall`, `{ "kind": "hang", "x":
-  145, "y": 312, "w": 100, "h": 132 }`. It takes the helmet off, holds the weapon (the act puts it
-  on the anvil), is not quiet and hosts nothing, and its `anvil` is `{ "rest": "anvil" }`, which
-  gives it the anvil's act. Its one round, at its spot, is not compiled (below);
+  `rest` mark. Its first moving layer, unless the CPU runs hot (`"when": ["!cond:cpu_hot"]`), holds
+  the calm fire: its light, the coals, the three flames and the sparks over them; its second, while
+  the CPU runs hot, the flared fire: a wider light and a warmer one over the coals, both pulsing on
+  a `wave` of `div` 100, which keeps time with the bellows, the coals, the flames half as large
+  again, the sparks and two `drift` effects of embers up the chimney. Its third holds the bellows,
+  its parts that never move and then its moving parts, each point that moves its open point plus
+  `pump` times its travel (`{ "c": 409, "pump": 30 }` for the crossbar), the hot tip of the blade
+  (a `rest` mark for the weapon at the anvil's rest) and the mark where the devices are drawn; its
+  fourth, while the hammer strikes (`"when": ["strike"]`), the burst of sparks where the hammer's
+  face meets the blade, `{ "k": "fx", "fx": "burst", "p": [{ "spot": 1, "c": 148 }, 412] }`. Its
+  places, spot and `can` (`device_down`, `cpu_hot`, `memory_tight` and `updating`) are the code
+  scene's, and so are its rests, `anvil`, `{ "from": "spot", "x": 50, "y": 425, "a": "flat" }`,
+  and `wall`, `{ "kind": "hang", "x": 145, "y": 312, "w": 100, "h": 132 }`. It takes the helmet
+  off, keeps the weapon away (the hammer's act lays it on the anvil), is quiet and hosts nothing.
+  Its `anvil` is `{ "rest": "anvil" }`, which gives it the anvil's act, its `bellows` `{ "stand":
+  612, "handle": [682, 414], "travel": 30, "div": 100 }` and its `quench` `{ "water": [172, 452],
+  "stand": [650, 228] }` (format 1.3). Its one round, at its spot, is not compiled (below);
 - the scene `house`, the knight's house of `web/js/scenes/house.js` written as data. Its first still
   layer holds, in the code's order, the roof's underside and its rafters (the effect `rafters`), the
   plank wall (the effect `planks`) and its posts as a tile, the beam, the moonlight and the window
@@ -493,7 +531,7 @@ loads it after the base pack's. It holds:
 - one palette entry, `house.screen`, the television's first colour, which the house's palette track
   changes every 400 ms;
 - the preset `world.medieval`, the medieval world whole: the base pack's Classic build and its
-  default outfit, the quiet scenes `battlement`, `camp`, `house` and `yard`, the scene of each
+  default outfit, the quiet scenes `battlement`, `camp`, `house`, `yard` and `smithy`, the scene of each
   condition, `patron.a`, `foe.goblin`, `critter.fly` and `pet.cat`, `props.medieval`, `overlay.phosphor`,
   `words.medieval`, and the camp as its picture, below ([Worlds as presets](#presets-on-the-page)).
 
@@ -501,21 +539,23 @@ At the widest screen they assume, the checks find:
 
 | Scene | Still layers | One frame of the moving and over layers |
 |---|---|---|
-| battlement | 342 shapes, 25 967 fills | 7 shapes, 185 fills, 1 glow |
-| camp | 66 shapes, 56 668 fills | 7 shapes, 718 fills, 8 glows |
+| battlement | 342 shapes, 25 879 fills | 7 shapes, 185 fills, 1 glow |
+| camp | 57 shapes, 57 073 fills | 7 shapes, 718 fills, 8 glows |
 | yard | 298 shapes, 28 929 fills | 44 shapes, 2 086 fills, 1 glow |
 | cellar | 440 shapes, 76 803 fills | 3 shapes, 120 fills, 1 glow |
-| smithy | 339 shapes, 15 212 fills | 9 shapes, 508 fills, 2 glows |
+| smithy | 339 shapes, 15 300 fills | 54 shapes, 2 053 fills, 4 glows |
 | house | 370 shapes, 71 245 fills | 46 shapes, 2 128 fills, 3 glows |
-| court | 408 shapes, 50 555 fills | 19 shapes, 904 fills, 8 glows |
+| court | 413 shapes, 50 647 fills | 19 shapes, 904 fills, 8 glows |
 
 against limits of 200 000 fills for the still layers, and 16 000 fills and 24 glows for a frame.
 The shapes are counted with each tile's repeats and each stamp's shapes written out. The camp's
-glows are the fire's light and the seven fireflies, the smithy's the fire's light and the sparks',
+glows are the fire's light and the seven fireflies, the smithy's the calm fire's light, the flared
+fire's two and the sparks', counted together though the calm and the flared never show at once,
 and the house's the fire's, the television's and the candle's, counted together though the last
 two never show at once: a frame is costed with every layer drawn; the court's are its torches'
-lights, one for each pillar the widest screen shows. The gear at rest, the hot tip, the sleeper, the
-Zs, the patron and its speech bubble are the engine's drawing, as the devices are, and count toward no scene's cost;
+lights, one for each pillar the widest screen shows. The gear at rest, the hot tip, the steam, the
+rings, the drips and the glint of the quench, the sleeper, the Zs, the patron and its speech bubble
+are the engine's drawing, as the devices are, and count toward no scene's cost;
 the stamp a weapon's rest names counts twice, once for each peg.
 
 The devices cost, still and moving (the moving part with a lamp of the kind's own):
@@ -531,7 +571,7 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
 own lamp, which no medieval kind uses now, would count toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
 5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
-court counts none of them. The whole file weighs 345 937 bytes, against the 512 KiB a pack may;
+court counts none of them. The whole file weighs 351 892 bytes, against the 512 KiB a pack may;
 the cat's stamps are 106 KB of it and the lamps' 15 KB. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each. The cat's poses cost from 621 fills
@@ -548,7 +588,9 @@ when the Pi is down, draws the other devices as medieval things, the owl, the ca
 and the chest, and adds the preset `world.medieval`, and is signed too. Version 0.7.0, which adds
 the mouser cat and the redesigned scenes and devices (the crystal in place of the cauldron, the
 ground places along the front of the floor, the crate's stretches), is signed too. Version 0.7.1 changes only the licence line, to the art
-licence, and is signed too. A copy changed after signing is refused by a
+licence, and is signed too. Version 0.8.0, of format `[1, 3]`, gives the smithy its three acts
+(the bellows, the flared fire and the quench, and the hammer's sparks where its face meets the
+blade) and makes it a quiet scene of the preset; it ships unsigned until its signing run. A copy changed after signing is refused by a
 deployed page until its next run: that page draws every scene, every device and the cast, the cat
 included, from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.

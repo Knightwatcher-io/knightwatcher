@@ -97,6 +97,20 @@ function load(dev, texts, kw1) {
 }
 
 const X = 480, FLOOR = 530;
+/* The moments of the smith's three acts the record draws, by condition and time: the hammer's blow
+   (0), its bounce (100), rise (500) and top (900); the quench's blank in the fire (600), raised
+   (2200), carried (3600), swung down (5500), in the water (6600), lifted out (7800), looked over
+   (8800) and going back into the fire (13700); the bellows open (0) and pressed (240). */
+const SMITH = [['updating', 0], ['updating', 100], ['updating', 500], ['updating', 900], ['idle', 600], ['idle', 2200], ['idle', 3600], ['idle', 5500],
+  ['idle', 6600], ['idle', 7800], ['idle', 8800], ['idle', 13700], ['cpu_hot', 0], ['cpu_hot', 240]];
+/* The knight's pose o in the smithy's act for the condition id at t, the knight's spot at X, moved off
+   it as the act moves it (s.dx). */
+function smith(S, o, id, t) {
+  const s = { w: { id }, kx: X, o, strike: false, dx: 0 };
+  S.act(t, s);
+  o.x = X + s.dx;
+  return s;
+}
 /* The pose for a condition at time t, placed as the engine places it, with fields laid over it. */
 function at(K, id, t, over) {
   const o = K.pose(id, t);
@@ -124,9 +138,11 @@ function POSES(K, scenes) {
   for (const t of [94, 283]) knight(`attack t${t}`, 'attack', t);
   // the two-handed swing, both ways
   for (const dir of [1, -1]) for (const q of [0.1, 0.25, 0.3, 0.42, 0.55, 0.7, 0.9]) knight(`swing ${dir > 0 ? 'right' : 'left'} q${q}`, 'idle', 2300, null, o => K.swing(o, q, dir));
-  // the smith's hammer
-  for (const h of [0, 0.5, 1]) knight(`hammer ${h}`, 'updating', 2300, { sword: false, helmet: false, hammer: h, progress: h });
-  knight('hammer bloated', 'memory_tight', 2300, { sword: false, hammer: 0.3 });
+  // the smith's three acts, as the smithy's act places the knight: the hammer at the blow, bouncing,
+  // rising and at the top; the quench's tongs and blank in the fire, raised, carried, in the water,
+  // lifted out, looked over and laid back in the fire; and the bellows open and pressed, leaning in
+  for (const [id, t] of SMITH) knight(`smith ${id} t${t}`, id, t, { sword: false, helmet: false }, o => smith(scenes.smithy, o, id, t));
+  knight('smith updating bloated', 'memory_tight', 2300, { sword: false }, o => smith(scenes.smithy, o, 'updating', 2300));
   // helmet off, sword off
   knight('helmet off', 'idle', 2300, { helmet: false });
   knight('helmet off unwell', 'container_unhealthy', 1400, { helmet: false });
@@ -175,7 +191,7 @@ function POSES(K, scenes) {
   }
   p.push(['house drawn, helmet on', () => H.draw(2300, { tv: true, inBed: false, helmOff: false, o: at(K, 'streaming', 2300) })]);
   for (const kx of [440, 300]) p.push([`smithy painted kx${kx}`, () => S.paint({ kx })]);
-  for (const t of [300, 1250]) p.push([`smithy drawn t${t}`, () => { const s = { kx: 440, o: at(K, 'updating', t), strike: false }; S.act(t, s); S.draw(t, s); }]);
+  for (const t of [300, 1250]) p.push([`smithy drawn t${t}`, () => { const s = { w: { id: 'updating' }, kx: 440, o: at(K, 'updating', t), strike: false }; S.act(t, s); S.draw(t, s); }]);
   return p;
 }
 
@@ -224,7 +240,7 @@ if (MODE === 'write') {
     const drawn = draw(path_), from = path_ === 'pack' ? 'from the base pack' : 'from code';
 
     test(`${from}: the stored record covers exactly the poses drawn`, () => {
-      assert.equal(drawn.length, 112);
+      assert.equal(drawn.length, 123);
       assert.deepEqual(drawn.map(([name]) => name), Object.keys(stored.poses));
     });
 
@@ -554,7 +570,7 @@ if (MODE === 'write') {
   test('a weapon that gives no blade has no hot tip in the smithy', () => {
     const a = load(true), b = load(true, [editedPack(p => { delete p.items['main.greatsword'].blade; })]);
     assert.equal(b.K.rest.reach(), null);
-    const drawn = box => { box.log.length = 0; const s = { kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
+    const drawn = box => { box.log.length = 0; const s = { w: { id: 'updating' }, kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
     const with_ = drawn(a), without = drawn(b);
     assert.ok(with_.includes('s #7a2a1d') && with_.includes('s #fff3a0'));
     assert.ok(!without.includes('s #7a2a1d') && !without.includes('s #8f231d'), 'no hot bands');
@@ -679,11 +695,30 @@ if (MODE === 'write') {
     let r = K.rig(at(K, 'idle', 2300, { sword: false, bloat: 5, bob: 1 }));
     assert.equal(r.grip, 'none');
     assert.deepEqual([[...r.anchors.handL], [...r.anchors.handR]], [[X - 89, FLOOR - 79], [X + 89, FLOOR - 79]]);
-    // the hammer: the left hand steadies the work, the right swings
-    r = K.rig(at(K, 'updating', 2300, { sword: false, hammer: 0.5, bloat: 5, bob: 1 }));
+    // the smith's grip: the right hand half way from its offset off the shoulder to its point on the
+    // grid, rounded, the tool's frame on it at the act's angle, and the left hand at its point
+    r = K.rig(at(K, 'updating', 2300, { sword: false, bloat: 5, bob: 1, tool: { kind: 'hammer', a: 0.75, R: { off: [20, -40], at: [X + 100, FLOOR - 120], pin: 0.5 }, L: { at: [X + 45, FLOOR - 104] } } }));
     assert.equal(r.grip, 'hammer');
-    assert.deepEqual([[...r.anchors.handL], [...r.anchors.handR]], [[X + 45, FLOOR - 99], [X + 105, FLOOR - 117]]);
-    assert.deepEqual([...r.anchors.main], [X + 105, FLOOR - 117, 0.75]);
+    const sh = [X + 54 + 25, FLOOR - 132 + 5], off = [sh[0] + 20, sh[1] - 40];
+    const hand = [Math.round(off[0] + (X + 100 - off[0]) * 0.5), Math.round(off[1] + (FLOOR - 120 - off[1]) * 0.5)];
+    assert.deepEqual([[...r.anchors.handL], [...r.anchors.handR]], [[X + 45, FLOOR - 104], hand]);
+    assert.deepEqual([...r.anchors.main], [...hand, 0.75]);
+    // with no pin, a hand at its point, or off its shoulder; with no left hand given, the left hangs
+    // 10 outside its shoulder and 48 below it
+    r = K.rig(at(K, 'updating', 2300, { sword: false, tool: { kind: 'hammer', a: 0, R: { off: [20, -40] } } }));
+    assert.deepEqual([[...r.anchors.handL], [...r.anchors.handR]], [[X - 64, FLOOR - 84], [X + 74, FLOOR - 172]]);
+    // both hands on the tool (tool2): the left along the tool's frame from the right, rounded
+    r = K.rig(at(K, 'idle', 2300, { sword: false, tool: { kind: 'tongs', two: true, a: 1.62, R: { at: [X + 46.4, 420] }, L: { along: 16 } } }));
+    assert.equal(r.grip, 'tool2');
+    assert.deepEqual([[...r.anchors.handR], [...r.anchors.main]], [[X + 46, 420], [X + 46, 420, 1.62]]);
+    assert.deepEqual([...r.anchors.handL], [Math.round(X + 46 + Math.sin(1.62) * 16), Math.round(420 - Math.cos(1.62) * 16)]);
+    // the lean: the neck, the shoulders and the head by it, the belt and the hem by half, the hips
+    // and the feet not at all
+    const still = K.rig(at(K, 'idle', 2300)), A0 = Object.fromEntries(Object.entries(still.anchors).map(([k, v]) => [k, [...v]]));
+    const leant = K.rig(at(K, 'idle', 2300, { lean: 7 })).anchors;
+    for (const [k, d] of Object.entries({ neck: 7, shoulderL: 7, shoulderR: 7, head: 7, belt: 4, hem: 4, hipL: 0, hipR: 0, footL: 0, footR: 0, root: 0 })) {
+      assert.deepEqual([...leant[k]], [A0[k][0] + d, A0[k][1]], k);
+    }
     // both hands on the grip, the upper on the side the blade leans to
     for (const dir of [1, -1]) {
       const o = at(K, 'idle', 2300, { bob: 1 }); K.swing(o, 0.42, dir); r = K.rig(o);
@@ -725,9 +760,9 @@ if (MODE === 'write') {
     const a = at(K, 'attack', 94);
     assert.deepEqual([a.gx, a.gy, a.fx, a.fy, a.mark, a.shake], [42, 24.4, 19.6, 37.6, '!', Math.round(Math.sin(94 / 60))]);
     assert.equal(a.wang, 0.2 + Math.sin(94 / 90) * 0.12);
-    // the sword put away and the hammer are as before
+    // the sword put away and the smith's grip are as before
     assert.equal(K.rig(at(K, 'idle', 2300, { sword: false })).grip, 'none');
-    assert.equal(K.rig(at(K, 'updating', 2300, { sword: false, hammer: 0.5 })).grip, 'hammer');
+    assert.equal(K.rig(at(K, 'updating', 2300, { sword: false, tool: { kind: 'hammer', a: 0.5, R: { at: [X + 80, FLOOR - 122] }, L: { at: [X + 45, FLOOR - 104] } } })).grip, 'hammer');
     // The swing keeps the greatsword's angle at the cut, so the swat's hit test holds. The wind-up
     // to the right stands the blade upright over the right shoulder, clear of the face, and the one
     // to the left is the greatsword's; both lie short of the nearest fly (0.35 less 0.15), so no fly
@@ -982,10 +1017,57 @@ if (MODE === 'write') {
         assert.deepEqual([A.handL[0] - A.shoulderL[0], A.handL[1] - A.shoulderL[1], A.handR[0] - A.shoulderR[0], A.handR[1] - A.shoulderR[1]], [-10, 48, 10, 48], `${what} ${JSON.stringify(over)}`);
         assert.equal(A.shoulderR[0] - A.root[0], 54 + dSh + (over.bloat || 0) * 5);
       }
-      // the smith's hammer works at the anvil, which stands in the scene: its hands do not move
-      const hb = K.rig(at(K, 'updating', 2300, { sword: false, hammer: 0.5 })).anchors, hc = c.rig(at(c, 'updating', 2300, { sword: false, hammer: 0.5 })).anchors;
+      // the smith's hammer at its blow works at the anvil, which stands in the scene: the hands the
+      // act pins to the grid do not move
+      const blow = { sword: false, tool: { kind: 'hammer', a: 1.66, R: { off: [36, -16], at: [X + 54, FLOOR - 147], pin: 1 }, L: { at: [X + 45, FLOOR - 104] } } };
+      const hb = K.rig(at(K, 'updating', 2300, blow)).anchors, hc = c.rig(at(c, 'updating', 2300, blow)).anchors;
       assert.deepEqual([[...hb.handL], [...hb.handR], [...hb.main]], [[...hc.handL], [...hc.handR], [...hc.main]], `${what}: the hammer`);
     }
+  });
+
+  /* The smith's three acts (scenes/smithy.js) on every build, with the greatsword, the arming sword
+     and the heater shield, and the mace and the kite shield on the anvil. At the blow the hammer's
+     face meets the top edge of the weapon on the anvil 98 past the middle of its grip, where the act
+     aims it (the point 22 across the head's end, which lays its outline on the edge), within the
+     pixel the hand is rounded to, and the left hand holds the grip. Every 10 ms of the three acts:
+     the face is the box from 46 left of the head anchor to 46 right of it, from 60 above it to 44
+     below (the chin line); a gauntlet is 14 by 13 either side of its hand. At the hammer and the
+     bellows no gauntlet meets the face; in the quench, which holds the blank up under the chin, no
+     hand rises past 4 above the chin line, nothing of the tongs' jaws or the blank lies in the face,
+     and the blank's point, while it is out of the water, dips at most 12 below the floor line. */
+  test('the smith\'s acts: the hammer\'s face on the blade at the blow, and nothing over the face, on every build', () => {
+    const LOOKS = { greatsword: {}, 'sword and shield': ONE_LOOK.items, mace: { main: 'kw.base/main.mace', off: 'kw.base/off.kite' } };
+    let frames = 0;
+    for (const bid of Object.keys(BUILD_NAMES)) for (const [grip, items] of Object.entries(LOOKS)) {
+      const b = withLook(buildLook(bid, items)), K = b.K, S = b.KW.scenes.smithy, what = `${BUILD_NAMES[bid]}, ${grip}`;
+      assert.equal(b.status.source, 'pack', what);
+      const R = S.rests.anvil, half = K.rest.reach().half, Hm = K.tool.hammer, G = K.tool.tongs, B = K.tool.blank;
+      for (const t of [0, 1400, 2800]) {
+        const o = at(K, 'updating', t, { sword: false, helmet: false }); smith(S, o, 'updating', t);
+        const r = K.rig(o), m = r.anchors.main, ux = Math.sin(m[2]), uy = -Math.cos(m[2]), nx = Math.cos(m[2]), ny = Math.sin(m[2]);
+        const face = [m[0] + ux * Hm.handle + nx * (Hm.face + 2), m[1] + uy * Hm.handle + ny * (Hm.face + 2)];
+        assert.ok(Math.abs(face[0] - (X + R.x + 98)) < 1 && Math.abs(face[1] - (R.y - half)) < 1, `${what} t${t}: the face at ${face}`);
+        assert.deepEqual([...r.anchors.handL], [X + R.x - 5, R.y + 1], `${what} t${t}: the left hand on the grip`);
+      }
+      for (const [id, until] of [['updating', 1400], ['idle', 14400], ['cpu_hot', 630]]) for (let t = 0; t < until; t += 10) {
+        const o = at(K, id, t, { sword: false, helmet: false }); smith(S, o, id, t);
+        const r = K.rig(o), [hx, hy] = r.anchors.head, fb = [hx - 46, hy - 60, hx + 46, hy + 44], label = `${what}, ${id} t${t}`;
+        for (const h of [r.anchors.handL, r.anchors.handR]) {
+          if (id === 'idle') assert.ok(h[1] >= hy + 40, `${label}: a hand at ${h}, above the chin line under the head at ${hy}`);
+          else assert.ok(!meets([h[0] - 14, h[1] - 13, h[0] + 14, h[1] + 13], fb), `${label}: a gauntlet at ${h} on the face`);
+        }
+        if (id === 'idle') {
+          const m = r.anchors.main, ux = Math.sin(m[2]), uy = -Math.cos(m[2]);
+          for (let k = 0; k <= G.len + B.len; k += 2) {
+            const px = m[0] + ux * k, py = m[1] + uy * k;
+            assert.ok(!(px > fb[0] && px < fb[2] && py > fb[1] && py < fb[3]), `${label}: the tongs or the blank ${k} along, on the face`);
+          }
+          if (o.tool.cut == null) assert.ok(m[1] + uy * (G.len + B.len) <= FLOOR + 12, `${label}: the blank's point below the floor`);
+        }
+        frames++;
+      }
+    }
+    assert.equal(frames, 9 * (140 + 1440 + 63));
   });
 
   for (const bid of OTHER_BUILDS) for (const [grip, items] of Object.entries(GRIPS)) {
@@ -1144,7 +1226,7 @@ if (MODE === 'write') {
       assert.equal(mace.K.rest.key('main'), 'kw.base/main.mace');
       assert.equal(mace.K.rest.key('off'), 'kw.base/off.kite');
       assert.equal(mace.KW.scenes.smithy.key({ kx: 440 }), '440|kw.base/main.mace|kw.base/off.kite');
-      const drawn = box => { box.log.length = 0; const s = { kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
+      const drawn = box => { box.log.length = 0; const s = { w: { id: 'updating' }, kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
       const hot = drawn(mace), cold = drawn(sword);
       assert.ok(hot.includes('s #7a2a1d') && hot.includes('s #fff3a0'), 'the hot bands and the glowing point');
       assert.notDeepEqual(hot, cold, 'the glow follows the mace\'s head, not the sword\'s point');
@@ -1180,7 +1262,7 @@ if (MODE === 'write') {
       assert.equal(b.K.rest.key('main'), 'kw.base/main.crossbow');
       assert.equal(b.KW.scenes.smithy.key({ kx: 440 }), '440|kw.base/main.crossbow');
       b.log.length = 0;
-      const s = { kx: 440, o: at(b.K, 'updating', 300), strike: false };
+      const s = { w: { id: 'updating' }, kx: 440, o: at(b.K, 'updating', 300), strike: false };
       b.KW.scenes.smithy.act(300, s); b.KW.scenes.smithy.draw(300, s);
       assert.ok(!b.log.includes('s #7a2a1d'), 'no hot bands on the anvil');
     });

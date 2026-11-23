@@ -6,7 +6,7 @@ two sets:
 
 | Mode | Does |
 |---|---|
-| `take DIR` | opens the page from disk once for each of the 284 shots of the main set, with time frozen by the address's `t=`, and writes `DIR/<name>.png` at 960 by 600, or at the size the shot names |
+| `take DIR` | opens the page from disk once for each of the 294 shots of the main set, with time frozen by the address's `t=`, and writes `DIR/<name>.png` at 960 by 600, or at the size the shot names |
 | `compare REF NEW` | decodes each pair of PNGs by name and counts the pixels that differ outside the clock; a pair of different sizes, or one missing or unreadable, is a failure |
 | `worlds DIR` | copies `web/` to a folder of its own outside the repository, adds the test world's carrier, takes the 47 shots of the worlds' set from that copy (7 `worldmix-`, 40 `orbit-`), puts the test world's copy of format 1.2 behind the same carrier, takes the 32 `orbit-fire-` shots, and removes the copy |
 | `compare-worlds REF NEW` | compares two sets that `worlds` took |
@@ -82,6 +82,20 @@ running hot at the camp, and `scene-pi-battlement` the empty dish stared at from
 Against a reference from before these, the eight settings shots that show the rail differ in it
 (the Scenes entry), `settings-monarch` and `settings-monarch-skin` also in the rows below the skin
 tones, these eleven are missing, and the rest compare as usual.
+
+Ten shots show the smithy's three acts. `update-strike` is the hammer's face on the blade 4 ms
+into the blow (`t=2804`), with the sparks and the eyes shut, and `bd-b-update-strike` and
+`bd-c-update-strike` the same on Broad and Slim, the face on the same spot of the blade. The quench
+plays in the smithy as a quiet scene (`is=smithy`): the blank heating in the fire at the forge
+(`is-smithy-forge`, 600 ms), plunged into the barrel in a burst of steam with the eyes shut
+(`is-smithy-steam`, 5950) and held up to be looked over, the glint on it and a smile
+(`is-smithy-look`, 8800); and with a device in every place at the forge (`is-smithy-forge-devices`,
+the head over the owls in `h1` and `h2`) and at the barrel (`is-smithy-barrel-devices`, 6600, the
+boots over the ground place `g3`), the two overlaps [page.md](./page.md#devices) accepts. The
+bellows pressed while the CPU runs hot, the forge flared (`cpu-smithy`, `sc=cpu_hot:smithy`,
+240 ms), with the greatsword on the anvil and with the arming sword there and the shield on the wall
+(`arm-cpu-smithy`). Each moment is away from a blink. Against a reference from before the three
+acts they are missing.
 
 The seven `look-` shots choose free options with the look hooks: deep skin with black curls, a
 sable tabard and a gold plume on the battlement, helm off (`look-deep-curls`); fair skin with
@@ -271,8 +285,9 @@ out byte for byte the same, on a busy machine too, apart from the clock when the
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
 and every scene, device and member of the cast drawn from the medieval world's pack, with its words
 and its overlay. A deployed copy draws from each pack while it ships signed, and from code
-otherwise: today the knight from the base pack 1.5.1 and everything else, words and overlay included,
-from the medieval world's pack 0.7.1, both signed.
+otherwise: today the knight from the base pack 1.5.1, signed, and, while the medieval world's pack
+0.8.0 ships unsigned until its signing run, every scene, device and member of the cast from code,
+with the collector's own words in `display.css`'s colours.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches
@@ -293,7 +308,7 @@ CHROME=/path/to/chrome-headless-shell PAGE=/tmp/kw-code/index.html tools/shots.s
 ```
 
 The comparison prints `identical bytes` only when both sets show the same minute on the clock;
-otherwise `pixels equal outside the clock` is the same result. A set of 267 takes about two minutes, so the two
+otherwise `pixels equal outside the clock` is the same result. A set of 294 takes about two minutes, so the two
 sets seldom show the same minute, and `pixels equal outside the clock` is the usual result.
 
 ## Against an older reference
@@ -376,6 +391,15 @@ are timed to the new hits. Against a reference from before the usage counts, `se
 `settings-status-world` differ: the status page gained a Usage counts entry under Sources ("Not
 known. The display is showing the demo.", since a page opened from disk has no state file), and the
 entries under it move down. Against a reference from base pack 1.5.0 and `kw.medieval` 0.7.0,
-`settings-status` and `settings-status-world` differ where they name the packs' versions. Every other shot is the same.
+`settings-status` and `settings-status-world` differ where they name the packs' versions. Against a
+reference from before the smithy's three acts (`kw.medieval` 0.8.0), every shot of the smithy
+differs, since the hammer swings through its new arc onto the blade, the sparks fly from its face
+and the bellows stand at the forge's foot: `on-update`, `arm-update`, `bd-b-on-update`,
+`bd-c-on-update`, `ref-smithy-lift`, `ref-devices-up-smithy`, `ref-devices-gone-smithy`,
+`ref-wide-smithy`, `ref-43-smithy`, `free-mace-update`, `free-crossbow-update`,
+`cat-ginger-smithy` and `cat-smithy-pounce`, and in the worlds' set the Bridge, whose anvil plays the
+same act, `orbit-update`, `orbit-fire-update` and `orbit-fire-prod-update`; `settings-quiet` lists
+the smithy among the quiet scenes; `settings-status` and `settings-status-world` name `kw.medieval`
+0.8.0, unsigned; and the ten shots of the three acts are missing. Every other shot is the same.
 A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.

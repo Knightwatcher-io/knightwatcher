@@ -143,8 +143,19 @@ function rig(o, d) {
   set('hem', X, Y - (64 + d.dLeg) + u); set('belt', X, Y - (102 + d.dLeg) + u); set('neck', X, Y - (162 + d.dHeight) + u);
   set('shoulderL', X - (54 + d.dShoulder + b), Y - (132 + d.dHeight) + u); set('shoulderR', X + (54 + d.dShoulder + b), Y - (132 + d.dHeight) + u);
   set('head', X + 5 * (o.headDx || 0), Y - (206 + d.dHeight + d.dHead) + u + 5 * (o.headDy || 0));
+  // the lean: the neck, the shoulders and the head by it, the belt and the hem by half
+  if (o.lean) {
+    const l = Math.round(o.lean), hl = Math.round(o.lean / 2), by = (n, dx) => { A[2 * PK.ANCHOR[n]] += dx; };
+    for (const n of ['neck', 'shoulderL', 'shoulderR', 'head']) by(n, l);
+    by('belt', hl); by('hem', hl);
+  }
   let mode;
-  if (o.hammer != null) { mode = 'hammer'; set('handL', X + 45, Y - 104 + u); set('handR', X + 80 + b, Y - 122 + u); }
+  // the smith's grip, with each hand at its point on the grid: the tool's frame on the right hand
+  if (o.tool) {
+    mode = o.tool.two ? 'tool2' : 'hammer';
+    const R = o.tool.R.at.map(Math.round), L = o.tool.L.at.map(Math.round);
+    set('handR', R[0], R[1]); set('handL', L[0], L[1]); set('main', R[0], R[1]); A[PK.FRAME_SX] = Math.sin(o.tool.a); A[PK.FRAME_SY] = -Math.cos(o.tool.a);
+  }
   else if (o.sword !== false) {
     // past level the upper hand slides down the grip, 2 at an angle of 1.8 and beyond
     const a = o.wang || 0, gx = ox + o.gx * U, gy = oy + o.gy * U + u, sx = Math.sin(a), sy = -Math.cos(a);
@@ -320,7 +331,9 @@ const POSES = {
   'walking, the right foot lifted': (k) => Object.assign(k.pose('ssh_session', 400), { walk: true }),
   'helmet off': (k) => Object.assign(k.pose('updating', 0), { helmet: false }),
   'sword put away, crouched, carrying the crates': (k) => k.pose('disk_full', 500),
-  'at the anvil': (k) => Object.assign(k.pose('updating', 0), { hammer: 0.4 }),
+  'at the anvil, the hammer up': (k) => Object.assign(k.pose('updating', 0), { sword: false, lean: -4, tool: { kind: 'hammer', a: -0.12, R: { at: [545.4, 333.6] }, L: { at: [516, 426] } } }),
+  'at the forge, both hands on the tongs and the blank hot': (k) => Object.assign(k.pose('idle', 0), { sword: false, tool: { kind: 'tongs', two: true, a: 1.62, heat: 1, R: { at: [517.6, 420] }, L: { at: [533.6, 420.8] } } }),
+  'at the bellows, leaning in and crouched': (k) => Object.assign(k.pose('cpu_hot', 300), { sword: false, lean: 7, crouch: 1.4, tool: { kind: 'lever', two: true, a: 0, R: { at: [699, 444] }, L: { at: [677, 445] } } }),
   'mid-swing, leaning left': (k) => { const o = k.pose('idle', 0); k.swing(o, 0.2, 1); return o; },
   'mid-swing, leaning right': (k) => { const o = k.pose('idle', 0); k.swing(o, 0.45, 1); return o; }
 };
@@ -348,7 +361,7 @@ for (const [name, make] of Object.entries(POSES)) {
 const RULES = [
   // 3.11 the format
   ['format: the major version must be 1', 'format', p => { p.format = [2, 0]; }, "pack.format: is major version 2, and this engine reads major version 1"],
-  ['format: a minor version newer than the engine\'s is refused', 'format', p => { p.format = [1, 3]; }, "pack.format: is 1.3, newer than this engine's 1.2"],
+  ['format: a minor version newer than the engine\'s is refused', 'format', p => { p.format = [1, 4]; }, "pack.format: is 1.4, newer than this engine's 1.3"],
   ['format: must be two whole numbers', 'format', p => { p.format = [1]; }, "pack.format: must be [major, minor], two whole numbers"],
   ['format: must not be a string', 'format', p => { p.format = '1.0'; }, "pack.format: must be [major, minor], two whole numbers"],
   ['format: is required', 'format', p => { delete p.format; }, "pack.format: must be [major, minor], two whole numbers"],

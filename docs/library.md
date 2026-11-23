@@ -92,7 +92,11 @@ draws the knight from code (see [When packs fail](#when-packs-fail)).
 | `bodyStowed` | only for a weapon with a `stowed` view (format 1.2): `body` with the view drawn after `back` when its layer is `back`, after `torso` when it is `body` |
 
 `sequence(mode, helmet)` returns the order of one frame for a grip mode as names: these lists and
-the engine's steps `crates`, `face`, `drumstick`, `hammer` and `effects`.
+the engine's steps `crates`, `face`, `drumstick`, `hammer` and `effects`. The modes are `none`,
+`hammer` (the smith's tool in the right hand: `armL`, `gauntL`, `armR`, the step `hammer`,
+`gauntR`), `tool2` (the smith's tool in both hands, the tongs or the bellows' handle: `armL`, `armR`,
+`hammer`, `gauntL`, `gauntR`), `twoR`, `twoL`, `one` and `oneCrossed`. The order of the hands group
+is the library's code, not a pack's data, so `tool2` needs nothing of a pack.
 
 `draw(list, anchors, values, prims, face)` walks a list and calls the primitives, allocating
 nothing of its own. `anchors` holds the x and y of each anchor in the order of `ANCHORS` (`root`,
@@ -159,12 +163,12 @@ before. The lists are the same for either: no list holds the stowed view yet.
 `animate(decoration, t)` takes a `t` that is not a finite number, or is negative, as 0, and returns
 finite values and well-formed colours for every `t`.
 
-Constants: `FORMAT` (`[1, 2]`), `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STEPS`, `SLOTS`,
+Constants: `FORMAT` (`[1, 3]`), `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STEPS`, `SLOTS`,
 `ANCHORS`, `ANCHOR`, `FRAME_SX`, `FRAME_SY`, `FRAME_FL`, `VALUES`, `VALUE`, `MEASURES`, `TORSO`, `BASE`, `KEYS`,
 `ORDERS`, for format 1.1 `WORLD_LIMITS`, `WORLD_LISTS` (the closed lists: conditions, round acts,
 hosts, predicates, marks, triggers, effects, roles, exits, foe poses, fonts, device kinds and their
-classes and boxes, labels, placeholders and the status colours' bands), `SCENE_RANGE` and `ACT_RANGE`, and for
-format 1.2 `FIRE_LISTS` (a weapon's uses, the shot kinds, the stowed view's layers and anchors, and
+classes and boxes, labels, placeholders and the status colours' bands), `SCENE_RANGE` and `ACT_RANGE`
+(with format 1.3's `pump`), and for format 1.2 `FIRE_LISTS` (a weapon's uses, the shot kinds, the stowed view's layers and anchors, and
 the foe's pose `aim`).
 
 ## The verifier
@@ -375,9 +379,11 @@ base pack's items falls back on any build.
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 1]`, version 0.7.1. Versions 0.1.0 (the cellar alone) to 0.7.0, which adds the mouser cat and
+`[1, 3]`, version 0.8.0. Versions 0.1.0 (the cellar alone) to 0.7.0, which adds the mouser cat and
 the redesigned scenes and devices, and version 0.7.1, which changes only the
-licence line, are signed with `kw1`. It holds every scene as data, the three
+licence line, are signed with `kw1`; version 0.8.0, which gives the smithy its three acts (format
+1.3's bellows and quench) and makes it a quiet scene of the preset, ships unsigned until its
+signing run. It holds every scene as data, the three
 monarchs, the goblin, the fly and the mouser cat as its cast, the devices as the prop set
 `props.medieval`, the word set `words.medieval`, the overlay `overlay.phosphor`, the preset
 `world.medieval`, the stamps the scenes and devices use (the sconce, the barrel, the house's peg and
@@ -387,7 +393,7 @@ page draws those scenes, devices and the cast from it, builds the quiet line and
 words and takes the colours of the words over the scene from its overlay, on a `dev` page, and on a
 deployed page while it is signed; a copy changed after signing is refused by a deployed page, which
 shows the collector's own words in `display.css`'s colours. Its preset is the page's own level of
-the settings ([display.md](./display.md#worlds)). It weighs 346 KB of the 512 KiB a pack may, 106 KB
+the settings ([display.md](./display.md#worlds)). It weighs 352 KB of the 512 KiB a pack may, 106 KB
 of it the cat's stamps and 15 KB the lamps' stamps. [worlds.md](./worlds.md) describes it, the scene
 compiler that reads it, and how its scenes are held equal to the code's.
 

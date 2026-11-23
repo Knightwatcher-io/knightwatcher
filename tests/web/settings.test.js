@@ -62,17 +62,30 @@ test('with nothing set, every value is the page\'s own and the knight\'s look is
       shield: 'heater', helmet: 'open', plume_style: 'crest', body: 'tabard', shoulders: 'plate', arms: 'plate', hands: 'plate', legs: 'plate', feet: 'leather', back: 'none',
       monarch: 'a', monarch_skin: 'warm', monarch_hair: null, monarch_robe: null, pet: 'cat', pet_coat: 'calico', foe: 'goblin', critter: 'fly', props: 'medieval', overlay: 'medieval', words: 'medieval', items: {}, devices: {} },
     display: { headline: 'medium', clock: 24, helmet_indoors: false },
-    quiet: { scenes: ['battlement', 'camp', 'house', 'yard'], minutes: 10 },
+    quiet: { scenes: ['battlement', 'camp', 'house', 'yard', 'smithy'], minutes: 10 },
     scenes: { attack: 'battlement', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house', cpu_hot: 'yard' } });
   for (const sec of Object.keys(r.from)) for (const k of Object.keys(r.from[sec])) if (!SET.TABLES[k]) assert.equal(r.from[sec][k], 'built-in', sec + '.' + k);
   assert.deepEqual([r.from.look.items, r.from.look.devices], [{}, {}]);
   assert.deepEqual(plain(r.world), { id: 'medieval', from: 'built-in', homes: HOMES });
   assert.deepEqual([r.masked, r.faults, r.ignored], [[], [], []]);
   assert.deepEqual(SET.knightLook(r), {});
-  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000)), { turns: ['battlement', 'camp', 'house', 'yard'], turnMs: 60000, patron: { id: 'a', skin: null, hair: null, robe: null }, pet: { id: 'cat', coat: 'calico' }, scenes: {},
+  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000)), { turns: ['battlement', 'camp', 'house', 'yard', 'smithy'], turnMs: 60000, patron: { id: 'a', skin: null, hair: null, robe: null }, pet: { id: 'cat', coat: 'calico' }, scenes: {},
     homes: HOMES, kinds: { pi: 'medieval', camera: 'medieval', machine: 'medieval', vm: 'medieval', box: 'medieval' },
     foe: 'goblin', critter: 'fly', words: 'medieval', overlay: 'medieval' });
   assert.deepEqual(lines, []);
+});
+
+/* The smithy joined the quiet scenes in the default list alone: a display that saved its own list
+   of the four there were before keeps exactly those four, and the engine turns between them; the
+   smithy is a choice it has not made. */
+test('a saved list of the four quiet scenes there were before the smithy keeps exactly four', () => {
+  const four = ['battlement', 'camp', 'house', 'yard'];
+  const { s } = store({ storage: storage(saved({ quiet: { scenes: four } })) }), r = s.now();
+  assert.deepEqual(plain(r.values.quiet.scenes), four);
+  assert.equal(r.from.quiet.scenes, 'saved');
+  assert.deepEqual(plain(SET.engineInput(r, PACK, 60000).turns), four);
+  // with nothing saved the five take turns
+  assert.deepEqual(plain(store().s.now().values.quiet.scenes), four.concat(['smithy']));
 });
 
 test('the page\'s own look is the base pack\'s defaults, read from the pack', () => {
@@ -410,14 +423,14 @@ const CAN = {
   house: ['container_unhealthy', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming', 'night'],
   yard: ['attack', 'disk_full', 'backup_overdue', 'device_down', 'cpu_hot', 'memory_tight'],
   cellar: ['disk_full', 'backup_overdue', 'cpu_hot'],
-  smithy: ['updating'],
+  smithy: ['device_down', 'cpu_hot', 'memory_tight', 'updating'],
   court: ['ssh_session'] };
 const OFFERED = {
   attack: ['battlement', 'camp', 'yard'],
   disk_full: ['yard', 'cellar'],
   backup_overdue: ['battlement', 'camp', 'house', 'yard', 'cellar'],
   pi_silent: ['battlement', 'camp', 'house'],
-  cpu_hot: ['battlement', 'camp', 'house', 'yard', 'cellar'] };
+  cpu_hot: ['battlement', 'camp', 'house', 'yard', 'cellar', 'smithy'] };
 
 test('each scene declares the conditions it can act, every condition can be acted in its own scene, and five conditions are offered', () => {
   const w = WORLD();
@@ -533,13 +546,15 @@ function load() {
   return { KW, K: KW.knight, E: KW.engine, V: KW.view, calls };
 }
 
-test('the engine\'s quiet rotation takes the input\'s scenes in turn for its length, and all four when it has none', () => {
+test('the engine\'s quiet rotation takes the input\'s scenes in turn for its length, and all five when it has none', () => {
   const { KW, E } = load();
   E.init(new Proxy({}, { set() { return true; }, get: () => () => {} }));
   const base = { w: KW.state.IDLE, is: 'auto', devices: [], tv: false, helmet: 'auto' };
   const at = (input, ts) => ts.map(t => { E.input = Object.assign({}, base, input); E.restartTurns(0); E.draw(t); return E.scene(); });
-  assert.deepEqual(at({ turnMs: 1000 }, [0, 1000, 2000, 3000, 4000]), ['battlement', 'camp', 'house', 'yard', 'battlement']);
-  assert.deepEqual(at({ turnMs: 1000, turns: [] }, [0, 1000, 2000, 3000]), ['battlement', 'camp', 'house', 'yard']);
+  assert.deepEqual(at({ turnMs: 1000 }, [0, 1000, 2000, 3000, 4000, 5000]), ['battlement', 'camp', 'house', 'yard', 'smithy', 'battlement']);
+  assert.deepEqual(at({ turnMs: 1000, turns: [] }, [0, 1000, 2000, 3000, 4000]), ['battlement', 'camp', 'house', 'yard', 'smithy']);
+  // a list saved before the smithy was a quiet scene, the old four, turns between those four alone
+  assert.deepEqual(at({ turnMs: 1000, turns: ['battlement', 'camp', 'house', 'yard'] }, [0, 1000, 2000, 3000, 4000]), ['battlement', 'camp', 'house', 'yard', 'battlement']);
   assert.deepEqual(at({ turnMs: 1000, turns: ['camp', 'yard'] }, [0, 999, 1000, 2000, 3500]), ['camp', 'camp', 'yard', 'camp', 'yard']);
   assert.deepEqual(at({ turnMs: 300000, turns: ['house'] }, [0, 299999, 300000, 5e6]), ['house', 'house', 'house', 'house']);
   // a scene the address keeps (is=) wins over the rotation

@@ -346,15 +346,18 @@ test('the scenes from the pack: a camera\'s question mark is never higher than y
 });
 
 // ---- The acts ------------------------------------------------------------------------------------
-// The call records draw five moments of each state. A scene with an act (the yard's training, the
-// smithy's hammer, the house's bed and screen) changes the knight's pose and what it draws from one
-// moment to the next, and the yard's keeps the time of its last blow from one frame for the next,
-// so the scenes from the pack that have an act are also run frame by frame beside their code scenes,
-// and every frame's calls (over's among them), changes to the pose and strike compared. The
-// target's: every 10 ms for two of the yard's 5.6 s training rounds while all is quiet and while
-// the CPU runs hot, and every 50 ms for six seconds in two conditions where the act rests. The
-// anvil's: every 10 ms for five of the hammer's 1.3 s blows, idle and while updating, the one
-// condition the smithy acts, at the spot and at x 300. The bed's and the screen's: every 10 ms for
+// The call records draw a few moments of each state. A scene with an act (the yard's training, the
+// smithy's hammer, bellows and quench, the house's bed and screen) changes the knight's pose and
+// what it draws from one moment to the next, and the yard's keeps the time of its last blow from
+// one frame for the next, so the scenes from the pack that have an act are also run frame by frame
+// beside their code scenes, and every frame's calls (over's among them), changes to the pose,
+// strike and the knight's move off the spot (s.dx) compared. The target's: every 10 ms for two of
+// the yard's 5.6 s training rounds while all is quiet and while the CPU runs hot, and every 50 ms
+// for six seconds in two conditions where the act rests. The smithy's: every 10 ms for the whole of
+// the quench's 14.4 s loop while all is quiet, for five of the hammer's 1.4 s blows while updating,
+// at the spot and at x 300, and for ten of the bellows' pumps of 200 pi ms while the CPU runs hot,
+// and every 50 ms for six seconds with a device down and the memory tight, where no act plays.
+// The bed's and the screen's: every 10 ms for
 // 8.4 s, two of the television's figure's rounds, asleep at night and sick in bed, the television
 // on while streaming, and off while all is quiet. The seat's: every 10 ms for 12.8 s, two of the
 // court's rounds of talk, the patron's and the knight's turns, while a shell is open and while all
@@ -396,7 +399,7 @@ const PART = sc => (sc.target ? 'target' : sc.anvil ? 'anvil' : sc.bed || sc.scr
 const ACTED = GIVEN.filter(n => PART(READ.data.scenes[n]));
 const RUNS = {
   target: [['idle', 10, 11200], ['cpu_hot', 10, 11200], ['attack', 50, 6000], ['memory_tight', 50, 6000]],
-  anvil: [['idle', 10, 6500], ['updating', 10, 6500], ['updating', 10, 6500, 300]],
+  anvil: [['idle', 10, 14400], ['updating', 10, 7000], ['updating', 10, 7000, 300], ['cpu_hot', 10, 6300], ['device_down', 50, 6000], ['memory_tight', 50, 6000]],
   bed: [['night', 10, 8400], ['container_unhealthy', 10, 8400], ['streaming', 10, 8400], ['idle', 10, 8400]],
   seat: [['ssh_session', 10, 12800], ['idle', 10, 12800]]
 };
@@ -412,7 +415,7 @@ for (const name of ACTED) {
           const s = frameAt(m.KW, name, id, t, kx), before = JSON.stringify(s.o);
           m.log.length = 0;
           if (m.KW.scenes[name].act) m.KW.scenes[name].act(t, s);
-          m.log.push('o ' + (JSON.stringify(s.o) === before ? 'unchanged' : JSON.stringify(s.o)), 'strike ' + s.strike);
+          m.log.push('o ' + (JSON.stringify(s.o) === before ? 'unchanged' : JSON.stringify(s.o)), 'strike ' + s.strike, 'dx ' + s.dx);
           m.KW.scenes[name].draw(t, s);
           m.log.push('o after draw ' + JSON.stringify(s.o));
           if (m.KW.scenes[name].over) { m.log.push('over'); m.KW.scenes[name].over(t, s); }

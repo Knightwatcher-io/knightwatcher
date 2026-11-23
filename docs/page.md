@@ -101,7 +101,7 @@ the interface.
 | `rounds` | no | the spots the knight strolls between while free to move: `[{ x, act, dur }]`, `x` in units of `U`, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles |
 | `paint(s)` | no | the still part, painted once into a cached canvas 32 pixels wider than the view, and kept until the key or the screen's shape changes |
 | `key(s)` | no | a string, asked for each frame of a scene with `paint`; the cache is keyed on the scene's name and the key. The cached backdrop is painted again when it changes, and when `KW.world.changes` does (the world started again, or a part of a pack gave way to its code copy; [world-loading.md](./world-loading.md#when-a-part-throws)). A scene that paints the knight's gear at rest into its backdrop includes `KW.knight.rest.key(slot)` for each such item |
-| `act(t, s)` | no | called each frame after strolling and before the foe's plan, the swat and the events, which may override it; may change the knight's pose `s.o`. No transform is set for it |
+| `act(t, s)` | no | called each frame after strolling and before the foe's plan, the swat and the events, which may override it; may change the knight's pose `s.o`, and move the knight off its spot for the frame by `s.dx`. No transform is set for it |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
 | `wallAt(x)` | no | the y of the top of whatever a foe climbs over at grid x; without it a foe digs up out of the ground |
 | `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a device on the ground or the pie, and 150 to 240 pixels from the knight's middle, within the reach of the weapon the knight holds, or with a weapon that fires at the shot's gap, the knight stepping back for it ([The acts with a weapon that fires](#the-acts-with-a-weapon-that-fires)); with no room the event shows its caption alone. A scene that hosts the foe without it plays the event's 3.4 seconds with no foe drawn, the knight standing still |
@@ -124,7 +124,8 @@ the interface.
 | `devices` | the devices standing in the places, each `{ place, kind, ok, alert }` with `place` the name of one of the scene's places |
 | `places` | the scene's `places` |
 | `tv` | whether the television is on |
-| `kx` | the knight's x on the grid |
+| `kx` | the knight's x on the grid: its spot, or where it has strolled to |
+| `dx` | 0, for a scene's `act` to move the knight for the frame: the knight is drawn at `kx + dx`, worked out from `t` alone, while `kx`, the spot and everything the scene counts from it stay where they are. The smithy's walks to the forge, the water and the bellows use it; the smithy hosts no event, swat or foe, so nothing after the act reads the knight's place from `kx` there |
 | `o` | the knight's pose for this frame |
 | `here` | where the knight stands in the scene's `rounds`, `{ act, el }` with `el` the ms spent there, or `null` |
 | `inBed`, `helmOff` | whether the knight is in bed, and whether the helmet is off |
@@ -143,8 +144,15 @@ court's own skin, and `b|deep|silver|teal` or `c|||wine` once a hair or a robe i
 knight talking in `draw` and draws the monarch's speech bubble with `KW.knight.speech`. It also
 gives `drawn(mon)`, each monarch's own hair and robe colours, from its patron, for the settings
 screen's "As drawn" choices. The monarch itself is the patron's drawing ([The cast](#the-cast)). How a swatch's bands become the monarch's is in the comment above `hairOf` in `court.js`. The smithy's `act`
-sets the hammer and `strike`, its `paint` lays the weapon across the anvil with `KW.knight.rest`,
-and its `draw` puts the hot tip on the blade (none for a weapon that only fires). The yard keeps
+plays one of three acts by the winning condition, each a function of the time alone: while
+updating the hammer, setting the knight's smith grip (`o.tool`, [rig.md](./rig.md#anchors-values-and-poses))
+and `strike`; while the CPU runs hot the bellows, at x 612 by `s.dx`; and while all is quiet the
+quench, walking the knight by `s.dx` between the forge at 650 and the water at 228. Its `paint` lays
+the weapon across the anvil with `KW.knight.rest`; its `draw` draws the fire, calm or flared while
+the bellows work, the bellows, the hot tip on the blade while the hammer works it (none for a weapon
+that only fires), the rings on the water while the blank is in it, and the sparks of the blow; and
+its `over` the quench's steam, drips and glint. [scenes.md](./scenes.md#how-a-scene-compiles) has
+the three acts' numbers. The yard keeps
 the time the dummy was last struck and swings the knight's sword in `act`, or with a weapon that
 fires shoots at the dummy (`KW.engine.shots.practice`).
 
@@ -249,11 +257,12 @@ in its scene, as plain shapes, loops of fixed shapes (the world format's tiles) 
   of the yard's bales, and the grain of the table (`tableHD`, in `props.js`);
 - tiles: floors, planks, posts, rafters, merlons, the yard's pebbles, the court's pillars and floor
   squares, the cellar's brackets and piers (each pier's bricks an effect inside the tile);
-- the dummy, the television, the candle, the blanket and the sleeper's Zs, the hammer's act, the
-  monarch and the ermine: the acts and the patron, which a world pack gives as parts the engine
-  acts with (the scene compiler builds the target's, the anvil's and the seat's acts, the bed, the
-  screen and the patron's marks for the scenes from the medieval world's pack, and draws the
-  patrons from its cast);
+- the dummy, the television, the candle, the blanket and the sleeper's Zs, the smith's three acts,
+  the monarch and the ermine: the acts and the patron, which a world pack gives as parts the engine
+  acts with (the scene compiler builds the target's, the anvil's, the bellows', the quench's and
+  the seat's acts, the bed, the screen and the patron's marks for the scenes from the medieval
+  world's pack, and draws the patrons from its cast);
+- the quench's steam, rings, drips and glint, which follow the act's blank;
 - the weapon's pegs in the house and the hot tip on the anvil, which read the weapon's reach, its
   blade or its barrel: what reads the knight's gear stays the engine's (from the pack, the pegs are
   the scene's stamp, drawn by the engine where the reach puts them);
@@ -336,7 +345,8 @@ the pixels it always drew. An empty place draws nothing. High places keep clear 
 the detail line and the clock at every headline size, and of the monarch and the speech bubbles,
 the fires, the moon, the sword on its pegs and the sleeper's Zs; a camera's question mark is the
 highest device drawn, and its top is never higher than y 172. Ground places keep clear of every
-spot the knight stands at, of the swings, and of the knight's boots. `pl=1` shows them all.
+spot the knight stands at, of the swings, and of the knight's boots, but for the smithy's water
+below. `pl=1` shows them all.
 
 Whatever a place may show is drawn wholly on the 960 by 600 grid, which is all a display exactly
 960 wide shows: every kind that may stand there, up and gone, its question mark and its pole. No
@@ -347,9 +357,21 @@ accepted, as the owner approved it: in the court, the lower owl's question mark 
 the upper owl (`h1`) while the lower one is down, since between the right pillar's torch, the
 throne and the cat's leap there is no spot for two owls that avoids it.
 
+The smithy's acts walk the knight off its spot, which no other scene does, and there the knight
+covers places, which the owner accepted: at the forge (650, about 2.2 s of each quench) and at the
+bellows (612, all the time the CPU runs hot) the knight's head hides most of the owls in the high
+places `h1` (600) and `h2` (676), and at the water (228, about 5.5 s of each quench) the boots stand
+over the third ground place, `g3` (218), so a device there stands in front of them. Neither hides an
+alert: a device down outranks both all is quiet and the CPU running hot, and under `device_down`
+(and `memory_tight`) the smithy plays no act and the knight stays at its spot, 440, clear of every
+place. On each walk of the quench the knight passes in front of the pie, and at the water stands
+clear of it (the knight's right edge at 290, the pie's place from 295). `tests/web/places.test.js`
+holds the knight's drawing at the three stands to exactly these places.
+
 The ground places stand along the front edge of the floor (base y 594, `front: true`), in front of
 the knight and never under the knight's boots at any spot it strolls to, by the owner's decision of
-17 November 2026. Where a scene hosts the goblin or the crate, a stretch of floor is kept clear left
+17 November 2026; the smithy's quench, which walks rather than strolls, stands the boots over `g3`
+at the water, as accepted above. Where a scene hosts the goblin or the crate, a stretch of floor is kept clear left
 of the knight: the goblin comes up there, and the crate lands there (the scene's `crate`).
 
 **The kinds.** `KW.props.KINDS` holds the code's drawing of each kind, `draw(x, y, t, ok, part)`,
@@ -546,7 +568,7 @@ the code's).
 ## The engine's input
 
 `KW.engine.input` (see the head of `engine.js`) takes from the settings `turns`, the quiet scenes
-that take turns, in order (all four, `TURNS`, when it is left out or empty), `turnMs`, how long
+that take turns, in order (all five, `TURNS`, when it is left out or empty), `turnMs`, how long
 each lasts, `patron`, the monarch as `{ id, skin, hair, robe }`, its id and its skin, hair and
 robe (another pack's swatch by its long name among them), which the engine passes to the scenes in
 `s.patron`, `pet`, the pet and its coat as `{ id, coat }`, the coat by its own id within the pet, `scenes`, the scene chosen for a condition

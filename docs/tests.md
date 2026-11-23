@@ -226,7 +226,9 @@ house and the smithy, `ed25519.js`, `pack.js` and the base pack's carrier, in th
 the scene compiler or the medieval world's pack, which dress no knight) under Node
 with an empty `window` and a fake canvas context that records every call and every property set;
 `KW.devices.draw` writes one line in the record. It chooses the knight's source as `main.js` does
-and draws 112 records: the knight in 94 poses, the bare head in bed twice, the speech bubble twice,
+and draws 123 records: the knight in 105 poses, the smith's three acts among them as the smithy's
+act places the knight (the hammer through its blow, the tongs and the blank through the quench, the
+bellows open and pressed), the bare head in bed twice, the speech bubble twice,
 the helmet and the weapon at rest in four, and the house and the smithy in ten, each painted and
 drawn in the states that show the gear at rest. It compares each record with the one stored in
 `tests/web/fixtures/knight/`. It does this twice: once as a deployed page, which refuses the
@@ -338,7 +340,8 @@ It also holds the goblin's whole plan there (where it stands, the line it comes 
 the hit) to the plan in the code scene, for every weapon and build, and runs the checks of
 `places.test.js` on every scene of the pack. It runs every scene of the pack that has an act (a
 `target`, an `anvil`, a `bed` or a `screen`) frame by frame beside its code scene, comparing every
-call, `over`'s among them, every change to the knight's pose and `strike`.
+call, `over`'s among them, every change to the knight's pose, `strike` and the knight's move off
+its spot (`s.dx`): the smithy's through the whole quench, the hammer and the bellows.
 `tests/web/world-knight.test.js` runs the knight test's checks of the house and the smithy on the
 two from the pack: the ten records of them painted and drawn against the stored ones, with the
 knight from code and from the base pack; in each of the base pack's other looks (the arming sword
@@ -372,7 +375,12 @@ greatsword's two hands on its frame between its stations, the sword hand on its 
 shield hand where the pose puts it) in every frame of both swings at every hundredth, the attack
 every 20 ms, the goblin strike on both sides and the stances, that the grip is where Classic holds
 it raised or lowered by the build's height, that the hands hang 10 outside and 48 below each
-shoulder with no weapon, and that the hammer's hands do not move; that no arm is drawn over a blade,
+shoulder with no weapon, and that the hands the smith's grip pins to the grid do not move; that the
+smith's acts, on every build with the greatsword, the arming sword and shield and the mace and kite
+shield, lay the hammer's face on the weapon's top edge at the blow with the left hand on its grip,
+and every 10 ms of the three acts keep the gauntlets off the face at the hammer and the bellows, the
+hands no higher than 4 above the chin line and the tongs and the blank off the face in the quench,
+and the blank's point out of the water at most 12 below the floor line; that no arm is drawn over a blade,
 its guard or the shield on Broad and Slim with each weapon, by the same frame-by-frame check as
 above; and that the camera at the house's `h2` clears the knight of every build.
 
@@ -453,14 +461,17 @@ calls, which `knight.test.js` checks.
 The states, for every scene: idle; each condition in its `can`, the dish gone for `pi_silent` and a
 machine down with a box among the devices for `device_down`; the helmet the other way from the
 scene's own; and the devices in all seven places, up, gone and alerting, up in other kinds, and
-gone without alerting. The house adds the television on, the smithy the knight at x 300, the yard
+gone without alerting. The house adds the television on, the smithy the knight at x 300, the
+quench at thirteen more moments through its loop (the blank into the water, the steam and the rings,
+the drips, the glint, the nod and the walk back) and the bellows at five moments of a pump, the yard
 its dummy struck by the training swing and then wobbling, and the court each monarch in its own
 colours and in each of the base pack's six skins, and a sample of hair and robe: each monarch in
 each hair with a robe and a skin turned so that every monarch meets every hair, robe and skin, and
 light hair meets dark skin, where the brows change colour, and each with a hair alone and a robe
 alone. Each state is drawn at 960 by 600, at 1400 by 600, where `HL` and `HR` lie 236 pixels
 outside the grid, and at 960 by 720 (4:3), where `HT` lies 122 above it; and at 0, 1250, 2300, 3450
-and 4700 ms, which catch the hammer striking and raised, the monarch talking with the mouth open and
+and 4700 ms, which catch the hammer striking, falling and raised, the quench at the fire, raised
+and carried, the monarch talking with the mouth open and
 shut, the question marks shown and hidden, the WAN's sparks and the sleeper's breathing, or at the
 moments of the dummy's wobble. The goblin's six poses, the flies, the hole, the clods, the smoke, the
 sparkles, the crate and its parachute are recorded once, apart (`cast`). The fly and the goblin of
@@ -481,11 +492,11 @@ writes it to a folder of its own, such as `cellar@kw.medieval`.
 
 The 1 803 records are stored in `tests/web/fixtures/scenes/`, one file per scene and `cast.json`:
 for each record the first 16 characters of the hash of its calls, and for each distinct record its
-number of calls and a hash of each block of 1 024 calls, about 230 KB in all, where the records in
-full would weigh 287 MB (123 MB counting each distinct record once). A run takes about 80 seconds,
-the 1 782 records of the scenes from the pack and the 21 of its cast included (the court's 522, the
-house's 270, the battlement's and the yard's 234 each, the camp's 216, the cellar's 162 and the
-smithy's 144). When a record differs, the test draws it again
+number of calls and a hash of each block of 1 024 calls, about 250 KB in all, where the records in
+full would weigh 317 MB (136 MB counting each distinct record once). A run takes about 90 seconds,
+the 1 896 records of the scenes from the pack and the 21 of its cast included (the court's 522, the
+house's 270, the smithy's 258, the battlement's and the yard's 234 each, the camp's 216 and the
+cellar's 162). When a record differs, the test draws it again
 from the repository's `HEAD` (`git show`), and when `HEAD` draws the stored record it names the
 scene, the state, the size, the record and the first call that differs, with what `HEAD` drew there
 and what was drawn. Without git, or when `HEAD` draws something else too, it names the block the
@@ -576,7 +587,7 @@ worst moment of each group of faults. It is not part of `node --test`.
 ## What each test file checks
 
 
-`node --test tests/web/` includes a faster check for the knight: it draws the knight in 94 poses,
+`node --test tests/web/` includes a faster check for the knight: it draws the knight in 105 poses,
 the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy, which show that gear, against a fake canvas, once
 from code and once from the base pack, and compares every call with a
 stored record, in about a second. The record is stored again only when the knight or those scenes are meant to change;
@@ -616,7 +627,10 @@ drawing and drawn from code alone from the next frame, a throw in the engine's o
 down to the pack, the world started again with the downloaded packs, and the admin page's scripts
 against the walls'; its signed packs use keys generated for the run too. `tests/web/places.test.js`
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
-and that no two places draw over each other. `tests/web/world-scenes.test.js` runs those checks of
+and that no two places draw over each other, but the court's owls the owner accepted; and draws the
+knight, fill by fill, where the smithy's acts stand it (the forge, the water and the bellows, and its
+spot with a device down and the memory tight), holding the places it covers to those the owner
+accepted: `h1` and `h2` at the forge and the bellows, `g3` at the water, none at the spot. `tests/web/world-scenes.test.js` runs those checks of
 `foe.test.js` and `places.test.js` that depend on a scene on each scene of the medieval world's pack,
 compiled from it with the goblin from its cast, holds the goblin's plan there to the code scene's
 with the code's goblin for every weapon and build, runs
@@ -686,7 +700,8 @@ and two displays sharing one server. `tests/web/settings.test.js` checks the set
 `web/js/settings.js` (the order of their levels, unknown values, the browser's storage refusing,
 the reset, the 12-hour clock, the monarch's hair and robe with "As drawn", the scene chosen per
 condition and which scenes can act which condition, the build row's names from the base pack), the
-engine's quiet rotation and its choice of scene, the monarch's skin, hair and robe, and the knight
+engine's quiet rotation (the five by default, and a list saved with the four there were before
+the smithy kept as four) and its choice of scene, the monarch's skin, hair and robe, and the knight
 drawn from the base pack in 900 looks of the settings', each build meeting every weapon, skin, hair
 colour and hair style, every choice of the gear on every build, the gear's look, what the screen
 greys and the choices' names, and every monarch in every skin, hair and robe.
@@ -702,13 +717,13 @@ drawn by the engine's own `KW.devices`, and a canvas drawn with `drawImage` (a d
 the pie's lamp, a pose of the goblin) is written into the record with its calls. Where a scene calls
 on the knight (the sleeper's head, the gear at rest, the speech bubble, a swing) the record holds
 one line with the call and its arguments, since the knight test checks the knight. The goblin, the
-flies and the other props of the events are recorded apart. It compares 1 803 records with those in
+flies and the other props of the events are recorded apart. It compares 1 917 records with those in
 `tests/web/fixtures/scenes/`, one file per scene and one for those props (`cast.json`). Then it draws
-each scene the medieval world's pack holds (today every scene, 1 782 records) a second time, compiled
+each scene the medieval world's pack holds (today every scene, 1 896 records) a second time, compiled
 from the pack and with the devices from its prop set and the monarchs from its cast, against the
 same stored records, and the rest of the cast the pack gives against `cast.json`; checks that the compiled scene's backdrop key tells
 the recorded states apart exactly as the code scene's does; and checks that it gives the code scene's
-interface, the crate's stretch among it. All of it takes about 80 seconds. A failure names the scene, the state, the size, the record and the first call that
+interface, the crate's stretch among it. All of it takes about 90 seconds. A failure names the scene, the state, the size, the record and the first call that
 differs, with what `HEAD` draws there and what was drawn; without git, the block of 1 024 calls
 where the difference lies. Store the records again only when a scene is meant to change, from code
 whose drawing is known to be right, as the redesign of the scenes and devices of 17 November 2026
@@ -726,9 +741,12 @@ SCENES_WEB=DIR node --test tests/web/scenes.test.js        # draws a copy of web
 `tests/web/world.test.js` checks the scene compiler and the medieval world's pack: that the pack
 reads clean, where a `dev` and a deployed page draw every scene from, a refused, missing or unreadable pack and a compile that throws, each leaving
 the scenes concerned the code scenes with its console line, the predicates and the backdrop's key,
-`outdoors`, the foe's zone and the crate's stretch, the target's and the anvil's acts, the bed and the screen, the
-keyframes' tracks, the rests, the rest mark and the pegs, and
-that what the compiler does not build yet is refused by name.
+`outdoors`, the foe's zone and the crate's stretch, the target's and the anvil's acts, the bellows'
+and the quench's against the code smithy's (the knight's moves, the steam over the knight and the
+rings before the devices), the bed and the screen, the keyframes' tracks, the rests, the rest mark
+and the pegs, format 1.3's quench, bellows and `pump` (read in 1.3 alone, refused by name in 1.1
+and 1.2, `pump` only in a moving or over layer of a scene with bellows, its coefficient on eighths),
+and that what the compiler does not build yet is refused by name.
 
 The repository's own page draws the knight from the base pack, and every scene, every device, the cast, the words and the overlay from the medieval world's pack, so the screenshots of the repository's page check the pack paths, and the knight test
 and the scene test check both paths. A deployed copy draws from each pack while it ships signed, and
@@ -765,12 +783,12 @@ exact reason it expects; accepts each limit at its edge; checks the costs the co
 against figures worked by hand; signs a 1.1 pack with a key made for the run and checks that the
 signature holds over a pretty-printed, minified or reordered copy and breaks at a changed value in
 any new section; checks that a `[1, 0]` pack still refuses every new section, that its world
-fixture reads the same at `[1, 2]` and that `[1, 3]` is refused at the format; checks the closed lists by name, the conditions against `state.js`; and feeds
+fixture reads the same at `[1, 2]` and `[1, 3]` and that `[1, 4]` is refused at the format; checks the closed lists by name, the conditions against `state.js`; and feeds
 the reader mangled copies and values of the wrong type, none of which may throw. It checks too that
 the world's pack changes no look: `resolve()` gives the same with it loaded as without.
 
 `tests/web/fire.test.js` checks format 1.2. On the library: the test world's copy of 1.2 is its
-generator's and reads on `dev` terms; formats 1.0 to 1.2 read and 1.3 is refused at the format;
+generator's and reads on `dev` terms; formats 1.0 to 1.3 read and 1.4 is refused at the format;
 each field 1.2 adds on a `main` item, and a foe's `fires` and `aim`, is refused at `fields` in a
 pack of 1.0 or 1.1; each rule of `use` (what a weapon that fires or is both must give, what a swung
 one may not, the muzzle on the barrel), each field's range and kind, a stowed view's anchors, a foe
@@ -934,7 +952,7 @@ cloak changing with the plume and not the tabard and the short cape the other wa
 swung weapon's grip and blade; the crossbow's fields, its 45 shapes at 6 309 held and slung, no
 blade, and its look on every build at 116 shapes and 13 896 with its stowed list; and the costliest whole look of the free items, with each grip, at 201
 shapes and 20 493 and at 188 and 19 721, the same on every build. `tests/web/knight.test.js` draws the
-knight's 94 poses, the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy painted and drawn, from the base
+knight's 105 poses, the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy painted and drawn, from the base
 pack as the page does, and compares every call with the record taken from the code. It draws the
 code path from the unsigned copy, which a deployed page always refuses, and edits only that copy, so
 it too holds in either state. It checks that a deployed page draws from the shipped base pack when

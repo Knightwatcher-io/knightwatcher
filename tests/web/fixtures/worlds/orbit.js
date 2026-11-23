@@ -282,7 +282,7 @@ function bridge() {
         { k: 'patron' }, { k: 'bubble' },
         { k: 'rest', slot: 'main', at: 'bench' }
       ] },
-      { when: ['strike'], shapes: [{ k: 'fx', fx: 'burst', p: [{ spot: 1, c: 132 }, 418] }] }
+      { when: ['strike'], shapes: [{ k: 'fx', fx: 'burst', p: [{ spot: 1, c: 148 }, 412] }] }
     ],
     over: [],
     things: places({ pie: [300, 445], h: [80, 228, 926], g: [70, 218, 410] }),

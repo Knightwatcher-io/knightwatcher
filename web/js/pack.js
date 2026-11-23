@@ -9,11 +9,12 @@
 
   /* ---- The format's constants -------------------------------------------------------------- */
 
-  /* The newest format this library reads. It reads [1, 0], [1, 1] and [1, 2]: 1.1 adds the world
-     sections (docs/worlds.md, Format 1.1), which are checked and kept as data; the scene compiler,
-     world.js, draws from them. 1.2 adds the fields of a weapon that fires, on a main item, and of a
-     foe that fires (docs/packs.md, Weapons that fire). */
-  const FORMAT = Object.freeze([1, 2]);
+  /* The newest format this library reads. It reads [1, 0] to [1, 3]: 1.1 adds the world sections
+     (docs/worlds.md, Format 1.1), which are checked and kept as data; the scene compiler, world.js,
+     draws from them. 1.2 adds the fields of a weapon that fires, on a main item, and of a foe that
+     fires (docs/packs.md, Weapons that fire). 1.3 adds a scene's quench and bellows, and the named
+     value pump the bellows give its moving and over layers (docs/worlds.md, Format 1.3). */
+  const FORMAT = Object.freeze([1, 3]);
   /* Signed ahead of the pack's canonical form, so that a signature made for anything else cannot
      pass as a pack's. */
   const PREFIX = 'knightwatcher pack v1\n';
@@ -584,10 +585,12 @@
   /* Format 1.1's sections, each listed in provides when it holds anything. */
   const WORLD_SECTIONS = ['scenes', 'cast', 'props', 'words', 'overlays', 'worlds', 'sounds', 'stamps'];
   const PACK_KEYS_11 = PACK_KEYS.concat(WORLD_SECTIONS), PROVIDES_11 = PROVIDES.concat(WORLD_SECTIONS);
-  /* Whether a pack is of format 1.1 or later, which the format step has already held to [1, 0] to [1, 2]. */
+  /* Whether a pack is of format 1.1 or later, which the format step has already held to [1, 0] to [1, 3]. */
   const is11 = pack => pack.format[1] >= 1;
-  /* Whether a pack is of format 1.2, which adds the fields of weapons and foes that fire. */
+  /* Whether a pack is of format 1.2 or later, which adds the fields of weapons and foes that fire. */
   const is12 = pack => pack.format[1] >= 2;
+  /* Whether a pack is of format 1.3, which adds a scene's quench and bellows. */
+  const is13 = pack => pack.format[1] >= 3;
   function fields(pack) {
     const P = 'pack', m1 = is11(pack), PV = m1 ? PROVIDES_11 : PROVIDES;
     obj(pack, P, m1 ? PACK_KEYS_11 : PACK_KEYS, ['id', 'name', 'version', 'format', 'licence', 'provides']);
@@ -1220,15 +1223,18 @@
   const SCENE_RANGE = freeze({ L: [-976, -16], R: [976, 1936], T: [-602, -2], W: [992, 2912] });
   /* The named values a scene's acts give its moving and over layers, and their ranges: targetDx, the
      pixels the training act moves the target's group by when it is struck, in a scene with a
-     target; and spot, the x in pixels of the spot the watcher stands at by the anvil (its spot
-     times U), which the anvil's places count from, in a scene with an anvil. Their coefficients may
-     have three decimals, as the yard's lean, 713 + targetDx * 0.8, needs. ACT_PART names the part
-     each needs, and the reason a scene without it is refused with. */
-  const ACT_RANGE = freeze({ targetDx: [-15, 15], spot: [150, 810] });
+     target; spot, the x in pixels of the spot the watcher stands at by the anvil (its spot times
+     U), which the anvil's places count from, in a scene with an anvil; and pump (format 1.3), how
+     far the bellows are pressed, 0 open and 1 pressed, in a scene with bellows. The coefficients of
+     targetDx and spot may have three decimals, as the yard's lean, 713 + targetDx * 0.8, needs;
+     pump's is the travel of a point of the bellows, a multiple of 1/8 within an offset. ACT_PART
+     names the part each needs, and the reason a scene without it is refused with. */
+  const ACT_RANGE = freeze({ targetDx: [-15, 15], spot: [150, 810], pump: [0, 1] });
   /* How many times the engine draws the stamp a weapon's rest names: once under each end of the
      blade, as the house's pegs. */
   const REST_STAMPS = 2;
-  const ACT_PART = freeze({ targetDx: ['target', 'is the target\'s dx, and needs the scene\'s target'], spot: ['anvil', 'is the watcher\'s x at the anvil, and needs the scene\'s anvil'] });
+  const ACT_PART = freeze({ targetDx: ['target', 'is the target\'s dx, and needs the scene\'s target'], spot: ['anvil', 'is the watcher\'s x at the anvil, and needs the scene\'s anvil'],
+    pump: ['bellows', 'is how far the bellows are pressed, and needs the scene\'s bellows'] });
   const U = 5;
   const WORLD_LIMITS = freeze({ scenes: 16, cast: 16, props: 8, overlays: 8, words: 8, worlds: 8, stamps: 64, stampShapes: 64,
     layers: 32, tiles: 64, effects: 48, tileShapes: 32, stillShapes: 2000, frameShapes: 400, stillCost: 200000, frameCost: 16000,
@@ -1248,8 +1254,9 @@
   /* A scalar of a world section: a number, or a term object of c, named values, h ([seed, mod]:
      the engine's hash of the tile's x, modulo mod) and wave ([amp, div, phase]: amp times the sine
      of the scene's time in ms over div, plus phase). lo and hi bound c. Coordinates are multiples of
-     1/8, and so are the coefficients of named values but those an act gives (ACT_RANGE), which may
-     have three decimals; an alpha (alpha true) may have three decimals and takes only c and wave. */
+     1/8, and so are the coefficients of named values but targetDx's and spot's, which may have
+     three decimals (pump's is a multiple of 1/8 within an offset, the travel of a point); an alpha
+     (alpha true) may have three decimals and takes only c and wave. */
   function wscalar(v, path, lo, hi, alpha) {
     const n = alpha ? num : eighth;
     if (typeof v === 'number') { n(v, path, lo, hi); return; }
@@ -1260,6 +1267,7 @@
       else if (k === 'wave') wave(v.wave, p);
       else if (alpha) fail(p, 'an alpha takes only c and wave');
       else if (k === 'h') { if (!Array.isArray(v.h) || v.h.length !== 2) fail(p, 'must be [seed, mod]'); int(v.h[0], idx(p, 0), 0, 999); int(v.h[1], idx(p, 1), 2, 960); }
+      else if (k === 'pump') eighth(v[k], p, -WORLD_LIMITS.offset, WORLD_LIMITS.offset);
       else if (has(ACT_RANGE, k)) num(v[k], p, -8, 8);
       else if (!TERM_NAME.test(k)) fail(p, 'is not a name');
       else eighth(v[k], p, -8, 8);
@@ -1537,8 +1545,12 @@
   const SCENE_KEYS = ['name', 'spot', 'rounds', 'quiet', 'can', 'hosts', 'helmet', 'weapon', 'still', 'moving', 'over', 'things', 'rests', 'decor',
     'bed', 'screen', 'seat', 'anvil', 'target', 'foe', 'crate', 'pole', 'sound', 'companion'];
   const SCENE_REQ = ['name', 'spot', 'rounds', 'quiet', 'can', 'hosts', 'helmet', 'weapon', 'still', 'moving', 'over', 'things'];
-  function scene(v, path) {
-    obj(v, path, SCENE_KEYS, SCENE_REQ);
+  /* The parts of a scene format 1.3 adds: the quench, the quiet act at a forge and a water barrel,
+     and the bellows, the act of the CPU running hot. */
+  const SCENE_KEYS_13 = ['quench', 'bellows'];
+  /* A scene. m3 is whether the pack is of format 1.3, which alone takes the parts of SCENE_KEYS_13. */
+  function scene(v, path, m3) {
+    obj(v, path, m3 ? SCENE_KEYS.concat(SCENE_KEYS_13) : SCENE_KEYS, SCENE_REQ);
     const f = k => key(path, k);
     text(v.name, f('name'), 1, 32);
     int(v.spot, f('spot'), 30, 162);
@@ -1587,6 +1599,26 @@
       obj(v.anvil, f('anvil'), ['rest', 'spark'], ['rest']);
       id(v.anvil.rest, key(f('anvil'), 'rest'), LOCAL_ID);
       if (has(v.anvil, 'spark')) gridPair(v.anvil.spark, key(f('anvil'), 'spark'));
+    }
+    if (has(v, 'quench')) {
+      // where the blade goes into the water, its y the water's face, and where the watcher stands
+      // at the fire and at the water
+      const p = f('quench');
+      obj(v.quench, p, ['water', 'stand'], ['water', 'stand']);
+      if (!Array.isArray(v.quench.water) || v.quench.water.length !== 2) fail(key(p, 'water'), 'must be a pair [x, y]');
+      int(v.quench.water[0], idx(key(p, 'water'), 0), 0, 960); int(v.quench.water[1], idx(key(p, 'water'), 1), 0, 600);
+      if (!Array.isArray(v.quench.stand) || v.quench.stand.length !== 2) fail(key(p, 'stand'), 'must be a pair [fire, water]');
+      int(v.quench.stand[0], idx(key(p, 'stand'), 0), 0, 960); int(v.quench.stand[1], idx(key(p, 'stand'), 1), 0, 960);
+    }
+    if (has(v, 'bellows')) {
+      // where the watcher stands, the middle of the handle's crossbar open, how far it travels down
+      // pressed, and the pump's period, 2 pi times div ms, the period of a wave of that div
+      const p = f('bellows');
+      obj(v.bellows, p, ['stand', 'handle', 'travel', 'div'], ['stand', 'handle', 'travel', 'div']);
+      int(v.bellows.stand, key(p, 'stand'), 0, 960);
+      if (!Array.isArray(v.bellows.handle) || v.bellows.handle.length !== 2) fail(key(p, 'handle'), 'must be a pair [x, y]');
+      int(v.bellows.handle[0], idx(key(p, 'handle'), 0), 0, 960); int(v.bellows.handle[1], idx(key(p, 'handle'), 1), 0, 600);
+      int(v.bellows.travel, key(p, 'travel'), 1, 120); int(v.bellows.div, key(p, 'div'), 32, 10000);
     }
     if (has(v, 'target')) {
       const p = f('target');
@@ -1846,7 +1878,7 @@
     };
     // how many each section may hold is checked at counts, as for items and decorations
     sec('stamps', (v, p) => shapeList(v, p, 1, WORLD_LIMITS.stampShapes, { where: 'stamp' }), 'stamps');
-    sec('scenes', scene, 'scenes');
+    sec('scenes', (v, p) => scene(v, p, is13(pack)), 'scenes');
     sec('cast', (v, p) => castMember(v, p, is12(pack)), 'members');
     sec('props', propSet, 'prop sets');
     sec('words', wordsSet, 'word sets');
@@ -3011,9 +3043,13 @@
      the right hand: one draws the shield's group first and then the sword's; oneCrossed, when the
      sword hand crosses to the shield's side, draws both arms first, then the shield, then the blade
      and last the sword hand's gauntlet, so the sword arm stays behind the shield and the blade
-     passes in front of it. The off gauntlet lies behind the shield in every pose. In every mode
-     the crates go after the pauldrons and before the hands group, so the arms lie over them. */
+     passes in front of it. The off gauntlet lies behind the shield in every pose. hammer is the
+     smith's tool in the right hand, between the right arm and its gauntlet; tool2 the smith's tool
+     in both hands (the tongs, the bellows' handle), both arms before it and both gauntlets after.
+     In every mode the crates go after the pauldrons and before the hands group, so the arms lie
+     over them. */
   const HANDS = { none: ['armL', 'gauntL', 'armR', 'gauntR'], hammer: ['armL', 'gauntL', 'armR', 'hammer', 'gauntR'],
+    tool2: ['armL', 'armR', 'hammer', 'gauntL', 'gauntR'],
     twoR: ['armR', 'armL', 'main', 'gauntR', 'gauntL'], twoL: ['armL', 'armR', 'main', 'gauntL', 'gauntR'],
     one: ['armL', 'gauntL', 'off', 'armR', 'main', 'gauntR'], oneCrossed: ['armL', 'gauntL', 'armR', 'off', 'main', 'gauntR'] };
   const ORDERS = freeze(Object.keys(HANDS).reduce((o, m) => {

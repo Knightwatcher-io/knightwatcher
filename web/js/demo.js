@@ -55,7 +55,8 @@
   const COLLECTOR_QUIET = { quiet: ['ALL QUIET'], up: ['{n} up'], backup: ['backup {at}'], ads: ['{n} ads blocked', '{short} ads blocked', '{short} blocked'] };
   const DEMO = [
     { on: '', is: 'battlement', dur: 9000, flies: 4, swat: 3200 }, { on: '', is: 'battlement', dur: 6000, ev: 'goblin' },
-    { on: '', is: 'camp', dur: 9000, ev: 'crate' }, { on: '', is: 'yard', dur: 8000 }, { on: 'ssh_session', dur: 9000 }, { on: 'cpu_hot', dur: 7000 },
+    { on: '', is: 'camp', dur: 9000, ev: 'crate' }, { on: '', is: 'yard', dur: 8000 }, { on: '', is: 'smithy', dur: 14400 },
+    { on: 'ssh_session', dur: 9000 }, { on: 'cpu_hot', dur: 7000 },
     { on: 'streaming', dur: 7000 }, { on: 'container_unhealthy', dur: 7000 }, { on: 'backup_overdue', dur: 7000 }, { on: '', is: 'house', dur: 6500, ev: 'feast' },
     { on: 'disk_full', dur: 8000 }, { on: 'pi_silent', dur: 7000 }, { on: 'device_down', is: 'camp', dur: 8000, dv: 'pi,camera,camera,machine!,vm,box' },
     { on: 'updating', dur: 8000 }, { on: 'wan_down', dur: 6500 },
