@@ -416,7 +416,6 @@ each browser then keeping its own settings. The collector opens no port.
 
 ## Decisions not yet made
 
-- A licence, to be chosen before the repository is made public.
 - How the display behaves overnight on the tablet itself (dimming, sleep), which belongs to the
   kiosk browser more than to this project. The page asks for a screen wake lock in live mode and
   goes full screen on a tap, and leaves the rest open.

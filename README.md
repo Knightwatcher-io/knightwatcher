@@ -73,7 +73,9 @@ and checks that the install starts cleanly ([Development](docs/development.md#th
 The collector sends the project a few usage counts at start and every six hours: a random install
 id, the version, the built-in parts and sources in use and how many displays there are, never a
 name, an address or a credential. Put `KW_ANALYTICS=off` in `.env` to turn them off
-([Usage counts](docs/configuration.md#usage-counts), [telemetry.md](docs/telemetry.md)).
+([Usage counts](docs/configuration.md#usage-counts), [telemetry.md](docs/telemetry.md)). The
+[privacy notice](legal/PRIVACY.md) says who keeps them, for how long, and how to have yours
+deleted.
 
 The page is open to anyone on your network, with no login. Read [The server](docs/server.md#security)
 before you let it be reached from anywhere else, and never publish it to the internet without a
@@ -151,3 +153,25 @@ For contributors:
 - [Loading a world](docs/world-loading.md): `KW.world`, where the scenes are drawn from, failures, and the two copies of the medieval world
 - [The tests](docs/tests.md): every test file and what it checks, and the test world
 - [The screenshots](docs/shots.md): taking and comparing them, and what an older reference shows
+
+## Licence
+
+Copyright (C) 2026 Valtora
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU Affero General Public License as published by the Free Software Foundation, either version 3
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+Affero General Public License for more details.
+
+The full text is in [LICENSE](LICENSE).
+
+The art has its own licence. The packs in `web/packs/`, the logo and the icons are under the
+[Knightwatcher art licence](legal/ART-LICENCE.md): they may be used with Knightwatcher and passed
+on unchanged inside a copy of it, and may not be taken out of it, sold or passed on changed. The
+VT323 font is under the SIL Open Font License, in [web/fonts/OFL.txt](web/fonts/OFL.txt).
+
+Contributions are welcome under the [contributor terms](legal/CONTRIBUTOR-TERMS.md), which opening
+a pull request accepts. The art is the exception: open an issue for it instead.

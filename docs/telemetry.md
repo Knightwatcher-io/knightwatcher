@@ -80,7 +80,8 @@ stored.
 kept through 23 November 2028 and deleted from 24 November 2028; a row for 29 February is kept
 through 28 February two years on. The receiver deletes the rows past 24 months each time it stores
 a heartbeat, so a day's rows go at the first heartbeat after midnight UTC once that day is more
-than 24 months old. Nothing is rolled up or kept in any other form.
+than 24 months old. Nothing is rolled up or kept in any other form. A deleted or replaced row
+stays in Cloudflare's restore history for the database for up to 30 days, and is then gone.
 
 The connecting address is used for one thing: to limit how many requests one address can make in
 a minute, so a flood cannot crowd out real installs. It is **never stored and never logged**.
