@@ -95,8 +95,8 @@ zone. Every command runs in `telemetry/`.
    npx wrangler d1 create knightwatcher-telemetry
    ```
 
-3. Put the `database_id` it prints in `wrangler.jsonc`, in place of `PLACEHOLDER-set-at-setup`,
-   and commit that change. A deploy fails while the placeholder is there.
+3. Put the `database_id` it prints in `wrangler.jsonc` and commit that change. The live
+   receiver's id is already there; change it only when setting up a new database.
 
 4. Apply the schema to the database:
 
@@ -111,9 +111,12 @@ zone. Every command runs in `telemetry/`.
 6. Deploy, in one of two ways:
    - **Workers Builds**: in the Cloudflare dashboard, under Workers & Pages, create a Worker by
      importing this repository. Set the root directory to `telemetry`, the production branch to
-     `main`, leave the build command empty and keep the deploy command `npx wrangler deploy`. The
-     Worker's name must be `knightwatcher-telemetry`, as in `wrangler.jsonc`. Set the build watch
-     paths to `telemetry/*`, so a push to `main` deploys the Worker only when this folder changed.
+     `main`, the build command to `npm ci && npm run check` (so a failing test stops the deploy),
+     and keep the deploy command `npx wrangler deploy`. Add the build variable `NODE_VERSION=24`,
+     which the tests need, and `WRANGLER_SEND_METRICS=false`. The Worker's name must be
+     `knightwatcher-telemetry`, as in `wrangler.jsonc`. Set the build watch paths to
+     `telemetry/**`, so a push to `main` deploys the Worker only when this folder changed, and
+     turn previews off. The live receiver is set up this way.
    - **By hand**: `npx wrangler deploy`.
 
    Either way, the deploy creates the custom domain `telemetry.knightwatcher.io`, with no
