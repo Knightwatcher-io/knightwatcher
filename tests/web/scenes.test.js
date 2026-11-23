@@ -154,11 +154,15 @@ function load(src, size, from) {
    robe the monarch's, and times the moments drawn.
 
    The times cover what moves: the flames, the stars and the fireflies at every moment; the smithy's
-   hammer strikes at 0 and 1250 and not at the others; the monarch talks from 3200 to 6400, mouth
+   hammer strikes at 0 and not at the others, and falls at 1250; the monarch talks from 3200 to 6400, mouth
    open at 3450 and shut at 4700; a gone device's question mark shows at 1250, 2300 and 4700; the
    sparks of the WAN's cut rope at 0 and 2300; the sleeper's blanket rises at 2300 and 3450; the
    yard's dummy is struck at 4700 while the CPU runs hot. */
 const TIMES = [0, 1250, 2300, 3450, 4700];
+/* The smithy's quench past the first five moments, through its loop of 14 400 ms, and its bellows
+   through a pump of 200 pi ms. */
+const QUENCH = [5300, 5560, 5700, 5950, 6600, 7800, 8000, 8800, 9600, 11500, 13550, 13900, 14200];
+const PUMP = [100, 239, 314, 450, 600];
 /* The yard's dummy struck by the training swing at 600 and then wobbling, at 0, 100, 250, 500 and
    800 ms after the blow. */
 const STRUCK = [600, 700, 850, 1100, 1400];
@@ -198,8 +202,15 @@ function statesOf(KW, pack, name) {
   if (sc.helmet === false) add('helmet on', { helmet: true }); else add('helmet off', { helmet: false });
   // the house's television on while all is quiet; streaming has it on already
   if (name === 'house') add('tv on', { tv: true });
-  // the smithy's backdrop follows the knight's spot
-  if (name === 'smithy') add('kx 300', { kx: 300 });
+  // the smithy's backdrop follows the knight's spot; its quench while all is quiet, past the five
+  // moments (the blank into the water, the steam and the rings, the drips, the glint, the nod and
+  // the walk back to the fire), and its bellows at the push, pressed, at the flare's height and
+  // letting up
+  if (name === 'smithy') {
+    add('kx 300', { kx: 300 });
+    add('quench', { times: QUENCH });
+    add('bellows', { id: 'cpu_hot', times: PUMP });
+  }
   // the yard's dummy struck
   if (name === 'yard') add('dummy struck', { times: STRUCK });
   for (const [label, dv] of Object.entries(DEVICES)) add(label, { devices: dv });

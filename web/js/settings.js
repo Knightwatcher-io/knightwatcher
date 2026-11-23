@@ -57,7 +57,7 @@
       helmet_indoors: { values: [true, false], page: false }
     },
     quiet: {
-      scenes: { values: ['battlement', 'camp', 'house', 'yard'], long: true, page: ['battlement', 'camp', 'house', 'yard'] },
+      scenes: { values: ['battlement', 'camp', 'house', 'yard', 'smithy'], long: true, page: ['battlement', 'camp', 'house', 'yard', 'smithy'] },
       minutes: { min: 1, max: 240, page: 10 }
     },
     scenes: ['battlement', 'camp', 'house', 'yard', 'cellar', 'smithy', 'court']
@@ -107,7 +107,7 @@
   /* The page's own defaults, below every other level, from the schema: the base pack's defaults for
      the knight (read from the pack in use, see builtIn; the schema's are used without one), the
      first monarch with the court's own skin and each monarch's own hair and robe (null: as drawn),
-     a medium headline, a 24-hour clock, the helmet off indoors, all four quiet scenes for ten
+     a medium headline, a 24-hour clock, the helmet off indoors, all five quiet scenes for ten
      minutes each, and each condition in its own scene (filled from the world, see builtIn). The
      demo keeps its own minute while no level above this one sets the length. */
   const BUILT_IN = { look: pick('look', 'page'), display: pick('display', 'page'), quiet: pick('quiet', 'page'), scenes: {} };
@@ -1083,7 +1083,7 @@
     // a part of another pack by its long name: its own name, as the catalogue gives it
     const title = x => (isLong(x) && isObj(cat) && isObj(cat.titles) && typeof cat.titles[x] === 'string' ? cat.titles[x] : null);
     // the quiet scenes in a sentence: the first's name as it is, the rest's in lower case
-    if (sec === 'quiet') return k === 'minutes' ? v + ' minutes' : same(v, SCENES) ? 'All four' : listed(v.map((x, i) => { const n = SCENE_NAMES[x] || title(x) || x; return i ? lowerFirst(n) : n; }));
+    if (sec === 'quiet') return k === 'minutes' ? v + ' minutes' : same(v, SCENES) ? 'All five' : listed(v.map((x, i) => { const n = SCENE_NAMES[x] || title(x) || x; return i ? lowerFirst(n) : n; }));
     if (sec === 'scenes') return SCENE_NAMES[v] || title(v) || v;
     if (v === null) return 'As drawn';
     if (typeof v === 'string' && k !== 'world' && k !== 'props' && title(v)) return title(v);
@@ -1827,7 +1827,7 @@
         list.appendChild(row('minutes', 'Each shows for', choices.map(m => ({ id: m, chip: String(m), name: 'min', kind: 'text', label: m + ' minutes' })), mins, choose('quiet', 'minutes'),
           (r.from.quiet.minutes === 'built-in' && o.info().mode === 'demo' ? 'The demo shows each scene for a minute until a length is chosen here or in config.toml.' : hookNote(r, 'quiet', 'minutes'))));
         const d = defaultsOf('quiet').values, n = d.scenes.length;
-        const dw = (same(d.scenes, SCENES) ? 'all four scenes' : n === 1 ? 'the ' + lower(sn(d.scenes[0])) + ' alone' : d.scenes.map(x => lower(sn(x))).join(', ').replace(/, ([^,]*)$/, ' and $1')) + ', ' + d.minutes + (d.minutes === 1 ? ' minute' : ' minutes') + ' each';
+        const dw = (same(d.scenes, SCENES) ? 'all five scenes' : n === 1 ? 'the ' + lower(sn(d.scenes[0])) + ' alone' : d.scenes.map(x => lower(sn(x))).join(', ').replace(/, ([^,]*)$/, ' and $1')) + ', ' + d.minutes + (d.minutes === 1 ? ' minute' : ' minutes') + ' each';
         list.appendChild(reset('quiet', 'choices', dw + '. These scenes show only while all is quiet; anything the knight has to act out comes first', defaultsOf('quiet').fromConfig, hooked(r, 'quiet')));
       } },
       scenes: { label: 'Scenes', build(list, prev, r) {

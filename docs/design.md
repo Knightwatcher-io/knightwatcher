@@ -267,9 +267,13 @@ and a state of the knight. Highest first:
 That is each condition's own scene. The settings may move five of them to another scene that can
 act them; see [Scenes chosen per condition](#scenes-chosen-per-condition).
 
-With no condition active the quiet scenes take turns: battlement, camp, house, training yard,
-ten minutes each by default, and a minute each in the demo. The settings choose which of the four
-take turns, at least one, and one length for all of them.
+With no condition active the quiet scenes take turns: battlement, camp, house, training yard and
+smithy, ten minutes each by default, and a minute each in the demo. In the smithy the knight
+quenches a blade: draws a blank glowing from the forge, carries it to the water barrel and plunges
+it in with a burst of steam, looks it over and carries it back to the fire. The settings choose
+which of the five take turns, at least one, and one length for all of them. The smithy joined the
+four as a default: a display that has saved its own list of quiet scenes keeps it as saved, and
+shows the smithy only once it is chosen there.
 
 The monarch on the throne at court is one of three young adults, each with a look of their own:
 monarch A, a king; monarch B, a queen; and monarch C, a monarch who reads as neither. All three
@@ -291,8 +295,11 @@ and the address's `mon=`, `ms=`, `mh=` and `mr=` choose it for screenshots (see
 
 Each scene declares the conditions it can act out, from what each condition needs: the props it
 shows, where the knight stands and what the knight does. A scene that takes the knight's pose
-over for its own story (the court, where the knight talks with the monarch, and the smithy, where
-the knight hammers) acts only its own condition. The pie stands to the right of the knight's spot
+over for its own story (the court, where the knight talks with the monarch) acts only its own
+condition. The smithy has three acts of its own: the knight hammers the weapon on the anvil while
+updating, works the bellows while the CPU runs hot, the forge flaring with each push, and
+quenches a blade while all is quiet; with a device down or the memory tight the knight stands at
+the anvil, as in any quiet scene. The pie stands to the right of the knight's spot
 in the battlement, the camp and the house, and to the left everywhere else, so only those three
 can show the knight staring at the empty dish. The weapon is put away in the house and the cellar,
 so neither can show it raised against an attack. A condition the knight strolls through (the
@@ -308,9 +315,9 @@ on the knight alone, so every scene that leaves the pose alone can act them.
 | `disk_full` | | | | yes | own | | |
 | `backup_overdue` | yes | yes | own | yes | yes | | |
 | `pi_silent` | yes | yes | own | | | | |
-| `device_down` | yes | yes | yes | yes | | | |
-| `cpu_hot` | yes | yes | yes | own | yes | | |
-| `memory_tight` | yes | yes | yes | yes | | | |
+| `device_down` | yes | yes | yes | yes | | yes | |
+| `cpu_hot` | yes | yes | yes | own | yes | yes | |
+| `memory_tight` | yes | yes | yes | yes | | yes | |
 | `ssh_session` | | | | | | | own |
 | `updating` | | | | | | own | |
 | `streaming` | | | own | | | | |

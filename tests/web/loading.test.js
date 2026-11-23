@@ -354,7 +354,7 @@ function recorded(s) {
   knight('container_unhealthy t1400', 'container_unhealthy', 1400);
   knight('walk left foot up', 'idle', 1920, { walk: true, x: 481.5 });
   knight('swing right q0.42', 'idle', 2300, null, o => K.swing(o, 0.42, 1));
-  knight('hammer 0.5', 'updating', 2300, { sword: false, helmet: false, hammer: 0.5, progress: 0.5 });
+  knight('smith updating t500', 'updating', 500, { sword: false, helmet: false }, o => { const s = { w: { id: 'updating' }, kx: X, o, strike: false, dx: 0 }; S.act(500, s); o.x = X + s.dx; });
   knight('helmet off', 'idle', 2300, { helmet: false });
   knight('helmet off unwell', 'container_unhealthy', 1400, { helmet: false });
   knight('sword off', 'idle', 2300, { sword: false });
@@ -366,7 +366,7 @@ function recorded(s) {
   p.push(['house painted', () => H.paint({ tv: false })]);
   p.push(['house drawn, asleep', () => H.draw(2300, { tv: false, inBed: true, helmOff: true, o: at(K, 'night', 2300) })]);
   p.push(['smithy painted kx440', () => S.paint({ kx: 440 })]);
-  p.push(['smithy drawn t300', () => { const st = { kx: 440, o: at(K, 'updating', 300), strike: false }; S.act(300, st); S.draw(300, st); }]);
+  p.push(['smithy drawn t300', () => { const st = { w: { id: 'updating' }, kx: 440, o: at(K, 'updating', 300), strike: false }; S.act(300, st); S.draw(300, st); }]);
   return p;
 }
 /* Requires that s draws, pose by pose, exactly the stored record of the knight drawn from code. */

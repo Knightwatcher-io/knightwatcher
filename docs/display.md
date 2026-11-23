@@ -162,7 +162,7 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
    monarch A in the court's own skin with
    each monarch's own hair and robe ("As drawn", `null` in what `now()` gives), the mouser cat in
    its calico coat, the goblin, the fly,
-   the medieval devices, overlay and words, all four quiet scenes, and each condition in its own
+   the medieval devices, overlay and words, all five quiet scenes, and each condition in its own
    scene; with a medium headline, a 24-hour clock, the helmet off indoors, and ten minutes for each
    quiet scene in live mode and one in the demo.
 
@@ -543,7 +543,7 @@ address still opens it with `set=pet`.
 **Display.** The headline size (small, medium, large), the clock (24 hour, 12 hour) and the helmet
 indoors (off in the house and the smithy, or kept on everywhere).
 
-**Quiet scenes.** The four quiet scenes, each with a picture drawn by its own code and a switch,
+**Quiet scenes.** The five quiet scenes, each with a picture drawn by its own code and a switch,
 and once another world gives quiet scenes, each world's under its name, the world in use's first;
 a blue line says when the rotation differs from the world's own.
 The last one in the rotation cannot be switched off, and a line says "One scene at least stays in
@@ -644,7 +644,7 @@ down is used.
 | Key | Meaning |
 |---|---|
 | `on=` | active conditions, comma separated, by the contract's id or the short alias (`attack`, `wan`, `sick`, `disk`, `backup`, `pi`, `device`, `cpu`, `swap`, `ssh`, `update`, `plex`, `night`) |
-| `is=` | the quiet scene: `auto` for the rotation the settings choose, or `battlement`, `camp`, `house`, `yard` to keep one. The cellar, smithy and court come from conditions |
+| `is=` | the quiet scene: `auto` for the rotation the settings choose, or `battlement`, `camp`, `house`, `yard`, `smithy` to keep one; in the smithy the knight quenches a blade. The cellar and the court come from conditions, and so does the smithy's anvil and its bellows |
 | `h=` | the helmet: `auto` (off in the house and the smithy), `on`, `off`. Without it the settings' helmet indoors chooses between `auto` and `on` |
 | `hs=` | the headline size: `s`, `m`, `l`. Without it the settings' headline size |
 | `bar=0` | hides the review bar |

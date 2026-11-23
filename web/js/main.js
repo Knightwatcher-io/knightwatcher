@@ -15,7 +15,7 @@
      fixed holds those it names with a value in OPTS, and the review bar adds to it when one of its
      buttons sets them, so that the demo writes them back into the address. */
   const S = KW.opts = { on: '', is: 'auto', h: 'auto', hs: 'm', bar: '1', demo: '0' };
-  const OPTS = KW.OPTS = { is: { auto: 'Take turns', battlement: 'Battlement', camp: 'Camp', house: 'House', yard: 'Training yard' }, h: { auto: 'Off indoors', on: 'On', off: 'Off' }, hs: { s: 'S', m: 'M', l: 'L' } };
+  const OPTS = KW.OPTS = { is: { auto: 'Take turns', battlement: 'Battlement', camp: 'Camp', house: 'House', yard: 'Training yard', smithy: 'Smithy' }, h: { auto: 'Off indoors', on: 'On', off: 'Off' }, hs: { s: 'S', m: 'M', l: 'L' } };
   const given = {};
   H0.slice(1).split('&').forEach(kv => { const [k, v] = kv.split('='); if (k in S && v != null) S[k] = given[k] = decodeURIComponent(v); });
   for (const k of Object.keys(OPTS)) if (!(S[k] in OPTS[k])) S[k] = Object.keys(OPTS[k])[0];

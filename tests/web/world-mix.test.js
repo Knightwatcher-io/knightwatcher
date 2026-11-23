@@ -253,7 +253,7 @@ test('the scenes page offers every world\'s scenes for each condition, and names
   const offer = st.s.offered(), f = st.s.fallback(), dflt = {};
   for (const c of Object.keys(offer)) dflt[c] = f.values.scenes[c] || f.world.homes[c];
   eq(plain(offer.wan_down), ['battlement', O('deck')], 'a condition only one medieval scene acts is offered once another world acts it');
-  eq(plain(offer.cpu_hot), ['battlement', 'camp', 'house', 'yard', 'cellar', O('deck'), O('airlock')]);
+  eq(plain(offer.cpu_hot), ['battlement', 'camp', 'house', 'yard', 'cellar', 'smithy', O('deck'), O('airlock')]);
   const rows = SCR.sceneRows(r, st.s.parts('medieval'), offer, dflt, pack(), cat), x = c => rows.find(y => y.k === c);
   eq(names(x('wan_down')), ['Medieval: battlement', 'Orbit: ' + O('deck')]);
   eq([x('wan_down').cur, x('wan_down').own, x('wan_down').changed], [O('deck'), 'battlement', true]);
@@ -264,7 +264,7 @@ test('the scenes page offers every world\'s scenes for each condition, and names
 });
 
 test('the quiet scenes are grouped by world, the world in use\'s first, and named in a sentence', () => {
-  eq(plain(SCR.quietGroups(store(KW).s.now(), store(KW).s.catalogue())), [{ world: 'medieval', name: 'Medieval', scenes: ['battlement', 'camp', 'house', 'yard'] }, { world: WORLD, name: 'Orbit', scenes: [O('deck')] }]);
+  eq(plain(SCR.quietGroups(store(KW).s.now(), store(KW).s.catalogue())), [{ world: 'medieval', name: 'Medieval', scenes: ['battlement', 'camp', 'house', 'yard', 'smithy'] }, { world: WORLD, name: 'Orbit', scenes: [O('deck')] }]);
   const w = store(KW, { hooks: { look: { world: WORLD } } }).s;
   eq(SCR.quietGroups(w.now(), w.catalogue()).map(g => g.name), ['Orbit', 'Medieval']);
   eq(plain(SCR.quietGroups(store(MED).s.now(), store(MED).s.catalogue()).map(g => g.name)), ['Medieval']);

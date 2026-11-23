@@ -46,7 +46,7 @@ plays in are its settings. Each comes from four levels, highest first, key by ke
    config default" goes back to these.
 4. **The page's own**, the "page's own" in the reference: the medieval world, which is the base
    pack's defaults for the knight, monarch A with each monarch's own colours, the goblin, the fly,
-   the medieval devices, words and overlay, all four quiet scenes, and each condition in its own
+   the medieval devices, words and overlay, all five quiet scenes, and each condition in its own
    scene; with a medium headline, a 24-hour clock, the helmet off indoors and ten minutes for each
    quiet scene.
 
@@ -648,7 +648,7 @@ The scenes that take turns while all is quiet, for every display. A choice made 
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `scenes` | one or more quiet scenes, each once: `"battlement"`, `"camp"`, `"house"` or `"yard"`, or long names, `"<pack>/<id>"` | none; the page's own is `["battlement", "camp", "house", "yard"]` | display | The quiet scenes, in the order they take turns: the four the page ships with, or quiet scenes of a loaded pack by their long names, "<pack>/<scene>". |
+| `scenes` | one or more quiet scenes, each once: `"battlement"`, `"camp"`, `"house"`, `"yard"` or `"smithy"`, or long names, `"<pack>/<id>"` | none; the page's own is `["battlement", "camp", "house", "yard", "smithy"]` | display | The quiet scenes, in the order they take turns: the five the page ships with, or quiet scenes of a loaded pack by their long names, "<pack>/<scene>". |
 | `minutes` | a whole number of minutes, from 1 to 240 | none; the page's own is `10` | display | How long each quiet scene shows. The demo shows each for a minute while nothing sets it. |
 
 ### [scenes]
@@ -661,7 +661,7 @@ Where the knight acts out each condition that more than one scene can play, for 
 | `disk_full` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"yard"` or `"cellar"` | none; the page's own is `"cellar"` | display | Where the knight acts out a full disk. |
 | `backup_overdue` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"` or `"cellar"` | none; the page's own is `"house"` | display | Where the knight acts out an overdue backup. |
 | `pi_silent` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"` or `"house"` | none; the page's own is `"house"` | display | Where the knight acts out a silent Pi. |
-| `cpu_hot` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"` or `"cellar"` | none; the page's own is `"yard"` | display | Where the knight acts out a hot CPU. |
+| `cpu_hot` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"`, `"cellar"` or `"smithy"` | none; the page's own is `"yard"` | display | Where the knight acts out a hot CPU. |
 
 ### Providers
 

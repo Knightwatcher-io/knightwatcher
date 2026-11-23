@@ -1,6 +1,6 @@
 # Scenes as data
 
-For anyone making a world pack: a scene of format 1.1 as data. It gives the shapes, coordinates
+For anyone making a world pack: a scene of format 1.1 as data, with the parts format 1.3 adds. It gives the shapes, coordinates
 and terms the world sections share, the fields of a scene, how the page compiles a scene and acts
 it out, and how the medieval world's scenes were written from their code. The sections of format
 1.1, its costs and limits, and the presets that name scenes are in [worlds.md](./worlds.md); the
@@ -66,9 +66,10 @@ tile on its x. Two more term forms are allowed: `"h": [seed, mod]` adds the engi
 tile's x modulo `mod` (seed 0 to 999, mod 2 to 960), and `"wave": [amp, div, phase]` adds
 `amp * sin(t / div + phase)`, with `amp` from -512 to 512, `div` from 1 to 100 000 ms and `phase`
 from -100 to 100. Coordinates stay multiples of 1/8, and so do the coefficients of named values,
-but those of the values an act gives, `targetDx` and `spot`, which may have three decimals (from -8
-to 8), as `713 + targetDx * 0.8` needs; an alpha may have three decimals and takes only `c` and
-`wave`.
+but those of the values the training and the anvil give, `targetDx` and `spot`, which may have
+three decimals (from -8 to 8), as `713 + targetDx * 0.8` needs. `pump`'s coefficient (format 1.3) is
+the travel of a point, a multiple of 1/8 from -2048 to 2048. An alpha may have three decimals and
+takes only `c` and `wave`.
 
 | Name | Is | Range the checks assume | Allowed |
 |---|---|---|---|
@@ -78,6 +79,7 @@ to 8), as `713 + targetDx * 0.8` needs; an alpha may have three decimals and tak
 | `wave` | a sine of the scene's time | `-amp` to `amp` | a moving or over layer |
 | `targetDx` | the pixels the training act moves the target's group by, while it wobbles after a blow | -15 to 15 | a moving or over layer of a scene with a `target` |
 | `spot` | the x in pixels of the spot the watcher works the anvil from, which the anvil's places count from | 150 to 810 (a `spot` of 30 to 162, times 5) | a moving or over layer of a scene with an `anvil` |
+| `pump` | how far the bellows are pressed (format 1.3), 0 open and 1 pressed, 0 unless the bellows' act plays | 0 to 1 | a moving or over layer of a scene with `bellows` |
 
 Nothing else may lean on a named value: stamps, the cast and props are drawn at fixed sizes. The
 rig's named values (`drop`, `dShoulder` and the rest) are refused in every 1.1 section.
@@ -117,6 +119,7 @@ loaded`).
 | `things` | the seven places for devices |
 | `rests`, `decor` | optional: places for gear at rest and for decorations |
 | `bed`, `screen`, `seat`, `anvil`, `target` | optional: the parts an act needs |
+| `quench`, `bellows` | optional, format 1.3 alone: the parts of the smith's quiet act and of the CPU running hot ([worlds.md](./worlds.md#format-13)) |
 | `foe` | optional: where a foe may stand |
 | `pole` | optional: 1 to 16 shapes |
 | `sound`, `companion` | reserved: an object or absent, never read |
@@ -180,7 +183,8 @@ Either may count its x from the watcher's spot with `"from": "spot"`; `x` is a w
 
 **The act parts.** `bed` is `{ head, blanket, zeds }`, `blanket` a group of a layer; `screen`
 `{ group, glow: [x, y, r] }`; `seat` `{ x, y, bubble, turn, mouth }`, `turn` and `mouth` in ms;
-`anvil` `{ rest, spark }`, `rest` a rest of the scene. A screen's `glow` and an anvil's `spark` are
+`anvil` `{ rest, spark }`, `rest` a rest of the scene; and in format 1.3 `quench` `{ water, stand }`
+and `bellows` `{ stand, handle, travel, div }`, whose fields are in [worlds.md](./worlds.md#format-13). A screen's `glow` and an anvil's `spark` are
 optional, reserved and not read: the television's light and the hammer's sparks are the scene's own
 `glow` and `burst`; `target` `{ group, hitAt, every }`, `hitAt` before `every`. Their numbers:
 `bed`'s `head` and `zeds` and the anvil's `spark` are points within 2048 either way; the screen's
@@ -257,7 +261,7 @@ the shipped packs does ([page.md](./page.md#the-acts-with-a-weapon-that-fires)).
 | `flame` | `p`, `size` (1), `dt` (0) | three tongues, each an ell and a triangle at their largest | every scene |
 | `candle` | `p`, `sway` ([190, 1.5]), `of` (two colours) | two ells and a triangle | the house as data, the candle's flame; `house.js` keeps its own drawing |
 | `twinkle` | `p`, `w`, `h`, `n` (14), `seed` (41), `ms` (1100), `gap` (0.7), `cycle` (6), `lit` (0.9), `size` (3), `colour` | 1 a point | battlement |
-| `drift` | `p`, `n` (4), `gap` (6), `period` (2300), `sway` ([5, 14]), `rise` (130), `size` (3), `colour` | 1 a particle | camp, the embers |
+| `drift` | `p`, `n` (4), `gap` (6), `period` (2300), `sway` ([5, 14]), `rise` (130), `size` (3), `colour` | 1 a particle | camp, the embers; smithy, the embers up the chimney while the bellows work |
 | `wander` | `p`, `w`, `h`, `n` (7), `seed` (31), `ms` (900), `gap` (1.3), `cycle` (4), `lit` (1.4), `sway`, `bob`, `glow` ([9, 0.18]), `size` (3), `colour` | a glow and a fill a light, one glow each | camp, the fireflies |
 | `coals` | `p`, `n` (9), `gap` (14), `seed` (61), `ms` (170), `part` (`bed` or `sparks`), `of` | an ell of 15 rows a coal, or 1 a spark | smithy, the bed and the sparks over its flames |
 | `steam` | `p`, `n` (3), `gap` (14), `period` (1800), `sway` ([7, 5]), `rise` (46), `r` ([4, 7]), `a` (0.8), `colour` | an ell a puff | the pie, while up |
@@ -328,11 +332,11 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 | `foeZone` | `foe`: its `side` and `spans`, as `{ side, spans }` |
 | `crate` | `crate`: its `span`, as `{ span }` |
 | `wallAt(x)` | `foe.wall`, below; only when it has one |
-| `act(t, s)` | `target`, the training act, or `anvil`, the anvil's act, both below; only when there is one |
+| `act(t, s)` | `target`, the training act, or `anvil`, `bellows` and `quench`, the smith's acts, all below; only when there is one |
 | `bed: true` | `bed`, below |
 | `paint(s)` | the still layers, into the cached backdrop; only when there are any |
 | `draw(t, s)` | the moving layers |
-| `over(t, s)` | the over layers, and the sleeper's Zs in a scene with a `bed`; only when there are either, as a code scene without `over` has none |
+| `over(t, s)` | the over layers, the sleeper's Zs in a scene with a `bed`, and the quench's steam, drips and glint in a scene with a `quench`; only when there is any of them, as a code scene without `over` has none |
 | `key(s)` | worked out by the compiler, below |
 | `drawn(mon)` | `seat`: each patron's own hair and robe colours, from `KW.cast.patrons`, as `court.js` gives them for the settings' "As drawn" |
 
@@ -348,8 +352,9 @@ nothing draws decorations yet.
 written: `c`, the named values `L`, `R`, `T` and `W` (the canvas's edges and width on the grid,
 from `KW.view`, `W` being `HR - HL`), inside a tile `x` and `h` (`hsh(x, seed) % mod`), and in a
 moving or over layer `wave` (`amp * Math.sin(t / div + phase)`), in a scene with a target
-`targetDx` (the pixels the training act moves the target by) and in a scene with an anvil `spot`
-(the x of the spot the watcher works the anvil from, `s.kx`), both below. The first key gives the value and
+`targetDx` (the pixels the training act moves the target by), in a scene with an anvil `spot`
+(the x of the spot the watcher works the anvil from, `s.kx`) and in a scene with bellows `pump`
+(how far they are pressed), all below. The first key gives the value and
 each next one is added to it, so a term is written in the order the code adds: `{ "x": 1, "c": 178 }`
 for `x + 178`, `{ "c": 0.09, "wave": [0.025, 150, 0] }` for `.09 + .025 * Math.sin(t / 150)`. That
 is what makes the floating-point bits come out as the code's.
@@ -377,7 +382,8 @@ its picks gives `@pick.<name>` one of its colours at each `x`, `of[hsh(x, seed) 
 `ell` or an `rrect` with a `clip`, `[top, bottom]`, draws only its rows between the two ys, counted
 from the same anchor as its point, `null` for no bound: the code's `ell(460, 360, 82, 66, c, null,
 360)` is `"clip": [null, 360]`. The mark `things` is where the devices behind the watcher are drawn,
-`KW.devices.draw(t, s)`, and the mark `sleeper` where the watcher's head lies in bed (below).
+`KW.devices.draw(t, s)`, and in a scene with a `quench` the rings on the water just before them
+while the blank is in it (below); the mark `sleeper` is where the watcher's head lies in bed (below).
 
 **Rests and the rest mark.** A scene's `rests` compile to the form the code scenes give in `RESTS`:
 a frame for the weapon, `{ x, y, a }`, its angle `"upright"` as 0, `"flat"` as `Math.PI / 2` and a
@@ -486,29 +492,73 @@ code yard aims at. A target's own aim point is not read: `aim` is refused at `fi
 format.
 
 **The anvil's act.** A scene with an `anvil`, `{ rest, spark }`, gets the act the engine plays in
-the smithy, built beside the target's in the compiler's table of acts. It is `act()` in `smithy.js`
-with its numbers in the compiler's table `ANVIL`: whatever else is up, the weapon put away
-(`o.sword = false`) and the hammer rising slowly and falling fast once every 1 300 ms, `o.hammer`
-`1 - ease(c / .55)` for the first 55 hundredths of the cycle `c` and `((c - .55) / .45) ** 3` after,
-a progress bar filling over 9 seconds, and the hammer striking from 93 hundredths of a cycle to 6 of
-the next, when `strike` holds and the eyes shut. While it strikes, a triggered effect gets the
-blow's progress, `(c > .5 ? c - .93 : c + .07) / .13`, from 0 to 1 over the strike, which is the
-sparks the hammer throws; while it does not, no triggered effect is drawn. The act gives the moving
-and over layers the named value `spot`, the watcher's x, which the anvil's places count from, so
-that the sparks fly where the hammer falls: the smithy's are at `[{ "spot": 1, "c": 132 }, 418]`,
-the code's `[s.kx + 132, 418]`. The anvil's `spark` is optional, reserved and not read: the sparks
-are the scene's own `burst`, in a layer that waits on `strike`, and the smithy gives none.
+the smithy while updating, built beside the target's in the compiler's table of acts. It is
+`hammer()` in `smithy.js` with its numbers in the compiler's table `ANVIL`: one blow every 1 400 ms,
+the cycle starting at the blow on the blade. The hammer bounces up 0.4 radians as the body comes up
+out of the lean (to 12 hundredths of the cycle), rises round the right shoulder to 70 pixels above
+it as the body straightens and leans back a little (to 55 hundredths), hangs at the top drawn back a
+little further (to 66), then falls through its arc with an ease of `q ** 2.5`, most of its travel in
+the last 150 ms, the body leaning in 8 pixels and sinking 7 at the knees. The act sets the knight's
+smith grip (`o.tool`, [rig.md](./rig.md#anchors-values-and-poses)): the right hand placed off its shoulder
+while the hammer is up and pinned for the blow to the point that lays the hammer's face on the top
+edge of the weapon lying at the anvil's rest, 98 past the middle of its grip, just past the guard
+(`KW.knight.rest.reach()` gives the edge, 12 above the grip for a weapon without one); the left
+hand on the grip. The eyes are happy as the hammer rises, open and on the work at the top, shut at
+the blow; the body moves by the act alone (`o.bob` 0), and a progress bar fills over 9 seconds.
+`strike` holds through the first tenth of the cycle, and while it does a triggered effect gets the
+blow's progress, from 0 to 1 over it, which is the sparks; while it does not, no triggered effect is
+drawn. The act gives the moving and over layers the named value `spot`, the watcher's x, which the
+anvil's places count from, so that the sparks fly where the hammer's face meets the blade: the
+smithy's are at `[{ "spot": 1, "c": 148 }, 412]`, the code's `[s.kx + 148, 412]`, on the
+greatsword's top edge. The anvil's `spark` is optional, reserved and not read: the sparks are the
+scene's own `burst`, in a layer that waits on `strike`, and the smithy gives none.
 
 The act holds the watcher at the anvil, so a scene with an `anvil` gives no `rounds`, as
 `smithy.js` gives none: with rounds the engine would walk the watcher between them, and the hammer
 would follow. The format asks for one round at least, so the smithy's data has one at its spot,
 guarding, which is where the act keeps the watcher.
 
+**The bellows' act** (format 1.3). A scene with `bellows`, `{ stand, handle, travel, div }`, gets
+`bellows()` in `smithy.js` with its numbers in the compiler's table `BELLOWS`, while the CPU runs
+hot. The watcher stands at `stand`, moved there for the frame by `s.dx`
+([page.md](./page.md#the-scene-interface)), the spot staying where it is, and pumps once every 2 pi
+times `div` ms (200 pi, about 628, for the smithy's `div` of 100): pressed with a push that gathers
+pace (a cube of the time) through 38 hundredths of the period, about 239 ms, and let up through
+the rest. The act gives the moving and over layers the named value `pump`, 0 open and 1 pressed,
+and 0 while the act does not play: every point of the bellows that moves is its open point plus
+`pump` times its travel, `{ "c": 409, "pump": 30 }`. The handle's crossbar, its middle at `handle`
+open, goes down `travel` pressed, and the hands hold it 17 right and 5 left of its middle; the body
+leans in from 1 to 7 pixels and sinks 7 at the knees with each push, its eyes on the work. The
+sweat, the panting and the steam are the pose's, as in the yard. Since the glow's `wave` of `div`
+100 has the pump's period, the smithy's flared fire swells just after each push; changing one
+without the other drifts the flare off the push. A flame's `size` is a plain number, so only the
+light pulses.
+
+**The quench** (format 1.3). A scene with a `quench`, `{ water, stand }`, gets `quench()` in
+`smithy.js` with its numbers in the compiler's table `QUENCH`, while all is quiet: a loop of 14.4
+seconds. The watcher heats a plain blank in the fire at `stand[0]` (1.0 s), steps back 80 drawing it
+out (0.7 s), raises it (0.5 s), walks to the water at `stand[1]` with it held up behind (2.8 s),
+swings it down past the right and in front of the legs into the water (0.6 s), quenches it, the
+eyes shut in a burst of steam and the glow gone in 0.6 s (1.7 s), lifts it out to the left, dripping
+(0.65 s), looks it over, a glint running along it, with a smile and a nod (2.55 s), walks back
+(2.8 s), and swings it down past the left and in front of the legs and lays it in the fire (1.1 s).
+Each walk moves the watcher by `s.dx`, the legs stepping. The blank is held in two-handed tongs
+(`o.tool`, `kind: "tongs"`), not the watcher's weapon, which stays where the scene's `weapon` puts
+it, so every look and weapon quenches alike. The blank never passes the face: each turn from one
+side to the other goes below the hands, which stay under the chin, and the tongs and the blank are
+short enough to keep the point within 11 pixels of the floor line as it passes in front of the
+legs. While it is in the water, whatever of the tongs and the blank lies below the water's face,
+`water[1]`, is not drawn, and two rings spread on the water from `water`, which the act draws at the
+`things` mark, just before the devices. Over everything it draws the steam rising from `water` as
+the blank goes in, a burst and then a thinner plume, the drips off the point as it comes out and
+the glint along it as it is looked over. Like the hot tip, the steam, the rings, the drips and the
+glint are the engine's drawing, which no pack can say, and count toward no cost.
+
 The **hot tip** of the blade is part of the anvil's act, and reads the equipped weapon's `blade`,
 `KW.knight.rest.reach()`: it is drawn where a `rest` mark for the weapon at the anvil's rest stands
 in a moving or over layer, on the weapon as that rest lays it, and only for a weapon that gives a
-blade. A weapon that only fires lies on the anvil with no hot tip; one that is both swung and fired
-has its blade's. It is the code smithy's drawing with its numbers in the compiler's table `TIP`: from the
+blade, and only while the hammer works it. A weapon that only fires lies on the anvil with no hot
+tip; one that is both swung and fired has its blade's. It is the code smithy's drawing with its numbers in the compiler's table `TIP`: from the
 point, `to` along the blade, and its edges, `half` either side, a glow that flickers, a dithered
 patch 87 short of the point, three bands of red to orange starting 73, 57 and 43 short of it, the
 point white-hot, and a line of shine and one of shade. No pack can say it, since it is drawn from
@@ -551,15 +601,17 @@ with a `seat` gives no `rounds`, as `court.js` gives none, and it gives `drawn(m
 settings. The patron may be another world's, by its long name: the mark draws whichever patron
 `KW.cast.patrons` holds under `s.patron.id`.
 
-**Each act in its own condition.** The court and the smithy each act one condition, so their acts
-play whatever else is up. A scene of another world may hold more than one act, as Orbit's Bridge
-holds a seat and an anvil and acts both a shell open and an update. So an act plays while its own
-condition is up (the seat's while `ssh_session` is, the anvil's while `updating` is), and always in a
-scene whose `can` lists nothing else. While the seat's act does not play the patron sits silent,
-mouth shut, with no bubble, and the watcher's mouth is its own; while the anvil's does not, the
-hammer is still, `strike` never holds, the blade shows no hot tip and the weapon stays as the
-scene's `weapon` says. The court
-and the smithy play exactly as before.
+**Each act in its own condition.** The court acts one condition and the smithy three, and a scene
+of another world may hold more than one act, as Orbit's Bridge holds a seat and an anvil and acts
+both a shell open and an update. So an act plays while its own condition is up (the seat's while
+`ssh_session` is, the anvil's while `updating` is, the bellows' while `cpu_hot` is, the quench's
+while all is quiet), and the seat's, the anvil's and the bellows' always in a scene whose `can`
+lists nothing else. While the seat's act does not play the patron sits silent, mouth shut, with no
+bubble, and the watcher's mouth is its own; while the anvil's does not, `strike` never holds and the
+blade shows no hot tip; while the bellows' does not, `pump` is 0; and while the quench does not, no
+blank, steam or rings are drawn. With a device down or the memory tight, which outrank all is
+quiet, the smithy plays none of its three: the watcher stands at its spot, clear of every place.
+The court plays exactly as before.
 
 **What it does not build,** it refuses by name: the scene does not compile, the reason says
 `<field>: <what> is not built in this engine yet`, and the scene is drawn from code. That covers the
@@ -569,7 +621,8 @@ triggered clock (`trigger`), any ease but `step` and any channel but `show`, `dx
 a palette track drives inside a band list, in an effect or through another entry, a mix or a
 contrast outside a patron, a pick inside a band list or an effect, an effect inside a stamp, a
 triggered effect (`burst`) in a scene without a target or an anvil, a burst of sparks on a target's
-blow and of straw on the hammer's, a scene with both a target and an anvil, a scene that hosts the
+blow and of straw on the hammer's, a scene with both a target and an anvil, bellows or a quench, a
+scene that hosts the
 flies without the crate or the crate without the flies, a reference to one of the user's sets
 (`@skin.*`, `@hair.*`, `@tabard.*`, `@plume.*`) in a scene's layers, a stamp or a prop, which the
 library accepts, and the field `pole`. A scene that needs one of these adds the rows to the
@@ -633,6 +686,14 @@ The smithy needed two more effects and one turn of a tile:
   728` on the whole numbers the edges always are.
 
 `smithy.js` keeps its own drawing of all three, and the call records hold the two equal.
+
+Its bellows (format 1.3) are written the other way round: `smithy.js` draws each moving point as
+the data says it, its open point plus `pump` times its travel, `450 + 30 * p` for `{ "c": 450,
+"pump": 30 }`, each on eighths, so the two copies add the same numbers in the same order. The
+leather's folds, which sit at sixths of the board's length, are rounded to the nearest eighth, and
+their travels with them. The flared fire's lights add their pulse as a `wave` alone, `.24 + .05 *
+Math.sin(t / 100 - 1.571)`, since an alpha takes one wave and the calm light's flicker would be a
+second.
 
 The house needed three more effects, and keyframes of three new kinds:
 

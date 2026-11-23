@@ -125,7 +125,7 @@ test('the pack library refuses a preset that leaves out a part, a scene that is 
   };
   refused(w => { delete w.picture; }, /worlds\["world\.medieval"\]\.picture: is missing, and a preset must be complete/);
   refused(w => { w.scenes.quiet.push('cellar'); }, /names "cellar", a scene that is not quiet/);
-  refused(w => { w.scenes.for.cpu_hot = 'smithy'; }, /names "smithy", a scene whose can does not list "cpu_hot"/);
+  refused(w => { w.scenes.for.cpu_hot = 'court'; }, /names "court", a scene whose can does not list "cpu_hot"/);
 });
 
 /* ---- What the page has loaded ----------------------------------------------------------------- */
@@ -321,7 +321,7 @@ test('the engine plays a condition in the world\'s own scene for it, when that s
   const at = (id, homes, scenes) => { E.input = { w: w(id), is: 'auto', devices: [], tv: false, helmet: 'auto', turnMs: 1000, homes, scenes }; E.restartTurns(0); E.draw(0); return E.scene(); };
   assert.equal(at('cpu_hot', { cpu_hot: 'camp' }), 'camp');
   assert.equal(at('cpu_hot', { cpu_hot: 'kw.medieval/camp' }), 'kw.medieval/camp', 'a long name the page has loaded');
-  assert.equal(at('cpu_hot', { cpu_hot: 'smithy' }), 'yard', 'a home that cannot act it gives way to the code\'s');
+  assert.equal(at('cpu_hot', { cpu_hot: 'court' }), 'yard', 'a home that cannot act it gives way to the code\'s');
   assert.equal(at('cpu_hot', { cpu_hot: 'kw.gone/lab' }), 'yard', 'and so does one not loaded');
   assert.equal(at('cpu_hot', { cpu_hot: 'camp' }, { cpu_hot: 'house' }), 'house', 'a choice beats the world\'s own');
   assert.equal(at('memory_tight', { memory_tight: 'house' }), 'battlement', 'a condition with no scene of its own follows the quiet scenes');

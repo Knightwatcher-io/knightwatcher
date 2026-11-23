@@ -46,7 +46,7 @@
      Each anchor is an [x, y] pair, except main, the weapon's frame, which is [x, y, angle]. off is
      the hand that holds the shield, which is always the left hand; the plume's mount is folded into
      the plume's shapes by pack.js, and rest is a scene's place, which KW.knight.rest sets, not the
-     rig. grip is the grip mode: 'none', 'hammer', 'two' or 'one'. */
+     rig. grip is the grip mode: 'none', 'hammer', 'tool2', 'two' or 'one'. */
   const RIG = {
     grip: 'none',
     anchors: { root: [0, 0], footL: [0, 0], footR: [0, 0], hipL: [0, 0], hipR: [0, 0], hem: [0, 0], belt: [0, 0], neck: [0, 0],
@@ -54,6 +54,15 @@
     values: { drop: 0, bloat: 0, stepL: 0, stepR: 0, sway: 0, dShoulder: 0, dChest: 0, dWaist: 0, dHip: 0, dStance: 0, dLeg: 0, dHeight: 0, dHead: 0 },
   };
   const put = (p, x, y) => { p[0] = x; p[1] = y; };
+  /* A hand of the smith's grip, h { at, off, pin }, placed from its shoulder sh in whole pixels: at
+     the grid's point at, at the offset off from the shoulder, or between the two by pin. */
+  function handAt(p, h, sh) {
+    const w = h.pin == null ? (h.at ? 1 : 0) : h.pin, ax = h.at ? h.at[0] : 0, ay = h.at ? h.at[1] : 0;
+    const ox = h.off ? sh[0] + h.off[0] : ax, oy = h.off ? sh[1] + h.off[1] : ay;
+    put(p, Math.round(ox + (ax - ox) * w), Math.round(oy + (ay - oy) * w));
+  }
+  /* Where the left hand hangs when the smith's grip gives it no place: below its shoulder. */
+  const TOOL_HAND = Object.freeze({ off: Object.freeze([-10, 48]) });
 
   /* The rig for the pose o and the build b (the present knight when left out). The root is between
      the feet on the ground. The old corner of the knight's 240 by 300 box, which the pose's gx and gy
@@ -78,14 +87,28 @@
     put(A.neck, X, Y - (162 + dHt) + d);
     put(A.shoulderL, X - (54 + dSh + bw), Y - (132 + dHt) + d); put(A.shoulderR, X + (54 + dSh + bw), Y - (132 + dHt) + d);
     put(A.head, X + (o.headDx || 0) * U, Y - (206 + dHt + dHd) + d + (o.headDy || 0) * U);
+    // The upper body leans by o.lean whole pixels, to the right when positive: the neck, the
+    // shoulders and the head move by it and the belt and the hem by half, the hips and the feet not
+    // at all. Every list of the base pack hangs on these anchors, so a lean needs nothing of a pack.
+    if (o.lean) {
+      const l = Math.round(o.lean), hl = Math.round(o.lean / 2);
+      A.neck[0] += l; A.shoulderL[0] += l; A.shoulderR[0] += l; A.head[0] += l; A.belt[0] += hl; A.hem[0] += hl;
+    }
 
     // The grip, which places the hands and the weapon's frame.
     const m = A.main;
-    if (o.hammer != null) {
-      // the smith: the left hand steadies the work, the right swings a hammer from its own frame
-      RIG.grip = 'hammer';
-      put(A.handL, X + 45, Y - 104 + d); put(A.handR, X + 80 + bw, Y - 122 + d);
-      m[0] = A.handR[0]; m[1] = A.handR[1]; m[2] = lerp(-.25, 1.75, o.hammer);
+    if (o.tool) {
+      // The smith's grip (o.tool, docs/rig.md): the act places each hand, at a point on the grid
+      // (at), off its own shoulder (off), or between the two by pin (0 the shoulder's point, 1 the
+      // grid's); the left hand may instead hold the tool, along pixels up its frame from the right
+      // hand. The tool's frame is the right hand, at the angle a (0 straight up). A tool in one
+      // hand is drawn in the hammer's order, one in both hands in tool2's.
+      const T = o.tool;
+      RIG.grip = T.two ? 'tool2' : 'hammer';
+      handAt(A.handR, T.R, A.shoulderR);
+      m[0] = A.handR[0]; m[1] = A.handR[1]; m[2] = T.a;
+      if (T.L && T.L.along != null) put(A.handL, Math.round(m[0] + Math.sin(T.a) * T.L.along), Math.round(m[1] - Math.cos(T.a) * T.L.along));
+      else handAt(A.handL, T.L || TOOL_HAND, A.shoulderL);
     } else if (o.sword !== false && ONE) {
       // One hand on the grip, at the weapon's one station along the frame, which the pose gives as
       // for the greatsword. As with both hands, the grip and the shield hand rise and sink with the
@@ -248,8 +271,9 @@
 
   /* ---- The engine's own steps ------------------------------------------------------------------
      Drawn by code on both paths, at their places in the order of one frame: the drumstick after the
-     face, the crates after the pauldrons and before the arms, the hammer between the right arm and
-     its gauntlet, and what floats around the knight after everything. */
+     face, the crates after the pauldrons and before the arms, the smith's tool (the step hammer)
+     between the right arm and its gauntlet, or with both hands on it between both arms and both
+     gauntlets, and what floats around the knight after everything. */
   /* The load the knight carries against the chest on a full disk, from the neck anchor: n crates
      of w by h stacked, the top one's top edge top below the neck, and the carrying grip's hands at
      the bottom crate's lower corners, hand[0] outside its side and hand[1] above its foot. One
@@ -277,11 +301,66 @@
   }
   /* The drumstick follows the head up and down but not sideways. */
   function drumHD(o, neck, head) { if (o.food) SP.drum(neck[0] + 18, head[1] - 6 + (Math.floor(o.t / 160) % 2) * 5); }
-  /* The smith's hammer, swung from the weapon's frame. */
-  function hammerHD(main) {
-    const ex = main[0] + Math.sin(main[2]) * 50, ey = main[1] - Math.cos(main[2]) * 50;
-    strip(main[0], main[1], ex, ey, 4, 4, [[.4, C.N0], [1, C.N2]]);
-    rrect(ex - 20, ey - 14, 40, 28, 5, C.K); rrect(ex - 17, ey - 11, 34, 22, 3, STEEL3);
+  /* The smith's tools (o.tool.kind), drawn on the weapon's frame (main) at the engine's step
+     hammer, in units along the frame from the right hand (s) and across it (p, towards the frame's
+     right as it points up). The hammer: a handle from back behind the hand to handle along, and a
+     head across the handle's end, thick either side of it, its striking face face out on the +p side
+     and its peen peen out on the other. The tongs: two jaws from back behind the hand to len,
+     crossing at pivot and open by open at their ends, holding a plain blade, the blank (no hilt, a
+     tang of tang inside the jaws), len long and half either side. o.tool.heat, from 0 cold to 1
+     white-hot, colours the blank by HEAT, and o.tool.cut, a y on the grid, leaves out whatever of
+     the tongs and the blank points down past it, the water's face. A lever, the bellows' handle,
+     is the scene's own drawing, and nothing is drawn here for it. */
+  const TOOL = Object.freeze({
+    hammer: Object.freeze({ back: 10, handle: 56, face: 20, peen: 15, thick: 12 }),
+    tongs: Object.freeze({ back: 14, len: 60, pivot: 36, open: 4 }),
+    blank: Object.freeze({ tang: 10, len: 96, half: 7 }) });
+  /* The blank's colours by heat, hottest first: from each heat up, its body and its core. */
+  const HEAT = Object.freeze([[.82, '#ffb000', '#fff3a0'], [.6, '#ff5a1e', '#ffb000'], [.38, '#cc352c', '#ff5a1e'], [.16, '#8f231d', '#cc352c']]);
+  function toolHD(o, main) {
+    const T = o.tool;
+    if (!T) return;
+    const x = main[0], y = main[1], a = main[2], ux = Math.sin(a), uy = -Math.cos(a), nx = Math.cos(a), ny = Math.sin(a);
+    const at = (s, p) => [x + ux * s + nx * p, y + uy * s + ny * p];
+    const quad = (s0, s1, p0, p1) => [at(s0, p0), at(s1, p0), at(s1, p1), at(s0, p1)];
+    if (T.kind === 'hammer') {
+      const H = TOOL.hammer, e = H.handle;
+      strip(...at(-H.back, 0), ...at(e, 0), 6, 6, C.K); strip(...at(-H.back + 2, 0), ...at(e - 2, 0), 3.5, 3.5, [[.3, C.N0], [.7, C.N1], [1, C.N2]]);
+      poly(quad(e - H.thick - 3, e + H.thick + 3, -H.peen - 3, H.face + 3), C.K);
+      poly(quad(e - H.thick, e + H.thick, -H.peen, H.face - 4), STEEL3);
+      poly(quad(e - H.thick, e + H.thick, H.face - 4, H.face), STEEL);
+      poly(quad(e - H.thick + 2, e - H.thick + 4, -H.peen + 2, H.face - 6), 'rgba(255,255,255,.35)');
+      return;
+    }
+    if (T.kind !== 'tongs') return;
+    const G = TOOL.tongs, B = TOOL.blank, end = G.len + B.len;
+    // how far along the frame stays above the water's face
+    const upto = T.cut != null && uy > .05 ? (T.cut - y) / uy : Infinity;
+    const heat = clamp01(T.heat || 0), band = HEAT.find(h => heat >= h[0]);
+    // the blank, from the jaws, and its glow while hot
+    const b0 = G.len - B.tang, b1 = Math.min(end, upto);
+    if (b1 > b0) {
+      const bt = Math.min(b1, G.len + 2);
+      strip(...at(b0, 0), ...at(bt, 0), 4, 4, C.K); strip(...at(b0, 0), ...at(bt, 0), 2, 2, band ? band[1] : C.S3);
+      if (b1 > G.len) {
+        const tip = Math.min(b1, end), full = Math.min(b1, end - 18);
+        if (heat > .2) { const g = at((G.len + tip) / 2, 0); D.glow(g[0], g[1], 52, '#ff8a3d', .24 * heat); }
+        const blade = (s0, w, out) => [at(s0, -w), at(full, -w)].concat(tip > full ? [at(tip + out, 0)] : []).concat([at(full, w), at(s0, w)]);
+        poly(blade(G.len, B.half + 2, 2), C.K);
+        poly(blade(G.len + 1, B.half, 0), band ? band[1] : STEEL2);
+        poly(quad(G.len + 4, full - 4, -2, 2), band ? band[2] : 'rgba(255,255,255,.45)');
+      }
+    }
+    // the jaws, over the blank's tang
+    const j1 = Math.min(G.len + 4, upto);
+    for (const sd of [-1, 1]) {
+      const p0 = at(-G.back, sd * 3), p1 = at(G.pivot, 0), p2 = at(G.len + 4, sd * G.open);
+      if (j1 <= G.pivot) { const q = at(j1, 0); strip(...p0, ...q, 3, 3, C.K); strip(...p0, ...q, 1.5, 1.5, C.S3); continue; }
+      const q = j1 < G.len + 4 ? at(j1, sd * G.open * (j1 - G.pivot) / (G.len + 4 - G.pivot)) : p2;
+      strip(...p0, ...p1, 3, 3, C.K); strip(...p1, ...q, 3, 3, C.K);
+      strip(...p0, ...p1, 1.5, 1.5, C.S3); strip(...p1, ...q, 1.5, 1.5, C.S3);
+    }
+    const pv = at(G.pivot, 0); ell(pv[0], pv[1], 4, 4, C.K); ell(pv[0], pv[1], 2, 2, C.S2);
   }
   /* What floats around the knight, hung on the neck so that it rises and sinks with the body. The
      hearts rise from a fixed height and do not sink with the body. */
@@ -332,9 +411,13 @@
     cratesHD(o, neck);
     // the arms and hands, by grip
     if (r.grip === 'hammer') {
-      // the left hand steadies the work, the right swings a hammer
+      // a tool in the right hand: the left arm and hand, then the right arm, the tool and the hand
       armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); gauntHD(handL[0], handL[1]);
-      armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); hammerHD(main); gauntHD(handR[0], handR[1]);
+      armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]); toolHD(o, main); gauntHD(handR[0], handR[1]);
+    } else if (r.grip === 'tool2') {
+      // a tool in both hands: both arms, the tool, then both hands closed on it
+      armHD(shoulderL[0], shoulderL[1], handL[0], handL[1]); armHD(shoulderR[0], shoulderR[1], handR[0], handR[1]);
+      toolHD(o, main); gauntHD(handL[0], handL[1]); gauntHD(handR[0], handR[1]);
     } else if (r.grip === 'two') {
       // Both hands on the grip. Both arms are drawn before the blade, the one on the side it leans
       // to first, so the blade and its guard pass in front of them and no arm crosses the steel;
@@ -389,7 +472,7 @@
         case 'crates': cratesHD(o, neck); break;
         case 'face': faceHD(head[0], head[1], o, face || PK.look.colours.face, PK.look.colours); break;
         case 'drumstick': drumHD(o, neck, head); break;
-        case 'hammer': hammerHD(main); break;
+        case 'hammer': toolHD(o, main); break;
         case 'effects': effectsHD(o, neck, root); break;
         default: {
           // the body with the weapon's stowed view, while the weapon is put away and the scene
@@ -1053,7 +1136,7 @@
      is carried: with a weapon in both hands, a one-handed weapon alone, the weapon put away, at the
      anvil and on the code path. The engine stops a foe's shot at it (engine.js, foes that fire). */
   function shieldFace(o) {
-    if (!SHIELD || !PK.look || o.sword === false || o.hammer != null) return null;
+    if (!SHIELD || !PK.look || o.sword === false || o.tool) return null;
     const n = PK.look.look.items.off, p = n ? PK.packs.get(n.slice(0, n.indexOf('/'))) : null;
     const it = p && p.data.items ? p.data.items[n.slice(n.indexOf('/') + 1)] : null;
     if (!it || !Array.isArray(it.face)) return null;
@@ -1099,7 +1182,7 @@
      foes (bladeOf in engine.js, and through it foeGaps, contactQ and the foe's plan) is the blade
      drawn. */
   const rigOf = (o, b) => rig(o, b || (PK.look ? PK.look.m : BUILD));
-  KW.knight = { draw: knightHD, rig: rigOf, build: BUILD, pose, swing, ownReturn, head: headAtCorner, speech: speechHD,
+  KW.knight = { tool: TOOL, draw: knightHD, rig: rigOf, build: BUILD, pose, swing, ownReturn, head: headAtCorner, speech: speechHD,
     fire, volley, muzzle: muzzleOf, shieldFace, headBox, fired: () => FIRE, aim: { pose: aimPose, angle: aimAngle, AIM, AIM1, AIM2, LIFT },
     rest: { draw: restHD, reach: restReach, head: restHead, point: restPoint, key: restKey, fits: restFits }, start, add, look: setLook, basePack, fetchPacks, packIndex, source: 'code', status: null };
 })(window.KW);

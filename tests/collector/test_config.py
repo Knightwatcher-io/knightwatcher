@@ -592,7 +592,7 @@ FULL_LOOK = {
     "monarch_robe": "wine",
 }
 EMPTY = {"look": {}, "display": {}, "quiet": {}, "scenes": {}}
-QUIET_ALLOWED = 'use battlement, camp, house or yard, or a long name, "<pack>/<id>"'
+QUIET_ALLOWED = 'use battlement, camp, house, yard or smithy, or a long name, "<pack>/<id>"'
 SCENES_ALLOWED = (
     'use battlement, camp, house, yard, cellar, smithy or court, or a long name, "<pack>/<id>"'
 )
@@ -748,7 +748,7 @@ class DefaultsConfigTest(unittest.TestCase):
             )
 
     def test_quiet_scenes(self):
-        listed = "list one or more of battlement, camp, house or yard, or long names"
+        listed = "list one or more of battlement, camp, house, yard or smithy, or long names"
         self.assertProblems({"quiet": {"scenes": []}}, f"quiet.scenes: {listed}")
         self.assertProblems({"quiet": {"scenes": "camp"}}, f"quiet.scenes: {listed}")
         self.assertProblems(
@@ -815,7 +815,8 @@ class DefaultsConfigTest(unittest.TestCase):
             {"look": {"skin": "warm", "plume": "pink"}, "quiet": {"scenes": [], "minutes": 5}},
             'look.plume: unknown value "pink"; use red, white, gold, royal, green or violet, '
             'or a long name, "<pack>/<id>"',
-            "quiet.scenes: list one or more of battlement, camp, house or yard, or long names",
+            "quiet.scenes: list one or more of battlement, camp, house, yard or smithy, "
+            "or long names",
         )
 
     def test_the_world_and_its_parts(self):
@@ -1085,7 +1086,10 @@ class LoadTest(unittest.TestCase):
                     "devices": {"camera": "medieval"},
                 },
                 "display": {"headline": "medium", "clock": 24, "helmet_indoors": False},
-                "quiet": {"scenes": ["battlement", "camp", "house", "yard"], "minutes": 10},
+                "quiet": {
+                    "scenes": ["battlement", "camp", "house", "yard", "smithy"],
+                    "minutes": 10,
+                },
                 "scenes": {
                     "attack": "battlement",
                     "disk_full": "cellar",

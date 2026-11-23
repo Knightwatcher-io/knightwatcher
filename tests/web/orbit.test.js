@@ -205,10 +205,10 @@ test('the engine plays Orbit chosen whole: the Deck while all is quiet, the Airl
   assert.ok(P.log.some(l => l.startsWith('drawImage')) || P.log.length > 0);
   const s = { w: Object.assign({ id: 'ssh_session' }, KW.state.CONDITIONS.ssh_session), o: {}, kx: 440 };
   KW.scenes[O('bridge')].act(0, s);
-  assert.equal(s.o.hammer, undefined, 'no hammer while a shell is open');
+  assert.equal(s.o.tool, undefined, 'no hammer while a shell is open');
   const u = { w: Object.assign({ id: 'updating' }, KW.state.CONDITIONS.updating), o: {}, kx: 440 };
   KW.scenes[O('bridge')].act(0, u);
-  assert.equal(typeof u.o.hammer, 'number', 'the hammer while updating');
+  assert.equal(u.o.tool.kind, 'hammer', 'the hammer while updating');
   assert.equal(talk, KW.engine);
 });
 

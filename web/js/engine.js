@@ -3,7 +3,7 @@
    KW.engine.input, which the demo (demo.js) or the state file (main.js) sets:
      w       the condition that wins, as KW.state makes it: { id, lv, st, scene, hl, sub }
      is      'auto' for the quiet scenes to take turns, or the name of the one to keep
-     turns   the quiet scenes that take turns, in that order; all four (TURNS) when it is left out
+     turns   the quiet scenes that take turns, in that order; all five (TURNS) when it is left out
              or empty
      turnMs  how long each quiet scene lasts while they take turns
      devices  the devices standing in the scene's places, as KW.state.map() gives them:
@@ -41,8 +41,8 @@
   const frozen = () => KW.hooks.frozen;
 
   /* The quiet scenes take turns, each for the input's turnMs: those the input's turns lists, which
-     the settings fill from the world's preset, or these four, the medieval world's in code. */
-  const TURNS = ['battlement', 'camp', 'house', 'yard'];
+     the settings fill from the world's preset, or these five, the medieval world's in code. */
+  const TURNS = ['battlement', 'camp', 'house', 'yard', 'smithy'];
   /* Each event lasts dur ms and plays only in the scenes listed. An event with a foe names it (in
      KW.cast.foes, below) and the exit it leaves by (in FOE.exits, below) when the foe names none of
      them. */
@@ -972,7 +972,7 @@
       }
     }
     const pt = inp.patron || {};
-    const s = { w, devices, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false,
+    const s = { w, devices, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false, dx: 0,
       patron: { id: pt.id || 'a', skin: pt.skin || null, hair: pt.hair || null, robe: pt.robe || null } };
     // a device down: the knight stays put and looks towards its place, or straight ahead
     // when it is not drawn
@@ -984,7 +984,9 @@
     // the acts aim on the rig, so the watcher stands at its x before they play
     o.x = kx;
     if (sc.act) sc.act(t, s);
-    o.x = kx;
+    // an act may move the knight off its spot for the frame by s.dx (the smithy's walks), worked
+    // out from t alone; kx, the spot and everything the scene counts from it stay where they are
+    o.x = kx + (s.dx || 0);
     // a foe's event: where the foe stands and when the blade meets it, worked out on its first frame
     if (ev && ev.plan === undefined) ev.plan = EVENTS[ev.type].foe ? foePlan(ev.type, sc, s, o) : null;
 

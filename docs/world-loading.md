@@ -62,7 +62,7 @@ A scene is drawn from code when:
 | that scene threw while drawing, in this version of the pack ([When a part throws](#when-a-part-throws)) | `knightwatcher: the scene camp is drawn from code: it threw while drawing: <message>` |
 
 Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn
-from the pack kw.medieval 0.7.1, signed` (or `unsigned`), written with `console.info`; the others
+from the pack kw.medieval 0.8.0, signed` (or `unsigned`), written with `console.info`; the others
 are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
 cellar failing to compile it is `the scenes battlement, camp, yard, smithy, house and court are drawn ...`, after
 the cellar's own line. Of two copies of `kw.medieval` the higher
@@ -310,9 +310,12 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   keeps the time of its last blow from one frame for the next, so `tests/web/world-scenes.test.js`
   also runs every scene of the pack that has a `target`, an `anvil`, a `bed`, a `screen` or a `seat`
   frame by frame beside its code scene, and compares every call (`over`'s among them), every change
-  to the knight's pose, after the act and after the draw, and `strike`: the target's every 10 ms through two training rounds while all is quiet
-  and while the CPU runs hot, the anvil's every 10 ms through five blows of the hammer, idle and while
-  updating, at the spot and at x 300, and the house's every 10 ms for 8.4 seconds asleep at night,
+  to the knight's pose, after the act and after the draw, `strike` and the knight's move off its
+  spot, `s.dx`: the target's every 10 ms through two training rounds while all is quiet
+  and while the CPU runs hot, the smithy's every 10 ms through the whole quench while all is quiet,
+  five blows of the hammer while updating, at the spot and at x 300, and ten pumps of the bellows
+  while the CPU runs hot, and every 50 ms for six seconds with a device down and the memory tight,
+  and the house's every 10 ms for 8.4 seconds asleep at night,
   sick in bed, with the television on while streaming and with it off while all is quiet, and the
   court's every 10 ms for 12.8 seconds, two rounds of its talk, while a shell is open and while all
   is quiet.
@@ -404,7 +407,9 @@ key, the terms and the colours' spelling, `outdoors`, `foeZone`, `wallAt` and `c
 the keyframes' clock with a phase and played once, an ell's clip and a tile's picks, the target's
 act with its blow, its wobble and its straw, the rests and their angles, the rest mark in a still
 and a moving layer and the key it adds to, the anvil's act against the code smithy's every 10 ms
-over nine seconds with its sparks and its hot tip, the `dx`, `dy`, wave and palette tracks, the
+over nine seconds with its sparks and its hot tip, the bellows' and the quench's acts against the
+code smithy's with the knight's moves and the steam and the rings, the `dx`, `dy`, wave and palette tracks, the
 house's screen, its sleeper with the ice bag and the blanket's breath, the Zs at night, the pegs
 from the blade and the stamp a rest names, a rest view held to its place, the pack library's rules
-for `targetDx` and `spot`, and that what the compiler does not build is refused by name.
+for `targetDx` and `spot`, format 1.3's quench, bellows and `pump`, read in 1.3 alone, and that
+what the compiler does not build is refused by name.

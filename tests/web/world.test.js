@@ -76,10 +76,10 @@ const CODE = 'knightwatcher: the scenes of kw.medieval are drawn from code: ';
 
 // ---- The pack ---------------------------------------------------------------------------------------
 
-test('the medieval world\'s pack reads clean: kw.medieval 0.7.1, format 1.1, the battlement, the camp, the yard, the cellar, the smithy, the house, the court and their stamps, the words, the overlay and the preset', () => {
+test('the medieval world\'s pack reads clean: kw.medieval 0.8.0, format 1.3, the battlement, the camp, the yard, the cellar, the smithy, the house, the court and their stamps, the words, the overlay and the preset', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
-  assert.deepEqual([r.id, r.version, plain(r.format), r.signed], ['kw.medieval', '0.7.1', [1, 1], false]);
+  assert.deepEqual([r.id, r.version, plain(r.format), r.signed], ['kw.medieval', '0.8.0', [1, 3], false]);
   assert.deepEqual(plain(r.provides), ['palettes', 'scenes', 'cast', 'props', 'words', 'overlays', 'stamps', 'worlds']);
   assert.deepEqual(Object.keys(r.data.worlds), ['world.medieval']);
   assert.deepEqual(Object.keys(r.data.words), ['words.medieval']);
@@ -94,11 +94,12 @@ test('the medieval world\'s pack reads clean: kw.medieval 0.7.1, format 1.1, the
   assert.deepEqual(plain(r.world.scenes.camp), { still: { n: 57, cost: 57073 }, frame: { n: 7, cost: 718, glows: 8 } });
   assert.deepEqual(plain(r.world.scenes.yard), { still: { n: 298, cost: 28929 }, frame: { n: 44, cost: 2086, glows: 1 } });
   assert.deepEqual(plain(r.world.scenes.cellar), { still: { n: 440, cost: 76803 }, frame: { n: 3, cost: 120, glows: 1 } });
-  assert.deepEqual(plain(r.world.scenes.smithy), { still: { n: 339, cost: 15300 }, frame: { n: 9, cost: 508, glows: 2 } });
+  assert.deepEqual(plain(r.world.scenes.smithy), { still: { n: 339, cost: 15300 }, frame: { n: 54, cost: 2053, glows: 4 } });
   assert.deepEqual(plain(r.world.scenes.house), { still: { n: 370, cost: 71245 }, frame: { n: 46, cost: 2128, glows: 3 } });
   assert.deepEqual(plain(r.world.scenes.court), { still: { n: 413, cost: 50647 }, frame: { n: 19, cost: 904, glows: 8 } });
   // the whole file, against the 512 KiB a pack may weigh: since 0.7.0 the cat's stamps take it past
-  // half of that, to about 346 000 bytes with the redesigned devices
+  // half of that, to about 346 000 bytes with the redesigned devices and 352 000 with the smithy's
+  // bellows
   assert.ok(Buffer.byteLength(SHIPPED) < 512 * 1024 * 0.7, Buffer.byteLength(SHIPPED) + ' bytes');
   // a deployed page refuses it unsigned
   assert.deepEqual([PK.read(TEXT).ok, PK.read(TEXT).step, PK.read(TEXT).reason], [false, 'signature', MISSING]);
@@ -107,7 +108,7 @@ test('the medieval world\'s pack reads clean: kw.medieval 0.7.1, format 1.1, the
 test('the pack as it ships: signed, a deployed page draws its scenes from it; unsigned, from code', () => {
   const s = sandbox(), st = s.W.start([SHIPPED], false);
   if (Object.prototype.hasOwnProperty.call(JSON.parse(SHIPPED), 'sig')) {
-    assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.7.1', signed: true }, st.note);
+    assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.8.0', signed: true }, st.note);
     assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack', house: 'pack', court: 'pack' });
   } else {
     assert.deepEqual([st.source, st.refused.step], ['code', 'signature']);
@@ -135,9 +136,9 @@ test('a dev page draws every scene, the court among them, from kw.medieval unsig
   const s = sandbox(), before = Object.keys(s.KW.scenes);
   const st = s.W.start([TEXT], true);
   assert.equal(s.W.status, st);
-  assert.deepEqual(plain(st), { source: 'pack', pack: { id: 'kw.medieval', version: '0.7.1', signed: false }, refused: null,
+  assert.deepEqual(plain(st), { source: 'pack', pack: { id: 'kw.medieval', version: '0.8.0', signed: false }, refused: null,
     scenes: { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'pack', smithy: 'pack', house: 'pack', court: 'pack' }, faults: [],
-    note: 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.7.1, unsigned' });
+    note: 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.8.0, unsigned' });
   assert.deepEqual(s.lines, [['info', st.note]]);
   for (const n of GIVEN) {
     const sc = s.KW.scenes[n];
@@ -163,8 +164,8 @@ test('a deployed page refuses kw.medieval unsigned and draws its scenes from cod
 test('a deployed page draws every scene from kw.medieval once it is signed with a key it knows', () => {
   const s = sandbox(), st = s.W.start([signedText(TEXT)], false, { keys: keysIn(s) });
   assert.equal(st.source, 'pack', st.note);
-  assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.7.1', signed: true });
-  assert.equal(st.note, 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.7.1, signed');
+  assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.8.0', signed: true });
+  assert.equal(st.note, 'knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn from the pack kw.medieval 0.8.0, signed');
   for (const n of GIVEN) assert.notEqual(s.KW.scenes[n], s.code[n], n);
   // a signature that does not verify is refused, as for any pack
   const bad = s.W.start([signedText(TEXT).replace('"Cellar"', '"Cellars"')], false, { keys: keysIn(s) });
@@ -181,11 +182,11 @@ test('a compile that throws leaves that scene the code scene, with the reason in
   s.KW.pack = Object.assign({}, lib, { read: () => Object.assign({}, real, { data: broken }) });
   const st = s.W.start([TEXT], true);
   assert.equal(st.source, 'pack', 'the other scenes are still drawn from the pack');
-  assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.7.1', signed: false });
+  assert.deepEqual(plain(st.pack), { id: 'kw.medieval', version: '0.8.0', signed: false });
   assert.deepEqual(plain(st.scenes), { battlement: 'pack', camp: 'pack', yard: 'pack', cellar: 'code', smithy: 'pack', house: 'pack', court: 'pack' });
   assert.deepEqual(plain(st.faults), [{ scene: 'cellar', reason: 'scenes.cellar.still[0].shapes[3].k: the shape kind "zz" is not built in this engine yet' }]);
   assert.deepEqual(s.lines, [['warn', 'knightwatcher: the scene cellar is drawn from code: it could not be compiled: ' + st.faults[0].reason],
-    ['info', 'knightwatcher: the scenes battlement, camp, yard, smithy, house and court are drawn from the pack kw.medieval 0.7.1, unsigned']]);
+    ['info', 'knightwatcher: the scenes battlement, camp, yard, smithy, house and court are drawn from the pack kw.medieval 0.8.0, unsigned']]);
   assert.equal(s.KW.scenes.cellar, s.code.cellar);
   assert.equal(s.KW.scenes['kw.medieval/cellar'], undefined);
   assert.notEqual(s.KW.scenes.camp, s.code.camp);
@@ -231,9 +232,9 @@ test('starting again puts the code scenes back first, and of two copies of kw.me
     assert.equal(s.KW.scenes[n], s.code[n], n);
     assert.equal(s.KW.scenes['kw.medieval/' + n], undefined, n);
   }
-  const newer = edited(p => { p.version = '0.8.0'; });
+  const newer = edited(p => { p.version = '0.9.0'; });
   const st = s.W.start([TEXT, newer], true);
-  assert.equal(st.pack.version, '0.8.0');
+  assert.equal(st.pack.version, '0.9.0');
 });
 
 // ---- What the compiler builds ------------------------------------------------------------------------
@@ -293,7 +294,7 @@ test('what the compiler does not build yet it refuses by name, and the reason na
     ['"only" on a shape', p => { p.scenes.cellar.still[0].shapes[5].shapes[0].only = [31, 5]; }, 'scenes.cellar.still[0].shapes[5].shapes[0].only: "only" on a shape is not built in this engine yet'],
     ['a pole', p => { p.scenes.cellar.pole = [{ k: 'rect', p: [0, 0], w: 4, h: 8, fill: '#000000' }]; }, 'scenes.cellar.pole: the scene\'s pole is not built in this engine yet'],
     // a triggered effect runs on the clock of the scene's one act
-    ['straw on the hammer\'s blow', p => { p.scenes.smithy.moving[1].shapes[0].piece = 'straw'; }, 'scenes.smithy.moving[1].shapes[0].piece: a burst of straw on the hammer\'s blow is not built in this engine yet', 'smithy'],
+    ['straw on the hammer\'s blow', p => { p.scenes.smithy.moving[3].shapes[0].piece = 'straw'; }, 'scenes.smithy.moving[3].shapes[0].piece: a burst of straw on the hammer\'s blow is not built in this engine yet', 'smithy'],
     ['a target and an anvil', p => { p.scenes.smithy.target = { group: 'fire', hitAt: 420, every: 5600 }; p.scenes.smithy.moving[0].groups = { fire: { pivot: [840, 410] } }; },
       'scenes.smithy: a scene with both a target and an anvil is not built in this engine yet', 'smithy'],
     // the flies and the crate follow the one flag outdoors, so a scene hosts both or neither
@@ -398,7 +399,7 @@ test('the pack library reads targetDx, the target\'s, with three decimals on its
     'references', 'pack.scenes.camp.still[0].shapes[57].p[0].targetDx: cannot be used in a still layer');
   no(trained(sc => { sc.moving[1].shapes[1].p1[0].targetDx = 9; }), 'fields', 'pack.scenes.camp.moving[1].shapes[1].p1[0].targetDx: must be a number from -8 to 8');
   // the costs bound the lean over targetDx's range, ACT_RANGE
-  assert.deepEqual(plain(PK.ACT_RANGE), { targetDx: [-15, 15], spot: [150, 810] });
+  assert.deepEqual(plain(PK.ACT_RANGE), { targetDx: [-15, 15], spot: [150, 810], pump: [0, 1] });
 });
 
 test('the target\'s act trains as yard.js does: a blow 420 ms into the round, the group moved by the wobble, the post leaning by 0.8 of it, and the straw from the blow', () => {
@@ -506,29 +507,55 @@ test('a rest mark in a moving layer draws the gear each frame, at a place or on 
   assert.equal(sc.key(frameOf({ helmOff: true })), '');
 });
 
-test('the anvil\'s act hammers as smithy.js does, the sparks fly only while it strikes, and the hot tip lies on the blade', () => {
-  const { s, sc, K } = smithy(), code = sandbox().code.smithy;
+test('the anvil\'s act hammers as smithy.js does, the sparks fly only while it strikes, and the hot tip lies on the blade while updating', () => {
+  const { s, sc, K } = smithy(), code = sandbox().code.smithy, up = { w: { id: 'updating' } };
   assert.equal(typeof sc.act, 'function');
   for (let t = 0; t <= 9100; t += 10) {
-    const a = at440(t), b = at440(t);
+    const a = at440(t, up), b = at440(t, up);
     sc.act(t, a); code.act(t, b);
     assert.deepEqual([plain(a.o), a.strike], [plain(b.o), b.strike], 't ' + t);
   }
-  const drawn = t => { const f = at440(t); sc.act(t, f); s.log.length = 0; sc.draw(t, f); return s.log; };
-  // struck at 0 (the first 6 hundredths of the cycle) and from 1209 ms (93 hundredths): the sparks'
-  // glow, 44 across, at the spot plus 132 and at 418
+  const drawn = (t, over) => { const f = at440(t, Object.assign({}, up, over)); sc.act(t, f); s.log.length = 0; sc.draw(t, f); return s.log; };
+  // struck for the first tenth of each 1 400 ms blow: the sparks' glow, 44 across, where the
+  // hammer's face meets the greatsword's top edge, at the spot plus 148 and at 412
   const glowAt = (log, x, y) => log.some(l => l.startsWith(`arc ${x} ${y} 44 `));
-  assert.ok(glowAt(drawn(0), 572, 418) && glowAt(drawn(1250), 572, 418), 'the sparks\' glow at the spot plus 132');
-  assert.ok(!glowAt(drawn(300), 572, 418) && !glowAt(drawn(1000), 572, 418), 'no sparks while the hammer rises');
-  const at300 = t => { const f = at440(t, { kx: 300 }); sc.act(t, f); s.log.length = 0; sc.draw(t, f); return s.log; };
-  assert.ok(glowAt(at300(0), 432, 418), 'the sparks follow the spot');
+  assert.ok(glowAt(drawn(0), 588, 412) && glowAt(drawn(2804), 588, 412), 'the sparks\' glow at the spot plus 148');
+  assert.ok(!glowAt(drawn(300), 588, 412) && !glowAt(drawn(1000), 588, 412), 'no sparks while the hammer rises and falls');
+  assert.ok(glowAt(drawn(0, { kx: 300 }), 448, 412), 'the sparks follow the spot');
   // the hot tip: its bands start 73, 57 and 43 short of the greatsword's point, 263 along the blade from 490
   const tip = drawn(300);
   for (const [x0, c] of [[73, '#8f231d'], [57, '#cc352c'], [43, '#ff5a1e']]) assert.ok(tip.includes('s ' + c) && tip.some(l => l.startsWith(`r ${490 + 263 - x0} 410 `)), c);
+  // none while all is quiet, nor running hot, when the hammer does not work the blade
+  for (const id of ['idle', 'cpu_hot']) { const f = at440(300, { w: { id } }); sc.act(300, f); s.log.length = 0; sc.draw(300, f); assert.ok(!s.log.includes('s #8f231d'), id); }
   K.rest.reach = () => null;
   const none = drawn(300);
   assert.ok(!none.includes('s #8f231d') && !none.includes('s #7a2a1d'), 'no hot tip for a weapon without a blade');
   assert.equal(none[none.length - 1], 'devices');
+});
+
+test('the bellows\' act pumps as smithy.js does while the CPU runs hot, and gives its layers pump; the quench walks as smithy.js does while all is quiet', () => {
+  const { s, sc } = smithy(), code = sandbox().code.smithy;
+  for (const [id, until] of [['cpu_hot', 1900], ['idle', 14400]]) for (let t = 0; t <= until; t += 10) {
+    const a = at440(t, { w: { id }, dx: 0 }), b = at440(t, { w: { id }, dx: 0 });
+    sc.act(t, a); code.act(t, b);
+    assert.deepEqual([plain(a.o), a.dx], [plain(b.o), b.dx], `${id} t ${t}`);
+  }
+  // running hot the knight stands at the bellows, 612, whatever its spot
+  const hot = at440(239, { w: { id: 'cpu_hot' }, dx: 0 }); sc.act(239, hot);
+  assert.equal(440 + hot.dx, 612);
+  assert.equal(hot.o.tool.kind, 'lever');
+  // all is quiet: at the forge at 600, at the barrel at 6600, walking back at 11500
+  for (const [t, x, walk] of [[600, 650, false], [6600, 228, false], [11500, 350, true]]) {
+    const f = at440(t, { dx: 0 }); sc.act(t, f);
+    assert.deepEqual([440 + f.dx, f.o.walk], [x, walk], 't ' + t);
+  }
+  // the steam over the knight while the blank is in the water, and the rings on the water before
+  // the devices
+  const over = t => { const f = at440(t); sc.act(t, f); s.log.length = 0; sc.over(t, f); return s.log.slice(); };
+  assert.ok(over(5950).includes('s #e9eef8'), 'the steam at 5 950');
+  assert.deepEqual(over(3000), [], 'no steam while the blank is carried');
+  const f = at440(6000); sc.act(6000, f); s.log.length = 0; sc.draw(6000, f);
+  assert.ok(s.log.indexOf('s #cfe6ff') >= 0 && s.log.indexOf('s #cfe6ff') < s.log.indexOf('devices'), 'the rings before the devices');
 });
 
 test('the pack library reads spot, the watcher\'s x at the anvil, only in a moving or over layer of a scene with an anvil', () => {
@@ -538,10 +565,35 @@ test('the pack library reads spot, the watcher\'s x at the anvil, only in a movi
   no(edited(p => { p.scenes.smithy.still[0].shapes.push({ k: 'rect', p: [{ spot: 1 }, 400], w: 2, h: 2, fill: '#000000' }); }),
     'references', 'pack.scenes.smithy.still[0].shapes[' + JSON.parse(TEXT).pack.scenes.smithy.still[0].shapes.length + '].p[0].spot: cannot be used in a still layer');
   // the sparks' point is costed and bounded over the spot's range
-  const far = edited(p => { p.scenes.smithy.moving[1].shapes[0].p[0] = { spot: 2, c: 600 }; });
+  const far = edited(p => { p.scenes.smithy.moving[3].shapes[0].p[0] = { spot: 2, c: 600 }; });
   const r = PK.read(far, { allowUnsigned: true });
   assert.deepEqual([r.ok, r.step], [false, 'rules']);
-  assert.match(r.reason, /^pack\.scenes\.smithy\.moving\[1\]\.shapes\[0\]\.p\[0\]: the offset reaches 2220 at its greatest, above 2048$/);
+  assert.match(r.reason, /^pack\.scenes\.smithy\.moving\[3\]\.shapes\[0\]\.p\[0\]: the offset reaches 2220 at its greatest, above 2048$/);
+});
+
+test('format 1.3: a scene\'s bellows and quench, and pump, read in 1.3 alone, pump only in a moving or over layer of a scene with bellows', () => {
+  const no = (text, step, reason) => { const r = PK.read(text, { allowUnsigned: true }); assert.deepEqual([r.ok, r.step, r.reason], [false, step, reason]); };
+  const sm = JSON.parse(TEXT).pack.scenes.smithy;
+  assert.deepEqual(plain(sm.bellows), { stand: 612, handle: [682, 414], travel: 30, div: 100 });
+  assert.deepEqual(plain(sm.quench), { water: [172, 452], stand: [650, 228] });
+  assert.equal(PK.read(TEXT, { allowUnsigned: true }).ok, true);
+  // refused by name in 1.2 and 1.1, each part on its own
+  for (const f of [[1, 2], [1, 1]]) {
+    no(edited(p => { p.format = f; delete p.scenes.smithy.quench; }), 'fields', 'pack.scenes.smithy.bellows: is not a field here');
+    no(edited(p => { p.format = f; delete p.scenes.smithy.bellows; }), 'fields', 'pack.scenes.smithy.quench: is not a field here');
+  }
+  // pump leans on the bellows: refused in a scene without them, and in a still layer
+  no(edited(p => { p.scenes.camp.moving[0].shapes.push({ k: 'rect', p: [10, { c: 400, pump: 30 }], w: 2, h: 2, fill: '#000000' }); }),
+    'references', 'pack.scenes.camp.moving[0].shapes[' + JSON.parse(TEXT).pack.scenes.camp.moving[0].shapes.length + '].p[1].pump: is how far the bellows are pressed, and needs the scene\'s bellows');
+  no(edited(p => { p.scenes.smithy.still[0].shapes.push({ k: 'rect', p: [10, { c: 400, pump: 30 }], w: 2, h: 2, fill: '#000000' }); }),
+    'references', 'pack.scenes.smithy.still[0].shapes[' + sm.still[0].shapes.length + '].p[1].pump: cannot be used in a still layer');
+  // its coefficient is the travel of a point, a multiple of 1/8
+  no(edited(p => { p.scenes.smithy.moving[2].shapes[0].p[1] = { c: 400, pump: 0.3 }; }), 'fields', 'pack.scenes.smithy.moving[2].shapes[0].p[1].pump: must be a multiple of 1/8 from -2048 to 2048');
+  // the parts' fields
+  no(edited(p => { p.scenes.smithy.bellows.div = 10; }), 'fields', 'pack.scenes.smithy.bellows.div: must be a whole number from 32 to 10000');
+  no(edited(p => { p.scenes.smithy.bellows.speed = 2; }), 'fields', 'pack.scenes.smithy.bellows.speed: is not a field here');
+  no(edited(p => { p.scenes.smithy.quench.stand = [650]; }), 'fields', 'pack.scenes.smithy.quench.stand: must be a pair [fire, water]');
+  no(edited(p => { delete p.scenes.smithy.quench.water; }), 'fields', 'pack.scenes.smithy.quench.water: is missing');
 });
 
 // ---- The house's pieces: tracks, the screen, the bed, the pegs, rest views that fit ---------------------

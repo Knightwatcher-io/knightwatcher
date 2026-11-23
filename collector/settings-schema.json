@@ -23,7 +23,7 @@
     { "id": "house", "name": "House", "quiet": true },
     { "id": "yard", "name": "Training yard", "quiet": true },
     { "id": "cellar", "name": "Cellar", "quiet": false },
-    { "id": "smithy", "name": "Smithy", "quiet": false },
+    { "id": "smithy", "name": "Smithy", "quiet": true },
     { "id": "court", "name": "Court", "quiet": false }
   ],
   "tables": [
@@ -732,10 +732,10 @@
       "defaults_for": "display",
       "help": "The scenes that take turns while all is quiet, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment.",
       "settings": [
-        { "key": "scenes", "type": "list", "items": "scene", "default": null, "values": ["battlement", "camp", "house", "yard"], "long": true, "page_default": ["battlement", "camp", "house", "yard"],
+        { "key": "scenes", "type": "list", "items": "scene", "default": null, "values": ["battlement", "camp", "house", "yard", "smithy"], "long": true, "page_default": ["battlement", "camp", "house", "yard", "smithy"],
           "form": "one or more quiet scenes, each once", "scope": "display",
           "gui": { "admin": { "section": "Quiet scenes", "label": "In the rotation" }, "wall": { "section": "Quiet scenes", "label": "In the rotation" } }, "editable": true,
-          "help": "The quiet scenes, in the order they take turns: the four the page ships with, or quiet scenes of a loaded pack by their long names, \"<pack>/<scene>\"." },
+          "help": "The quiet scenes, in the order they take turns: the five the page ships with, or quiet scenes of a loaded pack by their long names, \"<pack>/<scene>\"." },
         { "key": "minutes", "type": "integer", "default": null, "min": 1, "max": 240, "page_default": 10, "unit": "minutes", "scope": "display",
           "gui": { "admin": { "section": "Quiet scenes", "label": "Each shows for" }, "wall": { "section": "Quiet scenes", "label": "Each shows for" } }, "editable": true,
           "help": "How long each quiet scene shows. The demo shows each for a minute while nothing sets it." }
@@ -759,7 +759,7 @@
         { "key": "pi_silent", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "long": true, "acts": ["battlement", "camp", "house"], "page_default": "house", "scope": "display",
           "gui": { "admin": { "section": "Scenes", "label": "Pi silent" }, "wall": { "section": "Scenes", "label": "Pi silent" } }, "editable": true,
           "help": "Where the knight acts out a silent Pi." },
-        { "key": "cpu_hot", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "long": true, "acts": ["battlement", "camp", "house", "yard", "cellar"], "page_default": "yard", "scope": "display",
+        { "key": "cpu_hot", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "long": true, "acts": ["battlement", "camp", "house", "yard", "cellar", "smithy"], "page_default": "yard", "scope": "display",
           "gui": { "admin": { "section": "Scenes", "label": "Running hot" }, "wall": { "section": "Scenes", "label": "Running hot" } }, "editable": true,
           "help": "Where the knight acts out a hot CPU." }
       ]

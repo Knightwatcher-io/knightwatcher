@@ -78,7 +78,10 @@ function frames(K) {
   for (const id of Object.keys(P.KW.state.CONDITIONS)) for (const t of [600, 1400, 2300, 2800, 4250]) knight(`${id} t${t}`, id, t);
   for (const dir of [1, -1]) for (let k = 0; k <= 20; k++) knight(`swing ${dir} q${k / 20}`, 'idle', 2300, null, o => K.swing(o, k / 20, dir));
   for (let t = 0; t < 1000; t += 100) knight(`attack t${t}`, 'attack', t);
-  for (const h of [0, 0.5, 1]) knight(`hammer ${h}`, 'updating', 2300, { sword: false, helmet: false, hammer: h, progress: h });
+  // the smith's three acts, as the smithy's act places the body: the hammer, the tongs and the bellows
+  for (const [id, t] of [['updating', 0], ['updating', 900], ['idle', 600], ['idle', 5500], ['idle', 8800], ['cpu_hot', 240]]) {
+    knight(`smith ${id} t${t}`, id, t, { sword: false, helmet: false }, o => { const s = { w: { id }, kx: X, o, strike: false, dx: 0 }; P.KW.scenes.smithy.act(t, s); o.x = X + s.dx; });
+  }
   knight('helmet off', 'idle', 2300, { helmet: false });
   knight('sword off bloated', 'memory_tight', 600, { sword: false });
   for (const eyes of ['open', 'closed', 'happy', 'wide', 'half', 'dizzy', 'angry']) knight(`eyes ${eyes}`, 'idle', 2300, { eyes, look: 1 });

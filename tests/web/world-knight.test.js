@@ -72,7 +72,7 @@ function POSES(K, scenes) {
   }
   p.push(['house drawn, helmet on', () => H.draw(2300, { tv: true, inBed: false, helmOff: false, o: at(K, 'streaming', 2300) })]);
   for (const kx of [440, 300]) p.push([`smithy painted kx${kx}`, () => S.paint({ kx })]);
-  for (const t of [300, 1250]) p.push([`smithy drawn t${t}`, () => { const s = { kx: 440, o: at(K, 'updating', t), strike: false }; S.act(t, s); S.draw(t, s); }]);
+  for (const t of [300, 1250]) p.push([`smithy drawn t${t}`, () => { const s = { w: { id: 'updating' }, kx: 440, o: at(K, 'updating', t), strike: false }; S.act(t, s); S.draw(t, s); }]);
   return p;
 }
 /* The one spelling knight.test.js allows between its paths: a translucent fillStyle from the pack
@@ -143,7 +143,7 @@ test('the smithy from kw.medieval gives the code smithy\'s rests, and a weapon t
   const a = load(true), b = load(true);
   b.K.start([JSON.stringify(env)], true);
   assert.equal(b.K.rest.reach(), null);
-  const at300 = box => { box.log.length = 0; const s = { kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
+  const at300 = box => { box.log.length = 0; const s = { w: { id: 'updating' }, kx: 440, o: at(box.K, 'updating', 300), strike: false }; box.KW.scenes.smithy.act(300, s); box.KW.scenes.smithy.draw(300, s); return box.log.slice(); };
   const with_ = at300(a), without = at300(b);
   assert.ok(with_.includes('s #7a2a1d') && with_.includes('s #fff3a0'));
   assert.ok(!without.includes('s #7a2a1d') && !without.includes('s #8f231d'), 'no hot bands');

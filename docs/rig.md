@@ -32,6 +32,12 @@ knight's 240 by 300 box, 120 left of the root and 300 above it.
 
 Every anchor is an `[x, y]` pair apart from `main`, and "left" is the viewer's left.
 
+**The lean.** A pose's `lean`, in whole pixels, leans the upper body to the right when positive and
+to the left when negative: `neck`, both shoulders and `head` move across by it, `belt` and `hem` by
+half of it, rounded, and the hips and the feet not at all. The smith's acts lean the knight into
+the hammer's blow and the bellows' push. Every list of the base pack hangs on these anchors, so a
+lean needs nothing of a pack.
+
 The values are whole numbers: `drop`, how far the upper body sinks (`(bob + crouch) * 5`);
 `bloat`, how far each side swells when memory is tight (`bloat * 5`); `stepL` and `stepR`, 1 while
 that foot is lifted in the walk; `sway`, the plume's sway from -4 to 4; and the build's eight
@@ -94,10 +100,21 @@ knight. `rig(o, build)` takes another build's measurements, which only the tests
   crate (`CARRY`, 80 by 64, its top 6 below `neck`, which is 50 below `head`, under the helmet's
   opening and the bare chin) is drawn after the pauldrons and before the arms, so the arms lie
   over its sides.
-- `hammer`, in the smithy: the left hand steadies the work at `(X + 45, Y - 104 + drop)`, and the
-  right swings the hammer from `(X + 80 + bloat, Y - 122 + drop)`, which is also `main`, with the
-  hammer's angle. These do not follow the build: the hands work at the anvil, which stands in the
-  scene.
+- the smith's grip, in the smithy, when the pose gives `o.tool`, `{ kind, two, a, R, L, heat, cut }`
+  (`KW.knight.tool` holds the tools' measures): `hammer` with the tool in the right hand, `tool2`
+  with both hands on it (`two`). The act places each hand: at a point on the grid (`at`), at an
+  offset from its own shoulder (`off`), or between the two by `pin`, 0 the shoulder's point and 1
+  the grid's, rounded to whole pixels; the left hand may instead hold the tool `along` pixels up its
+  frame from the right hand, and with no place given hangs 10 outside its shoulder and 48 below it.
+  `main` is the right hand, at the angle `a` (0 straight up). The hands the act pins to the grid do
+  not follow the build: they work at the anvil, the forge and the bellows, which stand in the
+  scene. The tool is drawn by the engine's step `hammer` on `main`: the hammer (`kind: "hammer"`),
+  a handle of 56 held 10 from its end and a head of 35 by 24 turned with it, its striking face on one
+  side and its peen on the other; the tongs (`"tongs"`), two jaws 60 long holding a plain blank 96
+  long, coloured by `heat` from cold steel to white-hot, with whatever of them points down past the
+  y `cut` (the water's face) left out; and the bellows' handle (`"lever"`), which is the scene's own
+  drawing, so nothing is drawn for it. In the `hammer` mode the left arm and hand are drawn first,
+  then the right arm, the tool and the right hand; in `tool2` both arms, the tool, then both hands.
 - `two`, the greatsword in both hands: `main` is the middle of the grip and the blade's angle,
   at `(X - 120 + 5 * gx, Y - 300 + 5 * gy + drop - dHeight)`: the poses are written for the present
   knight, and on another build the grip rises and sinks with the shoulder line, so the weapon is
@@ -160,8 +177,8 @@ low: the blade is carried level across the waist, pointing left, and turns up on
 are out on the right, instead of turning back through upright over the face. To the right the
 two-handed recovery is a single segment, as it always was. The longsword and the mace take these
 poses, as they take every other, from the grip their stations give. Every other condition keeps its pose; the sword is
-put away where the scene says so (`sword: false` in the house and the cellar, the hammer in the
-smithy), and the shield with it; a weapon with a stowed view is then worn on the body where the
+put away where the scene says so (`sword: false` in the house, the cellar and the smithy), and the
+shield with it; a weapon with a stowed view is then worn on the body where the
 scene shows it at no rest place ([Gear at rest](#gear-at-rest)).
 
 **The blade past the face.** `tests/web/knight.test.js` draws each swing to the left every 0.004 of
@@ -371,12 +388,13 @@ line, for the settings screen's status panel. What happens when packs fail, in o
 [library.md](./library.md#when-packs-fail).
 
 On the pack path `draw(o)` runs the rig, fills the library's arrays, picks the grip mode (`none`,
-`hammer`, `twoR` or `twoL` by the side the blade leans to, or `one` or `oneCrossed` by the side of
+`hammer`, `tool2`, `twoR` or `twoL` by the side the blade leans to, or `one` or `oneCrossed` by the side of
 the root the sword hand is on) and walks the order that
 `sequence(mode, helmet)` in `pack.js` gives. It draws each of the look's lists with the library's
 `draw()` and the primitives of `draw.js`, and draws the engine's own steps by code at their places
 in that order: the face after the head group, the drumstick after the face, the crate after the
-pauldrons and before the hands group, the hammer between the right arm and its gauntlet, and sweat, steam, the marks, the thought bubble,
+pauldrons and before the hands group, the smith's tool between the right arm and its gauntlet (or
+between both arms and both gauntlets in `tool2`), and sweat, steam, the marks, the thought bubble,
 the progress bar, the hearts and the speech bubble last. `@skin.face` takes the skin swatch's sick
 ramp when the knight is ill and its hot ramp when overheated, and the face takes the look's
 colours (below). A frame allocates nothing for the

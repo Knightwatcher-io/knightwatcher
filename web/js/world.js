@@ -21,7 +21,7 @@
    it builds:
    - terms: numbers, and term objects of c, the named values L, R, T and W (the screen's edges and
      width, from KW.view), x (a tile's x), h (a hash of the tile's x), wave (a sine of the scene's
-     time) and the values the acts give (targetDx and spot), added in the order they are written, so
+     time) and the values the acts give (targetDx, spot and pump), added in the order they are written, so
      that a term gives the same bits as the code it replaces;
    - colours: hex, @base and the pack's own palettes, translucent colours spelt as the code spells
      them ('rgba(0,0,0,.3)'), and band lists of these;
@@ -38,8 +38,8 @@
    - hosts, as outdoors when a scene hosts both the flies and the crate, and from foe the foe's
      zone, foeZone, and with a wall the line it climbs over, wallAt;
    - the acts of the target (the yard's training), of the anvil (the smithy's hammer, with the hot
-     tip of the blade on the anvil), of the bed and the screen (the house's) and of the seat (the
-     court's talk);
+     tip of the blade on the anvil), of the bellows and the quench (the smithy's, format 1.3), of
+     the bed and the screen (the house's) and of the seat (the court's talk);
    - the kinds of a prop set: their still and moving shapes in both states, the engine's lamp at a
      point, and a lamp of the kind's own from two stamps of pix shapes, as the pie's is;
    - the critters of the cast: their two frames and what falls, with a group's alpha; its foes:
@@ -69,10 +69,11 @@
      phase]. val() adds them up from the first, so { "x": 1, "c": 178 } is x + 178 and { "c": 0.09,
      "wave": [0.025, 150, 0] } is 0.09 + 0.025 * sin(t / 150), as the code writes them. E holds the
      named values of the moment: L, R, T, W, x, t, in a scene with a target targetDx (the pixels the
-     training act moves the target by), and in a scene with an anvil spot (the x of the spot the
-     watcher works at, which the anvil's places count from), both below. */
+     training act moves the target by), in a scene with an anvil spot (the x of the spot the watcher
+     works at, which the anvil's places count from), and in a scene with bellows pump (how far they
+     are pressed, 0 open and 1 pressed), all below. */
   const CONST = 0, NAMED = 1, HASH = 2, WAVE = 3;
-  const NAMES = ['L', 'R', 'T', 'W', 'x', 'targetDx', 'spot'];
+  const NAMES = ['L', 'R', 'T', 'W', 'x', 'targetDx', 'spot', 'pump'];
   function term(v, path) {
     if (typeof v === 'number') return v;
     if (!isObj(v)) throw new Error(path + ': is not a term');
@@ -98,7 +99,7 @@
   }
   const point = (v, path) => [term(v[0], idx(path, 0)), term(v[1], idx(path, 1))];
   /* The named values of the screen now, at scene time t, with s the frame. */
-  const named = (t, s) => ({ L: V.HL, R: V.HR, T: V.HT, W: V.HR - V.HL, x: 0, t, s, targetDx: 0, spot: 0, since: Infinity, dx: null, picks: null, off: null, mv: null, pal: null });
+  const named = (t, s) => ({ L: V.HL, R: V.HR, T: V.HT, W: V.HR - V.HL, x: 0, t, s, targetDx: 0, spot: 0, pump: 0, since: Infinity, dx: null, picks: null, off: null, mv: null, pal: null });
 
   /* ---- Colours ----------------------------------------------------------------------------------
      A colour resolves once, at compile, to what the primitives take: a string, or a band list. A
@@ -283,7 +284,15 @@
      the bubble) is drawn outside() the scene, so that a throw there is not put down to the pack
      (Drawing faults, below). */
   const MARKS = {
-    things: { compile: () => ({}), draw(r, E) { outside(() => KW.devices.draw(E.t, E.s)); } },
+    things: {
+      compile: (s, path, env) => ({ quench: env.quench }),
+      draw(r, E) {
+        // the rings on the water while the quench's blank is in it, then the devices
+        const q = r.quench, tq = E.t % QUENCH.period;
+        if (q && plays(q, 'idle', E.s) && wetAt(tq)) outside(() => ringsAt(q, tq));
+        outside(() => KW.devices.draw(E.t, E.s));
+      }
+    },
     rest: {
       compile(s, path, env) {
         const hot = s.slot === 'main' && !!env.anvil && env.anvil.rest === s.at && env.where !== 'still';
@@ -603,32 +612,192 @@
     return b ? freeze([Math.round((b[0] + b[2]) / 2), Math.round((b[1] + b[3]) / 2)]) : null;
   }
 
-  /* The anvil: the watcher hammers the weapon that lies on it. It is act() in smithy.js with the
-     smithy's numbers: whatever else is up, the weapon put away and the hammer rising slowly and
-     falling fast once every ANVIL.period ms, a progress bar filling over ANVIL.progress ms, and the
-     hammer striking from ANVIL.strike[0] of the cycle to ANVIL.strike[1] of the next, the eyes shut
-     while it does; the predicate strike holds then. While it strikes, a triggered effect is drawn
-     at the blow's progress, from 0 at ANVIL.blow[1] of the cycle over ANVIL.blow[3] of it, which is
-     the sparks the hammer throws. The anvil's places count from the spot the watcher works at: the
+  /* Keyframes of the smith's acts: rows of numbers, the first the time, the last a row's ease into
+     it by name (smooth when a row names none). seg() finds the two rows around t and how far
+     between them it is, eased, as smithy.js does. */
+  const SMITH_EASES = { smooth: q => q * q * (3 - 2 * q), ease: D.ease, line: q => q, fall: q => Math.pow(q, 2.5) };
+  function seg(keys, t) {
+    let i = 0;
+    while (i < keys.length - 2 && t >= keys[i + 1][0]) i++;
+    const k0 = keys[i], k1 = keys[i + 1], q = D.clamp01((t - k0[0]) / Math.max(1, k1[0] - k0[0]));
+    return [k0, k1, SMITH_EASES[typeof k1[k1.length - 1] === 'string' ? k1[k1.length - 1] : 'smooth'](q)];
+  }
+
+  /* The anvil: the watcher hammers the weapon that lies on it, while updating. It is hammer() in
+     smithy.js with the smithy's numbers in ANVIL: one blow every ANVIL.period ms, the cycle starting
+     at the blow on the blade, the hammer bouncing up, rising over the right shoulder, hanging at the
+     top and falling fast through its arc, the body leaning into the blow and sinking at the knees,
+     each row of ANVIL.keys the part of the cycle, the hammer's angle, the right hand's distance and
+     angle from its shoulder, how far it is pinned to the point that lays the hammer's face on the
+     blade, the lean, the crouch and the head's dy. The face meets the blade's top edge ANVIL.at past
+     the middle of the weapon's grip at the anvil's rest; the left hand holds the grip. The weapon is
+     the one lying in the backdrop; the scene's weapon says whether it is put away. strike holds
+     through the first ANVIL.strike of the cycle, the eyes shut, and a triggered effect is drawn at
+     the blow's progress, from 0 to 1 over it, which is the sparks the hammer throws; a progress bar
+     fills over ANVIL.progress ms. The anvil's places count from the spot the watcher works at: the
      act gives its layers that x as the named value spot. The hot tip on the blade is drawn by the
      rest mark at the anvil's rest, below. */
-  const ANVIL = { period: 1300, rise: .55, fall: .45, strike: [.93, .06], blow: [.5, .93, .07, .13], progress: 9000 };
-  function anvilOn(always) {
+  const ANVIL = { period: 1400, strike: .1, at: 98, progress: 9000, notch: 12,
+    keys: [[0, 1.66, 40, 1.16, 1, 8, 7, .4],
+      [.12, 1.26, 46, 1.16, .45, 4, 3, .2, 'ease'],
+      [.55, -.12, 70, .32, 0, -4, 0, -.2, 'smooth'],
+      [.66, -.24, 72, .27, 0, -5, 0, -.2, 'smooth'],
+      [1, 1.66, 40, 1.16, 1, 8, 7, .4, 'fall']] };
+  function anvilOn(rest, always) {
     const A = ANVIL;
     function act(t, s) {
       if (!plays({ always }, 'updating', s)) return;
-      const o = s.o, c = (t % A.period) / A.period; o.sword = false;
-      o.hammer = c < A.rise ? 1 - D.ease(c / A.rise) : Math.pow((c - A.rise) / A.fall, 3); s.strike = c > A.strike[0] || c < A.strike[1]; o.progress = (t % A.progress) / A.progress; if (s.strike) o.eyes = 'closed';
+      const o = s.o, K = KW.knight, c = (t % A.period) / A.period, [k0, k1, e] = seg(A.keys, c), v = i => D.lerp(k0[i], k1[i], e);
+      const r = v(2), th = v(3), gx = rest.spot ? s.kx + rest.x : rest.x, gy = rest.y;
+      // the hammer's face on the blade's top at the blow's angle, and the hand that lays it there
+      const b = outside(() => K.rest.reach()), H = outside(() => K.tool.hammer), a = A.keys[0][1], ux = Math.sin(a), uy = -Math.cos(a), nx = Math.cos(a), ny = Math.sin(a);
+      const fx = gx + A.at, fy = gy - (b ? b.half : A.notch), f = H.face + 2;
+      o.bob = 0; o.lean = Math.round(v(5)); o.crouch = Math.round(v(6)) / 5; o.headDy = v(7);
+      o.tool = { kind: 'hammer', a: v(1), R: { off: [Math.sin(th) * r, -Math.cos(th) * r], at: [fx - H.handle * ux - f * nx, fy - H.handle * uy - f * ny], pin: v(4) }, L: { at: [gx - 5, gy + 1] } };
+      s.strike = c < A.strike;
+      o.progress = (t % A.progress) / A.progress;
+      o.mouth = 'smile';
+      if (s.strike) o.eyes = 'closed'; else if (c < A.keys[2][0]) o.eyes = 'happy'; else { o.eyes = 'open'; o.look = 1; }
     }
     /* The frame's values at t: the spot's x, and the blow's progress while the hammer strikes. */
     function frame(E, t) {
-      const b = A.blow;
       E.spot = E.s.kx;
-      if (E.s.strike) { const c = (t % A.period) / A.period; E.since = (c > b[0] ? c - b[1] : c + b[2]) / b[3]; } else E.since = null;
+      E.since = E.s.strike ? (t % A.period) / A.period / A.strike : null;
       return E;
     }
     return { act, frame };
   }
+
+  /* The bellows (format 1.3): the watcher pumps them while the CPU runs hot. It is bellows() in
+     smithy.js with its numbers in BELLOWS: standing at the part's stand, once every 2 pi times the
+     part's div ms, so that a glow's wave of that div keeps time with it, pressed with a push that
+     gathers pace through BELLOWS.press of the period and let up through the rest. The named value
+     pump, 0 open and 1 pressed, is given to the moving and over layers, so that each point of the
+     bellows' moving shapes is its open point plus pump times its travel. The handle's crossbar, its
+     middle at the part's handle open, goes down the part's travel pressed, and the hands hold it at
+     BELLOWS.R and BELLOWS.L from its middle; the body leans in by BELLOWS.lean and sinks
+     BELLOWS.crouch pixels with each push. */
+  const BELLOWS = { press: .38, lean: [1, 6], crouch: 7, R: [17, 0], L: [-5, 1] };
+  function bellowsOn(part) {
+    const B = BELLOWS, P = 2 * Math.PI * part.div;
+    const pumpAt = t => { const c = (t % P) / P; return c < B.press ? Math.pow(c / B.press, 3) : 1 - SMITH_EASES.smooth((c - B.press) / (1 - B.press)); };
+    function act(t, s) {
+      if (!plays(part, 'cpu_hot', s)) return;
+      const o = s.o, p = pumpAt(t), hx = part.handle[0], hy = part.handle[1] + part.travel * p;
+      o.bob = 0; o.lean = Math.round(B.lean[0] + B.lean[1] * p); o.crouch = Math.round(B.crouch * p) / 5; o.look = 1;
+      s.dx = part.stand - s.kx;
+      o.tool = { kind: 'lever', two: true, a: 0, R: { at: [hx + B.R[0], hy + B.R[1]] }, L: { at: [hx + B.L[0], hy + B.L[1]] } };
+    }
+    /* The frame's values at t: how far the bellows are pressed, while they work. */
+    function frame(E, t) { E.pump = plays(part, 'cpu_hot', E.s) ? pumpAt(t) : 0; return E; }
+    return { act, frame };
+  }
+
+  /* The quench (format 1.3): while all is quiet, the watcher heats a blank in the fire, carries it to
+     the water and quenches it, looks it over and carries it back. It is quench() in smithy.js with
+     its numbers in QUENCH, over a loop of QUENCH.period ms: each row of QUENCH.keys the time, the
+     stand the watcher is counted from (0 at the fire, 1 at the water, the part's stand) and its
+     offset from there, the right hand on the tongs (dx from the watcher, y on the grid), the tongs'
+     angle and the blank's heat; the left hand holds them QUENCH.along nearer the jaws. The watcher
+     walks between the stands by s.dx, the spot staying where it is. The blank is in the water
+     through QUENCH.wet, cut at the water's face, the part's water y, where its rings spread (drawn
+     before the devices, at the things mark); over everything the steam rises from the water at
+     QUENCH.steam, the drips fall from the blank's point through QUENCH.drip and a glint runs along
+     it through QUENCH.glint (quenchOver, below). */
+  const QUENCH = { period: 14400, along: 16, wet: [5560, 7560], steam: 5650, shut: 400, drip: [7700, 8400], glint: [8500, 9300], smile: [7950, 10500], nod: [9500, 9900, .6], fire: [2200, 13300],
+    keys: [[0, 0, 0, 46, 420, 1.62, .75],
+      [1000, 0, 0, 46, 420, 1.62, 1],
+      [1700, 0, -80, 20, 420, 1.62, 1],
+      [2200, 0, -80, 34, 402, .6, 1],
+      [5000, 1, 0, 34, 402, .6, .92, 'line'],
+      [5250, 1, 0, 46, 394, 1.57, .9],
+      [5450, 1, 0, 22, 382, 2.6, .9],
+      [5600, 1, 0, -46, 386, 3.3, .9],
+      [5800, 1, 0, -46, 394, 3.3, .9],
+      [6400, 1, 0, -46, 394, 3.3, 0],
+      [7300, 1, 0, -46, 392, 3.36, 0],
+      [7650, 1, 0, -52, 380, 4.4, 0],
+      [7950, 1, 0, -44, 392, 5.75, 0],
+      [10200, 1, 0, -42, 388, 5.82, 0],
+      [10500, 1, 0, -40, 396, 5.8, 0],
+      [13300, 0, -80, -40, 396, 5.8, 0, 'line'],
+      [13500, 0, -80, -46, 392, 4.71, 0],
+      [13650, 0, -80, -10, 382, 3.3, 0],
+      [13800, 0, -80, 22, 386, 2.4, 0],
+      [14000, 0, -60, 30, 418, 1.62, 0],
+      [14400, 0, 0, 46, 420, 1.62, .75, 'line']] };
+  /* Where the quench of the part q is at tq ms into its loop: the watcher's x, whether it walks
+     and which way, the right hand, the tongs' angle and the blank's heat. */
+  function quenchAt(q, tq) {
+    const [k0, k1, e] = seg(QUENCH.keys, tq), x0 = q.stand[k0[1]] + k0[2], x1 = q.stand[k1[1]] + k1[2], v = i => D.lerp(k0[i], k1[i], e);
+    const x = Math.round(D.lerp(x0, x1, e));
+    return { x, walk: x0 !== x1 ? Math.sign(x1 - x0) : 0, R: [x + v(3), v(4)], a: v(5), heat: v(6) };
+  }
+  const wetAt = tq => tq >= QUENCH.wet[0] && tq < QUENCH.wet[1];
+  function quenchOn(part) {
+    const Q = QUENCH;
+    function act(t, s) {
+      if (!plays(part, 'idle', s)) return;
+      const o = s.o, tq = t % Q.period, q = quenchAt(part, tq), wet = wetAt(tq);
+      o.bob = 0; o.walk = q.walk !== 0;
+      s.dx = q.x - s.kx;
+      o.tool = { kind: 'tongs', two: true, a: q.a, heat: q.heat, cut: wet ? part.water[1] : null, R: { at: q.R }, L: { along: Q.along } };
+      o.mouth = 'flat';
+      o.look = q.walk || (tq < Q.fire[0] || tq >= Q.fire[1] ? 1 : -1);
+      if (tq >= Q.steam && tq < Q.steam + Q.shut) o.eyes = 'closed';
+      if (tq >= Q.smile[0] && tq < Q.smile[1]) { o.mouth = 'smile'; if (tq >= Q.nod[0] && tq < Q.nod[1]) o.headDy = Q.nod[2]; }
+    }
+    return { act, frame: E => E };
+  }
+  /* The rings on the water while the blank is in it, from where it went in, as smithy.js draws them:
+     two at a time, each spreading and fading over RINGS.ms. */
+  const RINGS = { ms: 700, n: 2, a: .55, outer: [5, 12, 1, 2, '#cfe6ff'], inner: [3, 12, 0, 2, '#2b5ea8'], dy: 2 };
+  function ringsAt(q, tq) {
+    const a = tq - QUENCH.wet[0], [wx, wy] = q.water, R = RINGS, O = R.outer, I = R.inner;
+    for (let i = 0; i < R.n; i++) {
+      const k = ((a / R.ms) + i / R.n) % 1;
+      D.alpha(R.a * (1 - k)); D.ell(wx, wy + R.dy, O[0] + k * O[1], O[2] + k * O[3], O[4]); D.ell(wx, wy + R.dy, I[0] + k * I[1], I[2] + k * I[3], I[4]); D.alpha(1);
+    }
+  }
+  /* Over everything while the quench plays, as smithy.js draws it: the steam off the water, a burst
+     of STEAM.big puffs as the blank goes in and a thinner plume while it cools; the drips off the
+     blank's point as it comes out; and the glint that runs along it as it is looked over. */
+  const STEAM = { ms: 3000, n: 14, big: 6, start: [50, 300, 180], life: [1300, 1500], spread: [29, 34, 17], sway: [4, 10], rise: [4, 150, 120, 3, 4],
+    r: [12, 30, 8, 18], a: [.9, .5, .7, .35], colours: ['#e9eef8', '#ffffff'], drip: { ms: 420, n: 3, fall: [50, 60], colour: '#9fd0ff' }, glint: { inset: [10, 20], size: [8, 4], colour: '#ffffff' } };
+  function quenchOver(q, tq) {
+    const S = STEAM, [wx, wy] = q.water, a = tq - QUENCH.steam, A = D.alpha;
+    if (a >= 0 && a < S.ms) {
+      for (let i = 0; i < S.n; i++) {
+        const big = i < S.big, st = big ? i * S.start[0] : S.start[1] + (i - S.big) * S.start[2], k = (a - st) / (big ? S.life[0] : S.life[1]);
+        if (k < 0 || k > 1) continue;
+        const x = wx + ((i * S.spread[0]) % S.spread[1]) - S.spread[2] + Math.sin(k * S.sway[0] + i) * S.sway[1] * k, y = wy - S.rise[0] - k * (big ? S.rise[1] : S.rise[2]) - (i % S.rise[3]) * S.rise[4];
+        const r = (big ? S.r[0] : S.r[2]) + k * (big ? S.r[1] : S.r[3]);
+        A((big ? S.a[0] : S.a[2]) * (1 - k)); D.ell(x, y, r, r * .8, S.colours[0]); A((big ? S.a[1] : S.a[3]) * (1 - k)); D.ell(x - r * .3, y - r * .25, r * .5, r * .4, S.colours[1]); A(1);
+      }
+    }
+    const G = KW.knight.tool.tongs, B = KW.knight.tool.blank, Dr = S.drip, Gl = S.glint;
+    if (tq >= QUENCH.drip[0] && tq < QUENCH.drip[1]) {
+      const qa = quenchAt(q, tq), s0 = G.len + B.len, tx = qa.R[0] + Math.sin(qa.a) * s0, ty = qa.R[1] - Math.cos(qa.a) * s0;
+      for (let i = 0; i < Dr.n; i++) { const k = ((tq - QUENCH.drip[0]) / Dr.ms + i / Dr.n) % 1; if (ty + k * Dr.fall[0] > wy) continue; D.Rh(tx - 1 + i * 2, ty + k * k * Dr.fall[1], 2, 3, Dr.colour); }
+    }
+    if (tq >= QUENCH.glint[0] && tq < QUENCH.glint[1]) {
+      const qa = quenchAt(q, tq), k = (tq - QUENCH.glint[0]) / (QUENCH.glint[1] - QUENCH.glint[0]), along = G.len + Gl.inset[0] + k * (B.len - Gl.inset[1]);
+      KW.sprites.spark(qa.R[0] + Math.sin(qa.a) * along, qa.R[1] - Math.cos(qa.a) * along, Gl.size[0] + Math.round(Gl.size[1] * Math.sin(k * Math.PI)), Gl.colour);
+    }
+  }
+  /* The acts of a scene with an anvil, bellows or a quench, each in its own condition, as one act
+     and one frame: the anvil's while updating, the bellows' while the CPU runs hot, the quench's
+     while all is quiet. */
+  function smithOn(v) {
+    const parts = [];
+    if (has(v, 'anvil')) parts.push(anvilOn(restOf(v.rests[v.anvil.rest]), only(v, 'updating')));
+    if (has(v, 'bellows')) parts.push(bellowsOn(freeze({ stand: v.bellows.stand, handle: v.bellows.handle.slice(), travel: v.bellows.travel, div: v.bellows.div, always: only(v, 'cpu_hot') })));
+    if (has(v, 'quench')) parts.push(quenchOn(quenchPart(v)));
+    if (parts.length === 1) return parts[0];
+    return { act(t, s) { for (const p of parts) p.act(t, s); }, frame(E, t) { for (const p of parts) p.frame(E, t); return E; } };
+  }
+  /* The quench part of a scene, as the act and its drawings read it; it plays while all is quiet. */
+  const quenchPart = v => freeze({ water: v.quench.water.slice(), stand: v.quench.stand.slice(), always: false });
   /* The blade's hot tip, part of the anvil's act, on the weapon lying with its grip's middle at
      (x, y): at its point (b.to along the blade) and between its edges (b.half either side), a glow
      that flickers, a dithered patch where the heat starts, three bands of red to orange that start
@@ -665,17 +834,20 @@
     if (!isObj(v)) throw new Error(path + ': the pack has no such scene');
     for (const k of LATER) if (has(v, k)) throw notBuilt(at(path, k), 'the scene\'s ' + k);
     if (has(v, 'target') && has(v, 'anvil')) throw notBuilt(path, 'a scene with both a target and an anvil');
+    for (const k of ['bellows', 'quench']) if (has(v, 'target') && has(v, k)) throw notBuilt(path, 'a scene with both a target and ' + (k === 'bellows' ? 'bellows' : 'a quench'));
     const out = outdoors(v.hosts, at(path, 'hosts')), foe = has(v, 'foe') ? foeOf(v.foe) : null;
     const rests = {};
     if (has(v, 'rests')) for (const n of Object.keys(v.rests)) rests[n] = freeze(restOf(v.rests[n]));
     const bed = has(v, 'bed') ? freeze({ head: v.bed.head.slice(), zeds: v.bed.zeds.slice() }) : null;
     const env = { pack, v, stamp: false, using: [], marks: KW.pack.WORLD_LISTS.MARKS, target: has(v, 'target'), anvil: has(v, 'anvil') ? v.anvil : null, rests, restStamps: {},
       bed, screen: has(v, 'screen') ? v.screen.group : null, picks: null,
-      seat: has(v, 'seat') ? freeze({ x: v.seat.x, y: v.seat.y, bubble: v.seat.bubble.slice(), turn: v.seat.turn, mouth: v.seat.mouth, always: only(v, 'ssh_session') }) : null };
+      seat: has(v, 'seat') ? freeze({ x: v.seat.x, y: v.seat.y, bubble: v.seat.bubble.slice(), turn: v.seat.turn, mouth: v.seat.mouth, always: only(v, 'ssh_session') }) : null,
+      quench: has(v, 'quench') ? quenchPart(v) : null };
     env.restStamps = restStamps(v, env);
-    // the act, the target's or the anvil's, and the frame's values it gives the moving and over layers
+    // the act, the target's or the smith's (the anvil's, the bellows' and the quench's), and the
+    // frame's values it gives the moving and over layers
     const aim = has(v, 'target') ? targetMid(pack.data, v, v.target.group) : null;
-    const acted = has(v, 'target') ? trainOn(v.target, aim) : has(v, 'anvil') ? anvilOn(only(v, 'updating')) : null;
+    const acted = has(v, 'target') ? trainOn(v.target, aim) : ['anvil', 'bellows', 'quench'].some(k => has(v, k)) ? smithOn(v) : null;
     const frameAt = (t, s) => (acted ? acted.frame(named(t, s), t) : named(t, s));
     const lists = {};
     for (const k of ['still', 'moving', 'over']) lists[k] = freeze(v[k].map((l, i) => layer(l, idx(at(path, k), i), Object.assign({}, env, { where: k }))));
@@ -706,8 +878,14 @@
     if (env.seat) sc.drawn = mon => { const P = patronSet(), p = P[has(P, mon) ? mon : 'a']; return { hair: p.drawn.hair.slice(), robe: p.drawn.robe.slice() }; };
     if (has(v, 'rests')) sc.rests = restsOut(rests);
     if (lists.still.length) sc.paint = s => drawLayers(lists.still, named(0, s));
-    // the over layers, and the sleeper's Zs over everything at night in a scene with a bed
-    if (lists.over.length || bed) sc.over = (t, s) => { drawLayers(lists.over, frameAt(t, s)); if (bed && s.w && s.w.id === 'night') outside(() => zedsAt(bed, t)); };
+    // the over layers, the sleeper's Zs over everything at night in a scene with a bed, and the
+    // steam, the drips and the glint while the quench plays
+    const q = env.quench;
+    if (lists.over.length || bed || q) sc.over = (t, s) => {
+      drawLayers(lists.over, frameAt(t, s));
+      if (bed && s.w && s.w.id === 'night') outside(() => zedsAt(bed, t));
+      if (q && plays(q, 'idle', s)) outside(() => quenchOver(q, t % QUENCH.period));
+    };
     if (bed) sc.bed = true;
     if (acted) sc.act = acted.act;
     // where a shot at the target aims: the middle of the box of its group's shapes

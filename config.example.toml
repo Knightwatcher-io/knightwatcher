@@ -268,7 +268,7 @@ ignore_sources = []
 # helmet_indoors = false      # true keeps the helmet on in the house and the smithy
 
 # [quiet]
-# scenes = ["battlement", "camp", "house", "yard"]   # one or more of these four, no repeats
+# scenes = ["battlement", "camp", "house", "yard", "smithy"]   # one or more of these five, no repeats
 # minutes = 10                # whole minutes each quiet scene shows, 1 to 240
 
 # The scene each condition plays in, each shown here in its own. Only these five take part.
@@ -277,7 +277,7 @@ ignore_sources = []
 # disk_full = "cellar"        # cellar or yard
 # backup_overdue = "house"    # battlement, camp, house, yard or cellar
 # pi_silent = "house"         # battlement, camp or house
-# cpu_hot = "yard"            # battlement, camp, house, yard or cellar
+# cpu_hot = "yard"            # battlement, camp, house, yard, cellar or smithy
 
 # Devices: machines on the network, each drawn as a prop in the scene that changes when
 # its machine has been silent for its down_after_s. Remove the "# " before a setting to use it.
