@@ -27,9 +27,7 @@
     {
       "binding": "DB",
       "database_name": "knightwatcher-telemetry",
-      // PLACEHOLDER: replace with the id that `wrangler d1 create knightwatcher-telemetry`
-      // prints. A deploy fails until it is set.
-      "database_id": "PLACEHOLDER-set-at-setup"
+      "database_id": "1ecebb52-f2f4-4484-9292-ad35fa6b8103"
     }
   ],
 
