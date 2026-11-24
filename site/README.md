@@ -140,8 +140,8 @@ zone. No Cloudflare token is kept anywhere else.
    - the Worker's name `knightwatcher-site`, as in `wrangler.jsonc`;
    - the production branch `main`;
    - the root directory `site`;
-   - the build command `node --test --test-concurrency=2 ../tests/site/ && node build.mjs`, so a
-     failing test stops the deploy;
+   - the build command `node --test --test-concurrency=2 '../tests/site/*.test.mjs' && node build.mjs`,
+     so a failing test stops the deploy (a pattern, since Node 24 takes no folder there);
    - the deploy command `npx wrangler deploy`;
    - the build variables `NODE_VERSION=24` and `WRANGLER_SEND_METRICS=false`;
    - Enable Preview Builds turned off, under Settings, Build, Branch control;
