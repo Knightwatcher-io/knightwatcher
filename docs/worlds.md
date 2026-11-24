@@ -27,9 +27,8 @@ three monarchs, the goblin, the fly and the mouser cat), the words, the overlay 
 `world.medieval` ([The medieval world's pack](#the-medieval-worlds-pack)). The page builds the
 quiet line and the events' captions from the parts the collector sends, in the world's words, and
 takes the colours and the font of the words over the scene from the world's overlay. Version 0.8.0,
-which gives the smithy its quench and bellows, ships unsigned until its signing run: meanwhile a
-`dev` page draws everything from it, and a deployed page draws every scene from code
-([The medieval world's pack](#the-medieval-worlds-pack)).
+which gives the smithy its quench and bellows, is signed, so a deployed page and a `dev` page alike
+draw everything from it.
 
 Any other world pack the page loads, shipped beside it or downloaded into `data/packs/`, reaches
 the wall through the settings: its scenes, cast, words, overlay, body, swatches and items, under
@@ -590,7 +589,7 @@ the mouser cat and the redesigned scenes and devices (the crystal in place of th
 ground places along the front of the floor, the crate's stretches), is signed too. Version 0.7.1 changes only the licence line, to the art
 licence, and is signed too. Version 0.8.0, of format `[1, 3]`, gives the smithy its three acts
 (the bellows, the flared fire and the quench, and the hammer's sparks where its face meets the
-blade) and makes it a quiet scene of the preset; it ships unsigned until its signing run. A copy changed after signing is refused by a
+blade) and makes it a quiet scene of the preset, and is signed too. A copy changed after signing is refused by a
 deployed page until its next run: that page draws every scene, every device and the cast, the cat
 included, from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.
