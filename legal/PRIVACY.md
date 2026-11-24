@@ -3,9 +3,9 @@
 Valtora makes Knightwatcher and is the controller of the personal data this notice describes.
 Contact: support@knightwatcher.io.
 
-The notice covers two things: the usage counts that Knightwatcher's collector sends (the
-heartbeat), and mail sent to support@knightwatcher.io. Nothing else in Knightwatcher sends
-anything to Valtora.
+The notice covers three things: the usage counts that Knightwatcher's collector sends (the
+heartbeat), visits to the website at knightwatcher.io, and mail sent to support@knightwatcher.io.
+Nothing else in Knightwatcher sends anything to Valtora.
 
 ## The usage counts
 
@@ -49,8 +49,8 @@ request logs.
 
 ### Who sees it
 
-Valtora alone, on a private page behind a sign-in. Valtora does not sell the data, use it for
-advertising or pass it to anyone apart from Cloudflare, below.
+Only Valtora, who maintains Knightwatcher, sees it, on a private page behind a sign-in. Valtora
+does not sell the data, use it for advertising or pass it to anyone apart from Cloudflare, below.
 
 Cloudflare hosts the receiver and its database, and carries the connection as it does for any site
 it hosts. It handles the data for Valtora as a processor, under its data processing terms.
@@ -75,6 +75,67 @@ KW_ANALYTICS=off
 The collector then sends nothing, opens no connection to the receiver and makes no install id. It
 is the only switch. Blocking `telemetry.knightwatcher.io` at your DNS or firewall also stops the
 heartbeat from arriving.
+
+## The website
+
+### Visitor counts
+
+The pages of knightwatcher.io (the landing page, this notice and the art licence) count visits
+with Cloudflare Web Analytics. Each of these pages loads a small script from Cloudflare, which
+sends Cloudflare a short report, a beacon, once the page has loaded, and another when you leave the
+page or switch away from it. A beacon holds:
+
+- the address of the page, and of the page that linked to it, if there was one;
+- how long the page took to load and draw, and how much memory its scripts used;
+- a random id for that one loading of the page, made afresh each time.
+
+Like any request, the beacon carries your browser's user agent, which Web Analytics shows only as
+the browser, the operating system and the kind of device. Cloudflare estimates the country from
+your IP address as the beacon arrives, and then discards the address at the data centre that
+received it, without storing it in its databases or logs.
+
+### What it does not do
+
+The script sets no cookie and keeps nothing in your browser's storage. Cloudflare does not use
+your IP address, your user agent or anything else to recognise you from one visit to the next. A
+visit is counted by the site a page view came from, not by who you are, so it is never linked to
+you or to your other visits.
+
+### What Valtora sees, and for how long
+
+Totals only: visits and page views by page, by the site that sent you, by country, and by browser,
+operating system and kind of device, with how fast the pages load. Valtora sees no IP address and
+no single visit. Web Analytics shows the figures for the last six months. Cloudflare keeps every
+beacon for seven days, and after that a sample of about one in ten.
+
+### Who handles it
+
+Cloudflare hosts the website and runs Web Analytics. As with any site it hosts, it receives your IP
+address with each request in order to send you the page. It handles the data for Valtora as a
+processor, under its data processing terms, which also cover handling it outside the UK. The
+website keeps no request logs of its own.
+
+### The demo, and Knightwatcher itself
+
+The demo on the landing page is Knightwatcher's own display page, running on invented data. It
+does not load the Web Analytics script. What you choose on its settings screen is kept in your
+browser's storage, on your device, until you clear it, and Valtora never receives it.
+
+Knightwatcher, the display you run at home, never loads the script either. Nothing in it sends
+anything to Web Analytics.
+
+### Why: the lawful basis
+
+Legitimate interests. Valtora needs to know how many people visit the site and which pages they
+read, to judge whether the project is reaching people and which pages need work. The counts use
+no cookie and no id that outlasts the loading of a page, and cannot be traced back to a visitor, so
+Valtora's view is that this interest does not override yours.
+
+### How to turn it off
+
+Block `static.cloudflareinsights.com` and `cloudflareinsights.com` in your browser or at your DNS.
+Many content blockers already do, Brave's and DuckDuckGo's among them. The pages work the same
+without the script.
 
 ## Mail to the support address
 
@@ -103,6 +164,9 @@ deleted. Deleted rows stay in Cloudflare's restore history for up to 30 days bef
 for good. If the memory folder has been emptied since, that id is gone, and its rows can no longer
 be traced to you.
 
+For the website, Valtora holds nothing that identifies you, so there is no visit it can find, copy
+or delete for you.
+
 `KW_ANALYTICS=off` stops new rows. It does not delete the old ones, which are deleted after 24
 months unless you ask sooner.
 
@@ -114,4 +178,4 @@ Commissioner's Office, the UK's data protection regulator, at
 
 ## Changes
 
-Changes to this notice are made in this file, and the repository's history records each one.
+Changes to this notice are made in Knightwatcher's repository, whose history records each one.

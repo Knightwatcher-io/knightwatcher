@@ -193,7 +193,8 @@ port, so it gets less than the collector:
 
 The page fetches `state.json` and, served, `api/settings` from its own origin and nothing else,
 loads no third-party script, and sends nothing anywhere but the settings chosen on its screen and
-its random display id, to its own server. Only the collector contacts anything outside the
+its random display id, to its own server. Forced into the demo by `?demo`, as on the website, it
+asks nothing under `api/` and sends nothing at all. Only the collector contacts anything outside the
 host, for the usage counts; the page and the server never do.
 
 `state.json` is not public information. The bundled server is open to anyone who can reach its
@@ -205,6 +206,14 @@ password covers the admin page alone, not the walls or `state.json`.
 The admin page fetches from its own server and nothing else: the schema, its settings, the shared
 settings, and the export. It never receives a credential, and sends the admin password only to
 sign in.
+
+## The website
+
+The website at knightwatcher.io is static files behind a small Worker that logs nothing. Its pages
+load nothing from another host but, once a token is set, Cloudflare Web Analytics' one script, and
+its demo, the page itself under `/demo/`, is held by its own Content Security Policy to its own
+files. Until launch both hostnames sit behind Cloudflare Access, and every deploy is checked to
+still be closed. [site/README.md](../site/README.md) has the headers and the checks.
 
 ## Commits
 

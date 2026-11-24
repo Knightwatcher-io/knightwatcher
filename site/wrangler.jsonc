@@ -1,0 +1,37 @@
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "knightwatcher-site",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-11-04",
+
+  // The files build.mjs writes. The Worker runs before each of them, to answer www with a redirect
+  // to the apex and to set the headers of headers.mjs; an address with no file gets the nearest
+  // 404.html, with the status 404.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  },
+
+  // Off, so no invocation log is kept. A log of each request would hold what the request carried,
+  // the visitor's address among it, and the Worker itself logs nothing.
+  "observability": {
+    "enabled": false
+  },
+
+  // Reached at these two hostnames alone, both behind Cloudflare Access until launch: no
+  // workers.dev address and no preview addresses, since neither would sit behind it.
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "knightwatcher.io", "custom_domain": true },
+    { "pattern": "www.knightwatcher.io", "custom_domain": true }
+  ],
+
+  // No scheduled work. Explicit, so a deploy clears any trigger set by hand in the dashboard.
+  "triggers": {
+    "crons": []
+  }
+}

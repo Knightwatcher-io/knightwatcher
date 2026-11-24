@@ -338,15 +338,15 @@ test('the demo\'s three events carry the collector\'s text and parts, and show t
   const s = started(), D = s.KW.demo;
   assert.deepEqual(plain(D.EVENTS), {
     goblin: { name: 'IP banned', type: 'ip_banned', text: 'BANNED 203.0.113.77 · sshd', parts: { addr: '203.0.113.77', jail: 'sshd' } },
-    crate: { name: 'Import', type: 'import', text: 'IMPORTED · The Night Shift S02E04', parts: { title: 'The Night Shift S02E04' } },
+    crate: { name: 'Import', type: 'import', text: 'IMPORTED · Saltmarsh Wardens S02E04', parts: { title: 'Saltmarsh Wardens S02E04' } },
     feast: { name: 'Backup done', type: 'backup_done', text: 'BACKUP DONE 03:12', parts: { at: '03:12' } } });
-  assert.deepEqual(['goblin', 'crate', 'feast'].map(D.captionOf), ['BANISHED 203.0.113.77 · sshd', 'DELIVERED · The Night Shift S02E04', 'STORES SAFE 03:12']);
+  assert.deepEqual(['goblin', 'crate', 'feast'].map(D.captionOf), ['BANISHED 203.0.113.77 · sshd', 'DELIVERED · Saltmarsh Wardens S02E04', 'STORES SAFE 03:12']);
   // the demo's events are types the state file maps to the same acts
   for (const [act, e] of Object.entries(D.EVENTS)) assert.equal(s.KW.state.EVENTS[e.type], act);
   // without the words, as on a deployed page before the signing run, the collector's text
   const d = sandbox();
   d.W.start([TEXT], false);
-  assert.deepEqual(['goblin', 'crate', 'feast'].map(d.KW.demo.captionOf), ['BANNED 203.0.113.77 · sshd', 'IMPORTED · The Night Shift S02E04', 'BACKUP DONE 03:12']);
+  assert.deepEqual(['goblin', 'crate', 'feast'].map(d.KW.demo.captionOf), ['BANNED 203.0.113.77 · sshd', 'IMPORTED · Saltmarsh Wardens S02E04', 'BACKUP DONE 03:12']);
   const q = d.KW.demo.quietFor(4812);
   assert.equal(d.W.quietLine(q.parts, q.text), 'ALL QUIET · 29 up · backup 03:12 · 4,812 ads blocked');
 });

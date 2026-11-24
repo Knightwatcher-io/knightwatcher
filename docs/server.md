@@ -376,7 +376,9 @@ The page tells the server is there by asking `api/settings` when it starts. With
 form above, the settings saved there are the level the settings screen writes to, for every
 display; with a `404`, or anything else, the page keeps choices in its own browser, as it does
 from disk. Served over HTTP, it also posts its display id to `api/displays`
-([The displays](#the-displays)); another server's error changes nothing. The levels, the carry-over of a browser's earlier choices and the rest are in
+([The displays](#the-displays)); another server's error changes nothing. A page forced into the
+demo by `?demo` in its address does neither: it asks nothing under `api/` and keeps its choices in
+its own browser. The levels, the carry-over of a browser's earlier choices and the rest are in
 [display.md](./display.md#settings).
 
 ## Running it

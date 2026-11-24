@@ -1,0 +1,3 @@
+# What build.mjs writes, and what wrangler writes when it builds or runs locally
+dist/
+.wrangler/
