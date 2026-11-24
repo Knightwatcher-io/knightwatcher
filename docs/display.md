@@ -12,8 +12,15 @@ bundled server in [server.md](./server.md), and how the page is built, for anyon
 quiet scenes take turns a minute each (`DEMO_TURN_MS` in `demo.js`), unless the settings set a
 length, which the demo then uses too. The demo runs
 when the page has never had a valid state file: opened from disk, served with no
-`data/state.json`, or with a stale or unreadable one. `?demo` in the address forces it even when
-a state file exists. Browsers refuse to fetch from disk, so from disk the page does not try.
+`data/state.json`, or with a stale or unreadable one. A demo that starts so is a real display
+waiting for data: it keeps asking for the state file, the shared settings and its check-in, as
+below. `?demo` in the address forces the demo even when a state file exists, and a forced demo
+asks the display's server nothing: no state file, nothing under `api/` (no shared settings, no
+writes and no display check-in), so the choices made on its screen stay in the browser, as from
+disk ([This browser's own choices](#this-browsers-own-choices)). It still fetches the static
+files beside it: the downloaded packs in `data/packs/` and, on a deployed copy, `version.json`.
+The website's demo runs this way. Browsers refuse to fetch from disk, so from disk the page does
+not try.
 
 **Wait.** Served over HTTP, the page draws the quiet scene with no words and no bar until the
 first answer for the state file arrives.
@@ -56,7 +63,7 @@ hides the review bar and drives the display:
 - The file's `defaults` go to the settings (see [Settings](#settings)), which apply any change at
   once. With each fetch of the state file the page also asks `api/settings` for the shared
   settings (see [The shared settings](#the-shared-settings)).
-- Served over HTTP, in every mode, the page makes a random id of its own once, 32 hex characters
+- Served over HTTP, in every mode but a forced demo, the page makes a random id of its own once, 32 hex characters
   kept in its browser's storage under `kw-display` (a fresh one each load where the storage
   refuses), and posts it to `api/displays` at load and every 30 minutes, so that the bundled
   server can count the displays for the collector's usage counts
@@ -127,6 +134,9 @@ file that names no version, does nothing. The repository's own `index.html` says
 whose version is `dev` never checks, so the page still opens from disk, or is served straight from
 `web/`, with no build step. The same version decides whether the page accepts an unsigned pack: only
 a `dev` page does (see [The knight from the base pack](./rig.md#the-knight-from-the-base-pack)).
+The website's demo is a copy stamped by the site's build with the commit it was built from
+([site/README.md](../site/README.md)), so an open demo reloads onto each new deploy of the site
+within about five minutes, a forced demo like any other.
 
 The mapping is the pure function `KW.state.map(file, nowMs)`, whose view carries the streams as
 `streams` (`streamsOf(facts.streams)`: the count and the sessions) and `streamsBehind`, whether
@@ -337,8 +347,8 @@ parts to the rows of the other pages. The rules for the folder and the index are
 ### The shared settings
 
 Served over HTTP, the page asks `api/settings` beside it for the deployment's settings: once at
-start, and again with every fetch of the state file, so every five seconds (on a timer of its own
-while `?demo` forces the demo). The bundled server answers
+start, and again with every fetch of the state file, so every five seconds. A demo forced by
+`?demo` never asks, and keeps its choices in the browser. The bundled server answers
 `{ "v": 1, "look": {...}, "display": {...}, "quiet": {...}, "scenes": {...} }` with only the keys
 saved ([server.md](./server.md#the-settings-api)). The fetch asks the browser to check its copy
 (`cache: "no-cache"`), so while nothing has changed the server answers `304` with no body. It is
@@ -377,7 +387,8 @@ cut off after four seconds. `KW.settings.connect` does the rest:
   all, or answers with a server error, is asked again at the next poll, and the page stays as it
   is meanwhile.
 
-From disk the page asks nothing: there is no server, and the choices are this browser's.
+From disk, or forced into the demo by `?demo`, the page asks nothing, and the choices are this
+browser's.
 
 ### This browser's own choices
 
@@ -389,8 +400,9 @@ it did, each condition in its own scene. A choice is saved the moment it is made
 storage, as a private window may, the page works all the same, the choices last until it is
 reloaded, and the console says so once. A stored text that is not JSON, or not version 1, is
 ignored whole, and a stored value the page does not know is ignored alone. The choices belong to
-that one browser, so other displays keep their own. This is how the page behaves from disk, as
-the website's demo, and served by a web server other than the bundled one.
+that one browser, so other displays keep their own. This is how the page behaves from disk, in a
+demo forced by `?demo` (the website's demo among them), and served by a web server other than the
+bundled one.
 
 **The store.** `KW.settings.create({ hooks, storage, pack, world, say, cache })` holds the levels (`world`,
 a function giving `{ can, homes }`, defaults to `pageWorld`, and a test passes its own; `cache`
@@ -665,7 +677,7 @@ down is used.
 | `mh=`, `mr=` | the monarch's hair and robe: the id of one of the base pack's hair swatches and of one of its tabard swatches, such as `mh=silver&mr=teal`. Without them, each monarch's own colours |
 | `sc=` | the scene a condition plays in: `<condition>:<scene>`, by the contract's ids, separated by commas, such as `sc=cpu_hot:camp,pi_silent:battlement`. A pair the page cannot act is ignored, with a line in the console |
 | `ck=` | the clock: `24`, or `12` for 9:42 with a small PM |
-| `set=` | opens the settings screen at load on a page: `world`, `knight`, `monarch`, `pet` (the cast), `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots |
+| `set=` | opens the settings screen at load on a page: `world`, `knight`, `monarch`, `pet` (the cast), `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots. A later change of the hash to one holding `set=<page>` opens the screen at that page without a reload, and takes the `set=` out of the hash again, so the same change works each time; the website's Open the settings button sets its demo frame's hash so. `set=hold` does nothing then |
 | `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `device_down` on, the knight looks towards the first device that is down and alerts |
 | `wd=` | the world: `medieval`, or a loaded world by its long name, such as `wd=kw.example/world.neon`, chosen at the address's level, so that it sets every part the address leaves alone. A hook's value may hold the slash of a long name, as `bd=kw.example/body.courier` or `sk=kw.example/chrome` |
 | `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`, or a loaded body by its long name. A page that cannot draw from the base pack draws Classic whatever the hook says |
@@ -690,7 +702,8 @@ The demo rewrites the hash as its settings change, with the contract's ids in `o
 (`KW.hooks.fixed`), so that a reload keeps the bar's choice and otherwise leaves the settings' in
 force. The test hooks (`t=`, `kx=`, `dv=`, `pl=`, `set=`, the settings hooks, `f=`, `fa=`, `e=`, `sw=`, `st=` and `sm=`)
 are read once when the page loads, and the rewritten hash leaves them out, so they last until the
-page is opened again.
+page is opened again. `set=` alone is also read on a change of the hash, as the table says. The
+demo rewrites the hash with `history.replaceState`, which is no such change.
 
 ## The admin page
 

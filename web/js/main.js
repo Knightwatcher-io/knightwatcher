@@ -2,7 +2,8 @@
    and adds the downloaded ones from data/packs/, applies the settings and mounts their screen, sizes
    the canvas to the screen, keeps the clock and the words over the scene, runs the frames, chooses
    between the demo and live data, keeps the shared settings in step with the server, and reloads
-   the page when a new version of it has been deployed.
+   the page when a new version of it has been deployed. A forced demo, ?demo in the address, asks
+   the display's server nothing.
    docs/display.md describes the modes, the settings and the address's test hooks. */
 (function (KW) {
   'use strict';
@@ -97,9 +98,14 @@
   const scHook = (H0.match(/[#&]sc=([^&]*)/) || [])[1];
   if (scHook !== undefined) for (const item of scHook.split(',').filter(Boolean)) { const [c, v] = item.split(':'); HOOK.scenes[c] = v === undefined ? '' : v; }
   /* Served, the page starts from its copy of the shared settings, if it has one, until the server
-     answers; from disk there is no server to ask. */
+     answers; from disk there is no server to ask. ?demo in the address forces the demo, which asks
+     the server nothing either: no state file, no shared settings and no display check-in, so the
+     choices made on its screen stay in this browser, as from disk. The website's demo runs so.
+     talks says whether the page talks to the display's server. */
   const fromDisk = location.protocol === 'file:';
-  const store = KW.settings.create({ hooks: HOOK, storage: () => window.localStorage, pack: () => KW.knight.basePack(), cache: !fromDisk });
+  const forceDemo = new URLSearchParams(location.search).has('demo');
+  const talks = !fromDisk && !forceDemo;
+  const store = KW.settings.create({ hooks: HOOK, storage: () => window.localStorage, pack: () => KW.knight.basePack(), cache: talks });
   let lookKey = '{}', kindsKey = '', wordsKey = '', ovReady = false, twelve = false;
   /* Puts what the settings say into the knight, the options and the clock. Returns whether the
      knight's look changed. */
@@ -209,7 +215,9 @@
 
   /* ---- Modes ---------------------------------------------------------------------------------
      wait: served over HTTP, before the first answer for the state file. The quiet scene, no words.
-     demo: no valid state file yet, opened from disk, or ?demo in the address.
+     demo: no valid state file yet, opened from disk, or ?demo in the address. A demo the page
+           starts itself, for want of a valid state file, keeps asking for one; a forced one asks
+           nothing (talks, above).
      live: a valid state file has arrived. A fetch that fails, or a file that cannot be read, keeps
            the last valid state until that file is older than three of its intervals. From then,
            and at once for a stale file or an unknown schema, the last scene stays under NO SIGNAL
@@ -218,7 +226,6 @@
   /* How long each quiet scene lasts while they take turns in live mode. */
   const LIVE_TURN_MS = 10 * 60 * 1000;
   let mode = 'wait', lastGood = null, lastSeq = null, shown = '', wakeLock = null, asking = false;
-  const forceDemo = new URLSearchParams(location.search).has('demo');
 
   function showOnce(t) { const key = JSON.stringify(t); if (key !== shown) { shown = key; KW.ui.show(t); } }
   function startDemo() { mode = 'demo'; Demo.start(); fit(); Demo.hooks(); }
@@ -329,11 +336,11 @@
   const screen = KW.settings.mount({ store, surface, info: () => ({ version: ownVersion, mode, view: lastGood }), time: () => (freeze ? KW.hooks.t : performance.now()) });
 
   /* ---- The shared settings ------------------------------------------------------------------------
-     Served, the page asks api/settings beside it at start and with every fetch of the state file
-     (every five seconds while the demo is forced), and sends each choice made on the screen there
-     (KW.settings.connect). The Knightwatcher server keeps them for every display; with any other
-     server the page finds none there and keeps the choices in this browser, as from disk. A GET
-     revalidates the browser's copy, which the server answers with 304 while nothing has changed. */
+     Served, the page asks api/settings beside it at start and with every fetch of the state file,
+     and sends each choice made on the screen there (KW.settings.connect). The Knightwatcher server
+     keeps them for every display; with any other server the page finds none there and keeps the
+     choices in this browser, as from disk. A GET revalidates the browser's copy, which the server
+     answers with 304 while nothing has changed. A forced demo asks nothing (talks). */
   async function settingsRequest(method, body) {
     const ctl = new AbortController(), cut = setTimeout(() => ctl.abort(), 4000);
     try {
@@ -345,18 +352,31 @@
       return { status: r.status, json };
     } finally { clearTimeout(cut); }
   }
-  const sync = fromDisk ? null : KW.settings.connect({ store, request: settingsRequest, storage: () => window.localStorage, reload: () => location.reload(),
+  const sync = !talks ? null : KW.settings.connect({ store, request: settingsRequest, storage: () => window.localStorage, reload: () => location.reload(),
     holding: () => !!(screen && screen.isOpen()), note: text => { if (screen) screen.note(text); } });
-  if (sync) { sync.poll(); if (forceDemo) setInterval(sync.poll, 5000); }
+  if (sync) sync.poll();
   // the cue as it looks seven tenths of the way through a hold, over the knight's head
   if (screen && hv('set') === 'hold') { const b = surface.getBoundingClientRect(); screen.cue(b.left + b.width * .52, b.top + b.height * .42, .7); }
   else if (screen && hv('set')) screen.open(hv('set'));
+  /* The settings screen opened from outside the page: a change of the hash to one holding
+     set=<page> opens the screen at that page without a reload, as the website's Open the settings
+     button does to the demo in its frame. set=hold is for screenshots at load and does nothing
+     here. The set= is taken out of the hash again, so that the same change opens the screen the
+     next time too. */
+  window.addEventListener('hashchange', () => {
+    const page = (location.hash.match(/[#&]set=([\w-]+)/) || [])[1];
+    if (!screen || !page || page === 'hold') return;
+    const rest = location.hash.slice(1).split('&').filter(kv => kv && !kv.startsWith('set='));
+    history.replaceState(null, '', location.pathname + location.search + (rest.length ? '#' + rest.join('&') : ''));
+    screen.open(page);
+  });
   requestAnimationFrame(frame);
   // Browsers refuse to fetch from disk, so a page opened from disk does not try.
-  if (!fromDisk && !forceDemo) ST.start(onView);
+  if (talks) ST.start(onView);
   /* Served, the page tells the server it is showing, by a random id of its own, at load and every
-     30 minutes, so that the collector can count the displays (KW.state.reportDisplay). */
-  if (!fromDisk) {
+     30 minutes, so that the collector can count the displays (KW.state.reportDisplay). A forced
+     demo does not. */
+  if (talks) {
     ST.reportDisplay({ fetch: (url, init) => fetch(url, init), every: (f, ms) => setInterval(f, ms), storage: () => window.localStorage,
       random: n => crypto.getRandomValues(new Uint8Array(n)) });
   }

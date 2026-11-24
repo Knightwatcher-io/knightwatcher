@@ -154,6 +154,7 @@ For contributors:
 - [Loading a world](docs/world-loading.md): `KW.world`, where the scenes are drawn from, failures, and the two copies of the medieval world
 - [The tests](docs/tests.md): every test file and what it checks, and the test world
 - [The screenshots](docs/shots.md): taking and comparing them, and what an older reference shows
+- [The website](site/README.md): knightwatcher.io, its build, the demo, the headers, and deploying it
 
 ## Licence
 

@@ -88,9 +88,9 @@ a minute, so a flood cannot crowd out real installs. It is **never stored and ne
 The receiver keeps no request logs at all.
 
 The receiver runs on Cloudflare, which carries the connection as it would for any site it hosts.
-Only the project's maintainer can see what is stored. The receiver has no way to read it back: it
-answers a heartbeat with a status code alone, or with the name of the field it refused, and every
-other request with an empty refusal.
+Only Valtora, who maintains Knightwatcher, can see what is stored, on a private page behind a
+sign-in. The receiver has no way to read it back: it answers a heartbeat with a status code alone,
+or with the name of the field it refused, and every other request with an empty refusal.
 
 ## When it is sent
 

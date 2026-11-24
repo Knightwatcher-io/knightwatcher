@@ -8,8 +8,8 @@ touching `collector/`, [server.md](./server.md) before touching `server/`;
 [packs.md](./packs.md) and [library.md](./library.md) before touching `web/js/pack.js` or a pack
 file; and [world-loading.md](./world-loading.md), [scenes.md](./scenes.md) and
 [cast.md](./cast.md) before touching `web/js/world.js`, the medieval world's pack or a scene it
-holds. What the tests check is in [tests.md](./tests.md), and the screenshots in
-[shots.md](./shots.md).
+holds. The website at knightwatcher.io is described in [site/README.md](../site/README.md). What
+the tests check is in [tests.md](./tests.md), and the screenshots in [shots.md](./shots.md).
 
 ## Layout
 
@@ -34,6 +34,9 @@ server/              the bundled server: Python, standard library only, reusing 
                      admin page's password, sessions, store, checks and export, displays.py the
                      displays seen, stamp.py the page's version stamp at build time)
 telemetry/           the Cloudflare Worker that receives the usage heartbeat; see telemetry/README.md
+site/                the website at knightwatcher.io: its pages and pictures, build.mjs, which writes
+                     dist/ with the legal pages from legal/ and a stamped copy of web/ as the demo,
+                     the Worker that serves it and a local preview; see site/README.md
 tests/
   collector/         unittest tests for the collector
     fixtures/port/   what the collector wrote before the provider engine, for the same polls, which
@@ -60,6 +63,7 @@ tests/
                      format 1.2 that the tests of weapons that fire make in memory
   tools/             node tests for tools/deploy.sh, tools/pack-carrier.js, tools/sign-pack.js,
                      tools/settings-schema.js, tools/cat-stamps.js and tools/check-private.sh
+  site/              node tests for the website's build, its markdown renderer and its Worker
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version
   pack-carrier.js    writes the carrier of each pack in web/packs/
@@ -223,6 +227,17 @@ own dependencies, kept out of the image by `.dockerignore`. It needs Node 24 or 
 tools/capped.sh npm --prefix telemetry run typecheck
 tools/capped.sh npm --prefix telemetry test
 ```
+
+The website, in `site/`, needs Node 24 or newer and nothing else. Its tests, and the build, which
+writes `site/dist/` (ignored by git):
+
+```bash
+tools/capped.sh node --test --test-concurrency=2 tests/site/
+tools/capped.sh node site/build.mjs
+```
+
+The build copies `web/` into the site as its demo, so a change to the page reaches the website with
+the next deploy; [site/README.md](../site/README.md) says how to preview the site and deploy it.
 
 After any change to a weapon, the strike, the goblin or a scene that hosts it, run the contact
 sweep as well. The page's tests hold the swung weapons to the contact standard at a few dozen spots;

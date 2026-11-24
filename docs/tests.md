@@ -23,6 +23,7 @@ out.
 | `tests/web/knight.test.js` | the knight call by call against the stored record, the arm and blade checks, the gear at rest |
 | `tests/web/knight-free-classic.test.js`, `knight-free-broad.test.js`, `knight-free-slim.test.js` | the free items' checks of `knight.test.js`, one build each in a process of its own |
 | `tests/web/loading.test.js` | the downloaded packs, the refusals and the knight drawn from code |
+| `tests/web/main.test.js` | `main.js`'s calls to the display's server in each mode (a forced demo asks nothing under `api/` and no state file), and the hash listener that opens the settings screen |
 | `tests/web/orbit.test.js`, `orbit-body.test.js`, `orbit-parts.test.js`, `orbit-swap.test.js` | the test world: read and drawn, its body at the ends of the ranges, its devices, cast and overlay, and the whole swap ([The test world](#the-test-world)) |
 | `tests/web/pack.test.js` | the pack library and format 1.0 |
 | `tests/web/pet.test.js` | the mouser cat from the pack against the code, and the engine's catch |
@@ -45,6 +46,9 @@ out.
 | `tests/tools/pack-carrier.test.js` | each carrier pushes its pack file's exact text |
 | `tests/tools/settings-schema.test.js` | `tools/settings-schema.js` and what it writes |
 | `tests/tools/sign-pack.test.js` | the signing tool, and the shipped packs' signatures |
+| `tests/site/build.test.mjs` | the website's build: the pages and the demo (no `admin/` or `data/`, stamped with the commit, never `dev`, the stamp the same as `server/stamp.py`'s), the legal pages against `legal/`, the Web Analytics snippet, `_headers`, no outside host in the demo, and the local preview |
+| `tests/site/markdown.test.mjs` | the legal pages' markdown renderer: escaping, links, lists, headings and their ids, and everything outside its subset refused |
+| `tests/site/worker.test.mjs` | the website's Worker, the redirect from `www` and the headers it sets, and `wrangler.jsonc` |
 | `tests/collector/test_cli.py` | `--check-config`, `--once` and `--health` |
 | `tests/collector/test_conditions.py` | the conditions the collector judges: holding and clearing, CPU and memory, and the rest |
 | `tests/collector/test_config.py` | reading `config.toml`: defaults, paces, ranges, removed and unknown settings; the committed example as it stands (the general sources alone) and with every commented table taken in |
@@ -537,6 +541,39 @@ repository's own, and the pack carriers against their pack files:
 ```bash
 node --test tests/tools/
 ```
+
+`tests/web/main.test.js` runs `main.js` in a sandbox, with the real `state.js` and stand-ins for the
+drawing, the engine, the demo, the knight, the world and the settings that take any call. It
+records every fetch and runs every timer `main.js` sets once, so a call made on a timer counts as
+well as one made at load. Served without `?demo`, the page asks for `data/state.json`,
+`api/settings` and `api/displays`, which shows the sandbox sees the calls; with `?demo`, on a `dev`
+page and a stamped one, it asks for nothing under `api/` and no state file, fetches only
+`data/packs/index.json` and, stamped, `version.json`, and never connects the shared settings; from
+disk it fetches nothing. A change of the hash to one with `set=<page>` opens the screen at that
+page, takes `set=` out of the hash so the same change opens it again, and `set=hold` or a hash
+without `set=` opens nothing.
+
+## The website's tests
+
+```bash
+node --test tests/site/
+```
+
+`tests/site/build.test.mjs` builds the site into scratch folders from a copy of `web/`, `site/` and
+`legal/` with a `web/data/` added, once without a Web Analytics token and once with an invented
+one, and removes them afterwards. It checks that every page, asset and file the landing page names
+is written; that `demo/` is `web/` file for file without `admin/` and `data/`, but for the stamped
+`index.html` and `version.json`; that the stamp is the commit's, never `dev`, on every local script
+and stylesheet, and the same bytes `server/stamp.py` gives (skipped without `python3`); that the
+version comes from `WORKERS_CI_COMMIT_SHA` or git and the build fails without one; that every block
+and heading of `legal/PRIVACY.md` and `legal/ART-LICENCE.md` reads on its page, with the contents
+listed; that the snippet is in no file without a token and, with one, on the landing and legal
+pages alone, never in `demo/` or the 404 page; that a token that is not letters and digits is
+refused; `_headers` line for line; that no file of the demo names an outside host and no page has an
+inline script, style or handler; and that the preview answers with the headers, the folders and the
+404 page. `tests/site/markdown.test.mjs` holds the renderer to its subset and its escaping, and
+`tests/site/worker.test.mjs` sends requests through the Worker with a stand-in for the static
+files, and reads `wrangler.jsonc`.
 
 ## The contact standard
 

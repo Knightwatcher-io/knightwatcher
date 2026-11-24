@@ -399,6 +399,8 @@ and the bellows stand at the forge's foot: `on-update`, `arm-update`, `bd-b-on-u
 `cat-ginger-smithy` and `cat-smithy-pounce`, and in the worlds' set the Bridge, whose anvil plays the
 same act, `orbit-update`, `orbit-fire-update` and `orbit-fire-prod-update`; `settings-quiet` lists
 the smithy among the quiet scenes; `settings-status` and `settings-status-world` name `kw.medieval`
-0.8.0; and the ten shots of the three acts are missing. Every other shot is the same.
+0.8.0; and the ten shots of the three acts are missing. Every other shot is the same. Against a
+reference from before the demo's import was given an invented title, `crate` and
+`cat-yard-crate-pounce` differ in the caption, which now reads `Saltmarsh Wardens S02E04`.
 A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.

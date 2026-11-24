@@ -27,7 +27,7 @@
      send for it; the caption shown is built from the parts in the world's words. */
   const EVENTS = {
     goblin: { name: 'IP banned',   type: 'ip_banned',   text: 'BANNED 203.0.113.77 · sshd',          parts: { addr: '203.0.113.77', jail: 'sshd' } },
-    crate:  { name: 'Import',      type: 'import',      text: 'IMPORTED · The Night Shift S02E04',   parts: { title: 'The Night Shift S02E04' } },
+    crate:  { name: 'Import',      type: 'import',      text: 'IMPORTED · Saltmarsh Wardens S02E04', parts: { title: 'Saltmarsh Wardens S02E04' } },
     feast:  { name: 'Backup done', type: 'backup_done', text: 'BACKUP DONE 03:12',                   parts: { at: '03:12' } } };
   /* The invented streams, in the order they started. The address's st= sets how many play (1 to 3,
      3 without it) and sm= the collector's setting show (names, titles or count, names without
