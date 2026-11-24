@@ -9,6 +9,8 @@ import worker from '../../site/src/index.mjs';
 import { headersFor, siteCsp, DEMO_CSP } from '../../site/headers.mjs';
 
 const read = p => fs.readFileSync(new URL('../../site/' + p, import.meta.url), 'utf8');
+// the Web Analytics token the Worker reads from site.json, '' while there is none
+const TOKEN = JSON.parse(read('site.json')).analyticsToken || '';
 /* The static files' binding, answering every request with `status` and recording each. */
 const assets = (status = 200) => {
   const seen = [];
@@ -31,8 +33,8 @@ test('www.knightwatcher.io answers 301 to the same path and query on the apex, w
 
 test('the apex passes each request to the files and sets the headers for its path', async () => {
   for (const [url, csp, frame] of [
-    ['https://knightwatcher.io/', siteCsp(''), 'DENY'],
-    ['https://knightwatcher.io/privacy/', siteCsp(''), 'DENY'],
+    ['https://knightwatcher.io/', siteCsp(TOKEN), 'DENY'],
+    ['https://knightwatcher.io/privacy/', siteCsp(TOKEN), 'DENY'],
     ['https://knightwatcher.io/demo/?demo', DEMO_CSP, 'SAMEORIGIN'],
     ['https://knightwatcher.io/demo/js/main.js', DEMO_CSP, 'SAMEORIGIN']]) {
     const env = assets();
@@ -49,7 +51,7 @@ test('the apex passes each request to the files and sets the headers for its pat
   // the 404 page keeps its status
   const res = await worker.fetch(new Request('https://knightwatcher.io/no-such-page'), assets(404));
   assert.equal(res.status, 404);
-  assert.equal(res.headers.get('content-security-policy'), siteCsp(''));
+  assert.equal(res.headers.get('content-security-policy'), siteCsp(TOKEN));
   assert.deepEqual(headersFor('/demo'), headersFor('/demo/x'));
   assert.notDeepEqual(headersFor('/demonstration'), headersFor('/demo/'));
 });
