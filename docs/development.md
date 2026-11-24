@@ -342,8 +342,7 @@ which adds the mouser cat and the redesigned scenes and devices, was signed on 1
 the base pack and version 0.7.1 of the medieval world's pack change only the licence line, to the
 [art licence](../legal/ART-LICENCE.md), and were both signed on 23 November. Version 0.8.0 of the
 medieval world's pack, which moves it to format `[1, 3]` and gives the smithy its three acts, the
-hammer, the bellows and the quench, ships unsigned until its signing run; the base pack is
-unchanged. A signed version is drawn from by a deployed
+hammer, the bellows and the quench, was signed on 24 November; the base pack is unchanged. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature

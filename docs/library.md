@@ -382,8 +382,7 @@ base pack's items falls back on any build.
 `[1, 3]`, version 0.8.0. Versions 0.1.0 (the cellar alone) to 0.7.0, which adds the mouser cat and
 the redesigned scenes and devices, and version 0.7.1, which changes only the
 licence line, are signed with `kw1`; version 0.8.0, which gives the smithy its three acts (format
-1.3's bellows and quench) and makes it a quiet scene of the preset, ships unsigned until its
-signing run. It holds every scene as data, the three
+1.3's bellows and quench) and makes it a quiet scene of the preset, is signed with `kw1` too. It holds every scene as data, the three
 monarchs, the goblin, the fly and the mouser cat as its cast, the devices as the prop set
 `props.medieval`, the word set `words.medieval`, the overlay `overlay.phosphor`, the preset
 `world.medieval`, the stamps the scenes and devices use (the sconce, the barrel, the house's peg and
