@@ -1375,7 +1375,12 @@
         if (sc.paint) sc.paint(s); sc.draw(2300, s); K.draw(o2);
       });
     }
-    const CROP = { x: 700, y: 160, w: 240, h: 372 };
+    /* The throne and whoever sits it, from the court drawn on the grid: the throne stands at x 770
+       with its armrests from 660 to 880 and its finial's tip at 160, and the dais's lowest step ends
+       at 532. The frame is centred on the throne with 10 pixels to spare at each side and 12 over
+       the finial, so every monarch's crown and every patron on the same throne show whole. 240 by
+       384 halves and thirds to whole pixels, which the picture choices are drawn at (blitWhole). */
+    const CROP = { x: 650, y: 148, w: 240, h: 384 };
     function monarchPicture(mon, e) {
       const p = e.patron, key = 'court|' + mon + '|' + [p.skin, p.hair, p.robe].map(x => (x ? x.id : '')).join('|');
       if (pics.has(key)) return pics.get(key);
@@ -1446,6 +1451,21 @@
       const f = Math.min(w / src.width, h / src.height), s = f >= 2 ? Math.floor(f) : f, dw = src.width * s, dh = src.height * s;
       c.drawImage(src, Math.round((w - dw) / 2), Math.round(h - dh), Math.round(dw), Math.round(dh));
     }
+    /* Draws src into dst by whole steps only, larger (twice, three times) or smaller (a half, a
+       third), the bottom edges together, so that no pixel of the art is smeared over two: a half is
+       an even average of each two by two, a third every third pixel. For the monarchs' cards, half
+       the crop where a CSS pixel is one device pixel and the crop itself where it is two, and the
+       devices' cards, the frame's own size or twice it. */
+    function blitWhole(dst, src) {
+      const dpr = window.devicePixelRatio || 1, w = Math.round(dst.clientWidth * dpr), h = Math.round(dst.clientHeight * dpr);
+      if (!w || !h) return;
+      if (dst.width !== w) dst.width = w; if (dst.height !== h) dst.height = h;
+      const c = dst.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
+      const f = Math.min(w / src.width, h / src.height), s = f >= 1 ? Math.floor(f) : 1 / Math.ceil(1 / f - 1e-9);
+      c.imageSmoothingEnabled = s < 1; c.imageSmoothingQuality = 'low';
+      const dw = Math.round(src.width * s), dh = Math.round(src.height * s);
+      c.drawImage(src, Math.round((w - dw) / 2), h - dh, dw, dh);
+    }
     /* The knight's preview: helmet on and helmet off side by side on a plain wall, drawn by the
        knight's own code every frame while the page is open, so the blink and the bob show. */
     const PV = { w: 500, h: 380, floor: 345, at: [[118, true], [362, false]] };
@@ -1467,9 +1487,21 @@
 
     /* ---- The rows ----------------------------------------------------------------------------------
        A row of choices. Each choice: { id, name, fill, chip (text), html, node (an element for the
-       chip), kind ('text', 'wide', 'pic'), label, off (greyed, with offNote said when tapped). */
+       chip), kind ('text', 'wide', 'pic'), label, off (greyed, with offNote said when tapped).
+       The choices sit in an even grid (settings.css) whose cells the row's kind sets: words in two
+       or three equal columns, by the room the row has; swatches, a choice with no kind, in equal
+       cells a little wider than the chip; and pictures in equal cells the width of their kind's
+       chip. A row of mixed kinds wraps as it comes. */
+    const TEXT_KINDS = ['text', 'wide'];
+    function gridOf(choices) {
+      const kinds = [...new Set(choices.map(c => c.kind || 'swatch'))];
+      if (kinds.every(k => TEXT_KINDS.includes(k))) return 'kws-grid g-text';
+      if (kinds.length > 1) return 'kws-grid g-mixed';
+      return kinds[0] === 'swatch' ? 'kws-grid g-swatch' : 'kws-grid g-pic k-' + kinds[0];
+    }
     function row(key, label, choices, cur, pick, hookNote) {
-      const r = el('div', 'kws-row'), opts = el('div', 'kws-opts'), note = el('div', 'kws-note', st.notes[key] || hookNote || '');
+      const r = el('div', 'kws-row'), box = el('div', 'kws-opts'), opts = el('div', gridOf(choices)), note = el('div', 'kws-note', st.notes[key] || hookNote || '');
+      box.appendChild(opts);
       r.appendChild(el('div', 'kws-label', label));
       for (const c of choices) {
         const on = c.id === cur, b = el('button', 'kws-opt' + (c.kind ? ' ' + c.kind : '') + (on ? ' on' : '') + (c.off ? ' off' : ''));
@@ -1491,7 +1523,7 @@
         });
         opts.appendChild(b);
       }
-      r.appendChild(opts); r.appendChild(note);
+      r.appendChild(box); r.appendChild(note);
       return r;
     }
     function toggle(label, on, flip, focus) {
@@ -1616,19 +1648,22 @@
         } finally { if (swap) K.look(now); }
       });
     }
-    /* A device of one kind as the set draws it, up and still, in a frame of 88 by 70 grid pixels
-       about the drawing, so that every kind shows at the same scale. */
+    /* A device of one kind as the set draws it, up and still, in a frame of 130 by 104 grid pixels
+       about the drawing, so that every kind shows at the same scale. The largest drawings, the
+       medieval crystal (95 tall with its glow) and the test world's host (100 wide), fit it with a
+       margin; the card is the frame's size and drawn by whole steps (blitWhole). */
+    const DEV = { w: 130, h: 104, big: 300 };
     function devicePicture(set, kind) {
       const key = 'dev|' + set + '|' + kind;
       if (!pics.has(key)) {
         const got = KW.world && KW.world.drawingOf ? KW.world.drawingOf(set, kind).kind : null, k = got || P.KINDS[kind] || P.KINDS.box;
-        const big = document.createElement('canvas'); big.width = 200; big.height = 200;
+        const N = DEV.big, big = document.createElement('canvas'); big.width = N; big.height = N;
         const bc = big.getContext('2d');
-        onGrid(bc, () => k.draw(100, 160, 1200, true));
-        const px = bc.getImageData(0, 0, 200, 200).data;
-        let x0 = 200, y0 = 200, x1 = 0, y1 = 0;
-        for (let y = 0; y < 200; y++) for (let x = 0; x < 200; x++) if (px[(y * 200 + x) * 4 + 3] > 8) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-        const W = 88, H = 70, cx = Math.round((x0 + x1) / 2), cy = Math.round((y0 + y1) / 2);
+        onGrid(bc, () => k.draw(N / 2, N * 0.7, 1200, true));
+        const px = bc.getImageData(0, 0, N, N).data;
+        let x0 = N, y0 = N, x1 = 0, y1 = 0;
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (px[(y * N + x) * 4 + 3] > 8) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+        const W = DEV.w, H = DEV.h, cx = Math.round((x0 + x1) / 2), cy = Math.round((y0 + y1) / 2);
         const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
         cv.getContext('2d').drawImage(big, cx - W / 2, cy - H / 2, W, H, 0, 0, W, H);
         pics.set(key, cv);
@@ -1717,8 +1752,9 @@
     function foePicture(id) {
       const key = 'foe|' + id;
       if (!pics.has(key)) {
-        const set = (KW.cast && KW.cast.foes) || P.FOES || {}, f = set[id] || set.goblin, cv = document.createElement('canvas'); cv.width = 160; cv.height = 240;
-        if (f) { const sp = f.pose('stand'); cv.getContext('2d').drawImage(sp, 80 - f.anchor[0], 232 - f.anchor[1]); }
+        // 168 by 252, the card's shape, with room for the goblin's club, which reaches 82 left of its feet
+        const set = (KW.cast && KW.cast.foes) || P.FOES || {}, f = set[id] || set.goblin, cv = document.createElement('canvas'); cv.width = 168; cv.height = 252;
+        if (f) { const sp = f.pose('stand'); cv.getContext('2d').drawImage(sp, 84 - f.anchor[0], 244 - f.anchor[1]); }
         pics.set(key, cv);
       }
       return pics.get(key);
@@ -1978,10 +2014,10 @@
     /* What does not move: the monarchs, the pets and the scenes. */
     function paintStill(r) {
       const e = monOf(r);
-      main.querySelectorAll('canvas[data-mon]').forEach(cv => blit(cv, monarchPicture(cv.dataset.mon, e), true));
+      main.querySelectorAll('canvas[data-mon]').forEach(cv => blitWhole(cv, monarchPicture(cv.dataset.mon, e)));
       main.querySelectorAll('canvas[data-scene]').forEach(cv => blit(cv, scenePicture(cv.dataset.scene, r.values.display.helmet_indoors), true));
       main.querySelectorAll('canvas[data-world]').forEach(cv => blit(cv, worldPicture(cv.dataset.world, r.values.display.helmet_indoors), true));
-      main.querySelectorAll('canvas[data-device]').forEach(cv => { const [set, kind] = cv.dataset.device.split('|'); blit(cv, devicePicture(set, kind), false); });
+      main.querySelectorAll('canvas[data-device]').forEach(cv => { const [set, kind] = cv.dataset.device.split('|'); blitWhole(cv, devicePicture(set, kind)); });
       const ct = $('kws-court'); if (ct) blit(ct, monarchPicture(r.values.look.monarch, e), false);
       main.querySelectorAll('canvas[data-foe]').forEach(cv => blit(cv, foePicture(cv.dataset.foe), false));
       main.querySelectorAll('canvas[data-critter]').forEach(cv => blit(cv, critterPicture(cv.dataset.critter), false));

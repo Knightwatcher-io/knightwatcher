@@ -404,3 +404,8 @@ reference from before the demo's import was given an invented title, `crate` and
 `cat-yard-crate-pounce` differ in the caption, which now reads `Saltmarsh Wardens S02E04`.
 A headless browser has no saved choices, so every shot shows what its address asks for.
 [page.md](./page.md) has the rest.
+
+Against a reference from before the choices' even grid on the settings screen, every settings shot that
+shows choices differs (the grid, the framing of the monarch and of the devices, and the rings at the
+list's left edge no longer clipped), and so do the seven `worldmix-` shots; every other shot is the
+same.
