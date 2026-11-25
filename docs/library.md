@@ -163,11 +163,13 @@ before. The lists are the same for either: no list holds the stowed view yet.
 `animate(decoration, t)` takes a `t` that is not a finite number, or is negative, as 0, and returns
 finite values and well-formed colours for every `t`.
 
-Constants: `FORMAT` (`[1, 3]`), `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STEPS`, `SLOTS`,
+Constants: `FORMAT` (`[1, 4]`), `PREFIX`, `BASE_ID`, `LIMITS`, `ANCHOR_SPAN`, `RANGE`, `STEPS`, `SLOTS`,
 `ANCHORS`, `ANCHOR`, `FRAME_SX`, `FRAME_SY`, `FRAME_FL`, `VALUES`, `VALUE`, `MEASURES`, `TORSO`, `BASE`, `KEYS`,
 `ORDERS`, for format 1.1 `WORLD_LIMITS`, `WORLD_LISTS` (the closed lists: conditions, round acts,
 hosts, predicates, marks, triggers, effects, roles, exits, foe poses, fonts, device kinds and their
-classes and boxes, labels, placeholders and the status colours' bands), `SCENE_RANGE` and `ACT_RANGE`
+classes and boxes, labels, placeholders and the status colours' bands; and for format 1.4 the round
+acts and the quiet conditions it adds, the taller class boxes, the television's stands and box, the
+watcher's boots and the floor line), `SCENE_RANGE` and `ACT_RANGE`
 (with format 1.3's `pump`), and for format 1.2 `FIRE_LISTS` (a weapon's uses, the shot kinds, the stowed view's layers and anchors, and
 the foe's pose `aim`).
 
@@ -403,16 +405,18 @@ base pack's items falls back on any build.
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 3]`, version 0.9.0. Versions 0.1.0 (the cellar alone) to 0.7.0, which adds the mouser cat and
+`[1, 4]`, version 0.10.0. Versions 0.1.0 (the cellar alone) to 0.7.0, which adds the mouser cat and
 the redesigned scenes and devices, and version 0.7.1, which changes only the
 licence line, are signed with `kw1`; version 0.8.0, which gives the smithy its three acts (format
 1.3's bellows and quench) and makes it a quiet scene of the preset, is signed with `kw1` too.
 Version 0.9.0, which redraws the goblin as the pot-thief and puts the pack under CC BY-SA 4.0,
-was signed on 25 November. It holds every scene as data, the three
-monarchs, the goblin, the fly and the mouser cat as its cast, the devices as the prop set
-`props.medieval`, the word set `words.medieval`, the overlay `overlay.phosphor`, the preset
-`world.medieval`, the stamps the scenes and devices use (the sconce, the barrel, the house's peg and
-the lamps of the pie, the owl, the crystal, the flask and the chest), the cat's twenty-two poses as
+was signed on 25 November. Version 0.10.0, which moves it to format `[1, 4]` for the knight's patrol,
+the television in every scene and the devices' resting places, ships unsigned until its signing run.
+It holds every scene as data, the three
+monarchs, the goblin, the fly and the mouser cat as its cast, the devices and the television as the
+prop set `props.medieval`, the word set `words.medieval`, the overlay `overlay.phosphor`, the preset
+`world.medieval`, the stamps the scenes and devices use (the sconce, the barrel and the tall barrel,
+the house's peg and the lamps of the pie, the owl, the crystal, the flask and the chest), the cat's twenty-two poses as
 stamps of pix shapes in runs, and one palette entry, `house.screen`, the television's colour. The
 page draws those scenes, devices and the cast from it, builds the quiet line and the captions in its
 words and takes the colours of the words over the scene from its overlay, on a `dev` page, and on a

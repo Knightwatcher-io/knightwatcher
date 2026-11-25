@@ -185,10 +185,10 @@ test('one changed value in any world section breaks the signature', () => {
 
 // ---- Versions ------------------------------------------------------------------------------------------
 
-test('the library reads [1, 0] to [1, 3] and refuses [1, 4] at the format step', () => {
-  assert.deepEqual(PK.FORMAT, [1, 3]);
-  for (const f of [[1, 0], [1, 1], [1, 2], [1, 3]]) assert.equal(load(small(f)).ok, true, f.join('.'));
-  for (const f of [[1, 4], [1, 5]]) assert.deepEqual(load(small(f)), { ok: false, step: 'format', reason: 'pack.format: is 1.' + f[1] + ', newer than this engine\'s 1.3', id: 'test.small' });
+test('the library reads [1, 0] to [1, 4] and refuses [1, 5] at the format step', () => {
+  assert.deepEqual(PK.FORMAT, [1, 4]);
+  for (const f of [[1, 0], [1, 1], [1, 2], [1, 3], [1, 4]]) assert.equal(load(small(f)).ok, true, f.join('.'));
+  for (const f of [[1, 5], [1, 6]]) assert.deepEqual(load(small(f)), { ok: false, step: 'format', reason: 'pack.format: is 1.' + f[1] + ', newer than this engine\'s 1.4', id: 'test.small' });
   // a world of 1.1 reads the same as 1.2, which adds only the fields of weapons and foes that fire
   // (tests/web/fire.test.js), and as 1.3, which adds only a scene's quench and bellows
   // (tests/web/world.test.js)
@@ -212,10 +212,15 @@ test('a 1.0 pack reads as it did: no world section, builds only in the base pack
 
 test('the closed lists are the format\'s, by name', () => {
   const L = PK.WORLD_LISTS;
-  assert.deepEqual(L.EFFECTS, ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'flicker', 'burst']);
+  assert.deepEqual(L.EFFECTS, ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'flicker', 'picture', 'burst']);
   assert.deepEqual(L.MARKS, ['things', 'rest', 'patron', 'sleeper', 'target', 'bubble']);
   assert.deepEqual(L.PREDICATES, ['tv', 'inBed', 'helmOff', 'strike', 'day', 'night']);
   assert.deepEqual(L.ROUND_ACTS, ['guard', 'look', 'sniff', 'yawn', 'train']);
+  assert.deepEqual(L.ROUND_ACTS_14, ['guard', 'look', 'sniff', 'yawn', 'train', 'quench']);
+  assert.deepEqual(L.QUIET_CONDITIONS, ['device_down', 'memory_tight']);
+  assert.deepEqual(L.QUIET_CONDITIONS_14, ['device_down', 'memory_tight', 'streaming']);
+  assert.deepEqual([L.CLASS_BOX.ground, L.CLASS_BOX_14.ground, L.CLASS_BOX_14.pie, L.CLASS_BOX_14.high], [[-66, -93, 56, 2], [-66, -117, 56, 2], L.CLASS_BOX.pie, L.CLASS_BOX.high]);
+  assert.deepEqual([L.TV_STANDS, L.TV_BOX, L.BOOTS, L.FLOOR], [['table', 'crate'], [-56, -176, 56, 2], 52, 530]);
   assert.deepEqual(L.HOSTS, ['flies', 'crate', 'feast', 'foe']);
   assert.deepEqual(L.ROLES, ['patron', 'foe', 'critter', 'pet']);
   assert.deepEqual(L.PET_POSES, ['rest', 'settle', 'alert0', 'alert1', 'stalk0', 'stalk1', 'pounce', 'land', 'pleased', 'walk0', 'walk1']);
@@ -634,8 +639,8 @@ const RULES = [
   ['props: kinds of the engine\'s', 'fields', p => { kinds(p).phone = clone(kinds(p).camera); }, "pack.props[\"props.medieval\"].kinds.phone: is not a field here"],
   ['props: at least one kind', 'fields', p => { p.props['props.medieval'].kinds = {}; }, "pack.props[\"props.medieval\"].kinds: must give at least one kind"],
   ['props: a kind has up and gone', 'fields', p => { delete kinds(p).camera.gone; }, "pack.props[\"props.medieval\"].kinds.camera.gone: is missing"],
-  ['props: a mark at most 160', 'fields', p => { kinds(p).camera.mark = 161; }, "pack.props[\"props.medieval\"].kinds.camera.mark: must be a whole number from 1 to 160"],
-  ['props: a mark from 1', 'fields', p => { kinds(p).camera.mark = 0; }, "pack.props[\"props.medieval\"].kinds.camera.mark: must be a whole number from 1 to 160"],
+  ['props: a mark at most 184', 'fields', p => { kinds(p).camera.mark = 185; }, "pack.props[\"props.medieval\"].kinds.camera.mark: must be a whole number from 1 to 184"],
+  ['props: a mark from 1', 'fields', p => { kinds(p).camera.mark = 0; }, "pack.props[\"props.medieval\"].kinds.camera.mark: must be a whole number from 1 to 184"],
   ['props: a state has a still part', 'fields', p => { delete kinds(p).camera.up.still; }, "pack.props[\"props.medieval\"].kinds.camera.up.still: is missing"],
   ['props: a state has its still drawing', 'fields', p => { delete kinds(p).camera.up.still; }, "pack.props[\"props.medieval\"].kinds.camera.up.still: is missing"],
   ['props: a moving part of 129 shapes', 'fields', p => { kinds(p).pi.up.moving = range(129).map(() => rect()); }, "pack.props[\"props.medieval\"].kinds.pi.up.moving: must hold 1 to 128 entries, not 129"],

@@ -9,12 +9,14 @@
 
   /* ---- The format's constants -------------------------------------------------------------- */
 
-  /* The newest format this library reads. It reads [1, 0] to [1, 3]: 1.1 adds the world sections
+  /* The newest format this library reads. It reads [1, 0] to [1, 4]: 1.1 adds the world sections
      (docs/worlds.md, Format 1.1), which are checked and kept as data; the scene compiler, world.js,
      draws from them. 1.2 adds the fields of a weapon that fires, on a main item, and of a foe that
      fires (docs/packs.md, Weapons that fire). 1.3 adds a scene's quench and bellows, and the named
-     value pump the bellows give its moving and over layers (docs/worlds.md, Format 1.3). */
-  const FORMAT = Object.freeze([1, 3]);
+     value pump the bellows give its moving and over layers (docs/worlds.md, Format 1.3). 1.4 adds a
+     scene's television, the round act quench, a prop set's television, the taller ground class box
+     and streaming as a condition of the quiet scene of the moment (docs/worlds.md, Format 1.4). */
+  const FORMAT = Object.freeze([1, 4]);
   /* Signed ahead of the pack's canonical form, so that a signature made for anything else cannot
      pass as a pack's. */
   const PREFIX = 'knightwatcher pack v1\n';
@@ -585,12 +587,16 @@
   /* Format 1.1's sections, each listed in provides when it holds anything. */
   const WORLD_SECTIONS = ['scenes', 'cast', 'props', 'words', 'overlays', 'worlds', 'sounds', 'stamps'];
   const PACK_KEYS_11 = PACK_KEYS.concat(WORLD_SECTIONS), PROVIDES_11 = PROVIDES.concat(WORLD_SECTIONS);
-  /* Whether a pack is of format 1.1 or later, which the format step has already held to [1, 0] to [1, 3]. */
+  /* Whether a pack is of format 1.1 or later, which the format step has already held to [1, 0] to [1, 4]. */
   const is11 = pack => pack.format[1] >= 1;
   /* Whether a pack is of format 1.2 or later, which adds the fields of weapons and foes that fire. */
   const is12 = pack => pack.format[1] >= 2;
   /* Whether a pack is of format 1.3, which adds a scene's quench and bellows. */
   const is13 = pack => pack.format[1] >= 3;
+  /* Whether a pack is of format 1.4, which adds a scene's television and the round act quench, a
+     prop set's television and the taller ground class box, and plays streaming in the quiet scene
+     of the moment. */
+  const is14 = pack => pack.format[1] >= 4;
   function fields(pack) {
     const P = 'pack', m1 = is11(pack), PV = m1 ? PROVIDES_11 : PROVIDES;
     obj(pack, P, m1 ? PACK_KEYS_11 : PACK_KEYS, ['id', 'name', 'version', 'format', 'licence', 'provides']);
@@ -1161,13 +1167,16 @@
      table and costed by its cost function from the effects library. */
 
   /* The contract's condition ids. device_down and memory_tight have no scene of their own: they
-     are acted in the quiet scene of the moment. */
+     are acted in the quiet scene of the moment, and from format 1.4 so is streaming. */
   const CONDITIONS = ['attack', 'wan_down', 'container_unhealthy', 'disk_full', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'ssh_session', 'updating', 'streaming', 'night'];
-  const QUIET_CONDITIONS = ['device_down', 'memory_tight'];
+  const QUIET_CONDITIONS = ['device_down', 'memory_tight'], QUIET_CONDITIONS_14 = QUIET_CONDITIONS.concat(['streaming']);
+  const quietConditions = m4 => (m4 ? QUIET_CONDITIONS_14 : QUIET_CONDITIONS);
   /* The acts (the engine's): what a round does, the events a scene can host,
      the predicates a layer can wait on, the marks where the engine draws in a scene's order, and
      the two moments a clock can start from. */
   const ROUND_ACTS = ['guard', 'look', 'sniff', 'yawn', 'train'];
+  /* Format 1.4 adds the quench as a round's act: one loop of the scene's quench, at its stop. */
+  const ROUND_ACTS_14 = ROUND_ACTS.concat(['quench']);
   const HOSTS = ['flies', 'crate', 'feast', 'foe'];
   /* The crate's width, the least a scene's crate span may be. */
   const CRATE_W = 60;
@@ -1178,7 +1187,7 @@
      and its drawing by the effects library, effects.js (KW.effects). The page loads that file before
      this one; under Node this file asks for it beside itself, the first time a pack names an
      effect. */
-  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'flicker', 'burst'];
+  const EFFECTS = ['sky', 'stars', 'ridge', 'bricks', 'pines', 'tree', 'arch', 'shelf', 'stacks', 'tufts', 'pebbles', 'planks', 'rafters', 'horseshoe', 'hood', 'flame', 'candle', 'twinkle', 'drift', 'wander', 'coals', 'steam', 'flutes', 'crust', 'fingers', 'fringe', 'flicker', 'picture', 'burst'];
   /* The cast: roles, the engine's exits (all of them cartoon ones), the poses the foe player asks
      for, the patron's anchors, the critter's frames and the pet's poses. */
   const ROLES = ['patron', 'foe', 'critter', 'pet'];
@@ -1201,6 +1210,17 @@
   const PROP_KINDS = ['pi', 'camera', 'machine', 'vm', 'box'];
   const CLASS_OF = { pi: 'pie', camera: 'high', machine: 'ground', vm: 'ground', box: 'ground' };
   const CLASS_BOX = { pie: [-46, -107, 45, 33], high: [-34, -64, 32, 0], ground: [-66, -93, 56, 2] };
+  /* Format 1.4's boxes: the ground class's 24 taller, room for the scrying crystal on its stool. A
+     pack of 1.0 to 1.3 keeps the boxes above, so that a world whose places only just clear them is
+     not refused. */
+  const CLASS_BOX_14 = { pie: CLASS_BOX.pie, high: CLASS_BOX.high, ground: [-66, -117, 56, 2] };
+  const classBox = m4 => (m4 ? CLASS_BOX_14 : CLASS_BOX);
+  /* The television (format 1.4): the stands a scene may set it on, the box the set and its stand
+     may fill from the middle of the stand's foot on the floor, x0, y0, x1, y1, and how far either
+     side of the watcher's middle its boots reach, which the set keeps clear of at the spot. */
+  const TV_STANDS = ['table', 'crate'], TV_BOX = [-56, -176, 56, 2], BOOTS = 52;
+  /* The floor line on the grid, which the television stands on. */
+  const FLOOR = 530;
   /* Each class's place, w by h: the ground class's wide enough for its box either side of the base. */
   const PLACE_SIZE = { pie: [88, 112], high: [88, 112], ground: [132, 112] };
   const PLACE_CLASS = { pie: 'pie', h1: 'high', h2: 'high', h3: 'high', g1: 'ground', g2: 'ground', g3: 'ground' };
@@ -1239,7 +1259,7 @@
   const WORLD_LIMITS = freeze({ scenes: 16, cast: 16, props: 8, overlays: 8, words: 8, worlds: 8, stamps: 64, stampShapes: 64,
     layers: 32, tiles: 64, effects: 48, tileShapes: 32, stillShapes: 2000, frameShapes: 400, stillCost: 200000, frameCost: 16000,
     glows: 24, patronStill: 16000, patronState: 400, poseCost: 8000, sprite: 256, critterFrame: 200, kindStill: 4000, kindMoving: 600, coats: 8, spots: 16, floors: 8,
-    mark: 160, offset: 2048, length: 4096 });
+    mark: 184, offset: 2048, length: 4096 });
   /* Where a shape of the world sections is, for the reasons. */
   const WWHERE = { still: 'a still layer', moving: 'a moving layer', over: 'an over layer', pole: 'a pole', stamp: 'a stamp', patron: 'the cast', foe: 'the cast', critter: 'the cast', pet: 'the cast', prop: 'a prop' };
   const LAYERED = ['still', 'moving', 'over'];
@@ -1548,17 +1568,30 @@
   /* The parts of a scene format 1.3 adds: the quench, the quiet act at a forge and a water barrel,
      and the bellows, the act of the CPU running hot. */
   const SCENE_KEYS_13 = ['quench', 'bellows'];
-  /* A scene. m3 is whether the pack is of format 1.3, which alone takes the parts of SCENE_KEYS_13. */
-  function scene(v, path, m3) {
-    obj(v, path, m3 ? SCENE_KEYS.concat(SCENE_KEYS_13) : SCENE_KEYS, SCENE_REQ);
+  /* The part of a scene format 1.4 adds: where the television stands while something streams. */
+  const SCENE_KEYS_14 = ['tv'];
+  /* A scene. m3 is whether the pack is of format 1.3 or later, which alone takes the parts of
+     SCENE_KEYS_13, and m4 whether it is of 1.4, which alone takes SCENE_KEYS_14 and the round act
+     quench. */
+  function scene(v, path, m3, m4) {
+    obj(v, path, SCENE_KEYS.concat(m3 ? SCENE_KEYS_13 : [], m4 ? SCENE_KEYS_14 : []), SCENE_REQ);
     const f = k => key(path, k);
     text(v.name, f('name'), 1, 32);
     int(v.spot, f('spot'), 30, 162);
     arr(v.rounds, f('rounds'), 1, 6).forEach((r, i) => {
       const p = idx(f('rounds'), i);
       obj(r, p, ['x', 'act', 'dur'], ['x', 'act', 'dur']);
-      int(r.x, key(p, 'x'), 30, 162); oneOf(r.act, key(p, 'act'), ROUND_ACTS); int(r.dur, key(p, 'dur'), 2, 120);
+      int(r.x, key(p, 'x'), 30, 162); oneOf(r.act, key(p, 'act'), m4 ? ROUND_ACTS_14 : ROUND_ACTS); int(r.dur, key(p, 'dur'), 2, 120);
     });
+    if (has(v, 'tv')) {
+      // the television's middle on the grid, what it stands on (none where the scene draws its own
+      // set, as the house's screen), and the watcher's spot while watching it, as spot; without
+      // watch the watcher never goes to it
+      const p = f('tv');
+      obj(v.tv, p, ['x', 'stand', 'watch'], ['x', 'stand']);
+      int(v.tv.x, key(p, 'x'), 0, 960); oneOf(v.tv.stand, key(p, 'stand'), TV_STANDS.concat(['none']));
+      if (has(v.tv, 'watch')) int(v.tv.watch, key(p, 'watch'), 30, 162);
+    }
     bool(v.quiet, f('quiet'));
     setOf(v.can, f('can'), CONDITIONS);
     setOf(v.hosts, f('hosts'), HOSTS);
@@ -1799,9 +1832,27 @@
     id(v.lamp.lit, key(lp, 'lit'), LOCAL_ID); id(v.lamp.dark, key(lp, 'dark'), LOCAL_ID);
     if (has(v.lamp, 'light') && (typeof v.lamp.light !== 'string' || !HEX.test(v.lamp.light))) fail(key(lp, 'light'), 'must be a hex colour');
   }
-  function propSet(v, path) {
-    obj(v, path, ['name', 'kinds'], ['name', 'kinds']);
+  /* A prop set. m4 is whether the pack is of format 1.4, which alone takes the television, tv:
+     { name, still, moving, stands }, the set's drawing from the middle of its foot, its picture in
+     moving, and stands, each of table and crate { h, still }, the stand's drawing from the middle
+     of its foot on the floor and h, how high above the floor it holds the set's foot. */
+  function propSet(v, path, m4) {
+    obj(v, path, m4 ? ['name', 'kinds', 'tv'] : ['name', 'kinds'], ['name', 'kinds']);
     text(v.name, key(path, 'name'), 1, 48);
+    if (has(v, 'tv')) {
+      const tp = key(path, 'tv'), x = v.tv;
+      obj(x, tp, ['name', 'still', 'moving', 'stands'], ['name', 'still', 'stands']);
+      text(x.name, key(tp, 'name'), 1, 48);
+      shapeList(x.still, key(tp, 'still'), 1, LIMITS.partShapes, { where: 'prop' });
+      if (has(x, 'moving')) shapeList(x.moving, key(tp, 'moving'), 1, LIMITS.partShapes, { where: 'prop' });
+      obj(x.stands, key(tp, 'stands'), TV_STANDS, TV_STANDS);
+      for (const k of TV_STANDS) {
+        const sp = key(key(tp, 'stands'), k);
+        obj(x.stands[k], sp, ['h', 'still'], ['h', 'still']);
+        int(x.stands[k].h, key(sp, 'h'), 0, 120);
+        shapeList(x.stands[k].still, key(sp, 'still'), 1, LIMITS.partShapes, { where: 'prop' });
+      }
+    }
     const kp = key(path, 'kinds');
     obj(v.kinds, kp, PROP_KINDS, []);
     if (!Object.keys(v.kinds).length) fail(kp, 'must give at least one kind');
@@ -1878,9 +1929,9 @@
     };
     // how many each section may hold is checked at counts, as for items and decorations
     sec('stamps', (v, p) => shapeList(v, p, 1, WORLD_LIMITS.stampShapes, { where: 'stamp' }), 'stamps');
-    sec('scenes', (v, p) => scene(v, p, is13(pack)), 'scenes');
+    sec('scenes', (v, p) => scene(v, p, is13(pack), is14(pack)), 'scenes');
     sec('cast', (v, p) => castMember(v, p, is12(pack)), 'members');
-    sec('props', propSet, 'prop sets');
+    sec('props', (v, p) => propSet(v, p, is14(pack)), 'prop sets');
     sec('words', wordsSet, 'word sets');
     sec('overlays', overlay, 'overlays');
     sec('worlds', preset, 'worlds');
@@ -1922,6 +1973,13 @@
       const v = pack.props[n].kinds[k][st], p = key(key(key(key(key(P, 'props'), n), 'kinds'), k), st);
       list(v.still, key(p, 'still'), { where: 'prop', kind: k });
       if (v.moving) list(v.moving, key(p, 'moving'), { where: 'prop', kind: k });
+    }
+    for (const n of Object.keys(pack.props || {})) {
+      const v = pack.props[n].tv, p = key(key(key(P, 'props'), n), 'tv');
+      if (!v) continue;
+      list(v.still, key(p, 'still'), { where: 'prop', kind: 'tv' });
+      if (v.moving) list(v.moving, key(p, 'moving'), { where: 'prop', kind: 'tv' });
+      for (const k of TV_STANDS) list(v.stands[k].still, key(key(key(p, 'stands'), k), 'still'), { where: 'prop', kind: 'tv' });
     }
   }
   /* Calls fn(scalar, path, alpha) for every scalar of a world shape. */
@@ -2255,18 +2313,22 @@
       case 'disk_full': return new Set(sc.rounds.map(r => r.x)).size >= 2 ? '' : 'rounds at two different spots, to carry the crate between';
       case 'pi_silent': return sc.things.pie.x > sc.spot * U ? '' : 'the pie\'s place to the right of the spot';
       case 'device_down': case 'memory_tight': return sc.quiet ? '' : 'quiet true';
+      // from format 1.4 streaming plays in the quiet scene of the moment, which shows the set
+      case 'streaming14': return !sc.quiet ? 'quiet true' : sc.screen || sc.tv ? '' : 'a screen, or a television (tv)';
       case 'ssh_session': return sc.seat ? '' : 'a seat';
       case 'updating': return sc.anvil && frameRest(sc.rests[sc.anvil.rest]) ? '' : 'an anvil, with a rest for the weapon';
       case 'streaming': return sc.screen ? '' : 'a screen';
       default: return '';
     }
   }
-  function sceneRules(sc, sp) {
-    const things = key(sp, 'things'), boxes = {};
+  /* A scene's rules. m4 is whether the pack is of format 1.4, whose ground class box is taller and
+     whose scenes may give a television. */
+  function sceneRules(sc, sp, m4) {
+    const things = key(sp, 'things'), boxes = {}, CB = classBox(m4);
     for (const k of Object.keys(PLACE_CLASS)) {
       const pl = sc.things[k], p = key(things, k);
       if (pl.cls !== PLACE_CLASS[k]) fail(key(p, 'cls'), 'must be ' + quote(PLACE_CLASS[k]) + ' for the place ' + k);
-      const e = CLASS_BOX[pl.cls], x0 = pl.flip ? -e[2] : e[0], x1 = pl.flip ? -e[0] : e[2];
+      const e = CB[pl.cls], x0 = pl.flip ? -e[2] : e[0], x1 = pl.flip ? -e[0] : e[2];
       const b = boxes[k] = [pl.x + x0, pl.y + e[1], pl.x + x1, pl.y + e[3]];
       if (b[0] < 0 || b[2] > 960 || b[1] < 0 || b[3] > 600) fail(p, 'its class box, ' + b.join(' ') + ', leaves the 960 by 600 grid');
       if (pl.cls === 'high' && pl.y < 300) fail(key(p, 'y'), 'a high place\'s base must be at y 300 or lower, clear of the headline');
@@ -2274,7 +2336,20 @@
     }
     const ks = Object.keys(boxes);
     for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) if (overlaps(boxes[ks[i]], boxes[ks[j]])) fail(things, 'the class boxes of ' + ks[i] + ' and ' + ks[j] + ' overlap');
-    sc.can.forEach((c, i) => { const why = lacks(sc, c); if (why) fail(idx(key(sp, 'can'), i), 'the scene cannot act ' + quote(c) + ': it needs ' + why); });
+    sc.can.forEach((c, i) => { const why = lacks(sc, m4 && c === 'streaming' ? 'streaming14' : c); if (why) fail(idx(key(sp, 'can'), i), 'the scene cannot act ' + quote(c) + ': it needs ' + why); });
+    // a round that quenches plays the scene's quench
+    sc.rounds.forEach((r, i) => { if (r.act === 'quench' && !sc.quench) fail(key(idx(key(sp, 'rounds'), i), 'act'), 'a round quenches only in a scene with a quench'); });
+    if (sc.tv && sc.tv.stand !== 'none') {
+      // the set on its stand keeps clear of every place's class box and of the watcher's boots at
+      // the spot and where it watches
+      const tp = key(sp, 'tv'), b = [sc.tv.x + TV_BOX[0], FLOOR + TV_BOX[1], sc.tv.x + TV_BOX[2], FLOOR + TV_BOX[3]];
+      if (b[0] < 0 || b[2] > 960) fail(key(tp, 'x'), 'the television\'s box, ' + b.join(' ') + ', leaves the 960 by 600 grid');
+      for (const k of ks) if (overlaps(b, boxes[k])) fail(key(tp, 'x'), 'the television\'s box, ' + b[0] + ' to ' + b[2] + ', overlaps the class box of ' + k);
+      for (const [n, at] of [['spot', sc.spot]].concat(has(sc.tv, 'watch') ? [['watch', sc.tv.watch]] : [])) {
+        const x = at * U;
+        if (x + BOOTS > b[0] && x - BOOTS < b[2]) fail(key(tp, 'x'), 'the television\'s box, ' + b[0] + ' to ' + b[2] + ', reaches the watcher\'s boots at its ' + n + ', ' + (x - BOOTS) + ' to ' + (x + BOOTS));
+      }
+    }
     if (sc.hosts.includes('foe') && !sc.foe) fail(key(sp, 'hosts'), 'a scene hosts a foe only with a foe zone, foe');
     if (sc.hosts.includes('crate') && !sc.crate) fail(key(sp, 'hosts'), 'a scene hosts the crate only with the stretch of floor it lands on, crate');
     if (sc.crate) {
@@ -2309,9 +2384,19 @@
     for (const s of list) eachWColour(s, c => { if (!(typeof c === 'string' && LAMP_REF.test(c))) ok = false; }, '');
     return ok;
   }
-  function propRules(pack, v, path) {
+  function propRules(pack, v, path, m4) {
+    if (v.tv) {
+      // the set on each stand lies inside the television's box, from the middle of the stand's foot
+      const tp = key(path, 'tv');
+      for (const k of TV_STANDS) {
+        const S = v.tv.stands[k], sp = key(key(tp, 'stands'), k);
+        const check = (e, q, dy) => { if (e && (e[0] < TV_BOX[0] || e[1] - dy < TV_BOX[1] || e[2] > TV_BOX[2] || e[3] - dy > TV_BOX[3])) fail(q, 'paints ' + [e[0], e[1] - dy, e[2], e[3] - dy].join(' ') + ' on the ' + k + ', outside the television\'s box, ' + TV_BOX.join(' ') + ', from the middle of the stand\'s foot'); };
+        S.still.forEach((s, i) => check(wextent(pack, s), idx(key(sp, 'still'), i), 0));
+        for (const part of ['still', 'moving']) if (v.tv[part]) v.tv[part].forEach((s, i) => check(wextent(pack, s), idx(key(tp, part), i), S.h));
+      }
+    }
     for (const k of Object.keys(v.kinds)) for (const st of ['up', 'gone']) {
-      const x = v.kinds[k][st], p = key(key(key(path, 'kinds'), k), st), cb = CLASS_BOX[CLASS_OF[k]];
+      const x = v.kinds[k][st], p = key(key(key(path, 'kinds'), k), st), cb = classBox(m4)[CLASS_OF[k]];
       const check = (e, q) => { if (e && (e[0] < cb[0] || e[1] < cb[1] || e[2] > cb[2] || e[3] > cb[3])) fail(q, 'paints ' + e.join(' ') + ', outside the ' + CLASS_OF[k] + ' class box, ' + cb.join(' ') + ', from the base'); };
       for (const part of ['still', 'moving']) if (x[part]) x[part].forEach((s, i) => check(wextent(pack, s), idx(key(p, part), i)));
       const L = x.lamp, lp = key(p, 'lamp');
@@ -2355,9 +2440,9 @@
     for (const s of Object.keys(USER_SETS)) if (!has(v.outfit.swatches, s)) missing(key(key(f('outfit'), 'swatches'), s));
     for (const k of ['quiet', 'for']) if (!has(v.scenes, k)) missing(key(f('scenes'), k));
     for (const r of ROLES) if (!has(v.cast, r)) missing(key(f('cast'), r));
-    const fp = key(f('scenes'), 'for');
+    const fp = key(f('scenes'), 'for'), QUIET = quietConditions(is14(pack));
     for (const c of CONDITIONS) {
-      if (QUIET_CONDITIONS.includes(c)) { if (has(v.scenes.for, c)) fail(key(fp, c), 'has no scene of its own: it is acted in the quiet scene of the moment'); }
+      if (QUIET.includes(c)) { if (has(v.scenes.for, c)) fail(key(fp, c), 'has no scene of its own: it is acted in the quiet scene of the moment'); }
       else if (!has(v.scenes.for, c)) missing(key(fp, c));
     }
     const local = n => { const l = localOf(pack, n); return l === null ? null : pack.scenes[l]; };
@@ -2365,7 +2450,7 @@
       const sc = local(n), p = idx(key(f('scenes'), 'quiet'), i);
       if (!sc) return;
       if (!sc.quiet) fail(p, 'names ' + quote(n) + ', a scene that is not quiet');
-      for (const c of QUIET_CONDITIONS) if (!sc.can.includes(c)) fail(p, 'names ' + quote(n) + ', a quiet scene that cannot act ' + quote(c) + ', which plays in the quiet scene of the moment');
+      for (const c of QUIET) if (!sc.can.includes(c)) fail(p, 'names ' + quote(n) + ', a quiet scene that cannot act ' + quote(c) + ', which plays in the quiet scene of the moment');
     });
     for (const c of Object.keys(v.scenes.for)) { const sc = local(v.scenes.for[c]); if (sc && !sc.can.includes(c)) fail(key(fp, c), 'names ' + quote(v.scenes.for[c]) + ', a scene whose can does not list ' + quote(c)); }
   }
@@ -2397,7 +2482,7 @@
       worldShapeRanges(s, p, ctx);
       if (s.k === 'poly') polyRule(s, p);
     });
-    for (const n of Object.keys(pack.scenes || {})) sceneRules(pack.scenes[n], key(key(P, 'scenes'), n));
+    for (const n of Object.keys(pack.scenes || {})) sceneRules(pack.scenes[n], key(key(P, 'scenes'), n), is14(pack));
     for (const n of Object.keys(pack.cast || {})) {
       const v = pack.cast[n], cp = key(key(P, 'cast'), n);
       if (v.role === 'patron') for (const a of PATRON_ANCHORS) {
@@ -2417,7 +2502,7 @@
         }
       }
     }
-    for (const n of Object.keys(pack.props || {})) propRules(pack, pack.props[n], key(key(P, 'props'), n));
+    for (const n of Object.keys(pack.props || {})) propRules(pack, pack.props[n], key(key(P, 'props'), n), is14(pack));
     for (const n of Object.keys(pack.overlays || {})) overlayRules(pack.overlays[n], key(key(P, 'overlays'), n));
     for (const n of Object.keys(pack.words || {})) {
       const v = pack.words[n], wp = key(key(P, 'words'), n);
@@ -2565,6 +2650,15 @@
           cap(p, moving, L.kindMoving, 'costs up to', 'fills in its moving part and its own lamp');
           out.props[n][k][st] = { still, moving };
         }
+      }
+      // the television: its set and each stand painted once, its picture each frame
+      const tv = pack.props[n].tv;
+      if (tv) {
+        const tp = key(key(key(P, 'props'), n), 'tv'), c = { where: 'prop', kind: 'tv' };
+        const set = listCost(pack, tv.still, c).cost, moving = tv.moving ? listCost(pack, tv.moving, c).cost : 0;
+        for (const k of TV_STANDS) cap(key(key(key(tp, 'stands'), k), 'still'), set + listCost(pack, tv.stands[k].still, c).cost, L.kindStill, 'costs up to', 'fills with the set on it');
+        cap(key(tp, 'moving'), moving, L.kindMoving, 'costs up to', 'fills');
+        out.props[n].tv = { still: set, moving };
       }
     }
     return freeze(out);
@@ -3102,7 +3196,9 @@
   const fitsPlace = (dec, pl) => !!(dec && pl && dec.fits.includes(pl.kind) && dec.box[0] <= pl.w && dec.box[1] <= pl.h);
 
   /* The closed lists format 1.1 names, which the engine takes over as it is built. */
-  const WORLD_LISTS = freeze({ CONDITIONS: CONDITIONS.slice(), ROUND_ACTS: ROUND_ACTS.slice(), HOSTS: HOSTS.slice(), PREDICATES: PREDICATES.slice(), MARKS: MARKS.slice(),
+  const WORLD_LISTS = freeze({ CONDITIONS: CONDITIONS.slice(), ROUND_ACTS: ROUND_ACTS.slice(), ROUND_ACTS_14: ROUND_ACTS_14.slice(),
+    QUIET_CONDITIONS: QUIET_CONDITIONS.slice(), QUIET_CONDITIONS_14: QUIET_CONDITIONS_14.slice(), CLASS_BOX_14: JSON.parse(JSON.stringify(CLASS_BOX_14)),
+    TV_STANDS: TV_STANDS.slice(), TV_BOX: TV_BOX.slice(), BOOTS, FLOOR, HOSTS: HOSTS.slice(), PREDICATES: PREDICATES.slice(), MARKS: MARKS.slice(),
     TRIGGERS: TRIGGERS.slice(), EFFECTS: EFFECTS.slice(), ROLES: ROLES.slice(), EXITS: EXITS.slice(), FOE_POSES: FOE_POSES.slice(), PET_POSES: PET_POSES.slice(), FONTS: FONTS.slice(),
     PROP_KINDS: PROP_KINDS.slice(), CLASS_OF: Object.assign({}, CLASS_OF), CLASS_BOX: JSON.parse(JSON.stringify(CLASS_BOX)), PLACE_SIZE: JSON.parse(JSON.stringify(PLACE_SIZE)), CRATE_W, LABELS: LABELS.slice(),
     QUIET_PARTS: JSON.parse(JSON.stringify(QUIET_PARTS)), CAPTIONS: JSON.parse(JSON.stringify(CAPTIONS)), LEVELS: JSON.parse(JSON.stringify(LEVELS)) });

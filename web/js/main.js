@@ -23,15 +23,15 @@
   const fixed = new Set(['h', 'hs'].filter(k => given[k] !== undefined && given[k] in OPTS[k]));
   // a value may be a long name, "<pack>/<id>", so it may hold a slash
   const hv = k => (H0.match(new RegExp('[#&]' + k + '=([\\w./-]+)')) || [])[1];
-  /* t=<ms> freezes time for screenshots, t=0 included, and kx=<x> places the knight (in units of
-     U). frozen says whether the address holds a t= with a number, and t is the frozen time, or 0
+  /* t=<ms> freezes time for screenshots, t=0 included, kx=<x> places the knight (in units of
+     U), and pt=<ms> starts the knight's patrol that many ms before the frozen time. frozen says whether the address holds a t= with a number, and t is the frozen time, or 0
      without one. pl=1 outlines the scene's places for devices. dv= sets the demo's
      devices: kinds separated by commas, each followed by - for down or ! for down and alerting; dv
      is the list in the contract's shape, or null without the hook. set= opens the settings screen
      at load on a page (world, knight, monarch, pet for the cast, display, quiet, scenes, status), or shows the hold's cue (hold). */
   const tHook = hv('t') == null ? NaN : +hv('t');
   const dvHook = (H0.match(/[#&]dv=([^&]*)/) || [])[1];
-  KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'),
+  KW.hooks = { hv, frozen: Number.isFinite(tHook), t: Number.isFinite(tHook) ? tHook : 0, kx: hv('kx'), pt: hv('pt'),
     pl: hv('pl') === '1', dv: dvHook == null ? null : ST.listFromHook(dvHook), fixed };
   const freeze = KW.hooks.frozen;
 

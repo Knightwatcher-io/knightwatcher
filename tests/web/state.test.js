@@ -50,13 +50,23 @@ test('every id maps to the scene and rank docs/design.md gives it', () => {
   const want = {
     attack: ['battlement', 4], wan_down: ['battlement', 4], container_unhealthy: ['house', 3], disk_full: ['cellar', 3],
     backup_overdue: ['house', 3], pi_silent: ['house', 3], device_down: [null, 3], cpu_hot: ['yard', 3],
-    ssh_session: ['court', 2], updating: ['smithy', 2], streaming: ['house', 2], night: ['house', 1] };
+    ssh_session: ['court', 2], updating: ['smithy', 2], streaming: [null, 2], night: ['house', 1] };
   assert.deepEqual(Object.keys(ST.CONDITIONS), Object.keys(want));
   for (const [id, [scene, lv]] of Object.entries(want)) {
     const v = ST.map(file({ conditions: [cond(id, 'warning')] }), at(0));
     assert.equal(v.w.scene, scene, id);
     assert.equal(v.w.lv, lv, id);
   }
+});
+
+test('a stream at night marks streaming with night, so the knight sleeps while the headline shows the stream', () => {
+  const both = ST.map(file({ conditions: [cond('streaming', 'quiet', 'NOW SHOWING'), cond('night', 'sleep')] }), at(0));
+  assert.deepEqual([both.w.id, both.w.hl, both.w.night, both.tv], ['streaming', 'NOW SHOWING', true, true]);
+  const alone = ST.map(file({ conditions: [cond('streaming', 'quiet')] }), at(0));
+  assert.equal(alone.w.night, undefined);
+  // night first: the knight sleeps as ever, and the television is on behind it
+  const night = ST.map(file({ conditions: [cond('night', 'sleep'), cond('streaming', 'quiet')] }), at(0));
+  assert.deepEqual([night.w.id, night.w.night, night.tv], ['night', undefined, true]);
 });
 
 test('the level sets the colour, and a missing level takes the design\'s', () => {

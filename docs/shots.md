@@ -6,7 +6,7 @@ two sets:
 
 | Mode | Does |
 |---|---|
-| `take DIR` | opens the page from disk once for each of the 298 shots of the main set, with time frozen by the address's `t=`, and writes `DIR/<name>.png` at 960 by 600, or at the size the shot names |
+| `take DIR` | opens the page from disk once for each of the 321 shots of the main set, with time frozen by the address's `t=`, and writes `DIR/<name>.png` at 960 by 600, or at the size the shot names |
 | `compare REF NEW` | decodes each pair of PNGs by name and counts the pixels that differ outside the clock; a pair of different sizes, or one missing or unreadable, is a failure |
 | `worlds DIR` | copies `web/` to a folder of its own outside the repository, adds the test world's carrier, takes the 47 shots of the worlds' set from that copy (7 `worldmix-`, 40 `orbit-`), puts the test world's copy of format 1.2 behind the same carrier, takes the 32 `orbit-fire-` shots, and removes the copy |
 | `compare-worlds REF NEW` | compares two sets that `worlds` took |
@@ -111,16 +111,37 @@ tones, these eleven are missing, and the rest compare as usual.
 Ten shots show the smithy's three acts. `update-strike` is the hammer's face on the blade 4 ms
 into the blow (`t=2804`), with the sparks and the eyes shut, and `bd-b-update-strike` and
 `bd-c-update-strike` the same on Broad and Slim, the face on the same spot of the blade. The quench
-plays in the smithy as a quiet scene (`is=smithy`): the blank heating in the fire at the forge
-(`is-smithy-forge`, 600 ms), plunged into the barrel in a burst of steam with the eyes shut
-(`is-smithy-steam`, 5950) and held up to be looked over, the glint on it and a smile
+plays in the smithy as a quiet scene (`is=smithy`), at its stop of the patrol, which begins 16.8 s
+in (`pt=`, the stop's moment plus 16 800): the blank heating in the fire at the forge
+(`is-smithy-forge`, 600 ms into the loop), plunged into the barrel in a burst of steam with the
+eyes shut (`is-smithy-steam`, 5950) and held up to be looked over, the glint on it and a smile
 (`is-smithy-look`, 8800); and with a device in every place at the forge (`is-smithy-forge-devices`,
-the head over the owls in `h1` and `h2`) and at the barrel (`is-smithy-barrel-devices`, 6600, the
-boots over the ground place `g3`), the two overlaps [page.md](./page.md#devices) accepts. The
+the head over the owls in `h1` and `h2` and the boot's toe at the left end of `g3`'s rest) and at
+the barrel (`is-smithy-barrel-devices`, 6600), the overlaps [page.md](./page.md#devices) accepts. The
 bellows pressed while the CPU runs hot, the forge flared (`cpu-smithy`, `sc=cpu_hot:smithy`,
 240 ms), with the greatsword on the anvil and with the arming sword there and the shield on the wall
 (`arm-cpu-smithy`). Each moment is away from a blink. Against a reference from before the three
 acts they are missing.
+
+Twenty-three shots show the patrol, the television and the devices at rest. The patrol, with `pt=`
+saying how long it has been going: the knight walking from its first stop to the second on the
+battlement (`patrol-battlement-walk`, the side-step half way through a step), at the camp's second
+stop (`patrol-camp-look`), in the yard walking from the dummy to the door (`patrol-yard-walk`) and
+yawning by the stool in the house, in front of the helmet on it (`patrol-house-yawn`). The
+television while something streams, the knight watching it after the walk to it (`pt=3000`): on
+the battlement, at the camp, in the yard, in the smithy, where it watches from the anvil, and in the
+house, on its own table (`tv-battlement`, `tv-camp`, `tv-yard`, `tv-smithy`, `tv-house`); on the
+battlement walking back to the first stop as the visit ends (`tv-battlement-walk`); on its crate
+behind the cellar's crates with the disk full (`tv-cellar`) and at court (`tv-court`). A stream at
+night, the knight asleep in the house with the set playing and its light over the dark room, at two
+moments of the light's slow swell (`night-tv`, `night-tv-dim`). The devices at rest: the crystal,
+the flask and the chest up and down at the camp (`rest-camp-up`, `rest-camp-down`), up in the yard
+with the places outlined, the ground class box of format 1.4 among them (`rest-yard-places`), and
+down in the smithy, the chest at `g3` before the bellows (`rest-smithy-down`). The goblin and the
+crate with the set on, drawn in front of it: the goblin climbing in at the camp and on the
+battlement (`tv-camp-goblin`, `tv-battlement-goblin`), bonked at the camp (`tv-camp-goblin-bonk`),
+and the crate landed at the camp and in the yard (`tv-camp-crate`, `tv-yard-crate`). Against a
+reference from before the patrol they are missing.
 
 The seven `look-` shots choose free options with the look hooks: deep skin with black curls, a
 sable tabard and a gold plume on the battlement, helm off (`look-deep-curls`); fair skin with
@@ -271,7 +292,7 @@ same, and the five Glitch shots at 1 370 are missing. Against a reference from b
 
 The 28 `cat-` shots show the mouser cat. Every shot above shows it resting at its
 spot in its calico coat; these show it in the ginger coat (`pc=ginger`) at each of its eight spots
-(`cat-ginger-`), and catching. One fly (`f=1`) in the house while streaming comes at -5000 ms and
+(`cat-ginger-`), and catching. One fly (`f=1`) in the house (`is=house`) while streaming comes at -5000 ms and
 buzzes until 13 730: the cat looks up at a fly that comes at 0 (`cat-house-notice`, `fa=0`), sits
 up alert as the fly comes down (`cat-house-alert`, 12 500), stalks (`cat-house-stalk`, 14 500), is
 at the top of the leap 40 ms before its paw meets the fly at 15 910 (`cat-house-pounce`, in ginger
@@ -310,8 +331,9 @@ out byte for byte the same, on a busy machine too, apart from the clock when the
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
 and every scene, device and member of the cast drawn from the medieval world's pack, with its words
 and its overlay, signed or not. A deployed copy draws from each pack while it ships signed, and
-from code otherwise: today the base pack 1.6.0 and the medieval world's pack 0.9.0 are both
-signed, so a deployed copy draws everything from them, words and overlay included.
+from code otherwise: today the base pack 1.6.0 is signed and the medieval world's pack 0.10.0 is
+not, so a deployed copy draws the knight from the base pack and every scene, device and member of
+the cast from code, with the collector's own words, until the medieval pack's signing run.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches
@@ -480,3 +502,34 @@ world's Wire tuft is written from the base pack's close crop, so the Orbit shots
 bare-headed differ too (`orbit-devices-bridge`, `orbit-ssh`, `orbit-update`, the `orbit-drone-`
 shots, and the head on the pillow in `orbit-sick` and `orbit-night`). `cat-yard-crate-pounce` and
 `cat-camp-goblin-pounce` change with the time of day the set is taken, against the same tree too.
+
+Against a reference from before the patrol, the television and the devices at rest (`kw.medieval`
+0.10.0, format 1.4), 294 of the 298 shots the reference has differ, the 23 shots of the patrol, the
+television and the rests are missing from it, and all 79 of the worlds' set differ. The four the
+same are `on-night` and the three moments of the quench with the Pi alone (`is-smithy-forge`,
+`-steam` and `-look`), taken at the quench's stop (`pt=`): the quench draws as it did, and no ground
+device stands in them. What changed, by cause:
+
+- the devices at rest: every shot with a device on the ground, which is nearly every shot, since the
+  demo's own set has a NAS (the crystal) and a router (the chest): the crystal on its stool, the
+  flask beside the satchel, the chest on its mat, each with its shadow, and down the crystal's stand
+  on the stool with its ball on the floor. In 170 of the main set's shots and 62 of the worlds' set
+  nothing else differs, and nothing above the floor's top 160 rows;
+- the yard and the court: the pie raised 24 on a taller barrel and a taller side table, in every
+  shot of either (`is-yard`, `on-cpu`, `on-swap`, `on-ssh`, the monarchs' shots, the yard's and the
+  court's `ref-`, `cat-`, `free-`, `look-`, `strain-` and `bd-` shots), and `places-yard` the ground
+  class box of format 1.4 outlined;
+- the camp: the knight at its spot as the patrol starts, at the first step of its walk to the first
+  stop 20 to the right, 2 lower (`is-camp`, `clock-12`, `devices-camp`, `settings-look` and the camp's
+  `ref-`, `cat-`, `free-` and `bd-` shots, and `orbit-mix-words` and `orbit-mix-props` in the worlds'
+  set); `kx` the patrol starting from the knight placed by `kx=`; the crossbow's practice
+  (`free-crossbow-practice`, `-hit`, and `orbit-fire-practice` and its kin in the worlds' set) the
+  knight starting its walk from the spot to the practice spot;
+- streaming: `on-plex` and the `streams-` shots of one, three, titles and the count show the quiet
+  scene of the moment, the battlement, with the set where the house was; the `streams-badge-` shots
+  the set behind the cellar's crates and at court; the `cat-house-` shots, now in the house by
+  `is=house`, the knight on its patrol and the rests; `orbit-plex` the Unit patrolling the test
+  world's scene of the moment rather than watching its screen;
+- the smithy: `g3` before the bellows (`is-smithy-forge-devices`, `is-smithy-barrel-devices`);
+- the settings: the scenes' pictures with the rests (`settings-` and `bd-` settings shots,
+  `settings-scenes`, `worldmix-`), and `settings-status` the medieval world's pack 0.10.0, unsigned.

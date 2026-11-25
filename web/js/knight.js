@@ -83,6 +83,14 @@
     put(A.root, X, Y);
     put(A.footL, X - (24 + dSt), Y); put(A.footR, X + (24 + dSt), Y);
     put(A.hipL, X - (24 + dSt), Y - (74 + dL) + d); put(A.hipR, X + (24 + dSt), Y - (74 + dL) + d);
+    // The walk's gait (o.gait, docs/rig.md): each foot moved along the floor by its offset and lifted
+    // by its lift, each hip by its share of its foot's offset, so a greave stays over its boot. The
+    // boots' step values stay 0 on a gait, so no boot is lifted twice.
+    if (o.gait) {
+      const g = o.gait;
+      A.footL[0] += g.L; A.footR[0] += g.R; A.footL[1] -= g.liftL; A.footR[1] -= g.liftR;
+      A.hipL[0] += Math.round(g.L * g.hip); A.hipR[0] += Math.round(g.R * g.hip); v.stepL = 0; v.stepR = 0;
+    }
     put(A.hem, X, Y - (64 + dL) + d); put(A.belt, X, Y - (102 + dL) + d);
     put(A.neck, X, Y - (162 + dHt) + d);
     put(A.shoulderL, X - (54 + dSh + bw), Y - (132 + dHt) + d); put(A.shoulderR, X + (54 + dSh + bw), Y - (132 + dHt) + d);

@@ -63,6 +63,9 @@
     // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
     hosts: [],
     rounds: [{ x: 124, act: 'guard', dur: 7 }, { x: 146, act: 'guard', dur: 7 }],
+    // where the television stands while something streams (docs/scenes.md): low on a crate, clear of
+    // the shelf above; the knight carrying the crates never goes to watch it
+    tv: { x: 376, stand: 'crate' },
     paint, draw
   };
 })(window.KW);

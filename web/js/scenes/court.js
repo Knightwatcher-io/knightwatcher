@@ -231,7 +231,7 @@
     Rv(682, 484, 218, 13, [[.3, C.R1], [1, C.R2]]); Rv(660, 499, 240, 13, [[.3, C.R1], [1, C.R2]]); Rv(650, 514, 260, 16, [[.3, C.R1], [1, C.R2]]);
     throne(KX, KB); patronOf(s).draw(KX, KB, lookOf(s));
     // the tall side table with the pie, between the two devices at the left
-    P.tableHD(106, 458, 76, 72);
+    P.tableHD(106, 434, 76, 96);
   }
 
   /* Draws the court's fires and pie, and makes the knight and the monarch take turns to talk. */
@@ -316,7 +316,7 @@
   /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
-    pie: { cls: 'pie', kind: 'surface', x: 144, y: 463, w: 88, h: 112 },
+    pie: { cls: 'pie', kind: 'surface', x: 144, y: 439, w: 88, h: 112 },
     h1: { cls: 'high', kind: 'surface', x: 610, y: 300, w: 88, h: 112 },
     h2: { cls: 'high', kind: 'surface', x: 634, y: 368, w: 88, h: 112 },
     h3: { cls: 'high', kind: 'surface', x: 132, y: 300, w: 88, h: 112, flip: true },
@@ -341,6 +341,9 @@
     // monarch taking turns to talk, whatever else is up, so it acts the SSH session alone. Kept
     // as plain data for the world format being drafted to take over.
     can: ['ssh_session'],
+    // where the television stands while something streams (docs/scenes.md); the knight at the
+    // monarch's side never goes to watch it
+    tv: { x: 520, stand: 'table' },
     // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
     hosts: [],
     key: keyOf, paint, draw, drawn

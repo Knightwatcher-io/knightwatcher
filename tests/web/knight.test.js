@@ -104,9 +104,9 @@ const X = 480, FLOOR = 530;
 const SMITH = [['updating', 0], ['updating', 100], ['updating', 500], ['updating', 900], ['idle', 600], ['idle', 2200], ['idle', 3600], ['idle', 5500],
   ['idle', 6600], ['idle', 7800], ['idle', 8800], ['idle', 13700], ['cpu_hot', 0], ['cpu_hot', 240]];
 /* The knight's pose o in the smithy's act for the condition id at t, the knight's spot at X, moved off
-   it as the act moves it (s.dx). */
+   it as the act moves it (s.dx); all quiet, at the quench's stop of the patrol, arrived at time 0. */
 function smith(S, o, id, t) {
-  const s = { w: { id }, kx: X, o, strike: false, dx: 0 };
+  const s = { w: { id }, kx: X, o, strike: false, dx: 0, here: id === 'idle' ? { act: 'quench', el: t } : null };
   S.act(t, s);
   o.x = X + s.dx;
   return s;

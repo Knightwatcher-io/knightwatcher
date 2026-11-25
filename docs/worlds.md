@@ -26,9 +26,10 @@ the smithy, the house and the court), the devices as the prop set `props.medieva
 three monarchs, the goblin, the fly and the mouser cat), the words, the overlay and the preset
 `world.medieval` ([The medieval world's pack](#the-medieval-worlds-pack)). The page builds the
 quiet line and the events' captions from the parts the collector sends, in the world's words, and
-takes the colours and the font of the words over the scene from the world's overlay. Version 0.9.0,
-which redraws the goblin, is signed, so a deployed page and a `dev` page alike draw everything
-from it.
+takes the colours and the font of the words over the scene from the world's overlay. Version
+0.10.0, which adds the patrol, the television in every scene and the devices' resting places
+(format 1.4), ships unsigned until its signing run, so a `dev` page draws everything from it and a
+deployed page draws every scene, device and member of the cast from code meanwhile.
 
 Any other world pack the page loads, shipped beside it or downloaded into `data/packs/`, reaches
 the wall through the settings: its scenes, cast, words, overlay, body, swatches and items, under
@@ -189,6 +190,36 @@ How the acts play, and what the engine draws for them (the steam, the rings on t
 and the glint), is in [scenes.md](./scenes.md#how-a-scene-compiles). `tests/web/world.test.js`
 checks the parts and `pump`, and their refusal in 1.1 and 1.2.
 
+## Format 1.4
+
+Format 1.4 carries the knight's patrol, the television in every scene and the devices' resting
+places, decided by the owner on 25 November 2026. As before, a field a pack of 1.0 to 1.3 does not
+have is refused there at `fields` by name (`pack.scenes.battlement.tv: is not a field here`), a pack
+of 1.1 to 1.3 reads exactly as before on a page of 1.4, and a page of 1.3 refuses a pack of 1.4 at
+the `format` step, so that every part it would have set takes the base world's. What 1.4 adds:
+
+- on a scene, `tv`, `{ "x", "stand", "watch" }`: where the television stands while something
+  streams, what it stands on (`table`, `crate`, or `none` where the scene draws its own set), and
+  where the watcher watches it from ([scenes.md](./scenes.md#what-a-scene-can-act));
+- the round act `quench`: one loop of the scene's quench at that stop of the patrol, which needs the
+  scene's `quench`. A scene with a `quench` and no such round plays it while all is quiet, as in 1.3;
+- a scene with an `anvil` gives its `rounds`, and the watcher patrols there too: the engine walks
+  it back to the spot, which the anvil counts from, before the hammer plays;
+- on a prop set, `tv`, its television, drawn in every scene that stands one
+  ([cast.md](./cast.md#the-television)); a set that gives none leaves the base world's;
+- the ground class box 24 taller, `[-66, -117, 56, 2]`, room for the scrying crystal on its stool. A
+  pack of 1.0 to 1.3 keeps `[-66, -93, 56, 2]` for its places and its kinds, so a world whose places
+  only just clear the old box is not refused; a kind's `mark` may be up to 184 in every format;
+- `streaming` plays in the quiet scene of the moment, as `device_down` does: a preset's
+  `scenes.for` names no scene for it, and each of its quiet scenes lists it in `can`, which needs a
+  `screen` or a `tv`. A preset of 1.1 to 1.3 still names one, which the page reads and passes over,
+  since every quiet scene acts it now.
+
+The effect `picture`, a television's picture, is the engine's, as every effect is, and so any
+format from 1.1 may name it; a page from before it refuses it at `fields`.
+`tests/web/world.test.js`, `tests/web/format-1.1.test.js` and `tests/web/patrol.test.js` check the
+parts and their refusal before 1.4.
+
 ## Words and the overlay
 
 A word set is `{ name, watcher, labels, quiet, captions }`, `name` (1 to 48 characters) and
@@ -309,10 +340,11 @@ A preset must be complete, at `rules`: every field above; `outfit.items` for eac
 `boots`, `torso`, `hair`, `plume`, `helmet`, `pauldrons`, `arms`, `gauntlets` and `main`, and for
 `back` and `off` if it gives them, and no other slot; `outfit.swatches` for the four sets;
 `scenes.quiet`, 1 to 16 scenes, each once; `scenes.for` naming a scene for every condition except
-`device_down` and `memory_tight`, which have none and play in the quiet scene of the moment; and a
-patron, a foe, a critter and a pet. Each of this pack's scenes it names must be able to do what it
-is named for: a quiet scene is `quiet` and lists `device_down` and `memory_tight` in `can`, and a
-condition's scene lists the condition. `memory_tight` is retired: Under strain (`cpu_hot`) covers
+`device_down` and `memory_tight`, and from format 1.4 `streaming`, which have none and play in the
+quiet scene of the moment; and a patron, a foe, a critter and a pet. Each of this pack's scenes it
+names must be able to do what it is named for: a quiet scene is `quiet` and lists `device_down` and
+`memory_tight` in `can`, and from 1.4 `streaming` too, and a condition's scene lists the
+condition. `memory_tight` is retired: Under strain (`cpu_hot`) covers
 memory, playing in `cpu_hot`'s scene, and the page never acts `memory_tight` on its own. The
 format keeps it, so that the signed packs and a user's own that list it still pass; a new pack
 may list it or not, and it changes nothing on the wall.
@@ -406,8 +438,8 @@ preset is complete.
 
 ## The medieval world's pack
 
-`web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 3]`,
-version 0.9.0, under CC BY-SA 4.0 ([legal/ART-LICENCE.md](../legal/ART-LICENCE.md)) as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+`web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 4]`,
+version 0.10.0, under CC BY-SA 4.0 ([legal/ART-LICENCE.md](../legal/ART-LICENCE.md)) as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([library.md](./library.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
@@ -418,8 +450,8 @@ loads it after the base pack's. It holds:
   down (`"when": ["cond:wan_down"]`), holds the cut rope of the bell, its frayed end and the length
   of rope on the walkway. Its first moving layer holds the stars that blink, the torch's light, its
   flame and the mark where the devices are drawn; its second, also while the WAN is down, the three
-  sparks at the rope's end, which blink on a keyframe clock. Its places, spot, rounds and `can` are
-  the code scene's. It is quiet, hosts the flies, the crate, the feast and the foe, gives the foe
+  sparks at the rope's end, which blink on a keyframe clock. Its places, spot, rounds (the stops of
+  the patrol), `tv` and `can` are the code scene's. It is quiet, hosts the flies, the crate, the feast and the foe, gives the foe
   the code scene's zone, left of the knight, and a wall, the merlons and the parapet between them,
   which the goblin climbs over, and gives the crate the stretch `[150, 384]`;
 - the scene `camp`, the camp of `web/js/scenes/camp.js` written as data. Its one still layer holds,
@@ -427,27 +459,28 @@ loads it after the base pack's. It holds:
   and the worn patch round the fire, the tufts of grass, the tent with its pole and guy ropes, the
   stone the pie warms on, the eight stones of the fire ring, the two crossed logs and the bough of
   the right-hand tree over the fire, where the cat rests. Its one moving layer holds the fire's light, the three flames, the embers, the mark where the
-  devices are drawn and the fireflies. Its places, spot, rounds and `can` are the code scene's. It
-  is quiet, hosts the flies, the crate, the feast and the foe, gives the foe the code scene's zone,
+  devices are drawn and the fireflies. Its places, spot, rounds, `tv` and `can` are the code
+  scene's. It is quiet, hosts the flies, the crate, the feast and the foe, gives the foe the code scene's zone,
   left of the knight, with no wall, so the goblin digs out of the ground, and gives the crate the
   stretch `[298, 436]`;
 - the scene `yard`, the training yard of `web/js/scenes/yard.js` written as data. Its one still layer
   holds, in the code's order, the sky, the stars, the merlons of the curtain wall as a tile, the
   wall's bricks and coping, the two arrow slits, the door under its stone arch (the arch's rows
   clipped where the door begins), the sconce, the beaten earth, its pebbles (the effect `pebbles`)
-  and tufts, the shadow under the dummy, the rack of spare arms, the barrel the pie stands on, the
-  three bales of hay and the dummy's post. Its one moving layer holds the sconce's light and flame,
+  and tufts, the shadow under the dummy, the rack of spare arms, the tall barrel the pie stands on
+  (the stamp `barrel.tall`), the three bales of hay and the dummy's post. Its one moving layer holds the sconce's light and flame,
   the mark where the devices are drawn, and the practice dummy: the lean of its pole, then its arms,
   sack, head and shield in the group `dummy`, and last the straw it sheds. Its places, spot, rounds
-  (the first of them `train`) and `can` are the code scene's. It is quiet and hosts the flies, the
+  (the first of them `train`), `tv` and `can` are the code scene's. It is quiet and hosts the flies, the
   crate and the feast, but no foe, gives the crate the stretch `[298, 436]`, and its `target` is `{ "group": "dummy", "hitAt": 420, "every":
   5600 }`, which gives it the training act;
 - the scene `cellar`, the cellar of `web/js/scenes/cellar.js` written as data. Its one still layer
   holds, in the code's order, the wall's bricks, the row of arches, the two shelves with what stands
   on them, their boards and their brackets, the piers, the cobwebs, the sconce, the flagstones and
   their seams, the two crate stacks and the barrel. Its one moving layer holds the sconce's light,
-  the flame and the mark where the devices are drawn. Its places, spot, rounds and `can` are the code
-  scene's, and it keeps the weapon away (`"weapon": "away"`) and the helmet on;
+  the flame and the mark where the devices are drawn. Its places, spot, rounds, `tv` (on a crate,
+  never watched) and `can` are the code scene's, and it keeps the weapon away (`"weapon": "away"`)
+  and the helmet on;
 - the scene `smithy`, the smithy of `web/js/scenes/smithy.js` written as data. Its one still layer
   holds, in the code's order, the wall's bricks and its beam, the tool board with the hammer, the
   tongs and the two horseshoes (the effect `horseshoe`), the quench barrel and the glint on its
@@ -464,13 +497,15 @@ loads it after the base pack's. It holds:
   (a `rest` mark for the weapon at the anvil's rest) and the mark where the devices are drawn; its
   fourth, while the hammer strikes (`"when": ["strike"]`), the burst of sparks where the hammer's
   face meets the blade, `{ "k": "fx", "fx": "burst", "p": [{ "spot": 1, "c": 148 }, 412] }`. Its
-  places, spot and `can` (`device_down`, `cpu_hot`, `memory_tight` and `updating`) are the code
+  places (`g3` before the bellows), spot, rounds, `tv` and `can` (`device_down`, `cpu_hot`,
+  `memory_tight`, `updating` and `streaming`) are the code
   scene's, and so are its rests, `anvil`, `{ "from": "spot", "x": 50, "y": 425, "a": "flat" }`,
   and `wall`, `{ "kind": "hang", "x": 145, "y": 312, "w": 100, "h": 132 }`. It takes the helmet
   off, keeps the weapon away (the hammer's act lays it on the anvil), is quiet and hosts nothing.
   Its `anvil` is `{ "rest": "anvil" }`, which gives it the anvil's act, its `bellows` `{ "stand":
   612, "handle": [682, 414], "travel": 30, "div": 100 }` and its `quench` `{ "water": [172, 452],
-  "stand": [650, 228] }` (format 1.3). Its one round, at its spot, is not compiled (below);
+  "stand": [650, 228] }` (format 1.3). Its rounds are a look round at the spot and one loop of the
+  quench at the forge, `{ "x": 130, "act": "quench", "dur": 15 }` (format 1.4);
 - the scene `house`, the knight's house of `web/js/scenes/house.js` written as data. Its first still
   layer holds, in the code's order, the roof's underside and its rafters (the effect `rafters`), the
   plank wall (the effect `planks`) and its posts as a tile, the beam, the moonlight and the window
@@ -483,7 +518,10 @@ loads it after the base pack's. It holds:
   and the scan lines; while it is off, the candle's light and flame (the effect `candle`); the mark
   where the devices are drawn; in bed, the `sleeper` mark and the blanket, which breathes by two
   copies of its shapes shown in turn; out of bed, the blanket made up; and while the helmet is off,
-  the helmet on the stool (a `rest` mark). Its places, spot, rounds and `can` are the code scene's,
+  the helmet on the stool (a `rest` mark). Its over layer, at night with the television on
+  (`"when": ["cond:night", "tv"]`), lays the set's light over the dark room: six faint `flicker`
+  glows in the picture's blues, four round the set and two on the bed. Its places, spot, rounds, `tv` (`none`: its own set) and `can` are
+  the code scene's,
   and so are its rests: `stool`, `{ "kind": "surface", "x": 460, "y": 476, "w": 76, "h": 80 }`,
   `pegs`, `{ "x": 618, "y": 228, "a": "flat", "stamp": "peg" }`, and `wall`, `{ "kind": "hang", "x":
   844, "y": 164, "w": 100, "h": 140 }`. It takes the helmet off, keeps the weapon away, is quiet and
@@ -493,15 +531,17 @@ loads it after the base pack's. It holds:
   layer holds, in the code's order, the wall's bricks, the pillars every 480 with their ledges and
   sconces (a tile), the two banners, the floor and its squares (three tiles, one for each row), the
   carpet, the dais's three steps (a tile of one repeat, below), the throne, the `patron` mark where the
-  monarch is painted, and the table. Its one moving layer holds the torches' lights and flames (a
+  monarch is painted, and the tall side table the pie stands on. Its one moving layer holds the torches' lights and flames (a
   tile, the light the effect `flicker`), the mark where the devices are drawn, the `patron` mark
-  where the monarch's mouth is drawn and the `bubble` mark. Its places, spot and `can`
-  (`ssh_session` alone) are the code scene's. It is not quiet and hosts nothing, and its `seat` is
-  `{ "x": 770, "y": 490, "bubble": [622, 180], "turn": 3200, "mouth": 230 }`, which gives it the
-  seat's act. Its one round, at its spot, is not compiled, as the smithy's is not;
+  where the monarch's mouth is drawn and the `bubble` mark. Its places, spot, `tv` (never watched)
+  and `can` (`ssh_session` alone) are the code scene's. It is not quiet and hosts nothing, and its
+  `seat` is `{ "x": 770, "y": 490, "bubble": [622, 180], "turn": 3200, "mouth": 230 }`, which gives
+  it the seat's act. Its one round, at its spot, is not compiled (a scene with a seat gives none);
 - the prop set `props.medieval`, the devices of `props.js` written as data: the five kinds `pi`
-  (the raspberry pie), `camera` (a barn owl), `machine` (a scrying crystal), `vm` (a potion flask)
-  and `box` (an iron-bound chest), each up and gone, below ([The devices](./cast.md#the-devices-on-the-page));
+  (the raspberry pie), `camera` (a barn owl), `machine` (a scrying crystal on its stool), `vm` (a
+  potion flask beside the satchel) and `box` (an iron-bound chest on its mat), each up and gone,
+  below ([The devices](./cast.md#the-devices-on-the-page)), and the television, on its table or its
+  crate ([The television](./cast.md#the-television));
 - the cast members `patron.a`, `patron.b` and `patron.c`, the three monarchs of `court.js` written
   as data: each seated on its anchors, its mouth shut and open, and the user's skin, hair and robe
   laid over it as the court lays them, below ([The cast](./cast.md#the-cast-on-the-page));
@@ -513,9 +553,9 @@ loads it after the base pack's. It holds:
   pose of each naming a stamp, its spot in each scene, and the measures of its pounce, below;
 - twenty-two stamps for the cat, `cat.<coat>.<pose>`, each pose of each coat as pix shapes in runs,
   written by `tools/cat-stamps.js` from the code's drawing, below ([The cast](./cast.md#the-cast-on-the-page));
-- three stamps, `sconce`, `barrel` and `peg`: the props `sconceHD` and `barrelHD` of `props.js`, the
-  barrel at the 84 by 72 the cellar and the yard draw it, and one of the house's pegs, counted from
-  where the weapon's frame puts it;
+- four stamps, `sconce`, `barrel`, `barrel.tall` and `peg`: the props `sconceHD` and `barrelHD` of
+  `props.js`, the barrel at the 84 by 72 the cellar draws it and at the 84 by 96 the yard does, and
+  one of the house's pegs, counted from where the weapon's frame puts it;
 - ten stamps for the devices' lamps of their own, the dark and the lit drawing of each, all up:
   the pie's (`pie.up.*`), the filling in the gaps of the lattice; the owl's (`owl.up.*`), its eyes;
   the crystal's (`crystal.up.*`), its ball; the flask's (`flask.up.*`), its potion; and the
@@ -534,7 +574,7 @@ loads it after the base pack's. It holds:
   changes every 400 ms;
 - the preset `world.medieval`, the medieval world whole: the base pack's Classic build and its
   default outfit, the quiet scenes `battlement`, `camp`, `house`, `yard` and `smithy`, the scene of each
-  condition, `patron.a`, `foe.goblin`, `critter.fly` and `pet.cat`, `props.medieval`, `overlay.phosphor`,
+  condition that has one (none for `streaming`, format 1.4), `patron.a`, `foe.goblin`, `critter.fly` and `pet.cat`, `props.medieval`, `overlay.phosphor`,
   `words.medieval`, and the camp as its picture, below ([Worlds as presets](#presets-on-the-page)).
 
 At the widest screen they assume, the checks find:
@@ -543,18 +583,18 @@ At the widest screen they assume, the checks find:
 |---|---|---|
 | battlement | 342 shapes, 25 879 fills | 7 shapes, 185 fills, 1 glow |
 | camp | 57 shapes, 57 073 fills | 7 shapes, 718 fills, 8 glows |
-| yard | 298 shapes, 28 929 fills | 44 shapes, 2 086 fills, 1 glow |
+| yard | 298 shapes, 29 049 fills | 44 shapes, 2 086 fills, 1 glow |
 | cellar | 440 shapes, 76 803 fills | 3 shapes, 120 fills, 1 glow |
 | smithy | 339 shapes, 15 300 fills | 54 shapes, 2 053 fills, 4 glows |
-| house | 370 shapes, 71 245 fills | 46 shapes, 2 128 fills, 3 glows |
-| court | 413 shapes, 50 647 fills | 19 shapes, 904 fills, 8 glows |
+| house | 370 shapes, 71 245 fills | 52 shapes, 2 146 fills, 9 glows |
+| court | 413 shapes, 50 743 fills | 19 shapes, 904 fills, 8 glows |
 
 against limits of 200 000 fills for the still layers, and 16 000 fills and 24 glows for a frame.
 The shapes are counted with each tile's repeats and each stamp's shapes written out. The camp's
 glows are the fire's light and the seven fireflies, the smithy's the calm fire's light, the flared
 fire's two and the sparks', counted together though the calm and the flared never show at once,
 and the house's the fire's, the television's and the candle's, counted together though the last
-two never show at once: a frame is costed with every layer drawn; the court's are its torches'
+two never show at once, and the six lights of the set over the dark room at night: a frame is costed with every layer drawn; the court's are its torches'
 lights, one for each pillar the widest screen shows. The gear at rest, the hot tip, the steam, the
 rings, the drips and the glint of the quench, the sleeper, the Zs, the patron and its speech bubble
 are the engine's drawing, as the devices are, and count toward no scene's cost;
@@ -566,14 +606,15 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 |---|---|---|
 | `pi` | 3 308 fills still, 411 moving | 633 still, no lamp |
 | `camera` | 539 still, 32 moving | 664 still, no lamp |
-| `machine` | 336 still, 430 moving | 603 still, no lamp |
-| `vm` | 185 still, 92 moving | 155 still, no lamp |
-| `box` | 252 still, 64 moving | 354 still, no lamp |
+| `machine` | 472 still, 430 moving | 746 still, no lamp |
+| `vm` | 564 still, 92 moving | 527 still, no lamp |
+| `box` | 314 still, 64 moving | 416 still, no lamp |
 
-against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
+with the rests and the shadows in the still parts, and the television 590 still on its table and
+121 for its picture, against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
 own lamp, which no medieval kind uses now, would count toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
 5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
-court counts none of them. The whole file weighs 365 312 bytes, against the 512 KiB a pack may;
+court counts none of them. The whole file weighs 384 056 bytes, against the 512 KiB a pack may;
 the cat's stamps are 106 KB of it and the lamps' 15 KB. The goblin's poses cost from 3 624 fills (`hit`) to 3 867
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each. The cat's poses cost from 621 fills
@@ -593,7 +634,10 @@ ground places along the front of the floor, the crate's stretches), is signed to
 licence, and is signed too. Version 0.8.0, of format `[1, 3]`, gives the smithy its three acts
 (the bellows, the flared fire and the quench, and the hammer's sparks where its face meets the
 blade) and makes it a quiet scene of the preset, and is signed too. Version 0.9.0 redraws the
-goblin as the pot-thief and puts the pack's art under CC BY-SA 4.0; it is signed too. A copy changed after signing is refused by a
+goblin as the pot-thief and puts the pack's art under CC BY-SA 4.0; it is signed too. Version
+0.10.0, of format `[1, 4]`, gives the quiet scenes the stops of the knight's patrol and every scene
+a place for the television, raises the yard's and the court's pies, moves the smithy's `g3` before
+the bellows and gives the ground devices their rests; it is unsigned until its signing run. A copy changed after signing is refused by a
 deployed page until its next run: that page draws every scene, every device and the cast, the cat
 included, from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.

@@ -49,9 +49,11 @@ Rules that follow from this, each decided by the owner:
   something is at work. A world's overlay may give its own shade of each, within a band of hue and
   contrast on black that keeps the meaning ([worlds.md](./worlds.md#words-and-the-overlay)); the
   medieval world's overlay gives the colours above.
-- Movement is kept small. A fire flickers, the knight strolls to another spot every 12 to 22
-  seconds in the quiet scenes. There is enough movement to spare an OLED panel and not enough to
-  keep catching the eye. The whole picture and the text also drift a few pixels over minutes.
+- Movement is kept small. A fire flickers, and in the quiet scenes the knight patrols between two
+  or three stops, standing 12 to 22 seconds at each and walking between them at about 47 pixels a
+  second, so it walks for about a fifth of the time. There is enough movement to spare an OLED
+  panel and not enough to keep catching the eye. The whole picture and the text also drift a few
+  pixels over minutes.
 - Serious outranks fun. The conditions have one order, and the highest one active wins the scene,
   the knight's state and the headline. Small reactions to events (an advert blocked, an address
   banned, a download imported) play only while nothing at warning level or above is active.
@@ -233,13 +235,23 @@ no green left. Together the four make a small workshop:
 
 They are drawn as plainly as the rest of the display, in hard pixels and the palette's colours.
 
+Each device on the ground has a resting place of its own, so that nothing looks dropped on the
+floor, by the owner's decision of 25 November 2026: the crystal stands on a three-legged stool, the
+flask beside the knight's satchel, set down on its side, and the chest on a woven mat with a red
+stripe and fringed ends. Each casts a soft shadow on the floor. The rest belongs to the device's
+drawing, so it is the same wherever the device stands. When a device is down it falls as before
+from its rest: the crystal's stand topples on the stool and the ball rolls off onto the floor
+beside it, the flask lies spilt against the satchel, and the chest stands on its end on the mat.
+
 Every scene has places for them where such devices would be. Cameras are mounted high, at or above
 the knight's head, on a wall, a tree, a pier or a pole; the other devices stand on the ground, by
 the owner's choice, along the front edge of the floor, in front of the knight and never under its
 boots. Each scene has three high places and three ground places, besides the pie's, and they fill
 in the order of the list, so a device keeps its place whether it is up or down. A device with no
 place left is not drawn but is still watched. Where a scene hosts the goblin or the crate, a
-stretch of floor is kept clear left of the knight for them.
+stretch of floor is kept clear left of the knight for them. While the television stands in the
+scene the goblin climbs in and the crate lands in front of it, so a ban or an import plays as
+usual while something streams, by the owner's decision of 25 November 2026.
 
 While a machine is up its light pulses slowly between its full colour and a dimmer one of the same
 hue, and is never unlit, so a device that is up never reads as down: the pie's filling red through
@@ -272,19 +284,34 @@ and a state of the knight. Highest first:
 | `cpu_hot` (Under strain) | warning | training yard | training frantically, sweating; bloated as well when memory is short |
 | `ssh_session` | at work | royal court | talking with the monarch |
 | `updating` | at work | smithy | hammering the weapon |
-| `streaming` | quiet | house | watching the television |
+| `streaming` | quiet | the quiet scene of the moment | patrolling, and now and then watching the television |
 | `night` | asleep | house | in bed, screen dimmed |
 
-That is each condition's own scene. `cpu_hot` is Under strain: a watched machine's CPU or memory,
+That is each condition's own scene. While something streams, the house's television stands in
+every scene, on a small table (in the cellar on a crate, clear of the shelf above), at the back of
+the floor clear of the devices and of the knight's spot, and its picture plays; the knight patrols
+the quiet scene of the moment and now and then walks over to the set to watch it. A stream at
+night leaves the knight asleep in bed in the house, the television playing in the background, its
+light flickering softly over the dark room; the headline still shows the stream. `cpu_hot` is Under strain: a watched machine's CPU or memory,
 today this host's, averaged over a window at or above its threshold. It replaced Running hot and
 Memory tight (`memory_tight`), so memory under strain plays in `cpu_hot`'s scene, the knight
 training and bloated, rather than in the quiet scene of the moment. The settings may move five of them to another scene that can
 act them; see [Scenes chosen per condition](#scenes-chosen-per-condition).
 
 With no condition active the quiet scenes take turns: battlement, camp, house, training yard and
-smithy, ten minutes each by default, and a minute each in the demo. In the smithy the knight
-quenches a blade: draws a blank glowing from the forge, carries it to the water barrel and plunges
-it in with a burst of steam, looks it over and carries it back to the fire. The settings choose
+smithy, ten minutes each by default, and a minute each in the demo. In each the knight patrols,
+decided by the owner on 25 November 2026: two or three stops, the first the scene's own spot
+where the knight comes in, each with what the knight does there (stands guard, looks round, sniffs
+the air, yawns, trains at the yard's dummy), and a walk between them with a real step, the knight
+side-stepping since it always faces out of the screen. In the smithy one stop is the quench: the
+knight draws a blank glowing from the forge, carries it to the water barrel and plunges it in with
+a burst of steam, looks it over and carries it back to the fire. While something streams the
+knight walks to the television as the stream begins, watches it for half a minute, and patrols
+on, coming back about every minute and a half. A warning in the same scene holds the knight where
+it stands, and the patrol carries on to the stop it was at when it clears; a condition with a
+scene of its own changes the scene, and the patrol starts again at the first stop when the quiet
+scene comes back; a condition whose act needs a place of its own, the anvil or the yard's dummy,
+walks the knight there first; and an event pauses the patrol where the knight stands. The settings choose
 which of the five take turns, at least one, and one length for all of them. The smithy joined the
 four as a default: a display that has saved its own list of quiet scenes keeps it as saved, and
 shows the smithy only once it is chosen there.
@@ -312,13 +339,13 @@ shows, where the knight stands and what the knight does. A scene that takes the 
 over for its own story (the court, where the knight talks with the monarch) acts only its own
 condition. The smithy has three acts of its own: the knight hammers the weapon on the anvil while
 updating, works the bellows while the CPU runs hot, the forge flaring with each push, and
-quenches a blade while all is quiet; with a device down the knight stands at the anvil, as in any
-quiet scene. Under strain with memory short, the knight works the bellows bloated. The pie stands to the right of the knight's spot
+quenches a blade at a stop of its patrol; with a device down the knight stands where it is, as in
+any quiet scene. Under strain with memory short, the knight works the bellows bloated. The pie stands to the right of the knight's spot
 in the battlement, the camp and the house, and to the left everywhere else, so only those three
 can show the knight staring at the empty dish. The weapon is put away in the house and the cellar,
-so neither can show it raised against an attack. A condition the knight strolls through (the
-crate of `disk_full`) needs a scene whose spots leave the knight's face alone: the cellar's guard
-spots and the yard's, not the spots where the knight sniffs or yawns. Under strain and hunger show
+so neither can show it raised against an attack. A condition the knight patrols through (the
+crate of `disk_full`) needs a scene whose stops leave the knight's face alone: the cellar's guard
+stops and the yard's, not the stops where the knight sniffs or yawns. Under strain and hunger show
 on the knight alone, so every scene that leaves the pose alone can act them.
 
 | Condition | battlement | camp | house | yard | cellar | smithy | court |
@@ -333,16 +360,15 @@ on the knight alone, so every scene that leaves the pose alone can act them.
 | `cpu_hot` | yes | yes | yes | own | yes | yes | |
 | `ssh_session` | | | | | | | own |
 | `updating` | | | | | | own | |
-| `streaming` | | | own | | | | |
+| `streaming` | yes | yes | yes | yes | | yes | |
 | `night` | | | own | | | | |
 
 The settings offer a choice of scene for a condition that has a scene of its own and that more than
 one scene can act: `attack`, `disk_full`, `backup_overdue`, `pi_silent` and `cpu_hot`. Not
 offered: `wan_down` (only the battlement has the bell's rope to cut), `container_unhealthy` and
 `night` (the bed is in the house; the night is left out by design, since the knight sleeps where
-the bed is), `streaming` (the television), `ssh_session` (the court) and `updating` (the smithy),
-each of which one scene alone can act; and `device_down`, which plays in whichever quiet scene is
-showing. The scenes still list `memory_tight` among what they can act, as the packs do, for a pack
+the bed is), `ssh_session` (the court) and `updating` (the smithy), each of which one scene alone
+can act; and `device_down` and `streaming`, which play in whichever quiet scene is showing. The scenes still list `memory_tight` among what they can act, as the packs do, for a pack
 from before; the page never acts it on its own ([worlds.md](./worlds.md)). Nothing changes until a scene is chosen, and a choice the chosen scene
 cannot act is ignored, so the condition plays in its own scene. A chosen scene changes only where
 the condition plays: the condition's level, its headline and the knight's state stay as they are.

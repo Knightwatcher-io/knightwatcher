@@ -27,6 +27,7 @@ out.
 | `tests/web/main.test.js` | `main.js`'s calls to the display's server in each mode (a forced demo asks nothing under `api/` and no state file), and the hash listener that opens the settings screen |
 | `tests/web/orbit.test.js`, `orbit-body.test.js`, `orbit-parts.test.js`, `orbit-swap.test.js` | the test world: read and drawn, its body at the ends of the ranges, its devices, cast and overlay, and the whole swap ([The test world](#the-test-world)) |
 | `tests/web/pack.test.js` | the pack library and format 1.0 |
+| `tests/web/patrol.test.js` | the knight's patrol: the side-step walk and the rig's gait, the plan of stops from the time alone and `pt=`, the yard's training and the smithy's quench at their stops, the visits to the television, a warning holding and resuming, an act walking the knight to its place, an event pausing it; the set in every scene, from the pack as from code, the goblin and the crate coming as with it off and drawn in front of it; and the night with a stream |
 | `tests/web/pet.test.js` | the mouser cat from the pack against the code, and the engine's catch |
 | `tests/web/places.test.js` | what stands in every scene's places stays on the grid and clear of the others |
 | `tests/web/props.test.js` | the devices inside their places, gone against up, only what moves drawn each frame |
@@ -355,7 +356,7 @@ every device on the ground, and does not come when there is no room; and, for th
 the base pack and from code, the arming sword, the longsword and the mace, each on Classic, Broad
 and Slim, that the goblin stands within the weapon's reach, that the blade the engine plans with
 (or the mace's drawn head) touches the goblin's crown at the hit, and that the weapon meets the
-goblin to [the contact standard](#the-contact-standard), at the spots the knight strolls to in both
+goblin to [the contact standard](#the-contact-standard), at the stops of the knight's patrol in both
 scenes, every 30 between, and the spots the full sweep found hardest. The goblin holds its brace
 for 16 ms after the hit (`hitPose` of the poof) and only then flings into its hit pose, squashed and
 with the burst from the hit itself; struck by a shot it flings at once. In the bounce a weapon in
@@ -384,8 +385,9 @@ the hit) to the plan in the code scene, for every weapon and build, and runs the
 `places.test.js` on every scene of the pack. It runs every scene of the pack that has an act (a
 `target`, an `anvil`, a `bed` or a `screen`) frame by frame beside its code scene, comparing every
 call, `over`'s among them, every change to the knight's pose, `strike` and the knight's move off
-its spot (`s.dx`): the smithy's through the whole quench, the hammer and the bellows, and the
-target's and the bellows' under strain short of memory, the knight bloated.
+its spot (`s.dx`): the smithy's through the whole quench at its stop, all quiet and while something
+streams, the hammer and the bellows, the yard's training while all is quiet and while something
+streams, and the target's and the bellows' under strain short of memory, the knight bloated.
 `tests/web/world-knight.test.js` runs the knight test's checks of the house and the smithy on the
 two from the pack: the ten records of them painted and drawn against the stored ones, with the
 knight from code and from the base pack; in each of the base pack's other looks (the arming sword
@@ -505,8 +507,10 @@ calls, which `knight.test.js` checks.
 The states, for every scene: idle; each condition in its `can`, the dish gone for `pi_silent` and a
 machine down with a box among the devices for `device_down`; the helmet the other way from the
 scene's own; and the devices in all seven places, up, gone and alerting, up in other kinds, and
-gone without alerting. The house adds the television on, the smithy the knight at x 300, the
-quench at thirteen more moments through its loop (the blank into the water, the steam and the rings,
+gone without alerting. Every scene with a `tv` adds the television on (the set on its stand, or
+the house's own), the house the night with the television on and its light over the dark room,
+the smithy the knight away from its spot at x 300 (the backdrop stays at the spot), the quench at
+its stop at the forge at thirteen more moments through its loop (the blank into the water, the steam and the rings,
 the drips, the glint, the nod and the walk back) and the bellows at five moments of a pump, the yard
 its dummy struck by the training swing and then wobbling, and the court each monarch in its own
 colours and in each of the base pack's six skins, and a sample of hair and robe: each monarch in
@@ -649,10 +653,14 @@ QUICK=1 tools/contact-sweep.sh /tmp/kw-contact    # the pack's scenes alone
 ```
 
 It measures every weapon the settings offer on every build and the code path's greatsword, in
-every scene that hosts the goblin, at every whole pixel the knight strolls over, with every
-combination of the pie and the ground devices, every 2 ms: 1 152 plans, the crossbow's 216 among
-them. It runs inside `tools/capped.sh` in four workers, about two and a half minutes for the pack's
-scenes and a minute and a half for the code's, which leave out the crossbow. It prints a line for each weapon and build (the plans, those deeper than 2 or
+every scene that hosts the goblin, at every whole pixel the knight walks over on its patrol, with every
+combination of the pie and the ground devices, every 2 ms: 3 552 plans, the crossbow's 666 among
+them, since the patrol walks the knight across the battlement from 440 to 600 and across the camp
+from 480 to 540. Those wider spots found the arming sword on Broad going 4 pixels into the goblin
+at the very end of its point where a zone's edge held the goblin 207 to 209 from the knight, just
+short of the wanted gap of 210, so the wanted gap (`FOE.gap` in `engine.js`) was pulled in to 206
+on 25 November 2026. It runs inside `tools/capped.sh` in four workers, about nine minutes for the pack's
+scenes and four and a half for the code's, which leave out the crossbow. It prints a line for each weapon and build (the plans, those deeper than 2 or
 apart by more than 3, the worst of each), the largest difference from Classic's hit for each
 weapon, and the count of faults, and exits 1 on any fault, on any difference between the pack's
 results and the code's, or when the base pack has a weapon with a blade that the sweep does not
@@ -787,8 +795,8 @@ greys and the choices' names, and every monarch in every skin, hair and robe.
 `tests/web/scenes.test.js` does for the scenes what the knight test does for the knight. Against the
 same kind of fake canvas it records every scene's `paint()` and `draw()`, with `act()` and `over()`
 where a scene has them, call by call, in every state that changes them: idle and each condition the
-scene can act, the helmet the other way from the scene's own, the house's television, the smithy at
-another spot, the yard's dummy struck, the devices in all seven places up and gone, and at court
+scene can act, the helmet the other way from the scene's own, the television on, the house at
+night with it on, the smithy with the knight away from its spot, the yard's dummy struck, the devices in all seven places up and gone, and at court
 each monarch in its own colours, in each of the six skins and in a sample of hair and robe; each at
 960 by 600, 1400 by 600 and 960 by 720, at five moments chosen to catch what moves. The devices are
 drawn by the engine's own `KW.devices`, and a canvas drawn with `drawImage` (a device's still part,

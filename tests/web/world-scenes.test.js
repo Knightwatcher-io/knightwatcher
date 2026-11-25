@@ -213,8 +213,8 @@ test('the scenes from the pack that host a foe: the goblin\'s plan is the code s
   assert.ok(plans > 50);
 });
 
-/* The hit at the knight's first spot, the pie alone, for each weapon on Classic, Broad and Slim, as
-   foe.test.js has it. */
+/* The hit at the scene's spot, where the knight comes in, the pie alone, for each weapon on Classic,
+   Broad and Slim, as foe.test.js has it. */
 const HITS = {
   battlement: { two: [1657, 1659, 1655], long: [1658, 1661, 1657], one: [1702, 1706, 1698], mace: [1703, 1709, 1690] },
   camp: { two: [1661, 1663, 1659], long: [1662, 1664, 1660], one: [1710, 1712, 1709], mace: [1706, 1710, 1702] } };
@@ -223,7 +223,7 @@ test('the scenes from the pack that host a foe: on every build the goblin is str
   const ITEMS = { one: ONE.look.items, long: LONG.look.items, mace: MACE.look.items };
   for (const scene of FOES) {
     assert.ok(HITS[scene], `${scene}: the hits are written down here as foe.test.js has them`);
-    const kx0 = READ.data.scenes[scene].rounds[0].x * 5;
+    const kx0 = READ.data.scenes[scene].spot * 5;
     for (const grip of ['two', 'long', 'one', 'mace']) {
       const got = ['build.a', 'build.b', 'build.c'].map(b => planFor(load('pack', true, { look: Object.assign({ build: 'kw.base/' + b }, ITEMS[grip] ? { items: ITEMS[grip] } : {}) }), scene, kx0, [PIE]).hit);
       assert.deepEqual(got, HITS[scene][grip], `${grip} ${scene}`);
@@ -235,7 +235,7 @@ test('the scenes from the pack that host a foe: on every build the goblin is str
    contact standard), on the scenes and the goblin from the pack: the whole drawn weapon against
    every drawn pixel of the goblin through the whole strike, the bounce included, never more than
    2 px in, and at the hit no more than 3 px from the goblin as drawn then, for each swung weapon on
-   each build, at the spots the knight strolls to, every 30 between and the spots the full sweep
+   each build, at the stops of the patrol, every 30 between and the spots the full sweep
    (tools/contact-sweep.sh) found hardest. */
 const CONTACT_LIB = require('../../tools/contact-sweep/lib.js');
 const { measurePlan } = require('../../tools/contact-sweep/measure.js');
@@ -354,8 +354,9 @@ test('the scenes from the pack: a camera\'s question mark is never higher than y
 // strike and the knight's move off the spot (s.dx) compared. The target's: every 10 ms for two of
 // the yard's 5.6 s training rounds while all is quiet and while the CPU runs hot, and every 50 ms
 // for six seconds under attack, where the act rests, and under strain short of memory, the knight
-// bloated as it trains. The smithy's: every 10 ms for the whole of the quench's 14.4 s loop while
-// all is quiet, for five of the hammer's 1.4 s blows while updating, at the spot and at x 300, and
+// bloated as it trains, and every 50 ms for the same two rounds while something streams. The
+// smithy's: every 10 ms for the whole of the quench's 14.4 s loop at its stop while all is quiet,
+// and every 50 ms while something streams, for five of the hammer's 1.4 s blows while updating, at the spot and at x 300, and
 // for ten of the bellows' pumps of 200 pi ms while the CPU runs hot, and every 50 ms for six
 // seconds with a device down, where no act plays, and under strain short of memory, bloated at the
 // bellows.
@@ -384,27 +385,27 @@ function loadDrawn(from) {
   return { KW, log };
 }
 /* The frame the engine makes for the condition id at t, the knight at kx (the scene's spot when left
-   out) and, in a scene with rounds, strolling at the first of them from time 0, as
-   tests/web/scenes.test.js makes it. */
-function frameAt(KW, name, id, t, kx) {
+   out) and, in a scene with rounds, on its patrol at the first of them (or the stop whose act is
+   stop) from time 0, as tests/web/scenes.test.js makes it. */
+function frameAt(KW, name, id, t, kx, stop) {
   // mem: Under strain short of memory, the knight bloated as it trains
   const mem = id === 'mem';
   if (mem) id = 'cpu_hot';
   const sc = KW.scenes[name], K = KW.knight, V = KW.view, ST = KW.state, k = ST.CONDITIONS[id];
   const w = k ? { id, lv: k.lv, st: ST.LEVELS[k.level], scene: k.scene, hl: '', sub: '', mem } : ST.IDLE;
-  const o = K.pose(id, t, mem); o.floor = V.HFL; o.helmet = sc.helmet !== false; o.x = kx === undefined ? sc.spot * V.U : kx;
+  const o = K.pose(id === 'streaming' ? 'idle' : id, t, mem); o.floor = V.HFL; o.helmet = sc.helmet !== false; o.x = kx === undefined ? sc.spot * V.U : kx;
   if (sc.sword === false) o.sword = false;
   const inBed = !!sc.bed && (id === 'night' || id === 'container_unhealthy');
-  const free = (w.lv < 3 || id === 'disk_full') && !inBed && w.lv !== 2 && id !== 'backup_overdue' && id !== 'pi_silent';
-  return { w, devices: [], places: sc.places, tv: id === 'streaming', kx: o.x, o, here: sc.rounds && free ? { act: sc.rounds[0].act, el: t } : null, inBed,
+  const free = (id === 'idle' || id === 'disk_full' || id === 'streaming') && !inBed;
+  return { w, devices: [], places: sc.places, tv: id === 'streaming', set: sc.tv || null, spot: sc.spot * V.U, kx: o.x, o, here: sc.rounds && free ? { act: stop || sc.rounds[0].act, el: t } : null, inBed,
     helmOff: inBed || o.helmet === false, strike: false };
 }
 /* The scenes with an act, and the runs each is compared in: [condition, every ms, until ms, kx]. */
 const PART = sc => (sc.target ? 'target' : sc.anvil ? 'anvil' : sc.bed || sc.screen ? 'bed' : sc.seat ? 'seat' : null);
 const ACTED = GIVEN.filter(n => PART(READ.data.scenes[n]));
 const RUNS = {
-  target: [['idle', 10, 11200], ['cpu_hot', 10, 11200], ['attack', 50, 6000], ['mem', 50, 6000]],
-  anvil: [['idle', 10, 14400], ['updating', 10, 7000], ['updating', 10, 7000, 300], ['cpu_hot', 10, 6300], ['device_down', 50, 6000], ['mem', 50, 6000]],
+  target: [['idle', 10, 11200], ['streaming', 50, 11200], ['cpu_hot', 10, 11200], ['attack', 50, 6000], ['mem', 50, 6000]],
+  anvil: [['idle', 10, 14400, 650, 'quench'], ['streaming', 50, 14400, 650, 'quench'], ['updating', 10, 7000], ['updating', 10, 7000, 300], ['cpu_hot', 10, 6300], ['device_down', 50, 6000], ['mem', 50, 6000]],
   bed: [['night', 10, 8400], ['container_unhealthy', 10, 8400], ['streaming', 10, 8400], ['idle', 10, 8400]],
   seat: [['ssh_session', 10, 12800], ['idle', 10, 12800]]
 };
@@ -412,12 +413,12 @@ const RUNS = {
 for (const name of ACTED) {
   test(`${name} from kw.medieval acts as the code scene does, frame by frame`, () => {
     let frames = 0;
-    for (const [id, every, until, kx] of RUNS[PART(READ.data.scenes[name])]) {
+    for (const [id, every, until, kx, stop] of RUNS[PART(READ.data.scenes[name])]) {
       const c = loadDrawn('code'), p = loadDrawn('pack');
       assert.notEqual(c.KW.scenes[name], p.KW.scenes[name]);
       for (let t = 0; t <= until; t += every) {
         const run = m => {
-          const s = frameAt(m.KW, name, id, t, kx), before = JSON.stringify(s.o);
+          const s = frameAt(m.KW, name, id, t, kx, stop), before = JSON.stringify(s.o);
           m.log.length = 0;
           if (m.KW.scenes[name].act) m.KW.scenes[name].act(t, s);
           m.log.push('o ' + (JSON.stringify(s.o) === before ? 'unchanged' : JSON.stringify(s.o)), 'strike ' + s.strike, 'dx ' + s.dx);

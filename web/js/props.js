@@ -332,7 +332,10 @@
     /* The ball's outline, drawn pixel by pixel; gone, the ball, its highlight and the crack's four
        strokes at the eighths that fill the pixels 22.35, 20.35, 4.48 and 0.8 would. */
     const RING = discs([[ballR + 2, ballR + 2, C.K]]), DOWN = { ring: [22.375, 22.375], ball: [20.25, 20.375], hi: [4.375, 4.5], crack: [.75, .75, .75, .875] };
-    function machine(x, y, ok) {
+    /* Up, the crystal on its stand on (x, y). Gone, the stand toppled and the shards on (x, y - lift),
+       the toppled part's rest, then the ball on the floor at y, under a shadow of its own when it has
+       fallen from a rest (lift above 0). */
+    function machine(x, y, ok, lift) {
       if (ok) {
         const ft = [[-14, 0], [-11, -5], [11, -5], [14, 0]].map(([u, v]) => [x + Rc(u), y + Rc(v)]);
         poly([[ft[0][0] - 2, y + 1], [ft[1][0] - 1, ft[1][1] - 2], [ft[2][0] + 1, ft[2][1] - 2], [ft[3][0] + 2, y + 1]], C.K); poly(ft, WOODV);
@@ -347,6 +350,8 @@
         RING.draw(x, y + ballY);
       } else {
         // the toppled stand, to the right: the cup on its side, the stem, the foot on its edge
+        const y0 = y, ly = lift || 0;
+        y = y0 - ly;
         const P2 = pts => pts.map(([u, v]) => [x + Rc(u), y + Math.round(v * c)]);
         const cupO = P2([[2, -24], [11, -18], [11, -5], [2, 1]]), cupI = P2([[4, -21], [10, -17], [10, -6], [4, -1]]);
         poly([[cupO[0][0] - 1, cupO[0][1] - 1], [cupO[1][0] + 1, cupO[1][1] - 1], [cupO[2][0] + 1, cupO[2][1] + 1], [cupO[3][0] - 1, y + 1]], C.K); poly(cupI, GOLD);
@@ -354,13 +359,16 @@
         rrect(sx - 1, sy - 2, sw + 2, sh + 4, 1, C.K); rrect(sx, sy, sw, sh, 0, GOLD);
         const fO = P2([[21, -21], [29, -18], [29, 1], [21, 1]]), fI = P2([[22, -19], [28, -17], [28, 0], [22, 0]]);
         poly([[fO[0][0] - 1, fO[0][1] - 1], [fO[1][0] + 1, fO[1][1] - 1], [fO[2][0] + 1, y + 1], [fO[3][0] - 1, y + 1]], C.K); poly(fI, WOODV);
-        // the ball, rolled off to the left, dark, cracked
+        // the shards beside the stand
+        for (const [sx2, sy2] of [[-3, -1], [1, -2], [-6, 0]]) { const px = x + Rc(sx2), py = y + Rc(sy2); poly([[px, py + 1], [px + 1, py - 1], [px + 2, py + 1]], C.S0); }
+        // the ball, rolled off to the left onto the floor, dark, cracked
+        y = y0;
+        if (ly) shadowHD(x - 36, y, 22);
         const bx = x + Rc(-18), r = 11 * c, by = y - Math.round(r) - 1;
         ell(bx, by, DOWN.ring[0], DOWN.ring[1], C.K); ell(bx, by, DOWN.ball[0], DOWN.ball[1], [[.25, ORB_DARK.c], [.7, ORB_DARK.a], [1, ORB_DARK.b]]);
         ell(bx - Math.round(r * .42), by - Math.round(r * .42), DOWN.hi[0], DOWN.hi[1], ORB_DARK.h);
         const ck = CRACK.map(([u, v]) => [bx + Math.round((u + 18) * c), by + Math.round((v + 13) * c)]);
         for (let i = 1; i < ck.length; i++) strip(ck[i - 1][0], ck[i - 1][1], ck[i][0], ck[i][1], DOWN.crack[i - 1], DOWN.crack[i - 1], C.K);
-        for (const [sx2, sy2] of [[-3, -1], [1, -2], [-6, 0]]) { const px = x + Rc(sx2), py = y + Rc(sy2); poly([[px, py + 1], [px + 1, py - 1], [px + 2, py + 1]], C.S0); }
       }
     }
 
@@ -516,19 +524,71 @@
   }
 
   /* The machine: the scrying crystal (sized, above), its ball the lamp up; gone, dark. */
+  /* ---- The devices at rest ---------------------------------------------------------------------
+     Each kind on the ground brings its own resting place, drawn in its still part, so that it is the
+     same wherever the device stands, and casts a soft shadow on the floor: the crystal stands on a
+     three-legged stool, the flask beside the knight's satchel, the chest on a woven mat. Each rest
+     lies inside the ground class's box of format 1.4, [-66, -117, 56, 2] from the base. */
+  const SHADOW = 'rgba(0,0,0,.38)';
+  /* A contact shadow on the floor y, rx either side of x, 7 rows high, its lowest a row above y + 2. */
+  function shadowHD(x, y, rx) { ell(x, y - 2, rx, 3, SHADOW); }
+  /* How far the stool raises the crystal, and the stool's offset when the crystal has fallen. */
+  const STOOL = { raise: 24, fallen: 19 };
+  /* A three-legged stool, 27 high, its seat 66 across, its middle at x. */
+  function stoolHD(x, y) {
+    shadowHD(x, y, 36);
+    for (const [a, b] of [[-24, -30], [24, 30]]) { strip(x + a, y - 18, x + b, y - 1, 6, 6, C.K); strip(x + a, y - 18, x + b, y - 1, 3.5, 3.5, C.N2); }
+    Rh(x - 4, y - 18, 8, 17, C.K); Rh(x - 2, y - 18, 4, 16, C.N2);
+    rrect(x - 33, y - 27, 66, 12, 4, C.K); Rv(x - 30, y - 25, 60, 8, [[.3, C.N0], [.7, C.N1], [1, C.N2]]);
+    Rh(x - 24, y - 22, 14, 1, C.N2); Rh(x + 4, y - 20, 18, 1, C.N2);
+  }
+  /* The knight's satchel, set down on its side, the flap over and buckled, the strap looped behind:
+     60 across and 34 high, its middle at x. */
+  const SATCHEL = { body: [[.2, '#a8743e'], [.65, '#8a5a2c'], [1, '#6a421e']], flap: [[.2, '#c08a4c'], [.7, '#a06a36'], [1, '#7c4e24']], seam: '#5a3618' };
+  function satchelHD(x, y) {
+    shadowHD(x + 2, y, 34);
+    const strap = [[x - 24, y - 26, x - 10, y - 44], [x - 10, y - 44, x + 16, y - 42], [x + 16, y - 42, x + 26, y - 26]];
+    for (const [a, b, c, d] of strap) strip(a, b, c, d, 5, 5, C.K);
+    for (const [a, b, c, d] of strap) strip(a, b, c, d, 2.5, 2.5, C.N2);
+    rrect(x - 30, y - 32, 60, 32, 9, C.K); rrect(x - 27, y - 29, 54, 27, 7, SATCHEL.body);
+    rrect(x - 28, y - 32, 56, 18, 7, C.K); rrect(x - 25, y - 29, 50, 13, 5, SATCHEL.flap);
+    Rh(x - 25, y - 17, 50, 1, SATCHEL.seam);
+    rrect(x - 5, y - 20, 10, 12, 2, C.K); rrect(x - 3, y - 18, 6, 8, 1, C.G1); Rh(x - 1, y - 16, 2, 4, C.K);
+    Rh(x - 18, y - 9, 10, 1, SATCHEL.seam); Rh(x + 10, y - 7, 8, 1, SATCHEL.seam);
+  }
+  /* A woven mat with a red stripe and fringed ends, 122 across, its middle at x. */
+  const MAT = { weave: [[.3, '#b89a5e'], [1, '#86703e']], warp: '#6a5228', lit: '#d8ba7a', stripe: '#9a2f28', fringe: '#c8aa6a' };
+  function matHD(x, y) {
+    rrect(x - 62, y - 10, 114, 12, 4, C.K); rrect(x - 59, y - 8, 108, 8, 3, MAT.weave);
+    for (let i = 0; i < 13; i++) Rh(x - 56 + i * 8, y - 8, 2, 8, MAT.warp);
+    Rh(x - 59, y - 8, 108, 1, MAT.lit); Rh(x - 59, y - 3, 108, 1, MAT.stripe);
+    for (let i = 0; i < 6; i++) { Rh(x - 66, y - 9 + i * 2, 4, 1, MAT.fringe); Rh(x + 52, y - 9 + i * 2, 4, 1, MAT.fringe); }
+  }
+  /* Where the flask stands from the place's base, right of the satchel; how far the mat raises the
+     chest. */
+  const FLASK_AT = { flask: 18, satchel: -30 }, MAT_RAISE = 5;
+
+  /* The machine: the scrying crystal (sized, above) on its stool, the whole ball the lamp; gone, the
+     stand toppled on the stool, pushed over to the right, and the ball rolled onto the floor beside
+     it, dark. */
   function machineHD(x, y, t, ok, part) {
-    if (part !== 'moving') BIG.machine(x, y, ok);
-    if (part !== 'still' && ok) ownLampHD(LAMPS.crystal.up, x, y, t, true);
+    if (part !== 'moving') {
+      if (ok) { stoolHD(x, y); BIG.machine(x, y - STOOL.raise, true); } else { stoolHD(x + STOOL.fallen, y); BIG.machine(x, y, false, STOOL.raise); }
+    }
+    if (part !== 'still' && ok) ownLampHD(LAMPS.crystal.up, x, y - STOOL.raise, t, true);
   }
-  /* The virtual machine: the potion flask (sized, above), its potion the lamp up; gone, dark. */
+  /* The virtual machine: the potion flask (sized, above) beside the satchel, its potion the lamp
+     up; gone, spilt against the satchel, dark. */
   function vmHD(x, y, t, ok, part) {
-    if (part !== 'moving') FLASK.vm(x, y, ok);
-    if (part !== 'still' && ok) ownLampHD(LAMPS.flask.up, x, y, t, true);
+    const fx = x + FLASK_AT.flask;
+    if (part !== 'moving') { satchelHD(x + FLASK_AT.satchel, y); if (ok) shadowHD(fx, y, 20); FLASK.vm(fx, y, ok); }
+    if (part !== 'still' && ok) ownLampHD(LAMPS.flask.up, fx, y, t, true);
   }
-  /* Any other kind: the iron-bound chest (sized, above), its jewel the lamp, gold up; gone, dark. */
+  /* Any other kind: the iron-bound chest (sized, above) on its mat, its jewel the lamp, gold up;
+     gone, on its end on the mat, dark. */
   function boxHD(x, y, t, ok, part) {
-    if (part !== 'moving') BIG.box(x, y, ok);
-    if (part !== 'still' && ok) ownLampHD(LAMPS.chest.up, x, y, t, true);
+    if (part !== 'moving') { matHD(x, y); shadowHD(x, y - 2, 46); BIG.box(x, y - MAT_RAISE, ok); }
+    if (part !== 'still' && ok) ownLampHD(LAMPS.chest.up, x, y - MAT_RAISE, t, true);
   }
 
   /* The kinds of device the page draws, by the contract's kind. draw(x, y, t, ok, part)
@@ -541,7 +601,58 @@
     camera: { draw: cameraHD, mark: 128 },
     machine: { draw: machineHD, mark: 122 },
     vm: { draw: vmHD, mark: 122 },
-    box: { draw: boxHD, mark: 158 }
+    box: { draw: boxHD, mark: 163 }
+  };
+
+  /* ---- The television ----------------------------------------------------------------------------
+     The house's set, which the engine stands in every scene while something streams (KW.engine,
+     KW.devices.draw), on a small table, or lower on a crate where a shelf hangs above: a wooden set
+     with two dials and a grille, a rounded screen and a pair of rabbit ears, and its picture (the
+     effect picture). draw(x, y, t, stand, part) draws it with the middle of the stand's foot at
+     (x, y) on the floor: its still part (part 'still', the stand and the set), its picture ('moving')
+     or both. The set's foot stands h above the floor on each stand. A world's prop set may give a
+     television of its own (world.js); this is the medieval world's. Set, stands and picture lie
+     inside the box [-56, -176, 56, 2] from the middle of the stand's foot. */
+  function tvSetHD(x, y) {
+    strip(x - 9, y - 68, x - 31, y - 114, 2, 2, C.K); strip(x + 7, y - 68, x + 29, y - 114, 2, 2, C.K);
+    strip(x - 9, y - 68, x - 30, y - 112, 1, 1, C.S2); strip(x + 7, y - 68, x + 28, y - 112, 1, 1, C.S2);
+    ell(x - 31, y - 114, 4, 4, C.K); ell(x + 29, y - 114, 4, 4, C.K); ell(x - 31, y - 114, 2, 2, C.S1); ell(x + 29, y - 114, 2, 2, C.S1);
+    rrect(x - 47, y - 72, 94, 72, 8, C.K); rrect(x - 44, y - 69, 88, 66, 6, [[.15, C.N0], [.6, C.N1], [1, C.N2]]);
+    rrect(x - 39, y - 64, 64, 56, 12, C.K);
+    rrect(x + 29, y - 60, 11, 11, 5, C.K); ell(x + 34, y - 55, 3, 3, C.G1); rrect(x + 29, y - 42, 11, 11, 5, C.K); ell(x + 34, y - 37, 3, 3, C.S2);
+    for (let i = 0; i < 4; i++) Rh(x + 29, y - 24 + i * 4, 11, 2, C.N3);
+  }
+  /* The picture, from the set's foot. */
+  const tvPictureHD = (x, y, t) => KW.effects.picture.draw({ p: [x - 36, y - 61], of: ['#7fe9ff', '#e8f0ff', '#6f9eff', '#ff8fb0', '#fff3a0', '#8fe07a'], ms: 400, walk: [700, 6] }, t);
+  /* A small table, 104 across and 60 high, as tableHD draws one, with its grain where tableHD puts
+     it on a table at x 0, so that it is the same wherever it stands. */
+  const TV_GRAIN = [0, 1, 2, 3].map(i => [6 + hsh(i, 71) % 74, 5 + (i % 2) * 3, 12 + hsh(i, 72) % 14]);
+  function tvTableHD(x, y) {
+    const x0 = x - 52, y0 = y - 60, legs = [x0 + 8, x0 + 82];
+    for (const lx of legs) { Rh(lx - 2, y0 + 12, 18, 48, C.K); rrect(lx, y0 + 12, 14, 48, 0, [[.3, C.N1], [1, C.N3]]); }
+    Rh(legs[0], y0 + 30, 88, 8, C.K); Rv(legs[0] + 2, y0 + 32, 84, 4, [[.5, C.N2], [1, C.N3]]);
+    rrect(x0 - 4, y0 - 3, 112, 18, 4, C.K); Rv(x0 - 1, y0, 106, 12, [[.25, C.N0], [.55, C.N1], [1, C.N2]]);
+    for (const [gx, gy, gw] of TV_GRAIN) Rh(x0 + gx, y0 + gy, gw, 1, C.N2);
+  }
+  /* A crate of slats, 104 across and 30 high, the cellar's kind, with its shadow. */
+  function tvCrateHD(x, y) {
+    shadowHD(x, y, 56);
+    const x0 = x - 52, y0 = y - 30;
+    Rh(x0, y0, 104, 30, C.K); Rh(x0 + 3, y0 + 3, 98, 25, C.N1);
+    for (let j = 0; j < 2; j++) { Rh(x0 + 3, y0 + 3 + j * 13, 98, 2, C.N0); Rh(x0 + 3, y0 + 14 + j * 13, 98, 1, C.N3); }
+    Rh(x0 + 3, y0 + 3, 7, 25, C.N2); Rh(x0 + 94, y0 + 3, 7, 25, C.N2);
+    strip(x0 + 10, y0 + 4, x0 + 94, y0 + 26, 3, 3, C.N2);
+    for (const cx of [3, 94]) for (const cy of [3, 21]) Rh(x0 + cx, y0 + cy, 7, 7, C.S4);
+  }
+  const TV_STANDS = { table: { h: 58, draw: tvTableHD }, crate: { h: 28, draw: tvCrateHD } };
+  const TV = {
+    name: 'Television',
+    stands: { table: TV_STANDS.table.h, crate: TV_STANDS.crate.h },
+    draw(x, y, t, stand, part) {
+      const S = TV_STANDS[stand] || TV_STANDS.table, fy = y - S.h;
+      if (part !== 'moving') { S.draw(x, y); tvSetHD(x, fy); }
+      if (part !== 'still') tvPictureHD(x, fy, t);
+    }
   };
   const kindOf = k => (typeof k === 'string' && Object.prototype.hasOwnProperty.call(KINDS, k) ? KINDS[k] : KINDS.box);
 
@@ -878,6 +989,7 @@
   }
 
   KW.props = { swordHD, bricksHD, barrelHD, tableHD, sconceHD, pieHD, pieShapes, DEVICE_LAMPS: LAMPS, cameraHD, machineHD, vmHD, boxHD, KINDS, kindOf,
+    shadowHD, stoolHD, satchelHD, matHD, STOOL, FLASK_AT, MAT_RAISE, TV, tvSetHD, tvTableHD, tvCrateHD,
     LAMP, LAMP_REDS, lampLevel, lampRim, lampHD, crateHD, flyHD, deadFlyHD, CRITTERS, poofHD, chuteHD,
     FOES, starHD, cloudHD, CLOUD_MS, sparklesHD, SPARKLE_MS, holeHD, clodsHD };
 })(window.KW);

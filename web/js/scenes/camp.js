@@ -62,15 +62,20 @@
     spot: 104, places: PLACES, outdoors: true,
     // The conditions this scene can act out (docs/page.md): the attack with the weapon raised,
     // hunger, the stare at the empty dish to the knight's right, and running hot; and, as a quiet
-    // scene, a device down and memory running tight. Kept as plain data for the world format being
-    // drafted to take over.
-    can: ['attack', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
+    // scene, a device down, memory running tight and a stream on the television. Kept as plain data
+    // for the world format being drafted to take over.
+    can: ['attack', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming'],
     // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
     hosts: ['flies', 'crate', 'feast', 'foe'],
-    rounds: [{ x: 104, act: 'sniff', dur: 22 }, { x: 98, act: 'yawn', dur: 14 }, { x: 101, act: 'look', dur: 16 }],
+    // the stops of the knight's patrol (docs/page.md): a sniff of the air by the fire, a look round
+    // nearer the tent
+    rounds: [{ x: 108, act: 'sniff', dur: 18 }, { x: 96, act: 'look', dur: 14 }],
+    // where the television stands while something streams (docs/scenes.md): its middle, what it
+    // stands on, and where the knight watches it from, in units of U as the spot
+    tv: { x: 330, stand: 'table', watch: 94 },
     paint, draw, foeZone: FOE_ZONE,
     // where the crate may land (docs/scenes.md): the ground between the devices before the tent and
-    // the knight's boots at its leftmost spot
+    // the knight's boots at the spot
     crate: { span: [298, 436] }
   };
 })(window.KW);

@@ -359,7 +359,7 @@ Updating. It has no settings: it is active while any configured lock holder is r
 
 ### [conditions.streaming]
 
-Now showing: a stream is playing.
+Now showing: a stream is playing. It plays in whichever quiet scene is showing, the television standing in it; at night the knight sleeps in the house with the television on.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
@@ -1489,8 +1489,9 @@ medieval drawing.
 conditions (see [design.md](./design.md#scenes-chosen-per-condition)), and the page offers a
 choice for five; the reference above lists the scenes that can act each. The other conditions
 are not offered: `wan_down` (only the battlement has the bell rope), `container_unhealthy` and
-`night` (the bed is in the house), `streaming` (so is the television), `ssh_session` (the court),
-`updating` (the smithy), and `device_down`, which plays in whichever quiet scene is showing. A loaded world's scene, by its long name, may be given any condition that has a scene
+`night` (the bed is in the house), `ssh_session` (the court), `updating` (the smithy), and
+`device_down` and `streaming`, which play in whichever quiet scene is showing; while something
+streams the television stands in that scene, and at night the knight sleeps in the house with it on. A loaded world's scene, by its long name, may be given any condition that has a scene
 of its own, offered or not, when it can act it. The collector checks each key against its own condition ids and each value against
 the page's scenes, or a long name by its form, but it cannot know which scene can act what. A known condition paired with a
 known scene that cannot act it, such as `night = "camp"`, is therefore accepted and written, and

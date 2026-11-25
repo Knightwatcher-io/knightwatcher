@@ -32,7 +32,7 @@ const plain = v => JSON.parse(JSON.stringify(v));
 const clone = plain;
 const ALL = { pi: 'medieval', camera: 'medieval', machine: 'medieval', vm: 'medieval', box: 'medieval' };
 const HOMES = { attack: 'battlement', wan_down: 'battlement', container_unhealthy: 'house', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house',
-  cpu_hot: 'yard', ssh_session: 'court', updating: 'smithy', streaming: 'house', night: 'house' };
+  cpu_hot: 'yard', ssh_session: 'court', updating: 'smithy', night: 'house' };
 
 /* The stamps of kw.medieval a part names (a lamp's lit and dark drawings, a use shape), by name, so
    that a copy of the part in another pack carries them. */
@@ -52,7 +52,8 @@ function stampsOf(part) {
    is written. */
 function testPack(edit) {
   const kinds = MED.props['props.medieval'].kinds, M = 'kw.medieval/', copied = { camera: clone(kinds.camera), machine: clone(kinds.machine) };
-  const p = { id: 'kw.test', name: 'Test world', version: '1.0.0', format: [1, 1], licence: 'For the tests.', provides: ['props', 'worlds', 'stamps'],
+  // format 1.4: the medieval machine stands on its stool, taller than the ground class box of 1.3
+  const p = { id: 'kw.test', name: 'Test world', version: '1.0.0', format: [1, 4], licence: 'For the tests.', provides: ['props', 'worlds', 'stamps'],
     stamps: stampsOf(copied),
     props: { 'props.neon': { name: 'Neon devices', kinds: copied } },
     worlds: { 'world.neon': { name: 'Neon', body: 'kw.base/build.b',

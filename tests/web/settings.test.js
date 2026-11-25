@@ -48,9 +48,10 @@ function store(opts) {
   return { s, lines, st };
 }
 const saved = obj => JSON.stringify(Object.assign({ v: 1 }, obj));
-/* Each condition's own scene, in the medieval world. */
+/* Each condition's own scene, in the medieval world. A device down and a stream have none: they play
+   in the quiet scene of the moment. */
 const HOMES = { attack: 'battlement', wan_down: 'battlement', container_unhealthy: 'house', disk_full: 'cellar', backup_overdue: 'house', pi_silent: 'house',
-  cpu_hot: 'yard', ssh_session: 'court', updating: 'smithy', streaming: 'house', night: 'house' };
+  cpu_hot: 'yard', ssh_session: 'court', updating: 'smithy', night: 'house' };
 
 /* ---- The levels ------------------------------------------------------------------------------- */
 
@@ -418,12 +419,12 @@ test('the engine\'s input carries the monarch\'s hair and robe from the base pac
 /* The scenes that can act each condition, as each scene declares it: the table docs/design.md
    gives. A change to a scene's can changes this on purpose or not at all. */
 const CAN = {
-  battlement: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
-  camp: ['attack', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
+  battlement: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming'],
+  camp: ['attack', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming'],
   house: ['container_unhealthy', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming', 'night'],
-  yard: ['attack', 'disk_full', 'backup_overdue', 'device_down', 'cpu_hot', 'memory_tight'],
+  yard: ['attack', 'disk_full', 'backup_overdue', 'device_down', 'cpu_hot', 'memory_tight', 'streaming'],
   cellar: ['disk_full', 'backup_overdue', 'cpu_hot'],
-  smithy: ['device_down', 'cpu_hot', 'memory_tight', 'updating'],
+  smithy: ['device_down', 'cpu_hot', 'memory_tight', 'updating', 'streaming'],
   court: ['ssh_session'] };
 const OFFERED = {
   attack: ['battlement', 'camp', 'yard'],
@@ -448,7 +449,7 @@ test('each scene declares the conditions it can act, every condition can be acte
   // night is never offered, whatever can act it; nor is a condition with no scene of its own
   const more = plain(w); more.can.camp.push('night');
   assert.ok(!('night' in SET.offered(more)));
-  assert.ok(!('device_down' in SET.offered(w)) && !('memory_tight' in SET.offered(w)));
+  assert.ok(!('device_down' in SET.offered(w)) && !('memory_tight' in SET.offered(w)) && !('streaming' in SET.offered(w)));
   assert.deepEqual(SET.offered(null), {});
   assert.deepEqual(store().s.offered(), OFFERED);
 });

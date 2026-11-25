@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The contact sweep: every weapon the settings offer against the drawn goblin, on every build, in
-// every scene that hosts the goblin, at every whole pixel the knight may stand at while it strolls,
+// every scene that hosts the goblin, at every whole pixel the knight may stand at on its patrol,
 // with every combination of the pie and the ground devices, each distinct plan measured once.
 //
 //   node tools/contact-sweep/sweep.js --out FILE [--from pack|code] [--weapons great,arming,...]

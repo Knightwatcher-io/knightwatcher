@@ -110,7 +110,10 @@ hides the review bar and drives the display:
   answers the post with an error, which changes nothing. From disk it posts nothing.
 - The devices come from `facts.devices`, and without it the pie stands alone as before
   there were devices; see [Devices](./page.md#devices). `facts.streams.count > 0`, or a
-  `streaming` condition, turns the television on.
+  `streaming` condition, turns the television on: the house's on its table, and in every other
+  scene the set the engine stands there ([The television](./page.md#the-television)). Streaming
+  plays in the quiet scene of the moment. With `night` also up, `map` marks streaming with `night`
+  and the knight sleeps in the house with the set playing, while the headline shows the stream.
 - Events. The first valid file's events are adopted without playing. After that each event with
   a higher `seq`, oldest first: `ad_blocked` adds `count` flies (at most 100 for one event;
   eight on screen, the rest queued for the next swat), `ip_banned` plays the goblin, `import`
@@ -706,7 +709,7 @@ the page looks exactly as before there were settings.
 
 ## The address
 
-The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `pl=`,
+The hash holds the demo's settings and a set of test hooks. `h=`, `hs=`, `t=`, `kx=`, `pt=`, `pl=`,
 `set=` and the settings hooks (`wd=`, `bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=`, the gear's `sh=`,
 `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=` and `bk=`, `mon=`, `ms=`, `mh=`, `mr=`, `pc=`,
 `fo=`, `cr=`, `pr=`, `wo=`, `ov=`, `ck=`, `sc=`) also work in live mode. `f=`, `fa=`, `e=`, `sw=`, `dv=`, `st=` and `sm=` act in the demo and do nothing elsewhere. The
@@ -718,7 +721,7 @@ down is used.
 | Key | Meaning |
 |---|---|
 | `on=` | active conditions, comma separated, by the contract's id or the short alias (`attack`, `wan`, `sick`, `disk`, `backup`, `pi`, `device`, `cpu`, `mem`, `cpumem`, `strained`, `ssh`, `update`, `plex`, `night`). Under strain (`cpu_hot`) has four: `cpu` (or `cpu_hot`) one machine's CPU, `mem` one machine's memory, bloated, `cpumem` both on one machine, and `strained` several machines; `swap` and `memory_tight` are older names for `mem`. Only the first of the four given shows |
-| `is=` | the quiet scene: `auto` for the rotation the settings choose, or `battlement`, `camp`, `house`, `yard`, `smithy` to keep one; in the smithy the knight quenches a blade. The cellar and the court come from conditions, and so does the smithy's anvil and its bellows |
+| `is=` | the quiet scene: `auto` for the rotation the settings choose, or `battlement`, `camp`, `house`, `yard`, `smithy` to keep one; in each the knight patrols its stops, and in the smithy it quenches a blade at one of them. The cellar and the court come from conditions, and so does the smithy's anvil and its bellows |
 | `h=` | the helmet: `auto` (off in the house and the smithy), `on`, `off`. Without it the settings' helmet indoors chooses between `auto` and `on` |
 | `hs=` | the headline size: `s`, `m`, `l`. Without it the settings' headline size |
 | `bar=0` | hides the review bar |
@@ -733,7 +736,8 @@ down is used.
 | `st=` | how many of the demo's three invented streams play, `1` to `3`; without it three |
 | `sm=` | the demo's streams as the collector's setting `show` would send them: `names`, `titles` or `count`; without it `names` |
 | `sw=1` | starts a swat |
-| `kx=` | places the knight, in units of `U` |
+| `kx=` | places the knight, in units of `U`: its patrol starts from there, walking to the scene's first stop |
+| `pt=` | with `t=`, starts the knight's patrol that many ms before the frozen time, so that a screenshot shows that moment of it, such as `is=battlement&t=2300&pt=20000`, or with `on=plex` the knight at the television (`pt=3000`); without it the patrol starts at the frozen time, at the scene's first stop |
 | `mon=` | the monarch at court: `a` the king, `b` the queen, `c` the monarch who is neither |
 | `ms=` | the monarch's skin: the id of one of the base pack's skin swatches, such as `ms=deep` |
 | `mh=`, `mr=` | the monarch's hair and robe: the id of one of the base pack's hair swatches and of one of its tabard swatches, such as `mh=silver&mr=teal`. Without them, each monarch's own colours |
@@ -747,13 +751,14 @@ down is used.
 | `sh=`, `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=`, `bk=` | the knight's gear by its contract value: the shield (`sh=round`), the helmet (`hm=coif`), the plume's style (`ps=feather`), the body (`bo=cuirass`), the shoulders (`so=lames`), the arms (`am=mail`), the hands (`hn=leather`), the legs (`lg=hose`), the feet (`ft=sabatons`) and the back (`bk=cloak`, or `bk=none`); the values are in [state.md](./state.md) |
 | `sk=`, `hc=`, `tb=`, `pm=` | the knight's skin, hair colour, tabard and plume: the id of one of the base pack's swatches, such as `sk=deep&hc=black&tb=sable&pm=gold` (the ids are in [library.md](./library.md#the-base-pack)) |
 | `hy=` | the knight's hair style: `short`, `tied`, `curls`, `long`, `close` or `buzz`, the base pack's `hair.<value>` |
-| `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box; inside it the class box, the most any kind of the place's class may fill (the pie's from 46 left to 45 right and from 107 above the base to 33 below it, a high place's from 34 left to 32 right and 64 up, a ground place's from 66 left to 56 right and from 93 above the base to 2 below it), mirrored where the place is flipped; and the base, a white line. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
+| `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box; inside it the class box, the most any kind of the place's class may fill (the pie's from 46 left to 45 right and from 107 above the base to 33 below it, a high place's from 34 left to 32 right and 64 up, a ground place's from 66 left to 56 right and from 117 above the base to 2 below it, format 1.4's), mirrored where the place is flipped; and the base, a white line. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
 
 `e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time,
 the event then before the flies of `f=`, so that a fly that comes with it is the cat's.
 With time frozen the knight never starts a swat alone, so the flies of `f=` hover until `sw=1`
-starts one, and a knight placed away from their spot by `kx=` stays exactly there, in mid-stride,
-rather than walking a step in each frame.
+starts one, and the knight's place on its patrol is worked out from the frozen time and `pt=`
+alone, the same in every frame: a knight placed away from the first stop by `kx=` stands at the
+very start of its walk there, its feet together.
 
 The look hooks (`bd=`, `arm=`, `sk=`, `hc=`, `hy=`, `tb=`, `pm=` and the gear's) take the values the contract gives
 the look in [state.md](./state.md) and keep screenshots the same whatever a display has saved; on
@@ -762,7 +767,7 @@ the code path they do nothing. A value outside the contract's is ignored, as at 
 The demo rewrites the hash as its settings change, with the contract's ids in `on=`. It writes
 `h=` and `hs=` only when the address named them or the review bar's buttons set them
 (`KW.hooks.fixed`), so that a reload keeps the bar's choice and otherwise leaves the settings' in
-force. The test hooks (`t=`, `kx=`, `dv=`, `pl=`, `set=`, the settings hooks, `f=`, `fa=`, `e=`, `sw=`, `st=` and `sm=`)
+force. The test hooks (`t=`, `kx=`, `pt=`, `dv=`, `pl=`, `set=`, the settings hooks, `f=`, `fa=`, `e=`, `sw=`, `st=` and `sm=`)
 are read once when the page loads, and the rewritten hash leaves them out, so they last until the
 page is opened again. `set=` alone is also read on a change of the hash, as the table says. The
 demo rewrites the hash with `history.replaceState`, which is no such change.

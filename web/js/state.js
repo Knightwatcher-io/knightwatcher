@@ -9,9 +9,10 @@
 
   /* What the page makes of each condition id, highest first, as docs/design.md decides. lv ranks
      the knight's behaviour: 3 and above is serious and holds back the fun, 2 pins the knight to
-     the scene. level is the level the design gives the id, used when a file leaves it out. A
-     scene of null is the quiet scene of the moment. cpu_hot is Under strain: a machine's CPU or
-     memory. */
+     the scene (but streaming, which the knight patrols through). level is the level the design
+     gives the id, used when a file leaves it out. A scene of null is the quiet scene of the moment:
+     a device down, and a stream, whose television stands in every scene. cpu_hot is Under strain: a
+     machine's CPU or memory. */
   const CONDITIONS = {
     attack:              { lv: 4, level: 'critical', scene: 'battlement' },
     wan_down:            { lv: 4, level: 'critical', scene: 'battlement' },
@@ -23,7 +24,7 @@
     cpu_hot:             { lv: 3, level: 'warning',  scene: 'yard' },
     ssh_session:         { lv: 2, level: 'work',     scene: 'court' },
     updating:            { lv: 2, level: 'work',     scene: 'smithy' },
-    streaming:           { lv: 2, level: 'quiet',    scene: 'house' },
+    streaming:           { lv: 2, level: 'quiet',    scene: null },
     night:               { lv: 1, level: 'sleep',    scene: 'house' }
   };
 
@@ -212,7 +213,8 @@
                   condition acted and file the file's own id, check:<name> for a check, and mem
                   whether Under strain is short of memory (see condition()). For device_down it
                   also carries place, the name of the place the knight looks towards, or null (see
-                  lookPlace)
+                  lookPlace); for streaming with night also up, night true, and the knight acts
+                  night
        more       { n, crit }: the other known conditions at warning or critical, and whether any
                   of them is critical
        streams    the streams the file reports, { n, sessions } (see streamsOf), or null
@@ -254,6 +256,9 @@
     // the first is bloated for the second too
     if (w && w.file === 'cpu_hot' && known.some(c => c.file === 'memory_tight')) w.mem = true;
     if (w && w.file === 'device_down') w = Object.assign(w, { place: lookPlace(raw[0].devices, drawn.at) });
+    // a stream at night: the knight sleeps in the house with the television playing, while the
+    // headline shows the stream (the engine acts night, KW.engine)
+    if (w && w.id === 'streaming' && known.some(c => c.id === 'night')) w.night = true;
 
     const events = [];
     let maxSeq = null;

@@ -125,7 +125,7 @@ function testSpots(m, scene) {
   for (let x = lo; x <= hi; x += 30) out.add(x);
   return [...out].sort((a, b) => a - b);
 }
-/* Every whole pixel the knight may stand at while it strolls: from the scene's spot across its rounds. */
+/* Every whole pixel the knight may stand at on its patrol: from the scene's spot across its rounds. */
 function walkSpots(m, scene) {
   const sc = m.KW.scenes[scene], xs = sc.rounds.map(r => r.x * m.V.U).concat([sc.spot * m.V.U]);
   const out = []; for (let x = Math.min(...xs); x <= Math.max(...xs); x++) out.push(x);

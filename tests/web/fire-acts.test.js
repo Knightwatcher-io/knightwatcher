@@ -175,9 +175,10 @@ test('practice by shot: from 300 short of the target, every 5.6 s, the dummy str
     const m = page(look, world), E = engine(m, null, 'yard', { hooks: { kx: 82 } }), sc = m.KW.scenes.yard;
     const seen = poses(m, () => { at(m, 0); });
     assert.equal(seen[0].x, 410, 'at the practice spot');
-    // the beat counts from the arrival (1 under frozen time): a shot leaves 450 ms in, every 5600
+    // the beat counts from the arrival at the training stop, the first frame's time (0) under
+    // frozen time: a shot leaves 450 ms in, every 5600
     for (const beat of [0, 1]) {
-      const t0 = 1 + beat * 5600;
+      const t0 = beat * 5600;
       at(m, t0 + 449);
       assert.equal(E.shots.live().length, 0, 'not yet');
       const before = sc.struck();
@@ -207,7 +208,8 @@ test('running hot with a weapon that fires, the watcher walks to the practice sp
     poses(m, () => {});
     const K = m.K, draw = K.draw;
     K.draw = o => { seen.push({ x: o.x, walk: !!o.walk, aimed: !!o.aimed }); x = o.x; return draw(o); };
-    for (; t < 1600; t += 16) at(m, t);
+    // the walk of 110 at the patrol's pace, 14 a step every 300 ms: 8 steps, 2.4 s
+    for (; t < 3000; t += 16) at(m, t);
     assert.equal(E.scene(), 'yard');
     assert.ok(seen[0].x >= 518 && seen[0].x <= 520, 'from the spot: ' + seen[0].x);
     assert.ok(Math.abs(x - 410) <= 2, 'walked to the practice spot: ' + x);

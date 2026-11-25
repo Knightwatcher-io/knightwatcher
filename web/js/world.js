@@ -99,6 +99,9 @@
   }
   const point = (v, path) => [term(v[0], idx(path, 0)), term(v[1], idx(path, 1))];
   /* The named values of the screen now, at scene time t, with s the frame. */
+  /* The x of the scene's spot in the frame s, which a scene's places that count from the spot count
+     from: s.spot, or where the watcher stands, s.kx, in a frame that gives no spot. */
+  const spotOf = s => (s && s.spot !== undefined ? s.spot : s.kx);
   const named = (t, s) => ({ L: V.HL, R: V.HR, T: V.HT, W: V.HR - V.HL, x: 0, t, s, targetDx: 0, spot: 0, pump: 0, since: Infinity, dx: null, picks: null, off: null, mv: null, pal: null });
 
   /* ---- Colours ----------------------------------------------------------------------------------
@@ -271,7 +274,8 @@
      devices behind the watcher. rest draws the watcher's gear of a slot at one of the scene's rests
      (below) through KW.knight.rest, which draws what is equipped on either of the knight's paths:
      the weapon on a frame, { x, y, a }, the helmet or the shield in a place, { kind, x, y, w, h }.
-     A rest that counts from the spot has its x counted from where the watcher stands, s.kx. In a
+     A rest that counts from the spot has its x counted from the scene's spot, s.spot (where the
+     watcher stands, s.kx, in a frame that gives no spot). In a
      still layer the gear is painted into the backdrop, which the key then follows. At the rest the
      scene's anvil names, the weapon lies in the backdrop and the hammer works it: there a rest mark
      for the weapon in a moving or over layer draws, each frame, the anvil act's hot tip on the
@@ -288,8 +292,8 @@
       compile: (s, path, env) => ({ quench: env.quench }),
       draw(r, E) {
         // the rings on the water while the quench's blank is in it, then the devices
-        const q = r.quench, tq = E.t % QUENCH.period;
-        if (q && plays(q, 'idle', E.s) && wetAt(tq)) outside(() => ringsAt(q, tq));
+        const q = r.quench, tq = q ? quenchClock(q, E.t, E.s) : null;
+        if (tq !== null && wetAt(tq)) outside(() => ringsAt(q, tq));
         outside(() => KW.devices.draw(E.t, E.s));
       }
     },
@@ -301,7 +305,7 @@
       },
       draw(r, E) {
         // the gear and the hot tip are the engine's drawing, and the pegs' stamp the scene's
-        const R = KW.knight.rest, x = r.at.spot ? E.s.kx + r.at.x : r.at.x, y = r.at.y;
+        const R = KW.knight.rest, x = r.at.spot ? spotOf(E.s) + r.at.x : r.at.x, y = r.at.y;
         // the hot tip is the anvil's act's, and shows while the act plays
         if (r.hot) { if (plays(r, 'updating', E.s)) outside(() => hotTip(x, y, heated(), E.t)); }
         else if (r.slot === 'main') {
@@ -576,6 +580,9 @@
      the moment the shot lands (KW.engine.shots.practice); running hot, it shoots once it has walked
      there. */
   const TRAIN = { swing: 900, rest: 2000, hot: { every: 1000, at: 470, rest: 600, bob: 170 }, wobble: { ms: 900, div: 60, amp: 15 } };
+  /* Whether the watcher trains at a round whose act is train: while all is quiet, and while
+     something streams, which the watcher patrols through too, as yard.js has it. */
+  const trains = s => s.w.lv === 0 || s.w.id === 'streaming';
   function trainOn(part, at) {
     let hit = -1e9;
     const H = TRAIN.hot, Wb = TRAIN.wobble;
@@ -583,11 +590,11 @@
       const o = s.o, here = s.here, K = KW.knight;
       if (outside(() => K.fired())) {
         const shot = (t0, len) => { const l = outside(() => KW.engine.shots.practice(o, t, t0, len, at)); if (l !== null && hit < l - 1) hit = l; };
-        if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % part.every; if (c < TRAIN.swing) shot(t - c, TRAIN.swing); }
+        if (here && here.act === 'train' && trains(s)) { const c = here.el % part.every; if (c < TRAIN.swing) shot(t - c, TRAIN.swing); }
         if (s.w.id === 'cpu_hot') { o.eyes = 'half'; o.bob = Math.floor(t / H.bob) % 2; if (!o.walk) shot(t - t % H.every, H.every); }
         return;
       }
-      if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % part.every; if (c < TRAIN.swing) { outside(() => K.swing(o, c / TRAIN.swing, 1)); if (c > part.hitAt && t - hit > TRAIN.rest) hit = t; } }
+      if (here && here.act === 'train' && trains(s)) { const c = here.el % part.every; if (c < TRAIN.swing) { outside(() => K.swing(o, c / TRAIN.swing, 1)); if (c > part.hitAt && t - hit > TRAIN.rest) hit = t; } }
       if (s.w.id === 'cpu_hot') { const c = t % H.every; outside(() => K.swing(o, c / H.every, 1)); if (c > H.at && t - hit > H.rest) hit = t; o.eyes = 'half'; o.bob = Math.floor(t / H.bob) % 2; }
     }
     /* The frame's values at t: the wobble, the time since the blow, and the group it moves. */
@@ -646,9 +653,10 @@
   function anvilOn(rest, always) {
     const A = ANVIL;
     function act(t, s) {
-      if (!plays({ always }, 'updating', s)) return;
+      // the hammer plays once the engine has walked the watcher back to the spot the anvil counts from
+      if (!plays({ always }, 'updating', s) || (rest.spot && Math.abs(s.kx - spotOf(s)) > 2)) return;
       const o = s.o, K = KW.knight, c = (t % A.period) / A.period, [k0, k1, e] = seg(A.keys, c), v = i => D.lerp(k0[i], k1[i], e);
-      const r = v(2), th = v(3), gx = rest.spot ? s.kx + rest.x : rest.x, gy = rest.y;
+      const r = v(2), th = v(3), gx = rest.spot ? spotOf(s) + rest.x : rest.x, gy = rest.y;
       // the hammer's face on the blade's top at the blow's angle, and the hand that lays it there
       const b = outside(() => K.rest.reach()), H = outside(() => K.tool.hammer), a = A.keys[0][1], ux = Math.sin(a), uy = -Math.cos(a), nx = Math.cos(a), ny = Math.sin(a);
       const fx = gx + A.at, fy = gy - (b ? b.half : A.notch), f = H.face + 2;
@@ -661,7 +669,7 @@
     }
     /* The frame's values at t: the spot's x, and the blow's progress while the hammer strikes. */
     function frame(E, t) {
-      E.spot = E.s.kx;
+      E.spot = spotOf(E.s);
       E.since = E.s.strike ? (t % A.period) / A.period / A.strike : null;
       return E;
     }
@@ -737,8 +745,9 @@
   function quenchOn(part) {
     const Q = QUENCH;
     function act(t, s) {
-      if (!plays(part, 'idle', s)) return;
-      const o = s.o, tq = t % Q.period, q = quenchAt(part, tq), wet = wetAt(tq);
+      const tq = quenchClock(part, t, s);
+      if (tq === null) return;
+      const o = s.o, q = quenchAt(part, tq), wet = wetAt(tq);
       o.bob = 0; o.walk = q.walk !== 0;
       s.dx = q.x - s.kx;
       o.tool = { kind: 'tongs', two: true, a: q.a, heat: q.heat, cut: wet ? part.water[1] : null, R: { at: q.R }, L: { along: Q.along } };
@@ -796,8 +805,15 @@
     if (parts.length === 1) return parts[0];
     return { act(t, s) { for (const p of parts) p.act(t, s); }, frame(E, t) { for (const p of parts) p.frame(E, t); return E; } };
   }
-  /* The quench part of a scene, as the act and its drawings read it; it plays while all is quiet. */
-  const quenchPart = v => freeze({ water: v.quench.water.slice(), stand: v.quench.stand.slice(), always: false });
+  /* The quench part of a scene, as the act and its drawings read it. In a scene with a round whose
+     act is quench (format 1.4) it plays at that stop of the watcher's patrol, one loop from the
+     stop's start, as smithy.js plays it; otherwise it plays while all is quiet, on the scene's time. */
+  const quenchPart = v => freeze({ water: v.quench.water.slice(), stand: v.quench.stand.slice(), always: false, stop: v.rounds.some(r => r.act === 'quench') });
+  /* The quench's clock at t in the frame s: ms into its loop, or null while it does not play. */
+  function quenchClock(q, t, s) {
+    if (q.stop) return s.here && s.here.act === 'quench' && s.here.el < QUENCH.period ? s.here.el : null;
+    return plays(q, 'idle', s) ? t % QUENCH.period : null;
+  }
   /* The blade's hot tip, part of the anvil's act, on the weapon lying with its grip's middle at
      (x, y): at its point (b.to along the blade) and between its edges (b.half either side), a glow
      that flickers, a dithered patch where the heat starts, three bands of red to orange that start
@@ -863,7 +879,7 @@
     }
     freeze(keyed); freeze(slots);
     // the gear at rest the still layers paint, and the patron they seat, with its look
-    const gear = s => outside(() => (bySpot ? '|' + Math.round(s.kx) : '') + slots.map(n => '|' + KW.knight.rest.key(n)).join('') + (seated ? '|' + patronKey(s) : ''));
+    const gear = s => outside(() => (bySpot ? '|' + Math.round(spotOf(s)) : '') + slots.map(n => '|' + KW.knight.rest.key(n)).join('') + (seated ? '|' + patronKey(s) : ''));
     const places = {};
     for (const n of Object.keys(v.things)) places[n] = Object.assign({}, v.things[n]);
     const sc = {
@@ -871,9 +887,13 @@
       key: slots.length || seated ? s => keyed.map(p => (holds(p, s) ? '1' : '0')).join('') + gear(s) : s => keyed.map(p => (holds(p, s) ? '1' : '0')).join(''),
       draw(t, s) { drawLayers(lists.moving, frameAt(t, s)); if (env.seat) seatTalk(env.seat, t, s); }
     };
-    // the anvil's act holds the watcher at the anvil and the seat's at the patron, so a scene with
-    // either gives no rounds to stroll between, as smithy.js and court.js give none
-    if (!has(v, 'anvil') && !has(v, 'seat')) sc.rounds = v.rounds.map(r => ({ x: r.x, act: r.act, dur: r.dur }));
+    // the seat's act holds the watcher at the patron, so a scene with a seat gives no rounds to patrol
+    // between, as court.js gives none; nor, before format 1.4, does a scene with an anvil, whose act
+    // held the watcher there. From 1.4 the engine walks the watcher back to the spot for the hammer,
+    // and the smithy patrols, as smithy.js does
+    if (!has(v, 'seat') && (pack.format[1] >= 4 || !has(v, 'anvil'))) sc.rounds = v.rounds.map(r => ({ x: r.x, act: r.act, dur: r.dur }));
+    // where the television stands while something streams (format 1.4), as the code scenes give it
+    if (has(v, 'tv')) sc.tv = freeze(has(v.tv, 'watch') ? { x: v.tv.x, stand: v.tv.stand, watch: v.tv.watch } : { x: v.tv.x, stand: v.tv.stand });
     // the colours each patron is drawn in, for the settings screen's "As drawn", as court.js gives them
     if (env.seat) sc.drawn = mon => { const P = patronSet(), p = P[has(P, mon) ? mon : 'a']; return { hair: p.drawn.hair.slice(), robe: p.drawn.robe.slice() }; };
     if (has(v, 'rests')) sc.rests = restsOut(rests);
@@ -884,7 +904,8 @@
     if (lists.over.length || bed || q) sc.over = (t, s) => {
       drawLayers(lists.over, frameAt(t, s));
       if (bed && s.w && s.w.id === 'night') outside(() => zedsAt(bed, t));
-      if (q && plays(q, 'idle', s)) outside(() => quenchOver(q, t % QUENCH.period));
+      const tq = q ? quenchClock(q, t, s) : null;
+      if (tq !== null) outside(() => quenchOver(q, tq));
     };
     if (bed) sc.bed = true;
     if (acted) sc.act = acted.act;
@@ -1005,7 +1026,32 @@
       for (const k of Object.keys(o)) delete o[k];
       Object.assign(o, (KW.props && KW.props.KINDS) || {});
     }
+    baseTv = KW.tv = (KW.props && KW.props.TV) || null;
   }
+
+  /* The television a prop set gives (format 1.4), compiled to the interface of KW.props.TV:
+     draw(x, y, t, stand, part) draws it with the middle of the stand's foot at (x, y) on the floor,
+     the stand (table or crate) and the set on it, h above the floor, in the still part, and the
+     picture in the moving part; stands gives each stand's h. */
+  function compileTv(pack, set) {
+    const sets = pack.data.props, path = 'props.' + set + '.tv';
+    const v = isObj(sets) && isObj(sets[set]) ? sets[set].tv : null;
+    if (!isObj(v)) throw new Error(path + ': the prop set has no television');
+    const env = placedEnv(pack, 'a prop'), list = (l, p) => freeze((l || []).map((t, i) => shape(t, idx(p, i), env)));
+    const still = list(v.still, at(path, 'still')), moving = list(v.moving, at(path, 'moving')), stands = {};
+    for (const k of ['table', 'crate']) stands[k] = freeze({ h: v.stands[k].h, still: list(v.stands[k].still, at(at(at(path, 'stands'), k), 'still')) });
+    function draw(x, y, t, stand, part) {
+      const S = stands[stand] || stands.table, fy = y - S.h, E = named(t, null);
+      if (part !== 'moving') { for (const c of S.still) drawShape(c, E, x, y); for (const c of still) drawShape(c, E, x, fy); }
+      if (part !== 'still') for (const c of moving) drawShape(c, E, x, fy);
+    }
+    return Object.freeze({ name: v.name, stands: freeze({ table: stands.table.h, crate: stands.crate.h }), draw, from: pack.id + '#' + (++compiles) });
+  }
+  /* KW.tv: the television the engine stands in a scene while something streams. baseTv is the base
+     world's: the medieval prop set's once start() has compiled it, and the code's, KW.props.TV,
+     until then or where it cannot. useKinds() puts in KW.tv the television of the prop set most of
+     the kinds are chosen from, and the base world's where that set gives none. */
+  let baseTv = null;
   restoreKinds();
 
   /* ---- The cast --------------------------------------------------------------------------------
@@ -1391,15 +1437,46 @@
      { choice, kinds, faults }, kinds naming the set each kind is drawn from and faults listing
      { kind, set, reason } for each kind that took the base world's instead. */
   function useKinds(choice) {
-    const st = api.devices = { choice: {}, kinds: {}, faults: [] };
+    const st = api.devices = { choice: {}, kinds: {}, faults: [] }, count = new Map();
     for (const k of Object.keys(baseKinds)) {
       const want = isObj(choice) && typeof choice[k] === 'string' ? choice[k] : BASE, d = drawingOf(want, k);
       st.choice[k] = want;
       kinds[k] = d.kind || baseKinds[k];
       st.kinds[k] = d.kind ? want : BASE;
       if (d.why) st.faults.push(d.draw ? { kind: k, set: want, reason: d.why, step: 'draw' } : { kind: k, set: want, reason: d.why });
+      count.set(want, (count.get(want) || 0) + 1);
     }
+    // the television: from the set most kinds are chosen from, the first of them on a tie
+    let most = BASE, n = 0;
+    for (const [name, c] of count) if (c > n) { most = name; n = c; }
+    const tv = tvOf(most);
+    // a set that gives none, or cannot, leaves the base world's in place: a television is optional
+    KW.tv = tv.tv || baseTv;
+    if (api.tv) api.tv.set = tv.tv ? most : BASE;
     return st;
+  }
+  /* The television of the prop set name, as useKinds would put it in KW.tv: { tv, why }, tv null
+     with why saying why the set cannot give one. */
+  function tvOf(name) {
+    if (name === BASE) return { tv: baseTv, why: '' };
+    const s = setOf(name);
+    if (!s) return { tv: null, why: 'the prop set ' + name + ' is not loaded' };
+    if (!has(s.pack.data.props[s.set], 'tv')) return { tv: null, why: 'the prop set ' + name + ' gives no television' };
+    const key = s.pack.id + '/' + s.set + '|tv', tk = threwKey(s.pack, 'tv:' + s.set);
+    if (!built.has(key)) {
+      if (threw.has(tk)) built.set(key, { threw: threw.get(tk) });
+      else {
+        try {
+          const part = { key: tk, gen, bad: false, code: () => baseTv,
+            fall: msg => { built.set(key, { threw: msg }); useKinds(api.devices ? api.devices.choice : null); return 'knightwatcher: the television of the prop set ' + name + ' is drawn from the base world\'s: it threw while drawing: ' + msg; } };
+          built.set(key, guard(compileTv(s.pack, s.set), part, ['draw'], []));
+        } catch (e) { built.set(key, new Error(message(e))); }
+      }
+    }
+    const b = built.get(key);
+    if (b instanceof Error) return { tv: null, why: b.message };
+    if (b && b.threw) return { tv: null, why: 'it threw while drawing: ' + b.threw };
+    return { tv: b, why: '' };
   }
   /* The drawing of one kind from the prop set name chooses, as useKinds would put it in KW.kinds:
      { kind, why }, kind the drawing (the base world's for 'medieval'), or null with why saying why
@@ -1642,6 +1719,8 @@
     gen++; api.changes++; wordsKey = null;
     const status = api.status = { source: 'code', pack: null, refused: null, scenes: {}, faults: [], note: '' };
     const props = api.props = { source: 'code', set: null, kinds: {}, faults: [] };
+    // the television: whether the base world's is the medieval prop set's or the code's, and why
+    const tvs = api.tv = { source: 'code', set: BASE, fault: null };
     const castStatus = api.cast = { source: 'code', members: {}, faults: [] };
     const words = api.words = { source: 'code', set: null, name: null, watcher: null, labels: null, quiet: null, captions: null, faults: [] };
     const over = api.overlay = { source: 'code', id: null, name: null, font: null, props: {}, faults: [] };
@@ -1700,6 +1779,28 @@
             const reason = message(e);
             props.kinds[k] = 'code'; props.faults.push({ kind: k, reason });
             line('warn', 'knightwatcher: the device kind ' + k + ' is drawn from code: it could not be compiled: ' + cutTo(reason, 120));
+          }
+        }
+      }
+      // the television the medieval prop set gives, as the base world's, and the code's where it
+      // fails to compile or throws while drawing
+      if (has(sets, PROPS) && isObj(sets[PROPS].tv)) {
+        const tk = threwKey(pack, 'tv:' + PROPS), what = 'the television';
+        if (threw.has(tk)) { tvs.fault = { reason: what + ' threw while drawing: ' + threw.get(tk), step: 'draw' }; line('warn', throwLine(what, threw.get(tk))); }
+        else {
+          try {
+            const code = baseTv;
+            const part = { key: tk, gen, bad: false, code: () => code, fall: msg => {
+              baseTv = code; tvs.source = 'code';
+              tvs.fault = { reason: what + ' threw while drawing: ' + msg, step: 'draw' };
+              useKinds(api.devices ? api.devices.choice : null);
+              return throwLine(what, msg);
+            } };
+            baseTv = guard(compileTv(pack, PROPS), part, ['draw'], []); tvs.source = 'pack';
+          } catch (e) {
+            const reason = message(e);
+            tvs.fault = { reason };
+            line('warn', 'knightwatcher: the television is drawn from code: it could not be compiled: ' + cutTo(reason, 120));
           }
         }
       }
@@ -1882,5 +1983,5 @@
   }
 
   const api = KW.world = { MEDIEVAL, PROPS, WORDS, OVERLAY, QUIET_MAX, CAPTION_MAX, compile, compileKind, compileMember, compileWords, compileOverlay, join, quietLine, caption,
-    start, catalogue, swatchOf, useKinds, useWords, useOverlay, drawingOf, status: null, others: null, props: null, cast: null, words: null, overlay: null, devices: null, changes: 0 };
+    start, catalogue, swatchOf, useKinds, useWords, useOverlay, drawingOf, tvOf, status: null, others: null, props: null, tv: null, cast: null, words: null, overlay: null, devices: null, changes: 0 };
 })(window.KW);
