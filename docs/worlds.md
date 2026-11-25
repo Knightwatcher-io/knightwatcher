@@ -28,8 +28,7 @@ three monarchs, the goblin, the fly and the mouser cat), the words, the overlay 
 quiet line and the events' captions from the parts the collector sends, in the world's words, and
 takes the colours and the font of the words over the scene from the world's overlay. Version
 0.10.0, which adds the patrol, the television in every scene and the devices' resting places
-(format 1.4), ships unsigned until its signing run, so a `dev` page draws everything from it and a
-deployed page draws every scene, device and member of the cast from code meanwhile.
+(format 1.4), is signed, so a deployed page and a `dev` page alike draw everything from it.
 
 Any other world pack the page loads, shipped beside it or downloaded into `data/packs/`, reaches
 the wall through the settings: its scenes, cast, words, overlay, body, swatches and items, under
@@ -637,7 +636,7 @@ blade) and makes it a quiet scene of the preset, and is signed too. Version 0.9.
 goblin as the pot-thief and puts the pack's art under CC BY-SA 4.0; it is signed too. Version
 0.10.0, of format `[1, 4]`, gives the quiet scenes the stops of the knight's patrol and every scene
 a place for the television, raises the yard's and the court's pies, moves the smithy's `g3` before
-the bellows and gives the ground devices their rests; it is unsigned until its signing run. A copy changed after signing is refused by a
+the bellows and gives the ground devices their rests; it is signed too. A copy changed after signing is refused by a
 deployed page until its next run: that page draws every scene, every device and the cast, the cat
 included, from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.

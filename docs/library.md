@@ -411,7 +411,7 @@ licence line, are signed with `kw1`; version 0.8.0, which gives the smithy its t
 1.3's bellows and quench) and makes it a quiet scene of the preset, is signed with `kw1` too.
 Version 0.9.0, which redraws the goblin as the pot-thief and puts the pack under CC BY-SA 4.0,
 was signed on 25 November. Version 0.10.0, which moves it to format `[1, 4]` for the knight's patrol,
-the television in every scene and the devices' resting places, ships unsigned until its signing run.
+the television in every scene and the devices' resting places, was signed on 25 November too.
 It holds every scene as data, the three
 monarchs, the goblin, the fly and the mouser cat as its cast, the devices and the television as the
 prop set `props.medieval`, the word set `words.medieval`, the overlay `overlay.phosphor`, the preset

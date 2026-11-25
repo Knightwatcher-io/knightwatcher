@@ -373,8 +373,7 @@ hammer, the bellows and the quench, was signed on 24 November; the base pack is 
 medieval world's pack, which redraws the goblin, both with the licence line naming CC BY-SA 4.0,
 were signed on 25 November. Version 0.10.0 of the medieval world's pack, which moves it to format
 `[1, 4]` for the knight's patrol, the television in every scene and the devices' resting places,
-carries no signature until its signing run: the old one was taken off with
-`node tools/sign-pack.js --unsign`; the base pack is unchanged. A signed version is drawn from by a deployed
+was signed on 25 November as well; the base pack is unchanged. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
