@@ -26,7 +26,7 @@ const plain = v => JSON.parse(JSON.stringify(v));
 class El {
   constructor(doc, tag) {
     Object.assign(this, { doc, tagName: tag.toUpperCase(), children: [], parent: null, dataset: {}, attrs: {}, listeners: {},
-      className: '', id: '', value: '', disabled: false, title: '', own: '' });
+      className: '', id: '', value: '', disabled: false, title: '', own: '', style: {} });
   }
   set textContent(v) { for (const c of this.children) c.parent = null; this.children = []; this.own = String(v); }
   get textContent() { return this.own + this.children.map(c => c.textContent).join(''); }
@@ -87,6 +87,10 @@ function start(o = {}) {
     EventSource: function (u) { sent.push('events ' + u); }
   };
   ctx.window = ctx;
+  // the window's own listeners, and its address's hash, which hashTo changes as a browser does
+  const listeners = {};
+  ctx.addEventListener = (t, f) => (listeners[t] = listeners[t] || []).push(f);
+  ctx.location = { hash: '' };
   Object.defineProperty(ctx, 'localStorage', { get: () => storage });
   vm.createContext(ctx);
   vm.runInContext(STATE, ctx, { filename: 'state.js' });
@@ -112,7 +116,10 @@ function start(o = {}) {
     cond: id => doc.byId.conds.children.find(b => b.dataset.id === id),
     clear: () => doc.byId.conds.children.find(b => b.textContent === 'Clear'),
     note: () => doc.documentElement.all().find(e => e.id === 'devs').lastChild.textContent,
-    type(i, text) { const input = key('name:' + i); input.value = text; input.fire('input'); return input; }
+    type(i, text) { const input = key('name:' + i); input.value = text; input.fire('input'); return input; },
+    hashTo(h) { ctx.location.hash = h; for (const f of listeners.hashchange || []) f(); },
+    // which of the review bar's rows show: the Devices row by its id, the rest by their own
+    rows: () => doc.byId.rv.children.filter(c => c.style.display !== 'none').map(c => c.id || c.tagName.toLowerCase())
   };
 }
 
@@ -444,4 +451,40 @@ test('turning one of Under strain\'s buttons on turns the others off', () => {
   assert.equal(s.KW.opts.on, 'attack');
   assert.deepEqual(s.doc.byId.conds.children.filter(b => b.dataset.id).map(b => b.textContent).filter(t => t.startsWith('Strain')),
     ['Strain: CPU', 'Strain: memory', 'Strain: both', 'Strain: several']);
+});
+
+// ---- bar=dev, for the website's Your devices button --------------------------------------------
+
+test('bar=dev shows the review bar\'s Devices row alone, at load or on a change of the hash', () => {
+  const all = ['conds', 'evs', 'demo', 'full', 'hide', 'devs', 'details'];
+  const s = start({ hash: { bar: '0', demo: '1' } });
+  assert.equal(s.doc.body.className, 'nobar');
+  assert.deepEqual(s.rows(), all);
+  // the website sets the frame's hash; the demo takes up bar= and keeps the rest
+  s.hashTo('#on=&is=auto&bar=dev&demo=1');
+  assert.equal(s.KW.opts.bar, 'dev');
+  assert.equal(s.doc.body.className, '');
+  assert.deepEqual(s.rows(), ['devs']);
+  assert.equal(s.KW.opts.demo, '1', 'the demo loop goes on');
+  // the row works as ever: a change stops the loop and is kept
+  s.key('add:camera').click();
+  assert.deepEqual(s.names(), ['machine:NAS', 'camera:Cam', 'box:Router', 'camera:Cam 2']);
+  assert.equal(s.KW.opts.demo, '0');
+  // bar=0 hides the bar again, and bar=1 shows all of it
+  s.hashTo('#bar=0');
+  assert.equal(s.doc.body.className, 'nobar');
+  s.hashTo('#bar=1');
+  assert.equal(s.doc.body.className, '');
+  assert.deepEqual(s.rows(), all);
+  // a value it does not know, or none, changes nothing
+  s.hashTo('#bar=devices');
+  s.hashTo('#demo=1');
+  assert.equal(s.KW.opts.bar, '1');
+  // given at load, as the address
+  assert.deepEqual(start({ hash: { bar: 'dev' } }).rows(), ['devs']);
+  // nothing once the demo has stopped for live mode
+  const live = start({ hash: { bar: '0' } });
+  live.D.stop();
+  live.hashTo('#bar=dev');
+  assert.equal(live.KW.opts.bar, '0');
 });

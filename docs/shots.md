@@ -10,12 +10,13 @@ two sets:
 | `compare REF NEW` | decodes each pair of PNGs by name and counts the pixels that differ outside the clock; a pair of different sizes, or one missing or unreadable, is a failure |
 | `worlds DIR` | copies `web/` to a folder of its own outside the repository, adds the test world's carrier, takes the 47 shots of the worlds' set from that copy (7 `worldmix-`, 40 `orbit-`), puts the test world's copy of format 1.2 behind the same carrier, takes the 32 `orbit-fire-` shots, and removes the copy |
 | `compare-worlds REF NEW` | compares two sets that `worlds` took |
+| `site` | writes the website's pictures, `site/img/`, from the 17 shots of `SITE_SHOTS` ([The website's pictures](#the-websites-pictures)) |
 
-`take` and `worlds` need `CHROME`, the path of a headless Chromium, and `PAGE` names another copy of
-the page for `take` to shoot, such as one kept outside the repository. The comparison needs
-`python3`. The script runs itself inside the ceiling of `tools/capped.sh` unless `KW_CAPPED` says it
+`take`, `worlds` and `site` need `CHROME`, the path of a headless Chromium, and `PAGE` names another
+copy of the page for `take` to shoot, such as one kept outside the repository. The comparison needs
+`python3`, and `site` needs `node`. The script runs itself inside the ceiling of `tools/capped.sh` unless `KW_CAPPED` says it
 already is ([development.md](./development.md#checks)). It exits 2 on a wrong mode or a missing
-`CHROME`. `take` and `worlds` exit 1 when the browser wrote no file for a shot, naming each such
+`CHROME`. `take`, `worlds` and `site` exit 1 when the browser wrote no file for a shot, naming each such
 shot after taking the rest; a file left from an earlier run does not count, since each is removed
 before its shot is taken. `compare` exits 1 when any pair differs or is missing. Each shot is a line
 of `SHOTS` or `WORLD_SHOTS` in the script: `name|address hash`, with `|width,height` after it for
@@ -355,6 +356,59 @@ CHROME=/path/to/chrome-headless-shell PAGE=/tmp/kw-code/index.html tools/shots.s
 The comparison prints `identical bytes` only when both sets show the same minute on the clock;
 otherwise `pixels equal outside the clock` is the same result. A set of 298 takes about two minutes, so the two
 sets seldom show the same minute, and `pixels equal outside the clock` is the usual result.
+
+## The website's pictures
+
+The website's pictures in `site/img/` ([site/README.md](../site/README.md)) are written by
+the script, so they show the page as it is:
+
+```bash
+CHROME=/path/to/chrome-headless-shell tools/shots.sh site
+```
+
+Each picture is a line of `SITE_SHOTS`, by the name the website uses. The step copies `web/`
+to a folder of its own outside the repository and puts `tools/shots-clock.js` before the page's
+scripts there, which stops the clock at 13:46: `t=` freezes the scene but not the clock, which
+reads the time of day. It takes each shot at three device pixels to the page's pixel
+(`--force-device-scale-factor=3`) in a fresh browser profile of its own, so that a picture of 640
+by 400 has its scene drawn at a whole scale with no smoothing, and `tools/shot-scale.js` shrinks
+it to its size, each pixel the rounded mean of a block of 3 by 3, written as an RGB PNG with
+zlib's level 9. So the same tree gives the same bytes on every run, the clock included, and a run
+after a change that does not alter how the page looks leaves `git status` clean. Only once every
+shot is written does the step touch `site/img/`: it writes the 17 pictures there and removes any
+other PNG, so a picture dropped from `SITE_SHOTS` goes from the folder too.
+`tests/tools/shot-scale.test.js` checks that `site/img/` holds exactly the pictures of
+`SITE_SHOTS`, each at its size.
+
+The pictures are 640 by 400 but `settings`, at 1280 by 800, the sizes the website gives
+them. Each has a set of devices of its own, so the pictures show more than one setup, and the
+raspberry pie stands only where it is the point: in `ev-pie`, and in the settings screen's picture
+of the house in `settings`, which draws it whatever the devices.
+
+| Picture | Shows | Address | Devices |
+|---|---|---|---|
+| `ev-fly` | the knight swatting the flies of a blocked advert on the battlement | `t=470&is=battlement&f=6&sw=1` | the demo's own: NAS, Cam, Router |
+| `ev-goblin` | the goblin, the pot-thief, bonked on the battlement at the greatsword's hit | `t=1657&is=battlement&e=goblin` | two cameras and a VM |
+| `ev-crate` | the crate on its parachute at the camp, with the demo's invented title in the caption | `t=1700&is=camp&e=crate` | a camera, a NAS and a VM |
+| `ev-pie` | `PI SILENT`: the knight puzzled over the empty pie dish in the house | `t=2300&on=pi` | the demo's own, with the Pi in the pie's place |
+| `ev-strain` | `NAS UNDER STRAIN`: the knight training hard in the yard, red and sweating | `t=2470&on=cpumem` | two NAS and a camera |
+| `ev-sick` | a container unhealthy: the knight in bed with a thermometer | `t=2300&on=sick` | a camera and a VM |
+| `ev-disk` | a full disk: the heavy crate carried in the cellar | `t=2300&on=disk` | a NAS, a router and a camera |
+| `ev-ssh` | a shell open: the knight at court with the monarch | `t=3450&on=ssh` | three cameras and a VM |
+| `ev-update` | updates running: the hammer on the blade in the smithy, with the sparks | `t=2804&on=update` | a NAS, a VM and a router |
+| `ev-device` | `NAS DOWN`: the crystal toppled at the camp, the question mark over it | `t=2300&is=camp&on=device` | a camera, the NAS down, a VM and a router |
+| `ev-stream` | streaming: the television at the camp, the knight beside it on its patrol, the line naming the second of the demo's invented streams | `t=10300&is=camp&on=plex&pt=3000` | a camera, a VM and a router |
+| `ev-wan` | `WAN DOWN`: the bell rope cut on the battlement, the knight puzzled | `t=2300&on=wan` | two NAS, a VM and a camera |
+| `look-a` | Classic, helmet off: deep skin, black curls, a sable tabard and a gold plume on the battlement | `t=2300&is=battlement&h=off&sk=deep&hc=black&hy=curls&tb=sable&pm=gold` | a camera and a NAS |
+| `look-b` | Broad with the mace and the round shield in the yard, helmet off: tan skin, a dark buzzcut and a wine tabard | `t=2300&is=yard&h=off&bd=b&arm=mace_and_shield&sh=round&sk=tan&hc=dark&hy=buzz&tb=wine` | a camera and a router |
+| `look-c` | Slim with the crossbow at the camp: the kettle hat with a gold feather, a cloak and a forest tabard | `t=2300&is=camp&bd=c&arm=crossbow&hm=kettle&ps=feather&bk=cloak&tb=forest&pm=gold` | a VM and a camera |
+| `look-mon` | the knight at court before the queen | `t=3450&on=ssh&mon=b` | a NAS and a camera |
+| `settings` | the settings screen open on the knight's page over the battlement, at 1280 by 800 | `t=2300&is=battlement&set=knight` | the demo's own |
+
+Every address also has `bar=0`, and the devices are given by `dv=` (`camera`, `machine` for a NAS,
+`vm`, `box` for a router; [The address](./display.md#the-address)). `ev-stream` shows the second
+of the demo's streams, which the line takes by the frozen time (`t=10300`), and no picture shows
+the first.
 
 ## Against an older reference
 

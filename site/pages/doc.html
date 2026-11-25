@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><!-- @title -->: Knightwatcher docs</title>
+<meta name="description" content="<!-- @description -->">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<header class="sky small-sky" id="top">
+  <canvas id="skycv" aria-hidden="true"></canvas>
+<!-- @nav -->
+  <div class="doc-title">
+    <h1><!-- @heading --></h1>
+    <p><!-- @sub --></p>
+  </div>
+  <div class="merlons" aria-hidden="true"></div>
+</header>
+<div class="wallband" aria-hidden="true"></div>
+
+<div class="docs">
+  <nav class="docnav" aria-label="The docs">
+    <details class="fold">
+      <summary>All the docs</summary>
+      <div class="dn">
+<!-- @docnav -->
+      </div>
+    </details>
+    <div class="dn wide">
+      <p class="dn-top"><a href="/docs/">All the docs</a></p>
+<!-- @docnav -->
+    </div>
+  </nav>
+  <main class="docmain">
+    <details class="fold toc-fold">
+      <summary>On this page</summary>
+      <ol>
+<!-- @toc-fold -->
+      </ol>
+    </details>
+    <article class="doc">
+<!-- @doc -->
+      <p class="src-note">This page is <a href="<!-- @source-url -->"><!-- @source --></a> in Knightwatcher's repository.</p>
+    </article>
+  </main>
+  <nav class="toc" aria-label="On this page">
+    <p class="toc-h">On this page</p>
+    <ol>
+<!-- @toc -->
+    </ol>
+  </nav>
+</div>
+
+<!-- @footer -->
+
+<script src="/js/site.js"></script>
+<!-- @analytics -->
+</body>
+</html>

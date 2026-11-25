@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install: Knightwatcher</title>
+<meta name="description" content="Install Knightwatcher with Docker in three steps, and what leaves your network once it runs.">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<header class="sky small-sky" id="top">
+  <canvas id="skycv" aria-hidden="true"></canvas>
+<!-- @nav -->
+  <div class="doc-title">
+    <h1>Install</h1>
+    <p>On a Linux machine with Docker and its compose plugin.</p>
+  </div>
+  <div class="merlons" aria-hidden="true"></div>
+</header>
+<div class="wallband" aria-hidden="true"></div>
+
+<main>
+
+<section class="sec" id="start" aria-labelledby="start-h">
+  <div class="head">
+    <h2 id="start-h">Quick start</h2>
+    <a class="btn gh" href="https://github.com/knightwatcher-io/knightwatcher"><!-- @gh --><span><span class="long">knightwatcher-io/</span>knightwatcher</span></a>
+  </div>
+  <div class="panel">
+    <p class="intro">Three steps, one of them a permissions step, then you add the services you run.</p>
+    <p class="needs-h">What you need: <a href="/feeds/#requirements">the requirements</a>.</p>
+    <ol class="steps">
+      <li>
+        <h3>Get the files and make the folders</h3>
+<pre>git clone https://github.com/knightwatcher-io/knightwatcher
+cd knightwatcher
+cp config.example.toml config.toml
+cp .env.example .env &amp;&amp; chmod 600 .env
+mkdir -p var/out var/server
+setfacl -m u:10001:rwx var var/out var/server
+setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server</pre>
+        <p>The containers run as uid 10001; the last two lines let them write to those folders.</p>
+      </li>
+      <li>
+        <h3>Point it at two things</h3>
+        <p>In <code>.env</code>, set <code>KW_BACKUP_LOG</code> to your backup log and <code>KW_DATA_DISK</code> to any folder on the disk to watch. Both must exist. No backup log yet? Run <code>touch var/backup.log</code> and use <code>./var/backup.log</code>.</p>
+      </li>
+      <li>
+        <h3>Start it</h3>
+<pre>docker compose up -d</pre>
+        <p>Compose pulls <code>ghcr.io/knightwatcher-io/knightwatcher</code> and runs the collector and the display's server from it. Open <code>http://&lt;this machine&gt;:8080/</code>: the knight appears at once, and the first readings within a minute.</p>
+      </li>
+    </ol>
+    <p class="note">The example config turns on the sources that read this machine, plus an internet check and a DNS check. Each service is written out in <code>config.toml</code> but commented: remove the <code>#</code>, add your address, and put its key in <code>.env</code>.</p>
+    <p class="note">The display has no login, and a streams service shows who is watching what (<code>show = "count"</code> hides the names). Docker publishes it on every address of the host. Set <code>KW_SERVER_ADDRESS=127.0.0.1</code> to keep it to the machine, behind a reverse proxy with a login. The admin password covers the admin page only. Never put the display on the internet without a login.</p>
+    <p class="note">Usage counts are off unless you turn them on. If you are happy to help, set <code>KW_ANALYTICS=on</code> in <code>.env</code>: <a href="#leaves">what leaves your network</a>.</p>
+  </div>
+  <div class="links-row">
+    <a href="https://github.com/knightwatcher-io/knightwatcher#quick-start">The full quick start</a>
+    <a href="/docs/configuration/">Configuration</a>
+    <a href="/docs/monitor/">A screen on the host</a>
+    <a href="/docs/">All the documentation</a>
+  </div>
+</section>
+
+<section class="sec" id="leaves" aria-labelledby="leaves-h">
+  <div class="head"><h2 id="leaves-h">What leaves your network</h2></div>
+  <p class="lead">Two things at most, and nothing else.</p>
+  <div class="leaves">
+    <div class="panel">
+      <h3>The usage counts</h3>
+      <p>If you turn them on, the collector sends one small report at start and every six hours: a random install id, the version, the install's age and uptime, the world and look you chose, which built-in sources are on, how many imports and checks you have, and how many displays opened the page in the last six hours. The receiver adds the day and the country Cloudflare sees. No name, address, title or credential is in it. The receiver runs on Cloudflare, keeps no IP address, and its code is in the repository's <code>telemetry/</code> folder. They stay off unless <code>.env</code> says <code>KW_ANALYTICS=on</code>; with <code>off</code>, or the line left out, nothing is sent.</p>
+      <p><a href="/docs/telemetry/">Every field</a> &middot; <a href="/privacy/">Privacy notice</a></p>
+    </div>
+    <div class="panel">
+      <h3>Two checks</h3>
+      <p>The example config asks <code>https://1.1.1.1/cdn-cgi/trace</code> (Cloudflare's) whether the internet is up, and asks your DNS server (the example uses the host's own resolver) to look up <code>example.com</code>. Both addresses are in <code>config.toml</code>, and either check can be removed there.</p>
+    </div>
+  </div>
+  <p class="more-line">Past that, the collector contacts only the addresses you give it, and the display and the server contact nothing outside your network.</p>
+</section>
+
+</main>
+
+<!-- @footer -->
+
+<script src="/js/site.js"></script>
+<!-- @analytics -->
+</body>
+</html>

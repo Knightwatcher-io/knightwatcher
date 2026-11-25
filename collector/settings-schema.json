@@ -229,7 +229,7 @@
         { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address", "scope": "household",
           "gui": { "admin": { "section": "Sources: containers", "label": "Address" } }, "editable": true,
           "help": "Base URL of a read-only Docker API proxy, such as http://192.0.2.10:2375." },
-        { "key": "ignore", "type": "list", "items": "string", "default": [], "form": "shell patterns, such as \"*-run-*\"", "scope": "household",
+        { "key": "ignore", "type": "list", "items": "string", "default": [], "form": "shell patterns, such as `\"*-run-*\"`", "scope": "household",
           "gui": { "admin": { "section": "Sources: containers", "label": "Leave out" } }, "editable": true,
           "help": "Container names to leave out. Use it for one-off and intentionally stopped containers." }
       ]
@@ -370,7 +370,7 @@
           "help": "What of the streams leaves the collector, for a display guests can see: names, who is watching and what; titles, what alone; count, how many and nothing else. A name or title held back is never written to the state file." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: streams", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals, for each field its provider names (Tautulli's, Tracearr's and Jellyfin's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone." }
+          "help": "The name its credentials are read under in .env: `KW_<SECRET>_<FIELD>`, in capitals, for each field its provider names (Tautulli's, Tracearr's and Jellyfin's are API_KEY, Plex's TOKEN). Left out, it is the provider's id. Set in config.toml alone." }
       ]
     },
     {
@@ -394,7 +394,7 @@
           "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD, Technitium's TOKEN). Left out, it is the provider's id. Set in config.toml alone." },
+          "help": "The name its credentials are read under in .env: `KW_<SECRET>_<FIELD>`, in capitals, for each field its provider names (AdGuard Home's are USERNAME and PASSWORD, Pi-hole's PASSWORD, Technitium's TOKEN). Left out, it is the provider's id. Set in config.toml alone." },
         { "key": "fly_every_s", "type": "number", "default": 300.0, "min": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: adverts blocked", "label": "A fly every" } }, "editable": true,
           "help": "Average seconds between flies while blocking runs at the household's normal rate, which the service's own statistics give. A burst brings flies faster, at most eight to an event. 0 sends one fly for every blocked query." }
@@ -424,7 +424,7 @@
           "help": "fail2ban's database, as the collector's container sees it through the mount of fail2ban's folder. Read by fail2ban alone, and refused with any other provider. Set in config.toml alone, with the mount." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: security", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals, for each field its provider names. fail2ban needs none; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone." }
+          "help": "The name its credentials are read under in .env: `KW_<SECRET>_<FIELD>`, in capitals, for each field its provider names. fail2ban needs none; a provider file of your own may. Left out, it is the provider's id. Set in config.toml alone." }
       ]
     },
     {
@@ -445,7 +445,7 @@
           "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: Sonarr", "label": "Credential name" } }, "editable": false,
-          "help": "The name its API key is read under in .env: KW_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
+          "help": "The name its API key is read under in .env: `KW_<SECRET>_API_KEY`, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
       ]
     },
     {
@@ -466,7 +466,7 @@
           "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: Radarr", "label": "Credential name" } }, "editable": false,
-          "help": "The name its API key is read under in .env: KW_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
+          "help": "The name its API key is read under in .env: `KW_<SECRET>_API_KEY`, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
       ]
     },
     {
@@ -487,18 +487,18 @@
           "help": "Whether the certificate of an https url is checked. false reads a service whose certificate is self-signed, as a Pi-hole's often is: the connection is still encrypted, but nothing proves it reaches the service named. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: Lidarr", "label": "Credential name" } }, "editable": false,
-          "help": "The name its API key is read under in .env: KW_<SECRET>_API_KEY, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
+          "help": "The name its API key is read under in .env: `KW_<SECRET>_API_KEY`, in capitals. Left out, it is the provider's id, the section's own name. Set in config.toml alone." }
       ]
     },
     {
       "table": "sources.imports",
       "many": true,
       "max": 16,
-      "help": "More services whose imports are read, each a [[sources.imports]] table under [sources] in config.toml: another Sonarr, Radarr or Lidarr, or a service that a provider file of your own reads. There can be 16. Each is a source of its own, imports:<name> in the state file, and each new import it lists is one event, as for [sources.sonarr]. Set in config.toml alone; the admin page lists them.",
+      "help": "More services whose imports are read, each a [[sources.imports]] table under [sources] in config.toml: another Sonarr, Radarr or Lidarr, or a service that a provider file of your own reads. There can be 16. Each is a source of its own, `imports:<name>` in the state file, and each new import it lists is one event, as for [sources.sonarr]. Set in config.toml alone; the admin page lists them.",
       "settings": [
         { "key": "name", "type": "string", "default": null, "required": true, "form": "1 to 20 of a-z, 0-9 and -, starting with a letter or digit", "scope": "household",
           "gui": { "admin": { "section": "Sources: more imports", "label": "Name" } }, "editable": false,
-          "help": "The source's own name: imports:<name> in the state file, and in its memory. Unique among the list, and not sonarr, radarr or lidarr, which have sections of their own." },
+          "help": "The source's own name: `imports:<name>` in the state file, and in its memory. Unique among the list, and not sonarr, radarr or lidarr, which have sections of their own." },
         { "key": "from", "type": "string", "default": null, "required": true, "values_from": "providers", "kind": "imports", "scope": "household",
           "gui": { "admin": { "section": "Sources: more imports", "label": "Read from" } }, "editable": false,
           "help": "The provider it is read through, by its id: a built-in one, or a provider file of your own of the imports kind. Two sources that read one provider at one url are refused, since each import would be raised twice." },
@@ -516,18 +516,18 @@
           "help": "Whether the certificate of an https url is checked. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: more imports", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment." }
+          "help": "The name its credentials are read under in .env: `KW_<SECRET>_<FIELD>`, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment." }
       ]
     },
     {
       "table": "sources.usage",
       "many": true,
       "max": 16,
-      "help": "Machines other than this host whose CPU and memory Under strain watches, each a [[sources.usage]] table under [sources] in config.toml: a service that reads them, through a provider file of the usage kind, or one JSON address read for one machine (from = \"json\"). There can be 16, watching 32 machines in all beside this host. Each is a source of its own, usage:<name> in the state file, read at its own pace; a machine it lists raises Under strain under its own name when its CPU or memory, averaged over the window, is at or above its threshold. A read that fails, or a listed machine missing from the reply, gives that machine no reading, so no strain. Set in config.toml alone; the admin page lists them.",
+      "help": "Machines other than this host whose CPU and memory Under strain watches, each a [[sources.usage]] table under [sources] in config.toml: a service that reads them, through a provider file of the usage kind, or one JSON address read for one machine (from = \"json\"). There can be 16, watching 32 machines in all beside this host. Each is a source of its own, `usage:<name>` in the state file, read at its own pace; a machine it lists raises Under strain under its own name when its CPU or memory, averaged over the window, is at or above its threshold. A read that fails, or a listed machine missing from the reply, gives that machine no reading, so no strain. Set in config.toml alone; the admin page lists them.",
       "settings": [
         { "key": "name", "type": "string", "default": null, "required": true, "form": "1 to 20 of a-z, 0-9 and -, starting with a letter or digit", "scope": "household",
           "gui": { "admin": { "section": "Sources: machines under strain", "label": "Name" } }, "editable": false,
-          "help": "The source's own name: usage:<name> in the state file. Unique among the list. It is not what the wall calls a machine: that is each machine's name in machines." },
+          "help": "The source's own name: `usage:<name>` in the state file. Unique among the list. It is not what the wall calls a machine: that is each machine's name in machines." },
         { "key": "from", "type": "string", "default": null, "required": true, "values_from": "providers", "kind": "usage", "scope": "household",
           "gui": { "admin": { "section": "Sources: machines under strain", "label": "Read from" } }, "editable": false,
           "help": "The provider it is read through, by its id: a built-in one (prometheus or prometheus_basic for node_exporter's series in Prometheus, beszel for a Beszel hub, glances or glances_basic for one Glances 4), a provider file of your own of the usage kind, or \"json\" for one JSON address read for one machine, its figures at the paths cpu and memory. A user's provider file named json.toml cannot be chosen, since json names the generic source. Two sources that read one provider at one url are refused." },
@@ -545,7 +545,7 @@
           "help": "Whether the certificate of an https url is checked. Only with an https url." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the provider's id; with from = \"json\", the entry's name, each - made _", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: machines under strain", "label": "Credential name" } }, "editable": false,
-          "help": "The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals; with from = \"json\", its header's value, KW_<SECRET>_HEADER, and only with header. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment." },
+          "help": "The name its credentials are read under in .env: `KW_<SECRET>_<FIELD>`, in capitals; with from = \"json\", its header's value, `KW_<SECRET>_HEADER`, and only with header. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment." },
         { "key": "window_s", "type": "integer", "default": null, "optional": true, "default_note": "conditions.cpu_hot.window_s", "min": 10, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: machines under strain", "label": "Window" } }, "editable": false,
           "help": "The window its machines' CPU and memory are averaged over, in place of conditions.cpu_hot.window_s. A figure a service gives is itself an average over the service's own span, so a machine's window is never shorter than that." },
@@ -561,18 +561,18 @@
           "help": "With from = \"json\": where memory used is in the reply, in percent of all memory, such as $.memory.used_pct." },
         { "key": "header", "type": "string", "default": null, "providers": ["json"], "form": "a header's name: letters, digits and -", "scope": "household",
           "gui": { "admin": { "section": "Sources: machines under strain", "label": "Header" } }, "editable": false,
-          "help": "With from = \"json\": one header sent with the request, its value read from .env as KW_<SECRET>_HEADER and never written anywhere, as a check's is. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header." }
+          "help": "With from = \"json\": one header sent with the request, its value read from .env as `KW_<SECRET>_HEADER` and never written anywhere, as a check's is. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header." }
       ]
     },
     {
       "table": "sources.json",
       "many": true,
       "max": 16,
-      "help": "Generic checks, each a [[sources.json]] table under [sources] in config.toml: one value read from a JSON reply and tested. A check that holds raises a condition of its own, check:<name>, which the display acts as the condition it borrows (as), in that condition's scene and colour, with the check's own words. There can be 16. Each is a source of its own, json:<name> in the state file, read at its own pace; one whose address cannot be read is failing, and its check is not raised. Set in config.toml alone; the admin page lists them.",
+      "help": "Generic checks, each a [[sources.json]] table under [sources] in config.toml: one value read from a JSON reply and tested. A check that holds raises a condition of its own, `check:<name>`, which the display acts as the condition it borrows (as), in that condition's scene and colour, with the check's own words. There can be 16. Each is a source of its own, `json:<name>` in the state file, read at its own pace; one whose address cannot be read is failing, and its check is not raised. Set in config.toml alone; the admin page lists them.",
       "settings": [
         { "key": "name", "type": "string", "default": null, "required": true, "form": "1 to 20 of a-z, 0-9 and -, starting with a letter or digit", "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Name" } }, "editable": false,
-          "help": "The check's own name: json:<name> among the sources and check:<name> among the conditions of the state file. Unique among the checks." },
+          "help": "The check's own name: `json:<name>` among the sources and `check:<name>` among the conditions of the state file. Unique among the checks." },
         { "key": "url", "type": "string", "default": null, "required": true, "form": "an http:// or https:// address, given whole", "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Address" } }, "editable": false,
           "help": "The whole address read, path and query included, with one GET and no redirect followed. No user name or password in it, no fragment, and each name of its query once." },
@@ -602,10 +602,10 @@
           "help": "How long the test must hold before the check is raised. It clears once the test has failed for conditions.clear_after_s, as every condition does; a read that fails counts as the test failing." },
         { "key": "header", "type": "string", "default": null, "form": "a header's name: letters, digits and -", "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Header" } }, "editable": false,
-          "help": "One header sent with the request, such as X-Api-Key or Authorization, its value read from .env as KW_<SECRET>_HEADER and never written anywhere. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header." },
+          "help": "One header sent with the request, such as X-Api-Key or Authorization, its value read from .env as `KW_<SECRET>_HEADER` and never written anywhere. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header." },
         { "key": "secret", "type": "string", "default": null, "default_note": "the check's name, each - made _", "form": "letters, digits and underscores", "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Credential name" } }, "editable": false,
-          "help": "With header: the name its value is read under in .env, KW_<SECRET>_HEADER, in capitals. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. Only with header." },
+          "help": "With header: the name its value is read under in .env, `KW_<SECRET>_HEADER`, in capitals. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. Only with header." },
         { "key": "verify_tls", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Check the certificate" } }, "editable": false,
           "help": "Whether the certificate of an https url is checked. Only with an https url." },
@@ -661,32 +661,32 @@
     {
       "table": "look",
       "defaults_for": "display",
-      "help": "The world, and the parts it sets: the knight, the monarch at court, the cast, the devices and the words, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The short names of the colours, tones, hair styles and gear are those of the base pack; another loaded pack's are given by long name. A long name, \"<pack>/<id>\", is checked here only for its form; a display that has not loaded it uses the next level down.",
+      "help": "The world, and the parts it sets: the knight, the monarch at court, the cast, the devices and the words, for every display. A choice made on a wall's settings screen or the admin page is saved over this table, for the whole deployment. The short names of the colours, tones, hair styles and gear are those of the base pack; another loaded pack's are given by long name. A long name, `\"<pack>/<id>\"`, is checked here only for its form; a display that has not loaded it uses the next level down.",
       "settings": [
         { "key": "world", "type": "string", "default": null, "values": ["medieval"], "long": true, "page_default": "medieval", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "World" }, "wall": { "section": "World", "label": "World" } }, "editable": true,
-          "help": "The world the display shows, which sets every part below at once: medieval, the world the page ships with, or a world of a loaded pack by its long name, \"<pack>/<world>\". A part set beside the world in this table, or chosen on a display, is kept over the world's; a display that chooses a world takes it whole, over the parts this table sets." },
+          "help": "The world the display shows, which sets every part below at once: medieval, the world the page ships with, or a world of a loaded pack by its long name, `\"<pack>/<world>\"`. A part set beside the world in this table, or chosen on a display, is kept over the world's; a display that chooses a world takes it whole, over the parts this table sets." },
         { "key": "build", "type": "string", "default": null, "values": ["a", "b", "c"], "long": true, "page_default": null, "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Build" }, "wall": { "section": "The knight", "label": "Build" } }, "editable": true,
-          "help": "The knight's build, by the base pack's names: Classic (a), the present knight, Broad (b) and Slim (c), or a body of a loaded pack by its long name, \"<pack>/<build>\". The page's own is the base pack's default build, and only a build the packs in use declare is shown." },
+          "help": "The knight's build, by the base pack's names: Classic (a), the present knight, Broad (b) and Slim (c), or a body of a loaded pack by its long name, `\"<pack>/<build>\"`. The page's own is the base pack's default build, and only a build the packs in use declare is shown." },
         { "key": "weapon", "type": "string", "default": null, "values": ["greatsword", "sword_and_shield", "longsword", "mace_and_shield", "crossbow"], "page_default": "greatsword", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Weapon" }, "wall": { "section": "The knight", "label": "Weapon" } }, "editable": true,
           "help": "What the knight carries: the greatsword, the longsword or the crossbow in both hands, or the arming sword (sword_and_shield) or the flanged mace (mace_and_shield) in one hand with the shield in the other. The crossbow is shot where the others are swung." },
         { "key": "skin", "type": "string", "default": null, "values": ["fair", "warm", "golden", "tan", "brown", "deep"], "long": true, "page_default": "warm", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Skin tone" }, "wall": { "section": "The knight", "label": "Skin tone" } }, "editable": true,
-          "help": "The knight's skin tone, or a skin swatch of a loaded pack by its long name, \"<pack>/<swatch>\"." },
+          "help": "The knight's skin tone, or a skin swatch of a loaded pack by its long name, `\"<pack>/<swatch>\"`." },
         { "key": "hair", "type": "string", "default": null, "values": ["black", "dark", "brown", "auburn", "blonde", "silver"], "long": true, "page_default": "brown", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Hair colour" }, "wall": { "section": "The knight", "label": "Hair colour" } }, "editable": true,
-          "help": "The knight's hair colour, or a hair swatch of a loaded pack by its long name, \"<pack>/<swatch>\"." },
+          "help": "The knight's hair colour, or a hair swatch of a loaded pack by its long name, `\"<pack>/<swatch>\"`." },
         { "key": "hair_style", "type": "string", "default": null, "values": ["short", "tied", "curls", "long", "close", "buzz"], "page_default": "short", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Hair style" }, "wall": { "section": "The knight", "label": "Hair style" } }, "editable": true,
           "help": "The knight's hair." },
         { "key": "tabard", "type": "string", "default": null, "values": ["blue", "forest", "violet", "wine", "teal", "sable"], "long": true, "page_default": "blue", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Tabard" }, "wall": { "section": "The knight", "label": "Tabard" } }, "editable": true,
-          "help": "The tabard's colour, which the shields' fields, the coat under the breastplate, the gambeson, the padded sleeves and the short cape take too; or a tabard swatch of a loaded pack by its long name, \"<pack>/<swatch>\"." },
+          "help": "The tabard's colour, which the shields' fields, the coat under the breastplate, the gambeson, the padded sleeves and the short cape take too; or a tabard swatch of a loaded pack by its long name, `\"<pack>/<swatch>\"`." },
         { "key": "plume", "type": "string", "default": null, "values": ["red", "white", "gold", "royal", "green", "violet"], "long": true, "page_default": "red", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Plume" }, "wall": { "section": "The knight", "label": "Plume" } }, "editable": true,
-          "help": "The plume's colour, which the long cloak takes too; or a plume swatch of a loaded pack by its long name, \"<pack>/<swatch>\"." },
+          "help": "The plume's colour, which the long cloak takes too; or a plume swatch of a loaded pack by its long name, `\"<pack>/<swatch>\"`." },
         { "key": "shield", "type": "string", "default": null, "values": ["heater", "round", "kite"], "page_default": "heater", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Shield" }, "wall": { "section": "The knight", "label": "Shield" } }, "editable": true,
           "help": "The shield carried with a one-handed weapon: the heater shield of the watch, a round shield or a kite shield. With a two-handed weapon no shield is carried." },
@@ -719,43 +719,43 @@
           "help": "What hangs from the shoulders: nothing, a long cloak in the plume's colour or a short cape in the tabard's." },
         { "key": "monarch", "type": "string", "default": null, "values": ["a", "b", "c"], "long": true, "page_default": "a", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Monarch" }, "wall": { "section": "The monarch", "label": "Monarch" } }, "editable": true,
-          "help": "Which of the three monarchs sits in the court, or a patron of a loaded pack by its long name, \"<pack>/<patron>\"." },
+          "help": "Which of the three monarchs sits in the court, or a patron of a loaded pack by its long name, `\"<pack>/<patron>\"`." },
         { "key": "monarch_skin", "type": "string", "default": null, "values": ["fair", "warm", "golden", "tan", "brown", "deep"], "long": true, "page_default": "warm", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Monarch's skin tone" }, "wall": { "section": "The monarch", "label": "Skin tone" } }, "editable": true,
-          "help": "The monarch's skin tone, or a skin swatch of a loaded pack by its long name, \"<pack>/<swatch>\". The page's own is the court's own skin." },
+          "help": "The monarch's skin tone, or a skin swatch of a loaded pack by its long name, `\"<pack>/<swatch>\"`. The page's own is the court's own skin." },
         { "key": "monarch_hair", "type": "string", "default": null, "values": ["black", "dark", "brown", "auburn", "blonde", "silver"], "long": true, "page_default": null, "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Monarch's hair colour" }, "wall": { "section": "The monarch", "label": "Hair colour" } }, "editable": true,
-          "help": "The monarch's hair colour, or a hair swatch of a loaded pack by its long name, \"<pack>/<swatch>\". Left out, each monarch keeps the hair the court draws them with (\"As drawn\")." },
+          "help": "The monarch's hair colour, or a hair swatch of a loaded pack by its long name, `\"<pack>/<swatch>\"`. Left out, each monarch keeps the hair the court draws them with (\"As drawn\")." },
         { "key": "monarch_robe", "type": "string", "default": null, "values": ["blue", "forest", "violet", "wine", "teal", "sable"], "long": true, "page_default": null, "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Monarch's robe" }, "wall": { "section": "The monarch", "label": "Robe" } }, "editable": true,
-          "help": "The colour of the monarch's robe, or a tabard swatch of a loaded pack by its long name, \"<pack>/<swatch>\". Left out, each monarch keeps their own robe (A red, B violet, C green)." },
+          "help": "The colour of the monarch's robe, or a tabard swatch of a loaded pack by its long name, `\"<pack>/<swatch>\"`. Left out, each monarch keeps their own robe (A red, B violet, C green)." },
         { "key": "pet", "type": "string", "default": null, "values": ["cat"], "long": true, "page_default": "cat", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Pet" }, "wall": { "section": "The cast", "label": "Pet" } }, "editable": true,
-          "help": "The pet who catches the flies the knight cannot, indoors and while the knight is busy: the mouser cat, or a pet of a loaded pack by its long name, \"<pack>/<pet>\"." },
+          "help": "The pet who catches the flies the knight cannot, indoors and while the knight is busy: the mouser cat, or a pet of a loaded pack by its long name, `\"<pack>/<pet>\"`." },
         { "key": "pet_coat", "type": "string", "default": null, "values": ["calico", "ginger"], "long": true, "page_default": "calico", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Pet's coat" }, "wall": { "section": "The cast", "label": "Coat" } }, "editable": true,
-          "help": "The pet's coat: the mouser cat's calico, white with ginger and black patches, or ginger tabby; or a coat of a loaded pack's pet by its pack and the coat's id, \"<pack>/<coat>\", which counts only while that pet is in use. A coat the pet in use does not have gives its first." },
+          "help": "The pet's coat: the mouser cat's calico, white with ginger and black patches, or ginger tabby; or a coat of a loaded pack's pet by its pack and the coat's id, `\"<pack>/<coat>\"`, which counts only while that pet is in use. A coat the pet in use does not have gives its first." },
         { "key": "foe", "type": "string", "default": null, "values": ["goblin"], "long": true, "page_default": "goblin", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Foe" }, "wall": { "section": "The cast", "label": "Foe" } }, "editable": true,
-          "help": "Who comes for the knight when an address is banned: the goblin, or a foe of a loaded pack by its long name, \"<pack>/<foe>\"." },
+          "help": "Who comes for the knight when an address is banned: the goblin, or a foe of a loaded pack by its long name, `\"<pack>/<foe>\"`." },
         { "key": "critter", "type": "string", "default": null, "values": ["fly"], "long": true, "page_default": "fly", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Pest" }, "wall": { "section": "The cast", "label": "Pest" } }, "editable": true,
-          "help": "What a blocked advert turns into: the fly, or a critter of a loaded pack by its long name, \"<pack>/<critter>\"." },
+          "help": "What a blocked advert turns into: the fly, or a critter of a loaded pack by its long name, `\"<pack>/<critter>\"`." },
         { "key": "props", "type": "string", "default": null, "values": ["medieval"], "long": true, "page_default": "medieval", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Devices" }, "wall": { "section": "World", "label": "Devices" } }, "editable": true,
-          "help": "The drawings of the devices, every kind at once: medieval, or a prop set of a loaded pack by its long name, \"<pack>/<prop set>\". A kind the set does not draw takes the medieval drawing." },
+          "help": "The drawings of the devices, every kind at once: medieval, or a prop set of a loaded pack by its long name, `\"<pack>/<prop set>\"`. A kind the set does not draw takes the medieval drawing." },
         { "key": "overlay", "type": "string", "default": null, "values": ["medieval"], "long": true, "page_default": "medieval", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Overlay" }, "wall": { "section": "World", "label": "Overlay" } }, "editable": true,
-          "help": "The colours and the font of the words over the scene: medieval, or an overlay of a loaded pack by its long name, \"<pack>/<overlay>\"." },
+          "help": "The colours and the font of the words over the scene: medieval, or an overlay of a loaded pack by its long name, `\"<pack>/<overlay>\"`." },
         { "key": "words", "type": "string", "default": null, "values": ["medieval"], "long": true, "page_default": "medieval", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Words" }, "wall": { "section": "World", "label": "Words" } }, "editable": true,
-          "help": "The words of the quiet line and the captions: medieval, or a word set of a loaded pack by its long name, \"<pack>/<word set>\"." },
+          "help": "The words of the quiet line and the captions: medieval, or a word set of a loaded pack by its long name, `\"<pack>/<word set>\"`." },
         { "key": "items", "type": "table", "default": null, "keys": ["main", "off", "helmet", "plume", "hair", "torso", "pauldrons", "arms", "gauntlets", "legs", "boots", "back"], "values": [], "long": true, "page_default": {}, "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Items" }, "wall": { "section": "The knight", "label": "Items" } }, "editable": true,
-          "help": "Any slot's item named directly by its long name, \"<pack>/<item>\", over the key above that chooses the item for that slot: in config.toml a table [look.items], such as main = \"kw.base/main.arming\"." },
+          "help": "Any slot's item named directly by its long name, `\"<pack>/<item>\"`, over the key above that chooses the item for that slot: in config.toml a table [look.items], such as main = \"kw.base/main.arming\"." },
         { "key": "devices", "type": "table", "default": null, "keys": ["pi", "camera", "machine", "vm", "box"], "values": ["medieval"], "long": true, "page_default": {}, "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Devices by kind" }, "wall": { "section": "World", "label": "Devices by kind" } }, "editable": true,
-          "help": "The drawing of one kind of device, over props for that kind: in config.toml a table [look.devices] whose keys are the kinds, each medieval or a prop set of a loaded pack by its long name, \"<pack>/<prop set>\"." }
+          "help": "The drawing of one kind of device, over props for that kind: in config.toml a table [look.devices] whose keys are the kinds, each medieval or a prop set of a loaded pack by its long name, `\"<pack>/<prop set>\"`." }
       ]
     },
     {
@@ -782,7 +782,7 @@
         { "key": "scenes", "type": "list", "items": "scene", "default": null, "values": ["battlement", "camp", "house", "yard", "smithy"], "long": true, "page_default": ["battlement", "camp", "house", "yard", "smithy"],
           "form": "one or more quiet scenes, each once", "scope": "display",
           "gui": { "admin": { "section": "Quiet scenes", "label": "In the rotation" }, "wall": { "section": "Quiet scenes", "label": "In the rotation" } }, "editable": true,
-          "help": "The quiet scenes, in the order they take turns: the five the page ships with, or quiet scenes of a loaded pack by their long names, \"<pack>/<scene>\"." },
+          "help": "The quiet scenes, in the order they take turns: the five the page ships with, or quiet scenes of a loaded pack by their long names, `\"<pack>/<scene>\"`." },
         { "key": "minutes", "type": "integer", "default": null, "min": 1, "max": 240, "page_default": 10, "unit": "minutes", "scope": "display",
           "gui": { "admin": { "section": "Quiet scenes", "label": "Each shows for" }, "wall": { "section": "Quiet scenes", "label": "Each shows for" } }, "editable": true,
           "help": "How long each quiet scene shows. The demo shows each for a minute while nothing sets it." }
@@ -792,7 +792,7 @@
       "table": "scenes",
       "defaults_for": "display",
       "keys": "condition",
-      "help": "Where the knight acts out each condition that more than one scene can play, for every display. A condition left out plays in its own scene. In config.toml each key is a condition and each value a scene, by its short name or a scene of a loaded pack by its long name, \"<pack>/<scene>\"; a scene that cannot act its condition is ignored, and the condition plays in its own.",
+      "help": "Where the knight acts out each condition that more than one scene can play, for every display. A condition left out plays in its own scene. In config.toml each key is a condition and each value a scene, by its short name or a scene of a loaded pack by its long name, `\"<pack>/<scene>\"`; a scene that cannot act its condition is ignored, and the condition plays in its own.",
       "settings": [
         { "key": "attack", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "long": true, "acts": ["battlement", "camp", "yard"], "page_default": "battlement", "scope": "display",
           "gui": { "admin": { "section": "Scenes", "label": "Under attack" }, "wall": { "section": "Scenes", "label": "Under attack" } }, "editable": true,

@@ -35,8 +35,9 @@ server/              the bundled server: Python, standard library only, reusing 
                      displays seen, stamp.py the page's version stamp at build time)
 telemetry/           the Cloudflare Worker that receives the usage heartbeat; see telemetry/README.md
 site/                the website at knightwatcher.io: its pages and pictures, build.mjs, which writes
-                     dist/ with the legal pages from legal/ and a stamped copy of web/ as the demo,
-                     the Worker that serves it and a local preview; see site/README.md
+                     dist/ with the docs from the README's list, Supported Feeds from the provider
+                     files, the legal pages from legal/ and a stamped copy of web/ as the demo, the
+                     Worker that serves it and a local preview; see site/README.md
 tests/
   collector/         unittest tests for the collector
     fixtures/port/   what the collector wrote before the provider engine, for the same polls, which
@@ -63,8 +64,10 @@ tests/
                      defaults (state-defaults.json), and crossbow.js, the trial crossbow of
                      format 1.2 that the tests of weapons that fire make in memory
   tools/             node tests for tools/deploy.sh, tools/pack-carrier.js, tools/sign-pack.js,
-                     tools/settings-schema.js, tools/cat-stamps.js and tools/check-private.sh
-  site/              node tests for the website's build, its markdown renderer and its Worker
+                     tools/settings-schema.js, tools/cat-stamps.js, tools/check-private.sh and
+                     tools/shot-scale.js
+  site/              node tests for the website's build, its docs and Supported Feeds
+                     (docs.test.mjs), its markdown renderer and its Worker
 tools/
   deploy.sh          copies web/ to a served folder and stamps the copy with a version
   pack-carrier.js    writes the carrier of each pack in web/packs/
@@ -76,7 +79,9 @@ tools/
   icons.sh           regenerates the favicon and the app icons from the drawings in icons/
   icons/             icon-16.svg, icon-32.svg and icon-48.svg for favicon.ico, icon-d.svg for
                      the larger icons
-  shots.sh           regression screenshots of the page
+  shots.sh           regression screenshots of the page, and the website's pictures
+  shot-scale.js      shrinks the website's pictures for `shots.sh site`, the same bytes each time
+  shots-clock.js     stops the clock in the copy of web/ that `shots.sh site` shoots
   contact-sweep.sh   every swung weapon against the drawn goblin at every spot, held to the
                      contact standard (its scripts in contact-sweep/, which the page's tests share)
   capped.sh          runs a command within a ceiling on CPU and memory, for the checks
@@ -218,6 +223,8 @@ tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
 # and removes
 CHROME=/path/to/chrome-headless-shell tools/shots.sh worlds /tmp/kw-worlds-new
 tools/shots.sh compare-worlds /tmp/kw-worlds-ref /tmp/kw-worlds-new
+# the website's pictures in site/img/, after a change to the art
+CHROME=/path/to/chrome-headless-shell tools/shots.sh site
 ```
 
 [tests.md](./tests.md) says what each test file checks, and [shots.md](./shots.md) what the

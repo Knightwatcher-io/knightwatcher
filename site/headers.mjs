@@ -10,10 +10,10 @@ export const BEACON_REPORT = 'https://cloudflareinsights.com';
 /** Whether a path is the demo's: /demo and everything under it. */
 export const isDemo = pathname => pathname === '/demo' || pathname.startsWith('/demo/');
 
-/** The site's own pages: the landing page, the legal pages and the 404 page. Only what is the
- *  site's own, the pictures and the brick and merlon drawings in the stylesheet (data: addresses),
- *  the demo in its frame, and with a token the beacon's script and its report. No page of the site
- *  may be framed. */
+/** The site's own pages: every page but the demo's, the docs and the legal pages among them.
+ *  Only what is the site's own, the pictures and the brick and merlon drawings in the stylesheet
+ *  (data: addresses), the demo in its frame, and with a token the beacon's script and its report.
+ *  No page of the site may be framed. */
 export function siteCsp(token) {
   return [
     "default-src 'none'",

@@ -12,7 +12,7 @@ out.
 |---|---|
 | `tests/web/base-pack.test.js` | the shipped base pack: its contents, the free options, builds and items as approved, and whether it ships signed |
 | `tests/web/base-read.test.js` | the base pack's whole read, its signed bytes and its stored looks against the copy first stored before format 1.1 |
-| `tests/web/demo-devices.test.js` | the demo's devices: the default set, the Devices row's add, name, remove, up and down, the page's limits of places, the set kept and restored, Reset, `device_down`'s words held to the collector's, the Pi put in for `pi_silent`, `dv=` and the demo loop taking the set's place, nothing sent, and nothing done once the demo has stopped; Under strain's four entries in the collector's words, `mem`, `swap` and `memory_tight` bloated, one shown at a time |
+| `tests/web/demo-devices.test.js` | the demo's devices: the default set, the Devices row's add, name, remove, up and down, the page's limits of places, the set kept and restored, Reset, `device_down`'s words held to the collector's, the Pi put in for `pi_silent`, `dv=` and the demo loop taking the set's place, nothing sent, and nothing done once the demo has stopped; Under strain's four entries in the collector's words, `mem`, `swap` and `memory_tight` bloated, one shown at a time; `bar=dev`, the Devices row alone, at load or on a change of the hash |
 | `tests/web/ed25519.test.js` | the verifier against RFC 8032's vectors and `node:crypto` |
 | `tests/web/effects.test.js` | each effect's cost against what it draws, and `pack.js` holding effects to their tables |
 | `tests/web/fire.test.js` | format 1.2: the fields and rules of weapons and foes that fire, the aim and `fire()`, and the shot effects |
@@ -47,9 +47,11 @@ out.
 | `tests/tools/deploy.test.js` | `tools/deploy.sh` run on temporary folders and copies of `web/` |
 | `tests/tools/pack-carrier.test.js` | each carrier pushes its pack file's exact text |
 | `tests/tools/settings-schema.test.js` | `tools/settings-schema.js` and what it writes |
+| `tests/tools/shot-scale.test.js` | `tools/shot-scale.js` reads, shrinks and writes PNGs the same each time, and `site/img/` holds exactly the pictures of `SITE_SHOTS` |
 | `tests/tools/sign-pack.test.js` | the signing tool, and the shipped packs' signatures |
-| `tests/site/build.test.mjs` | the website's build: the pages and the demo (no `admin/` or `data/`, stamped with the commit, never `dev`, the stamp the same as `server/stamp.py`'s), the legal pages against `legal/`, the Web Analytics snippet, `_headers`, no outside host in the demo, and the local preview |
-| `tests/site/markdown.test.mjs` | the legal pages' markdown renderer: escaping, links, lists, headings and their ids, and everything outside its subset refused |
+| `tests/site/build.test.mjs` | the website's build: every page with its nav and footer and the demo (no `admin/` or `data/`, stamped with the commit, never `dev`, the stamp the same as `server/stamp.py`'s), the home page's demo buttons and highlights, the legal pages against `legal/`, the Web Analytics snippet on every page but the demo and the 404 page, `_headers`, no outside host in the demo, and the local preview |
+| `tests/site/docs.test.mjs` | the website's docs and Supported Feeds: the docs' index from README.md's Documentation section and the build stopping on a section it cannot read, a page for every doc, a file of `docs/` the list leaves out under More, every link between the site's pages and every anchor landing, every link to the repository naming a file that is there, and the services read from the provider files |
+| `tests/site/markdown.test.mjs` | the markdown renderer of the docs and the legal pages: escaping, links, GitHub's heading ids, nested and numbered lists, tables and their escaped pipes, fenced code, comments left out, and everything outside its subset refused |
 | `tests/site/worker.test.mjs` | the website's Worker, the redirect from `www` and the headers it sets, and `wrangler.jsonc` |
 | `tests/collector/test_cli.py` | `--check-config`, its warnings of old settings read in today's terms, `--once` and `--health` |
 | `tests/collector/test_conditions.py` | the conditions the collector judges: holding and clearing; Under strain on the host's CPU and memory, each pair raised at its threshold, held by the band and cleared after `clear_after_s`, a failed read absent with its words standing, a change taken up keeping each pair, the device's place, and every row of the words' table (`MEM`, the cut name, both resources, several machines); and the rest |
@@ -332,21 +334,22 @@ would write for them.
 
 `tests/web/demo-devices.test.js` runs `demo.js` in a sandbox with the real `state.js`, a small
 stand-in for the document (elements that keep their children, attributes, listeners and the focus),
-a storage over a map or one that refuses every call, and stand-ins for the engine, the words and
-the settings. It checks that the Devices row offers every kind `KW.props.KINDS` draws and nothing
-else; the default set, a NAS, a camera and a router in `g1`, `h1` and `g2`, nothing stored until a
-change; `on=device` showing the NAS down and the knight looking to it; the Pi put in the pie's
-place for `pi_silent`, and the set's own Pi taken for it; adding by kind with names numbered, a name
-typed in place, cleaned and cut to its kind's room, removing with the focus moved to the next
-control, and Down raising `device_down` and up again clearing it; the conditions' Device down and
-Clear following the set; one Pi, three cameras and three other devices, the buttons greyed and the
-row's line when full, and a stored set beyond them cut; the set restored on a new start, a stored
-text it cannot read ignored, refused storage; Reset forgetting the stored set; the demo loop
-drawing the set every device up and its `device_down` step its own devices; `dv=` taking the set's
-place with the row greyed; no fetch, request, beacon or socket from any control, and none named in
-`demo.js`; no control changing anything once the demo has stopped for live mode; and `device_down`'s
-words held to the collector's own `_named()` and `_names()`, run through `python3` (the test is
-skipped without it).
+a storage over a map or one that refuses every call, and stand-ins for the engine, the words and the
+settings. It checks that the Devices row offers every kind `KW.props.KINDS` draws and nothing else;
+the default set, a NAS, a camera and a router in `g1`, `h1` and `g2`, nothing stored until a change;
+`on=device` showing the NAS down and the knight looking to it; the Pi put in the pie's place for
+`pi_silent`, and the set's own Pi taken for it; adding by kind with names numbered, a name typed in
+place, cleaned and cut to its kind's room, removing with the focus moved to the next control, and
+Down raising `device_down` and up again clearing it; the conditions' Device down and Clear following
+the set; one Pi, three cameras and three other devices, the buttons greyed and the row's line when
+full, and a stored set beyond them cut; the set restored on a new start, a stored text it cannot
+read ignored, refused storage; Reset forgetting the stored set; the demo loop drawing the set every
+device up and its `device_down` step its own devices; `dv=` taking the set's place with the row
+greyed; `bar=dev` showing the Devices row alone, at load or on a change of the hash, and `bar=0` and
+`bar=1` hiding and showing the whole bar again; no fetch, request, beacon or socket from any
+control, and none named in `demo.js`; no control changing anything once the demo has stopped for
+live mode; and `device_down`'s words held to the collector's own `_named()` and `_names()`, run
+through `python3` (the test is skipped without it).
 
 `tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
@@ -603,21 +606,34 @@ without `set=` opens nothing.
 node --test tests/site/
 ```
 
-`tests/site/build.test.mjs` builds the site into scratch folders from a copy of `web/`, `site/` and
-`legal/` with a `web/data/` added, once without a Web Analytics token and once with an invented
-one, and removes them afterwards. It checks that every page, asset and file the landing page names
-is written; that `demo/` is `web/` file for file without `admin/` and `data/`, but for the stamped
-`index.html` and `version.json`; that the stamp is the commit's, never `dev`, on every local script
-and stylesheet, and the same bytes `server/stamp.py` gives (skipped without `python3`); that the
-version comes from `WORKERS_CI_COMMIT_SHA` or git and the build fails without one; that every block
-and heading of `legal/PRIVACY.md` and `legal/ART-LICENCE.md` reads on its page, with the contents
-listed; that the snippet is in no file without a token and, with one, on the landing and legal
-pages alone, never in `demo/` or the 404 page; that a token that is not letters and digits is
-refused; `_headers` line for line; that no file of the demo names an outside host and no page has an
-inline script, style or handler; and that the preview answers with the headers, the folders and the
-404 page. `tests/site/markdown.test.mjs` holds the renderer to its subset and its escaping, and
-`tests/site/worker.test.mjs` sends requests through the Worker with a stand-in for the static
-files, and reads `wrangler.jsonc`.
+`tests/site/build.test.mjs` builds the site into scratch folders from a copy of what the build
+reads (`web/`, `site/`, `legal/`, `docs/`, the provider files, `README.md` and `CONTRIBUTING.md`)
+with a `web/data/` added, once without a Web Analytics token and once with an invented one, and
+removes them afterwards. It checks that every page, asset and file each page names is written, and
+no page names the picture the strain card had before; that every page has the nav with its own
+section marked, and the footer; that `demo/` is `web/` file for file without `admin/` and `data/`,
+but for the stamped `index.html` and `version.json`; that the stamp is the commit's, never `dev`,
+on every local script and stylesheet, and the same bytes `server/stamp.py` gives (skipped without
+`python3`); that the version comes from `WORKERS_CI_COMMIT_SHA` or git and the build fails without
+one; that every block and heading of the legal files reads on its page, with the contents listed;
+that the snippet is in no file without a token and, with one, on every page but `demo/` and the 404
+page; that a token that is not letters and digits is refused; `_headers` line for line; that no
+file of the demo names an outside host and no page has an inline script, style or handler; that
+the home page frames the demo with its three buttons and links its four highlights to their cards
+in Features, and the pages link out only to the project, Ko-fi and GitHub Sponsors; and that the
+preview answers with the headers, the folders and the 404 page.
+
+`tests/site/docs.test.mjs` checks the docs' index against README.md's Documentation section, group
+by group and line by line, and that seven kinds of broken section each stop the build, naming the
+line, with the last build left in place; that every doc has its page, with every doc at its side;
+that a file of `docs/` the list leaves out appears under More; that every link between the site's
+pages lands and every anchor names a heading that is there, and every link to the repository on
+GitHub names a file or folder that is there; that Supported Feeds lists every provider file by
+kind, with the `_basic` variants shown with their base, that a new provider file shows up and one
+of an unknown kind stops the build; and that the docs' pages hold no inline script or style.
+`tests/site/markdown.test.mjs` holds the renderer to its subset, its escaping and GitHub's heading
+ids, and renders every doc and legal file whole, and `tests/site/worker.test.mjs` sends requests
+through the Worker with a stand-in for the static files, and reads `wrangler.jsonc`.
 
 ## The contact standard
 

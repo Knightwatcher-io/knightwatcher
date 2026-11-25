@@ -1,4 +1,4 @@
-/* Knightwatcher's website: the night sky over each page, and the live demo's frame on the landing
+/* Knightwatcher's website: the night sky over each page, and the live demo's frame on the home
    page. No request leaves the site. site/README.md describes the site. */
 'use strict';
 
@@ -52,7 +52,9 @@
 /* The demo's frame: the display's page, /demo/?demo, drawn at 1280 by 800 and scaled to the
    frame's width, so it keeps its own layout at every size and is letterboxed on an upright phone.
    Full screen puts the frame itself in full screen. Open the settings sets the frame's hash to one
-   with set=knight, which the page's own listener takes up without a reload (docs/display.md). */
+   with set=knight, and Your devices to one with bar=dev, or bar=0 again, which the page's own
+   listeners take up without a reload (docs/display.md): the settings screen opens, or the review
+   bar shows its Devices row alone, or hides. */
 (function () {
   const screen = document.getElementById('screen'), frame = document.getElementById('demoframe');
   if (!screen || !frame) return;
@@ -65,13 +67,32 @@
     if (f) { const p = f.call(frame); if (p && p.catch) p.catch(() => {}); }
   });
 
+  /* The frame's window, whose address can be read and set since the frame is the site's own; null
+     for a frame that cannot be reached, and the button then does nothing. setHash sets one key of
+     its hash, keeping the rest. */
+  function frameHash() {
+    try { const w = frame.contentWindow; return typeof w.location.hash === 'string' ? w : null; } catch (e) { return null; }
+  }
+  function setHash(w, key, value) {
+    const rest = w.location.hash.slice(1).split('&').filter(kv => kv && !kv.startsWith(key + '='));
+    w.location.hash = rest.concat(key + '=' + value).join('&');
+  }
+
   document.getElementById('b-set').addEventListener('click', () => {
-    // the frame is the site's own, so its address can be read and set; a frame that cannot be
-    // reached does nothing
-    let w = null;
-    try { w = frame.contentWindow; if (typeof w.location.hash !== 'string') return; } catch (e) { return; }
-    const rest = w.location.hash.slice(1).split('&').filter(kv => kv && !kv.startsWith('set='));
-    w.location.hash = rest.concat('set=knight').join('&');
+    const w = frameHash();
+    if (!w) return;
+    setHash(w, 'set', 'knight');
     frame.focus();
+  });
+
+  // Your devices shows the review bar's Devices row alone, and a second press hides it again; the
+  // button reads the frame's own hash each time, since the demo may have changed its bar since
+  const dev = document.getElementById('b-dev');
+  dev.addEventListener('click', () => {
+    const w = frameHash();
+    if (!w) return;
+    const open = !/[#&]bar=dev(&|$)/.test(w.location.hash);
+    setHash(w, 'bar', open ? 'dev' : '0');
+    dev.setAttribute('aria-pressed', String(open));
   });
 })();

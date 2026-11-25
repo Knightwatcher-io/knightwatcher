@@ -152,7 +152,7 @@ blocked queries; without `window.blocked`, the count for today starts from nothi
 | `bans[].ip` | string | yes | the address banned |
 | `bans[].jail` | string | no | the jail, or whatever the service calls the rule that banned it |
 | `bans[].at` | time | yes | when the ban was made |
-| `bans[].key` | string | no | the ban's identity; `jail|ip|time` when left out |
+| `bans[].key` | string | no | the ban's identity; `jail\|ip\|time` when left out |
 | `complete_s` | int, 0 or more | no | how far back the list reaches, in seconds, when that is less than the span asked for |
 
 The kind counts from the list at every read rather than from differences between reads:

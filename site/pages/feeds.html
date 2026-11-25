@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supported Feeds: Knightwatcher</title>
+<meta name="description" content="The services Knightwatcher reads, from Plex and Pi-hole to Prometheus, what its collector reads itself, and what it runs on.">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<header class="sky small-sky" id="top">
+  <canvas id="skycv" aria-hidden="true"></canvas>
+<!-- @nav -->
+  <div class="doc-title">
+    <h1>Supported Feeds</h1>
+    <p>The services it reads, and what it runs on.</p>
+  </div>
+  <div class="merlons" aria-hidden="true"></div>
+</header>
+<div class="wallband" aria-hidden="true"></div>
+
+<main>
+
+<section class="sec" id="services" aria-labelledby="services-h">
+  <div class="head"><h2 id="services-h">Services</h2></div>
+  <p class="lead">Built-in providers for the services most homelabs run, and a way to read anything else that answers with JSON. A small collector does the reading and writes one file; the display only reads that file. Your keys stay in a <code>.env</code> file on your machine, and each goes only to its own service. The collector only reads, but several services offer no read-only key, so <code>.env</code> may hold a login that could change them. Treat it as you treat those services' own configuration.</p>
+  <ul class="srcs">
+<!-- @feeds -->
+  </ul>
+</section>
+
+<section class="sec" id="itself" aria-labelledby="itself-h">
+  <div class="head"><h2 id="itself-h">What the collector reads itself</h2></div>
+  <ul class="srcs">
+    <li class="src"><h3>Bans</h3><ul class="chips"><li>fail2ban, from its own database</li></ul></li>
+    <li class="src"><h3>This machine</h3><ul class="chips"><li>CPU</li><li>Memory</li><li>Disks</li><li>Backup log</li><li>Updates running</li><li>SSH sessions</li></ul></li>
+    <li class="src"><h3>The network</h3><ul class="chips"><li>Internet</li><li>DNS</li><li>Up to 32 devices</li><li class="wide">Docker containers, through a read-only Docker API proxy that you run (the compose file has none, and the collector gets no Docker socket)</li></ul></li>
+    <li class="src wide"><h3>Anything else</h3><p>A generic check reads one value from any address that answers with JSON, tests it, and shows your own words when the test holds. For a whole service, write a provider file: it's data, read by the same rules as the built-in ones, and never runs as code.</p></li>
+  </ul>
+  <div class="links-row">
+    <a href="/docs/configuration/">Every source and its settings</a>
+    <a href="/docs/providers/">Provider files</a>
+  </div>
+</section>
+
+<section class="sec" id="requirements" aria-labelledby="requirements-h">
+  <div class="head"><h2 id="requirements-h">Requirements</h2></div>
+  <div class="leaves">
+    <div class="panel">
+      <p class="needs-h">What you need, all of it tested:</p>
+      <ul class="needs">
+        <li>Linux with Docker and its compose plugin, and the <code>acl</code> package. Tested on x86-64. ARM and the Raspberry Pi are untested.</li>
+        <li>Two containers from one image. They use about 35 MB of memory between them and almost no CPU while idle.</li>
+        <li>A modern browser on the display, a tablet's for example.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <p class="needs-h">Supported systems:</p>
+      <ul class="needs">
+        <li>The host: Linux with Docker and its compose plugin. Tested on Ubuntu; other distributions should work.</li>
+        <li>Windows and macOS hosts are not supported.</li>
+        <li>The display: any modern browser.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="links-row">
+    <a href="/install/">The quick start</a>
+  </div>
+</section>
+
+</main>
+
+<!-- @footer -->
+
+<script src="/js/site.js"></script>
+<!-- @analytics -->
+</body>
+</html>

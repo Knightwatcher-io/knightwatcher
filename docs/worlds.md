@@ -199,7 +199,7 @@ the `format` step, so that every part it would have set takes the base world's. 
 
 - on a scene, `tv`, `{ "x", "stand", "watch" }`: where the television stands while something
   streams, what it stands on (`table`, `crate`, or `none` where the scene draws its own set), and
-  where the watcher watches it from ([scenes.md](./scenes.md#what-a-scene-can-act));
+  where the watcher watches it from ([scenes.md](./scenes.md#the-fields-of-a-scene));
 - the round act `quench`: one loop of the scene's quench at that stop of the patrol, which needs the
   scene's `quench`. A scene with a `quench` and no such round plays it while all is quiet, as in 1.3;
 - a scene with an `anvil` gives its `rounds`, and the watcher patrols there too: the engine walks

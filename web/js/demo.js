@@ -250,6 +250,9 @@
     document.querySelectorAll('#conds button[data-id]').forEach(b => b.setAttribute('aria-pressed', String(isOn(b.dataset.id))));
     document.getElementById('demo').setAttribute('aria-pressed', String(S.demo === '1'));
     document.body.classList.toggle('nobar', S.bar === '0');
+    // bar=dev shows the review bar's Devices row alone, as the website's Your devices button asks
+    const rv = document.getElementById('rv');
+    if (rv && devsEl) for (const c of rv.children) if (c !== devsEl) c.style.display = S.bar === 'dev' ? 'none' : '';
     const act = active(), others = act.slice(1).filter(c => c.lv >= 3), list = demoList(), placed = ST.arrange(list);
     let w = act[0] || IDLE;
     if (w.id === 'streaming') w = Object.assign({}, w, { sub: detailFor(streams) }, isOn('night') ? { night: true } : {});
@@ -378,6 +381,15 @@
       if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
     });
     document.getElementById('surface').addEventListener('click', () => { if (running && S.bar === '0') set('bar', '1'); });
+    /* bar= is also read on a change of the hash, so that the page framing the demo can show the
+       bar, its Devices row alone (bar=dev) or neither without a reload. The demo's own rewriting of
+       the hash (history.replaceState) is no such change. */
+    if (typeof window.addEventListener === 'function') {
+      window.addEventListener('hashchange', () => {
+        const v = (String(window.location.hash).match(/[#&]bar=(0|1|dev)(?=&|$)/) || [])[1];
+        if (running && v && v !== S.bar) set('bar', v);
+      });
+    }
   }
 
   /* The demo loop: each step sets the conditions and the quiet scene, and may add flies, start a

@@ -87,7 +87,7 @@ firewall also stops the heartbeat from arriving.
 
 ### Visitor counts
 
-The pages of knightwatcher.io (the landing page, this notice and the art licence) count visits
+Every page of knightwatcher.io but the demo and the error page for a missing page counts visits
 with Cloudflare Web Analytics. Each of these pages loads a small script from Cloudflare, which
 sends Cloudflare a short report, a beacon, once the page has loaded, and another when you leave the
 page or switch away from it. A beacon holds:
@@ -124,7 +124,7 @@ website keeps no request logs of its own.
 
 ### The demo, and Knightwatcher itself
 
-The demo on the landing page is Knightwatcher's own display page, running on invented data. It
+The demo on the home page is Knightwatcher's own display page, running on invented data. It
 does not load the Web Analytics script. What you choose on its settings screen is kept in your
 browser's storage, on your device, until you clear it, and Valtora never receives it.
 
