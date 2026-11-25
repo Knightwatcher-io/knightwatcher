@@ -4,5 +4,5 @@
 
 ## Before you open it
 
-- [ ] I have read and accept the [contributor terms](https://github.com/knightwatcher-io/knightwatcher/blob/main/legal/CONTRIBUTOR-TERMS.md).
-- [ ] This pull request changes no art: no pack file, logo or icon.
+- [ ] Every commit is signed off (`git commit -s`), as [CONTRIBUTING.md](https://github.com/knightwatcher-io/knightwatcher/blob/main/CONTRIBUTING.md) asks.
+- [ ] This pull request changes no logo or icon.
