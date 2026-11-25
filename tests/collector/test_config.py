@@ -24,8 +24,12 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(c.interval_s, 10)
         self.assertEqual(c.conditions["priority"], CONDITION_IDS)
         self.assertEqual(c.conditions["clear_after_s"], 30)
-        self.assertEqual(c.conditions["cpu_hot"], {"pct": 85.0, "window_s": 30})
-        self.assertEqual(c.conditions["memory_tight"], {"available_pct": 10.0, "window_s": 30})
+        self.assertEqual(
+            c.conditions["cpu_hot"], {"pct": 85.0, "memory_pct": 90.0, "window_s": 30, "band": 5.0}
+        )
+        self.assertNotIn("memory_tight", c.conditions)
+        self.assertNotIn("memory_tight", c.conditions["priority"])
+        self.assertEqual(c.warnings, [])
         self.assertEqual(c.conditions["disk_full"]["pct"], 90.0)
         self.assertEqual(c.conditions["backup_overdue"]["hours"], 30.0)
         self.assertEqual(c.conditions["pi_silent"]["for_s"], 180)
@@ -72,17 +76,53 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(cm.exception.problems, ["collector.interval_s: must be at least 5"])
 
     def test_windows_are_at_least_ten_seconds(self):
-        c = build({"conditions": {"cpu_hot": {"window_s": 10}, "memory_tight": {"window_s": 60}}})
+        c = build({"conditions": {"cpu_hot": {"window_s": 10}}})
         self.assertEqual(c.conditions["cpu_hot"]["window_s"], 10)
         with self.assertRaises(ConfigError) as cm:
-            build({"conditions": {"cpu_hot": {"window_s": 9}, "memory_tight": {"window_s": 0}}})
+            build({"conditions": {"cpu_hot": {"window_s": 9}}})
         self.assertEqual(
-            cm.exception.problems,
-            [
-                "conditions.cpu_hot.window_s: must be at least 10",
-                "conditions.memory_tight.window_s: must be at least 10",
-            ],
+            cm.exception.problems, ["conditions.cpu_hot.window_s: must be at least 10"]
         )
+
+    def test_under_strain_thresholds_and_band(self):
+        c = build({"conditions": {"cpu_hot": {"pct": 70, "memory_pct": 95, "band": 0}}})
+        self.assertEqual(
+            c.conditions["cpu_hot"], {"pct": 70.0, "memory_pct": 95.0, "window_s": 30, "band": 0.0}
+        )
+        for given, problem in [
+            ({"memory_pct": 0}, "conditions.cpu_hot.memory_pct: must be above 0 and at most 100"),
+            (
+                {"memory_pct": 100.5},
+                "conditions.cpu_hot.memory_pct: must be above 0 and at most 100",
+            ),
+            ({"band": -1}, "conditions.cpu_hot.band: must be from 0 to 50"),
+            ({"band": 51}, "conditions.cpu_hot.band: must be from 0 to 50"),
+            ({"band": 20, "pct": 20}, "conditions.cpu_hot.band: must be below pct and memory_pct"),
+            (
+                {"band": 30, "memory_pct": 25},
+                "conditions.cpu_hot.band: must be below pct and memory_pct",
+            ),
+        ]:
+            with self.subTest(given=given), self.assertRaises(ConfigError) as cm:
+                build({"conditions": {"cpu_hot": given}})
+            self.assertEqual(cm.exception.problems, [problem])
+
+    def test_the_host_has_a_name(self):
+        self.assertEqual(build({"sources": {"host": {}}}).sources["host"]["name"], "Host")
+        c = build({"sources": {"host": {"name": "Gatehouse server"}}})
+        self.assertEqual(c.sources["host"]["name"], "Gatehouse server")
+        for bad in ["", " NAS", "NAS ", "x" * 21, "Café", 3]:
+            with self.subTest(name=bad), self.assertRaises(ConfigError) as cm:
+                build({"sources": {"host": {"name": bad}}})
+            self.assertEqual(
+                cm.exception.problems,
+                [
+                    "sources.host.name: expected str"
+                    if not isinstance(bad, str)
+                    else "sources.host.name: 1 to 20 printable ASCII characters, no space at "
+                    "either end"
+                ],
+            )
 
     def test_clear_after_s_may_be_zero_but_not_negative(self):
         self.assertEqual(build({"conditions": {"clear_after_s": 0}}).conditions["clear_after_s"], 0)
@@ -106,11 +146,12 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(
             cm.exception.problems,
             [
+                # memory_tight is read in today's terms first (translate), so its comes first
+                "conditions.memory_tight.for_s: removed; use window_s, the seconds available "
+                "memory is averaged over",
                 "conditions.clear_after_polls: removed; use clear_after_s, in seconds",
                 "conditions.cpu_hot.for_s: removed; use window_s, the seconds the CPU is "
                 "averaged over",
-                "conditions.memory_tight.for_s: removed; use window_s, the seconds available "
-                "memory is averaged over",
             ],
         )
 
@@ -285,6 +326,173 @@ def problems(raw: dict) -> list[str]:
 
 
 PI = {"pi": {"host": "192.0.2.4"}}
+
+
+class RetiredMemoryTightTest(unittest.TestCase):
+    """An old config.toml, or an old admin.json, read in Under strain's terms with a warning."""
+
+    def test_the_old_table_is_read_as_memory_pct_and_the_longer_window(self):
+        c = build({"conditions": {"memory_tight": {"available_pct": 15, "window_s": 60}}})
+        self.assertEqual(
+            c.conditions["cpu_hot"], {"pct": 85.0, "memory_pct": 85.0, "window_s": 60, "band": 5.0}
+        )
+        self.assertEqual(
+            c.warnings,
+            [
+                "conditions.memory_tight.available_pct = 15: read as conditions.cpu_hot."
+                "memory_pct = 85, since Under strain (cpu_hot) now covers memory; set that instead",
+                "conditions.memory_tight.window_s = 60: read as conditions.cpu_hot.window_s = 60, "
+                "the longer of the two, since Under strain (cpu_hot) now covers memory; set that "
+                "instead",
+            ],
+        )
+
+    def test_the_old_defaults_raise_exactly_when_the_new_ones_do(self):
+        old = build({"conditions": {"memory_tight": {"available_pct": 10.0, "window_s": 30}}})
+        self.assertEqual(old.conditions["cpu_hot"], build({}).conditions["cpu_hot"])
+        self.assertEqual(len(old.warnings), 2)
+
+    def test_what_cpu_hot_sets_wins(self):
+        c = build(
+            {
+                "conditions": {
+                    "cpu_hot": {"memory_pct": 95, "window_s": 90},
+                    "memory_tight": {"available_pct": 15, "window_s": 60},
+                }
+            }
+        )
+        self.assertEqual(c.conditions["cpu_hot"]["memory_pct"], 95.0)
+        self.assertEqual(c.conditions["cpu_hot"]["window_s"], 90)
+        self.assertEqual(
+            c.warnings,
+            [
+                "conditions.memory_tight.available_pct: left unused, since "
+                "conditions.cpu_hot.memory_pct is set; take it out",
+                "conditions.memory_tight.window_s: left unused, since conditions.cpu_hot.window_s "
+                "covers memory too; take it out",
+            ],
+        )
+
+    def test_an_empty_old_table(self):
+        c = build({"conditions": {"memory_tight": {}}})
+        self.assertEqual(c.conditions["cpu_hot"], build({}).conditions["cpu_hot"])
+        self.assertEqual(
+            c.warnings,
+            [
+                "conditions.memory_tight: an empty table, read as nothing, since Under strain "
+                "(cpu_hot) now covers memory; take it out"
+            ],
+        )
+
+    def test_old_values_that_were_wrong_are_named_by_their_old_keys(self):
+        for given, problem in [
+            ({"available_pct": "low"}, "conditions.memory_tight.available_pct: expected float"),
+            (
+                {"available_pct": 100},
+                "conditions.memory_tight.available_pct: must be above 0 and below 100",
+            ),
+            ({"window_s": 30.5}, "conditions.memory_tight.window_s: expected int"),
+            ({"spare": 1}, "conditions.memory_tight.spare: unknown setting"),
+        ]:
+            with self.subTest(given=given), self.assertRaises(ConfigError) as cm:
+                build({"conditions": {"memory_tight": given}})
+            self.assertEqual(cm.exception.problems, [problem])
+        with self.assertRaises(ConfigError) as cm:
+            build({"conditions": {"memory_tight": 10}})
+        self.assertEqual(cm.exception.problems, ["conditions.memory_tight: expected a table"])
+        # A window too short is refused as cpu_hot's, which it becomes only when it is longer.
+        self.assertEqual(
+            build({"conditions": {"memory_tight": {"window_s": 5}}}).conditions["cpu_hot"][
+                "window_s"
+            ],
+            30,
+        )
+
+    def test_the_priority_list(self):
+        old = [c if c != "cpu_hot" else "memory_tight" for c in CONDITION_IDS]
+        c = build({"conditions": {"priority": old}})
+        self.assertEqual(c.conditions["priority"], CONDITION_IDS)
+        self.assertEqual(
+            c.warnings,
+            [
+                'conditions.priority: "memory_tight" read as "cpu_hot", since Under strain '
+                "(cpu_hot) now covers memory; write that instead"
+            ],
+        )
+        both = [*CONDITION_IDS[:8], "memory_tight", *CONDITION_IDS[8:]]
+        c = build({"conditions": {"priority": both}})
+        self.assertEqual(c.conditions["priority"], CONDITION_IDS)
+        self.assertEqual(
+            c.warnings,
+            [
+                'conditions.priority: "memory_tight" dropped, since Under strain (cpu_hot) now '
+                "covers memory; take it out"
+            ],
+        )
+
+    def test_a_check_that_borrowed_memory_tight_borrows_cpu_hot(self):
+        entry = {
+            "name": "nas-mem",
+            "url": "http://192.0.2.40:8080/api/status",
+            "path": "$.memory.used_pct",
+            "test": "above",
+            "value": 90,
+            "headline": "NAS MEMORY",
+            "as": "memory_tight",
+        }
+        c = build({"sources": {"json": [entry]}})
+        self.assertEqual(c.sources["json:nas-mem"]["as"], "cpu_hot")
+        self.assertEqual(
+            c.warnings,
+            [
+                'sources.json[0].as: "memory_tight" read as "cpu_hot", since Under strain '
+                "(cpu_hot) now covers memory; write that instead"
+            ],
+        )
+
+    def test_the_parsed_file_is_not_changed(self):
+        raw = {"conditions": {"memory_tight": {"available_pct": 15}, "priority": ["memory_tight"]}}
+        kept = copy.deepcopy(raw)
+        build(raw)
+        self.assertEqual(raw, kept)
+
+    def test_old_settings_from_the_admin_page(self):
+        from collector import overlay
+
+        given, problems = overlay.clean(
+            {
+                "conditions.memory_tight.available_pct": 20.0,
+                "conditions.memory_tight.window_s": 45,
+                "conditions.priority": ["attack", "memory_tight"],
+            }
+        )
+        self.assertEqual(problems, [])
+        c = build(overlay.lay({}, given))
+        self.assertEqual(c.conditions["cpu_hot"]["memory_pct"], 80.0)
+        self.assertEqual(c.conditions["cpu_hot"]["window_s"], 45)
+        self.assertEqual(c.conditions["priority"], ["attack", "cpu_hot"])
+        self.assertEqual(len(c.warnings), 3)
+        # The server writes them in today's terms the next time it writes admin.json.
+        self.assertEqual(
+            overlay.upgrade(given),
+            {
+                "conditions.priority": ["attack", "cpu_hot"],
+                "conditions.cpu_hot.memory_pct": 80.0,
+                "conditions.cpu_hot.window_s": 45,
+            },
+        )
+        self.assertEqual(
+            overlay.upgrade(
+                {
+                    "conditions.memory_tight.available_pct": 20.0,
+                    "conditions.cpu_hot.memory_pct": 95.0,
+                }
+            ),
+            {"conditions.cpu_hot.memory_pct": 95.0},
+        )
+        self.assertEqual(
+            overlay.upgrade({"collector.interval_s": 15}), {"collector.interval_s": 15}
+        )
 
 
 class DeviceConfigTest(unittest.TestCase):

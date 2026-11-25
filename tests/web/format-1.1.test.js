@@ -224,9 +224,10 @@ test('the closed lists are the format\'s, by name', () => {
   assert.deepEqual(L.FOE_POSES, ['stand', 'climb', 'taunt0', 'taunt1', 'brace', 'hit']);
   assert.deepEqual(L.TRIGGERS, ['hit', 'strike']);
   assert.deepEqual(L.PROP_KINDS, ['pi', 'camera', 'machine', 'vm', 'box']);
-  // the contract's condition ids, which the page reads from state.js
-  const src = fs.readFileSync(path.join(__dirname, '../../web/js/state.js'), 'utf8');
-  const ids = Array.from(src.slice(src.indexOf('const CONDITIONS = {'), src.indexOf('};', src.indexOf('const CONDITIONS = {'))).matchAll(/^\s+([a-z_]+):/gm), m => m[1]);
+  // the contract's condition ids, which the page reads from state.js, and the retired ones it
+  // still knows (memory_tight), which a pack may still list
+  const ST = require('../../web/js/state.js');
+  const ids = Object.keys(ST.CONDITIONS).concat(Object.keys(ST.RETIRED));
   assert.deepEqual(L.CONDITIONS.slice().sort(), ids.sort());
   assert.ok(Object.isFrozen(L) && Object.isFrozen(L.EFFECTS) && Object.isFrozen(PK.WORLD_LIMITS) && Object.isFrozen(PK.SCENE_RANGE));
 });

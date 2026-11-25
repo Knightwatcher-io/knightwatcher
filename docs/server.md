@@ -337,7 +337,12 @@ collector reports back once it uses it. The server reads it at start, and again 
 changed on disk, as when it is edited or deleted by hand; a path it cannot hold (one a newer or older version knows and this one does not, or a value of the
 wrong type) is left out with a line in the log, and the collector, reading the same file with the
 same code, leaves out the same. The collector mounts the folder read-only and takes a new version
-up between polls ([collector.md](./collector.md#taking-up-a-change)).
+up between polls ([collector.md](./collector.md#taking-up-a-change)). Memory tight's two settings,
+`conditions.memory_tight.available_pct` and `.window_s`, which an `admin.json` from before Under
+strain may hold, are not left out: both read them in Under strain's terms, the collector with a
+warning, and the server writes them as `conditions.cpu_hot.memory_pct` and `.window_s` the next
+time it saves, with `"memory_tight"` in a priority list read the same way
+([configuration.md](./configuration.md#removed-settings)).
 
 To start again with nothing set on the page, use Put everything back on the page's `.env` section,
 or delete `admin.json`: the server and the collector both notice within a poll.

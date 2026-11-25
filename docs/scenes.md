@@ -126,7 +126,10 @@ loaded`).
 
 All but the optional ones are required. The condition ids are `attack`, `wan_down`,
 `container_unhealthy`, `disk_full`, `backup_overdue`, `pi_silent`, `device_down`, `cpu_hot`,
-`memory_tight`, `ssh_session`, `updating`, `streaming` and `night`.
+`memory_tight`, `ssh_session`, `updating`, `streaming` and `night`. `memory_tight` is retired:
+Under strain (`cpu_hot`) covers memory, and the page never acts `memory_tight` on its own, so a
+scene that lists it acts nothing more for it. It is still accepted in `can`, since the signed packs
+list it in their quiet scenes, and a new pack may list it too.
 
 **Layers.** `{ when, groups, anim, shapes }`, only `shapes` required: 1 to 2000 shapes in a still
 layer, 1 to 400 in a moving or over one. A still layer takes `when` and `shapes` alone. `when` holds
@@ -609,8 +612,9 @@ while all is quiet), and the seat's, the anvil's and the bellows' always in a sc
 lists nothing else. While the seat's act does not play the patron sits silent, mouth shut, with no
 bubble, and the watcher's mouth is its own; while the anvil's does not, `strike` never holds and the
 blade shows no hot tip; while the bellows' does not, `pump` is 0; and while the quench does not, no
-blank, steam or rings are drawn. With a device down or the memory tight, which outrank all is
-quiet, the smithy plays none of its three: the watcher stands at its spot, clear of every place.
+blank, steam or rings are drawn. Under strain with memory short, the bellows' act plays as ever,
+the watcher bloated. With a device down, which outranks all is quiet, the smithy plays none of its
+three: the watcher stands at its spot, clear of every place.
 The court plays exactly as before.
 
 **What it does not build,** it refuses by name: the scene does not compile, the reason says

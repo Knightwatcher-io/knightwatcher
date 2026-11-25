@@ -16,6 +16,8 @@ const EXAMPLE = Object.assign(BLOCKS[0], { interval_s: 30 });
 const DOWN = Object.assign(BLOCKS[1], { interval_s: 30 });
 // The fourth: a generic check that holds, acted as cpu_hot.
 const CHECK = Object.assign(BLOCKS[3], { interval_s: 30 });
+// The fifth: this host under strain, short of memory.
+const STRAIN = Object.assign(BLOCKS[4], { interval_s: 30 });
 const GEN = Date.parse(EXAMPLE.generated_at);
 
 // A copy of the example with some fields replaced.
@@ -27,7 +29,7 @@ test('the example in docs/state.md maps to the unhealthy container in the house'
   const v = ST.map(EXAMPLE, at(10));
   assert.equal(v.ok, true);
   assert.equal(v.problem, '');
-  assert.deepEqual(v.w, { id: 'container_unhealthy', file: 'container_unhealthy', lv: 3, level: 'warning', st: 'warn', scene: 'house', hl: 'RADARR UNWELL', sub: 'unhealthy for 12 min · restarted twice' });
+  assert.deepEqual(v.w, { id: 'container_unhealthy', file: 'container_unhealthy', lv: 3, level: 'warning', st: 'warn', scene: 'house', hl: 'RADARR UNWELL', sub: 'unhealthy for 12 min · restarted twice', mem: false });
   assert.deepEqual(v.more, { n: 0, crit: false });
   assert.equal(v.quietLine, EXAMPLE.quiet_line);
   assert.deepEqual(v.devices, [
@@ -47,7 +49,7 @@ test('the example in docs/state.md maps to the unhealthy container in the house'
 test('every id maps to the scene and rank docs/design.md gives it', () => {
   const want = {
     attack: ['battlement', 4], wan_down: ['battlement', 4], container_unhealthy: ['house', 3], disk_full: ['cellar', 3],
-    backup_overdue: ['house', 3], pi_silent: ['house', 3], device_down: [null, 3], cpu_hot: ['yard', 3], memory_tight: [null, 3],
+    backup_overdue: ['house', 3], pi_silent: ['house', 3], device_down: [null, 3], cpu_hot: ['yard', 3],
     ssh_session: ['court', 2], updating: ['smithy', 2], streaming: ['house', 2], night: ['house', 1] };
   assert.deepEqual(Object.keys(ST.CONDITIONS), Object.keys(want));
   for (const [id, [scene, lv]] of Object.entries(want)) {
@@ -201,7 +203,7 @@ test('each field of an entry is read on its own, and only "down" draws a device 
 
 test('device_down from the docs: the quiet scene, the words, and the place the knight looks to', () => {
   const v = ST.map(DOWN, Date.parse(DOWN.generated_at));
-  assert.deepEqual(v.w, { id: 'device_down', file: 'device_down', lv: 3, level: 'warning', st: 'warn', scene: null, hl: '2 DOWN', sub: 'Vault, Gate cam', place: 'g1' });
+  assert.deepEqual(v.w, { id: 'device_down', file: 'device_down', lv: 3, level: 'warning', st: 'warn', scene: null, hl: '2 DOWN', sub: 'Vault, Gate cam', mem: false, place: 'g1' });
   assert.deepEqual(v.devices, [
     { place: 'pie', kind: 'pi', ok: true, alert: true }, { place: 'g1', kind: 'machine', ok: false, alert: true },
     { place: 'h1', kind: 'camera', ok: false, alert: true }, { place: 'g2', kind: 'machine', ok: true, alert: false }]);
@@ -249,8 +251,47 @@ test('the dv= hook gives a list in the contract\'s shape, placed by the same rul
 test('a check from the docs is acted as the condition it borrows, with its own words', () => {
   const v = ST.map(CHECK, Date.parse(CHECK.generated_at));
   assert.equal(v.ok, true);
-  assert.deepEqual(v.w, { id: 'cpu_hot', file: 'check:nas-temp', lv: 3, level: 'warning', st: 'warn', scene: 'yard', hl: 'NAS HOT', sub: 'disk at 71 C' });
+  assert.deepEqual(v.w, { id: 'cpu_hot', file: 'check:nas-temp', lv: 3, level: 'warning', st: 'warn', scene: 'yard', hl: 'NAS HOT', sub: 'disk at 71 C', mem: false });
   assert.deepEqual(v.more, { n: 0, crit: false });
+});
+
+test('Under strain from the docs is short of memory: the knight trains in the yard, bloated', () => {
+  const v = ST.map(STRAIN, Date.parse(STRAIN.generated_at));
+  assert.equal(v.ok, true);
+  assert.deepEqual(v.w, { id: 'cpu_hot', file: 'cpu_hot', lv: 3, level: 'warning', st: 'warn', scene: 'yard', hl: 'HOST MEMORY 93%', sub: '93% for 12 min · CPU 41% · load 3.1', mem: true });
+});
+
+test('Under strain is bloated while any machine it lists is short of memory', () => {
+  const pair = { pct: 93.4, threshold: 90, since: EXAMPLE.generated_at };
+  const strain = machines => Object.assign(cond('cpu_hot', 'warning'), machines === undefined ? {} : { machines });
+  const mem = machines => ST.map(file({ conditions: [strain(machines)] }), at(0)).w.mem;
+  assert.equal(mem([{ name: 'Host', window_s: 30, cpu: pair }]), false);
+  assert.equal(mem([{ name: 'Host', window_s: 30, memory: pair }]), true);
+  assert.equal(mem([{ name: 'Host', window_s: 30, cpu: pair }, { name: 'NAS', window_s: 30, cpu: pair, memory: pair }]), true);
+  // a collector from before, or an entry the page cannot read, trains without the bloat
+  for (const bad of [undefined, null, [], 'NAS', [null], [{ name: 'NAS', memory: 'yes' }], { memory: pair }]) assert.equal(mem(bad), false, JSON.stringify(bad));
+});
+
+test('memory_tight from a collector from before is Under strain on memory, in cpu_hot\'s scene', () => {
+  const v = ST.map(file({ conditions: [cond('memory_tight', 'warning', 'MEMORY TIGHT', '8% available for 30 s')] }), at(0));
+  assert.deepEqual(v.w, { id: 'cpu_hot', file: 'memory_tight', lv: 3, level: 'warning', st: 'warn', scene: 'yard', hl: 'MEMORY TIGHT', sub: '8% available for 30 s', mem: true });
+  assert.deepEqual(Object.keys(ST.RETIRED), ['memory_tight']);
+  assert.equal(ST.CONDITIONS.memory_tight, undefined);
+  // with cpu_hot from that collector too, the knight that trains for it is bloated for both
+  const both = ST.map(file({ conditions: [cond('cpu_hot', 'warning', 'CPU HOT'), cond('memory_tight', 'warning')] }), at(0));
+  assert.deepEqual([both.w.file, both.w.hl, both.w.mem], ['cpu_hot', 'CPU HOT', true]);
+  assert.deepEqual(both.more, { n: 1, crit: false });
+  const behind = ST.map(file({ conditions: [cond('attack', 'critical'), cond('cpu_hot', 'warning'), cond('memory_tight', 'warning')] }), at(0));
+  assert.deepEqual([behind.w.id, behind.w.mem], ['attack', false]);
+});
+
+test('a check that borrows Under strain is never bloated, whichever id it borrows', () => {
+  const check = (as, over = {}) => Object.assign({ id: 'check:nas-mem', as, level: 'warning', since: EXAMPLE.generated_at, headline: 'NAS MEMORY', detail: '' }, over);
+  const pair = { pct: 93.4, threshold: 90, since: EXAMPLE.generated_at };
+  for (const c of [check('cpu_hot', { machines: [{ name: 'NAS', window_s: 30, memory: pair }] }), check('memory_tight')]) {
+    const v = ST.map(file({ conditions: [c] }), at(0));
+    assert.deepEqual([v.w.id, v.w.file, v.w.scene, v.w.mem], ['cpu_hot', 'check:nas-mem', 'yard', false], c.as);
+  }
 });
 
 test('a check borrows the scene and rank of any condition but device_down', () => {
@@ -258,7 +299,7 @@ test('a check borrows the scene and rank of any condition but device_down', () =
   for (const [as, k] of Object.entries(ST.CONDITIONS)) {
     const v = ST.map(file({ conditions: [check(as)] }), at(0));
     if (as === 'device_down') { assert.equal(v.w, null, as); continue; }
-    assert.deepEqual(v.w, { id: as, file: 'check:nas', lv: k.lv, level: k.level, st: ST.LEVELS[k.level], scene: k.scene, hl: 'NAS', sub: 'its words' }, as);
+    assert.deepEqual(v.w, { id: as, file: 'check:nas', lv: k.lv, level: k.level, st: ST.LEVELS[k.level], scene: k.scene, hl: 'NAS', sub: 'its words', mem: false }, as);
   }
   // one the page cannot act is skipped, and the next condition is used
   for (const bad of [check('nas_hot'), check(undefined), check('cpu_hot', { id: 'check:NAS' }), check('cpu_hot', { id: 'check:' + 'x'.repeat(21) }), check('cpu_hot', { id: 'nas' }), check('__proto__')]) {

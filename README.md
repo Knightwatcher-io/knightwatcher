@@ -6,8 +6,8 @@
 # Knightwatcher
 
 A wall display for a homelab. A pixel-art knight fills a tablet's screen and mirrors the state of
-the machines being watched: the knight sweats when the CPU is pinned, takes to bed when a
-container is unhealthy, and swats the flies that blocked adverts turn into. A mouser cat lives in
+the machines being watched: the knight trains and sweats when a machine is under strain, bloated
+when it is short of memory, takes to bed when a container is unhealthy, and swats the flies that blocked adverts turn into. A mouser cat lives in
 every scene and catches the flies the knight cannot: indoors, and outdoors while the knight is
 busy. A headline says why, beside a wall clock.
 

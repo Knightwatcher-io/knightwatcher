@@ -314,7 +314,8 @@ Each converted scene is drawn by two copies: its code in `js/scenes/`, the fallb
   spot, `s.dx`: the target's every 10 ms through two training rounds while all is quiet
   and while the CPU runs hot, the smithy's every 10 ms through the whole quench while all is quiet,
   five blows of the hammer while updating, at the spot and at x 300, and ten pumps of the bellows
-  while the CPU runs hot, and every 50 ms for six seconds with a device down and the memory tight,
+  while the CPU runs hot, and every 50 ms for six seconds with a device down and, for the target and
+  the bellows alike, under strain short of memory, the knight bloated,
   and the house's every 10 ms for 8.4 seconds asleep at night,
   sick in bed, with the television on while streaming and with it off while all is quiet, and the
   court's every 10 ms for 12.8 seconds, two rounds of its talk, while a shell is open and while all

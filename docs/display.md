@@ -22,6 +22,12 @@ files beside it: the downloaded packs in `data/packs/` and, on a deployed copy, 
 The website's demo runs this way. Browsers refuse to fetch from disk, so from disk the page does
 not try.
 
+Under strain (`cpu_hot`) has four buttons in the review bar, in the collector's words for
+invented machines: Strain: CPU (`HOST CPU 96%`), Strain: memory (`NAS MEMORY 93%`, the knight
+bloated as it trains), Strain: both (`NAS UNDER STRAIN`, both figures in the detail) and Strain:
+several (`3 UNDER STRAIN`). They are one condition, so turning one on turns the others off. The
+demo loop shows the CPU and then the memory, and the memory again beside an attack and a shell.
+
 **The demo's devices.** The demo draws a set of stand-in devices: by default a NAS (`machine`), a
 camera and a router (a kind the page does not name, drawn as the chest), with the pie's place left
 empty. While `pi_silent` is on, a Pi is put in the pie's place, down, its dish empty; the pie has a
@@ -619,7 +625,7 @@ the rotation."; a scene switched back on joins the end of the rotation. One leng
 In the demo, while nothing sets the length, a line says the demo shows each scene for a minute.
 
 **Scenes.** A line saying what the page is for, then one row for each condition offered, named as
-its headline reads (Under attack, Disk full, Backup overdue, Pi silent, Running hot), with a small
+its headline reads (Under attack, Disk full, Backup overdue, Pi silent, Under strain), with a small
 picture of each scene that can act it, drawn by the scene's own code as on the quiet scenes page,
 every other loaded world's after its name; a condition only one medieval scene acts, such as the
 WAN going down, gets a row once another world acts it. The scene the condition goes back to on a
@@ -710,7 +716,7 @@ down is used.
 
 | Key | Meaning |
 |---|---|
-| `on=` | active conditions, comma separated, by the contract's id or the short alias (`attack`, `wan`, `sick`, `disk`, `backup`, `pi`, `device`, `cpu`, `swap`, `ssh`, `update`, `plex`, `night`) |
+| `on=` | active conditions, comma separated, by the contract's id or the short alias (`attack`, `wan`, `sick`, `disk`, `backup`, `pi`, `device`, `cpu`, `mem`, `cpumem`, `strained`, `ssh`, `update`, `plex`, `night`). Under strain (`cpu_hot`) has four: `cpu` (or `cpu_hot`) one machine's CPU, `mem` one machine's memory, bloated, `cpumem` both on one machine, and `strained` several machines; `swap` and `memory_tight` are older names for `mem`. Only the first of the four given shows |
 | `is=` | the quiet scene: `auto` for the rotation the settings choose, or `battlement`, `camp`, `house`, `yard`, `smithy` to keep one; in the smithy the knight quenches a blade. The cellar and the court come from conditions, and so does the smithy's anvil and its bellows |
 | `h=` | the helmet: `auto` (off in the house and the smithy), `on`, `off`. Without it the settings' helmet indoors chooses between `auto` and `on` |
 | `hs=` | the headline size: `s`, `m`, `l`. Without it the settings' headline size |

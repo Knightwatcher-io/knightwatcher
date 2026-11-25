@@ -440,7 +440,9 @@ test('each scene declares the conditions it can act, every condition can be acte
     if (home) assert.ok(w.can[home].includes(c), c + ' in its own scene, ' + home);
     for (const k of Object.keys(w.can)) if (w.can[k].includes(c) && !home) assert.ok(SET.SCENES.includes(k), c + ' follows the quiet scene, so only quiet scenes list it');
   }
-  for (const list of Object.values(w.can)) for (const c of list) assert.ok(c in ST.CONDITIONS, c + ' is a condition');
+  // memory_tight, retired, is still listed by the scenes that could act it, and is no condition of
+  // the page's: it is acted as Under strain
+  for (const list of Object.values(w.can)) for (const c of list) assert.ok(c in ST.CONDITIONS || c in ST.RETIRED, c + ' is a condition');
   assert.deepEqual(Object.keys(w.can).sort(), SET.ALL_SCENES.slice().sort(), 'every scene declares');
   assert.deepEqual(SET.offered(w), OFFERED);
   // night is never offered, whatever can act it; nor is a condition with no scene of its own
@@ -573,7 +575,7 @@ test('the engine plays a condition in the scene the input chooses for it when th
   assert.equal(at('attack', { attack: 'house' }), 'battlement', 'the house cannot act the attack');
   assert.equal(at('night', { night: 'camp' }), 'house');
   assert.equal(at('disk_full', { disk_full: 'moon' }), 'cellar', 'a scene the page does not have');
-  assert.equal(at('memory_tight', { memory_tight: 'house' }), 'battlement', 'memory_tight follows the quiet scenes');
+  assert.equal(at('device_down', { device_down: 'house' }), 'battlement', 'device_down follows the quiet scenes');
   for (const [c, list] of Object.entries(OFFERED)) for (const k of list) assert.equal(at(c, { [c]: k }), k, c + ' in the ' + k);
   // the input as the settings give it with nothing set changes no scene
   for (const c of Object.keys(KW.state.CONDITIONS)) assert.equal(at(c, plain(SET.engineInput(store().s.now(), PACK, 1000).scenes)), at(c), c);

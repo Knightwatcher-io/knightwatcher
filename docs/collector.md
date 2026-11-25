@@ -145,7 +145,7 @@ that shows the cause (`attack`, `disk_full`, `backup_overdue`, `ssh_session`, `u
 - `wan_down` needs `failed_checks` failed internet checks in a row (two by default). A check is a
   fresh read of the `wan` source, so a poll that reuses the last reading does not count, and two
   checks are 30 seconds apart at the default pace.
-- `cpu_hot` and `memory_tight` are judged on averages, below.
+- `cpu_hot`, Under strain, is judged on averages for each machine and resource, below.
 - A generic check, `check:<name>`, needs its test to have held for its own `for_s` (none by
   default); see [Generic checks](#generic-checks).
 
@@ -175,36 +175,81 @@ When a change is taken up, a check whose address, path, test, `value`, header an
 same keeps its state, taking up new words and a new `for_s`; any other change starts it afresh,
 and a check taken away is forgotten.
 
-### CPU and memory
+### Under strain
 
-`cpu_hot` is raised when the CPU, averaged over the last `window_s` seconds (30 by default), is
-at or above `pct`. `memory_tight` is raised when `MemAvailable` as a percent of `MemTotal`,
-averaged over its own `window_s`, is at or below `available_pct`. A spike of a few seconds moves a
-30-second average little, so it raises nothing, while a CPU pinned for 30 seconds raises `cpu_hot`
-on the poll that completes the window. A brief dip keeps the condition up as long as the average
-stays past the threshold. `disk_full` is a level and is judged on the latest reading.
+`cpu_hot` is Under strain: a watched machine's CPU or memory, averaged over the last `window_s`
+seconds (30 by default), is at or above its threshold, `pct` for CPU (85 by default) and
+`memory_pct` for memory used (90 by default). It replaced Running hot, whose id it keeps, and
+Memory tight (`memory_tight`), which the collector no longer writes; an old `config.toml` is read in
+the new terms ([configuration.md](./configuration.md#removed-settings)). Today the only machine is
+this host, read from `/proc`, and named by `name` in `[sources.host]` (`Host` by default).
+
+Each pair of machine and resource has its own record. A pair is raised at the first poll whose
+average is at or past its threshold, stays raised while the average is at or past the threshold
+less `band` (5 points by default), and clears once it has been below that for `clear_after_s`,
+the common hold of every condition. With the defaults, memory is raised at 90.0%, stays up while
+the average is 85.0% or more, and clears 30 seconds after it falls below 85.0%, so a host that
+hovers around the threshold does not raise and clear over and over with its `since` starting
+afresh. A machine that was not read at a poll has no average, which counts as the cause absent,
+so a failed read never holds the condition up. The condition is up while any pair is, and its
+entry lists every machine under strain in `machines`, in the order each was first raised
+([state.md](./state.md#fields)). A held pair keeps the figure it last had while it counted, and a
+machine not read keeps what was last read of it, so the words stand while a failed read is held
+through its clearing period.
+
+A spike of a few seconds moves a 30-second average little, so it raises nothing, while a CPU
+pinned for 30 seconds raises `cpu_hot` on the poll that completes the window. A brief dip keeps
+the condition up as long as the average stays within the band. `disk_full` is a level and is
+judged on the latest reading.
 
 The host source keeps the samples behind these averages: the time, the busy and total CPU
-jiffies, and the available memory. It keeps enough for the larger window and one more read. A
-window is measured from its base sample, the oldest one no older than the window (a second's
-slack allows for a poll that starts late). CPU is the difference in jiffies between the base and
-the latest sample, which makes it exact however the samples are spaced. Memory is the mean of the
-samples after the base, each weighted by the time since the one before it. If the host is read
-less often than a window is long, the window reaches back to the previous read instead.
+jiffies, and the available memory. It keeps enough for the window and one more read. The window
+is measured from its base sample, the oldest one no older than the window (a second's slack allows
+for a poll that starts late). CPU is the difference in jiffies between the base and the latest
+sample, which makes it exact however the samples are spaced; it counts all but idle and iowait,
+and guest time once. Memory used is `MemTotal` less `MemAvailable`, as a percent of `MemTotal`:
+the mean of the samples after the base, each weighted by the time since the one before it. If the
+host is read less often than the window is long, the window reaches back to the previous read
+instead.
 
 After a start there is no history, and none after a gap in the host's reads longer than the
 history it keeps. The first read then takes a half-second CPU sample, and the averages cover
 whatever has been seen since: half a second at the first poll, ten
-and a half at the second, and so on until the window is full. A condition can be raised from the
+and a half at the second, and so on until the window is full. A pair can be raised from the
 history there is, as long as the average over it is past the threshold.
 
-The words count from the start of the window: `CPU HOT` with `99% for 30 s · load 2.9` when it
-appears, the time then growing with each poll, and the condition's `since` 30 seconds before it
-was raised. After a start the time reads at least `1 s`. `facts.host.cpu_pct` is the CPU average
-over the `cpu_hot` window; `facts.host.mem_pct` is the latest reading.
+A pair's `since` is the start of the window at the poll that raised it, and the entry's is the
+earliest of its pairs'. The words count from it, and name the machine:
+
+| Case | Headline | Detail |
+|---|---|---|
+| the host's CPU | `HOST CPU 97%` | `97% for 2 min · memory 61% · load 14.2` |
+| the host's memory | `HOST MEMORY 93%` | `93% for 12 min · CPU 41% · load 3.1` |
+| `MEMORY` would cut the name | `BUILDBOX MEM 93%` | `93% for 12 min · CPU 41%` |
+| a name too long even then | `GATEHOU… MEM 93%` | `Gatehouse server · 93% for 12 min · CPU 41%` |
+| both resources on one machine | `NAS UNDER STRAIN` | `memory 93% and CPU 97% for 12 min` |
+| both, a name that does not fit beside `UNDER STRAIN` | `UNDER STRAIN` | `Host memory 93% and CPU 97% for 12 min · load 3.1` |
+| several machines | `3 UNDER STRAIN` | `NAS memory 93%, Server CPU 97%, Buildbox CPU 91%` |
+| several, names too long | `6 UNDER STRAIN` | `Gatehouse server memory 93%, Buildbox CPU 91% +4` |
+
+The headline gives the average as a whole percent. The detail gives the held time, then the
+machine's other resource when it was read, then the load for this host alone. A name that does
+not fit the headline is cut with an ellipsis and given whole at the start of the detail, as for
+`device_down`. Beside `UNDER STRAIN` only three characters fit, and there the name is never cut:
+a longer one, the host's default `Host` among them, leaves the headline `UNDER STRAIN` alone and
+starts the detail. Several machines are named in the order they
+were raised while they fit in 60 characters, with `+N` for the rest; only the host is watched
+today, so the last two rows are for machines read from other sources. After a start the time
+reads at least `1 s`. `facts.host.cpu_pct` is the CPU average over the window;
+`facts.host.mem_pct` is the latest reading of memory used.
 
 Memory is judged by `MemAvailable` and never by swap, which a busy host can keep full for
 weeks without being short of memory.
+
+When a change is taken up, each pair keeps its record and takes up the new thresholds, band and
+name; a pair whose new threshold less the band is above its average is held and cleared as any
+other. Left out of `conditions.priority`, the condition forgets its pairs, and starts afresh if
+it comes back.
 
 ### SSH sessions
 

@@ -4,8 +4,14 @@ Each condition has a cause, judged afresh at every poll from the sources' readin
 becomes active once its cause has held for the condition's duration (or number of fresh reads),
 and clears only once the cause has been absent for `clear_after_s` seconds, so it does not flap.
 A source that could not be read counts as the cause being absent, so a dead source cannot hold a
-condition up for ever. CPU and memory are judged on averages over a window, which the host
-source works out from its own history.
+condition up for ever.
+
+Under strain (`cpu_hot`) is judged for each machine and resource apart: a pair is raised when its
+average over the window is at or past its threshold, stays raised while it is at or past the
+threshold less `band`, and clears once it has been below that for `clear_after_s`. The condition
+is up while any pair is, and its entry lists the machines in `machines`. The only machine today is
+this host, whose averages the host source works out from its own history; `_machines()` is where
+machines read from other sources join it.
 
 Devices are judged apart, each by its own watch: a check that ran out of time counts as
 silence for them, since a machine that cannot answer in time has not answered. `pi_silent` and
@@ -28,7 +34,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from collector import text
-from collector.config import Config
+from collector.config import SOURCE_DEFAULTS, Config
 from collector.kinds import check, kind_of, streams
 from collector.sources import Reading
 
@@ -45,7 +51,6 @@ LEVELS = {
     "pi_silent": "warning",
     "device_down": "warning",
     "cpu_hot": "warning",
-    "memory_tight": "warning",
     "ssh_session": "work",
     "updating": "work",
     "streaming": "quiet",
@@ -76,6 +81,29 @@ _CHECK_KEYS = ("kind", "host", "ports", "url", "refused_counts", "verify_tls", "
 # What makes a generic check the same check across a change: what it reads, how it tests it, and
 # what it borrows. A change of its words or of for_s keeps its state.
 _SAME_CHECK = ("url", "path", "test", "value", "header", "secret", "verify_tls", "as")
+
+# Under strain: the resources judged on each machine, in the order a machine's entry gives them,
+# and their words: in the headline, the short one when the long one would cut the name, and in
+# the detail.
+RESOURCES = ("cpu", "memory")
+HEAD_WORDS = {"cpu": ("CPU", "CPU"), "memory": ("MEMORY", "MEM")}
+DETAIL_WORDS = {"cpu": "CPU", "memory": "memory"}
+STRAIN = "UNDER STRAIN"
+# The machine key of this host, and its settings when [sources.host] is left out (as in tests
+# that give a reading of their own). A machine read from another source will have a key of its own.
+HOST = "host"
+HOST_DEFAULTS = SOURCE_DEFAULTS["host"]
+
+
+@dataclass
+class Pair:
+    """One machine's one resource under strain."""
+
+    since: dt.datetime  # when its average first crossed its threshold
+    order: int  # its place among the pairs raised, so the words keep the order they came in
+    pct: float  # its average at the last poll that held it, past the threshold less the band
+    threshold: float
+    absent_since: dt.datetime | None = None  # the first poll that found it below that
 
 
 class Tracker:
@@ -201,6 +229,72 @@ def _named(name: str, word: str) -> str:
     return f"{text.clip(name.upper(), room)} {word}"
 
 
+def _pct(value: float) -> str:
+    return f"{value:.0f}%"
+
+
+def _pairs_said(pairs: list[tuple[str, Pair]]) -> str:
+    """A machine's pairs in the detail's words, in the order they were raised: memory 93% and
+    CPU 97%."""
+    return " and ".join(f"{DETAIL_WORDS[res]} {_pct(p.pct)}" for res, p in pairs)
+
+
+def strain_words(machines: list[dict], now: dt.datetime) -> tuple[str, str]:
+    """Under strain's headline and detail, from _strain()'s machines.
+
+    One machine on one resource: its name, the resource and the average, NAS MEMORY 93%, MEM
+    where MEMORY would cut the name, and a name that does not fit even then cut with an ellipsis
+    and given whole in the detail; the detail gives the held time, then the machine's other
+    resource when it was read, then the load for this host alone. One machine on both: NAS UNDER
+    STRAIN, both figures in the detail; a name that does not fit beside UNDER STRAIN is never cut,
+    the headline is UNDER STRAIN alone and the detail starts with the name. Several: their number,
+    and each machine in the order it was raised while they fit, with +N for the rest.
+    """
+    if len(machines) > 1:
+        said = [f"{' '.join(m['name'].split())} {_pairs_said(m['pairs'])}" for m in machines]
+        return f"{len(machines)} {STRAIN}", _names(said, text.DETAIL_MAX)
+    m = machines[0]
+    name, pairs = " ".join(m["name"].split()), m["pairs"]
+    held = text.duration((now - min(p.since for _, p in pairs)).total_seconds())
+    load = f"load {m['load']:.1f}" if m["load"] is not None else ""
+    if len(pairs) > 1:
+        both = f"{_pairs_said(pairs)} for {held}"
+        if len(name) + len(STRAIN) + 1 <= text.HEADLINE_MAX:
+            head, parts = f"{name.upper()} {STRAIN}", [both, load]
+        else:
+            head, parts = STRAIN, [f"{name} {both}", load]
+        cut = False
+    else:
+        res, p = pairs[0]
+        figure = _pct(p.pct)
+        long, short = HEAD_WORDS[res]
+        word = long if len(name) + len(long) + len(figure) + 2 <= text.HEADLINE_MAX else short
+        head = _named(name, f"{word} {figure}")
+        cut = len(name) + len(word) + len(figure) + 2 > text.HEADLINE_MAX
+        other = [r for r in RESOURCES if r != res and m["figures"][r] is not None]
+        parts = [f"{figure} for {held}"]
+        parts += [f"{DETAIL_WORDS[r]} {_pct(m['figures'][r])}" for r in other]
+        parts.append(load)
+    if cut:
+        parts.insert(0, name)
+    return head, text.join_fitting(parts, text.DETAIL_MAX)
+
+
+def machine_entry(m: dict) -> dict:
+    """A machine of _strain() as the state file's entry has it in machines."""
+    out: dict[str, Any] = {"name": m["name"]}
+    if m["device"] is not None:
+        out["device"] = m["device"]
+    out["window_s"] = m["window_s"]
+    for res, p in sorted(m["pairs"], key=lambda rp: RESOURCES.index(rp[0])):
+        out[res] = {
+            "pct": round(float(p.pct), 1),
+            "threshold": p.threshold,
+            "since": text.iso(p.since),
+        }
+    return out
+
+
 def _hhmm(value: str) -> dt.time:
     h, m = value.split(":")
     return dt.time(int(h), int(m))
@@ -217,9 +311,16 @@ class Conditions:
             for_reads=c["wan_down"]["failed_checks"], clear_after_s=clear
         )
         self.trackers["pi_silent"] = Tracker(for_s=c["pi_silent"]["for_s"], clear_after_s=clear)
+        # cpu_hot's pairs hold and clear on their own, so the condition clears with the last.
+        self.trackers["cpu_hot"].clear_after_s = 0
         # device_down needs no duration of its own: the watches judge when a device is down, and
         # pass the start of its silence as the cause's since.
         self.watches = [Watch(i, t) for i, t in enumerate(config.devices)]
+        # Under strain: each pair raised, by (machine key, resource); what was last read of each
+        # machine with a pair, for the words; and how many pairs have been raised, for the order.
+        self.pairs: dict[tuple[str, str], Pair] = {}
+        self.strained: dict[str, dict] = {}
+        self.raised = 0
         self.started: dt.datetime | None = None
         # Per-container short history: name -> (first seen bad, kind, status).
         self.bad_since: dict[str, tuple[dt.datetime, str, str]] = {}
@@ -248,6 +349,9 @@ class Conditions:
                 self.trackers[cid] = Tracker(clear_after_s=clear)
                 self.causes.pop(cid, None)
             self.trackers[cid].clear_after_s = clear
+        self.trackers["cpu_hot"].clear_after_s = 0
+        if "cpu_hot" not in self.priority:
+            self.pairs, self.strained = {}, {}
         self.trackers["wan_down"].for_reads = c["wan_down"]["failed_checks"]
         self.trackers["pi_silent"].for_s = c["pi_silent"]["for_s"]
         self._take_checks(config)
@@ -405,21 +509,87 @@ class Conditions:
         """
         return now - dt.timedelta(seconds=max(1.0, span_s))
 
-    def _cpu_hot(self, r, now) -> Cause:
+    def _machines(self, r) -> list[dict]:
+        """Every machine read at this poll, with its averages over the window:
+        {key, name, window_s, span_s, cpu, memory, load, thresholds}, cpu and memory in percent
+        (memory as used) or None when not read, load the host's alone. Only this host today;
+        a machine of another source would be added here with a key of its own."""
+        c = self.config.conditions["cpu_hot"]
+        out = []
         f, d = _facts(r, "host"), _data(r, "host")
-        if f is None:
-            return Cause(False)
-        # cpu_pct is already the average over the window (see the host source).
-        present = f["cpu_pct"] >= self.config.conditions["cpu_hot"]["pct"]
-        return Cause(present, since=self._window_start(now, d["cpu_span_s"]), context=f)
+        if f is not None and d is not None:
+            out.append(
+                {
+                    "key": HOST,
+                    "name": self.config.sources.get("host", HOST_DEFAULTS)["name"],
+                    "window_s": c["window_s"],
+                    "span_s": d["span_s"],
+                    # cpu_pct is already the average over the window (see the host source).
+                    "cpu": f["cpu_pct"],
+                    "memory": d["mem_used_avg"],
+                    "load": f["load1"],
+                    "thresholds": {"cpu": c["pct"], "memory": c["memory_pct"]},
+                }
+            )
+        return out
 
-    def _memory_tight(self, r, now) -> Cause:
-        d = _data(r, "host")
-        if d is None:
+    def _cpu_hot(self, r, now) -> Cause:
+        """Under strain: each pair of machine and resource judged on its own (see Pair). A
+        machine not read at this poll has no average, which counts as the cause absent."""
+        c = self.config.conditions["cpu_hot"]
+        band, clear = c["band"], self.config.conditions["clear_after_s"]
+        read = {m["key"]: m for m in self._machines(r)}
+        keys = {(k, res) for k in read for res in RESOURCES} | set(self.pairs)
+        for key, res in sorted(keys):
+            m = read.get(key)
+            avg = m[res] if m is not None else None
+            pair = self.pairs.get((key, res))
+            if pair is None:
+                if avg is not None and avg >= m["thresholds"][res]:
+                    self.raised += 1
+                    since = self._window_start(now, m["span_s"])
+                    self.pairs[key, res] = Pair(since, self.raised, avg, m["thresholds"][res])
+                continue
+            if m is not None:
+                pair.threshold = m["thresholds"][res]
+            if avg is not None and avg >= pair.threshold - band:
+                pair.pct, pair.absent_since = avg, None
+                continue
+            if pair.absent_since is None or now < pair.absent_since:
+                pair.absent_since = now
+            if (now - pair.absent_since).total_seconds() >= clear:
+                del self.pairs[key, res]
+        held = {key for key, _ in self.pairs}
+        # What was last read of each machine with a pair stands while it is not read.
+        self.strained = {k: read.get(k, self.strained.get(k)) for k in held}
+        if not self.pairs:
             return Cause(False)
-        limit = self.config.conditions["memory_tight"]["available_pct"]
-        avg = d["mem_available_avg"]
-        return Cause(avg <= limit, since=self._window_start(now, d["mem_span_s"]), context=avg)
+        return Cause(True, since=min(p.since for p in self.pairs.values()), context=self._strain())
+
+    def _strain(self) -> list[dict]:
+        """The machines under strain, in the order each was first raised, with their pairs in
+        the order they were: {name, device, window_s, load, figures, pairs: [(resource, Pair)]},
+        device the machine's place in facts.devices.list or None. A copy, so that words held
+        through a clearing period keep what they said."""
+        places = {w.device["name"].lower(): w.index for w in self.watches}
+        out = []
+        for key, m in self.strained.items():
+            pairs = sorted(
+                ((res, p) for (k, res), p in self.pairs.items() if k == key),
+                key=lambda rp: rp[1].order,
+            )
+            out.append(
+                {
+                    "name": m["name"],
+                    "device": places.get(m["name"].lower()),
+                    "window_s": m["window_s"],
+                    "load": m["load"],
+                    "figures": {res: m[res] for res in RESOURCES},
+                    "pairs": [(res, Pair(**vars(p))) for res, p in pairs],
+                }
+            )
+        out.sort(key=lambda m: m["pairs"][0][1].order)
+        return out
 
     def _ssh_session(self, r, now) -> Cause:
         f = _facts(r, "ssh")
@@ -507,9 +677,7 @@ class Conditions:
         if cid == "device_down":
             return self._device_words(ctx, now)
         if cid == "cpu_hot":
-            return "CPU HOT", f"{ctx['cpu_pct']:.0f}% for {held}{text.SEP}load {ctx['load1']:.1f}"
-        if cid == "memory_tight":
-            return "MEMORY TIGHT", f"{ctx:.0f}% available for {held}"
+            return strain_words(ctx, now)
         if cid == "ssh_session":
             who = ", ".join(ctx["sources"])
             what = text.plural(ctx["count"], "ssh session")
@@ -619,6 +787,11 @@ class Conditions:
             if cid == "device_down":
                 # Where the page finds the devices: their positions in facts.devices.list.
                 entry["devices"] = [d["index"] for d in shown.context]
+            if cid == "cpu_hot":
+                entry["since"] = text.iso(
+                    min(p.since for m in shown.context for _, p in m["pairs"])
+                )
+                entry["machines"] = [machine_entry(m) for m in shown.context]
             out.append(entry)
         return out
 

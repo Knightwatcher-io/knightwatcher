@@ -1,11 +1,11 @@
 """CPU, load, memory and swap from the host's /proc, and disk use by statvfs.
 
 The source keeps a short history of samples so that CPU and available memory can be judged as
-averages over the conditions' windows rather than as single readings. Both are measured from the
-window's base sample, the oldest one no older than the window. CPU is the difference in jiffies
-between that sample and the latest, so it is exact however the samples are spaced. Available
-memory is the mean of the samples after the base, each weighted by the time since the one
-before it.
+averages over Under strain's window (conditions.cpu_hot.window_s) rather than as single readings.
+Both are measured from the window's base sample, the oldest one no older than the window. CPU is
+the difference in jiffies between that sample and the latest, so it is exact however the samples
+are spaced. Available memory is the mean of the samples after the base, each weighted by the time
+since the one before it.
 """
 
 from __future__ import annotations
@@ -122,12 +122,10 @@ class HostSource(Source):
     def __init__(self, settings, config):
         super().__init__(settings, config)
         self.proc = config.collector["proc_root"]
-        c = config.conditions
-        self.cpu_window_s = c["cpu_hot"]["window_s"]
-        self.mem_window_s = c["memory_tight"]["window_s"]
-        # The larger window plus one read, so that the oldest sample a window needs is kept.
+        self.window_s = config.conditions["cpu_hot"]["window_s"]
+        # The window plus one read, so that the oldest sample the window needs is kept.
         pace = max(settings["every_s"], config.interval_s)
-        self.keep_s = max(self.cpu_window_s, self.mem_window_s) + pace + SLACK_S
+        self.keep_s = self.window_s + pace + SLACK_S
         self.history: deque[Sample] = deque()
 
     def _prune(self, now: dt.datetime) -> None:
@@ -171,8 +169,8 @@ class HostSource(Source):
         if first is not None:
             self.history.append(first)
         self.history.append(Sample(now, busy, jiffies, avail_pct))
-        cpu_pct, cpu_span = cpu_average(self.history, now, self.cpu_window_s)
-        mem_avg, mem_span = mem_average(self.history, now, self.mem_window_s)
+        cpu_pct, span = cpu_average(self.history, now, self.window_s)
+        mem_avg, _ = mem_average(self.history, now, self.window_s)
         facts = {
             "cpu_pct": cpu_pct,
             "load1": load1,
@@ -181,10 +179,11 @@ class HostSource(Source):
             "swap_pct": round(swap_pct, 1),
             "disks": disks,
         }
+        # What Under strain judges: both averages over the one window, memory as percent used,
+        # and the seconds the window covers, which both share since they share its base.
         data = {
             "mem_available_pct": round(avail_pct, 1),
-            "mem_available_avg": mem_avg,
-            "mem_span_s": mem_span,
-            "cpu_span_s": cpu_span,
+            "mem_used_avg": round(100 - mem_avg, 1),
+            "span_s": span,
         }
         return Reading(facts, data)

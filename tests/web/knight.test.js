@@ -286,6 +286,22 @@ if (MODE === 'write') {
     return { text: SIGN.withSig(UNSIGNED, { alg: 'ed25519', kid: 'kw1', value }), kw1: Buffer.from(k.publicKey.export({ format: 'jwk' }).x, 'base64url').toString('base64') };
   };
 
+  test('Under strain short of memory trains bloated: the cpu_hot pose with memory_tight\'s bloat and puffed cheeks', () => {
+    const { K } = load(true);
+    for (const t of [600, 1300, 2300]) {
+      const hot = K.pose('cpu_hot', t), mem = K.pose('cpu_hot', t, true), tight = K.pose('memory_tight', t);
+      assert.equal(hot.bloat, undefined);
+      assert.equal(hot.puff, undefined);
+      assert.deepEqual([mem.bloat, mem.puff], [tight.bloat, tight.puff], 't' + t);
+      assert.ok(mem.bloat === 5 || mem.bloat === 6);
+      // the rest is the training pose: half eyes, panting, sweat and steam
+      const { bloat, puff, ...rest } = mem;
+      assert.equal(JSON.stringify(rest), JSON.stringify(hot));
+    }
+    // mem changes no other condition's pose
+    assert.equal(JSON.stringify(K.pose('attack', 2300, true)), JSON.stringify(K.pose('attack', 2300)));
+  });
+
   test('a dev page draws the knight from the base pack as it ships, signed or not, and says so', () => {
     const { K, status } = load(true);
     assert.equal(K.source, 'pack');

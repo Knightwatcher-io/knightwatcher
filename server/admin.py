@@ -443,7 +443,7 @@ class Admin:
             if why:
                 problems.append(why)
         for path in reset:
-            if path != overlay.DEVICES and path not in overlay.PATHS:
+            if path != overlay.DEVICES and path not in overlay.PATHS and path not in overlay.LEGACY:
                 problems.append(f"{path}: unknown setting")
         if not given and not reset and not problems:
             problems.append("name a setting in set or reset")
@@ -459,7 +459,8 @@ class Admin:
                 # What this change brings first: the problems already there come after it.
                 there = set(self.problems(self._set, raw, why))
                 raise Refused(sorted(found, key=lambda p: p in there))
-            self._write(new)
+            # Memory tight's old paths, read in today's terms, are written as today's.
+            self._write(overlay.upgrade(new))
         log.info("admin settings saved: %s", ", ".join([*given, *reset]))
         return self.answer()
 
@@ -499,7 +500,8 @@ class Admin:
             self._reread()
             given = copy.deepcopy(self._set)
         shared = json.loads(self.shared.get()[0])
-        laid = overlay.lay(raw or {}, given)
+        # Old settings are written in today's terms, so that the file reads back without warnings.
+        laid, _ = config_mod.translate(overlay.lay(raw or {}, given), [])
         return export_toml(laid, shared, when or dt.datetime.now(dt.UTC), self.providers(raw))
 
 

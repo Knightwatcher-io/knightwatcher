@@ -10,7 +10,8 @@
   /* What the page makes of each condition id, highest first, as docs/design.md decides. lv ranks
      the knight's behaviour: 3 and above is serious and holds back the fun, 2 pins the knight to
      the scene. level is the level the design gives the id, used when a file leaves it out. A
-     scene of null is the quiet scene of the moment. */
+     scene of null is the quiet scene of the moment. cpu_hot is Under strain: a machine's CPU or
+     memory. */
   const CONDITIONS = {
     attack:              { lv: 4, level: 'critical', scene: 'battlement' },
     wan_down:            { lv: 4, level: 'critical', scene: 'battlement' },
@@ -20,20 +21,31 @@
     pi_silent:           { lv: 3, level: 'warning',  scene: 'house' },
     device_down:          { lv: 3, level: 'warning',  scene: null },
     cpu_hot:             { lv: 3, level: 'warning',  scene: 'yard' },
-    memory_tight:        { lv: 3, level: 'warning',  scene: null },
     ssh_session:         { lv: 2, level: 'work',     scene: 'court' },
     updating:            { lv: 2, level: 'work',     scene: 'smithy' },
     streaming:           { lv: 2, level: 'quiet',    scene: 'house' },
     night:               { lv: 1, level: 'sleep',    scene: 'house' }
   };
 
+  /* Ids a collector from before wrote and no longer writes, and the condition the page acts each
+     as: memory_tight, Memory tight, is Under strain on memory, in cpu_hot's scene, trained and
+     bloated (mem). */
+  const RETIRED = { memory_tight: { id: 'cpu_hot', mem: true } };
+  const knownId = id => has(CONDITIONS, id) || has(RETIRED, id);
+
   /* A generic check's condition: check:<name>, which the page acts as the condition its entry
      names in as (any but device_down, which needs devices to look towards), with the check's own
      words. */
   const CHECK_ID = /^check:[a-z0-9][a-z0-9-]{0,19}$/;
-  const isCheck = c => CHECK_ID.test(str(c.id)) && has(CONDITIONS, c.as) && c.as !== 'device_down';
-  /* Whether the page knows a condition of the file: one of CONDITIONS, or a check it can act. */
-  const knownCondition = c => isObj(c) && (has(CONDITIONS, c.id) || isCheck(c));
+  const isCheck = c => CHECK_ID.test(str(c.id)) && knownId(c.as) && c.as !== 'device_down';
+  /* Whether the page knows a condition of the file: one of CONDITIONS or RETIRED, or a check it
+     can act. */
+  const knownCondition = c => isObj(c) && (knownId(c.id) || isCheck(c));
+
+  /* Whether Under strain's machines (docs/state.md) name one short of memory: any entry of the
+     list with memory. */
+  const MAX_MACHINES = 33;
+  const shortOfMemory = list => Array.isArray(list) && list.slice(0, MAX_MACHINES).some(m => isObj(m) && isObj(m.memory));
 
   /* What each event type plays: flies, or one of the engine's events. */
   const EVENTS = { ad_blocked: 'flies', ip_banned: 'goblin', import: 'crate', backup_done: 'feast' };
@@ -127,10 +139,15 @@
      the file's own id. A check is acted as the condition it borrows: its id, lv and scene are that
      condition's, and file is check:<name>, which is what the places that read facts tied to a
      condition test, so that a check never empties the pie's dish, turns on the television or takes
-     the streams' detail. */
+     the streams' detail. A retired id is acted as the condition RETIRED names, its file id kept.
+     mem is whether Under strain is short of memory, so that the knight is bloated as it trains:
+     from the entry's machines, or memory_tight from a collector from before; never for a check,
+     whichever it borrows. */
   function condition(c) {
-    const id = isCheck(c) ? c.as : c.id, k = CONDITIONS[id], level = has(LEVELS, c.level) ? c.level : k.level;
-    return { id, file: c.id, lv: k.lv, level, st: LEVELS[level], scene: k.scene, hl: str(c.headline), sub: str(c.detail) };
+    const check = isCheck(c), named = check ? c.as : c.id, old = has(RETIRED, named) ? RETIRED[named] : null;
+    const id = old ? old.id : named, k = CONDITIONS[id], level = has(LEVELS, c.level) ? c.level : k.level;
+    const mem = !check && (old ? old.mem : id === 'cpu_hot' && shortOfMemory(c.machines));
+    return { id, file: c.id, lv: k.lv, level, st: LEVELS[level], scene: k.scene, hl: str(c.headline), sub: str(c.detail), mem };
   }
 
   /* The class of place a kind stands in: the first Pi's pie has its own place, a camera is
@@ -191,8 +208,9 @@
      Returns ok false with a problem ('malformed', 'schema' or 'stale') when the page must not act
      on the file, and generatedAt (ms) whenever the file says when it was written. Otherwise:
        w          the first condition with a known id, or a check the page can act, or null
-                  when there is none: { id, file, lv, level, st, scene, hl, sub }, id the condition
-                  acted and file the file's own id, check:<name> for a check. For device_down it
+                  when there is none: { id, file, lv, level, st, scene, hl, sub, mem }, id the
+                  condition acted and file the file's own id, check:<name> for a check, and mem
+                  whether Under strain is short of memory (see condition()). For device_down it
                   also carries place, the name of the place the knight looks towards, or null (see
                   lookPlace)
        more       { n, crit }: the other known conditions at warning or critical, and whether any
@@ -232,6 +250,9 @@
     const facts = isObj(file.facts) ? file.facts : {};
     const streams = isObj(facts.streams) ? facts.streams.count : 0, drawn = placed(facts, known);
     let w = known[0] || null;
+    // a collector from before writes cpu_hot and memory_tight apart: the knight that trains for
+    // the first is bloated for the second too
+    if (w && w.file === 'cpu_hot' && known.some(c => c.file === 'memory_tight')) w.mem = true;
     if (w && w.file === 'device_down') w = Object.assign(w, { place: lookPlace(raw[0].devices, drawn.at) });
 
     const events = [];
@@ -388,7 +409,7 @@
     poll();
   }
 
-  const api = { LEVELS, CONDITIONS, EVENTS, IDLE, MAX_FLIES, PLACES, RELOAD_GUARD_MS, STREAM_MS, map, streamsOf, streamWords, arrange, lookPlace, listFromHook, takeEvents, judge, noSignal, versionOf, reloadDue, DISPLAY_KEY, DISPLAY_EVERY_MS, displayId, reportDisplay, start };
+  const api = { LEVELS, CONDITIONS, RETIRED, EVENTS, IDLE, MAX_FLIES, PLACES, RELOAD_GUARD_MS, STREAM_MS, map, streamsOf, streamWords, arrange, lookPlace, listFromHook, takeEvents, judge, noSignal, versionOf, reloadDue, DISPLAY_KEY, DISPLAY_EVERY_MS, displayId, reportDisplay, start };
   KW.state = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? (window.KW = window.KW || {}) : {});

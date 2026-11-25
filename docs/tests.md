@@ -12,7 +12,7 @@ out.
 |---|---|
 | `tests/web/base-pack.test.js` | the shipped base pack: its contents, the free options, builds and items as approved, and whether it ships signed |
 | `tests/web/base-read.test.js` | the base pack's whole read, its signed bytes and its stored looks against the copy first stored before format 1.1 |
-| `tests/web/demo-devices.test.js` | the demo's devices: the default set, the Devices row's add, name, remove, up and down, the page's limits of places, the set kept and restored, Reset, `device_down`'s words held to the collector's, the Pi put in for `pi_silent`, `dv=` and the demo loop taking the set's place, nothing sent, and nothing done once the demo has stopped |
+| `tests/web/demo-devices.test.js` | the demo's devices: the default set, the Devices row's add, name, remove, up and down, the page's limits of places, the set kept and restored, Reset, `device_down`'s words held to the collector's, the Pi put in for `pi_silent`, `dv=` and the demo loop taking the set's place, nothing sent, and nothing done once the demo has stopped; Under strain's four entries in the collector's words, `mem`, `swap` and `memory_tight` bloated, one shown at a time |
 | `tests/web/ed25519.test.js` | the verifier against RFC 8032's vectors and `node:crypto` |
 | `tests/web/effects.test.js` | each effect's cost against what it draws, and `pack.js` holding effects to their tables |
 | `tests/web/fire.test.js` | format 1.2: the fields and rules of weapons and foes that fire, the aim and `fire()`, and the shot effects |
@@ -21,7 +21,7 @@ out.
 | `tests/web/foe.test.js` | the goblin's plan and hit on every build with each weapon, the drawn weapon meeting the drawn goblin to [the contact standard](#the-contact-standard) |
 | `tests/web/foe-fires.test.js` | a foe that fires: its pose `aim` compiled and played in place of the taunt, its shot at 1 350 missing over the head group or stopped at the shield, the foe on the right, and the flinch |
 | `tests/web/format-1.1.test.js` | the world sections of format 1.1: one refused copy of the world fixture for each rule |
-| `tests/web/knight.test.js` | the knight call by call against the stored record, the arm and blade checks, the gear at rest |
+| `tests/web/knight.test.js` | the knight call by call against the stored record, the arm and blade checks, the gear at rest, the training pose bloated under strain short of memory |
 | `tests/web/knight-free-classic.test.js`, `knight-free-broad.test.js`, `knight-free-slim.test.js` | the free items' checks of `knight.test.js`, one build each in a process of its own |
 | `tests/web/loading.test.js` | the downloaded packs, the refusals and the knight drawn from code |
 | `tests/web/main.test.js` | `main.js`'s calls to the display's server in each mode (a forced demo asks nothing under `api/` and no state file), and the hash listener that opens the settings screen |
@@ -34,7 +34,7 @@ out.
 | `tests/web/settings-schema.test.js` | the page's lists of settings, scenes and conditions against the settings schema |
 | `tests/web/settings.test.js` | the settings' levels, storage, look and engine input, the knight in 900 looks, and the status page's read-only line on the usage counts |
 | `tests/web/shared-settings.test.js` | the shared settings against a fake server |
-| `tests/web/state.test.js` | reading the state file, against the examples in [state.md](./state.md); a generic check acted as the condition it borrows, its words and level its own, a check the page cannot act skipped, and none of the borrowed condition's facts taken (the television, the streams' badge and detail, the pie's dish); `analytics` read as on, off or not known; the display's id made once and kept, replaced when malformed, fresh each load without storage, and posted to `api/displays` at load and every 30 minutes |
+| `tests/web/state.test.js` | reading the state file, against the examples in [state.md](./state.md); Under strain bloated while any machine in `machines` has `memory`, `memory_tight` from a collector from before acted as Under strain on memory, and a check that borrows either never bloated; a generic check acted as the condition it borrows, its words and level its own, a check the page cannot act skipped, and none of the borrowed condition's facts taken (the television, the streams' badge and detail, the pie's dish); `analytics` read as on, off or not known; the display's id made once and kept, replaced when malformed, fresh each load without storage, and posted to `api/displays` at load and every 30 minutes |
 | `tests/web/streams.test.js` | the streams' detail line and badge |
 | `tests/web/world.test.js` | the scene compiler and the medieval world's pack |
 | `tests/web/world-cast.test.js`, `world-knight.test.js`, `world-props.test.js`, `world-scenes.test.js`, `world-words.test.js` | the medieval world's cast, the house and the smithy with the knight's gear, devices, scenes, and words and overlay, each from the pack against the code |
@@ -50,10 +50,10 @@ out.
 | `tests/site/build.test.mjs` | the website's build: the pages and the demo (no `admin/` or `data/`, stamped with the commit, never `dev`, the stamp the same as `server/stamp.py`'s), the legal pages against `legal/`, the Web Analytics snippet, `_headers`, no outside host in the demo, and the local preview |
 | `tests/site/markdown.test.mjs` | the legal pages' markdown renderer: escaping, links, lists, headings and their ids, and everything outside its subset refused |
 | `tests/site/worker.test.mjs` | the website's Worker, the redirect from `www` and the headers it sets, and `wrangler.jsonc` |
-| `tests/collector/test_cli.py` | `--check-config`, `--once` and `--health` |
-| `tests/collector/test_conditions.py` | the conditions the collector judges: holding and clearing, CPU and memory, and the rest |
-| `tests/collector/test_config.py` | reading `config.toml`: defaults, paces, ranges, removed and unknown settings; the committed example as it stands (the general sources alone) and with every commented table taken in |
-| `tests/collector/test_contract.py` | the contract check against [state.md](./state.md): devices, `device_down`, defaults and the parts, and its examples, a check's `as` among them |
+| `tests/collector/test_cli.py` | `--check-config`, its warnings of old settings read in today's terms, `--once` and `--health` |
+| `tests/collector/test_conditions.py` | the conditions the collector judges: holding and clearing; Under strain on the host's CPU and memory, each pair raised at its threshold, held by the band and cleared after `clear_after_s`, a failed read absent with its words standing, a change taken up keeping each pair, the device's place, and every row of the words' table (`MEM`, the cut name, both resources, several machines); and the rest |
+| `tests/collector/test_config.py` | reading `config.toml`: defaults, paces, ranges, removed and unknown settings; `band` below the thresholds and the host's `name`; `[conditions.memory_tight]`, `memory_tight` in the priority list and in a check's `as`, each read as Under strain with a warning, from `config.toml` and from admin.json, and admin.json's old paths written in today's terms; the committed example as it stands (the general sources alone) and with every commented table taken in |
+| `tests/collector/test_contract.py` | the contract check against [state.md](./state.md): devices, `device_down`, Under strain's `machines`, defaults and the parts, and its examples, a check's `as` and a machine under strain among them |
 | `tests/collector/test_devices.py` | the checks behind devices, against local sockets and a local HTTP server |
 | `tests/collector/test_reload.py` | `admin.json` laid over `config.toml`, the start and reload rules, the credentials' names, the providers folder watched and moved |
 | `tests/collector/test_runner.py` | one poll: the file it writes, the defaults, failing and slow sources, each source's pace; a source replaced or taken away by a change closed, one kept not, and every source closed as the collector stops |
@@ -364,7 +364,8 @@ the hit) to the plan in the code scene, for every weapon and build, and runs the
 `places.test.js` on every scene of the pack. It runs every scene of the pack that has an act (a
 `target`, an `anvil`, a `bed` or a `screen`) frame by frame beside its code scene, comparing every
 call, `over`'s among them, every change to the knight's pose, `strike` and the knight's move off
-its spot (`s.dx`): the smithy's through the whole quench, the hammer and the bellows.
+its spot (`s.dx`): the smithy's through the whole quench, the hammer and the bellows, and the
+target's and the bellows' under strain short of memory, the knight bloated.
 `tests/web/world-knight.test.js` runs the knight test's checks of the house and the smithy on the
 two from the pack: the ten records of them painted and drawn against the stored ones, with the
 knight from code and from the base pack; in each of the base pack's other looks (the arming sword
@@ -513,7 +514,7 @@ parts drawn. The records are
 stored from code alone: `SCENES_LOG=write` never stores the pack's copy, and `SCENES_LOG=dump:`
 writes it to a folder of its own, such as `cellar@kw.medieval`.
 
-The 1 803 records are stored in `tests/web/fixtures/scenes/`, one file per scene and `cast.json`:
+The 1 935 records are stored in `tests/web/fixtures/scenes/`, one file per scene and `cast.json`:
 for each record the first 16 characters of the hash of its calls, and for each distinct record its
 number of calls and a hash of each block of 1 024 calls, about 250 KB in all, where the records in
 full would weigh 317 MB (136 MB counting each distinct record once). A run takes about 90 seconds,
@@ -684,9 +685,10 @@ down to the pack, the world started again with the downloaded packs, and the adm
 against the walls'; its signed packs use keys generated for the run too. `tests/web/places.test.js`
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
 and that no two places draw over each other, but the court's owls the owner accepted; and draws the
-knight, fill by fill, where the smithy's acts stand it (the forge, the water and the bellows, and its
-spot with a device down and the memory tight), holding the places it covers to those the owner
-accepted: `h1` and `h2` at the forge and the bellows, `g3` at the water, none at the spot. `tests/web/world-scenes.test.js` runs those checks of
+knight, fill by fill, where the smithy's acts stand it (the forge, the water and the bellows, the
+bellows bloated under strain short of memory, and its spot with a device down), holding the places
+it covers to those the owner accepted: `h1` and `h2` at the forge and the bellows, bloated or not,
+`g3` at the water, none at the spot. `tests/web/world-scenes.test.js` runs those checks of
 `foe.test.js` and `places.test.js` that depend on a scene on each scene of the medieval world's pack,
 compiled from it with the goblin from its cast, holds the goblin's plan there to the code scene's
 with the code's goblin for every weapon and build, runs

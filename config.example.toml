@@ -22,7 +22,7 @@ providers_dir = "providers"
 # Highest first. A condition left out of the list is never raised.
 priority = [
   "attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent",
-  "device_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night",
+  "device_down", "cpu_hot", "ssh_session", "updating", "streaming", "night",
 ]
 clear_after_s = 30
 
@@ -46,13 +46,13 @@ hours = 30.0
 [conditions.pi_silent]
 for_s = 180
 
+# Under strain: this host's CPU or memory, each averaged over the window. It replaces Running hot
+# and Memory tight; an old [conditions.memory_tight] is still read, with a warning.
 [conditions.cpu_hot]
-pct = 85.0
-window_s = 30
-
-[conditions.memory_tight]
-available_pct = 10.0
-window_s = 30
+pct = 85.0          # CPU, percent of all cores: at or above
+memory_pct = 90.0   # memory used, percent: at or above
+window_s = 30       # the window both are averaged over
+band = 5.0          # a raised figure stays raised until it falls this far below its threshold
 
 [conditions.ssh_session]
 min_sessions = 1
@@ -70,6 +70,7 @@ end = "07:00"
 
 [sources.host]
 enabled = true
+name = "Host"       # what the wall calls this host under strain: HOST CPU 97%
 every_s = 10
 disks = [{ mount = "/data", path = "/host/disks/data" }]
 

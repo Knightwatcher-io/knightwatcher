@@ -272,7 +272,7 @@ When each condition is raised. The whole table, and each condition's own table, 
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `priority` | condition ids, each once | `["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "device_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night"]` | household | Conditions, highest first. One left out is never raised. Device down (device_down) must stay in the list while any device alerts. |
+| `priority` | condition ids, each once | `["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "device_down", "cpu_hot", "ssh_session", "updating", "streaming", "night"]` | household | Conditions, highest first. One left out is never raised. Device down (device_down) must stay in the list while any device alerts. |
 | `clear_after_s` | a whole number of seconds, zero or more | `30` | household | How long a cause must be absent before its condition clears. |
 
 ### [conditions.attack]
@@ -331,21 +331,14 @@ A device down. It has no settings here: each device carries its own pace, its ow
 
 ### [conditions.cpu_hot]
 
-Running hot: CPU use, averaged over the window, is at or above the threshold.
+Under strain: a watched machine's CPU or memory, averaged over the window, is at or above its threshold. Each machine and resource is judged on its own, and the condition is up while any one is. Its id stays cpu_hot, so saved scene choices and checks that borrow it carry over. It replaces Running hot and Memory tight: an old [conditions.memory_tight] is read as memory_pct here, with a warning.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `pct` | a percentage, above 0, at most 100 | `85.0` | household | CPU use, percent of all cores, averaged over the window: at or above. |
-| `window_s` | a whole number of seconds, at least 10 | `30` | household | The window the CPU is averaged over. |
-
-### [conditions.memory_tight]
-
-Memory tight: available memory, averaged over the window, is at or below the threshold.
-
-| Key | Values | Default | Scope | What it does |
-|---|---|---|---|---|
-| `available_pct` | a percentage, above 0, at most 100 | `10.0` | household | Memory available, as a percent of all memory, averaged over the window: at or below. |
-| `window_s` | a whole number of seconds, at least 10 | `30` | household | The window available memory is averaged over. |
+| `memory_pct` | a percentage, above 0, at most 100 | `90.0` | household | Memory used, percent of all memory, averaged over the window: at or above. Used is all but what the system counts as available (MemAvailable), so caches that can be dropped are not counted, and swap never is. |
+| `window_s` | a whole number of seconds, at least 10 | `30` | household | The window CPU and memory are both averaged over. |
+| `band` | a percentage, from 0 to 50 | `5.0` | household | Points below its threshold that a raised machine and resource may fall and stay raised, so that a figure hovering at the threshold does not raise and clear over and over. Once its average is below the threshold less the band, it clears after clear_after_s. Must be below pct and memory_pct. |
 
 ### [conditions.ssh_session]
 
@@ -384,7 +377,8 @@ CPU, memory and load from the host's /proc, and the size of each configured disk
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
-| `every_s` | a whole number of seconds, above zero | `10` | household | How often the source is read. Should be at least as often as the shorter averaging window; when it is read less often, an average reaches back to the previous read instead. |
+| `name` | 1 to 20 printable ASCII characters, no space at either end | `"Host"` | household | What the wall calls this host when it is under strain: HOST CPU 97%. When it is a device's name, ignoring case, the condition names that device. |
+| `every_s` | a whole number of seconds, above zero | `10` | household | How often the source is read. Should be at least as often as the averaging window is long; when it is read less often, an average reaches back to the previous read instead. |
 | `disks` | tables of mount and path, such as { mount = "/data", path = "/host/disks/data" } | `[]` | household | Disks to report. mount is the label written to the file; path is any path inside the container on that filesystem. |
 
 ### [sources.containers]
@@ -570,7 +564,7 @@ Generic checks, each a [[sources.json]] table under [sources] in config.toml: on
 | `value` | text, a number, or true or false; a number for above and below | none; required by every test but missing | household | What the test compares the value found with. Not used with missing. |
 | `headline` | 1 to 16 printable characters | required | household | The headline while the check holds, shown in capitals. |
 | `detail` | at most 60 printable characters | `""` | household | The line under the headline. {value} in it is the value found, cleaned and cut to fit, a number as the collector writes it and true or false as themselves; no other braces. Not {value} with missing. |
-| `as` | `"attack"`, `"wan_down"`, `"container_unhealthy"`, `"disk_full"`, `"backup_overdue"`, `"pi_silent"`, `"cpu_hot"`, `"memory_tight"`, `"ssh_session"`, `"updating"`, `"streaming"` or `"night"` | required | household | The condition whose scene, knight and colour the check borrows; any but device_down, which needs devices to look towards. The check takes that condition's level and sits straight after it in the priority, checks in their order here. The condition must be in conditions.priority, or the check is refused, since it would never be raised. The scene [scenes] chooses for that condition is the check's too. |
+| `as` | `"attack"`, `"wan_down"`, `"container_unhealthy"`, `"disk_full"`, `"backup_overdue"`, `"pi_silent"`, `"cpu_hot"`, `"ssh_session"`, `"updating"`, `"streaming"` or `"night"` | required | household | The condition whose scene, knight and colour the check borrows; any but device_down, which needs devices to look towards. The check takes that condition's level and sits straight after it in the priority, checks in their order here. The condition must be in conditions.priority, or the check is refused, since it would never be raised. The scene [scenes] chooses for that condition is the check's too. |
 | `every_s` | a whole number of seconds, from 10 to 3600 | `60` | household | How often the address is read. |
 | `for_s` | a whole number of seconds, from 0 to 86400 | `0` | household | How long the test must hold before the check is raised. It clears once the test has failed for conditions.clear_after_s, as every condition does; a read that fails counts as the test failing. |
 | `header` | a header's name: letters, digits and - | none | household | One header sent with the request, such as X-Api-Key or Authorization, its value read from .env as KW_<SECRET>_HEADER and never written anywhere. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header. |
@@ -664,7 +658,7 @@ Where the knight acts out each condition that more than one scene can play, for 
 | `disk_full` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"yard"` or `"cellar"` | none; the page's own is `"cellar"` | display | Where the knight acts out a full disk. |
 | `backup_overdue` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"` or `"cellar"` | none; the page's own is `"house"` | display | Where the knight acts out an overdue backup. |
 | `pi_silent` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"` or `"house"` | none; the page's own is `"house"` | display | Where the knight acts out a silent Pi. |
-| `cpu_hot` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"`, `"cellar"` or `"smithy"` | none; the page's own is `"yard"` | display | Where the knight acts out a hot CPU. |
+| `cpu_hot` | any scene, or a long name, `"<pack>/<id>"`; the page acts it in `"battlement"`, `"camp"`, `"house"`, `"yard"`, `"cellar"` or `"smithy"` | none; the page's own is `"yard"` | display | Where the knight acts out a machine under strain: its CPU or its memory, on any watched machine. The knight trains, and is bloated as well while a machine is short of memory. |
 
 ### Providers
 
@@ -721,6 +715,12 @@ Every variable the project reads from `.env`. The host paths are the folders and
 A source runs when its `[sources.<name>]` table is present and its `enabled` is not `false`.
 Between reads its last reading stands, and it raises no events. An `every_s` below `interval_s`
 means every poll.
+
+`[sources.host]` is the machine Under strain watches today, its CPU and memory judged against
+`[conditions.cpu_hot]` ([collector.md](./collector.md#under-strain)). Its `name` is what the wall
+calls it, `Host` by default: `HOST CPU 97%`. A name of up to seven characters always shows whole
+beside the resource, and one of up to four beside `MEMORY`. When it is the name of a device,
+ignoring case, the condition's entry in the state file gives that device's place.
 
 `[sources.streams]`, `[sources.adblock]` and `[sources.security]` read a service through a
 provider, named by `from`: `tautulli`, `adguard` and `fail2ban`, the defaults, so a table without
@@ -1143,7 +1143,51 @@ The source says what is wrong in `sources.security.error`:
 `clear_after_polls`, `cpu_hot.for_s` and `memory_tight.for_s` were removed when the collector
 moved to 10-second polls and averaged CPU and memory. A `config.toml` that still sets one is
 refused with a message naming its replacement: `clear_after_s`, or `window_s`.
-[collector.md](./collector.md#cpu-and-memory) says how the averages are worked out.
+[collector.md](./collector.md#under-strain) says how the averages are worked out.
+
+**Under strain replaces Running hot and Memory tight.** One condition, still `cpu_hot` in the
+state file, now covers CPU and memory. The knight trains in its scene as before, and is bloated
+when the machine is short of memory; memory no longer plays in the quiet scene. A `config.toml`
+from before keeps working, read in the new terms:
+
+- `[conditions.memory_tight]` is read as `memory_pct` in `[conditions.cpu_hot]`, its
+  `available_pct = 10` becoming `memory_pct = 90`, unless `[conditions.cpu_hot]` sets
+  `memory_pct` itself. When the two tables had different `window_s`, the longer is used.
+- `"memory_tight"` in `conditions.priority` is dropped, or becomes `"cpu_hot"` where the list did
+  not name `cpu_hot`.
+- A check with `as = "memory_tight"` borrows `cpu_hot`.
+
+Each is logged when the settings are taken up and listed by `--check-config` as a warning, with
+no end date, until you change it; the exit stays 0. The same goes for memory tight's two settings
+kept on the admin page from before, which the server writes in the new terms the next time it
+saves, and for the admin page's Download config.toml, which writes the new keys. The host is now
+named on the wall (`HOST CPU 97%`); set `name` in `[sources.host]` to call it something else.
+
+```
+warning: conditions.memory_tight.available_pct = 10: read as conditions.cpu_hot.memory_pct = 90, since Under strain (cpu_hot) now covers memory; set that instead
+```
+
+```toml
+# before
+[conditions.cpu_hot]
+pct = 85.0
+window_s = 30
+
+[conditions.memory_tight]
+available_pct = 10.0
+window_s = 30
+
+# after
+[conditions.cpu_hot]
+pct = 85.0
+memory_pct = 90.0
+window_s = 30
+```
+
+`band`, new with Under strain, is 5 by default: a raised figure stays raised until it falls 5
+points below its threshold, then clears after `clear_after_s`
+([collector.md](./collector.md#under-strain)). Set it to 0 for the old behaviour, which cleared as
+soon as the average was back below the threshold.
 
 `[sources.security]` once read a fail2ban summary at `url`, the default before fail2ban's own
 database. A table that still has `url` with no `from`, or `from = "summary"`, is refused with a
@@ -1322,8 +1366,7 @@ conditions (see [design.md](./design.md#scenes-chosen-per-condition)), and the p
 choice for five; the reference above lists the scenes that can act each. The other conditions
 are not offered: `wan_down` (only the battlement has the bell rope), `container_unhealthy` and
 `night` (the bed is in the house), `streaming` (so is the television), `ssh_session` (the court),
-`updating` (the smithy), and `device_down` and `memory_tight`, which play in whichever quiet scene
-is showing. A loaded world's scene, by its long name, may be given any condition that has a scene
+`updating` (the smithy), and `device_down`, which plays in whichever quiet scene is showing. A loaded world's scene, by its long name, may be given any condition that has a scene
 of its own, offered or not, when it can act it. The collector checks each key against its own condition ids and each value against
 the page's scenes, or a long name by its form, but it cannot know which scene can act what. A known condition paired with a
 known scene that cannot act it, such as `night = "camp"`, is therefore accepted and written, and

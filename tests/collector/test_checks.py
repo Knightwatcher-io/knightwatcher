@@ -541,6 +541,14 @@ class ConditionsTest(unittest.TestCase):
         ])  # fmt: skip
 
 
+# Under strain's one machine, as a cpu_hot entry lists it.
+HOST_STRAINED = {
+    "name": "Host",
+    "window_s": 30,
+    "cpu": {"pct": 97.0, "threshold": 85.0, "since": "2026-01-15T21:00:00Z"},
+}
+
+
 class ContractTest(unittest.TestCase):
     def state(self, *conditions):
         return {
@@ -582,7 +590,7 @@ class ContractTest(unittest.TestCase):
             ["conditions[0].id is unknown"],
         )
         self.assertEqual(
-            contract.validate(self.state(self.cond(id="cpu_hot"))),
+            contract.validate(self.state(self.cond(id="cpu_hot", machines=[HOST_STRAINED]))),
             ["conditions[0].as is on a condition that is not a check"],
         )
         self.assertEqual(

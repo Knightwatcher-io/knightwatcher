@@ -44,6 +44,10 @@ _VERSION = re.compile(r"^[0-9a-f]{20}$")
 _CHECK_ID = re.compile(r"^check:[a-z0-9][a-z0-9-]{0,19}$")
 # The conditions a check may borrow, in `as`: every one but device_down.
 BORROWS = [cid for cid in CONDITION_IDS if cid != "device_down"]
+# Under strain's machines: at most 32 read from sources and this host, each strained on cpu,
+# memory or both.
+MAX_MACHINES = 33
+STRAIN_RESOURCES = ("cpu", "memory")
 
 
 def _ts(value: Any) -> bool:
@@ -91,6 +95,51 @@ def _devices(devices: Any, p: list[str]) -> int:
         if state == "up" and t.get("seen") is False:
             p.append(f"{w} is up but not seen")
     return len(entries)
+
+
+def _machines(c: dict, w: str, listed: int, p: list[str]) -> None:
+    """Check `machines` on cpu_hot: every machine under strain, each named once."""
+    machines = c.get("machines")
+    if not isinstance(machines, list) or not 1 <= len(machines) <= MAX_MACHINES:
+        p.append(f"{w}.machines is not a list of 1 to {MAX_MACHINES} machines")
+        return
+    names = set()
+    for i, m in enumerate(machines):
+        at = f"{w}.machines[{i}]"
+        if not isinstance(m, dict):
+            p.append(f"{at} is not an object")
+            continue
+        if set(m) - {"name", "device", "window_s", *STRAIN_RESOURCES}:
+            p.append(f"{at} has a key other than name, device, window_s, cpu and memory")
+        name = m.get("name")
+        if not isinstance(name, str) or not _DEVICE_NAME.match(name):
+            p.append(f"{at}.name is not 1 to 20 printable ASCII characters")
+        elif name.lower() in names:
+            p.append(f"{at}.name is listed twice")
+        else:
+            names.add(name.lower())
+        if "device" in m:
+            n = m["device"]
+            if not isinstance(n, int) or isinstance(n, bool) or not 0 <= n < listed:
+                p.append(f"{at}.device is not a position in facts.devices.list")
+        window = m.get("window_s")
+        if not isinstance(window, int) or isinstance(window, bool) or window <= 0:
+            p.append(f"{at}.window_s is not a positive whole number")
+        found = [r for r in STRAIN_RESOURCES if r in m]
+        if not found:
+            p.append(f"{at} has neither cpu nor memory")
+        for r in found:
+            pair = m[r]
+            if not isinstance(pair, dict) or set(pair) != {"pct", "threshold", "since"}:
+                p.append(f"{at}.{r} is not an object of pct, threshold and since")
+                continue
+            if not all(
+                isinstance(pair[k], (int, float)) and not isinstance(pair[k], bool)
+                for k in ("pct", "threshold")
+            ):
+                p.append(f"{at}.{r}.pct and threshold are not numbers")
+            if not _ts(pair["since"]):
+                p.append(f"{at}.{r}.since is not a UTC timestamp")
 
 
 def _text(value: Any, limit: int) -> bool:
@@ -285,6 +334,8 @@ def validate(state: Any) -> list[str]:
                 or not all(0 <= n < listed for n in places)
             ):
                 p.append(f"conditions[{i}].devices is not positions in facts.devices.list")
+        if isinstance(c, dict) and c.get("id") == "cpu_hot":
+            _machines(c, f"conditions[{i}]", listed, p)
 
     defaults = state.get("defaults")
     if not isinstance(defaults, dict) or set(defaults) != set(DEFAULT_TABLES):

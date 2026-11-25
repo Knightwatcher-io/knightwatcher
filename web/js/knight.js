@@ -923,14 +923,18 @@
   const AIM2 = Object.freeze({ gx: 38, gy: 35.6, left: Object.freeze({ gx: 10, gy: 35.6 }) });
   const AIM1 = Object.freeze({ gx: 45.6, gy: 34.4, fx: 20.4, fy: 37.2, left: Object.freeze({ gx: 7.2, gy: 34.8 }) });
   const AIM = Object.freeze({ below: .3, above: 1.2, swatAbove: 1.4, recoil: 4, recoilUp: .08 });
-  function pose(id, t) {
+  /* mem bloats the knight under strain (cpu_hot) as memory_tight's pose does: Under strain short
+     of memory. */
+  function pose(id, t, mem) {
     const o = { t, eyes: 'open', mouth: 'flat', bob: Math.floor(t / 900) % 2, gx: BASE.gx, gy: BASE.gy, wang: BASE.a };
     if (ONE) { o.gx = BASE1.gx; o.gy = BASE1.gy; o.wang = BASE1.a; o.fx = BASE1.fx; o.fy = BASE1.fy; }
     if (t % 5200 < 160) o.eyes = 'closed';
     switch (id) {
       case 'container_unhealthy': o.eyes = Math.floor(t / 1300) % 2 ? 'dizzy' : 'half'; o.mouth = 'frown'; o.face = 'L'; o.thermo = 1; o.icebag = 1; o.headDx = Math.round(Math.sin(t / 900)); break;
-      case 'cpu_hot': o.eyes = 'half'; o.mouth = 'pant'; o.face = 'P'; o.sweat = 1; o.steam = 1; break;
-      case 'memory_tight': o.bloat = 5 + (Math.floor(t / 1200) % 2); o.eyes = 'half'; o.mouth = 'o'; o.puff = 1; o.bob = Math.floor(t / 1500) % 2; break;
+      case 'cpu_hot': o.eyes = 'half'; o.mouth = 'pant'; o.face = 'P'; o.sweat = 1; o.steam = 1; if (mem) bloated(o, t); break;
+      // the bloat alone, which the page no longer acts on its own: Under strain short of memory
+      // takes it over its training (mem above)
+      case 'memory_tight': bloated(o, t); o.eyes = 'half'; o.mouth = 'o'; o.bob = Math.floor(t / 1500) % 2; break;
       case 'disk_full': o.crates = 1; o.crouch = 2; o.bob = 0; o.eyes = 'half'; o.sweat = .3; o.sword = false; break;
       case 'backup_overdue': o.eyes = 'half'; o.mouth = 'frown'; o.bubble = 1; o.headDy = 1; break;
       case 'pi_silent': o.look = 1; o.mouth = 'frown'; break;
@@ -951,6 +955,8 @@
     }
     return o;
   }
+  /* The bloat of memory under strain: the body swells by 5 and 6 in turn, the cheeks puffed. */
+  function bloated(o, t) { o.bloat = 5 + (Math.floor(t / 1200) % 2); o.puff = 1; }
   /* The swings, as keyframes. A swing is a list of keys after the stance it starts from at q 0:
      each key is a pose (the grip's gx, gy and the blade's angle a, and with a weapon in one hand the
      shield hand's fx, fy) reached at q, by the easing of the segment that ends there (e the page's
