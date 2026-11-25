@@ -41,15 +41,15 @@
 .kws-rail button { flex: none; min-height: 60px; padding: 6px 14px 4px; text-align: left; border: 0; background: transparent; font-size: var(--t-rail); line-height: 1; color: #d8e0ea;
   box-shadow: inset 0 0 0 3px #2b2333; }
 .kws-rail button[aria-current="page"] { background: #ffb000; color: #1a1524; box-shadow: inset 0 0 0 3px #c98600, inset 4px 4px 0 3px #ffe28a; }
-.kws-main { flex: 1; min-width: 0; display: flex; gap: 24px; padding: 0 0 0 24px; }
-.kws-list { flex: 1; min-width: 0; overflow-y: auto; padding: 14px 24px 18px 0; scrollbar-color: #525c6e #1a1524; scrollbar-width: auto; }
+.kws-main { flex: 1; min-width: 0; display: flex; gap: 24px; padding: 0 0 0 16px; }
+.kws-list { flex: 1; min-width: 0; overflow-y: auto; padding: 14px 24px 18px 8px; scrollbar-color: #525c6e #1a1524; scrollbar-width: auto; }
 .kws-prev { flex: none; width: var(--prev); padding: 14px 24px 14px 0; display: flex; flex-direction: column; gap: 10px; }
 .kws-prev h2 { margin: 0; font-weight: normal; font-size: var(--t-label); line-height: 1; color: #aab6c6; }
 .kws-prev canvas { width: 100%; aspect-ratio: 500 / 380; display: block; image-rendering: pixelated; box-shadow: 0 0 0 3px #2b2333; background: #0e0b13; }
 .kws-prev canvas.scene { aspect-ratio: 960 / 600; }
 /* The court's preview keeps its shape where the room allows, and shrinks to the room left below
    its heading where it does not, the monarch drawn in the middle of it. */
-.kws-prev canvas.court { aspect-ratio: 240 / 372; flex: 0 1 auto; min-height: 0; }
+.kws-prev canvas.court { aspect-ratio: 240 / 384; flex: 0 1 auto; min-height: 0; }
 .kws-prev canvas.pethome { aspect-ratio: 260 / 200; }
 .kws-prev h2 + canvas, .kws-prev .caps + h2 { margin-top: 2px; }
 .kws-prev .caps { display: flex; justify-content: space-around; margin-bottom: 8px; font-size: var(--t-name); color: #aab6c6; line-height: 1; }
@@ -58,7 +58,42 @@
 /* A row: the label, then the choices. */
 .kws-row { display: grid; grid-template-columns: 150px 1fr; align-items: start; gap: 6px 16px; padding: 10px 0 12px; border-bottom: 2px solid #221c2c; }
 .kws-label { font-size: var(--t-label); line-height: 1; color: #d8e0ea; padding-top: 14px; }
-.kws-opts { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 10px; }
+/* The choices, in an even grid (js/settings.js gives it its kind). .kws-opts is the query container
+   whose width chooses the columns: words in two equal columns, three where the row has 420 pixels
+   or more, each column at most --tcol wide; a label too long for its column wraps inside the
+   button. Swatches in equal cells --swcell wide, as many as fit; pictures in equal cells the width
+   of their kind's chip. A row of mixed kinds wraps as it comes. A word from another world's group
+   (.kws-wtag) heads a line of its own, so each group starts on the first column. */
+.kws-opts { min-width: 0; container-type: inline-size; --tcol: 220px; --swcell: calc(var(--chip) + 8px); --cgap: 10px; }
+.kws-grid { display: grid; gap: 10px var(--cgap); align-items: stretch; }
+.kws-grid.g-mixed { display: flex; flex-wrap: wrap; align-items: flex-start; }
+.kws-grid.g-text { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: calc(2 * var(--tcol) + var(--cgap)); }
+@container (min-width: 420px) {
+  .kws-grid.g-text { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: calc(3 * var(--tcol) + 2 * var(--cgap)); }
+}
+.kws-grid.g-swatch { grid-template-columns: repeat(auto-fill, var(--swcell)); }
+.kws-grid.g-pic { grid-template-columns: repeat(auto-fill, var(--cell)); }
+.kws-grid:not(.g-mixed) > .kws-opt { width: 100%; min-width: 0; }
+.kws-grid:not(.g-mixed) .kws-opt .name, .kws-grid:not(.g-mixed) .kws-opt .sub { max-width: 100%; white-space: normal; text-align: center; }
+/* A button of words takes three rows of the grid, the chip, the name and the line under it, shared
+   with the buttons beside it, so that the chips of a line of the grid are one height and the names
+   under them start level, whichever label wraps. */
+.kws-grid.g-text { row-gap: 0; }
+.kws-grid.g-text > .kws-opt { display: grid; grid-row: span 3; grid-template-rows: subgrid; row-gap: 0; justify-items: center; align-content: start; margin-bottom: 10px; }
+.kws-grid.g-text > .kws-opt > .name, .kws-grid.g-text > .kws-opt > .sub { margin-top: 4px; }
+.kws-grid.g-text .kws-opt .chip { width: 100%; min-width: 0; height: auto; min-height: var(--chip); padding: 4px 10px 0; text-align: center; overflow-wrap: break-word; }
+/* The line under a part's two values on the World page stays on one line, into the wide gap. */
+.kws-diff .kws-grid .kws-opt .sub { white-space: nowrap; }
+.kws-grid.k-pic { --cell: 120px; }
+.kws-grid.k-pet { --cell: 162px; }
+.kws-grid.k-scene { --cell: 160px; }
+.kws-grid.k-world { --cell: 320px; }
+.kws-grid.k-device { --cell: 130px; }
+.kws-grid.k-foe, .kws-grid.k-critter { --cell: 96px; }
+.kws-grid:not(.g-mixed) > .kws-wtag { grid-column: 1 / -1; margin: 6px 0 0; padding: 10px 0 0; border-left: 0; border-top: 3px solid #3b3247; }
+/* A grid of words has no gap between its lines (each button keeps its own below it), so a heading
+   keeps the same room under it for the ring of a chosen button. */
+.kws-grid.g-text > .kws-wtag { margin-bottom: 10px; }
 .kws-note { grid-column: 2; font-size: var(--t-name); line-height: 1.1; color: #ffb000; }
 .kws-note:empty { display: none; }
 .kws-note.kws-wide { padding: 10px 0 0; }
@@ -74,8 +109,8 @@
 .kws-opt.wide .chip { width: auto; min-width: 150px; padding: 4px 18px 0; letter-spacing: 1px; }
 .kws-opt.off .chip { background: transparent; color: #525c6e; box-shadow: 0 0 0 3px #3b3247; outline: 3px dashed #3b3247; outline-offset: -9px; }
 .kws-opt.off .name { color: #525c6e; }
-.kws-opt.pic .chip { width: 124px; height: 184px; padding: 0; background: #0e0b13; overflow: hidden; }
-.kws-opt.pic canvas { width: 124px; height: 184px; display: block; }
+.kws-opt.pic .chip { width: 120px; height: 192px; padding: 0; background: #0e0b13; overflow: hidden; }
+.kws-opt.pic canvas { width: 120px; height: 192px; display: block; }
 .kws-opt .sub { font-size: var(--t-name); line-height: .95; color: #ffb000; white-space: nowrap; }
 /* A scene to act a condition in, as a small picture of it. */
 .kws-opt.scene .chip { width: 160px; height: 100px; padding: 0; background: #0e0b13; overflow: hidden; }
@@ -127,15 +162,15 @@
 .kws-opt.world.on .name { color: #ffe28a; }
 .kws-worlds .kws-label { padding-top: 0; }
 /* A device of one kind, as its set draws it. */
-.kws-opt.device .chip { width: 110px; height: 88px; padding: 0; background: #0e0b13; overflow: hidden; }
-.kws-opt.device canvas { width: 110px; height: 88px; display: block; }
+.kws-opt.device .chip { width: 130px; height: 104px; padding: 0; background: #0e0b13; overflow: hidden; }
+.kws-opt.device canvas { width: 130px; height: 104px; display: block; }
 .kws-opt.device .name { max-width: none; white-space: nowrap; }
 /* A pet in a coat, sitting up, as its drawing gives it. */
 .kws-opt.pet .chip { width: 162px; height: 150px; padding: 0; background: #0e0b13; overflow: hidden; }
 .kws-opt.pet canvas { width: 162px; height: 150px; display: block; image-rendering: pixelated; }
 .kws-opt.pet .name { max-width: none; white-space: nowrap; }
 /* A part that differs: the value in use and the world's own, each with a word under it. */
-.kws-diff .kws-opts { gap: 10px 34px; }
+.kws-diff .kws-opts { --cgap: 34px; }
 /* A heading inside a page, and the quiet lines under it. */
 .kws-intro.kws-head2 { margin-top: 22px; font-size: var(--t-label); line-height: 1; color: #d8e0ea; }
 .kws-intro.kws-after { margin-top: 0; }
@@ -177,14 +212,16 @@
   .kws-rail { gap: 6px; }
   .kws-rail button { min-height: 48px; }
   .kws-done { min-height: 56px; min-width: 120px; }
-  .kws-main { padding-left: 16px; gap: 16px; }
+  .kws-main { padding-left: 8px; gap: 16px; }
   .kws-list { padding-right: 12px; }
   .kws-prev { padding-right: 16px; }
   .kws-row { grid-template-columns: 1fr; gap: 6px; padding: 8px 0 10px; }
   .kws-label { padding-top: 0; }
   .kws-note { grid-column: 1; }
-  .kws-opts { gap: 8px 10px; }
-  .kws-opt.pic .chip, .kws-opt.pic canvas { width: 96px; height: 143px; }
+  .kws-opts { --tcol: 180px; --swcell: calc(var(--chip) + 4px); }
+  .kws-grid { row-gap: 8px; }
+  .kws-grid.g-text { row-gap: 0; }
+  .kws-grid.g-text > .kws-opt, .kws-grid.g-text > .kws-wtag { margin-bottom: 8px; }
   .kws-opt.pet .chip, .kws-opt.pet canvas { width: 108px; height: 100px; }
   .kws-opt.scene .chip, .kws-opt.scene canvas { width: 128px; height: 80px; }
   .kws-opt.text .chip { min-width: 96px; padding: 4px 12px 0; }
@@ -198,9 +235,13 @@
   .kws-switch[aria-checked="true"] .knob { left: 54px; }
   .kws-foot { padding: 6px 16px; }
   .kws-opt.world .chip, .kws-opt.world canvas { width: 224px; height: 140px; }
-  .kws-opt.device .chip, .kws-opt.device canvas { width: 100px; height: 80px; }
   .kws-intro.kws-head2 { margin-top: 16px; }
   .kws-wtag { padding-top: 10px; padding-left: 10px; }
+  .kws-grid.k-pet { --cell: 108px; }
+  .kws-grid.k-scene { --cell: 128px; }
+  .kws-grid.k-world { --cell: 224px; }
+  .kws-grid.k-foe { --cell: 72px; }
+  .kws-grid.k-critter { --cell: 80px; }
   .kws-opt.foe .chip, .kws-opt.foe canvas { width: 72px; height: 108px; }
   .kws-opt.critter .chip, .kws-opt.critter canvas { width: 80px; height: 60px; }
 }

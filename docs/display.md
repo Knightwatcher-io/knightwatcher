@@ -450,7 +450,8 @@ patron, pet, foe and pest wherever the screen names them, the status page among 
 **Parts from every loaded world.** The part pages (the knight, the monarch, the cast, the scenes and
 the quiet scenes) list every loaded world's parts beside the medieval world's, so a household can
 mix parts across worlds on the wall itself. Each row lists the world in use's choices first, then
-each other world's after its name, set off by a rule ("ORBIT"); a world with nothing for that row
+each other world's under its name, on a line of its own set off by a rule ("ORBIT"), so that each
+group starts in the first column; a world with nothing for that row
 gives no group. A row whose part is not the world in use's own carries a blue square by its label
 and a blue line under it naming the world's own ("Changed from the Medieval world's own: open
 helm."); an item is compared by the slot it fills, so another pack's helmet shows as the helmet it
@@ -463,6 +464,21 @@ keeps running behind, dimmed, and shows each choice as it is made. Every choice 
 with no Save button. On a window up to 1200 wide or 760 tall the screen is drawn a little tighter,
 with labels above their choices, the rail's entries 48 pixels tall and 6 apart so that all eight
 fit, and the house's preview left out; every touch target stays at least 48 pixels tall.
+
+**The choices' grid.** The choices of a row sit in an even grid, aligned row by row
+(`web/css/settings.css`). Choices in words (the build, the weapon, the hair style, each piece of
+armour, the display's preferences and the quiet scenes' length) are all one width, in two columns
+where the row's choices have less than 420 pixels across and three where they have 420 or more,
+each column at most 220 pixels wide (180 on a small window); a label longer than its column wraps
+inside the button, and the buttons on one line of the grid share the height of the tallest. The
+row's own width decides, not the window's, since the label column and the preview take a share
+that differs by page and by window: at 960 by 600 and on the tablet's 1480 by 924 the knight's
+rows have 453 and 513 pixels and show three columns, a window of 1280 by 800 has 313 and shows
+two, and the Display page, with no preview, shows three at every size. Swatches sit in equal
+cells 8 pixels wider than the chip (4 on a small window), as many to a line as fit, their names
+wrapping inside the cell; pictures (the monarchs, the pets and their coats, the foe, the pest,
+the worlds, the scenes and the devices) in equal cells the width of their kind's chip. A row whose
+choices are of mixed kinds wraps as it comes.
 
 **World.** A line saying what a world is ("A world sets every part at once: the knight, the
 monarch, the scenes, the cast, the devices and the words. A part changed on a later page is kept
@@ -488,7 +504,8 @@ nothing changed the line reads "Nothing: every part is the world's."
 
 Once a second prop set is loaded, a heading "Devices, kind by kind" and a row for each kind of
 device, Pi, Camera, Host, VM and Other, each with a picture of the kind as every loaded set that
-draws it draws it (`KW.world.drawingOf`), the world's set first and named "the world's"
+draws it draws it (`KW.world.drawingOf`), each in a frame of 130 by 104 grid pixels about its drawing, one
+size for every kind and set, so the largest device shows whole, the world's set first and named "the world's"
 (`KW.settings.screen.deviceRows`). A choice saves the set for that kind in `look.devices`; the
 world's set clears a kind this display chose, so that it follows the world again
 (`KW.settings.screen.devicesAfter`). With one prop set, as at launch, there are no device rows. The
@@ -536,7 +553,12 @@ in its own colours, so none is chosen for it." "As drawn" saves nothing: it clea
 (`clear`), so the default from `config.toml` applies, or the monarch's own colours when there is
 none; a row whose value comes from `config.toml` therefore shows that colour chosen after "As
 drawn". Beside the rows, the chosen monarch at court; on a full-size screen that picture is a
-little narrower than on the knight's page, so that a row of seven stays on one line.
+little narrower than on the knight's page, so that a row of seven stays on one line. The cards
+and the picture at court show the same crop of the court, 240 by 384 grid pixels about the
+throne: its armrests and finial whole with a margin, and so the crown of every monarch on it.
+Each card is 120 by 192 CSS pixels and drawn only by whole steps (`blitWhole`), at half the crop
+where a CSS pixel is one device pixel and at the crop's own size where it is two, so no pixel of
+the art is smeared across two.
 
 **The cast.** One page for who shares the scenes with the knight, in place of the pet's page: a
 line saying what each does, then a row of the pets, the mouser cat and every other loaded world's;
