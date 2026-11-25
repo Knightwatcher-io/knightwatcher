@@ -405,6 +405,7 @@ class InstallTest(Case):
         self.assertEqual(logs.records[0].levelno, logging.INFO)
         for words in (
             heartbeat.ENDPOINT,
+            "KW_ANALYTICS=on",
             "KW_ANALYTICS=off",
             ".env",
             "docs/telemetry.md",
@@ -441,32 +442,59 @@ class InstallTest(Case):
 
 
 class SwitchTest(Case):
-    def test_only_off_trimmed_in_any_case_turns_it_off(self):
-        for value in ("off", "OFF", " off ", "Off\n", "\toFF"):
-            self.assertFalse(heartbeat.enabled({"KW_ANALYTICS": value}), repr(value))
-        for value in ("", "on", "of", "false", "0", "no", "off-ish", "o f f"):
+    def test_only_on_trimmed_in_any_case_turns_it_on(self):
+        for value in ("on", "ON", " on ", "On\n", "\toN"):
             self.assertTrue(heartbeat.enabled({"KW_ANALYTICS": value}), repr(value))
-        self.assertTrue(heartbeat.enabled({}))
-        # DO_NOT_TRACK is not a control
-        self.assertTrue(heartbeat.enabled({"DO_NOT_TRACK": "1"}))
+            self.assertFalse(heartbeat.unclear({"KW_ANALYTICS": value}), repr(value))
+        for value in ("off", "OFF", " off ", ""):
+            self.assertFalse(heartbeat.enabled({"KW_ANALYTICS": value}), repr(value))
+            self.assertFalse(heartbeat.unclear({"KW_ANALYTICS": value}), repr(value))
+        # near misses, and the words someone might write for yes, stay off and are unclear
+        for value in ("o n", "on-ish", "onn", "true", "1", "yes", "enabled", "of"):
+            self.assertFalse(heartbeat.enabled({"KW_ANALYTICS": value}), repr(value))
+            self.assertTrue(heartbeat.unclear({"KW_ANALYTICS": value}), repr(value))
+        self.assertFalse(heartbeat.enabled({}))
+        self.assertFalse(heartbeat.unclear({}))
+        # DO_NOT_TRACK is not a control either way
+        self.assertFalse(heartbeat.enabled({"DO_NOT_TRACK": "0"}))
+        self.assertTrue(heartbeat.enabled({"KW_ANALYTICS": "on", "DO_NOT_TRACK": "1"}))
 
     def test_off_makes_no_id_logs_one_line_and_never_connects(self):
-        receiver = FakeHttp()
-        self.addCleanup(receiver.close)
-        with self.assertLogs("collector", "INFO") as logs:
-            beat = heartbeat.start(
-                {"KW_ANALYTICS": " OFF "},
-                self.var,
-                self.srv,
-                endpoint=receiver.url + "/v1/heartbeat",
-            )
-        self.assertIsNone(beat)
-        self.assertEqual([r.getMessage() for r in logs.records], [heartbeat.OFF_LINE])
-        self.assertEqual(os.listdir(self.var), [])
-        self.assertEqual(receiver.calls, [])
+        for env in ({"KW_ANALYTICS": " OFF "}, {"KW_ANALYTICS": ""}, {}):
+            receiver = FakeHttp()
+            self.addCleanup(receiver.close)
+            with self.assertLogs("collector", "INFO") as logs:
+                beat = heartbeat.start(
+                    env,
+                    self.var,
+                    self.srv,
+                    endpoint=receiver.url + "/v1/heartbeat",
+                )
+            self.assertIsNone(beat, env)
+            self.assertEqual([r.getMessage() for r in logs.records], [heartbeat.OFF_LINE], env)
+            self.assertEqual(os.listdir(self.var), [], env)
+            self.assertEqual(receiver.calls, [], env)
 
-    def test_unset_starts_it(self):
-        beat = heartbeat.start({}, self.var, self.srv, spawn=lambda fn, *a: None)
+    def test_an_unclear_value_stays_off_with_a_warning(self):
+        with self.assertLogs("collector", "INFO") as logs:
+            beat = heartbeat.start({"KW_ANALYTICS": "yes"}, self.var, self.srv)
+        self.assertIsNone(beat)
+        said = [(r.levelno, r.getMessage()) for r in logs.records]
+        self.assertEqual(
+            said,
+            [(logging.WARNING, heartbeat.UNCLEAR_LINE), (logging.INFO, heartbeat.OFF_LINE)],
+        )
+        self.assertNotIn("yes", heartbeat.UNCLEAR_LINE)
+        self.assertEqual(os.listdir(self.var), [])
+
+    def test_the_off_line_says_how_to_turn_it_on(self):
+        for words in ("KW_ANALYTICS=on", ".env", "docs/telemetry.md"):
+            self.assertIn(words, heartbeat.OFF_LINE)
+
+    def test_on_starts_it(self):
+        beat = heartbeat.start(
+            {"KW_ANALYTICS": "on"}, self.var, self.srv, spawn=lambda fn, *a: None
+        )
         self.assertIsInstance(beat, heartbeat.Heartbeat)
         self.assertEqual(os.listdir(self.var), ["install.json"])
 
@@ -751,6 +779,7 @@ class ModesTest(unittest.TestCase):
         return code, "\n".join(r.getMessage() for r in logs.records)
 
     def test_one_shot_modes_never_send_and_make_no_id(self):
+        os.environ["KW_ANALYTICS"] = "on"
         with mock.patch.object(heartbeat, "Heartbeat", side_effect=AssertionError("constructed")):
             self.assertEqual(self.run_cli("--once")[0], 0)
             self.assertEqual(self.run_cli("--check-config")[0], 0)
@@ -762,7 +791,14 @@ class ModesTest(unittest.TestCase):
         with open(os.path.join(self.out, "state.json"), encoding="utf-8") as fh:
             self.assertEqual(json.load(fh)["analytics"], {"on": True})
 
+    def test_once_with_kw_analytics_unset_says_the_counts_are_off(self):
+        self.assertNotIn("KW_ANALYTICS", os.environ)
+        self.assertEqual(self.run_cli("--once")[0], 0)
+        with open(os.path.join(self.out, "state.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["analytics"], {"on": False})
+
     def test_the_loop_sends_at_start_after_the_notice(self):
+        os.environ["KW_ANALYTICS"] = "on"
         code, err = self.loop(wait_for_post=True)
         self.assertEqual(code, 0)
         posts = [c for c in self.receiver.calls if c[0] == "POST"]
@@ -782,6 +818,16 @@ class ModesTest(unittest.TestCase):
 
     def test_the_loop_with_off_sends_nothing_and_says_so(self):
         os.environ["KW_ANALYTICS"] = "Off"
+        code, err = self.loop(wait_for_post=False)
+        self.assertEqual(code, 0)
+        self.assertEqual(self.receiver.calls, [])
+        self.assertIn(heartbeat.OFF_LINE, err)
+        self.assertNotIn("install.json", os.listdir(self.var))
+        with open(os.path.join(self.out, "state.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["analytics"], {"on": False})
+
+    def test_the_loop_with_kw_analytics_unset_sends_nothing(self):
+        self.assertNotIn("KW_ANALYTICS", os.environ)
         code, err = self.loop(wait_for_post=False)
         self.assertEqual(code, 0)
         self.assertEqual(self.receiver.calls, [])

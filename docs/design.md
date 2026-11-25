@@ -412,9 +412,10 @@ A small Python program with no third-party dependencies, run as a container:
   or one web request each;
 - one output, written atomically: `state.json` in a folder the bundled server, or a web server
   of your own, serves;
-- one message out of the host, the usage counts: a few counts and built-in ids sent to the project
-  at start and every six hours, never a name, an address or a credential, and nothing at all with
-  `KW_ANALYTICS=off` ([configuration.md](./configuration.md#usage-counts)).
+- one message out of the host, the usage counts, and only when the user turns them on with
+  `KW_ANALYTICS=on`: a few counts and built-in ids sent to the project at start and every six
+  hours, never a name, an address or a credential, and nothing at all while they are off, as they
+  are unless turned on ([configuration.md](./configuration.md#usage-counts)).
 
 It keeps the short history that its judgements need (a CPU averaging 85 percent or more over the
 last 30 seconds is a condition; a spike of a few seconds is not), so the page stays stateless.

@@ -129,6 +129,8 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
   that describes what you changed against what you built, and correct whatever no longer
   matches, in the same commit. A change whose docs are stale is not finished.
 - **Prose is plain.** British English, no emojis, no em dashes, no filler.
+- **Every commit is signed off.** `git commit -s` adds the `Signed-off-by:` line of the Developer
+  Certificate of Origin; [CONTRIBUTING.md](../CONTRIBUTING.md) says what it certifies.
 - **Commits follow Conventional Commits.**
 
 ## Checks
@@ -296,10 +298,9 @@ container exits 0, that both health checks pass, that `state.json` keeps the con
 enabled sources are host, wan, dns, backup, updates and ssh and every one is read (`ok: true`),
 that wan and dns are read as down (`facts.wan.up` and `facts.dns.up` false, as nothing outside
 answers) with `wan_down` raised, and that the page and `data/state.json` load from the server.
-`.env.example` leaves the usage counts on, so the collector's first heartbeat goes at start and
-fails there, with no route out: the checks hold that `state.json` says the counts are on and that
-the collector logged the failed send, and the other checks pass with it, so a send that fails
-breaks nothing. Its lines on the usage counts are printed. An
+`.env.example` leaves the usage counts off, so the checks hold that `state.json` says the counts
+are off, that the collector logged once that they are off, and that it made no attempt to send.
+Its lines on the usage counts are printed. An
 internal network publishes no port, so the page is fetched from the host at the server's address
 on that network; the resolved 127.0.0.1 binding is printed but not bound. It exits 0 when every
 check passes and 1 otherwise, with the containers' last log lines. The containers, the network,
@@ -321,7 +322,15 @@ CHROME=/path/to/chrome-headless-shell tools/icons.sh
 
 and a second run gives the same bytes.
 
+The name, the logo and the icons are not under the code's or the art's licence:
+[NAME-AND-LOGO.md](../legal/NAME-AND-LOGO.md) says how they may be used.
+
 ## Signing the packs
+
+The project signs its own packs so that nothing can pass as one of them: a pack that carries a
+good `kw1` signature is one the project released, unchanged. The signature is not a licence
+check. The art in the packs is under CC BY-SA 4.0 ([ART-LICENCE.md](../legal/ART-LICENCE.md)) and
+may be changed and shared; a changed pack simply no longer carries the project's signature.
 
 A deployed page draws only packs signed with a key in `KEYS` in `web/js/pack.js`; the project's
 key is `kw1`. Its private half is held outside the repository by a private release process, and is
