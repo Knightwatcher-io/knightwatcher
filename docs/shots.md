@@ -37,9 +37,27 @@ tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
 Besides the scenes and states, the set shoots devices: the camp with two cameras and four
 devices, a camera and a machine down and one device with no place left (`devices-camp`), the court
 with the same mix (`devices-court`), `device_down` in the camp (`device-down`) and the yard's places
-outlined (`places-yard`). Every other shot has no `dv=` apart from `goblin-camp-g3` and the `ref-`
-shots of devices (below), so a change to devices that leaves a Pi-only setup alone leaves the rest
-byte for byte the same.
+outlined (`places-yard`).
+
+The other shots vary their devices, so that the set does not show the Pi everywhere. A shot with
+no `dv=` shows the demo's own set: a NAS, a camera and a router, with the pie's place empty
+([The demo's devices](./display.md#modes)). The shots of `pi_silent` (`on-pi`,
+`scene-pi-battlement`, `ref-camp-pi`, and `orbit-pi` in the worlds' set) show that set with the
+Pi put in the pie's place, its dish empty. The rest take one of five sets named at the top of
+`SHOTS`, through `dv=`:
+
+| Set | Devices | Shots |
+|---|---|---|
+| `PI` | the Pi alone, where the pie is the point | `on-night` and the smithy's quench, which walks past the pie (`is-smithy-forge`, `is-smithy-steam`, `is-smithy-look`) |
+| `PI_MIX` | the Pi, a camera and a machine | `is-house`, `on-update` |
+| `CAMS` | three cameras, every high place, and a VM | `is-camp`, `on-disk` |
+| `LAB` | two machines and a VM, every ground place, and a camera | `is-yard`, `on-wan`, `on-ssh` |
+| `SPARE` | a camera and a router alone | `on-backup`, `on-cpu`, `on-many`, `mon-b` |
+
+The shots of devices above, `goblin-camp-g3`, the two smithy shots with every place filled and the
+`ref-` shots of devices (below) keep their own lists, the Pi among them. A change to devices that
+leaves the demo's own set alone leaves every shot with a `dv=` and no `device_down` byte for byte
+the same; a change to the demo's own set changes every shot without one.
 
 The seven `goblin-` shots play the goblin's event with the greatsword: on the battlement as it
 rises over the wall (`goblin-rise`), at the hit (`goblin-bonk`, 1657 ms) and in the puff
@@ -402,7 +420,16 @@ the smithy among the quiet scenes; `settings-status` and `settings-status-world`
 0.8.0; and the ten shots of the three acts are missing. Every other shot is the same. Against a
 reference from before the demo's import was given an invented title, `crate` and
 `cat-yard-crate-pounce` differ in the caption, which now reads `Saltmarsh Wardens S02E04`.
-A headless browser has no saved choices, so every shot shows what its address asks for.
+Against a reference from before the demo's devices, when the demo with no `dv=` showed the Pi
+alone, 270 of the 294 shots differ, and 76 of the 79 of the worlds' set: every shot with no `dv=`
+shows the demo's set in place of the pie, and the shots given a set above show it.
+`device-down`, `ref-battlement-device`, `ref-house-device`, `ref-yard-device` and
+`orbit-device-down` differ in the headline alone: the devices of a `dv=` are named by kind, so
+`machine!` reads `NAS DOWN` where it read `VAULT DOWN`, and `device-down`, whose device down is a
+VM, reads `VM DOWN`. The shots with their own list of devices and no `device_down` are the same,
+and so are those given `PI`, which draws what the demo drew before.
+A headless browser has no saved choices, so every shot shows what its address asks for, and no
+set of devices saved in the demo's Devices row.
 [page.md](./page.md) has the rest.
 
 Against a reference from before the choices' even grid on the settings screen, every settings shot that
