@@ -71,7 +71,7 @@ class OverlayTest(unittest.TestCase):
         raw = {
             "collector": {"interval_s": 10},
             "conditions": {"attack": {"jails": ["sshd", "caddy"]}},
-            "device": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}],
+            "device": [{"name": "NAS", "kind": "machine", "host": "192.0.2.40", "port": 445}],
         }
         laid = overlay.lay(
             raw,
@@ -313,7 +313,7 @@ class ReconfigureTest(unittest.TestCase):
                 f'[collector]\noutput_dir = "{self.out}"\nstate_dir = "{self.var}"\n'
                 f'proc_root = "{self.proc.root}"\n'
                 "[sources.host]\n[sources.ssh]\n"
-                f'[[device]]\nname = "Vault"\nkind = "machine"\nhost = "127.0.0.1"\n'
+                f'[[device]]\nname = "NAS"\nkind = "machine"\nhost = "127.0.0.1"\n'
                 f"port = {self.port}\nrefused_counts = true\nevery_s = 10\n"
                 f'[[device]]\nname = "Gate cam"\nkind = "camera"\nhost = "127.0.0.1"\n'
                 f"port = {self.port}\nevery_s = 10\n"
@@ -345,7 +345,7 @@ class ReconfigureTest(unittest.TestCase):
                 "device": [
                     {"name": "Gate cam", "kind": "camera", "host": "127.0.0.1", "port": self.port},
                     {
-                        "name": "Vault",
+                        "name": "NAS",
                         "kind": "machine",
                         "host": "127.0.0.1",
                         "port": self.port,
@@ -359,7 +359,7 @@ class ReconfigureTest(unittest.TestCase):
         with self.assertLogs("collector", "INFO"):
             reload.poll(self.settings, self.runner, self.clock)
         names = [s.name for s in self.runner.sources]
-        self.assertEqual(names, ["host", "device:Gate cam", "device:Vault"])
+        self.assertEqual(names, ["host", "device:Gate cam", "device:NAS"])
         self.assertIs(
             next(s for s in self.runner.sources if s.name == "host"),
             host,
@@ -370,7 +370,7 @@ class ReconfigureTest(unittest.TestCase):
         s = self.state()
         self.assertEqual(s["config"]["admin"], version)
         self.assertEqual(s["config"]["at"], "2026-01-15T21:00:10Z")
-        self.assertEqual([t["name"] for t in s["facts"]["devices"]["list"]], ["Gate cam", "Vault"])
+        self.assertEqual([t["name"] for t in s["facts"]["devices"]["list"]], ["Gate cam", "NAS"])
         self.assertNotIn("ssh", s["sources"])
         self.assertEqual(contract.validate(s), [])
 
@@ -407,14 +407,14 @@ class ReconfigureTest(unittest.TestCase):
     def test_a_watched_devices_record_follows_it_to_its_new_place(self):
         self.runner.cycle()
         vault = self.runner.conditions.watches[0]
-        self.assertEqual(vault.device["name"], "Vault")
+        self.assertEqual(vault.device["name"], "NAS")
         write_admin(
             self.admin_path,
             {
                 "device": [
                     {"name": "Gate cam", "kind": "camera", "host": "127.0.0.1", "port": self.port},
                     {
-                        "name": "Vault",
+                        "name": "NAS",
                         "kind": "machine",
                         "host": "127.0.0.1",
                         "port": self.port,

@@ -21,7 +21,7 @@ DEVICES = {
             "since": "2026-01-15T08:02:40Z",
         },
         {
-            "name": "Vault",
+            "name": "NAS",
             "kind": "machine",
             "state": "down",
             "alert": True,
@@ -51,7 +51,7 @@ DEVICE_DOWN = {
     "id": "device_down",
     "level": "warning",
     "since": "2026-01-15T21:36:10Z",
-    "headline": "VAULT DOWN",
+    "headline": "NAS DOWN",
     "detail": "no answer for 6 min",
     "devices": [1],
 }
@@ -66,7 +66,7 @@ def state(devices=DEVICES, conditions=(DEVICE_DOWN,)) -> dict:
         "quiet_line": "ALL QUIET",
         "events": [],
         "facts": {"pi": {"up": True}, "devices": copy.deepcopy(devices)},
-        "sources": {"device:Vault": {"ok": True, "at": "2026-01-15T21:42:01Z", "error": ""}},
+        "sources": {"device:NAS": {"ok": True, "at": "2026-01-15T21:42:01Z", "error": ""}},
         "defaults": {"look": {}, "display": {}, "quiet": {}, "scenes": {}},
     }
 
@@ -103,13 +103,13 @@ class DevicesContractTest(unittest.TestCase):
         size = "facts.devices.list is not a list of 1 to 32"
         self.assertIn(size, broken(set_devices({"list": []})))
         self.assertIn(size, broken(set_devices({"list": DEVICES["list"] * 9})))
-        self.assertIn(size, broken(set_devices({"list": {"Vault": {}}})))
+        self.assertIn(size, broken(set_devices({"list": {"NAS": {}}})))
 
     def test_each_field(self):
         w = "facts.devices.list[1]"
         cases = [
             (
-                lambda s: s["facts"]["devices"]["list"].__setitem__(1, "Vault"),
+                lambda s: s["facts"]["devices"]["list"].__setitem__(1, "NAS"),
                 f"{w} is not an object",
             ),
             (
@@ -121,7 +121,7 @@ class DevicesContractTest(unittest.TestCase):
                 f"{w}.name is not 1 to 20 printable ASCII characters",
             ),
             (
-                lambda s: entry(s).__setitem__("name", "Väult"),
+                lambda s: entry(s).__setitem__("name", "NÄS"),
                 f"{w}.name is not 1 to 20 printable ASCII characters",
             ),
             (lambda s: entry(s).__setitem__("name", "pi"), f"{w}.name is listed twice"),
@@ -156,7 +156,7 @@ class DevicesContractTest(unittest.TestCase):
 
     def test_device_down_carries_the_positions_of_the_devices(self):
         bad = "conditions[0].devices is not positions in facts.devices.list"
-        for places in (None, [], [4], [-1], [1, 1], [True], ["Vault"], 1):
+        for places in (None, [], [4], [-1], [1, 1], [True], ["NAS"], 1):
             with self.subTest(places=places):
 
                 def change(s, places=places):
@@ -194,11 +194,11 @@ STRAINED = {
     "id": "cpu_hot",
     "level": "warning",
     "since": "2026-01-15T21:30:02Z",
-    "headline": "VAULT MEMORY 93%",
+    "headline": "NAS MEMORY 93%",
     "detail": "93% for 12 min · CPU 41% · load 3.1",
     "machines": [
         {
-            "name": "Vault",
+            "name": "NAS",
             "device": 1,
             "window_s": 30,
             "memory": {"pct": 93.4, "threshold": 90.0, "since": "2026-01-15T21:30:02Z"},
@@ -246,8 +246,8 @@ class StrainContractTest(unittest.TestCase):
             (machines([]), f"{w} is not a list of 1 to 33 machines"),
             (machines([{"name": f"M{i}", "window_s": 30, "cpu": pair} for i in range(34)]),
              f"{w} is not a list of 1 to 33 machines"),
-            (machines(["Vault"]), f"{w}[0] is not an object"),
-            (first(name=" Vault"), f"{w}[0].name is not 1 to 20 printable ASCII characters"),
+            (machines(["NAS"]), f"{w}[0] is not an object"),
+            (first(name=" NAS"), f"{w}[0].name is not 1 to 20 printable ASCII characters"),
             (first(spare=1), f"{w}[0] has a key other than name, device, window_s, cpu and memory"),
             (first(device=4), f"{w}[0].device is not a position in facts.devices.list"),
             (first(device=True), f"{w}[0].device is not a position in facts.devices.list"),
@@ -259,7 +259,7 @@ class StrainContractTest(unittest.TestCase):
              f"{w}[0].memory.pct and threshold are not numbers"),
             (first(memory={**pair, "since": "now"}), f"{w}[0].memory.since is not a UTC timestamp"),
             (
-                lambda c: c["machines"].append({"name": "VAULT", "window_s": 30, "cpu": pair}),
+                lambda c: c["machines"].append({"name": "NAS", "window_s": 30, "cpu": pair}),
                 f"{w}[1].name is listed twice",
             ),
         ]  # fmt: skip

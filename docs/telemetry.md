@@ -43,7 +43,7 @@ and nothing else:
 | `build` | The knight's build if it is not the default, or `null` for the default |
 | `items` | The built-in items chosen, sorted. An item that does not ship with Knightwatcher is sent as `"custom"`, once, however many there are |
 | `look` | The household look's parts with their built-in values, such as `"tabard": "teal"`. A value that is not built in is sent as `"custom"` |
-| `sources` | Each enabled source, sorted. A source read through a provider carries the provider's id (`streams:jellyfin`); one read through a provider file of your own is sent as `<kind>:custom` |
+| `sources` | Each enabled source, sorted. A source read through a provider carries the provider's id (`streams:jellyfin`); one read through a provider file of your own is sent as `<kind>:custom`. An entry of `[[sources.usage]]` is sent the same way, by its provider alone (`usage:json` for the generic source, `usage:custom` for a file of your own), never by its name or its machines' |
 | `imports` | How many `[[sources.imports]]` entries are enabled. A count only, never their names |
 | `checks` | How many `[[sources.json]]` entries are enabled. A count only |
 | `displays` | How many different displays have shown the page in the last six hours |

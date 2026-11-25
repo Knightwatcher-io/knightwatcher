@@ -16,14 +16,18 @@ A declaration maps each field to a dictionary:
   show      the least `show` setting that lets the field be read (streams)
 
 A kind may also name ONE_OF, top-level fields of which a provider file gives exactly one, that
-one then required (adblock's rolling `blocked` count or its `recent` buckets).
+one then required (adblock's rolling `blocked` count or its `recent` buckets), or SOME_OF,
+top-level fields of which a provider file gives at least one (usage's `cpu` and `memory`).
 
 SECTIONS names the sections of config.toml that a kind reads, and LISTS the lists of tables whose
 every entry is read through a kind, each a source named "<list>:<name>" ([[sources.imports]]:
-imports:<name>, and [[sources.json]]: json:<name>); kind_of gives the kind of any of them.
+imports:<name>, [[sources.usage]]: usage:<name>, and [[sources.json]]: json:<name>); kind_of gives
+the kind of any of them.
 docs/providers.md describes the provider files that fill them. The check kind is filled by the
 entries of [[sources.json]] alone, each compiled into a provider file of its own
-(collector/kinds/check.py), and a provider file cannot name it.
+(collector/kinds/check.py), and a provider file cannot name it. An entry of [[sources.usage]]
+with `from = "json"` is compiled the same way into a provider of the usage kind
+(collector/kinds/usage.py).
 """
 
 from __future__ import annotations
@@ -47,15 +51,21 @@ SECTIONS = {
 }
 
 # The lists of tables under [sources] whose entries are read through a kind, with the kind each
-# reads. Each entry is the source "<list>:<name>". An entry of [[sources.imports]] names its
-# provider in `from`; an entry of [[sources.json]] is compiled into a provider of its own.
+# reads. Each entry is the source "<list>:<name>". An entry of [[sources.imports]] or
+# [[sources.usage]] names its provider in `from` (for usage, "json" compiles the entry into a
+# provider of its own); an entry of [[sources.json]] is compiled into a provider of its own.
 LISTS = {
     "imports": "imports",
+    "usage": "usage",
     "json": "check",
 }
 
+# What an entry of [[sources.usage]] names in `from` to be compiled into a provider of its own: one
+# JSON address read for one machine (collector/kinds/usage.py).
+GENERIC_USAGE = "json"
+
 # The kinds a provider file may fill, by name, each with its module in this package.
-KINDS = ("streams", "adblock", "imports", "security")
+KINDS = ("streams", "adblock", "imports", "security", "usage")
 # Every kind: those, and the check kind of [[sources.json]].
 ALL_KINDS = (*KINDS, "check")
 

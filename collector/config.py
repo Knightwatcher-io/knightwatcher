@@ -48,7 +48,7 @@ from typing import Any
 
 from collector import providers as providers_mod
 from collector import schema
-from collector.kinds import LISTS, SECTIONS, kind_of, provider_of
+from collector.kinds import GENERIC_USAGE, LISTS, SECTIONS, kind_of, provider_of
 
 CONDITION_IDS = schema.condition_ids()
 
@@ -82,6 +82,9 @@ CHECK_TESTS = tuple(_CHECK["test"]["values"])
 # The conditions a check may borrow: every one but device_down, which needs the positions of
 # devices that a check does not have.
 CHECK_BORROWS = tuple(_CHECK["as"]["values"])
+# [[sources.usage]]: the machines each entry lists, and what each may set.
+MACHINES = schema.setting("sources.usage", "machines")
+MACHINE_KEYS = tuple(MACHINES["item_keys"])
 CHECK_HEADLINE_MAX = 16
 CHECK_DETAIL_MAX = 60
 
@@ -276,6 +279,14 @@ def _merge(where: str, defaults: dict, given: dict, problems: list[str]) -> dict
             problems.append(f"{where}.{key}: unknown setting")
             continue
         d = defaults[key]
+        if d is None:
+            # An optional setting, None while left out (a machine's own threshold or window):
+            # its type and range are checked with the table's (_check_ranges).
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                out[key] = value
+            else:
+                problems.append(f"{where}.{key}: expected a number")
+            continue
         if isinstance(d, dict):
             if not isinstance(value, dict):
                 problems.append(f"{where}.{key}: expected a table")
@@ -292,7 +303,10 @@ def _check_ranges(where: str, values: dict, table: str, problems: list[str]) -> 
     """The ranges the schema gives for a table's settings, in the schema's order."""
     for spec in schema.settings(table):
         key = spec["key"]
-        if not any(k in spec for k in ("min", "above", "max")):
+        if not any(k in spec for k in ("min", "above", "max")) or values.get(key) is None:
+            continue
+        if spec["type"] == "integer" and not _is_int(values[key]):
+            problems.append(f"{where}.{key}: expected int")
             continue
         why = schema.range_problem(spec, values[key])
         if why:
@@ -401,6 +415,8 @@ def _validate_source(name: str, s: dict, problems: list[str], registry, where=No
             zoneinfo.ZoneInfo(s["timezone"])
         except (zoneinfo.ZoneInfoNotFoundError, ValueError):
             problems.append(f"sources.backup.timezone: unknown time zone {s['timezone']!r}")
+    elif kind_of(name) == "usage":
+        _validate_usage(name, where, s, registry, problems)
     elif name == "security":
         if "database" not in unused and not str(s["database"]).startswith("/"):
             problems.append("sources.security.database: a path inside the container, from /")
@@ -479,7 +495,7 @@ def _section_credentials(section: str, settings: dict, registry) -> list[str]:
     """The credential fields a section's provider needs; none when it reads no provider, or names
     one that is not of its kind, which is a problem of its own. A check needs its header's value,
     when it has a header."""
-    if kind_of(section) == "check":
+    if kind_of(section) == "check" or _generic(section, settings):
         return ["header"] if settings.get("header") else []
     spec = _chosen(section, settings, registry)
     return list(spec.credentials) if spec is not None else []
@@ -489,6 +505,8 @@ def _provider_problem(section: str, pid: str, registry) -> str | None:
     """What is wrong with the provider a section's `from` names, or None. A provider file that
     was left out is not a problem of the configuration: that source fails at every read."""
     kind = kind_of(section)
+    if kind == "usage" and pid == GENERIC_USAGE:
+        return None
     spec = registry.get(pid)
     if spec is None:
         if registry.is_refused(pid):
@@ -496,6 +514,9 @@ def _provider_problem(section: str, pid: str, registry) -> str | None:
         if section == "security" and pid == "summary":
             return SUMMARY_GONE
         ids = [p.id for p in registry.of_kind(kind)]
+        if kind == "usage":
+            # The generic source is no provider file, but `from` names it as one.
+            ids = sorted([*ids, GENERIC_USAGE])
         return f'unknown provider "{pid}"; use {_say_or(tuple(ids))}'
     if spec.kind != kind:
         return f'"{pid}" reads {spec.kind}, not {kind}'
@@ -693,7 +714,7 @@ def _url_host(url: Any) -> str:
 
 
 def _say_names(names: list[str]) -> str:
-    """Vault; Vault and Gate cam; Vault, Gate cam and Buildbox."""
+    """NAS; NAS and Gate cam; NAS, Gate cam and Buildbox."""
     return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
 
 
@@ -990,8 +1011,9 @@ def _list_entries(
         merged.update(declared)
         _check_unused(source, given, merged, registry, problems, w)
         if "secret" not in given:
-            # A secret left out is the provider's id.
-            merged["secret"] = chosen
+            # A secret left out is the provider's id, or for a generic usage source, as for a
+            # check, its name with each - made _.
+            merged["secret"] = entry.replace("-", "_") if _generic(source, merged) else chosen
         if merged["enabled"] is True:
             out[source] = merged
             places[source] = w
@@ -1140,6 +1162,159 @@ def _validate_check(w: str, s: dict, priority: list[str], problems: list[str]) -
             problems += [f"{w}: {p}" for p in exc.problems]
 
 
+def _generic(source: str, settings: dict) -> bool:
+    """Whether a source is an entry of [[sources.usage]] read from one JSON address, from = "json",
+    compiled into a provider of its own."""
+    return kind_of(source) == "usage" and settings.get("from") == GENERIC_USAGE
+
+
+def _reads_several(spec) -> bool:
+    """Whether a provider of the usage kind reads several machines: its fill gives `machine`."""
+    return any(
+        "machine" in (getattr(entry, "fields", None) or getattr(entry, "zipped", None) or {})
+        for entry in spec.fill.values()
+    )
+
+
+def _threshold_problem(value: Any) -> str | None:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return "expected a number"
+    return None if 0 < value <= 100 else "must be above 0 and at most 100"
+
+
+def _validate_usage(name: str, w: str, s: dict, registry, problems: list[str]) -> None:
+    """The rest of one enabled entry of [[sources.usage]], named in its problems by its place, w:
+    its machines, and for a generic one (from = "json") its address, paths and header."""
+    from collector.kinds import usage as usage_kind
+    from collector.providers.format import _HEADER_NAME, _HEADERS_REFUSED, FormatError
+    from collector.providers.path import PathError, compile_path
+
+    before = len(problems)
+    machines = s["machines"]
+    most = MACHINES["max_items"]
+    if not isinstance(machines, list) or not all(isinstance(m, dict) for m in machines):
+        problems.append(f'{w}.machines: expected tables, such as {{ name = "NAS" }}')
+        return
+    if len(machines) > most:
+        problems.append(f"{w}.machines: at most {most}")
+    ids: dict[str, int] = {}
+    for i, m in enumerate(machines):
+        at = f"{w}.machines[{i}]"
+        for key in m:
+            if key not in MACHINE_KEYS:
+                problems.append(f"{at}.{key}: unknown setting")
+        given = m.get("name")
+        if "name" not in m:
+            problems.append(f"{at}.name: required")
+        elif not isinstance(given, str) or not _DEVICE_NAME.match(given):
+            problems.append(
+                f"{at}.name: 1 to 20 printable ASCII characters, no space at either end"
+            )
+        if "id" in m:
+            key = m["id"]
+            if (
+                not isinstance(key, str)
+                or not key.strip()
+                or len(key) > 200
+                or not key.isprintable()
+            ):
+                problems.append(f"{at}.id: 1 to 200 printable characters")
+            elif key in ids:
+                problems.append(f'{at}.id: "{key}" is already the id of {w}.machines[{ids[key]}]')
+            else:
+                ids[key] = i
+        for key in ("cpu_pct", "memory_pct"):
+            if key in m:
+                why = _threshold_problem(m[key])
+                if why:
+                    problems.append(f"{at}.{key}: {why}")
+    keyed = [i for i, m in enumerate(machines) if "id" in m]
+    generic = s["from"] == GENERIC_USAGE
+    spec = None if generic else _chosen(name, s, registry)
+    if generic or (spec is not None and not _reads_several(spec)):
+        # A provider that reads one machine: its one entry, with no id.
+        who = 'from = "json"' if generic else s["from"]
+        if len(machines) > 1:
+            problems.append(f"{w}.machines: {who} reads one machine; list one")
+        for i in keyed:
+            problems.append(f"{w}.machines[{i}].id: not used, since {who} reads one machine")
+    elif spec is not None:
+        for i, _ in enumerate(machines):
+            if i not in keyed:
+                problems.append(
+                    f"{w}.machines[{i}].id: required, since {s['from']} reads several machines"
+                )
+    elif keyed and len(keyed) != len(machines):
+        problems.append(f"{w}.machines: give every machine an id, or list one with none")
+    if not generic:
+        return
+    why = _check_url_problem(s["url"]) if s["url"] else None
+    if why:
+        problems.append(f"{w}.url: {why}")
+    if not s["cpu"] and not s["memory"]:
+        problems.append(f"{w}: give cpu, memory or both: where each figure is in the reply")
+    for key in ("cpu", "memory"):
+        if s[key]:
+            try:
+                compile_path(s[key])
+            except PathError as exc:
+                problems.append(f"{w}.{key}: {exc}")
+    header = s["header"]
+    if header:
+        low = header.lower()
+        if not _HEADER_NAME.match(header):
+            problems.append(f"{w}.header: a header's name is letters, digits and -")
+        elif low in _HEADERS_REFUSED or low.startswith("proxy-"):
+            problems.append(f"{w}.header: this header cannot be set")
+    elif s["secret"] != s["name"].replace("-", "_"):
+        problems.append(f"{w}.secret: only applies with header")
+    if len(problems) == before:
+        # The rules of a provider file's request, which an entry that passed should always keep.
+        try:
+            usage_kind.compile_entry(s)
+        except FormatError as exc:
+            problems += [f"{w}: {p}" for p in exc.problems]
+
+
+def _machines_across(
+    sources: dict[str, dict], places: dict[str, str], conditions: dict, problems: list[str]
+) -> None:
+    """What holds across every machine Under strain watches: the names unique, this host's among
+    them, ignoring case; 32 at most beside the host; and every threshold of a machine's own above
+    the band, as the condition's must be."""
+    band = conditions["cpu_hot"]["band"]
+    named: dict[str, str] = {}
+    host = sources.get("host")
+    if host is not None:
+        named[host["name"].lower()] = "[sources.host]"
+        for key in ("cpu_pct", "memory_pct"):
+            if host[key] is not None and host[key] <= band:
+                problems.append(
+                    f"sources.host.{key}: must be above conditions.cpu_hot.band ({band:g})"
+                )
+    total = 0
+    for source, s in sources.items():
+        if kind_of(source) != "usage":
+            continue
+        w = places[source]
+        for i, m in enumerate(s["machines"]):
+            at = f"{w}.machines[{i}]"
+            total += 1
+            key = m["name"].lower()
+            if key in named:
+                problems.append(f'{at}.name: "{m["name"]}" is already the name of {named[key]}')
+            else:
+                named[key] = at
+            for k in ("cpu_pct", "memory_pct"):
+                if k in m and m[k] <= band:
+                    problems.append(f"{at}.{k}: must be above conditions.cpu_hot.band ({band:g})")
+    if total > MACHINES["max_items"]:
+        problems.append(
+            f"sources.usage: {total} machines; at most {MACHINES['max_items']} in all, beside "
+            "this host"
+        )
+
+
 def _same_service(sources: dict[str, dict], places: dict[str, str], problems: list[str]) -> None:
     """Two enabled sources of one kind that read one provider at one address would raise every
     event twice: the second is refused, an entry of a list rather than a section."""
@@ -1148,8 +1323,9 @@ def _same_service(sources: dict[str, dict], places: dict[str, str], problems: li
     for name in sorted(sources, key=lambda n: n in places):
         s = sources[name]
         kind = kind_of(name)
-        # Checks are read whole, path and test, so two may well read one address.
-        address = _address(s.get("url")) if kind and kind != "check" else None
+        # Checks, and generic usage sources, are read whole, so two may well read one address.
+        whole = kind == "check" or _generic(name, s)
+        address = _address(s.get("url")) if kind and not whole else None
         if address is None or not s.get("url"):
             continue
         key = (kind, provider_of(name, s), address)
@@ -1336,6 +1512,8 @@ def build(
             else:
                 _validate_source(name, s, problems, registry, places.get(name))
         _same_service(sources, places, problems)
+        if not problems:
+            _machines_across(sources, places, conditions, problems)
     devices = _devices(raw.get("device"), sources, conditions, problems)
     defaults = _defaults(raw, problems)
     lacking: dict[str, list[str]] = {}

@@ -188,7 +188,9 @@ class Runner:
         name = job.source.name
         at = text.iso(job.now)
         if job.error is None:
-            return job.reading, {"ok": True, "at": at, "error": ""}
+            # A read that succeeded may still name what it lacked (Reading.note).
+            note = getattr(job.reading, "note", "")
+            return job.reading, {"ok": True, "at": at, "error": self._scrub(note) if note else ""}
         message = self._describe(job.error)
         if isinstance(job.error, AuthError):
             until = now + dt.timedelta(seconds=self.config.collector["auth_backoff_s"])

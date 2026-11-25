@@ -222,7 +222,7 @@ answers `401 {"error": "sign in first"}` without one. While the page is off, eve
 ```json
 {
   "v": 1,
-  "set": {"collector.interval_s": 15, "device": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}]},
+  "set": {"collector.interval_s": 15, "device": [{"name": "NAS", "kind": "machine", "host": "192.0.2.40", "port": 445}]},
   "version": "3f9c0d12ab45e6789a0b",
   "file": {"collector": {"timezone": "Europe/London"}, "sources": {"pi": {"host": "192.0.2.4"}}},
   "status": {"generated_at": "2026-01-15T21:42:10Z", "interval_s": 15, "sources": {}, "devices": [],
@@ -325,7 +325,7 @@ in `config.toml`, which stays the owner's file and the level under it:
     "collector.interval_s": 15,
     "conditions.cpu_hot.pct": 90.0,
     "device": [
-      {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}
+      {"name": "NAS", "kind": "machine", "host": "192.0.2.40", "port": 445}
     ]
   }
 }

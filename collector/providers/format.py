@@ -367,7 +367,9 @@ def check(data: Any, where: str, expect_id: str | None = None) -> Spec:
     fill = {}
     if kind is not None and "fill" in data:
         cls = kind_class(kind)
-        fill = _fill(c, data["fill"], cls.FILL, ids, getattr(cls, "ONE_OF", ()))
+        fill = _fill(
+            c, data["fill"], cls.FILL, ids, getattr(cls, "ONE_OF", ()), getattr(cls, "SOME_OF", ())
+        )
     if c.problems:
         raise FormatError(c.problems)
     return Spec(pid, kind, name, docs, credentials, settings, auth, tuple(requests), fill)
@@ -729,10 +731,21 @@ def _from(c: _Checker, at: str, table: dict, ids: list[str], inherited: str | No
     return ids[0] if ids else ""
 
 
-def _fill(c: _Checker, table: Any, declaration: dict, ids: list[str], one_of: tuple = ()) -> dict:
+def _fill(
+    c: _Checker,
+    table: Any,
+    declaration: dict,
+    ids: list[str],
+    one_of: tuple = (),
+    some_of: tuple = (),
+) -> dict:
     if not isinstance(table, dict):
         c.bad("fill", "expected a table")
         return {}
+    if some_of and not any(k in table for k in some_of):
+        # A kind that takes several fields, at least one of which is needed (usage's cpu and
+        # memory): a file gives one or more of them.
+        c.bad("fill", f"give {' or '.join(some_of)}, or both")
     if one_of:
         # A kind that takes one of several fields: exactly one must be given, and that one is then
         # required, as a field the kind always needs is.

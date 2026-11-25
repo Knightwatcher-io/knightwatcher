@@ -232,6 +232,17 @@ def _probe(config, name: str, record: str | None) -> int:
     if source.kind.name == "check":
         holds = "holds" if reading.data["holds"] else "does not hold"
         print(f"test: {settings['test']} {holds}")
+    if source.kind.name == "usage":
+        # Each listed machine by its place in machines, with the figures read for it: the numbers
+        # a threshold is tuned against, and no text of the service's.
+        for i, m in enumerate(reading.data["machines"]):
+            said = ", ".join(
+                f"{res} {m[res]:g}%" if m[res] is not None else f"{res} not read"
+                for res in ("cpu", "memory")
+            )
+            print(f"machines[{i}]: {said}")
+        if reading.note:
+            print(f"read ok, but {reading.note}")
     return 0
 
 

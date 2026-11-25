@@ -245,7 +245,7 @@ class DeviceSourceTest(unittest.TestCase):
             {
                 "sources": {"wan": {}, "pi": {"host": "192.0.2.4"}, "dns": {}},
                 "device": [
-                    {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445},
+                    {"name": "NAS", "kind": "machine", "host": "192.0.2.40", "port": 445},
                     {"name": "Gate cam", "kind": "camera", "url": "https://198.51.100.31/"},
                 ],
             }
@@ -257,7 +257,7 @@ class DeviceSourceTest(unittest.TestCase):
                 ("wan", "wan"),
                 ("pi", "pi"),
                 ("dns", "dns"),
-                ("device:Vault", None),
+                ("device:NAS", None),
                 ("device:Gate cam", None),
             ],
         )
@@ -274,7 +274,7 @@ class DeviceSourceTest(unittest.TestCase):
         self.assertEqual((reading.facts, reading.data), (None, {"answered": False}))
 
     def test_the_check_timeout_is_at_most_three_seconds(self):
-        raw = {"device": [{"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}]}
+        raw = {"device": [{"name": "NAS", "kind": "machine", "host": "192.0.2.40", "port": 445}]}
         for http_timeout, expected in ((5.0, 3.0), (1.0, 1.0)):
             raw["collector"] = {"http_timeout_s": http_timeout}
             (vault,) = build_sources(make_config(raw))

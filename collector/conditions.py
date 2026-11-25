@@ -9,9 +9,10 @@ condition up for ever.
 Under strain (`cpu_hot`) is judged for each machine and resource apart: a pair is raised when its
 average over the window is at or past its threshold, stays raised while it is at or past the
 threshold less `band`, and clears once it has been below that for `clear_after_s`. The condition
-is up while any pair is, and its entry lists the machines in `machines`. The only machine today is
-this host, whose averages the host source works out from its own history; `_machines()` is where
-machines read from other sources join it.
+is up while any pair is, and its entry lists the machines in `machines`. The machines are this
+host, whose averages the host source works out from its own history, and those each entry of
+[[sources.usage]] lists, whose averages the usage kind works out (collector/kinds/usage.py);
+`_machines()` gathers them, each with its own thresholds.
 
 Devices are judged apart, each by its own watch: a check that ran out of time counts as
 silence for them, since a machine that cannot answer in time has not answered. `pi_silent` and
@@ -35,7 +36,7 @@ from typing import Any
 
 from collector import text
 from collector.config import SOURCE_DEFAULTS, Config
-from collector.kinds import check, kind_of, streams
+from collector.kinds import check, kind_of, streams, usage
 from collector.sources import Reading
 
 log = logging.getLogger("collector")
@@ -90,7 +91,8 @@ HEAD_WORDS = {"cpu": ("CPU", "CPU"), "memory": ("MEMORY", "MEM")}
 DETAIL_WORDS = {"cpu": "CPU", "memory": "memory"}
 STRAIN = "UNDER STRAIN"
 # The machine key of this host, and its settings when [sources.host] is left out (as in tests
-# that give a reading of their own). A machine read from another source will have a key of its own.
+# that give a reading of their own). A machine of [[sources.usage]] is keyed by its source and its
+# key there, "usage:<name>/<id>".
 HOST = "host"
 HOST_DEFAULTS = SOURCE_DEFAULTS["host"]
 
@@ -205,7 +207,7 @@ def _answered(reading: Reading | None, status: dict | None) -> bool | None:
 
 
 def _names(names: list[str], limit: int) -> str:
-    """Names joined while they fit, with +N for the rest: Vault, Gate cam +2."""
+    """Names joined while they fit, with +N for the rest: NAS, Gate cam +2."""
     for n in range(len(names), 0, -1):
         line = ", ".join(names[:n]) + (f" +{len(names) - n}" if n < len(names) else "")
         if len(line) <= limit:
@@ -510,27 +512,59 @@ class Conditions:
         return now - dt.timedelta(seconds=max(1.0, span_s))
 
     def _machines(self, r) -> list[dict]:
-        """Every machine read at this poll, with its averages over the window:
-        {key, name, window_s, span_s, cpu, memory, load, thresholds}, cpu and memory in percent
-        (memory as used) or None when not read, load the host's alone. Only this host today;
-        a machine of another source would be added here with a key of its own."""
+        """Every machine read at this poll, with its averages over its window:
+        {key, name, window_s, spans, cpu, memory, load, thresholds}, cpu and memory in percent
+        (memory as used) or None when not read, spans the seconds each average covers, load this
+        host's alone, thresholds the machine's own where it sets them, else the condition's."""
         c = self.config.conditions["cpu_hot"]
+
+        def thresholds(own: dict) -> dict:
+            return {
+                res: own.get(f"{res}_pct") if own.get(f"{res}_pct") is not None else c[key]
+                for res, key in (("cpu", "pct"), ("memory", "memory_pct"))
+            }
+
         out = []
         f, d = _facts(r, "host"), _data(r, "host")
         if f is not None and d is not None:
+            host = self.config.sources.get("host", HOST_DEFAULTS)
             out.append(
                 {
                     "key": HOST,
-                    "name": self.config.sources.get("host", HOST_DEFAULTS)["name"],
+                    "name": host["name"],
                     "window_s": c["window_s"],
-                    "span_s": d["span_s"],
+                    "spans": {"cpu": d["span_s"], "memory": d["span_s"]},
                     # cpu_pct is already the average over the window (see the host source).
                     "cpu": f["cpu_pct"],
                     "memory": d["mem_used_avg"],
                     "load": f["load1"],
-                    "thresholds": {"cpu": c["pct"], "memory": c["memory_pct"]},
+                    "thresholds": thresholds(host),
                 }
             )
+        for source, settings in self.config.sources.items():
+            if kind_of(source) != "usage":
+                continue
+            d = _data(r, source)
+            if d is None:
+                continue
+            listed = {m.get("id", ""): m for m in settings["machines"]}
+            for m in d["machines"]:
+                entry = listed.get(m["key"])
+                if entry is None:
+                    # A reading from before a change that took the machine away.
+                    continue
+                out.append(
+                    {
+                        "key": f"{source}/{m['key']}",
+                        "name": entry["name"],
+                        "window_s": usage.window_of(settings, self.config),
+                        "spans": {res: m[f"{res}_span_s"] for res in RESOURCES},
+                        "cpu": m["cpu"],
+                        "memory": m["memory"],
+                        "load": None,
+                        "thresholds": thresholds(entry),
+                    }
+                )
         return out
 
     def _cpu_hot(self, r, now) -> Cause:
@@ -547,7 +581,7 @@ class Conditions:
             if pair is None:
                 if avg is not None and avg >= m["thresholds"][res]:
                     self.raised += 1
-                    since = self._window_start(now, m["span_s"])
+                    since = self._window_start(now, m["spans"][res])
                     self.pairs[key, res] = Pair(since, self.raised, avg, m["thresholds"][res])
                 continue
             if m is not None:

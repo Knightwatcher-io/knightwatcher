@@ -203,11 +203,11 @@ test('a name is typed in place, cleaned, and kept to the room its kind\'s word l
   assert.equal(s.D.devices()[0].name, 'NAS');
   input.fire('change');
   assert.equal(input.value, 'NAS');
-  s.type(0, 'Vault 2');
-  assert.equal(s.stored().list[0].name, 'Vault 2');
+  s.type(0, 'NAS 2');
+  assert.equal(s.stored().list[0].name, 'NAS 2');
   // the headline follows the name while the device is down
   s.key('down:0').click();
-  assert.deepEqual(s.words(), ['VAULT 2 DOWN', 'no answer for 6 min']);
+  assert.deepEqual(s.words(), ['NAS 2 DOWN', 'no answer for 6 min']);
   s.type(0, 'Archive');
   assert.deepEqual(s.words(), ['ARCHIVE DOWN', 'no answer for 6 min']);
 });
@@ -401,7 +401,7 @@ test('device_down\'s words are the collector\'s for the same devices', t => {
   if (!python) { t.skip('python3 is not on the path'); return; }
   const s = start();
   const cases = [[['machine', 'NAS']], [['camera', 'Gate cam']], [['pi', 'Pi']], [['vm', 'Build box']], [['box', 'Router']],
-    [['camera', 'Gatehouse camera']], [['pi', 'Pie of the kitchen']], [['machine', 'Vault'], ['camera', 'Gate cam']],
+    [['camera', 'Gatehouse camera']], [['pi', 'Pie of the kitchen']], [['machine', 'NAS'], ['camera', 'Gate cam']],
     [['camera', 'Back garden cam 0'], ['camera', 'Back garden cam 1'], ['camera', 'Back garden cam 2'], ['camera', 'Back garden cam 3'], ['camera', 'Back garden cam 4'], ['camera', 'Back garden cam 5']]];
   const script = 'import json, sys\nsys.path.insert(0, sys.argv[1])\nfrom collector import conditions as c, text\n' +
     'out = []\nfor down in json.loads(sys.argv[2]):\n' +

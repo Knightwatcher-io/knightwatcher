@@ -180,7 +180,7 @@ test('a place depends only on the list, never on which devices are up', () => {
 });
 
 test('an entry the page cannot read takes no place, and the others keep their order', () => {
-  const list = [null, 'Vault', entry('machine', 'down'), 7, [], entry('camera', 'up', false), { kind: 'vm' }];
+  const list = [null, 'NAS', entry('machine', 'down'), 7, [], entry('camera', 'up', false), { kind: 'vm' }];
   assert.deepEqual(drawn(list), [
     { place: 'g1', kind: 'machine', ok: false, alert: true }, { place: 'h1', kind: 'camera', ok: true, alert: false },
     { place: 'g2', kind: 'vm', ok: true, alert: false }]);
@@ -203,7 +203,7 @@ test('each field of an entry is read on its own, and only "down" draws a device 
 
 test('device_down from the docs: the quiet scene, the words, and the place the knight looks to', () => {
   const v = ST.map(DOWN, Date.parse(DOWN.generated_at));
-  assert.deepEqual(v.w, { id: 'device_down', file: 'device_down', lv: 3, level: 'warning', st: 'warn', scene: null, hl: '2 DOWN', sub: 'Vault, Gate cam', mem: false, place: 'g1' });
+  assert.deepEqual(v.w, { id: 'device_down', file: 'device_down', lv: 3, level: 'warning', st: 'warn', scene: null, hl: '2 DOWN', sub: 'NAS, Gate cam', mem: false, place: 'g1' });
   assert.deepEqual(v.devices, [
     { place: 'pie', kind: 'pi', ok: true, alert: true }, { place: 'g1', kind: 'machine', ok: false, alert: true },
     { place: 'h1', kind: 'camera', ok: false, alert: true }, { place: 'g2', kind: 'machine', ok: true, alert: false }]);

@@ -46,7 +46,7 @@ url = "http://192.0.2.30:8989"
 holders = [{ name = "nightly maintenance", pattern = 'nightly-maintenance\\.sh' }]
 
 [[device]]
-name = "Vault"
+name = "NAS"
 kind = "machine"
 host = "192.0.2.40"
 port = 445
@@ -60,7 +60,7 @@ STATE = {
     "generated_at": "2026-01-15T21:00:00Z",
     "interval_s": 10,
     "sources": {"containers": {"ok": True, "at": "2026-01-15T21:00:00Z", "error": ""}},
-    "facts": {"devices": {"list": [{"name": "Vault", "kind": "machine", "state": "up"}]}},
+    "facts": {"devices": {"list": [{"name": "NAS", "kind": "machine", "state": "up"}]}},
     "config": {"admin": None, "at": "2026-01-15T20:00:00Z", "problems": []},
 }
 
@@ -441,7 +441,7 @@ class SettingsTest(AdminCase):
         self.assertIsNone(body["version"])
         self.assertEqual(body["file"], tomllib.loads(CONFIG))
         self.assertEqual(body["status"]["interval_s"], 10)
-        self.assertEqual(body["status"]["devices"][0]["name"], "Vault")
+        self.assertEqual(body["status"]["devices"][0]["name"], "NAS")
         self.assertEqual(body["status"]["config"], STATE["config"])
         self.assertEqual(body["credentials"], CREDENTIALS)
         self.assertEqual(body["problems"], [])
@@ -498,7 +498,7 @@ class SettingsTest(AdminCase):
         self.assertEqual(self.s.admin.answer()["version"], before)
         status, _, body = self.patch({"set": {"conditions.priority": ["attack", "wan_down"]}})
         self.assertEqual(status, 400)
-        self.assertIn('leaves out "device_down", so Vault would never alert', body["error"])
+        self.assertIn('leaves out "device_down", so NAS would never alert', body["error"])
 
     def test_a_change_needing_an_absent_credential_names_its_variable(self):
         status, _, body = self.patch({"set": {"sources.sonarr.enabled": True}})
@@ -531,15 +531,15 @@ class SettingsTest(AdminCase):
     def test_the_watched_devices_list_replaces_the_files_whole(self):
         devices = [
             {"name": "Gate cam", "kind": "camera", "url": "https://198.51.100.31/"},
-            {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445},
+            {"name": "NAS", "kind": "machine", "host": "192.0.2.40", "port": 445},
         ]
         status, _, body = self.patch({"set": {"device": devices}})
         self.assertEqual(status, 200)
         raw = overlay.lay(body["file"], body["set"])
-        self.assertEqual([t["name"] for t in raw["device"]], ["Gate cam", "Vault"])
+        self.assertEqual([t["name"] for t in raw["device"]], ["Gate cam", "NAS"])
         status, _, body = self.patch({"set": {"device": [devices[1], dict(devices[1])]}})
         self.assertEqual(status, 400)
-        self.assertEqual(body["error"], 'device[1].name: "Vault" is already the name of device[0]')
+        self.assertEqual(body["error"], 'device[1].name: "NAS" is already the name of device[0]')
 
     def test_a_source_set_up_here(self):
         status, _, body = self.patch(
@@ -647,7 +647,7 @@ class SettingsTest(AdminCase):
                     "collector.interval_s": 15,
                     "conditions.disk_full.pct": 80,
                     "device": [
-                        {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445}
+                        {"name": "NAS", "kind": "machine", "host": "192.0.2.40", "port": 445}
                     ],
                 }
             }
