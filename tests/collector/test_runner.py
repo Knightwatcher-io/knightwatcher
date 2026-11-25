@@ -811,7 +811,7 @@ class DevicesRunnerTest(unittest.TestCase):
 
         devices = [
             {
-                "name": "Vault",
+                "name": "NAS",
                 "kind": "machine",
                 "host": "192.0.2.40",
                 "port": 445,
@@ -868,7 +868,7 @@ class DevicesRunnerTest(unittest.TestCase):
                 "collector": {"http_timeout_s": 0.3},
                 "device": [
                     {
-                        "name": "Vault",
+                        "name": "NAS",
                         "kind": "machine",
                         "host": "127.0.0.1",
                         "port": up_port,
@@ -920,7 +920,7 @@ class DevicesRunnerTest(unittest.TestCase):
                 "sources": {"pi": {"host": "localhost", "ports": [refused]}},
                 "device": [
                     {
-                        "name": "Vault",
+                        "name": "NAS",
                         "kind": "machine",
                         "host": "127.0.0.1",
                         "port": self.open.getsockname()[1],
@@ -944,13 +944,13 @@ class DevicesRunnerTest(unittest.TestCase):
             [(t["name"], t["state"], t["seen"]) for t in state["facts"]["devices"]["list"]],
             [
                 ("Pi", "up", True),
-                ("Vault", "up", True),
+                ("NAS", "up", True),
                 ("Laptop", "up", True),
                 ("Gate cam", "unknown", False),
             ],
         )
         self.assertEqual(
-            list(state["sources"]), ["pi", "device:Vault", "device:Laptop", "device:Gate cam"]
+            list(state["sources"]), ["pi", "device:NAS", "device:Laptop", "device:Gate cam"]
         )
         # With no device at all, the section is null.
         self.assertIsNone(self.runner({}).cycle()["facts"]["devices"])

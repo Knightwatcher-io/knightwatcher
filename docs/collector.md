@@ -181,8 +181,12 @@ and a check taken away is forgotten.
 seconds (30 by default), is at or above its threshold, `pct` for CPU (85 by default) and
 `memory_pct` for memory used (90 by default). It replaced Running hot, whose id it keeps, and
 Memory tight (`memory_tight`), which the collector no longer writes; an old `config.toml` is read in
-the new terms ([configuration.md](./configuration.md#removed-settings)). Today the only machine is
-this host, read from `/proc`, and named by `name` in `[sources.host]` (`Host` by default).
+the new terms ([configuration.md](./configuration.md#removed-settings)). The machines are this
+host, read from `/proc` and named by `name` in `[sources.host]` (`Host` by default), and those each
+entry of `[[sources.usage]]` lists, read from a service through the usage kind
+([Machines of [[sources.usage]]](#machines-of-sourcesusage)). A machine may set thresholds of its
+own, `cpu_pct` and `memory_pct`, in `[sources.host]` for this host and on its entry for the others;
+each replaces the condition's for that machine alone.
 
 Each pair of machine and resource has its own record. A pair is raised at the first poll whose
 average is at or past its threshold, stays raised while the average is at or past the threshold
@@ -238,8 +242,7 @@ not fit the headline is cut with an ellipsis and given whole at the start of the
 `device_down`. Beside `UNDER STRAIN` only three characters fit, and there the name is never cut:
 a longer one, the host's default `Host` among them, leaves the headline `UNDER STRAIN` alone and
 starts the detail. Several machines are named in the order they
-were raised while they fit in 60 characters, with `+N` for the rest; only the host is watched
-today, so the last two rows are for machines read from other sources. After a start the time
+were raised while they fit in 60 characters, with `+N` for the rest. After a start the time
 reads at least `1 s`. `facts.host.cpu_pct` is the CPU average over the window;
 `facts.host.mem_pct` is the latest reading of memory used.
 
@@ -248,8 +251,42 @@ weeks without being short of memory.
 
 When a change is taken up, each pair keeps its record and takes up the new thresholds, band and
 name; a pair whose new threshold less the band is above its average is held and cleared as any
-other. Left out of `conditions.priority`, the condition forgets its pairs, and starts afresh if
-it comes back.
+other. A `[[sources.usage]]` entry whose settings changed is a new source, as every source is: its
+readings start again, and until its first read its machines count as not read. Left out of
+`conditions.priority`, the condition forgets its pairs, and starts afresh if it comes back.
+
+### Machines of [[sources.usage]]
+
+Each entry of `[[sources.usage]]` ([configuration.md](./configuration.md#machines-under-strain)) is
+a source of its own, `usage:<name>`, read at its own pace (every 30 seconds by default) through the
+usage kind (`collector/kinds/usage.py`): a provider file of the kind, or with `from = "json"` the
+generic source, which is compiled in memory into a provider file of one GET to the entry's address,
+as a check of `[[sources.json]]` is, its `cpu` and `memory` paths filling one machine. A provider
+gives, for CPU and for memory, one item for each machine it reads: the figure in percent (a
+number, or text holding one, as Prometheus sends it), and for a provider that reads several
+machines the machine's key in the service, `machine`, matched against the `id` of each machine the
+entry lists.
+
+The kind reads each figure as a percentage: `NaN`, an infinity or a value below 0 is no reading,
+and a value over 100 is taken as 100. It keeps each listed machine's readings in the running
+process alone, never in the memory file, pruned to the window and one read, and gives each machine
+the time-weighted mean of the readings in its window, as the host source gives this host's memory:
+the entry's own `window_s`, or `conditions.cpu_hot.window_s`. A figure from a service is itself an
+average over the service's own span, so a machine's window is never shorter than that. A
+machine's `since` is the start of its window at the read that raised it, at least a second back.
+
+A machine the reply gives that the entry does not list is ignored, and its key is written nowhere.
+A listed machine the reply leaves out, for both resources, has no reading at that read, which counts
+as the cause absent: the read is still ok, and its entry in the state file's `sources` says so in
+`error`, `no reading for NAS`, so that the status page shows a mistyped `id`. A read that fails gives
+every machine of the entry no reading, so a dead source never holds Under strain up. A provider
+that gives `machine` on some items and not on others, and an entry whose machines have `id`s for a
+provider that reads one machine or none for one that reads several, fail their reads with a message
+saying so. Between reads the last reading stands, as for every source, so a machine read every 30
+seconds is judged on the same averages at the polls between.
+
+A machine whose name is a device's name, ignoring case, is tied to it: its entry in `machines`
+gives the device's place in `facts.devices.list`, as this host's does.
 
 ### SSH sessions
 
@@ -306,13 +343,13 @@ The headline is the name and a word for the kind: `SILENT` for `pi`, `DARK` for 
 
 | Case | Headline | Detail |
 |---|---|---|
-| a machine that answered, then went silent | `VAULT DOWN` | `no answer for 6 min` |
+| a machine that answered, then went silent | `NAS DOWN` | `no answer for 6 min` |
 | a camera | `GATE CAM DARK` | `no answer for 12 min` |
 | a `[[device]]` of kind `pi` | `PI SILENT` | `no answer for 3 min` |
-| any kind, never answered since the start | `VAULT DOWN` | `not answered since the collector started 5 min ago` |
+| any kind, never answered since the start | `NAS DOWN` | `not answered since the collector started 5 min ago` |
 | a name too long for the headline | `GATEHOUSE… DARK` | `Gatehouse camera · no answer for 12 min` |
 | the same, never answered | `GATEHOUSE… DARK` | `Gatehouse camera · not answered in 5 min since start` |
-| several down | `3 DOWN` | `Vault, Gate cam, Buildbox` |
+| several down | `3 DOWN` | `NAS, Gate cam, Buildbox` |
 | several, names too long | `6 DOWN` | `Back garden cam 0, Back garden cam 1, Back garden cam 2 +3` |
 
 A device that has never answered is more often a wrong address or a closed port than a machine
@@ -439,6 +476,7 @@ its own fitting. The line is built from the same parts, so the two always agree.
 | `security` | the security kind, `kinds/security.py`, through its `from` provider, `fail2ban` (`providers/fail2ban.py`) by default | the `bans` table of fail2ban's SQLite database, read-only | `security` |
 | `sonarr`, `radarr`, `lidarr` | the imports kind, `kinds/imports.py`, through the provider of each one's name | the last ten import records in each one's history; for Lidarr, its album records alone (`eventType=8`), so an album is one import | none |
 | `imports:<name>` | the imports kind, through the provider its entry of `[[sources.imports]]` names | as its provider reads | none |
+| `usage:<name>` | the usage kind, `kinds/usage.py`, through the provider its entry of `[[sources.usage]]` names, or with `from = "json"` the provider it is compiled into | as its provider reads; with `json`, one `GET` to the entry's address, and the figures its `cpu` and `memory` paths find | none; the machines it lists feed `cpu_hot` |
 | `json:<name>` | the check kind, `kinds/check.py`, through the provider its entry of `[[sources.json]]` is compiled into | one `GET` to the entry's address, and the first value its path finds | none; the condition `check:<name>` |
 | `device:<name>` | `devices.py` | a TCP connection to every port at once, or one `GET` to a web address | none; `devices` is built from the conditions |
 
@@ -452,8 +490,8 @@ matching its command line against the configured patterns.
 
 ## Kinds and providers
 
-The services the collector reads for streams, blocked queries, bans and imports are each read
-through a **kind** and a **provider**. A kind is the fixed shape of one sort of reading, written once in
+The services the collector reads for streams, blocked queries, bans, imports and other machines'
+CPU and memory are each read through a **kind** and a **provider**. A kind is the fixed shape of one sort of reading, written once in
 `collector/kinds/`: it owns everything after the service has answered, the cleaning and cutting of
 the words, the markers in the memory file, the events and the facts. A provider fills a kind's
 shape from one service. The built-in providers are files in `collector/providers/builtin/`, one
@@ -478,6 +516,7 @@ a file fail2ban replaces is read afresh.
 | `[sources.security]` | security | `fail2ban` by default, or a file of the user's own | `fail2ban` (a code adapter) |
 | `[sources.sonarr]`, `[sources.radarr]`, `[sources.lidarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr`, `lidarr` |
 | each entry of `[[sources.imports]]` | imports | required, any provider of the kind, a file of the user's own included | `sonarr`, `radarr`, `lidarr` |
+| each entry of `[[sources.usage]]` | usage | required: a provider file of the user's own of the kind, or `json`, which compiles the entry into a provider of its own | none |
 | each entry of `[[sources.json]]` | check | none: the entry is compiled into a provider of its own | none |
 
 An entry of a list of tables under `[sources]` is the source `<list>:<name>`, `imports:sonarr-4k`
@@ -485,8 +524,12 @@ or `json:nas-temp`: that is its key in the state file's `sources`, in the memory
 `--probe`, and the problems of its settings name its place, `sources.imports[0]`. `LISTS` in
 `collector/kinds/` names the lists and the kind each reads, and `kind_of()` gives the kind of any
 source. A kind gives the provider a source reads with `provider_spec()`: the one its `from` or its
-name names, or for the check kind, the entry compiled, with its `url` cut to the scheme, host and
-port the compiled path is appended to.
+name names, or for the check kind and an entry of `[[sources.usage]]` with `from = "json"`, the
+entry compiled, with its `url` cut to the scheme, host and port the compiled path is appended to.
+
+A read that succeeded may still have something to say: a usage source whose reply left out a
+listed machine. Its reading carries a note (`Reading.note`), which the runner writes as the
+source's `error` beside `ok: true`; every other read that succeeds has an empty `error`.
 
 To the runner each of these sections is a source like any other (`KindSource` in
 `collector/sources/__init__.py`), with the same pace, time limit, back-off and status entry. One
@@ -561,7 +604,9 @@ that breaks it is not sent, and the collector says why. Its parts:
 - the sources of `config.sources`: one read by code of its own by its name (`host`), one read
   through a built-in provider as `<kind>:<provider>` (`streams:jellyfin`, `imports:sonarr`), one
   through a provider file of the user's own as `<kind>:custom`. The entries of
-  `[[sources.imports]]` and `[[sources.json]]` are counted, and the devices are left out;
+  `[[sources.imports]]` and `[[sources.json]]` are counted; an entry of `[[sources.usage]]` is sent
+  as `usage:<provider>`, `usage:json` for the generic source and `usage:custom` for a file of the
+  user's own, never by its name or its machines'; and the devices are left out;
 - the displays: the ids in the bundled server's `displays.json` seen in the last six hours
   (`collector/displays.py`, read from the server's folder, the one `--admin` names).
 
@@ -638,11 +683,14 @@ python3 -m collector                    # poll until stopped, sending the usage 
 ```
 
 `--probe <source>` reads one source read through a provider (`streams`, `adblock`, `security`,
-`sonarr`, `radarr` or `lidarr`, or an entry of `[[sources.imports]]` or `[[sources.json]]` by its
-source's name, `imports:<name>` or `json:<name>`) once, with the settings in use, and prints the
+`sonarr`, `radarr` or `lidarr`, or an entry of `[[sources.imports]]`, `[[sources.usage]]` or
+`[[sources.json]]` by its source's name, `imports:<name>`, `usage:<name>` or `json:<name>`) once,
+with the settings in use, and prints the
 provider's fill and the facts the kind
-would write with every text replaced by its type and length (`<string 21>`), and for a check
-whether its test holds (`test: above holds`), so that a provider is
+would write with every text replaced by its type and length (`<string 21>`), for a check
+whether its test holds (`test: above holds`), and for a usage source the figures read for each
+machine it lists, by its place (`machines[0]: cpu 41.5%, memory 93%`), with the machines that had
+no reading (`read ok, but no reading for NAS`), so that a threshold can be tuned and a provider is
 proved against a live service without anyone reading what is being watched. It writes nothing of
 the collector's own, and a source the running collector has paused after refused credentials is
 not read until the pause ends. Run it in the container, where the credentials come from `.env`

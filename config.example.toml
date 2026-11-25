@@ -71,6 +71,8 @@ end = "07:00"
 [sources.host]
 enabled = true
 name = "Host"       # what the wall calls this host under strain: HOST CPU 97%
+# cpu_pct = 90.0    # this host's own CPU threshold, in place of conditions.cpu_hot.pct
+# memory_pct = 95.0 # this host's own memory threshold, in place of conditions.cpu_hot.memory_pct
 every_s = 10
 disks = [{ mount = "/data", path = "/host/disks/data" }]
 
@@ -194,6 +196,27 @@ ignore_sources = []
 # verify_tls = true          # with an https url, whether its certificate is checked
 # enabled = true
 
+# Machines other than this host whose CPU and memory Under strain watches, each a [[sources.usage]]
+# table: a service that reads them, through a provider file of the usage kind, or one JSON address
+# read for one machine (from = "json"). Each is the source usage:<name>. Set them here; the admin
+# page lists them. Remove the "# " before each line to use one.
+
+# A NAS whose status page gives its CPU and memory in percent. A provider file that reads several
+# machines lists each with its key in the service: machines = [{ id = "nas-01", name = "NAS" }].
+# [[sources.usage]]
+# name = "nas-status"        # 1 to 20 of a-z, 0-9 and -
+# from = "json"              # "json", or a provider file of your own of the usage kind
+# url = "http://192.0.2.40:8080/api/status"   # with json, the whole address, path and query
+# cpu = "$.cpu.busy_pct"     # with json: where CPU busy is, in percent
+# memory = "$.memory.used_pct"   # with json: where memory used is, in percent
+# machines = [{ name = "NAS", memory_pct = 95 }]   # what the wall calls it, and its own thresholds
+# window_s = 60              # its own window, in place of conditions.cpu_hot.window_s
+# every_s = 30               # 10 to 3600
+# header = "X-Api-Key"       # with json, optional: one header, its value from .env
+# secret = "nas_status"      # with header: reads KW_NAS_STATUS_HEADER; else the name, - as _
+# verify_tls = true          # with an https url, whether its certificate is checked
+# enabled = true
+
 # Generic checks, each a [[sources.json]] table: one value read from a JSON reply and tested. A
 # check that holds raises check:<name>, which the display acts as the condition named in `as`,
 # with the check's own words. Each is the source json:<name>. Set them here; the admin page lists
@@ -288,7 +311,7 @@ ignore_sources = []
 
 # A NAS on the main LAN. Alerts after the default three minutes of silence.
 # [[device]]
-# name = "Vault"
+# name = "NAS"
 # kind = "machine"
 # host = "192.0.2.40"
 # port = 445

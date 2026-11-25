@@ -7,8 +7,8 @@ Knightwatcher is configured in two files beside `compose.yaml`, both ignored by 
   alone, which read this host or a fixed address and so work on any Linux host with Docker:
   `host`, `wan`, `dns`, `backup`, `updates` and `ssh`. Every source that reads a service
   (`containers`, which needs a Docker API proxy, the Pi, `streams`, `adblock`, `security`,
-  `sonarr`, `radarr` and `lidarr`), the entries of `[[sources.imports]]` and `[[sources.json]]`, the
-  settings screen's defaults and the devices are written out but commented: remove the `# ` before
+  `sonarr`, `radarr` and `lidarr`), the entries of `[[sources.imports]]`, `[[sources.usage]]` and
+  `[[sources.json]]`, this host's own thresholds, the settings screen's defaults and the devices are written out but commented: remove the `# ` before
   a table's lines to use it. A line starting `# or:` stays commented, since it replaces another.
 - `.env`: the host paths `compose.yaml` mounts, the address and port of the bundled server, the
   admin page's password, the switch for the usage counts ([Usage counts](#usage-counts)), and the
@@ -83,8 +83,9 @@ page's list is reset. A source that `config.toml` does not set up can be set up 
 gets a table of its own there. The folders (`output_dir`, `state_dir`, `proc_root`,
 `providers_dir`), the backup log's path and each source's `secret` are set in `config.toml` alone,
 since they follow what `compose.yaml` mounts and passes, and so are the settings a provider file
-of your own declares and the entries of `[[sources.imports]]` and `[[sources.json]]`, which the
-page lists.
+of your own declares, this host's own thresholds (`cpu_pct` and `memory_pct` in
+`[sources.host]`) and the entries of `[[sources.imports]]`, `[[sources.usage]]` and
+`[[sources.json]]`, which the page lists.
 
 The admin page's Download config.toml writes every setting as the collector uses it into one
 `config.toml`, comments included and credentials left out, to keep what was set there in the file.
@@ -113,7 +114,8 @@ provider file of your own with the id `myflix` and a `token` reads `KW_MYFLIX_TO
 The same holds for each entry of `[[sources.imports]]` ([More imports](#more-imports)). A check of
 `[[sources.json]]` with a `header` reads that header's value from `KW_<SECRET>_HEADER`,
 its `secret` being the check's name with each `-` made `_` unless set
-([Generic checks](#generic-checks)).
+([Generic checks](#generic-checks)), and so does an entry of `[[sources.usage]]` with
+`from = "json"` and a `header` ([Machines under strain](#machines-under-strain)).
 
 docker compose takes a variable already set in the shell it runs from over the same name in
 `.env`, so a `KW_*` variable exported in the shell is used instead of the file's value.
@@ -161,7 +163,8 @@ When it is on, one heartbeat is one JSON object posted to `https://telemetry.kni
 - the sources that are on, a source read through a provider with that provider's id
   (`streams:jellyfin`), and one read through a provider file of your own as `streams:custom`;
 - how many entries of `[[sources.imports]]` and checks of `[[sources.json]]` are on, never their
-  names;
+  names, and each entry of `[[sources.usage]]` by its provider alone (`usage:json`, or
+  `usage:custom` for a file of your own), never its name or its machines';
 - how many displays the bundled server has seen in the last six hours.
 
 Nothing else: no name, title, address, URL, device, condition or credential from the config,
@@ -331,14 +334,14 @@ A device down. It has no settings here: each device carries its own pace, its ow
 
 ### [conditions.cpu_hot]
 
-Under strain: a watched machine's CPU or memory, averaged over the window, is at or above its threshold. Each machine and resource is judged on its own, and the condition is up while any one is. Its id stays cpu_hot, so saved scene choices and checks that borrow it carry over. It replaces Running hot and Memory tight: an old [conditions.memory_tight] is read as memory_pct here, with a warning.
+Under strain: a watched machine's CPU or memory, averaged over the window, is at or above its threshold. The machines are this host and those of [[sources.usage]], each of which may set thresholds of its own. Each machine and resource is judged on its own, and the condition is up while any one is. Its id stays cpu_hot, so saved scene choices and checks that borrow it carry over. It replaces Running hot and Memory tight: an old [conditions.memory_tight] is read as memory_pct here, with a warning.
 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
-| `pct` | a percentage, above 0, at most 100 | `85.0` | household | CPU use, percent of all cores, averaged over the window: at or above. |
-| `memory_pct` | a percentage, above 0, at most 100 | `90.0` | household | Memory used, percent of all memory, averaged over the window: at or above. Used is all but what the system counts as available (MemAvailable), so caches that can be dropped are not counted, and swap never is. |
-| `window_s` | a whole number of seconds, at least 10 | `30` | household | The window CPU and memory are both averaged over. |
-| `band` | a percentage, from 0 to 50 | `5.0` | household | Points below its threshold that a raised machine and resource may fall and stay raised, so that a figure hovering at the threshold does not raise and clear over and over. Once its average is below the threshold less the band, it clears after clear_after_s. Must be below pct and memory_pct. |
+| `pct` | a percentage, above 0, at most 100 | `85.0` | household | CPU use, percent of all cores, averaged over the window: at or above. A machine's cpu_pct replaces it for that machine. |
+| `memory_pct` | a percentage, above 0, at most 100 | `90.0` | household | Memory used, percent of all memory, averaged over the window: at or above. A machine's memory_pct replaces it for that machine. Used is all but what the system counts as available (MemAvailable), so caches that can be dropped are not counted, and swap never is. |
+| `window_s` | a whole number of seconds, at least 10 | `30` | household | The window CPU and memory are both averaged over, on every machine but those of a [[sources.usage]] entry with a window_s of its own. |
+| `band` | a percentage, from 0 to 50 | `5.0` | household | Points below its threshold that a raised machine and resource may fall and stay raised, so that a figure hovering at the threshold does not raise and clear over and over. Once its average is below the threshold less the band, it clears after clear_after_s. Must be below pct and memory_pct, and below every machine's own threshold. |
 
 ### [conditions.ssh_session]
 
@@ -377,7 +380,9 @@ CPU, memory and load from the host's /proc, and the size of each configured disk
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again. |
-| `name` | 1 to 20 printable ASCII characters, no space at either end | `"Host"` | household | What the wall calls this host when it is under strain: HOST CPU 97%. When it is a device's name, ignoring case, the condition names that device. |
+| `name` | 1 to 20 printable ASCII characters, no space at either end | `"Host"` | household | What the wall calls this host when it is under strain: HOST CPU 97%. Unique among the machines of [[sources.usage]], ignoring case. When it is a device's name, ignoring case, the condition names that device. |
+| `cpu_pct` | a percentage, above 0, at most 100 | conditions.cpu_hot.pct | household | This host's own CPU threshold for Under strain, in place of conditions.cpu_hot.pct. Must be above conditions.cpu_hot.band. |
+| `memory_pct` | a percentage, above 0, at most 100 | conditions.cpu_hot.memory_pct | household | This host's own memory threshold for Under strain, in place of conditions.cpu_hot.memory_pct. Must be above conditions.cpu_hot.band. |
 | `every_s` | a whole number of seconds, above zero | `10` | household | How often the source is read. Should be at least as often as the averaging window is long; when it is read less often, an average reaches back to the previous read instead. |
 | `disks` | tables of mount and path, such as { mount = "/data", path = "/host/disks/data" } | `[]` | household | Disks to report. mount is the label written to the file; path is any path inside the container on that filesystem. |
 
@@ -550,6 +555,25 @@ More services whose imports are read, each a [[sources.imports]] table under [so
 | `url` | an http:// or https:// address | required | household | Base URL of the service the provider reads. |
 | `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. Only with an https url. |
 | `secret` | letters, digits and underscores | the provider's id | household | The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals. Left out, it is the provider's id, so a second Sonarr needs a secret of its own. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. |
+
+### [[sources.usage]]
+
+Machines other than this host whose CPU and memory Under strain watches, each a [[sources.usage]] table under [sources] in config.toml: a service that reads them, through a provider file of the usage kind, or one JSON address read for one machine (from = "json"). There can be 16, watching 32 machines in all beside this host. Each is a source of its own, usage:<name> in the state file, read at its own pace; a machine it lists raises Under strain under its own name when its CPU or memory, averaged over the window, is at or above its threshold. A read that fails, or a listed machine missing from the reply, gives that machine no reading, so no strain. Set in config.toml alone; the admin page lists them.
+
+| Key | Values | Default | Scope | What it does |
+|---|---|---|---|---|
+| `name` | 1 to 20 of a-z, 0-9 and -, starting with a letter or digit | required | household | The source's own name: usage:<name> in the state file. Unique among the list. It is not what the wall calls a machine: that is each machine's name in machines. |
+| `from` | a provider of the usage kind (see Providers below) | required | household | The provider it is read through, by its id: a provider file of your own of the usage kind, or "json" for one JSON address read for one machine, its figures at the paths cpu and memory. A user's provider file named json.toml cannot be chosen, since json names the generic source. Two sources that read one provider at one url are refused. |
+| `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false) keeps the table for when it is turned on again. |
+| `every_s` | a whole number of seconds, from 10 to 3600 | `30` | household | How often the source is read. A window shorter than this reaches back to the previous read. |
+| `url` | an http:// or https:// address; with from = "json" the whole address, path and query included | required | household | Base URL of the service the provider reads, or with from = "json" the whole address read, with one GET and no redirect followed: no user name or password in it, no fragment, and each name of its query once. |
+| `verify_tls` | `true` or `false` | `true` | household | Whether the certificate of an https url is checked. Only with an https url. |
+| `secret` | letters, digits and underscores | the provider's id; with from = "json", the entry's name, each - made _ | household | The name its credentials are read under in .env: KW_<SECRET>_<FIELD>, in capitals; with from = "json", its header's value, KW_<SECRET>_HEADER, and only with header. A variable no built-in provider names reaches the collector only when compose.override.yaml names it in the collector's environment. |
+| `window_s` | a whole number of seconds, at least 10 | conditions.cpu_hot.window_s | household | The window its machines' CPU and memory are averaged over, in place of conditions.cpu_hot.window_s. A figure a service gives is itself an average over the service's own span, so a machine's window is never shorter than that. |
+| `machines` | 1 to 32 tables, such as { id = "nas-01", name = "NAS", memory_pct = 95 } | required | household | The machines it watches; one the service gives that is not listed is ignored, and its name is never written anywhere. name is what the wall calls it, 1 to 20 printable ASCII characters with no space at either end, unique among every machine, this host's included, ignoring case; a machine named as a device, ignoring case, is tied to it. id is its key in the service, needed when the provider reads several machines and left out when it reads one (from = "json" reads one). cpu_pct and memory_pct, each a percentage above 0 and at most 100, replace the condition's thresholds for it. |
+| `cpu` | a JSONPath of the subset docs/providers.md describes | none | household | With from = "json": where CPU busy is in the reply, in percent, such as $.cpu.busy_pct: a number, or text holding one. Give cpu, memory or both. |
+| `memory` | a JSONPath of the subset docs/providers.md describes | none | household | With from = "json": where memory used is in the reply, in percent of all memory, such as $.memory.used_pct. |
+| `header` | a header's name: letters, digits and - | none | household | With from = "json": one header sent with the request, its value read from .env as KW_<SECRET>_HEADER and never written anywhere, as a check's is. Not Host, Cookie, Connection, Content-Length, Transfer-Encoding, User-Agent or a Proxy- header. |
 
 ### [[sources.json]]
 
@@ -807,6 +831,70 @@ service whose certificate is self-signed, as a Pi-hole's or a NAS's usually is; 
 still encrypted, but nothing proves it reaches the service named, so a credential sent over it is
 only as safe as the network between. It is refused with an `http` `url`
 (`sources.adblock.verify_tls: only applies with an https url`), where it would do nothing.
+
+### Machines under strain
+
+Under strain (`[conditions.cpu_hot]`) watches this host's CPU and memory, and those of any machine
+an entry of `[[sources.usage]]` lists. Each entry is a table of its own, at most 16, and a source
+of its own, `usage:<name>`, read every 30 seconds by default (`every_s`, 10 to 3600). It reads one
+JSON address for one machine (`from = "json"`), or a service that reads one or more machines
+through a provider file of your own of the usage kind ([providers.md](./providers.md#the-usage-kind)):
+
+```toml
+[[sources.usage]]
+name = "nas-status"                # the source usage:nas-status
+from = "json"                      # one JSON address, one machine
+url = "http://192.0.2.40:8080/api/status"   # given whole, path and query
+cpu = "$.cpu.busy_pct"             # where CPU busy is, in percent
+memory = "$.memory.used_pct"       # where memory used is, in percent
+machines = [{ name = "NAS", memory_pct = 95 }]
+
+[[sources.usage]]
+name = "fleet"
+from = "fleet"                     # providers/fleet.toml, of the usage kind
+url = "http://192.0.2.5:8090"
+machines = [
+  { id = "nas-01", name = "NAS 2" },
+  { id = "buildbox", name = "Buildbox", cpu_pct = 95 },
+]
+```
+
+- **`machines`** lists the machines it watches, 1 to 32 in an entry and 32 in all beside this
+  host. `name` is what the wall calls the machine (`NAS MEMORY 93%`): 1 to 20 printable ASCII
+  characters with no space at either end, unique among every machine, this host's `[sources.host]
+  name` among them, ignoring case, so one machine read twice is refused. `id` is its key in the
+  service, required when the provider reads several machines (each item of its fill gives
+  `machine`) and refused when it reads one, as `from = "json"` does. A machine the service gives
+  that is not listed is ignored, and its key is written nowhere.
+- **Thresholds of its own.** `cpu_pct` and `memory_pct` on a machine replace
+  `conditions.cpu_hot.pct` and `memory_pct` for it alone; this host's are `cpu_pct` and
+  `memory_pct` in `[sources.host]`. Each is a percentage above 0 and at most 100, and above
+  `conditions.cpu_hot.band`.
+- **`window_s`** replaces `conditions.cpu_hot.window_s` for the entry's machines. A figure a
+  service gives is already an average over its own span (a minute, say), so a 30-second window is
+  enough; the collector averages the readings within the window, reaching back to the previous
+  read when the window is shorter than the pace.
+- **A wall device.** A machine whose name is a `[[device]]`'s, ignoring case, is tied to it: the
+  condition's entry in the state file gives the device's place. A machine that is no device still
+  raises Under strain under its name; nothing is drawn for it.
+- **What a read says.** A read that fails shows on the status page as the source `usage:<name>` with
+  its message, and gives its machines no reading, so no strain; one already raised clears after
+  `clear_after_s`. A listed machine the reply leaves out has no reading either, and the read stays
+  ok with `error` naming it, `no reading for NAS`, so that a mistyped `id` shows.
+- **`from = "json"`** reads one machine at an address given whole, as a check of
+  `[[sources.json]]` does (the same rules for `url`, `header`, `secret` and `verify_tls`; its
+  `secret` is the entry's name with each `-` made `_`, and its header's value is read from
+  `KW_<SECRET>_HEADER`). `cpu` and `memory` are paths of the subset
+  [providers.md](./providers.md#the-path-syntax) describes, at least one of them; the value found is a
+  number, or text holding a decimal number. A provider file of your own named `json.toml` cannot be
+  chosen, since `json` names the generic source. `cpu`, `memory` and `header` belong to it alone:
+  given with a provider file they are refused by name (`sources.usage[0].cpu: not used by fleet`).
+- **The rest** (`name`, `from`, `enabled`, `url`, `verify_tls`, `secret` and any setting its
+  provider declares) is checked as for an entry of `[[sources.imports]]`.
+
+The admin page lists the entries with what each reads and how it is doing, but they are set in
+`config.toml` alone. `--probe usage:<name>` reads one once and prints the figures read for each
+machine, by its place in `machines`, to tune a threshold by ([collector.md](./collector.md#running-it)).
 
 ### Generic checks
 
@@ -1229,7 +1317,7 @@ keeps its place whether it is up or down.
 ```toml
 # A NAS on the main LAN. Alerts after the default three minutes of silence.
 [[device]]
-name = "Vault"
+name = "NAS"
 kind = "machine"
 host = "192.0.2.40"
 port = 445
@@ -1294,7 +1382,7 @@ that leaves out `device_down` while a device alerts is refused with a message th
 add it:
 
 ```
-config: conditions.priority: leaves out "device_down", so Vault and Gate cam would never alert; add it after "pi_silent", or set alert = false on them
+config: conditions.priority: leaves out "device_down", so NAS and Gate cam would never alert; add it after "pi_silent", or set alert = false on them
 ```
 
 [collector.md](./collector.md#devices) says how a device is judged down and what the

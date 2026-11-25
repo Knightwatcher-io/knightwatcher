@@ -248,13 +248,20 @@ def sources_of(config: Any) -> tuple[list[str], int, int]:
     """(each enabled source as the receiver takes it, sorted; the entries of [[sources.imports]];
     the checks of [[sources.json]]). A source read through a built-in provider is
     "<kind>:<provider>", through a provider file of the user's own "<kind>:custom", and one read
-    by code of its own (host, wan, dns and the rest) its name. The lists' entries are counted and
-    never named; the devices are not sources here."""
+    by code of its own (host, wan, dns and the rest) its name. The entries of [[sources.imports]]
+    and [[sources.json]] are counted and never named; an entry of [[sources.usage]] is sent as
+    "usage:<provider>", "usage:json" for the generic one, and never by its name or its machines'.
+    The devices are not sources here."""
     listed: set[str] = set()
     imports = checks = 0
     builtin = providers_mod.builtin()
     for name, settings in config.sources.items():
         head, colon, _ = name.partition(":")
+        if head == "usage" and colon:
+            pid = kinds.provider_of(name, settings)
+            own = pid in builtin or pid == kinds.GENERIC_USAGE
+            listed.add(f"usage:{pid if own else CUSTOM}")
+            continue
         if colon:
             imports += head == "imports"
             checks += head == "json"

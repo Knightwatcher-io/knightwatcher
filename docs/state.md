@@ -44,7 +44,7 @@ Every value below is invented.
       "list": [
         { "name": "Pi", "kind": "pi", "state": "up", "alert": true, "seen": true,
           "since": "2026-01-15T08:02:40Z" },
-        { "name": "Vault", "kind": "machine", "state": "up", "alert": true, "seen": true,
+        { "name": "NAS", "kind": "machine", "state": "up", "alert": true, "seen": true,
           "since": "2026-01-15T08:02:40Z" },
         { "name": "Gate cam", "kind": "camera", "state": "unknown", "alert": true, "seen": false,
           "since": null },
@@ -57,7 +57,7 @@ Every value below is invented.
     "containers": { "ok": true, "at": "2026-01-15T21:42:10Z", "error": "" },
     "adblock": { "ok": false, "at": "2026-01-15T21:40:40Z", "error": "HTTP 401: credentials refused" },
     "pi": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" },
-    "device:Vault": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" },
+    "device:NAS": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" },
     "device:Gate cam": { "ok": false, "at": "2026-01-15T21:42:01Z",
                         "error": "first read still running" },
     "device:Study laptop": { "ok": true, "at": "2026-01-15T21:42:01Z", "error": "" }
@@ -89,7 +89,7 @@ says where the two are in `facts.devices.list`. The laptop, which does not alert
       "level": "warning",
       "since": "2026-01-15T21:42:30Z",
       "headline": "2 DOWN",
-      "detail": "Vault, Gate cam",
+      "detail": "NAS, Gate cam",
       "devices": [1, 2]
     }
   ],
@@ -101,7 +101,7 @@ says where the two are in `facts.devices.list`. The laptop, which does not alert
       "list": [
         { "name": "Pi", "kind": "pi", "state": "up", "alert": true, "seen": true,
           "since": "2026-01-15T08:02:40Z" },
-        { "name": "Vault", "kind": "machine", "state": "down", "alert": true, "seen": true,
+        { "name": "NAS", "kind": "machine", "state": "down", "alert": true, "seen": true,
           "since": "2026-01-15T21:42:30Z" },
         { "name": "Gate cam", "kind": "camera", "state": "down", "alert": true, "seen": false,
           "since": "2026-01-15T21:43:10Z" },
@@ -111,7 +111,7 @@ says where the two are in `facts.devices.list`. The laptop, which does not alert
     }
   },
   "sources": {
-    "device:Vault": { "ok": true, "at": "2026-01-15T21:54:10Z", "error": "" }
+    "device:NAS": { "ok": true, "at": "2026-01-15T21:54:10Z", "error": "" }
   },
   "defaults": {
     "look": { "skin": "tan", "hair": "auburn", "hair_style": "curls", "monarch": "b",
@@ -276,16 +276,19 @@ for twelve minutes. The entry lists the machine in `machines`. Only the sections
     alerts and is down, however many there are. While it is held after the last of them has
     answered again, it keeps the positions it last had, and those devices are then `up`.
   - `machines` is on `cpu_hot` alone: every machine under strain, 1 to 33, in the order each
-    was first raised, a machine strained on both resources once, at the place of the first. Today
-    the only machine is the collector's host. Each is an object:
+    was first raised, a machine strained on both resources once, at the place of the first: the
+    collector's host, and the machines the entries of `[[sources.usage]]` list. Each is an object:
     - `name`: what the wall calls the machine, 1 to 20 printable ASCII characters
-      (`[sources.host] name` for the host, `Host` by default), unique ignoring case.
+      (`[sources.host] name` for the host, `Host` by default, and the name an entry of
+      `[[sources.usage]]` gives the others), unique ignoring case.
     - `device`: its position in `facts.devices.list` when its name is a device's name, ignoring
       case; left out otherwise. Nothing on the page reads it yet.
-    - `window_s`: the seconds its averages cover.
+    - `window_s`: the seconds its averages cover: `conditions.cpu_hot.window_s`, or its entry's
+      own.
     - `cpu` and `memory`: each there only while that resource is under strain, as
       `{ "pct", "threshold", "since" }`: the average over the window to one decimal place (memory
-      as percent used), the threshold in force, and when the average first crossed it.
+      as percent used), the threshold in force (the machine's own, where it sets one), and when the
+      average first crossed it.
 
     The page bloats the knight while any machine has `memory`. While the condition is held after
     a resource has fallen back, the resource keeps the figure it last had while it counted
@@ -394,9 +397,12 @@ for twelve minutes. The entry lists the machine in `machines`. Only the sections
   slow read is still running or the source is paused after refused credentials. Each device
   has an entry of its own, `device:<name>`, and the Pi of `[sources.pi]` keeps `pi`; so does each
   entry of `[[sources.imports]]`, `imports:<name>`, whose new imports are `import` events like
-  those of `sonarr`, `radarr` and `lidarr`, and each check of `[[sources.json]]`, `json:<name>`,
+  those of `sonarr`, `radarr` and `lidarr`, each entry of `[[sources.usage]]`, `usage:<name>`, and
+  each check of `[[sources.json]]`, `json:<name>`,
   which fails when its address cannot be read or its path finds nothing, its check then not
-  raised. A device's
+  raised. `error` is empty while `ok` is true, but for a usage source whose reply left out a
+  machine it lists: the read is ok, and `error` names the machines that had no reading
+  (`no reading for NAS`). A device's
   check that ran but got no answer is `ok: true`, since the check worked; its `ok` is
   false only while its first check is still running (`first read still running`) and when a
   check ran out of time (`timed out`, then `previous read still running` while it hangs on).

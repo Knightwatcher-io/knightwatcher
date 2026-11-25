@@ -35,8 +35,11 @@ def setting(table: str, key: str) -> dict[str, Any]:
 
 
 def default_of(s: dict[str, Any]) -> Any:
-    """A setting's default as the collector holds it: a number as a float, and a setting with no
-    default as the empty value of its type."""
+    """A setting's default as the collector holds it: a number as a float, a setting with no
+    default as the empty value of its type, and an optional one (a machine's own threshold, which
+    the condition's stands in for) as None while it is left out."""
+    if s.get("optional"):
+        return None
     value = s.get("default")
     if value is None:
         return [] if s["type"] == "list" else _EMPTY.get(s["type"])

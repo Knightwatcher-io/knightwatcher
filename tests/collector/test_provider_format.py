@@ -161,7 +161,7 @@ class RefusedTest(unittest.TestCase):
         self.refused(lambda d: d.update(id="other"), 'id: must be "myflix", the file\'s name')
         self.refused(
             lambda d: d.update(kind="weather"),
-            "kind: unknown kind 'weather'; use streams, adblock, imports, security",
+            "kind: unknown kind 'weather'; use streams, adblock, imports, security, usage",
         )
         self.refused(lambda d: d.pop("name"), "name: required")
         self.refused(lambda d: d.update(name="x\ny"), "name: at most 60 printable characters")

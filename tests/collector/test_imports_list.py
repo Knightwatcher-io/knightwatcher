@@ -266,7 +266,7 @@ class ListConfigTest(unittest.TestCase):
         )
 
     def test_the_list_itself(self):
-        self.assertEqual(LIST_MAX, {"imports": 16, "json": 16})
+        self.assertEqual(LIST_MAX, {"imports": 16, "usage": 16, "json": 16})
         many = [
             {"name": f"tv{i}", "from": "sonarr", "url": f"http://192.0.2.{i}:8989"}
             for i in range(17)

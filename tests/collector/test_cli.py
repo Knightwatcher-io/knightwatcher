@@ -58,11 +58,11 @@ class CliTest(unittest.TestCase):
         self.assertIn("config ok: 3 sources enabled (host, ssh, updates)\n", out)
         self.write_config(
             '[sources.pi]\nhost = "192.0.2.4"\n'
-            '[[device]]\nname = "Vault"\nkind = "machine"\nhost = "192.0.2.40"\nport = 445\n'
+            '[[device]]\nname = "NAS"\nkind = "machine"\nhost = "192.0.2.40"\nport = 445\n'
         )
         code, out, _ = self.run_cli("--check-config")
         self.assertEqual(
-            out, "config ok: 4 sources enabled (host, ssh, updates, pi); 2 watched (Pi, Vault)\n"
+            out, "config ok: 4 sources enabled (host, ssh, updates, pi); 2 watched (Pi, NAS)\n"
         )
 
     def test_check_config_warns_of_old_settings_read_in_todays_terms(self):

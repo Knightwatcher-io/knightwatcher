@@ -193,10 +193,10 @@ class ResourceWordsTest(unittest.TestCase):
 
     def test_the_host_named_as_a_device_names_its_place(self):
         raw = {
-            "sources": {"host": {"name": "vault"}},
+            "sources": {"host": {"name": "nas"}},
             "device": [
                 {"name": "Gate cam", "kind": "camera", "host": "192.0.2.20", "port": 554},
-                {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445},
+                {"name": "NAS", "kind": "machine", "host": "192.0.2.40", "port": 445},
             ],
         }
         h = Harness(raw)
@@ -923,7 +923,7 @@ YES, NO = answer(True), answer(False)
 
 
 class Devices(Harness):
-    """A harness for devices: poll(Vault=NO, ...) by name, and the devices' facts."""
+    """A harness for devices: poll(NAS=NO, ...) by name, and the devices' facts."""
 
     def __init__(self, devices, raw=None, step=10):
         raw = dict(raw or {})
@@ -952,12 +952,12 @@ def down(out) -> dict | None:
 
 class DeviceDownTest(unittest.TestCase):
     def test_down_after_down_after_s_and_not_before(self):
-        h = Devices([device("Vault")])
-        h.poll(Vault=YES)  # 0 s: answers once
+        h = Devices([device("NAS")])
+        h.poll(NAS=YES)  # 0 s: answers once
         self.assertEqual(
             h.facts(),
             {
-                "name": "Vault",
+                "name": "NAS",
                 "kind": "machine",
                 "state": "up",
                 "alert": True,
@@ -966,9 +966,9 @@ class DeviceDownTest(unittest.TestCase):
             },
         )
         for _ in range(18):  # 10 .. 180 s: silent since 10 s; up while silent for less than 180
-            self.assertEqual(ids(h.poll(Vault=NO)), [])
+            self.assertEqual(ids(h.poll(NAS=NO)), [])
             self.assertEqual(h.facts()["state"], "up")
-        out = h.poll(Vault=NO)  # 190 s: silent for 180 s
+        out = h.poll(NAS=NO)  # 190 s: silent for 180 s
         self.assertEqual(ids(out), ["device_down"])
         self.assertEqual(
             out[0],
@@ -976,52 +976,52 @@ class DeviceDownTest(unittest.TestCase):
                 "id": "device_down",
                 "level": "warning",
                 "since": "2026-01-15T21:00:10Z",
-                "headline": "VAULT DOWN",
+                "headline": "NAS DOWN",
                 "detail": "no answer for 3 min",
                 "devices": [0],
             },
         )
         self.assertEqual(h.facts()["state"], "down")
         self.assertEqual(h.facts()["since"], "2026-01-15T21:00:10Z")
-        self.assertEqual(down(h.poll(Vault=NO))["detail"], "no answer for 3 min")
+        self.assertEqual(down(h.poll(NAS=NO))["detail"], "no answer for 3 min")
 
     def test_one_answer_ends_the_silence(self):
-        h = Devices([device("Vault")])
+        h = Devices([device("NAS")])
         for _ in range(17):  # 0 .. 160 s
-            h.poll(Vault=NO)
-        h.poll(Vault=YES)  # 170 s
+            h.poll(NAS=NO)
+        h.poll(NAS=YES)  # 170 s
         self.assertEqual((h.facts()["state"], h.facts()["since"]), ("up", "2026-01-15T21:02:50Z"))
         for _ in range(18):  # 180 .. 350 s: a new silence, from 180 s
-            self.assertEqual(ids(h.poll(Vault=NO)), [])
-        self.assertEqual(ids(h.poll(Vault=NO)), ["device_down"])  # 360 s
+            self.assertEqual(ids(h.poll(NAS=NO)), [])
+        self.assertEqual(ids(h.poll(NAS=NO)), ["device_down"])  # 360 s
 
     def test_answering_again_clears_after_clear_after_s_and_the_prop_returns_at_once(self):
-        h = Devices([device("Vault", every_s=10, down_after_s=10)])
-        h.poll(Vault=YES)
-        h.poll(Vault=NO)
-        first = h.poll(Vault=NO)  # 20 s
+        h = Devices([device("NAS", every_s=10, down_after_s=10)])
+        h.poll(NAS=YES)
+        h.poll(NAS=NO)
+        first = h.poll(NAS=NO)  # 20 s
         self.assertEqual(ids(first), ["device_down"])
         for _ in range(3):  # 30, 40, 50 s: held with its last words
-            held = h.poll(Vault=YES)
-            self.assertEqual(held[0]["headline"], "VAULT DOWN")
+            held = h.poll(NAS=YES)
+            self.assertEqual(held[0]["headline"], "NAS DOWN")
             self.assertEqual(ids(held), ["device_down"])
             self.assertEqual(held[0]["devices"], [0])
             self.assertEqual(h.facts()["state"], "up")
-        self.assertEqual(ids(h.poll(Vault=YES)), [])  # 60 s: 30 s since it answered
+        self.assertEqual(ids(h.poll(NAS=YES)), [])  # 60 s: 30 s since it answered
 
     def test_a_device_that_never_answered(self):
-        h = Devices([device("Vault")])
+        h = Devices([device("NAS")])
         for _ in range(18):  # 0 .. 170 s
-            h.poll(Vault=NO)
+            h.poll(NAS=NO)
             self.assertEqual(h.facts()["state"], "unknown")
             self.assertIsNone(h.facts()["since"])
-        out = h.poll(Vault=NO)  # 180 s
-        self.assertEqual(down(out)["headline"], "VAULT DOWN")
+        out = h.poll(NAS=NO)  # 180 s
+        self.assertEqual(down(out)["headline"], "NAS DOWN")
         self.assertEqual(down(out)["detail"], "not answered since the collector started 3 min ago")
         self.assertEqual(
             h.facts(),
             {
-                "name": "Vault",
+                "name": "NAS",
                 "kind": "machine",
                 "state": "down",
                 "alert": True,
@@ -1031,9 +1031,9 @@ class DeviceDownTest(unittest.TestCase):
         )
 
     def test_unknown_until_the_first_check_finishes(self):
-        h = Devices([device("Vault")])
+        h = Devices([device("NAS")])
         running = {
-            "Vault": {
+            "NAS": {
                 "ok": False,
                 "at": "2026-01-15T21:00:00Z",
                 "error": "first read still running",
@@ -1049,16 +1049,16 @@ class DeviceDownTest(unittest.TestCase):
     def test_a_check_that_ran_out_of_time_is_silence(self):
         for error in ("timed out", "previous read still running"):
             with self.subTest(error=error):
-                h = Devices([device("Vault")])
-                h.poll(Vault=YES)
-                late = {"Vault": {"ok": False, "at": "2026-01-15T21:00:10Z", "error": error}}
+                h = Devices([device("NAS")])
+                h.poll(NAS=YES)
+                late = {"NAS": {"ok": False, "at": "2026-01-15T21:00:10Z", "error": error}}
                 for _ in range(18):
                     self.assertEqual(ids(h.poll(status=late)), [])
                 self.assertEqual(ids(h.poll(status=late)), ["device_down"])
 
     def test_the_word_is_the_kinds(self):
         for kind, name, headline in (
-            ("machine", "Vault", "VAULT DOWN"),
+            ("machine", "NAS", "NAS DOWN"),
             ("vm", "Buildbox", "BUILDBOX DOWN"),
             ("camera", "Gate cam", "GATE CAM DARK"),
             ("pi", "Pi", "PI SILENT"),
@@ -1107,38 +1107,38 @@ class DeviceDownTest(unittest.TestCase):
     def test_several_down_make_one_condition(self):
         h = Devices(
             [
-                device("Vault"),
+                device("NAS"),
                 device("Gate cam", "camera"),
                 device("Buildbox", "vm"),
                 device("Laptop", alert=False),
             ]
         )
-        h.poll(Vault=YES, Gate_cam=YES, Buildbox=YES, Laptop=YES)  # 0 s
-        h.poll(Vault=YES, Gate_cam=YES, Buildbox=NO, Laptop=NO)  # 10 s: Buildbox first
-        h.poll(Vault=NO, Gate_cam=YES, Buildbox=NO, Laptop=NO)  # 20 s
+        h.poll(NAS=YES, Gate_cam=YES, Buildbox=YES, Laptop=YES)  # 0 s
+        h.poll(NAS=YES, Gate_cam=YES, Buildbox=NO, Laptop=NO)  # 10 s: Buildbox first
+        h.poll(NAS=NO, Gate_cam=YES, Buildbox=NO, Laptop=NO)  # 20 s
         for _ in range(16):  # 30 .. 180 s
-            out = h.poll(Vault=NO, Gate_cam=NO, Buildbox=NO, Laptop=NO)
+            out = h.poll(NAS=NO, Gate_cam=NO, Buildbox=NO, Laptop=NO)
         self.assertEqual(ids(out), [])
-        out = h.poll(Vault=NO, Gate_cam=NO, Buildbox=NO, Laptop=NO)  # 190 s
+        out = h.poll(NAS=NO, Gate_cam=NO, Buildbox=NO, Laptop=NO)  # 190 s
         self.assertEqual(ids(out), ["device_down"])  # Buildbox alone, silent since 10 s
         self.assertEqual(down(out)["headline"], "BUILDBOX DOWN")
         for _ in range(2):  # 200, 210 s
-            out = h.poll(Vault=NO, Gate_cam=NO, Buildbox=NO, Laptop=NO)
+            out = h.poll(NAS=NO, Gate_cam=NO, Buildbox=NO, Laptop=NO)
         self.assertEqual(ids(out), ["device_down"])
         c = down(out)
         self.assertEqual(
             (c["headline"], c["detail"], c["since"], c["devices"]),
-            ("3 DOWN", "Buildbox, Vault, Gate cam", "2026-01-15T21:00:10Z", [2, 0, 1]),
+            ("3 DOWN", "Buildbox, NAS, Gate cam", "2026-01-15T21:00:10Z", [2, 0, 1]),
         )
         self.assertEqual([h.facts(i)["state"] for i in range(4)], ["down"] * 4)
         # One comes back: the words change to the two that remain.
-        out = h.poll(Vault=YES, Gate_cam=NO, Buildbox=NO, Laptop=NO)
+        out = h.poll(NAS=YES, Gate_cam=NO, Buildbox=NO, Laptop=NO)
         self.assertEqual(
             (down(out)["headline"], down(out)["detail"], down(out)["devices"]),
             ("2 DOWN", "Buildbox, Gate cam", [2, 1]),
         )
         # Then one: its own words, with its own silence.
-        out = h.poll(Vault=YES, Gate_cam=YES, Buildbox=NO, Laptop=NO)
+        out = h.poll(NAS=YES, Gate_cam=YES, Buildbox=NO, Laptop=NO)
         self.assertEqual(
             (down(out)["headline"], down(out)["detail"], down(out)["devices"]),
             ("BUILDBOX DOWN", "no answer for 3 min", [2]),
@@ -1162,30 +1162,30 @@ class DeviceDownTest(unittest.TestCase):
         self.assertEqual((h.facts()["state"], h.facts()["alert"]), ("down", False))
 
     def test_a_clock_that_goes_back_starts_the_silence_again(self):
-        h = Devices([device("Vault")])
-        h.poll(Vault=YES)  # 0 s
+        h = Devices([device("NAS")])
+        h.poll(NAS=YES)  # 0 s
         for _ in range(10):  # 10 .. 100 s: silent since 10 s
-            h.poll(Vault=NO)
+            h.poll(NAS=NO)
         h.t -= 600  # the clock goes back ten minutes, to -490 s
         for _ in range(18):  # -490 .. -320 s: silent since -490 s
-            self.assertEqual(ids(h.poll(Vault=NO)), [])
-        out = h.poll(Vault=NO)  # -310 s: 180 s after the new start, not 780 s
+            self.assertEqual(ids(h.poll(NAS=NO)), [])
+        out = h.poll(NAS=NO)  # -310 s: 180 s after the new start, not 780 s
         self.assertEqual(ids(out), ["device_down"])
         self.assertEqual(down(out)["detail"], "no answer for 3 min")
 
     def test_a_priority_list_orders_and_leaves_out_as_for_every_condition(self):
         raw = {"sources": {"pi": {"host": "192.0.2.4"}}, "conditions": {"pi_silent": {"for_s": 10}}}
-        h = Devices([device("Vault", every_s=10, down_after_s=10)], raw)
-        h.poll(pi=Reading({"up": False}, {"answered": False}), Vault=NO)
-        out = h.poll(pi=Reading({"up": False}, {"answered": False}), Vault=NO)
+        h = Devices([device("NAS", every_s=10, down_after_s=10)], raw)
+        h.poll(pi=Reading({"up": False}, {"answered": False}), NAS=NO)
+        out = h.poll(pi=Reading({"up": False}, {"answered": False}), NAS=NO)
         self.assertEqual(ids(out), ["pi_silent", "device_down"])
-        # The Pi is at position 0 and raises pi_silent alone; Vault is at 1.
+        # The Pi is at position 0 and raises pi_silent alone; NAS is at 1.
         self.assertEqual(down(out)["devices"], [1])
         self.assertEqual(h.c.devices()["list"][0]["name"], "Pi")
         raw["conditions"]["priority"] = ["pi_silent"]
-        h = Devices([device("Vault", every_s=10, down_after_s=10, alert=False)], raw)
+        h = Devices([device("NAS", every_s=10, down_after_s=10, alert=False)], raw)
         for _ in range(3):
-            out = h.poll(pi=Reading({"up": False}, {"answered": False}), Vault=NO)
+            out = h.poll(pi=Reading({"up": False}, {"answered": False}), NAS=NO)
         self.assertEqual(ids(out), ["pi_silent"])
 
     def test_no_devices_no_facts(self):

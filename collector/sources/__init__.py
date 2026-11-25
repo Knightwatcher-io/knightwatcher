@@ -34,10 +34,13 @@ class Reading:
 
     facts: the source's section of `facts` in state.json, or None for a source without one.
     data:  anything else the source needs for its events or the conditions.
+    note:  what a read that succeeded still has to say, for its `error` in `sources` beside
+           `ok: true`, such as the listed machines a usage source's reply left out; empty for most.
     """
 
     facts: dict[str, Any] | None
     data: dict[str, Any] = field(default_factory=dict)
+    note: str = ""
 
 
 class Source:

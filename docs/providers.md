@@ -1,7 +1,7 @@
 # Providers
 
-The collector reads the streams playing, the adverts blocked, the bans and the imports of a
-homelab's services through providers. This page is for anyone writing or changing a provider file: what a
+The collector reads the streams playing, the adverts blocked, the bans, the imports and other
+machines' CPU and memory from a homelab's services through providers. This page is for anyone writing or changing a provider file: what a
 provider fills, the format of the file, the path syntax it uses, how a file is run and checked,
 how to prove one against a live service, and where files of your own go. Choosing a provider in `config.toml` is in
 [configuration.md](./configuration.md#sources); the collector's side is in
@@ -11,8 +11,8 @@ how to prove one against a live service, and where files of your own go. Choosin
 
 A **kind** is the fixed shape of one sort of reading. The kind owns everything after the service
 has answered: cleaning and cutting the words, the markers kept in the memory file, the events and
-the facts written to `state.json`. There are four a provider file can fill, each a module in
-`collector/kinds/`, and a fifth, `check`, filled by the generic checks of `[[sources.json]]` alone
+the facts written to `state.json`. There are five a provider file can fill, each a module in
+`collector/kinds/`, and a sixth, `check`, filled by the generic checks of `[[sources.json]]` alone
 ([The check kind](#the-check-kind)).
 
 A **provider** fills a kind's shape from one service. A provider is a TOML file: the requests to
@@ -43,7 +43,11 @@ SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-pr
 a built-in's id or one of your own; `[sources.sonarr]`, `[sources.radarr]` and `[sources.lidarr]`
 read the provider of their own name. Each entry of `[[sources.imports]]` names any provider of the
 imports kind with `from`, a built-in's or one of your own, and is a source of its own,
-`imports:<name>` ([configuration.md](./configuration.md#more-imports)). Every request a provider makes goes to the
+`imports:<name>` ([configuration.md](./configuration.md#more-imports)). Each entry of
+`[[sources.usage]]` names a provider file of your own of the usage kind, or `json`, the generic
+source, and is a source of its own, `usage:<name>`
+([configuration.md](./configuration.md#machines-under-strain)); no built-in file fills the usage
+kind yet. Every request a provider makes goes to the
 section's `url`, and its credentials are read from `.env` as `KW_<SECRET>_<FIELD>`, where
 `<SECRET>` is the section's `secret`, the provider's id when it is left out, and `<FIELD>` each
 credential the file names.
@@ -173,6 +177,61 @@ condition `check:<name>` whether the test holds and the value its words show. A 
 object, or a list where the test is not `contains` fails the read, except with `missing`, which
 holds exactly when the value is absent.
 
+### The usage kind
+
+The CPU and memory of machines other than this host, for Under strain
+([collector.md](./collector.md#machines-of-sourcesusage)). A file gives `cpu`, `memory` or both;
+a file that gives neither is refused (`fill: give cpu or memory, or both`).
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `cpu` | list of objects, at most 500 | one of `cpu` and `memory` | one item for each machine whose CPU the service gives |
+| `cpu[].machine` | string | from a provider that reads several machines | the machine's key in the service, matched against the `id` of each machine the entry lists |
+| `cpu[].pct` | raw | yes; an item without it is left out | CPU busy, percent of all cores |
+| `memory` | list of objects, at most 500 | one of `cpu` and `memory` | the same for memory |
+| `memory[].machine` | string | as `cpu[].machine` | |
+| `memory[].pct` | raw | yes | memory used, percent of all memory |
+
+`pct` is `raw` because some services send their figures as text (`"93.4"`): the kind takes a
+number, or text holding a decimal number. `NaN`, an infinity or a value below 0 gives that machine
+no reading, and a value over 100 is taken as 100. A file reads several machines when its items
+give `machine`, and one when they do not; the entry's machines then carry an `id` each, or the one
+machine none. A file that gives `machine` on some items and not on others, or an entry whose
+machines do not match it, fails its reads with a message saying so. For figures that agree with
+this host's, CPU busy is all but idle and iowait, and memory used is the total less what the system
+counts as available, never swap.
+
+A file of several machines, the figures in one reply:
+
+```toml
+format = 1
+id = "fleet"
+kind = "usage"
+name = "Fleet status"
+
+[[request]]
+path = "/api/machines"
+
+[fill.cpu]
+each = "$.machines[*]"
+vars = { machine = "$.key", pct = "$.cpu" }
+fields = { machine = "machine", pct = "pct" }
+
+[fill.memory]
+each = "$.machines[*]"
+vars = { machine = "$.key", pct = "$.mem" }
+fields = { machine = "machine", pct = "pct" }
+```
+
+An entry of `[[sources.usage]]` with `from = "json"` is compiled in memory into a provider file of
+this kind, by `collector/kinds/usage.py`, as a check is (above): one request to the entry's
+address, given whole, with `Accept: application/json` and its one header, if it has one, and a
+fill of one machine, `cpu` and `memory` each one item, `each = "$"`, its `pct` at the entry's path
+of the same name. `json` is therefore no id a file of your own can take for the usage kind.
+
+The kind has no facts and no events. It keeps each machine's readings in the running process alone
+and gives Under strain each machine's average over its window.
+
 ### imports
 
 | Field | Type | Required | Meaning |
@@ -256,7 +315,7 @@ try = ["{title}", "{full}"]
 |---|---|---|
 | `format` | yes | the format's version, 1 |
 | `id` | yes | 1 to 24 of `a` to `z`, `0` to `9` and `_`, starting with a letter; the file's name without `.toml`, and the default `secret` |
-| `kind` | yes | `streams`, `adblock`, `imports` or `security`; `check` is for `[[sources.json]]` alone |
+| `kind` | yes | `streams`, `adblock`, `imports`, `security` or `usage`; `check` is for `[[sources.json]]` alone |
 | `name` | yes | what the admin page and messages call the service, up to 60 characters |
 | `docs` | no | the address of the API reference the file was written from |
 

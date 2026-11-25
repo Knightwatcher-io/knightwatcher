@@ -314,7 +314,7 @@ class BuildTest(unittest.TestCase):
 
 
 def vault(**over):
-    return {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445, **over}
+    return {"name": "NAS", "kind": "machine", "host": "192.0.2.40", "port": 445, **over}
 
 
 def problems(raw: dict) -> list[str]:
@@ -510,7 +510,7 @@ class DeviceConfigTest(unittest.TestCase):
             c.devices,
             [
                 {
-                    "name": "Vault",
+                    "name": "NAS",
                     "kind": "machine",
                     "host": "192.0.2.40",
                     "ports": [445],
@@ -521,7 +521,7 @@ class DeviceConfigTest(unittest.TestCase):
                     "down_after_s": 180,
                     "alert": True,
                     "enabled": True,
-                    "source": "device:Vault",
+                    "source": "device:NAS",
                     "legacy": False,
                 }
             ],
@@ -545,7 +545,7 @@ class DeviceConfigTest(unittest.TestCase):
                 "device": [vault(), vault(name="Gate cam", host="198.51.100.31", enabled=False)],
             }
         )
-        self.assertEqual([t["name"] for t in c.devices], ["Pi", "Vault"])
+        self.assertEqual([t["name"] for t in c.devices], ["Pi", "NAS"])
         self.assertEqual(
             c.devices[0],
             {
@@ -586,7 +586,7 @@ class DeviceConfigTest(unittest.TestCase):
         for name in ("V", "Gate cam", "Abcdefghijklmnopqrst", "a.b-c_d (2)", "~!"):
             self.assertProblems({"device": [vault(name=name)]})
         bad = "device[0].name: 1 to 20 printable ASCII characters, no space at either end"
-        for name in ("", " Vault", "Vault ", "Abcdefghijklmnopqrstu", "Väult", "Tab\tbed", 7):
+        for name in ("", " NAS", "NAS ", "Abcdefghijklmnopqrstu", "NÄS", "Tab\tbed", 7):
             self.assertDevice(vault(name=name), bad)
         self.assertDevice(
             {k: v for k, v in vault().items() if k != "name"}, "device[0].name: required"
@@ -598,10 +598,10 @@ class DeviceConfigTest(unittest.TestCase):
                 "device": [
                     vault(),
                     vault(name="Gate cam", host="198.51.100.31"),
-                    vault(name="vault", host="192.0.2.41"),
+                    vault(name="nas", host="192.0.2.41"),
                 ]
             },
-            'device[2].name: "vault" is already the name of device[0]',
+            'device[2].name: "nas" is already the name of device[0]',
         )
 
     def test_the_pis_name_and_host_are_taken(self):
@@ -641,11 +641,11 @@ class DeviceConfigTest(unittest.TestCase):
 
     def test_one_check_and_not_two(self):
         neither = "device[0]: give host with port or ports, or url, and not both"
-        self.assertDevice({"name": "Vault", "kind": "machine"}, neither)
+        self.assertDevice({"name": "NAS", "kind": "machine"}, neither)
         self.assertDevice(vault(url="http://192.0.2.40/"), neither)
-        self.assertDevice({"name": "Vault", "kind": "machine", "host": "192.0.2.40"}, neither)
+        self.assertDevice({"name": "NAS", "kind": "machine", "host": "192.0.2.40"}, neither)
         self.assertDevice(
-            {"name": "Vault", "kind": "machine", "port": 445},
+            {"name": "NAS", "kind": "machine", "port": 445},
             "device[0].host: required with port or ports",
         )
         self.assertDevice(vault(ports=[445]), "device[0]: give port or ports, not both")
@@ -729,8 +729,8 @@ class DeviceConfigTest(unittest.TestCase):
 
     def test_a_typo_and_tables_that_are_not_tables(self):
         self.assertDevice(vault(prot=445), "device[0].prot: unknown setting")
-        self.assertProblems({"device": ["Vault"]}, "device[0]: expected a table")
-        self.assertProblems({"device": "Vault"}, "device: expected [[device]] tables")
+        self.assertProblems({"device": ["NAS"]}, "device[0]: expected a table")
+        self.assertProblems({"device": "NAS"}, "device: expected [[device]] tables")
         self.assertProblems({"device": vault()}, "device: expected [[device]] tables")
 
     def test_every_problem_is_listed(self):
@@ -749,12 +749,12 @@ class DeviceConfigTest(unittest.TestCase):
         listed = [c for c in CONDITION_IDS if c != "device_down"]
         self.assertProblems(
             {"conditions": {"priority": listed}, "device": [vault(), cam, laptop]},
-            'conditions.priority: leaves out "device_down", so Vault and Gate cam would never '
+            'conditions.priority: leaves out "device_down", so NAS and Gate cam would never '
             'alert; add it after "pi_silent", or set alert = false on them',
         )
         self.assertProblems(
             {"conditions": {"priority": ["night", "attack"]}, "device": [vault()]},
-            'conditions.priority: leaves out "device_down", so Vault would never alert; add it '
+            'conditions.priority: leaves out "device_down", so NAS would never alert; add it '
             'after "attack", or set alert = false on it',
         )
         self.assertProblems(
@@ -762,12 +762,12 @@ class DeviceConfigTest(unittest.TestCase):
                 "conditions": {"priority": ["night"]},
                 "device": [vault(), cam, vault(name="Buildbox", host="192.0.2.50")],
             },
-            'conditions.priority: leaves out "device_down", so Vault, Gate cam and Buildbox would '
+            'conditions.priority: leaves out "device_down", so NAS, Gate cam and Buildbox would '
             'never alert; add it before "night", or set alert = false on them',
         )
         self.assertProblems(
             {"conditions": {"priority": []}, "device": [vault()]},
-            'conditions.priority: leaves out "device_down", so Vault would never alert; add it to '
+            'conditions.priority: leaves out "device_down", so NAS would never alert; add it to '
             "the list, or set alert = false on it",
         )
         # Nothing alerts: nothing is refused. Neither is a Pi from [sources.pi] alone.
@@ -1219,10 +1219,10 @@ class LoadTest(unittest.TestCase):
         with open(os.path.join(root, "config.example.toml"), encoding="utf-8") as fh:
             example = fh.read()
         # A commented setting is "# key = value", "# [[device]]", "# [[sources.imports]]",
-        # "# [[sources.json]]", the header of a source's table or the header of a defaults table;
-        # a commented note is not.
+        # "# [[sources.usage]]", "# [[sources.json]]", the header of a source's table or the
+        # header of a defaults table; a commented note is not.
         setting = re.compile(
-            r"^# (\[\[device\]\]|\[\[sources\.(?:imports|json)\]\]|\[sources\.[a-z]+\]"
+            r"^# (\[\[device\]\]|\[\[sources\.(?:imports|usage|json)\]\]|\[sources\.[a-z]+\]"
             r"|\[(?:look|look\.items|look\.devices|display|quiet|scenes)\]|[a-z_]+ = .+)$"
         )
         lines = [
@@ -1232,8 +1232,9 @@ class LoadTest(unittest.TestCase):
         env = read_env_file(os.path.join(root, ".env.example"))
         # The second Sonarr reads a variable of its own, which .env.example does not list.
         env["KW_SONARR_4K_API_KEY"] = "an-invented-key"
-        # So does the check's header.
+        # So do the check's header and the usage source's.
         env["KW_NAS_HEADER"] = "an-invented-header"
+        env["KW_NAS_STATUS_HEADER"] = "another-invented-header"
         c = load(cfg, env)
         # Every source's table is there to uncomment, the services' among them.
         self.assertEqual(
@@ -1249,9 +1250,12 @@ class LoadTest(unittest.TestCase):
         self.assertEqual(c.sources["json:nas-temp"]["as"], "cpu_hot")
         self.assertEqual(c.secret("json:nas-temp"), {"header": "an-invented-header"})
         self.assertEqual(c.secret("imports:sonarr-4k"), {"api_key": "an-invented-key"})
-        self.assertEqual(
-            [t["name"] for t in c.devices], ["Pi", "Vault", "Gate cam", "Study laptop"]
-        )
+        usage = c.sources["usage:nas-status"]
+        self.assertEqual((usage["from"], usage["window_s"]), ("json", 60))
+        self.assertEqual(usage["machines"], [{"name": "NAS", "memory_pct": 95}])
+        self.assertEqual(c.secret("usage:nas-status"), {"header": "another-invented-header"})
+        self.assertEqual((c.sources["host"]["cpu_pct"], c.sources["host"]["memory_pct"]), (90, 95))
+        self.assertEqual([t["name"] for t in c.devices], ["Pi", "NAS", "Gate cam", "Study laptop"])
         self.assertEqual(
             [(t["kind"], t["every_s"], t["down_after_s"], t["alert"]) for t in c.devices[1:]],
             [("machine", 30, 180, True), ("camera", 60, 600, True), ("machine", 30, 180, False)],

@@ -156,6 +156,14 @@ the header by name with its value masked. The check writes only its own words, a
 read where its `detail` asks for it, cleaned and cut to 60 characters: what a check shows on a
 wall is what its entry chose to show. The list is set in `config.toml` alone.
 
+An entry of `[[sources.usage]]` reads the address it names through the engine with the same rules:
+a provider file of your own of the usage kind at its `url`, or with `from = "json"` one GET to the
+address given whole, its one header read from `.env` as `KW_<SECRET>_HEADER` and handled as a
+check's. It writes to the state file only the figures of the machines it lists, under the names
+the entry gives them; a machine the service reports that is not listed is ignored, and its key
+is never written to the state file, the memory file or a log. The figures are kept in the running
+process alone. The list is set in `config.toml` alone.
+
 ## The server's privileges
 
 The bundled server ([server.md](./server.md)) serves the page and `state.json`, keeps the
