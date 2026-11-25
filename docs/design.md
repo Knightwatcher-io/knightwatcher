@@ -94,7 +94,8 @@ build meets it.
 
 Every user chooses on the settings screen, free, the build, the weapon and the knight's skin tone, hair colour,
 hair style, tabard colour and plume colour, from six skins, six hair colours, three styles (short
-crop, tied back, curls), six tabards and six plumes, all in the base pack and chosen by the owner
+crop, tied back, curls; with the long hair and the close crop of 1.4.0 and the buzzcut of 1.6.0,
+six), six tabards and six plumes, all in the base pack and chosen by the owner
 from a mock-up. Each skin turns green when the knight is sick and red when the knight is running
 hot, each tint at about the skin's own lightness, so the conditions read on every tone. No tabard is
 bright red, orange or amber, so the coat is never read as a status. The brows carry a one-pixel dark
@@ -129,6 +130,17 @@ practice dummy from 300 short of it and at the goblin after a step back, and it 
 attack but never fired. It lies on the house's pegs and across the smithy's anvil, cold, and is
 slung across the back where the weapon is put away and the scene has no rest place for it, as in
 the cellar.
+
+Base pack 1.6.0 redraws the hair and adds a sixth style. The owner approved it from a mock-up:
+every style keeps its silhouette, so each is still the one chosen, and gains shading in the hair
+colour's three bands lit from the left, locks or strands, a sheen and a glint, and a hairline where
+it meets the forehead. The short crop's round tuft became two small upright locks. The new buzzcut
+is stubble drawn into the skull itself, with nothing above the skull's outline, so it reads apart
+from the close crop at a glance. The same redraw made the goblin of a banned address a cheeky
+fantasy goblin, the pot-thief of three designs (`kw.medieval` 0.9.0): stocky, with long pointed
+ears, a hooked nose with a wart, two stub tusks, a ragged leather tunic, the dented saucepan of the
+old goblin for a helmet, since the bonk on the pot is the joke the strike is built round, and a sack
+of loot at its hip, the clearest of the three at wall distance. Nothing about it is sharp or gory.
 
 No arm or gauntlet is ever drawn over a blade or its guard, over the barrel of a weapon that
 fires forward of the front hand, nor over the face of a shield. With

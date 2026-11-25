@@ -26,9 +26,9 @@ the smithy, the house and the court), the devices as the prop set `props.medieva
 three monarchs, the goblin, the fly and the mouser cat), the words, the overlay and the preset
 `world.medieval` ([The medieval world's pack](#the-medieval-worlds-pack)). The page builds the
 quiet line and the events' captions from the parts the collector sends, in the world's words, and
-takes the colours and the font of the words over the scene from the world's overlay. Version 0.8.0,
-which gives the smithy its quench and bellows, is signed, so a deployed page and a `dev` page alike
-draw everything from it.
+takes the colours and the font of the words over the scene from the world's overlay. Version 0.9.0,
+which redraws the goblin, ships unsigned until its signing run, so a `dev` page draws everything
+from it and a deployed page draws from code meanwhile; version 0.8.0 was signed.
 
 Any other world pack the page loads, shipped beside it or downloaded into `data/packs/`, reaches
 the wall through the settings: its scenes, cast, words, overlay, body, swatches and items, under
@@ -404,7 +404,7 @@ preset is complete.
 ## The medieval world's pack
 
 `web/packs/medieval.pack.json` is the medieval world's pack: id `kw.medieval`, format `[1, 3]`,
-version 0.8.0, under the [art licence](../legal/ART-LICENCE.md) as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
+version 0.9.0, under CC BY-SA 4.0 ([legal/ART-LICENCE.md](../legal/ART-LICENCE.md)) as the base pack is. Its carrier, `web/packs/medieval.pack.js`, is written by
 `tools/pack-carrier.js` like the base pack's ([library.md](./library.md#carriers)), and `index.html`
 loads it after the base pack's. It holds:
 
@@ -502,8 +502,8 @@ loads it after the base pack's. It holds:
 - the cast members `patron.a`, `patron.b` and `patron.c`, the three monarchs of `court.js` written
   as data: each seated on its anchors, its mouth shut and open, and the user's skin, hair and robe
   laid over it as the court lays them, below ([The cast](./cast.md#the-cast-on-the-page));
-- the cast member `foe.goblin`, the goblin of `props.js` written as data: its measures and its six
-  poses, built from ten parts they share, below;
+- the cast member `foe.goblin`, the goblin of `props.js` (the pot-thief, since 0.9.0) written as
+  data: its measures and its six poses, built from ten parts they share, below;
 - the cast member `critter.fly`, the fly of `props.js` written as data: its two frames and the dead
   fly that falls once it is swatted, below;
 - the cast member `pet.cat`, the mouser cat of `cat.js`: its two coats, `calico` and `ginger`, each
@@ -570,8 +570,8 @@ The devices cost, still and moving (the moving part with a lamp of the kind's ow
 against limits of 4 000 fills for a still part and 600 for a moving part with its lamp. The engine's
 own lamp, which no medieval kind uses now, would count toward none of them. The monarchs' still parts cost 5 731 fills (A), 5 582 (B) and
 5 132 (C), against a limit of 16 000, and each mouth 1 fill shut and 16 open, against 400; the
-court counts none of them. The whole file weighs 351 892 bytes, against the 512 KiB a pack may;
-the cat's stamps are 106 KB of it and the lamps' 15 KB. The goblin's poses cost from 2 682 fills (`hit`) to 2 929
+court counts none of them. The whole file weighs 365 312 bytes, against the 512 KiB a pack may;
+the cat's stamps are 106 KB of it and the lamps' 15 KB. The goblin's poses cost from 3 624 fills (`hit`) to 3 867
 (`taunt1`), against a limit of 8 000 for each, its parts included. The fly costs 24 fills in each
 frame and 1 for what falls, against a limit of 200 for each. The cat's poses cost from 621 fills
 (calico, resting) to 1 263 (ginger, the pounce), against a limit of 8 000 for each, and its stamps
@@ -589,7 +589,9 @@ the mouser cat and the redesigned scenes and devices (the crystal in place of th
 ground places along the front of the floor, the crate's stretches), is signed too. Version 0.7.1 changes only the licence line, to the art
 licence, and is signed too. Version 0.8.0, of format `[1, 3]`, gives the smithy its three acts
 (the bellows, the flared fire and the quench, and the hammer's sparks where its face meets the
-blade) and makes it a quiet scene of the preset, and is signed too. A copy changed after signing is refused by a
+blade) and makes it a quiet scene of the preset, and is signed too. Version 0.9.0 redraws the
+goblin as the pot-thief and puts the pack's art under CC BY-SA 4.0; it ships unsigned until its
+signing run. A copy changed after signing is refused by a
 deployed page until its next run: that page draws every scene, every device and the cast, the cat
 included, from code, shows the collector's own quiet line and captions, and keeps `display.css`'s
 colours, while a `dev` page reads it all from the pack.

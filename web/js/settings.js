@@ -24,7 +24,7 @@
       weapon: { values: ['greatsword', 'sword_and_shield', 'longsword', 'mace_and_shield', 'crossbow'], page: 'greatsword' },
       skin: { values: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], long: true, page: 'warm' },
       hair: { values: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'], long: true, page: 'brown' },
-      hair_style: { values: ['short', 'tied', 'curls', 'long', 'close'], page: 'short' },
+      hair_style: { values: ['short', 'tied', 'curls', 'long', 'close', 'buzz'], page: 'short' },
       tabard: { values: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], long: true, page: 'blue' },
       plume: { values: ['red', 'white', 'gold', 'royal', 'green', 'violet'], long: true, page: 'red' },
       shield: { values: ['heater', 'round', 'kite'], page: 'heater' },

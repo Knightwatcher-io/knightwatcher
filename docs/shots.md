@@ -72,7 +72,7 @@ The nine `arm-` shots draw the arming sword and the heater shield (`arm=one`): t
 smithy with the sword on the anvil and the shield on the wall (`arm-update`), the swat to the left
 at the moment the sword passes in front of the shield (`arm-swat-left`), the cellar with the
 crate carried against the chest, at the largest headline (`arm-disk`), and the goblin a
-millisecond after the hit on the battlement (`arm-goblin-bonk`, hit at 1703 ms) and at the camp,
+2 ms after the hit on the battlement (`arm-goblin-bonk`, hit at 1702 ms) and at the camp,
 with the blade over the shield (`arm-goblin-camp-bonk`, hit at 1710 ms), the sword's tapered point
 on the pot. Every other shot but `settings-look` has no `arm=`, so a change to the one-handed look leaves them
 byte for byte the same. A copy of the page from before the hook draws the greatsword in the `arm-`
@@ -132,9 +132,9 @@ crate carried, the smithy's hammering, asleep in bed, the sick tint in bed, the 
 and the court (`on-`); the stance with the sword and shield (`arm-battlement`); the swat on the
 battlement, which is the swing, with each weapon (`swing-two-`, `swing-one-`), both ways at the
 wind-up (q .3), mid cut (q .42) and the cut's end (q .55); the goblin about each weapon's hit on
-that build (`goblin-bonk` at 1660 and 1657 ms, a millisecond after the greatsword's hits, the goblin
-still braced; `arm-goblin-bonk` at 1708 and 1700, after the arming sword's hits of 1707 and
-1699);
+that build (`goblin-bonk` at 1660 and 1657 ms, 1 and 2 ms after the greatsword's hits of 1659 and
+1655, the goblin still braced; `arm-goblin-bonk` at 1708 and 1700, after the arming sword's hits
+of 1706 and 1698);
 and the settings screen's knight page with the build chosen (`settings-knight`), the build chosen by
 the address's `bd=` hook. No other shot has `bd=`, so they change nothing else in a comparison, and
 against a reference from before them they are missing.  The 62 `ref-` shots follow the builds'
@@ -302,9 +302,10 @@ out byte for byte the same, on a busy machine too, apart from the clock when the
 
 The repository's page is a `dev` page, so the screenshots show the knight drawn from the base pack
 and every scene, device and member of the cast drawn from the medieval world's pack, with its words
-and its overlay. A deployed copy draws from each pack while it ships signed, and from code
-otherwise: today the knight from the base pack 1.5.1 and everything else, words and overlay included,
-from the medieval world's pack 0.8.0, both signed.
+and its overlay, signed or not. A deployed copy draws from each pack while it ships signed, and
+from code otherwise: today the base pack 1.6.0 and the medieval world's pack 0.9.0 ship unsigned
+until their signing run, so a deployed copy draws the knight, the scenes, the devices and the cast
+from code and shows the collector's own words meanwhile.
 `shots.sh` shoots only from disk, so to look at a deployed copy and its downloaded packs, serve it
 on the loopback address and point the headless browser at `index.html?demo#<hash>` by hand: `?demo`
 starts the demo at once instead of waiting for a state file, and a served page fetches
@@ -436,3 +437,24 @@ Against a reference from before the choices' even grid on the settings screen, e
 shows choices differs (the grid, the framing of the monarch and of the devices, and the rings at the
 list's left edge no longer clipped), and so do the seven `worldmix-` shots; every other shot is the
 same.
+
+Against a reference from before the hair and goblin redraw (base pack 1.6.0, `kw.medieval` 0.9.0),
+117 of the 294 shots differ and 22 of the 79 of the worlds' set. Every shot of the knight with the
+helmet off in the default look shows the redrawn short crop: the house and the smithy, in bed, sick
+and asleep, the yard with the helm off (`is-house`, `on-sick`, `on-backup`, `on-pi`, `on-update`,
+`on-plex`, `on-night`, `feast`, `helm-off-l`, the house and smithy shots of `arm-`, `bd-`, `ref-`,
+`free-`, `free-crossbow-`, `cat-` and `streams-`, the smithy's acts, and in the worlds' set
+`orbit-fire-house`, `orbit-fire-update` and `orbit-fire-prod-update`). The seven `look-` shots and
+the `free-` shots of the long hair and the close crop show those styles redrawn. Every shot of the
+goblin shows the pot-thief: the seven `goblin-` shots, the `arm-`, `bd-b-` and `bd-c-` bonks, the
+crossbow's goblin shots and `cat-goblin-notice`, and in the worlds' set `orbit-swap-goblin` and the
+`orbit-fire-goblin-` and `orbit-fire-prod-` shots of the goblin. The settings shots of the knight's
+page (`settings-knight`, `settings-look`, `settings-tablet`, the `bd-` and `free-settings-` ones and
+`worldmix-knight`, `-knight-orbit` and `-knight-small`) show a sixth hair style, Buzzcut; the cast's
+page (`cat-settings-` and `worldmix-cast`) the new goblin; `settings-status` and
+`settings-status-world` the packs' versions, unsigned; and `settings-quiet` and
+`settings-scenes-tablet` the knight's crop in the house's and the smithy's thumbnails. The test
+world's Wire tuft is written from the base pack's close crop, so the Orbit shots that show the Unit
+bare-headed differ too (`orbit-devices-bridge`, `orbit-ssh`, `orbit-update`, the `orbit-drone-`
+shots, and the head on the pillow in `orbit-sick` and `orbit-night`). `cat-yard-crate-pounce` and
+`cat-camp-goblin-pounce` change with the time of day the set is taken, against the same tree too.

@@ -62,7 +62,7 @@ A scene is drawn from code when:
 | that scene threw while drawing, in this version of the pack ([When a part throws](#when-a-part-throws)) | `knightwatcher: the scene camp is drawn from code: it threw while drawing: <message>` |
 
 Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn
-from the pack kw.medieval 0.8.0, signed` (or `unsigned`), written with `console.info`; the others
+from the pack kw.medieval 0.9.0, signed` (or `unsigned`), written with `console.info`; the others
 are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
 cellar failing to compile it is `the scenes battlement, camp, yard, smithy, house and court are drawn ...`, after
 the cellar's own line. Of two copies of `kw.medieval` the higher

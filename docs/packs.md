@@ -629,16 +629,18 @@ most 273 apart (the left shoulder and the hammer hand at the anvil). A decoratio
 group's keyframes reach.
 
 The cost is a bound, not a count, worked out at the ends of every value's range, so it is the same
-on every build. The default look costs 13 878 in its heaviest mode (the greatsword, helmet on):
-7506 for the legs, boots, tabard, pauldrons, arms and gauntlets, 1720 for the plume and helmet,
-and 4652 for the greatsword. The body items cost 1946 more than before the three builds (5560 in
-1.2.0), since the tabard's outline and cloth are four pieces each and the greaves and pauldrons
-grow with the build. Drawn through `draw.js` the present knight makes between about 5800 and 6500
-calls in the poses measured, the face included, as before. With the helmet off the head group
-costs 1632; with the sword put away, or at the anvil, the greatsword's 4652 drops out. The look
-with the sword and shield costs 13 981 and draws up to about 7000 calls, the attack the
-heaviest. With the crossbow in place of the greatsword the look costs 13 896: the crossbow held
-costs 4670 and slung 1639, and the larger counts.
+on every build. The default look costs 14 225 in its heaviest mode (the greatsword, helmet off):
+7506 for the legs, boots, tabard, pauldrons, arms and gauntlets, 2067 for the plain head and the
+short crop, and 4652 for the greatsword. The body items cost 1946 more than before the three builds
+(5560 in 1.2.0), since the tabard's outline and cloth are four pieces each and the greaves and
+pauldrons grow with the build. Drawn through `draw.js` the present knight makes between about 5800
+and 6500 calls in the poses measured, the face included, as before. With the helmet on the head
+group costs 1720, the plume and the helmet; until the short crop was redrawn in 1.6.0 (753, where
+it was 318) the helmet-off group cost 1632 and the helmet-on mode was the heaviest, at 13 878. With
+the sword put away, or at the anvil, the greatsword's 4652 drops out. The look with the sword and
+shield costs 14 328 and draws up to about 7000 calls, the attack the heaviest. With the crossbow in
+place of the greatsword the look costs 14 243: the crossbow held costs 4670 and slung 1639, and the
+larger counts.
 
 ## Signing
 

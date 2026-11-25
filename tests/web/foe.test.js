@@ -92,9 +92,13 @@ test('the goblin is described as a foe, and its drawing matches the description'
   }
   const s = stand.fills, top = Math.min(...s.map(r => r[1]));
   assert.ok(Math.abs(ay - top - G.h) <= 2, 'h is the standing height to the top of the pot');
-  // the body at the hem is within w of its middle
+  // the body at the hem is within w of its middle, but for the tunic's flare, 3 past it on the side
+  // the goblin faces, and the sack at its hip, which hangs out to 66 on the far side (w is kept clear
+  // of a device's box; the sack, away from the knight, was measured clear of every device at every
+  // spot of the contact sweep, docs/cast.md)
   const hem = s.filter(r => r[1] <= ay - 40 && r[1] + r[3] > ay - 40);
-  assert.ok(Math.min(...hem.map(r => r[0])) >= ax - G.w - 1 && Math.max(...hem.map(r => r[0] + r[2])) <= ax + G.w + 1);
+  assert.equal(Math.min(...hem.map(r => r[0])), ax - G.w - 3);
+  assert.equal(Math.max(...hem.map(r => r[0] + r[2])), ax + 66);
 });
 
 test('the entrance runs in order, and the poof is over within the event, wherever the knight stands, with either weapon', () => {
@@ -211,10 +215,10 @@ for (const [name, weapon, build, pack] of CONTACT) {
    mace, held in one hand as the arming sword is but met by its drawn head. The poses are the
    present knight's, raised and lowered with each build's shoulders, so the hit moves by a few ms. */
 const HITS = {
-  two: { battlement: [1657, 1659, 1656], camp: [1661, 1663, 1659] },
+  two: { battlement: [1657, 1659, 1655], camp: [1661, 1663, 1659] },
   long: { battlement: [1658, 1661, 1657], camp: [1662, 1664, 1660] },
-  one: { battlement: [1703, 1707, 1699], camp: [1710, 1712, 1710] },
-  mace: { battlement: [1698, 1709, 1684], camp: [1706, 1710, 1703] } };
+  one: { battlement: [1702, 1706, 1698], camp: [1710, 1712, 1709] },
+  mace: { battlement: [1703, 1709, 1690], camp: [1706, 1710, 1702] } };
 
 test('on every build, with each weapon, the goblin comes wherever it does on Classic, and is struck within a few ms of Classic\'s hit', () => {
   // The mace is struck within 16 ms of Classic's hit rather than 12: it meets the goblin at the end
