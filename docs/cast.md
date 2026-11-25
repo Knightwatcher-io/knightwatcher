@@ -105,34 +105,63 @@ so the code's goblin and the pack's never share one. `exit` names one of the eng
 engine has it and by the event's otherwise, so a world chooses an exit and never describes one.
 The code's goblin gives `exit: 'poof'` too.
 
-**The goblin as data.** The measures and the 24 points of the crown are `FOES.goblin`'s as they
-stand. The drawing is `goblinHD` in `props.js` with its numbers counted from the feet, cut into ten
-parts in the order `goblinHD` draws:
+**The goblin as data.** Since `kw.medieval` 0.9.0 the goblin is the pot-thief, which the owner chose
+on 25 November 2026 from a mock-up of three designs: a stocky, cheeky goblin with long pointed ears,
+a big hooked nose with a wart, two small tusks up from an underbite, beady black eyes in shaded
+sockets, a ragged leather tunic with a jagged hem, a stitched seam, a patch and a tear, a belt
+with a gold buckle, leather wraps at the wrists and ankles, three-toed feet, the dented saucepan
+for a helmet and a sack of loot at its hip with a candlestick and a coin poking out. Its measures
+and the 31 points of its crown are `FOES.goblin`'s: `sprite` 256 by 250 with the feet at (128,
+236), `h` 159, `w` 40 and `mid` 80. The crown is read off the brace as painted, at the near ear's
+upper edge every 4 columns, the end of the pot's rim, its rounded corner and top, its handle and
+the far ear. The drawing is `goblinHD` in `props.js` with its numbers counted from the feet, and
+the code is cut into the same parts the pack holds, `GOB_PARTS`, which `goblinHD` draws in the
+order each pose lists them:
 
 | Part | Is | Poses |
 |---|---|---|
-| `arms.hips`, `arms.up`, `arms.ears0`, `arms.ears1`, `arms.flung` | the arms behind the body, as `gArms` draws them: the limbs as strips then discs (`SP.stroke`), the hands | `stand`, `climb`, `taunt0`, `taunt1`, `hit` |
-| `body` | the legs and feet, the tunic, its patch and the rope belt | all |
-| `ears`, `ears.droop`, `ears.limp` | the two ears, lowered by 0, 14 and 16 | `ears` the first four, `ears.droop` `brace`, `ears.limp` `hit` |
-| `head` | the head and its jaw, a spot on the far cheek and the two blushes | all |
+| `arms.hips`, `arms.up`, `arms.ears0`, `arms.ears1`, `arms.flung` | the arms behind the body, as `gArms` draws them: the limbs as strips then discs (`SP.stroke`), a leather wrap on each forearm, the hands | `stand`, `climb`, `taunt0`, `taunt1`, `hit` |
+| `body` | the legs with their knobbly knees, the three-toed feet with their ankle wraps, the tunic, its seam, patch and tear, and the belt and buckle | all |
+| `sack` | the sack at the hip, its tied neck, the candlestick and the coin, the weave, a patch and a highlight | all |
+| `ears`, `ears.droop` | the two ears, the far one 4 lower, lowered by 0 and by 14 | `ears` the first four, `ears.droop` `brace` and `hit` |
+| `head` | the cranium over a wide jaw, a spot on the far cheek, two blushes and a light on the brow | all |
 
-Each pose's own shapes are what changes from one to the next and comes after the head: the eyes,
-the brows, the mouth, the saucepan (6 lower in `hit`), the nose, and in `brace` alone the arms
-clutched in front. The nose is the same in every pose and is written in each, since a pose draws its
-parts before its shapes.
+Each pose's own shapes are what changes from one to the next and come after the head: the eyes,
+the brows, the mouth with its tusks, the nose, the saucepan (6 lower in `hit`), and in `brace`
+alone the arms clutched in front. The nose is the same in every pose and is written in each, since
+a pose draws its parts before its shapes. Each pose costs from 3 624 fills (`hit`) to 3 867
+(`taunt1`), against 8 000.
 
-Three things needed more than writing the numbers out:
+The sack hangs out to 66 from the middle on the side away from the knight, past `w`, which keeps
+the body clear of a device's box. Before choosing `w` the goblin was drawn through its whole event
+at every spot the contact sweep plans, with every combination of the pie and the ground devices in
+each kind that may stand there, and laid on the devices as drawn: the sack touched none, at `w` 40,
+so `w` stays the body's. The only touches are the far ear and the raised hand coming out of the
+camp's hole beside a device on `g2` as it climbs, as the old goblin's did. The tunic's hem flares
+to 43 on the side it faces, 3 past `w`, and touched no device either.
+
+Four things needed more than writing the numbers out:
 
 - each hand's three fingers stand at `Math.sin(a + d) * 9` from the hand, between the eighths a
-  pack's points keep to, and six of their outlines fill pixels no eighth gives. The effect
-  `fingers` draws them, `{ "k": "fx", "fx": "fingers", "p": [-36, -56], "a": 2.6, "r": 4.5, "colour":
-  "@base.k" }` for the outlines and `r` 2.5 in the finger's colour for the fills, around the palm's
-  own two ellipses. `gHand` in `props.js` keeps its own loop, and the records hold the two equal;
-- the inner triangle of each ear has its tip 0.62 of the way to the ear's tip, which is not an
-  eighth. The pack gives the nearest eighths that fill the same pixels with the goblin at its feet,
-  where it is always painted, such as `[-62.25, -123.125]` for `[-62.28, -123.16]`;
-- the shut eyes of `hit` are strips 2.2 either side, which is not an eighth; the pack gives 2.125,
-  which fills the same pixels there.
+  pack's points keep to. The effect `fingers` draws them, `{ "k": "fx", "fx": "fingers", "p":
+  [-38, -52], "a": 2.6, "spread": 0.7, "r": 4.5, "colour": "@base.k" }` for the outlines and `r`
+  2.5 in the arm's colour for the fills, around the palm's own two ellipses. `gHand` in `props.js`
+  keeps its own loop, and the records hold the two equal;
+- the ends of the wrist wraps and the tip of the inner ear lie at fractions no eighth fills alike,
+  so `props.js` keeps them to eighths itself (`e8`), as the pack writes them, and the strip of
+  light along each ear's upper edge ends at an eighth too. Two of the sack's weave lines, at 42.45
+  and 47.55 across, are given the eighths that fill the same pixels with the goblin at its feet,
+  where it is always painted;
+- the mock-up's ears dipped a little along their upper edge, which is not convex, and a pack's
+  polygon must be; each ear and its outline are drawn as their hull, a triangle, in code and pack
+  alike;
+- with the knight at its nearest on the battlement, the hands flung up as it is struck and its ears
+  lowered by 18 met the greatsword's and the longsword's cross in the bounce, past the contact
+  standard ([tests.md](./tests.md#the-contact-standard)); the flung hands stand 4 nearer the body
+  and 4 higher than the mock-up's, and the struck ears droop by 14, as in the brace.
+
+Before 0.9.0 the goblin was 160 tall in a patched sackcloth tunic and a rope belt, in a sprite of
+220 by 230, with ten parts and a crown of 24 points picked by hand.
 
 **A patron** compiles to the interface of `KW.props.PATRONS`: `draw(x, by, look)`, its still parts
 with the seat at `(x, by)`, `mouth(x, by, open, look)`, its state `open` or `shut`, and `drawn`, its

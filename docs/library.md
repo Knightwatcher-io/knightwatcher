@@ -208,9 +208,9 @@ One signature over 500 KiB takes about 15 ms under Node, and one over 15 KiB abo
 
 ### The base pack
 
-`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.5.1,
+`web/packs/base.pack.json` is the base pack the page ships with: id `kw.base`, version 1.6.0,
 format `[1, 2]`, which a weapon that fires needs ([packs.md](./packs.md#weapons-that-fire)).
-Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, two more builds, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), the free items of 1.4.0 (two or three more in every slot a user chooses), the crossbow of 1.5.0, and nothing the display does not draw:
+Whether it ships signed is said under [Where the knight is drawn from](#where-the-knight-is-drawn-from). It holds the present knight, two more builds, the free one-handed sword and shield, the free options every user may choose (skin tone, hair colour, hair style, tabard colour and plume colour), the free items of 1.4.0 (two or three more in every slot a user chooses), the crossbow of 1.5.0, the hair of 1.6.0 (every style redrawn and the buzzcut), and nothing the display does not draw:
 
 - three builds, new in 1.3.0 but for the first, each with the plain head, named as the settings
   screen shows them (differences from Classic in brackets):
@@ -235,10 +235,10 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   heater shield (hold `[0, -6]`, face `[-44, -44, 88, 110]`, 20 shapes worn and 26 in its rest
   view, which hangs it from a nail). The shield's field is painted in the tabard's four colours
   (`@tabard.0` to `@tabard.3`, in the tabard's own bands), so it follows the tabard swatch;
-- two hair styles, new in 1.2.0: `hair.tied` ("Tied back", 29 shapes), swept back from the face and
-  gathered into a tail that falls behind the left ear (the viewer's left, clear of the greatsword),
-  with a `helmeted` view of 10 shapes in which the tail shows below the helmet; and `hair.curls`
-  ("Curls", 27 shapes), a round crown of curls with no `helmeted` view, since none of it shows
+- two hair styles, new in 1.2.0 and redrawn in 1.6.0 (below): `hair.tied` ("Tied back"), swept back
+  from the face and gathered into a tail that falls behind the left ear (the viewer's left, clear
+  of the greatsword), with a `helmeted` view in which the tail shows below the helmet; and
+  `hair.curls` ("Curls"), a round crown of curls with no `helmeted` view, since none of it shows
   under the helmet. Their offsets at the sides of the head lean on `dHead`, as the helmet's do;
 - six swatches in each of the four user sets, in the order a settings screen should list them,
   today's among them and the defaults:
@@ -285,8 +285,8 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   | | `boots.shoes` | Turnshoes | 12 | 260 |
   | `back` | `back.cloak` | Long cloak | 6 | 1 110 |
   | | `back.cape` | Short cape | 6 | 748 |
-  | `hair` | `hair.long` | Long, with a `helmeted` view | 18 | 1 166 |
-  | | `hair.close` | Close crop | 9 | 181 |
+  | `hair` | `hair.long` | Long, with a `helmeted` view (as redrawn in 1.6.0, below) | 49 | 3 434 |
+  | | `hair.close` | Close crop (as redrawn in 1.6.0, below) | 36 | 471 |
 
   Each is one drawing for all three builds, fitted as the base pack's own items are: every width
   that meets the body leans on `dShoulder`, `dChest`, `dWaist`, `dHip`, `dLeg` or `dHeight` and on
@@ -314,12 +314,30 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   slung at 1 639, 45 at 6 309 together; a look counts the larger. The owner approved it from a
   mock-up of three designs, and it is kept as approved in `tests/web/fixtures/base-crossbow.json`.
   The settings call it `crossbow`, and it carries no shield;
+- the hair of 1.6.0: every style redrawn with more detail, each keeping its silhouette, and a sixth,
+  the buzzcut, `hair.buzz` ("Buzzcut"). The owner approved them from a mock-up on 25 November 2026.
+  Each is shaded in the hair swatch's three bands lit from the left, with locks or strands, a sheen
+  of the light band on the lit side, a glint (the one colour of its own, white at 0.4) and a
+  hairline where the hair meets the forehead; the tie of the tied hair is the base palette's
+  leather. Shapes and costs, worn and with the `helmeted` view (before the redraw in brackets):
+
+  | Item | Name | Drawn | Shapes | Cost |
+  |---|---|---|---|---|
+  | `hair.short` | Short crop | the cap stopping above the brow in seven pointed locks, skin between their tips, lock lines from the crown, short sideburns, two small locks standing up at the crown | 41 (8) | 753 (318) |
+  | `hair.tied` | Tied back | combed back from a hairline with a small peak, the tail a braid with a tufted end and the leather tie, under the helmet too | 51 + 18 (29 + 10) | 1 602 + 632 (895 + 272) |
+  | `hair.curls` | Curls | the same mop in sixteen smaller curls, each a coil, those along the brow hanging lowest | 83 (27) | 1 915 (724) |
+  | `hair.long` | Long | parted in the middle, the fringe swept to either side, each curtain three pointed locks, under the helmet too | 31 + 18 (14 + 4) | 2 566 + 868 (914 + 252) |
+  | `hair.close` | Close crop | a short lighter lock flicked up at the front and the texture of clipped hair in small strokes | 36 (9) | 471 (181) |
+  | `hair.buzz` | Buzzcut | stubble in the skull itself, two `pix` shapes of 51 by 46 painting 1 636 pixels: dots of the mid and dark bands thinning to a dotted hairline, a lit patch on the upper left, nothing above the skull's outline | 2 | 1 022 |
+
+  As before, only the tied and the long hair show under a helmet. The settings call the buzzcut
+  `buzz`; the format is unchanged;
 - one palette set of its own, new in 1.4.0, `cloth`, with the grey-violet wool of the padded hose
   and the turnshoes: `wool0` `#8a7f95`, `wool1` `#625a70`, `wool2` `#423c50`. `provides` lists
   `palettes` with it;
 - `defaults` naming the build `build.a`, the greatsword and the eleven others and today's swatches
   (skin `warm`, hair `brown`, tabard `blue`, plume `red`), so the default look is the present
-  knight; nothing names the sword and shield, the new options, the free items or the crossbow until
+  knight, with the short crop as redrawn in 1.6.0; nothing names the sword and shield, the new options, the free items or the crossbow until
   a look asks for them, and nothing is on the back. It has no decorations.
 
 **The eye of the watch** on the tabard and on the shield, worn and at rest, is gold with a white
@@ -359,30 +377,38 @@ below each build's own shoulders ([rig.md](./rig.md#anchors-values-and-poses)).
 The helmet and the plume carry the rest views of the helmet on the house's stool, and the
 greatsword its `blade`, `{"from": 34, "to": 263, "half": 15}`, for the smithy's hot tip; see [Gear
 at rest](#gear-at-rest). The eleven items and today's swatches are the test fixture's, unchanged
-apart from the iris and the three items fitted to the builds; the fixture also carries extras the
+apart from the iris and the three items fitted to the builds (the fixture follows `knight.js`, so
+it holds the short crop of 1.6.0 too); the fixture also carries extras the
 tests need (a second build of its own, long hair, a smaller arming sword of its own, a round
 shield, a pennant and a lantern). The one-handed items are kept, as approved, in
-`tests/web/fixtures/base-onehand.items.json`, the free options (the twenty new swatches and the two
-hair styles) in `tests/web/fixtures/base-options.json`, and the three builds with their names and
-the three fitted items in `tests/web/fixtures/base-builds.json`, and the free items of 1.4.0 with
-the wool in `tests/web/fixtures/base-free-items.json`, copied from the approved trial pack. The
-default look costs 13 878 and draws at most 105 shapes; the look with the sword and shield draws
-at most 125, and with the crossbow 116 at a cost of 13 896. Neither colours nor the build change the cost, so every look's cost depends on its
-items alone. Of the looks before 1.4.0 the heaviest is the tied hair with the sword and shield:
-135 shapes, cost 14 470. With the free items the costliest look takes the costliest item of every
-slot: the mace and the kite shield with the bascinet and its tall feather, the tied hair, the
-breastplate, the layered spaulders, the mail sleeves and chausses, the plate gauntlets, the
-turnshoes and the long cloak, 201 shapes at a cost of 20 493, and with the longsword in place of
-the mace and shield 188 shapes at 19 721, against the caps of 1200 and 40 000. No look of the
+`tests/web/fixtures/base-onehand.items.json`, the free options (the twenty new swatches) and the
+hair of 1.6.0 (the tied hair, the curls and the buzzcut) in
+`tests/web/fixtures/base-options.json`, and the three builds with their names and the three fitted
+items in `tests/web/fixtures/base-builds.json`, and the free items of 1.4.0 with the wool in
+`tests/web/fixtures/base-free-items.json`, copied from the approved trial pack, with the long and
+close hair as redrawn in 1.6.0. The default look costs 14 225 and draws at most 121 shapes; since
+the short crop was redrawn its head group with the helmet off, 2 067, is the larger of the two
+head groups (it was 13 878 and 105 before). The look with the sword and shield draws at most 141
+at a cost of 14 328, and with the crossbow 132 at a cost of 14 243. Neither colours nor the build
+change the cost, so every look's cost depends on its items alone. Of the looks of the first three
+hair styles and the buzzcut with either of the first two weapons, the heaviest is the curls with
+the sword and shield: 183 shapes, cost 15 490 (before the redraw the tied hair, 135 and 14 470).
+With the free items the costliest look takes the costliest item of every slot: the mace and the
+kite shield with the bascinet and its tall feather, the long hair, the breastplate, the layered
+spaulders, the mail sleeves and chausses, the plate gauntlets, the turnshoes and the long cloak,
+209 shapes at a cost of 21 400, and with the longsword in place of the mace and shield 196 shapes
+at 20 628, against the caps of 1200 and 40 000. No look of the
 base pack's items falls back on any build.
 
 ### The medieval world's pack
 
 `web/packs/medieval.pack.json` is the second pack the page ships with: id `kw.medieval`, format
-`[1, 3]`, version 0.8.0. Versions 0.1.0 (the cellar alone) to 0.7.0, which adds the mouser cat and
+`[1, 3]`, version 0.9.0. Versions 0.1.0 (the cellar alone) to 0.7.0, which adds the mouser cat and
 the redesigned scenes and devices, and version 0.7.1, which changes only the
 licence line, are signed with `kw1`; version 0.8.0, which gives the smithy its three acts (format
-1.3's bellows and quench) and makes it a quiet scene of the preset, is signed with `kw1` too. It holds every scene as data, the three
+1.3's bellows and quench) and makes it a quiet scene of the preset, is signed with `kw1` too.
+Version 0.9.0, which redraws the goblin as the pot-thief and puts the pack under CC BY-SA 4.0,
+ships unsigned until its signing run. It holds every scene as data, the three
 monarchs, the goblin, the fly and the mouser cat as its cast, the devices as the prop set
 `props.medieval`, the word set `words.medieval`, the overlay `overlay.phosphor`, the preset
 `world.medieval`, the stamps the scenes and devices use (the sconce, the barrel, the house's peg and
@@ -392,7 +418,7 @@ page draws those scenes, devices and the cast from it, builds the quiet line and
 words and takes the colours of the words over the scene from its overlay, on a `dev` page, and on a
 deployed page while it is signed; a copy changed after signing is refused by a deployed page, which
 shows the collector's own words in `display.css`'s colours. Its preset is the page's own level of
-the settings ([display.md](./display.md#worlds)). It weighs 352 KB of the 512 KiB a pack may, 106 KB
+the settings ([display.md](./display.md#worlds)). It weighs 365 KB of the 512 KiB a pack may, 106 KB
 of it the cat's stamps and 15 KB the lamps' stamps. [worlds.md](./worlds.md) describes it, the scene
 compiler that reads it, and how its scenes are held equal to the code's.
 
@@ -463,12 +489,13 @@ knight reads every carried text, so while `kw.medieval` ships unsigned (between 
 signature step: sig: is missing, and this page accepts only signed packs`). Where the scenes are
 drawn from is the scene compiler's to say, in a line of its own ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)).
 
-**Today the base pack, version 1.5.1, is signed** with `kw1` (see
-[development.md](./development.md#signing-the-packs)). Signed, a deployed page draws the knight
-from it as a `dev` page does, in every build and with every item. A version changed after signing
-ships unsigned until the next signing run: meanwhile a `dev` page still draws from it, and a deployed
+**Today the base pack, version 1.6.0, ships unsigned** until its signing run (see
+[development.md](./development.md#signing-the-packs)); version 1.5.1 was signed with `kw1`. Signed,
+a deployed page draws the knight from it as a `dev` page does, in every build and with every item.
+A version changed after signing ships unsigned until the next signing run: meanwhile a `dev` page still draws from it, and a deployed
 page refuses it at the `signature` step and draws the knight from the code in `knight.js`, the
-full knight as it shipped before packs, which looks the same as the default look (see
+full knight as it shipped before packs, which looks the same as the default look, the short crop
+of 1.6.0 among it (see
 [When packs fail](#when-packs-fail)).
 From code the knight always holds the greatsword and is always Classic, and the settings screen
 says the knight is drawn from code.
@@ -478,8 +505,8 @@ refused pack, and one line, `console.info` for the base pack and `console.warn` 
 time the source changes:
 
 ```
-knightwatcher: the knight is drawn from the base pack kw.base 1.5.1, signed
-knightwatcher: the knight is drawn from the base pack kw.base 1.5.1, unsigned
+knightwatcher: the knight is drawn from the base pack kw.base 1.6.0, signed
+knightwatcher: the knight is drawn from the base pack kw.base 1.6.0, unsigned
 knightwatcher: the pack kw.base was refused at the signature step: sig: is missing, and this page accepts only signed packs
 knightwatcher: the knight is drawn from code: the base pack kw.base was refused at the signature step
 ```
