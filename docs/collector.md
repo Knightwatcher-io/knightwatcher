@@ -259,7 +259,8 @@ readings start again, and until its first read its machines count as not read. L
 
 Each entry of `[[sources.usage]]` ([configuration.md](./configuration.md#machines-under-strain)) is
 a source of its own, `usage:<name>`, read at its own pace (every 30 seconds by default) through the
-usage kind (`collector/kinds/usage.py`): a provider file of the kind, or with `from = "json"` the
+usage kind (`collector/kinds/usage.py`): a provider file of the kind (`prometheus`,
+`prometheus_basic`, `beszel`, `glances` and `glances_basic` are built in), or with `from = "json"` the
 generic source, which is compiled in memory into a provider file of one GET to the entry's address,
 as a check of `[[sources.json]]` is, its `cpu` and `memory` paths filling one machine. A provider
 gives, for CPU and for memory, one item for each machine it reads: the figure in percent (a
@@ -516,7 +517,7 @@ a file fail2ban replaces is read afresh.
 | `[sources.security]` | security | `fail2ban` by default, or a file of the user's own | `fail2ban` (a code adapter) |
 | `[sources.sonarr]`, `[sources.radarr]`, `[sources.lidarr]` | imports | none: each reads the provider of its own name | `sonarr`, `radarr`, `lidarr` |
 | each entry of `[[sources.imports]]` | imports | required, any provider of the kind, a file of the user's own included | `sonarr`, `radarr`, `lidarr` |
-| each entry of `[[sources.usage]]` | usage | required: a provider file of the user's own of the kind, or `json`, which compiles the entry into a provider of its own | none |
+| each entry of `[[sources.usage]]` | usage | required: any provider of the kind, a file of the user's own included, or `json`, which compiles the entry into a provider of its own | `prometheus`, `prometheus_basic`, `beszel`, `glances`, `glances_basic` |
 | each entry of `[[sources.json]]` | check | none: the entry is compiled into a provider of its own | none |
 
 An entry of a list of tables under `[sources]` is the source `<list>:<name>`, `imports:sonarr-4k`

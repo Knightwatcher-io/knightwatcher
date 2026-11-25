@@ -1,0 +1,52 @@
+# The CPU and memory of the systems a Beszel hub watches, from its systems collection, read as a
+# user of the hub's users collection with the systems shared with it, never a superuser. Beszel's
+# hub is PocketBase: one login hands out a token, which goes in the Authorization header as it is.
+# Each machine is a system's name, matched against the id of each machine the entry lists. Only a
+# system that is up is read, since one that is not keeps the figures of its last contact. info.cpu
+# is all but idle and iowait, and info.mp is used over total, used being total less available. The
+# hub asks each agent every 60 seconds. Beszel's API may change in a minor release; this file was
+# written from Beszel 0.21.2.
+format = 1
+id = "beszel"
+kind = "usage"
+name = "Beszel"
+docs = "https://beszel.dev/guide/rest-api"
+
+[credentials]
+username = "The email of a Beszel user the watched systems are shared with; not a superuser."
+password = "That user's password."
+
+# A wrong email or password is answered 400 ("Failed to authenticate."), not 401: refused makes it
+# refused credentials, with the back-off, rather than a failed login at every read. The reply
+# gives no lifetime, so the token is kept until it is refused.
+[auth]
+method = "session"
+login = { path = "/api/collections/users/auth-with-password", json = { identity = "{credential.username}", password = "{credential.password}" } }
+sid = "$.token"
+send = { header = "Authorization" }
+statuses = { 400 = "Beszel refused the email or password", 404 = "not a Beszel hub" }
+not_json = "not a Beszel hub"
+refused = [400]
+
+# A read without a valid token is answered as a guest's: 200, and no systems. So no systems at all
+# is refused credentials (after one fresh login, when the token is from an earlier read), as it is
+# for a user with no systems shared, rather than read as no machines.
+[[request]]
+path = "/api/collections/systems/records"
+query = { fields = "name,status,info", perPage = "500", skipTotal = "true" }
+statuses = { 404 = "not a Beszel hub" }
+not_json = "not a Beszel hub"
+require = [
+  { path = "$.items", type = "list", message = "not a Beszel hub" },
+  { path = "$.items[0]", present = true, message = "Beszel lists no systems", auth = { path = "$.page", equals = 1, message = "Beszel lists no systems for this user: a wrong login, or none shared with it" } },
+]
+
+[fill.cpu]
+each = "$.items[?@.status == 'up']"
+vars = { machine = { path = "$.name", type = "string" }, pct = "$.info.cpu" }
+fields = { machine = "machine", pct = "pct" }
+
+[fill.memory]
+each = "$.items[?@.status == 'up']"
+vars = { machine = { path = "$.name", type = "string" }, pct = "$.info.mp" }
+fields = { machine = "machine", pct = "pct" }

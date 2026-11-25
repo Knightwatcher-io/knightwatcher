@@ -1,0 +1,165 @@
+{
+ "about": "A login, then one read of the systems collection with the token in Authorization as it is: only the systems that are up are read. Shapes of Beszel 0.21.2 (tools/throwaway/usage.sh), every value invented.",
+ "settings": {},
+ "credentials": [
+  "username",
+  "password"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "POST",
+    "path": "/api/collections/users/auth-with-password",
+    "headers": {
+     "Content-Type": "application/json"
+    },
+    "json": {
+     "identity": "{credential.username}",
+     "password": "{credential.password}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "record": {
+      "avatar": "",
+      "collectionId": "_pb_users_auth_",
+      "collectionName": "users",
+      "created": "2026-01-10 09:00:00.000Z",
+      "email": "watcher@example.com",
+      "emailVisibility": false,
+      "id": "u0000000000001",
+      "name": "",
+      "role": "readonly",
+      "updated": "2026-01-10 09:00:00.000Z",
+      "username": "watcher",
+      "verified": true
+     },
+     "token": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InUwMSJ9.c2lnbmF0dXJlLWludmVudGVk"
+    }
+   }
+  },
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/collections/systems/records?fields=name%2Cstatus%2Cinfo&perPage=500&skipTotal=true",
+    "headers": {
+     "Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InUwMSJ9.c2lnbmF0dXJlLWludmVudGVk"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "page": 1,
+     "perPage": 500,
+     "totalItems": -1,
+     "totalPages": -1,
+     "items": [
+      {
+       "name": "nas-01",
+       "status": "up",
+       "info": {
+        "cpu": 41.3,
+        "mp": 93.4,
+        "dp": 28.4,
+        "v": "0.21.2",
+        "bb": 0,
+        "la": [
+         1.2,
+         0.9,
+         0.7
+        ],
+        "u": 1013760,
+        "t": 16,
+        "ct": 1,
+        "dt": 41.5
+       }
+      },
+      {
+       "name": "buildbox",
+       "status": "up",
+       "info": {
+        "cpu": 97.0,
+        "mp": 52.8,
+        "dp": 28.4,
+        "v": "0.21.2",
+        "bb": 0,
+        "la": [
+         1.2,
+         0.9,
+         0.7
+        ],
+        "u": 1013760,
+        "t": 16,
+        "ct": 1,
+        "dt": 41.5
+       }
+      },
+      {
+       "name": "old-laptop",
+       "status": "down",
+       "info": {
+        "cpu": 0,
+        "mp": 0,
+        "dp": 28.4,
+        "v": "0.21.2",
+        "bb": 0,
+        "la": [
+         1.2,
+         0.9,
+         0.7
+        ],
+        "u": 1013760,
+        "t": 16,
+        "ct": 1,
+        "dt": 41.5
+       }
+      },
+      {
+       "name": "spare",
+       "status": "paused",
+       "info": {
+        "cpu": 12.0,
+        "mp": 30.0,
+        "dp": 28.4,
+        "v": "0.21.2",
+        "bb": 0,
+        "la": [
+         1.2,
+         0.9,
+         0.7
+        ],
+        "u": 1013760,
+        "t": 16,
+        "ct": 1,
+        "dt": 41.5
+       }
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "fill": {
+  "cpu": [
+   {
+    "machine": "nas-01",
+    "pct": 41.3
+   },
+   {
+    "machine": "buildbox",
+    "pct": 97.0
+   }
+  ],
+  "memory": [
+   {
+    "machine": "nas-01",
+    "pct": 93.4
+   },
+   {
+    "machine": "buildbox",
+    "pct": 52.8
+   }
+  ]
+ }
+}

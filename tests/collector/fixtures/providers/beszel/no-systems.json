@@ -1,0 +1,66 @@
+{
+ "about": "A user with no systems shared, or a read Beszel takes for a guest's: 200 and no items. Refused credentials, not no machines.",
+ "settings": {},
+ "credentials": [
+  "username",
+  "password"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "POST",
+    "path": "/api/collections/users/auth-with-password",
+    "headers": {
+     "Content-Type": "application/json"
+    },
+    "json": {
+     "identity": "{credential.username}",
+     "password": "{credential.password}"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "record": {
+      "avatar": "",
+      "collectionId": "_pb_users_auth_",
+      "collectionName": "users",
+      "created": "2026-01-10 09:00:00.000Z",
+      "email": "watcher@example.com",
+      "emailVisibility": false,
+      "id": "u0000000000001",
+      "name": "",
+      "role": "readonly",
+      "updated": "2026-01-10 09:00:00.000Z",
+      "username": "watcher",
+      "verified": true
+     },
+     "token": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InUwMSJ9.c2lnbmF0dXJlLWludmVudGVk"
+    }
+   }
+  },
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/collections/systems/records?fields=name%2Cstatus%2Cinfo&perPage=500&skipTotal=true",
+    "headers": {
+     "Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InUwMSJ9.c2lnbmF0dXJlLWludmVudGVk"
+    }
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "page": 1,
+     "perPage": 500,
+     "totalItems": -1,
+     "totalPages": -1,
+     "items": []
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "Beszel lists no systems for this user: a wrong login, or none shared with it"
+ }
+}

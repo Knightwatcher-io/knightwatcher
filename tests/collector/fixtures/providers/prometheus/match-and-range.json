@@ -1,0 +1,79 @@
+{
+ "about": "The settings match and range, set on the entry, in both queries.",
+ "settings": {
+  "match": "job=\"node\"",
+  "range": "5m"
+ },
+ "credentials": [],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/query?query=100+%2A+%281+-+sum+by+%28instance%29+%28rate%28node_cpu_seconds_total%7Bmode%3D~%22idle%7Ciowait%22%2Cjob%3D%22node%22%7D%5B5m%5D%29%29+%2F+count+by+%28instance%29+%28node_cpu_seconds_total%7Bmode%3D%22idle%22%2Cjob%3D%22node%22%7D%29%29",
+    "headers": {}
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "status": "success",
+     "data": {
+      "resultType": "vector",
+      "result": [
+       {
+        "metric": {
+         "instance": "192.0.2.40:9100"
+        },
+        "value": [
+         1768510800.123,
+         "12.5"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/query?query=100+%2A+%281+-+node_memory_MemAvailable_bytes%7Bjob%3D%22node%22%7D+%2F+node_memory_MemTotal_bytes%7Bjob%3D%22node%22%7D%29",
+    "headers": {}
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "status": "success",
+     "data": {
+      "resultType": "vector",
+      "result": [
+       {
+        "metric": {
+         "instance": "192.0.2.40:9100",
+         "job": "node"
+        },
+        "value": [
+         1768510800.123,
+         "40"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  }
+ ],
+ "fill": {
+  "cpu": [
+   {
+    "machine": "192.0.2.40:9100",
+    "pct": "12.5"
+   }
+  ],
+  "memory": [
+   {
+    "machine": "192.0.2.40:9100",
+    "pct": "40"
+   }
+  ]
+ }
+}

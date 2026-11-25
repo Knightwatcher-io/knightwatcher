@@ -1,0 +1,22 @@
+{
+ "about": "Glances 3, whose API is at /api/3: 404 for /api/4. The page's shape is not confirmed; only the status matters.",
+ "settings": {},
+ "credentials": [],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/4/quicklook",
+    "headers": {}
+   },
+   "reply": {
+    "status": 404,
+    "body": "<h1>Not Found</h1>"
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "not Glances 4: its API is at /api/4 since version 4"
+ }
+}

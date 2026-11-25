@@ -270,8 +270,11 @@ class ConfigTest(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            self.problems({**entry(), "from": "beszel"}),
-            ['sources.usage[0].from: unknown provider "beszel"; use fleet, json or solo'],
+            self.problems({**entry(), "from": "zabbix"}),
+            [
+                'sources.usage[0].from: unknown provider "zabbix"; use beszel, fleet, glances, '
+                "glances_basic, json, prometheus, prometheus_basic or solo"
+            ],
         )
 
     def test_a_header_reads_its_value_under_the_entrys_name(self):
@@ -661,3 +664,69 @@ class CommandLineTest(unittest.TestCase):
         c = config(entry())
         listed, imports, checks = heartbeat.sources_of(c)
         self.assertEqual((listed, imports, checks), (["usage:json"], 0, 0))
+
+
+class BuiltInProvidersTest(unittest.TestCase):
+    """The built-in providers of the usage kind, as config.toml chooses them."""
+
+    def test_which_read_several_machines(self):
+        several = {
+            "name": "s",
+            "url": "http://192.0.2.5:9090",
+            "machines": [{"id": "a", "name": "NAS"}],
+        }
+        one = {"name": "o", "url": "http://192.0.2.6:61208", "machines": [{"name": "NAS"}]}
+        env = {
+            f"KW_{pid.upper()}_{field.upper()}": "x"
+            for pid in ("beszel", "prometheus_basic", "glances_basic")
+            for field in ("username", "password")
+        }
+        for pid in ("prometheus", "prometheus_basic", "beszel"):
+            self.assertIn("usage:s", config({**several, "from": pid}, env=env).sources, pid)
+            with self.assertRaises(ConfigError) as cm:
+                config({**one, "from": pid}, env=env)
+            self.assertEqual(
+                cm.exception.problems,
+                [f"sources.usage[0].machines[0].id: required, since {pid} reads several machines"],
+            )
+        for pid in ("glances", "glances_basic"):
+            self.assertIn("usage:o", config({**one, "from": pid}, env=env).sources, pid)
+            with self.assertRaises(ConfigError) as cm:
+                config({**several, "from": pid}, env=env)
+            self.assertEqual(
+                cm.exception.problems,
+                [f"sources.usage[0].machines[0].id: not used, since {pid} reads one machine"],
+            )
+
+    def test_prometheus_takes_match_and_range(self):
+        entry_ = {"name": "p", "from": "prometheus", "url": "http://192.0.2.5:9090",
+                  "machines": [{"id": "192.0.2.40:9100", "name": "NAS"}]}  # fmt: skip
+        c = config({**entry_, "match": 'job="node"', "range": "5m"})
+        s = c.sources["usage:p"]
+        self.assertEqual((s["match"], s["range"]), ('job="node"', "5m"))
+        # Left out, it is not set here: the engine takes the file's default.
+        self.assertNotIn("match", config(entry_).sources["usage:p"])
+        with self.assertRaises(ConfigError) as cm:
+            config({**entry_, "from": "glances", "machines": [{"name": "NAS"}], "match": "x"})
+        self.assertEqual(cm.exception.problems, ["sources.usage[0].match: not used by glances"])
+
+    def test_the_credentials_each_reads(self):
+        for pid, fields in (
+            ("prometheus", []),
+            ("prometheus_basic", ["username", "password"]),
+            ("beszel", ["username", "password"]),
+            ("glances", []),
+            ("glances_basic", ["username", "password"]),
+        ):
+            several = pid.startswith(("prometheus", "beszel"))
+            machine = {"id": "a", "name": "NAS"} if several else {"name": "NAS"}
+            given = {"name": "x", "from": pid, "url": "http://192.0.2.5", "machines": [machine]}
+            if not fields:
+                self.assertEqual(config(given).secret("usage:x"), {})
+                continue
+            with self.assertRaises(ConfigError) as cm:
+                config(given)
+            self.assertEqual(
+                cm.exception.problems,
+                [f".env: KW_{pid.upper()}_{f.upper()} missing (for usage:x)" for f in fields],
+            )

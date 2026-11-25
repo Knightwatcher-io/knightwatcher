@@ -140,6 +140,13 @@ class Session:
     statuses: dict
     not_json: str | None
     require: tuple  # of Require, checked on the login's reply
+    # Statuses of the login, beyond 401, 403 and 429, that are refused credentials: 400 alone,
+    # for a service that answers a wrong password so (PocketBase, under Beszel).
+    refused: frozenset = frozenset()
+
+
+# The statuses [auth] refused may add to those a login always counts as refused.
+REFUSABLE = (400,)
 
 
 @dataclass(frozen=True)
@@ -454,7 +461,7 @@ def _auth(c: _Checker, table: Any, spaces: dict) -> Basic | Session | None:
 
 
 _SESSION_KEYS = ("method", "login", "sid", "valid_s", "send", "logout", "statuses", "not_json")
-_SESSION_KEYS += ("require",)
+_SESSION_KEYS += ("require", "refused")
 
 
 def _session(c: _Checker, table: dict, spaces: dict) -> Session | None:
@@ -504,10 +511,27 @@ def _session(c: _Checker, table: dict, spaces: dict) -> Session | None:
     statuses = _statuses(c, "auth.statuses", table.get("statuses", {}))
     not_json = c.text("auth.not_json", table["not_json"]) if "not_json" in table else None
     require = _require(c, "auth.require", table.get("require", []))
+    refused = table.get("refused", [])
+    ok = isinstance(refused, list) and all(
+        isinstance(s, int) and not isinstance(s, bool) and s in REFUSABLE for s in refused
+    )
+    if not ok:
+        c.bad("auth.refused", f"a list of the statuses {', '.join(map(str, REFUSABLE))} alone")
     if len(c.problems) > before or login is None or sid is None:
         return None
     return Session(
-        login, body, body_text, sid, valid_s, header, query, logout, statuses, not_json, require
+        login,
+        body,
+        body_text,
+        sid,
+        valid_s,
+        header,
+        query,
+        logout,
+        statuses,
+        not_json,
+        require,
+        frozenset(refused),
     )
 
 

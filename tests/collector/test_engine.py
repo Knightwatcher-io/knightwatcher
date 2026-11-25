@@ -635,6 +635,58 @@ class SessionTest(unittest.TestCase):
             self.assertEqual((str(cm.exception), cm.exception.status), (said, status))
         self.assertNotIn(("GET", "/stats"), self.methods())
 
+    def test_a_login_answered_400_is_refused_credentials_only_when_the_file_says(self):
+        self.http.routes["POST /api/auth"] = (400, {"message": "Failed to authenticate."})
+        with self.assertRaises(SourceError) as cm:
+            self.make().read(T0)
+        self.assertNotIsInstance(cm.exception, AuthError)
+        self.assertEqual(str(cm.exception), "HTTP 400")
+        with self.assertRaises(AuthError) as cm:
+            self.make(session_file(refused=[400])).read(T0)
+        self.assertEqual(
+            (str(cm.exception), cm.exception.status), ("HTTP 400: credentials refused", 400)
+        )
+        data = session_file(refused=[400], statuses={"400": "email or password refused"})
+        with self.assertRaises(AuthError) as cm:
+            self.make(data).read(T0)
+        self.assertEqual(str(cm.exception), "email or password refused")
+        # Only the login: a request answered 400 is an ordinary failure.
+        self.http.routes["POST /api/auth"] = (200, {"session": {"sid": SID}})
+        self.http.routes["/stats"] = (400, {})
+        with self.assertRaises(SourceError) as cm:
+            self.make(session_file(refused=[400])).read(T0)
+        self.assertNotIsInstance(cm.exception, AuthError)
+
+    def test_a_reply_a_require_reads_as_refused_logs_in_again_once(self):
+        # As Beszel answers a read it takes for a guest's: 200, and nothing listed.
+        auth = {"path": "$.page", "equals": 1, "message": "nothing for this user"}
+        require = [{"path": "$.blocked", "present": True, "message": "nothing", "auth": auth}]
+        data = session_file(require=None)
+        data["auth"].pop("require")
+        data["request"][0]["require"] = require
+        p = self.make(data)
+        p.read(T0)
+        self.known.clear()
+
+        def guest(handler):
+            if handler.headers.get("X-FTL-SID") in self.known:
+                return {"blocked": 3, "page": 1}
+            return {"page": 1}
+
+        self.http.routes["/stats"] = (200, guest)
+        self.assertEqual(p.read(T0), {"blocked": 3})
+        self.assertEqual(
+            self.methods()[2:], [("GET", "/stats"), ("POST", "/api/auth"), ("GET", "/stats")]
+        )
+        # Still nothing after a fresh login: refused credentials, not tried a third time.
+        self.http.routes["/stats"] = (200, {"page": 1})
+        with self.assertRaises(AuthError) as cm:
+            p.read(T0)
+        self.assertEqual(str(cm.exception), "nothing for this user")
+        self.assertEqual(
+            self.methods()[5:], [("GET", "/stats"), ("POST", "/api/auth"), ("GET", "/stats")]
+        )
+
     def test_a_login_not_found_or_not_json_takes_the_files_words(self):
         old = "not version 6 (version 5 is not supported)"
         data = session_file(statuses={"404": old}, not_json=old)

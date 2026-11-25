@@ -1,0 +1,22 @@
+{
+ "about": "A Prometheus whose web config asks for basic credentials, read with none: 401, refused credentials (prometheus_basic is the provider for it).",
+ "settings": {},
+ "credentials": [],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/query?query=100+%2A+%281+-+sum+by+%28instance%29+%28rate%28node_cpu_seconds_total%7Bmode%3D~%22idle%7Ciowait%22%2Cjob%21%3D%22%22%7D%5B2m%5D%29%29+%2F+count+by+%28instance%29+%28node_cpu_seconds_total%7Bmode%3D%22idle%22%2Cjob%21%3D%22%22%7D%29%29",
+    "headers": {}
+   },
+   "reply": {
+    "status": 401,
+    "body": "Unauthorized\n"
+   }
+  }
+ ],
+ "error": {
+  "auth": true,
+  "message": "HTTP 401: credentials refused"
+ }
+}

@@ -1,0 +1,27 @@
+# One machine's CPU and memory, from Glances 4's quicklook, which gives both in one reply. Each
+# entry reads one Glances, so it lists one machine, with no id. cpu is psutil's cpu_percent since
+# the previous call by any client, which counts iowait as idle as this host's figure does; mem is
+# total less available over total. Both are percentages.
+format = 1
+id = "glances"
+kind = "usage"
+name = "Glances 4"
+docs = "https://glances.readthedocs.io/en/latest/api/restful.html"
+
+[[request]]
+path = "/api/4/quicklook"
+statuses = { 404 = "not Glances 4: its API is at /api/4 since version 4" }
+not_json = "not Glances's API"
+require = [
+  { path = "$.cpu", type = "number", message = "not Glances 4: its quicklook gives no cpu" },
+]
+
+[fill.cpu]
+each = "$"
+vars = { pct = "$.cpu" }
+fields = { pct = "pct" }
+
+[fill.memory]
+each = "$"
+vars = { pct = "$.mem" }
+fields = { pct = "pct" }
