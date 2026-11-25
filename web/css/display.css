@@ -13,6 +13,17 @@ body { display: flex; flex-direction: column; font: 13px/1.4 -apple-system, "Seg
 .rv button { font: inherit; border: 1px solid #a9a49a; background: #fff; color: #1d1d1f; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
 .rv button[aria-pressed="true"] { background: #1d1d1f; color: #fff; border-color: #1d1d1f; }
 .rv button:focus-visible { outline: 2px solid #2563d9; outline-offset: 1px; }
+.rv button:disabled { opacity: .45; cursor: default; }
+/* The Devices panel (demo.js): a row of its own, each device a chip of its kind, its name, Down and
+   Remove. A device set down has a red edge, as its question mark is the alert. */
+.rv .devs { flex-basis: 100%; }
+.rv .dev { display: inline-flex; align-items: center; gap: 3px; padding: 2px 3px 2px 7px; border: 1px solid #c9c5bc; border-radius: 6px; background: #e9e6df; }
+.rv .dev.down { border-color: #c0392b; box-shadow: inset 3px 0 0 #c0392b; }
+.rv .dev > i { font-style: normal; color: #55524b; margin-right: 2px; }
+.rv .dev input { font: inherit; width: 6.5em; border: 1px solid #a9a49a; background: #fff; color: #1d1d1f; padding: 3px 5px; border-radius: 4px; }
+.rv .dev input:focus-visible { outline: 2px solid #2563d9; outline-offset: 1px; }
+.rv .dev input:disabled { opacity: .6; }
+.rv .devs > span:not(:first-child) { margin-left: 8px; }
 .rv details { flex-basis: 100%; }
 .rv summary { cursor: pointer; font-weight: 600; color: #55524b; }
 .rv .notes { margin: 6px 0 2px; max-width: 1100px; columns: 2 420px; column-gap: 28px; }

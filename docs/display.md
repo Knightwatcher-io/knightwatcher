@@ -22,6 +22,39 @@ files beside it: the downloaded packs in `data/packs/` and, on a deployed copy, 
 The website's demo runs this way. Browsers refuse to fetch from disk, so from disk the page does
 not try.
 
+**The demo's devices.** The demo draws a set of stand-in devices: by default a NAS (`machine`), a
+camera and a router (a kind the page does not name, drawn as the chest), with the pie's place left
+empty. While `pi_silent` is on, a Pi is put in the pie's place, down, its dish empty; the pie has a
+place of its own, so nothing else moves. With a Pi in the set, that Pi is the one that goes silent.
+The review bar's **Devices** row changes the set, so that a visitor can see how a display of their
+own would look:
+
+- **Add** puts a device of a kind in the scene at once: Machine (a NAS, a server or a PC, the
+  crystal), Camera (the owl), VM (the flask), Other (such as a router, the chest) or Pi (the pie).
+  Each is named after its kind (NAS, Cam, VM, Router, Pi), with a number where that name is taken
+  (Cam 2). The page's own rule of places holds ([Devices](./page.md#devices)): one Pi, three
+  cameras high and three other devices on the ground. A kind with no place left has its button
+  greyed, and the row says plainly what is full.
+- **A name** is typed in place, and the headline follows it while the device is down. It is kept
+  to what leaves room for the word after it in the headline's 16 characters: 11 characters, or 9
+  for a Pi, whose word is `SILENT`.
+- **Down** sets a device down, or up again. A device down raises `device_down` with the words the
+  collector would write for it (`NAS DOWN`, `CAM DARK`, `PI SILENT`, or `2 DOWN` with the names),
+  and the knight looks towards its place. The conditions' Device down follows the set: pressed, it
+  sets every device up while one is down, and otherwise sets the first device down; Clear sets
+  every device up. `on=device` in the address shows the first device down, for that page alone.
+- **×** removes a device, and **Reset** goes back to the default set.
+
+Every change stops the demo loop, and is kept at once in this browser's `localStorage` under its
+own key, `knightwatcher.demo-devices`, as `{ "v": 1, "list": [{ "kind", "name", "state" }] }`,
+and restored when the demo starts again; Reset removes the key. Nothing is sent anywhere. Where
+the browser refuses storage, the set lasts until the page is opened again. A stored set the page
+cannot read is ignored, and a device in it with no place left is dropped. The demo loop draws the
+set with every device up, but for its step of `device_down`, which shows a device in every place.
+The address's `dv=` hook takes the set's place while the address holds it, and the row is then
+greyed and says so. The row is in every demo, from disk, served or forced by `?demo`, and never
+in live mode, where the bar is hidden and the devices are the state file's.
+
 **Wait.** Served over HTTP, the page draws the quiet scene with no words and no bar until the
 first answer for the state file arrives.
 
@@ -678,7 +711,7 @@ down is used.
 | `sc=` | the scene a condition plays in: `<condition>:<scene>`, by the contract's ids, separated by commas, such as `sc=cpu_hot:camp,pi_silent:battlement`. A pair the page cannot act is ignored, with a line in the console |
 | `ck=` | the clock: `24`, or `12` for 9:42 with a small PM |
 | `set=` | opens the settings screen at load on a page: `world`, `knight`, `monarch`, `pet` (the cast), `display`, `quiet`, `scenes` or `status`. `set=hold` instead shows the cue of the hold seven tenths of the way through, over the knight's head, and leaves it there; for screenshots. A later change of the hash to one holding `set=<page>` opens the screen at that page without a reload, and takes the `set=` out of the hash again, so the same change works each time; the website's Open the settings button sets its demo frame's hash so. `set=hold` does nothing then |
-| `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Without the hook the demo shows the pie alone, gone while `pi_silent` is on. With `device_down` on, the knight looks towards the first device that is down and alerts |
+| `dv=` | the demo's list of devices: kinds separated by commas, each followed by `-` for down or `!` for down and alerting, placed by the filling rule. `dv=pi,camera!,camera,machine,vm-,x` fills the pie's place, two high places and three ground places, the third with the plain box. An empty item is an entry the page cannot read. Each device is named after its kind, as the Devices row names them (NAS, Cam, VM, Router, Pi, Cam 2 for a second camera), for `device_down`'s words: `dv=machine!` reads `NAS DOWN`. Without the hook the demo shows the Devices row's set ([The demo's devices](#modes)). With `device_down` on, the knight looks towards the first device that is down and alerts |
 | `wd=` | the world: `medieval`, or a loaded world by its long name, such as `wd=kw.example/world.neon`, chosen at the address's level, so that it sets every part the address leaves alone. A hook's value may hold the slash of a long name, as `bd=kw.example/body.courier` or `sk=kw.example/chrome` |
 | `bd=` | the knight's build: `a` Classic, `b` Broad or `c` Slim, the base pack's `build.<value>`, or a loaded body by its long name. A page that cannot draw from the base pack draws Classic whatever the hook says |
 | `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its shield in the other, `two` the greatsword, or any weapon by its contract name: `longsword`, `mace_and_shield`, `crossbow`; or a loaded pack's weapon by its long name, `arm=test.orbit/main.blaster`, which `sh=` may match with a loaded pack's shield by its long name, `sh=test.orbit/off.deflector`. A page that cannot draw from the base pack draws the greatsword whatever the hook says |

@@ -12,6 +12,7 @@ out.
 |---|---|
 | `tests/web/base-pack.test.js` | the shipped base pack: its contents, the free options, builds and items as approved, and whether it ships signed |
 | `tests/web/base-read.test.js` | the base pack's whole read, its signed bytes and its stored looks against the copy first stored before format 1.1 |
+| `tests/web/demo-devices.test.js` | the demo's devices: the default set, the Devices row's add, name, remove, up and down, the page's limits of places, the set kept and restored, Reset, `device_down`'s words held to the collector's, the Pi put in for `pi_silent`, `dv=` and the demo loop taking the set's place, nothing sent, and nothing done once the demo has stopped |
 | `tests/web/ed25519.test.js` | the verifier against RFC 8032's vectors and `node:crypto` |
 | `tests/web/effects.test.js` | each effect's cost against what it draws, and `pack.js` holding effects to their tables |
 | `tests/web/fire.test.js` | format 1.2: the fields and rules of weapons and foes that fire, the aim and `fire()`, and the shot effects |
@@ -308,6 +309,24 @@ badge shows, its count in every mode of `show`, and that `main.js` writes both w
 from `streamWords` and `display.css` keeps the badge outlined in a colour of the overlay and sized
 with the headline; and the demo's invented streams in each mode, with the detail the collector
 would write for them.
+
+`tests/web/demo-devices.test.js` runs `demo.js` in a sandbox with the real `state.js`, a small
+stand-in for the document (elements that keep their children, attributes, listeners and the focus),
+a storage over a map or one that refuses every call, and stand-ins for the engine, the words and
+the settings. It checks that the Devices row offers every kind `KW.props.KINDS` draws and nothing
+else; the default set, a NAS, a camera and a router in `g1`, `h1` and `g2`, nothing stored until a
+change; `on=device` showing the NAS down and the knight looking to it; the Pi put in the pie's
+place for `pi_silent`, and the set's own Pi taken for it; adding by kind with names numbered, a name
+typed in place, cleaned and cut to its kind's room, removing with the focus moved to the next
+control, and Down raising `device_down` and up again clearing it; the conditions' Device down and
+Clear following the set; one Pi, three cameras and three other devices, the buttons greyed and the
+row's line when full, and a stored set beyond them cut; the set restored on a new start, a stored
+text it cannot read ignored, refused storage; Reset forgetting the stored set; the demo loop
+drawing the set every device up and its `device_down` step its own devices; `dv=` taking the set's
+place with the row greyed; no fetch, request, beacon or socket from any control, and none named in
+`demo.js`; no control changing anything once the demo has stopped for live mode; and `device_down`'s
+words held to the collector's own `_named()` and `_names()`, run through `python3` (the test is
+skipped without it).
 
 `tests/web/foe.test.js` loads the page's scripts the same way, the engine included, and checks the
 foe player and the goblin in `KW.props.FOES`: that the goblin's drawing matches its measures; that
