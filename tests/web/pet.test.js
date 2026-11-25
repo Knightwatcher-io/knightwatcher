@@ -226,7 +226,7 @@ test('under a warning a blocked advert adds no fly, and the flies on screen leav
   for (const scene of ['house', 'battlement']) {
     engine(KW, { is: scene }); at(KW, 0); E.addFly(0); E.addFly(10);
     assert.equal(E.pet.catches().length + E.pet.flies().length, 2, scene);
-    E.input = Object.assign({}, E.input, { w: COND(KW, 'memory_tight') });
+    E.input = Object.assign({}, E.input, { w: Object.assign(COND(KW, 'device_down'), { place: null }) });
     at(KW, 3000);
     assert.deepEqual([E.scene(), E.pet.catches().length, E.pet.flies().filter(f => !f.dead).length, E.pet.leaving().length], [scene, 0, 0, 2], scene);
     assert.equal(E.note, 'flies leave: a warning is up');

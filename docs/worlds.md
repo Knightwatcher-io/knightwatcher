@@ -312,7 +312,10 @@ A preset must be complete, at `rules`: every field above; `outfit.items` for eac
 `device_down` and `memory_tight`, which have none and play in the quiet scene of the moment; and a
 patron, a foe, a critter and a pet. Each of this pack's scenes it names must be able to do what it
 is named for: a quiet scene is `quiet` and lists `device_down` and `memory_tight` in `can`, and a
-condition's scene lists the condition.
+condition's scene lists the condition. `memory_tight` is retired: Under strain (`cpu_hot`) covers
+memory, playing in `cpu_hot`'s scene, and the page never acts `memory_tight` on its own. The
+format keeps it, so that the signed packs and a user's own that list it still pass; a new pack
+may list it or not, and it changes nothing on the wall.
 
 ### Presets on the page
 

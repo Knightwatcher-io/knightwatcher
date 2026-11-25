@@ -7,8 +7,12 @@
   'use strict';
   const ST = KW.state;
 
-  /* The invented conditions, highest first. Each id is the contract's; alias is the short name
-     the address and the regression screenshots also accept. Scene and level come from KW.state. */
+  /* The invented conditions, highest first. Each id is the contract's; key is the name the
+     address's on= lists it by, the id where it is left out; alias is the short name the address
+     and the regression screenshots also accept. Under strain (cpu_hot) has four entries of the one
+     id, in the collector's words: one machine's CPU, one machine's memory (mem, which bloats the
+     knight), both on one machine, and several machines; only one shows at a time. Scene and level
+     come from KW.state. */
   const CONDS = [
     { id: 'attack',              alias: 'attack', name: 'Attack',      hl: 'UNDER ATTACK',   sub: '212 failed SSH logins in 10 min · fail2ban is banning' },
     { id: 'wan_down',            alias: 'wan',    name: 'WAN down',    hl: 'WAN DOWN',       sub: 'no route to the internet for 4 min · LAN and DNS are fine' },
@@ -17,14 +21,18 @@
     { id: 'backup_overdue',      alias: 'backup', name: 'Backup',      hl: 'BACKUP OVERDUE', sub: 'last restic snapshot was 41 h ago · the 03:00 run failed' },
     { id: 'pi_silent',           alias: 'pi',     name: 'Pi silent',   hl: 'PI SILENT',      sub: 'no heartbeat from the Raspberry Pi for 22 min' },
     { id: 'device_down',          alias: 'device',  name: 'Device down',  hl: 'NAS DOWN',       sub: 'no answer for 6 min' },
-    { id: 'cpu_hot',             alias: 'cpu',    name: 'CPU',         hl: 'RUNNING HOT',    sub: 'CPU 96% · load 14.2 on 12 cores for 9 min · Plex transcoding' },
-    { id: 'memory_tight',        alias: 'swap',   name: 'Swap',        hl: 'SWAP FILLING',   sub: 'swap 91% and climbing · RAM 93% · VS Code server holds most' },
+    { id: 'cpu_hot',             alias: 'cpu',    name: 'Strain: CPU', hl: 'HOST CPU 96%',   sub: '96% for 9 min · memory 61% · load 14.2' },
+    { id: 'cpu_hot', key: 'mem', alias: 'mem',    name: 'Strain: memory', hl: 'NAS MEMORY 93%', sub: '93% for 6 min · CPU 41%', mem: true },
+    { id: 'cpu_hot', key: 'cpumem', alias: 'cpumem', name: 'Strain: both', hl: 'NAS UNDER STRAIN', sub: 'memory 93% and CPU 97% for 12 min', mem: true },
+    { id: 'cpu_hot', key: 'strained', alias: 'strained', name: 'Strain: several', hl: '3 UNDER STRAIN', sub: 'NAS memory 93%, Host CPU 97%, Buildbox CPU 91%', mem: true },
     { id: 'ssh_session',         alias: 'ssh',    name: 'SSH session', hl: 'AT COURT',       sub: 'admin signed in from 192.0.2.10 · session open 14 min' },
     { id: 'updating',            alias: 'update', name: 'Updating',    hl: 'UPDATING',       sub: 'Komodo is redeploying 3 stacks · sonarr, radarr, bazarr' },
     { id: 'streaming',           alias: 'plex',   name: 'Plex stream', hl: 'STREAMING',      sub: '' },
     { id: 'night',               alias: 'night',  name: 'Night',       hl: 'NIGHT WATCH',    sub: 'nothing to report since 23:40' }
-  ].map(c => { const k = ST.CONDITIONS[c.id]; return Object.assign(c, { lv: k.lv, level: k.level, st: ST.LEVELS[k.level], scene: k.scene }); });
-  const ALIAS = {}; for (const c of CONDS) ALIAS[c.alias] = c.id;
+  ].map(c => { const k = ST.CONDITIONS[c.id]; return Object.assign(c, { key: c.key || c.id, mem: !!c.mem, lv: k.lv, level: k.level, st: ST.LEVELS[k.level], scene: k.scene }); });
+  /* The address's names for the entries: each alias, and swap and memory_tight, the older names of
+     memory under strain. */
+  const ALIAS = { swap: 'mem', memory_tight: 'mem' }; for (const c of CONDS) ALIAS[c.alias] = c.key;
   /* The events, each with its type in the contract and the text and parts the collector would
      send for it; the caption shown is built from the parts in the world's words. */
   const EVENTS = {
@@ -58,11 +66,11 @@
   const DEMO = [
     { on: '', is: 'battlement', dur: 9000, flies: 4, swat: 3200 }, { on: '', is: 'battlement', dur: 6000, ev: 'goblin' },
     { on: '', is: 'camp', dur: 9000, ev: 'crate' }, { on: '', is: 'yard', dur: 8000 }, { on: '', is: 'smithy', dur: 14400 },
-    { on: 'ssh_session', dur: 9000 }, { on: 'cpu_hot', dur: 7000 },
+    { on: 'ssh_session', dur: 9000 }, { on: 'cpu_hot', dur: 7000 }, { on: 'mem', dur: 7000 },
     { on: 'streaming', dur: 7000 }, { on: 'container_unhealthy', dur: 7000 }, { on: 'backup_overdue', dur: 7000 }, { on: '', is: 'house', dur: 6500, ev: 'feast' },
     { on: 'disk_full', dur: 8000 }, { on: 'pi_silent', dur: 7000 }, { on: 'device_down', is: 'camp', dur: 8000, dv: 'pi,camera,camera,machine!,vm,box' },
     { on: 'updating', dur: 8000 }, { on: 'wan_down', dur: 6500 },
-    { on: 'attack,memory_tight,ssh_session', dur: 8000 }, { on: 'night', dur: 8000 } ];
+    { on: 'attack,mem,ssh_session', dur: 8000 }, { on: 'night', dur: 8000 } ];
 
   /* How long each quiet scene lasts while they take turns in the demo, unless the settings set a
      length (docs/display.md). */
@@ -203,7 +211,8 @@
   /* The quiet line and an event's caption, shown as live mode shows them. */
   const idleLine = () => { const q = quietFor(ads); return KW.world.quietLine(q.parts, q.text); };
   const captionOf = type => { const e = EVENTS[type]; return KW.world.caption(e.type, e.parts, e.text); };
-  const active = () => { const on = S.on.split(',').filter(Boolean); return CONDS.filter(c => on.includes(c.id)); };
+  /* The entries on, highest first, each id once: of Under strain's entries the first on. */
+  const active = () => { const on = S.on.split(',').filter(Boolean), ids = new Set(); return CONDS.filter(c => on.includes(c.key) && !ids.has(c.id) && ids.add(c.id)); };
   const isOn = id => S.on.split(',').includes(id);
   const IDLE = Object.assign({}, ST.IDLE);
 
@@ -212,7 +221,14 @@
   function fire(type) { E.fireEvent(type, captionOf(type)); }
 
   function set(k, v) { S[k] = String(v); apply(); }
-  function toggle(id) { const on = S.on.split(',').filter(Boolean), i = on.indexOf(id); if (i < 0) on.push(id); else on.splice(i, 1); set('on', on.join(',')); }
+  /* Turns an entry on or off by its key. An entry turned on puts out the others of its id, so that
+     one of Under strain's shows at a time. */
+  function toggle(key) {
+    const on = S.on.split(',').filter(Boolean), i = on.indexOf(key), c = CONDS.find(e => e.key === key);
+    if (i >= 0) on.splice(i, 1);
+    else { for (const e of CONDS) if (c && e.id === c.id && on.includes(e.key)) on.splice(on.indexOf(e.key), 1); on.push(key); }
+    set('on', on.join(','));
+  }
   /* Whether the panel's set is what the scene draws: not while the address's dv= hook sets the
      devices, nor while the demo loop runs. */
   const usesSet = () => !KW.hooks.dv && S.demo !== '1';
@@ -341,7 +357,7 @@
       }
     });
     const condsEl = document.getElementById('conds');
-    for (const c of CONDS) { const b = document.createElement('button'); b.textContent = c.name; b.dataset.id = c.id; b.addEventListener('click', () => { S.demo = '0'; if (c.id === 'device_down' && usesSet()) downButton(); else toggle(c.id); }); condsEl.appendChild(b); }
+    for (const c of CONDS) { const b = document.createElement('button'); b.textContent = c.name; b.dataset.id = c.key; b.addEventListener('click', () => { S.demo = '0'; if (c.id === 'device_down' && usesSet()) downButton(); else toggle(c.key); }); condsEl.appendChild(b); }
     { const b = document.createElement('button'); b.textContent = 'Clear'; b.addEventListener('click', () => { S.demo = '0'; if (running && usesSet()) allUp(); set('on', ''); }); condsEl.appendChild(b); }
     // the Devices panel, a row of its own before the reviewer's notes
     devsEl = el('div', { className: 'grp devs', id: 'devs' });
@@ -378,7 +394,7 @@
   KW.demo = {
     running: () => running,
     /* Starts the demo: the bar, invented flies every few seconds, and the conditions in the address,
-       where the short aliases are turned into the contract's ids. */
+       where the short aliases are turned into the entries' keys. */
     start() {
       S = KW.opts; E = KW.engine; running = true;
       const hv = KW.hooks.hv, n = +hv('st');

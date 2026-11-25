@@ -1002,7 +1002,7 @@
   const SCENE_NAMES = { battlement: 'Battlement', camp: 'Camp', house: 'House', yard: 'Training yard', cellar: 'Cellar', smithy: 'Smithy', court: 'Court' };
   /* Each condition by a plain name, after the headline the page shows for it. */
   const CONDITION_NAMES = { attack: 'Under attack', wan_down: 'WAN down', container_unhealthy: 'Unwell', disk_full: 'Disk full', backup_overdue: 'Backup overdue',
-    pi_silent: 'Pi silent', cpu_hot: 'Running hot', ssh_session: 'At court', updating: 'Updating', streaming: 'Now showing', night: 'Night watch' };
+    pi_silent: 'Pi silent', cpu_hot: 'Under strain', ssh_session: 'At court', updating: 'Updating', streaming: 'Now showing', night: 'Night watch' };
   /* The gear rows under the colours, grouped as Armour, in the order the screen shows them. */
   const ARMOUR = [['shield', 'Shield'], ['helmet', 'Helmet'], ['plume_style', 'Plume style'], ['body', 'Body'], ['shoulders', 'Shoulders'], ['arms', 'Arms'],
     ['hands', 'Hands'], ['legs', 'Legs'], ['feet', 'Feet'], ['back', 'Back']];

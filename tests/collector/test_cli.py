@@ -65,6 +65,18 @@ class CliTest(unittest.TestCase):
             out, "config ok: 4 sources enabled (host, ssh, updates, pi); 2 watched (Pi, Vault)\n"
         )
 
+    def test_check_config_warns_of_old_settings_read_in_todays_terms(self):
+        self.write_config("[conditions.memory_tight]\navailable_pct = 10.0\n")
+        code, out, err = self.run_cli("--check-config")
+        self.assertEqual(code, 0)
+        self.assertIn("config ok: 3 sources enabled", out)
+        self.assertEqual(
+            err,
+            "warning: conditions.memory_tight.available_pct = 10: read as "
+            "conditions.cpu_hot.memory_pct = 90, since Under strain (cpu_hot) now covers memory; "
+            "set that instead\n",
+        )
+
     def test_check_config_reports_problems(self):
         self.write_config('[sources.adblock]\nurl = "http://192.0.2.53"\n')
         code, _, err = self.run_cli("--check-config")

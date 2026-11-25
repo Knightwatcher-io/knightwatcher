@@ -353,10 +353,12 @@ test('the scenes from the pack: a camera\'s question mark is never higher than y
 // beside their code scenes, and every frame's calls (over's among them), changes to the pose,
 // strike and the knight's move off the spot (s.dx) compared. The target's: every 10 ms for two of
 // the yard's 5.6 s training rounds while all is quiet and while the CPU runs hot, and every 50 ms
-// for six seconds in two conditions where the act rests. The smithy's: every 10 ms for the whole of
-// the quench's 14.4 s loop while all is quiet, for five of the hammer's 1.4 s blows while updating,
-// at the spot and at x 300, and for ten of the bellows' pumps of 200 pi ms while the CPU runs hot,
-// and every 50 ms for six seconds with a device down and the memory tight, where no act plays.
+// for six seconds under attack, where the act rests, and under strain short of memory, the knight
+// bloated as it trains. The smithy's: every 10 ms for the whole of the quench's 14.4 s loop while
+// all is quiet, for five of the hammer's 1.4 s blows while updating, at the spot and at x 300, and
+// for ten of the bellows' pumps of 200 pi ms while the CPU runs hot, and every 50 ms for six
+// seconds with a device down, where no act plays, and under strain short of memory, bloated at the
+// bellows.
 // The bed's and the screen's: every 10 ms for
 // 8.4 s, two of the television's figure's rounds, asleep at night and sick in bed, the television
 // on while streaming, and off while all is quiet. The seat's: every 10 ms for 12.8 s, two of the
@@ -385,12 +387,15 @@ function loadDrawn(from) {
    out) and, in a scene with rounds, strolling at the first of them from time 0, as
    tests/web/scenes.test.js makes it. */
 function frameAt(KW, name, id, t, kx) {
+  // mem: Under strain short of memory, the knight bloated as it trains
+  const mem = id === 'mem';
+  if (mem) id = 'cpu_hot';
   const sc = KW.scenes[name], K = KW.knight, V = KW.view, ST = KW.state, k = ST.CONDITIONS[id];
-  const w = k ? { id, lv: k.lv, st: ST.LEVELS[k.level], scene: k.scene, hl: '', sub: '' } : ST.IDLE;
-  const o = K.pose(id, t); o.floor = V.HFL; o.helmet = sc.helmet !== false; o.x = kx === undefined ? sc.spot * V.U : kx;
+  const w = k ? { id, lv: k.lv, st: ST.LEVELS[k.level], scene: k.scene, hl: '', sub: '', mem } : ST.IDLE;
+  const o = K.pose(id, t, mem); o.floor = V.HFL; o.helmet = sc.helmet !== false; o.x = kx === undefined ? sc.spot * V.U : kx;
   if (sc.sword === false) o.sword = false;
   const inBed = !!sc.bed && (id === 'night' || id === 'container_unhealthy');
-  const free = (w.lv < 3 || id === 'memory_tight' || id === 'disk_full') && !inBed && w.lv !== 2 && id !== 'backup_overdue' && id !== 'pi_silent';
+  const free = (w.lv < 3 || id === 'disk_full') && !inBed && w.lv !== 2 && id !== 'backup_overdue' && id !== 'pi_silent';
   return { w, devices: [], places: sc.places, tv: id === 'streaming', kx: o.x, o, here: sc.rounds && free ? { act: sc.rounds[0].act, el: t } : null, inBed,
     helmOff: inBed || o.helmet === false, strike: false };
 }
@@ -398,8 +403,8 @@ function frameAt(KW, name, id, t, kx) {
 const PART = sc => (sc.target ? 'target' : sc.anvil ? 'anvil' : sc.bed || sc.screen ? 'bed' : sc.seat ? 'seat' : null);
 const ACTED = GIVEN.filter(n => PART(READ.data.scenes[n]));
 const RUNS = {
-  target: [['idle', 10, 11200], ['cpu_hot', 10, 11200], ['attack', 50, 6000], ['memory_tight', 50, 6000]],
-  anvil: [['idle', 10, 14400], ['updating', 10, 7000], ['updating', 10, 7000, 300], ['cpu_hot', 10, 6300], ['device_down', 50, 6000], ['memory_tight', 50, 6000]],
+  target: [['idle', 10, 11200], ['cpu_hot', 10, 11200], ['attack', 50, 6000], ['mem', 50, 6000]],
+  anvil: [['idle', 10, 14400], ['updating', 10, 7000], ['updating', 10, 7000, 300], ['cpu_hot', 10, 6300], ['device_down', 50, 6000], ['mem', 50, 6000]],
   bed: [['night', 10, 8400], ['container_unhealthy', 10, 8400], ['streaming', 10, 8400], ['idle', 10, 8400]],
   seat: [['ssh_session', 10, 12800], ['idle', 10, 12800]]
 };

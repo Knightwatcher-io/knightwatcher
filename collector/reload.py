@@ -40,6 +40,12 @@ def _missing(config: Config) -> list[str]:
     return [p for problems in config.missing.values() for p in problems]
 
 
+def _warn(config: Config) -> None:
+    """Logs each old setting the settings in use read in today's terms (config.translate)."""
+    for warning in config.warnings:
+        log.warning("config: %s", warning)
+
+
 class Settings:
     """Where the settings come from, and whether they have changed since they were last read."""
 
@@ -86,6 +92,7 @@ class Settings:
             log.warning("admin settings: %s", problem)
         problems = list(found.problems) + problems
         if not given:
+            _warn(alone)
             return alone, {"admin": version, "problems": problems}
         try:
             layered = config_mod.build(
@@ -95,7 +102,9 @@ class Settings:
             for problem in exc.problems:
                 log.warning("admin settings not taken up: %s", problem)
             log.warning("running on config.toml alone")
+            _warn(alone)
             return alone, {"admin": None, "problems": problems + exc.problems, "refused": version}
+        _warn(layered)
         for problem in _missing(layered):
             log.warning("admin settings: %s; the source runs and fails", problem)
         return layered, {"admin": version, "problems": problems + _missing(layered)}
@@ -129,6 +138,7 @@ class Settings:
                     if new.collector[key] != running.collector[key]
                 ]
                 if not fixed:
+                    _warn(new)
                     for problem in problems + _missing(new):
                         log.warning("settings taken up with a problem: %s", problem)
                     log.info("settings taken up: admin.json %s", version or "none")

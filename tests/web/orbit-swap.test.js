@@ -122,7 +122,7 @@ function spying(KW) {
 /* The tour every swap is drawn through: the first quiet scene with the foe's event and a fly, each
    quiet scene in turn, the crate and the feast, and every condition, a fly coming where it may.
    Returns what the knight did. */
-const CONDITIONS = ['attack', 'wan_down', 'container_unhealthy', 'disk_full', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'ssh_session', 'updating', 'streaming', 'night'];
+const CONDITIONS = ['attack', 'wan_down', 'container_unhealthy', 'disk_full', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'ssh_session', 'updating', 'streaming', 'night'];
 function tour(P, r) {
   const KW = P.KW, sp = spying(KW), scenes = [];
   try {
@@ -162,7 +162,7 @@ const MEDIEVAL = store(P);
 const ORBIT_READS = ['critters ' + O('critter.moth'), 'foes ' + O('foe.glitch'), 'kind box kw.medieval', 'kind camera test.orbit', 'kind machine test.orbit',
   'kind pi test.orbit', 'kind vm kw.medieval', 'patrons ' + O('patron.captain'), 'pets ' + O('pet.drone'), 'scene ' + O('airlock'), 'scene ' + O('bridge'), 'scene ' + O('deck')];
 const ORBIT_HOMES = { attack: 'deck', wan_down: 'deck', container_unhealthy: 'deck', disk_full: 'deck', backup_overdue: 'deck', pi_silent: 'deck', device_down: 'deck',
-  cpu_hot: 'airlock', memory_tight: 'deck', ssh_session: 'bridge', updating: 'bridge', streaming: 'deck', night: 'deck' };
+  cpu_hot: 'airlock', ssh_session: 'bridge', updating: 'bridge', streaming: 'deck', night: 'deck' };
 
 test('Orbit chosen whole draws every condition, event and turn from its own scenes, cast and devices, and of the medieval world only the kinds it lacks', () => {
   assert.deepEqual(CONDITIONS.slice().sort(), Object.keys(P.KW.state.CONDITIONS).sort(), 'the tour covers every condition');

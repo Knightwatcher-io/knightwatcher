@@ -3,6 +3,7 @@ import unittest
 from typing import ClassVar
 from unittest import mock
 
+from collector import conditions
 from collector.conditions import Conditions
 from collector.kinds import streams as streams_source
 from collector.sources import Reading
@@ -20,12 +21,7 @@ def host(cpu=10.0, avail=50.0, disks=None, load1=1.0, span=30.0):
         "swap_pct": 99.0,
         "disks": disks or [],
     }
-    data = {
-        "mem_available_pct": avail,
-        "mem_available_avg": avail,
-        "mem_span_s": span,
-        "cpu_span_s": span,
-    }
+    data = {"mem_available_pct": avail, "mem_used_avg": 100 - avail, "span_s": span}
     return Reading(facts, data)
 
 
@@ -125,45 +121,280 @@ class HoldTest(unittest.TestCase):
 
 
 class ResourceWordsTest(unittest.TestCase):
-    """cpu_hot and memory_tight judge the averages the host source works out."""
+    """Under strain (cpu_hot) judges the averages the host source works out."""
 
-    def test_cpu_hot_from_the_window_average(self):
+    def test_cpu_from_the_window_average(self):
         h = Harness()
         self.assertEqual(ids(h.poll(host=host(cpu=84.9))), [])
         out = h.poll(host=host(cpu=99))  # 10 s
         self.assertEqual(ids(out), ["cpu_hot"])
         self.assertEqual(out[0]["level"], "warning")
-        self.assertEqual(out[0]["headline"], "CPU HOT")
+        self.assertEqual(out[0]["headline"], "HOST CPU 99%")
         # The average covers the last 30 s, so the cause began 30 s before it was raised.
         self.assertEqual(out[0]["since"], "2026-01-15T20:59:40Z")
-        self.assertEqual(out[0]["detail"], "99% for 30 s · load 1.0")
+        self.assertEqual(out[0]["detail"], "99% for 30 s · memory 50% · load 1.0")
+        self.assertEqual(
+            out[0]["machines"],
+            [
+                {
+                    "name": "Host",
+                    "window_s": 30,
+                    "cpu": {"pct": 99.0, "threshold": 85.0, "since": "2026-01-15T20:59:40Z"},
+                }
+            ],
+        )
         later = [h.poll(host=host(cpu=97))[0]["detail"] for _ in range(4)]  # 20 .. 50 s
         self.assertEqual(
             later,
             [
-                "97% for 40 s · load 1.0",
-                "97% for 50 s · load 1.0",
-                "97% for 1 min · load 1.0",
-                "97% for 1 min · load 1.0",
+                "97% for 40 s · memory 50% · load 1.0",
+                "97% for 50 s · memory 50% · load 1.0",
+                "97% for 1 min · memory 50% · load 1.0",
+                "97% for 1 min · memory 50% · load 1.0",
             ],
         )
 
-    def test_memory_tight_judges_available_memory_not_swap(self):
+    def test_memory_judges_used_memory_not_swap(self):
         h = Harness()
         # Swap is 99 % full in every reading; only MemAvailable matters.
         self.assertEqual(ids(h.poll(host=host(avail=40))), [])
         out = h.poll(host=host(avail=8))
-        self.assertEqual(ids(out), ["memory_tight"])
-        self.assertEqual(out[0]["detail"], "8% available for 30 s")
-        self.assertEqual(h.poll(host=host(avail=9))[0]["detail"], "9% available for 40 s")
+        self.assertEqual(ids(out), ["cpu_hot"])
+        self.assertEqual(out[0]["headline"], "HOST MEMORY 92%")
+        self.assertEqual(out[0]["detail"], "92% for 30 s · CPU 10% · load 1.0")
+        self.assertEqual(
+            out[0]["machines"][0]["memory"],
+            {"pct": 92.0, "threshold": 90.0, "since": "2026-01-15T20:59:40Z"},
+        )
+        self.assertNotIn("cpu", out[0]["machines"][0])
+        self.assertEqual(
+            h.poll(host=host(avail=9))[0]["detail"], "91% for 40 s · CPU 10% · load 1.0"
+        )
+
+    def test_both_on_one_machine(self):
+        h = Harness({"sources": {"host": {"name": "NAS"}}})
+        h.poll(host=host(cpu=97))  # 0 s: CPU first
+        out = h.poll(host=host(cpu=97, avail=7))  # 10 s: memory as well
+        self.assertEqual(ids(out), ["cpu_hot"])
+        self.assertEqual(out[0]["headline"], "NAS UNDER STRAIN")
+        self.assertEqual(out[0]["detail"], "CPU 97% and memory 93% for 40 s · load 1.0")
+        self.assertEqual(out[0]["since"], "2026-01-15T20:59:30Z")
+        machine = out[0]["machines"][0]
+        self.assertEqual(list(machine), ["name", "window_s", "cpu", "memory"])
+        self.assertEqual(machine["cpu"]["since"], "2026-01-15T20:59:30Z")
+        self.assertEqual(machine["memory"]["since"], "2026-01-15T20:59:40Z")
 
     def test_never_for_zero_seconds(self):
         # An average resting on the short sample after a start still reads at least 1 s.
         h = Harness()
-        out = h.poll(host=host(cpu=95, avail=5, span=0.5))
-        self.assertEqual(ids(out), ["cpu_hot", "memory_tight"])
-        self.assertEqual(out[0]["detail"], "95% for 1 s · load 1.0")
-        self.assertEqual(out[1]["detail"], "5% available for 1 s")
+        out = h.poll(host=host(cpu=95, span=0.5))
+        self.assertEqual(ids(out), ["cpu_hot"])
+        self.assertEqual(out[0]["detail"], "95% for 1 s · memory 50% · load 1.0")
+
+    def test_the_host_named_as_a_device_names_its_place(self):
+        raw = {
+            "sources": {"host": {"name": "vault"}},
+            "device": [
+                {"name": "Gate cam", "kind": "camera", "host": "192.0.2.20", "port": 554},
+                {"name": "Vault", "kind": "machine", "host": "192.0.2.40", "port": 445},
+            ],
+        }
+        h = Harness(raw)
+        out = h.poll(host=host(cpu=99))
+        self.assertEqual(out[0]["machines"][0]["device"], 1)
+        self.assertEqual(list(out[0]["machines"][0]), ["name", "device", "window_s", "cpu"])
+
+
+class BandTest(unittest.TestCase):
+    """A raised pair stays up while its average is within band of its threshold."""
+
+    def test_memory_hovering_at_the_threshold_stays_raised(self):
+        h = Harness()
+        used = [91, 88, 86, 89, 91, 87, 85]  # every one 85 or more after the first
+        out = [ids(h.poll(host=host(avail=100 - u))) for u in used]
+        self.assertEqual(out, [["cpu_hot"]] * len(used))
+        since = {h.poll(host=host(avail=13))[0]["since"]}
+        self.assertEqual(since, {"2026-01-15T20:59:30Z"})  # the first since, kept throughout
+
+    def test_below_the_band_it_clears_after_clear_after_s(self):
+        h = Harness()
+        h.poll(host=host(avail=9))  # 0 s: raised at 91 %
+        held = [h.poll(host=host(avail=16)) for _ in range(3)]  # 84 %: below 85 from 10 s
+        self.assertEqual([ids(o) for o in held], [["cpu_hot"]] * 3)
+        # Held with the figure it last had while past the threshold less the band.
+        self.assertEqual({o[0]["headline"] for o in held}, {"HOST MEMORY 91%"})
+        self.assertEqual(ids(h.poll(host=host(avail=16))), [])  # 40 s: 30 s below
+
+    def test_a_threshold_reached_again_after_clearing_starts_afresh(self):
+        h = Harness({"conditions": {"clear_after_s": 0}})
+        h.poll(host=host(cpu=90))
+        self.assertEqual(ids(h.poll(host=host(cpu=79))), [])
+        # 84 is within the band, but nothing is raised, so 85 is needed again.
+        self.assertEqual(ids(h.poll(host=host(cpu=84))), [])
+        self.assertEqual(h.poll(host=host(cpu=85))[0]["since"], "2026-01-15T21:00:00Z")
+
+    def test_a_band_of_nought_clears_below_the_threshold(self):
+        h = Harness({"conditions": {"cpu_hot": {"band": 0}, "clear_after_s": 0}})
+        h.poll(host=host(cpu=90))
+        self.assertEqual(ids(h.poll(host=host(cpu=84.9))), [])
+
+    def test_each_resource_holds_and_clears_on_its_own(self):
+        h = Harness()
+        h.poll(host=host(cpu=95, avail=5))  # 0 s: both
+        for _ in range(3):  # 10 .. 30 s: CPU idle, memory still short
+            out = h.poll(host=host(cpu=10, avail=5))
+        self.assertEqual(out[0]["headline"], "UNDER STRAIN")
+        out = h.poll(host=host(cpu=10, avail=5))  # 40 s: CPU 30 s below, gone
+        self.assertEqual(out[0]["headline"], "HOST MEMORY 95%")
+        self.assertEqual(list(out[0]["machines"][0]), ["name", "window_s", "memory"])
+        # The entry's since is the earliest pair's still listed.
+        self.assertEqual(out[0]["since"], "2026-01-15T20:59:30Z")
+
+    def test_a_failed_read_counts_as_absent_and_the_words_stand(self):
+        h = Harness()
+        first = h.poll(host=host(cpu=97, avail=39))
+        for _ in range(3):
+            held = h.poll(host=None)
+            self.assertEqual(ids(held), ["cpu_hot"])
+            self.assertEqual(
+                held[0]["detail"].split(" · ")[1:], first[0]["detail"].split(" · ")[1:]
+            )
+            self.assertEqual(held[0]["machines"], first[0]["machines"])
+        self.assertEqual(ids(h.poll(host=None)), [])
+
+    def test_a_change_taken_up_keeps_each_pair(self):
+        h = Harness()
+        first = h.poll(host=host(cpu=97))
+        h.c.reconfigure(make_config({"sources": {"host": {"name": "Keep"}}}))
+        out = h.poll(host=host(cpu=97))
+        self.assertEqual(out[0]["since"], first[0]["since"])
+        self.assertEqual(out[0]["headline"], "KEEP CPU 97%")
+        # A threshold raised past the average lets it go, with the band and the hold.
+        h.c.reconfigure(make_config({"conditions": {"cpu_hot": {"pct": 99}}}))
+        self.assertEqual(ids(h.poll(host=host(cpu=97))), ["cpu_hot"])  # 97 >= 99 - 5
+        h.c.reconfigure(make_config({"conditions": {"cpu_hot": {"pct": 99, "band": 0}}}))
+        self.assertEqual(
+            [ids(h.poll(host=host(cpu=97))) for _ in range(4)], [["cpu_hot"]] * 3 + [[]]
+        )
+
+    def test_left_out_of_the_priority_it_starts_afresh(self):
+        h = Harness()
+        h.poll(host=host(cpu=97))
+        others = [c for c in make_config().conditions["priority"] if c != "cpu_hot"]
+        h.c.reconfigure(make_config({"conditions": {"priority": others}}))
+        self.assertEqual(h.c.pairs, {})
+        h.c.reconfigure(make_config())
+        self.assertEqual(h.poll(host=host(cpu=97))[0]["since"], "2026-01-15T20:59:40Z")
+
+
+class StrainWordsTest(unittest.TestCase):
+    """The headline and detail of Under strain for every case the words cover, from the machines
+    as the conditions hold them (Conditions._strain)."""
+
+    NOW = at(600)
+
+    def machine(self, name, *pairs, cpu=None, memory=None, load=None):
+        """A machine under strain: pairs of (resource, pct, minutes held), in the order raised;
+        cpu and memory the figures last read of a resource that is not strained."""
+        figures = {"cpu": cpu, "memory": memory}
+        held = []
+        for i, (res, pct, minutes) in enumerate(pairs):
+            figures[res] = pct
+            since = self.NOW - dt.timedelta(minutes=minutes)
+            held.append((res, conditions.Pair(since, self.order + i, pct, 85.0)))
+        self.order += len(pairs)
+        return {
+            "name": name,
+            "device": None,
+            "window_s": 30,
+            "load": load,
+            "figures": figures,
+            "pairs": held,
+        }
+
+    def setUp(self):
+        self.order = 1
+
+    def words(self, *machines):
+        return conditions.strain_words(list(machines), self.NOW)
+
+    def test_one_machine_one_resource(self):
+        self.assertEqual(
+            self.words(self.machine("Server", ("cpu", 97, 2), memory=61, load=14.2)),
+            ("SERVER CPU 97%", "97% for 2 min · memory 61% · load 14.2"),
+        )
+        self.assertEqual(
+            self.words(self.machine("NAS", ("memory", 93.4, 12), cpu=41)),
+            ("NAS MEMORY 93%", "93% for 12 min · CPU 41%"),
+        )
+        # Nothing read of the other resource: the detail leaves it out.
+        self.assertEqual(
+            self.words(self.machine("NAS", ("memory", 93, 12))),
+            ("NAS MEMORY 93%", "93% for 12 min"),
+        )
+
+    def test_mem_where_memory_would_cut_the_name(self):
+        self.assertEqual(
+            self.words(self.machine("Buildbox", ("memory", 93, 12), cpu=41)),
+            ("BUILDBOX MEM 93%", "93% for 12 min · CPU 41%"),
+        )
+        # Four characters always fit beside MEMORY, even at 100 %.
+        self.assertEqual(
+            self.words(self.machine("Host", ("memory", 100, 1)))[0], "HOST MEMORY 100%"
+        )
+        # Seven always fit beside MEM.
+        self.assertEqual(
+            self.words(self.machine("Storage", ("memory", 100, 1)))[0], "STORAGE MEM 100%"
+        )
+
+    def test_a_name_too_long_even_then_is_cut_and_given_whole(self):
+        self.assertEqual(
+            self.words(self.machine("Gatehouse server", ("memory", 93, 12), cpu=41)),
+            ("GATEHOU… MEM 93%", "Gatehouse server · 93% for 12 min · CPU 41%"),
+        )
+        self.assertEqual(
+            self.words(self.machine("Gatehouse server", ("cpu", 97, 2), memory=61, load=14.2)),
+            ("GATEHOU… CPU 97%", "Gatehouse server · 97% for 2 min · memory 61% · load 14.2"),
+        )
+
+    def test_both_resources_on_one_machine(self):
+        self.assertEqual(
+            self.words(self.machine("NAS", ("memory", 93, 12), ("cpu", 97, 3))),
+            ("NAS UNDER STRAIN", "memory 93% and CPU 97% for 12 min"),
+        )
+        # A name that does not fit beside UNDER STRAIN leaves it alone in the headline, and the
+        # detail starts with the name.
+        self.assertEqual(
+            self.words(self.machine("Host", ("cpu", 97, 3), ("memory", 93, 1), load=14.2)),
+            ("UNDER STRAIN", "Host CPU 97% and memory 93% for 3 min · load 14.2"),
+        )
+
+    def test_several_machines_in_the_order_raised(self):
+        self.assertEqual(
+            self.words(
+                self.machine("NAS", ("memory", 93, 12)),
+                self.machine("Server", ("cpu", 97, 3), memory=50, load=2.0),
+                self.machine("Buildbox", ("cpu", 91, 1)),
+            ),
+            ("3 UNDER STRAIN", "NAS memory 93%, Server CPU 97%, Buildbox CPU 91%"),
+        )
+        self.assertEqual(
+            self.words(
+                self.machine("NAS", ("memory", 93, 12), ("cpu", 97, 3)),
+                self.machine("Server", ("cpu", 97, 3)),
+            ),
+            ("2 UNDER STRAIN", "NAS memory 93% and CPU 97%, Server CPU 97%"),
+        )
+
+    def test_several_whose_names_do_not_fit(self):
+        self.assertEqual(
+            self.words(
+                self.machine("Gatehouse server", ("memory", 93, 12)),
+                self.machine("Buildbox", ("cpu", 91, 9)),
+                *[self.machine(f"Spare box {i}", ("cpu", 90, 1)) for i in range(4)],
+            ),
+            ("6 UNDER STRAIN", "Gatehouse server memory 93%, Buildbox CPU 91% +4"),
+        )
 
 
 class Machine:
@@ -259,10 +490,10 @@ class CpuWindowTest(unittest.TestCase):
         self.assertEqual(
             out,
             [
-                "99% for 30 s · load 1.5",
-                "99% for 40 s · load 1.5",
-                "99% for 50 s · load 1.5",
-                "99% for 1 min · load 1.5",
+                "99% for 30 s · memory 50% · load 1.5",
+                "99% for 40 s · memory 50% · load 1.5",
+                "99% for 50 s · memory 50% · load 1.5",
+                "99% for 1 min · memory 50% · load 1.5",
             ],
         )
 
@@ -273,7 +504,7 @@ class CpuWindowTest(unittest.TestCase):
         self.assertEqual(m.steady(1, pct=70), [["cpu_hot"]])
         self.assertEqual(m.reading.facts["cpu_pct"], 89.3)
         self.assertEqual(m.steady(3, pct=99), [["cpu_hot"]] * 3)
-        held = m.conditions.trackers["cpu_hot"]
+        held = m.conditions.pairs["host", "cpu"]
         self.assertIsNone(held.absent_since)  # the cause never went away
 
     def test_it_clears_once_the_average_falls_and_clear_after_s_has_passed(self):
@@ -281,7 +512,7 @@ class CpuWindowTest(unittest.TestCase):
         m.steady(3, pct=99)  # raised at 90 s
         # Idle from 90 s: the averages at 100, 110 and 120 s are 67, 34.7 and 2 %.
         raised = m.steady(6, pct=2)  # 100 .. 150 s
-        # Below 85 % from 100 s, so it is held until 130 s and gone at 130.
+        # Below 80 % (85 less the band) from 100 s, so it is held until 130 s and gone at 130.
         self.assertEqual(raised, [["cpu_hot"]] * 3 + [[]] * 3)
 
     def test_the_window_comes_from_config(self):
@@ -308,8 +539,8 @@ class MemoryWindowTest(unittest.TestCase):
     def test_thirty_seconds_low_raises_it_on_the_poll_that_completes_the_window(self):
         m = self.roomy_machine()
         # Samples at 70, 80 and 90 s are low; the 60 s sample leaves the window at 90 s.
-        self.assertEqual(m.steady(3, avail=5), [[], [], ["memory_tight"]])
-        self.assertEqual(m.reading.data["mem_available_avg"], 5.0)
+        self.assertEqual(m.steady(3, avail=5), [[], [], ["cpu_hot"]])
+        self.assertEqual(m.reading.data["mem_used_avg"], 95.0)
         self.assertEqual(m.reading.facts["mem_pct"], 95.0)  # the latest reading, not the mean
 
     def test_the_detail_reads_for_30_s_at_first_and_grows(self):
@@ -321,22 +552,27 @@ class MemoryWindowTest(unittest.TestCase):
             out.append(m.poll()[0]["detail"])
         self.assertEqual(
             out,
-            ["5% available for 30 s", "5% available for 40 s", "5% available for 50 s"],
+            [
+                "95% for 30 s · CPU 2% · load 1.5",
+                "95% for 40 s · CPU 2% · load 1.5",
+                "95% for 50 s · CPU 2% · load 1.5",
+            ],
         )
 
     def test_a_dip_of_one_sample_does_not_clear_it(self):
         m = self.roomy_machine()
         m.steady(3, avail=5)
-        # One sample at 14 %: the window holds (5 + 5 + 14) / 3 = 8 %.
-        self.assertEqual(m.steady(1, avail=14), [["memory_tight"]])
-        self.assertEqual(m.steady(2, avail=5), [["memory_tight"]] * 2)
-        self.assertIsNone(m.conditions.trackers["memory_tight"].absent_since)
+        # One sample at 14 % free: the window holds (5 + 5 + 14) / 3 = 8 % free, 92 % used.
+        self.assertEqual(m.steady(1, avail=14), [["cpu_hot"]])
+        self.assertEqual(m.steady(2, avail=5), [["cpu_hot"]] * 2)
+        self.assertIsNone(m.conditions.pairs["host", "memory"].absent_since)
 
     def test_it_clears_once_the_average_rises_and_clear_after_s_has_passed(self):
         m = self.roomy_machine()
         m.steady(3, avail=5)  # raised at 90 s
-        # Means at 100, 110, 120 s: 20, 35, 50 %; above 10 % from 100 s.
-        self.assertEqual(m.steady(6, avail=50), [["memory_tight"]] * 3 + [[]] * 3)
+        # Means free at 100, 110, 120 s: 20, 35, 50 %, so 80 % used or less: below 85 % (90
+        # less the band) from 100 s.
+        self.assertEqual(m.steady(6, avail=50), [["cpu_hot"]] * 3 + [[]] * 3)
 
 
 class StartTest(unittest.TestCase):
@@ -347,14 +583,14 @@ class StartTest(unittest.TestCase):
         m.run(0, pct=2)
         self.assertEqual(ids(m.poll()), [])
         self.assertEqual(m.reading.facts["cpu_pct"], 2.0)
-        self.assertEqual(m.reading.data["cpu_span_s"], 0.5)
+        self.assertEqual(m.reading.data["span_s"], 0.5)
 
     def test_a_start_into_a_busy_cpu_judges_the_half_second_it_has(self):
         m = Machine(self)
         m.run(0, pct=99)
         out = m.poll()
         self.assertEqual(ids(out), ["cpu_hot"])
-        self.assertEqual(out[0]["detail"], "99% for 1 s · load 1.5")
+        self.assertEqual(out[0]["detail"], "99% for 1 s · memory 50% · load 1.5")
 
     def test_the_window_grows_until_it_is_full(self):
         m = Machine(self)
@@ -362,12 +598,12 @@ class StartTest(unittest.TestCase):
         m.poll()  # 0 s: busy for the half second it saw
         m.run(10, pct=2)
         m.poll()  # 10 s: the average covers 10.5 s
-        self.assertEqual(m.reading.data["cpu_span_s"], 10.5)
+        self.assertEqual(m.reading.data["span_s"], 10.5)
         spans = []
         for _ in range(4):
             m.run(10)
             m.poll()
-            spans.append(m.reading.data["cpu_span_s"])
+            spans.append(m.reading.data["span_s"])
         self.assertEqual(spans, [20.5, 30.5, 30.0, 30.0])
 
     def test_a_spike_soon_after_a_start_is_diluted_by_what_history_there_is(self):
@@ -383,15 +619,15 @@ class StartTest(unittest.TestCase):
         m = Machine(self)
         m.run(0, pct=2, avail=4)
         out = m.poll()
-        self.assertEqual(ids(out), ["memory_tight"])
-        self.assertEqual(out[0]["detail"], "4% available for 1 s")
+        self.assertEqual(ids(out), ["cpu_hot"])
+        self.assertEqual(out[0]["detail"], "96% for 1 s · CPU 2% · load 1.5")
 
     def test_memory_after_a_start_that_is_roomy(self):
         m = Machine(self)
         m.run(0, pct=2, avail=50)
         self.assertEqual(ids(m.poll()), [])
-        self.assertEqual(m.reading.data["mem_available_avg"], 50.0)
-        self.assertEqual(m.reading.data["mem_span_s"], 0.5)
+        self.assertEqual(m.reading.data["mem_used_avg"], 50.0)
+        self.assertEqual(m.reading.data["span_s"], 0.5)
 
 
 class EachConditionTest(unittest.TestCase):

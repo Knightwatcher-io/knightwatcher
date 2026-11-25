@@ -1,7 +1,8 @@
 /* Knightwatcher: the engine. Each frame it chooses the scene, walks the knight between the scene's
    spots, plays the swat and the events, and draws everything in order. What it shows comes from
    KW.engine.input, which the demo (demo.js) or the state file (main.js) sets:
-     w       the condition that wins, as KW.state makes it: { id, lv, st, scene, hl, sub }
+     w       the condition that wins, as KW.state makes it: { id, lv, st, scene, hl, sub, mem }, mem
+             whether Under strain (cpu_hot) is short of memory, which bloats the knight
      is      'auto' for the quiet scenes to take turns, or the name of the one to keep
      turns   the quiet scenes that take turns, in that order; all five (TURNS) when it is left out
              or empty
@@ -954,13 +955,13 @@
       petFree = catches.length ? Math.max(t, catches[catches.length - 1].end) : petFree;
     }
     const funOK = !serious && !!sc.outdoors;
-    const o = K.pose(w.id, t); o.floor = HFL;
+    const o = K.pose(w.id, t, !!w.mem); o.floor = HFL;
     o.helmet = inp.helmet === 'on' ? true : inp.helmet === 'off' ? false : sc.helmet !== false;
     if (sc.sword === false) o.sword = false;
     if (ev && (serious || !hosts(scene, ev.type))) ev = null;
 
     // strolling, and what each spot is for
-    const free = w.lv < 3 || w.id === 'memory_tight' || w.id === 'disk_full';
+    const free = w.lv < 3 || w.id === 'disk_full';
     let here = null;
     if (sc.rounds && free && !inBed && w.lv !== 2 && w.id !== 'backup_overdue' && w.id !== 'pi_silent') {
       here = stroll(sc.rounds, t, o, !!ev || !!swat, sc);

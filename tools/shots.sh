@@ -133,6 +133,13 @@ SHOTS=(
   "settings-scenes-tablet|bar=0&t=2300&is=battlement&set=scenes&sc=attack:camp|1480,924"
   "scene-cpu-camp|bar=0&t=2300&on=cpu&sc=cpu_hot:camp"
   "scene-pi-battlement|bar=0&t=2300&on=pi&sc=pi_silent:battlement"
+  # Under strain's headlines beyond one machine's CPU (on-cpu) and memory (on-swap, bloated in the
+  # yard): both resources on one machine and several machines; and memory under strain, bloated,
+  # training at the camp and working the bellows in the smithy
+  "strain-cpumem|bar=0&t=2300&on=cpumem"
+  "strain-several|bar=0&t=2300&on=strained&$SPARE"
+  "strain-mem-camp|bar=0&t=2300&on=mem&sc=cpu_hot:camp"
+  "strain-mem-smithy|bar=0&t=240&on=mem&sc=cpu_hot:smithy"
   # the smithy's three acts: the hammer's face on the blade 4 ms into the blow (t 2804) on each
   # build; the quench at the forge, in the steam at the barrel and as the blank is looked over, and
   # with every place filled at the forge (the head over h1 and h2) and at the barrel (the boots over
@@ -149,11 +156,11 @@ SHOTS=(
   "cpu-smithy|bar=0&t=240&on=cpu&sc=cpu_hot:smithy"
   "arm-cpu-smithy|bar=0&t=240&on=cpu&sc=cpu_hot:smithy&arm=one"
   # the builds Broad (bd=b) and Slim (bd=c), each in turn: every scene with the knight standing, the
-  # attack, the bloat of tight memory, the cellar's crate carried, the smithy's hammering, in bed
-  # (the head alone), the sick tint in bed and the hot tint in the yard; the stance with the sword
-  # and shield; the swat, which is the swing, both ways with each weapon, at the wind-up (q .3), mid
-  # cut (q .42) and the cut's end (q .55); the goblin a millisecond after each weapon's hit on that
-  # build; and the settings screen's knight page with the build chosen
+  # attack, memory under strain (bloated as it trains), the cellar's crate carried, the smithy's
+  # hammering, in bed (the head alone), the sick tint in bed and the hot tint in the yard; the
+  # stance with the sword and shield; the swat, which is the swing, both ways with each weapon, at
+  # the wind-up (q .3), mid cut (q .42) and the cut's end (q .55); the goblin a millisecond after
+  # each weapon's hit on that build; and the settings screen's knight page with the build chosen
   "bd-b-is-battlement|bar=0&t=2300&is=battlement&bd=b"
   "bd-b-is-camp|bar=0&t=2300&is=camp&bd=b"
   "bd-b-is-house|bar=0&t=2300&is=house&bd=b"

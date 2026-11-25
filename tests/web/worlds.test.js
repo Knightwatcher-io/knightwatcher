@@ -324,7 +324,7 @@ test('the engine plays a condition in the world\'s own scene for it, when that s
   assert.equal(at('cpu_hot', { cpu_hot: 'court' }), 'yard', 'a home that cannot act it gives way to the code\'s');
   assert.equal(at('cpu_hot', { cpu_hot: 'kw.gone/lab' }), 'yard', 'and so does one not loaded');
   assert.equal(at('cpu_hot', { cpu_hot: 'camp' }, { cpu_hot: 'house' }), 'house', 'a choice beats the world\'s own');
-  assert.equal(at('memory_tight', { memory_tight: 'house' }), 'battlement', 'a condition with no scene of its own follows the quiet scenes');
+  assert.equal(at('device_down', { device_down: 'house' }), 'battlement', 'a condition with no scene of its own follows the quiet scenes');
   // the quiet turns skip a list naming a scene the page has not loaded
   E.input = { w: KW.state.IDLE, is: 'auto', devices: [], tv: false, helmet: 'auto', turnMs: 1000, turns: ['camp', 'kw.gone/park'] }; E.restartTurns(0); E.draw(0);
   assert.equal(E.scene(), 'battlement');
@@ -412,7 +412,7 @@ test('the line under the cards names the world chosen, what it cleared, what con
   assert.equal(SCR.chosenLine('Neon', [], [], false, P, cat, null),
     'Neon chosen: every part is now the world\'s. Nothing had been changed from it. A part changed after this is kept over the world.');
   assert.equal(SCR.chosenLine('Medieval', [{ sec: 'look', k: 'monarch', v: 'b' }, { sec: 'quiet', k: 'scenes', v: ['camp'] }, { sec: 'scenes', k: 'cpu_hot', v: 'camp' }], [], false, P, cat, null),
-    'Medieval chosen: every part is now the world\'s. Cleared what was chosen here: the monarch (monarch B), the quiet scenes (camp) and running hot in the camp. A part changed after this is kept over the world.');
+    'Medieval chosen: every part is now the world\'s. Cleared what was chosen here: the monarch (monarch B), the quiet scenes (camp) and under strain in the camp. A part changed after this is kept over the world.');
 });
 
 test('the device rows show only once a second prop set is loaded, a row a kind, each set that draws it, the world\'s first', () => {

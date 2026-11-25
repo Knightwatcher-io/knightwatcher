@@ -463,6 +463,27 @@ class SettingsTest(AdminCase):
         status, _, body = self.patch({"reset": ["collector.interval_s"]})
         self.assertEqual((status, body["set"]), (200, {}))
 
+    def test_memory_tights_old_paths_are_written_in_todays_terms(self):
+        # An admin.json from before Under strain, kept by hand here as an older server wrote it.
+        path = os.path.join(self.s.data, overlay.FILE)
+        old = {
+            "conditions.memory_tight.available_pct": 15.0,
+            "conditions.memory_tight.window_s": 60,
+        }
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"v": 1, "set": old}, fh)
+        self.assertEqual(self.s.admin.answer()["set"], old)
+        status, _, body = self.patch({"set": {"collector.interval_s": 15}})
+        self.assertEqual(status, 200)
+        new = {
+            "collector.interval_s": 15,
+            "conditions.cpu_hot.memory_pct": 85.0,
+            "conditions.cpu_hot.window_s": 60,
+        }
+        self.assertEqual(body["set"], new)
+        with open(path, "rb") as fh:
+            self.assertEqual(json.loads(fh.read())["set"], new)
+
     def test_a_refused_change_keeps_nothing_and_has_the_collectors_words(self):
         self.patch({"set": {"collector.interval_s": 15}})
         before = self.s.admin.answer()["version"]

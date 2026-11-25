@@ -413,3 +413,35 @@ test('device_down\'s words are the collector\'s for the same devices', t => {
   const page = cases.map(down => { const w = s.D.downWords(down.map(([kind, name]) => ({ kind, name, state: 'down', alert: true }))); return [w.hl, w.sub]; });
   assert.deepEqual(page, collector);
 });
+
+// ---- Under strain in the demo -------------------------------------------------------------------
+
+test('Under strain has four entries of one id, in the collector\'s words, the memory ones bloated', () => {
+  const shown = on => { const s = start({ hash: { on } }); return [s.engine.input.w.id, s.engine.input.w.mem, ...s.words()]; };
+  assert.deepEqual(shown('cpu'), ['cpu_hot', false, 'HOST CPU 96%', '96% for 9 min · memory 61% · load 14.2']);
+  assert.deepEqual(shown('cpu_hot'), shown('cpu'));
+  assert.deepEqual(shown('mem'), ['cpu_hot', true, 'NAS MEMORY 93%', '93% for 6 min · CPU 41%']);
+  // swap and memory_tight, the older names, show memory under strain
+  assert.deepEqual(shown('swap'), shown('mem'));
+  assert.deepEqual(shown('memory_tight'), shown('mem'));
+  assert.deepEqual(shown('cpumem'), ['cpu_hot', true, 'NAS UNDER STRAIN', 'memory 93% and CPU 97% for 12 min']);
+  assert.deepEqual(shown('strained'), ['cpu_hot', true, '3 UNDER STRAIN', 'NAS memory 93%, Host CPU 97%, Buildbox CPU 91%']);
+  // two of them given: the first shows, and counts once
+  const s = start({ hash: { on: 'cpu,mem' } });
+  assert.deepEqual([s.engine.input.w.hl, s.engine.input.w.mem], ['HOST CPU 96%', false]);
+  // the headlines are the collector's: at most 16 characters, in capitals
+  for (const on of ['cpu', 'mem', 'cpumem', 'strained']) { const [, , hl, sub] = shown(on); assert.ok(hl.length <= 16 && hl === hl.toUpperCase() && sub.length <= 60, on); }
+});
+
+test('turning one of Under strain\'s buttons on turns the others off', () => {
+  const s = start({ hash: { on: 'attack,cpu_hot' } });
+  s.cond('mem').click();
+  assert.equal(s.KW.opts.on, 'attack,mem');
+  assert.deepEqual([s.cond('cpu_hot').getAttribute('aria-pressed'), s.cond('mem').getAttribute('aria-pressed')], ['false', 'true']);
+  s.cond('strained').click();
+  assert.equal(s.KW.opts.on, 'attack,strained');
+  s.cond('strained').click();
+  assert.equal(s.KW.opts.on, 'attack');
+  assert.deepEqual(s.doc.byId.conds.children.filter(b => b.dataset.id).map(b => b.textContent).filter(t => t.startsWith('Strain')),
+    ['Strain: CPU', 'Strain: memory', 'Strain: both', 'Strain: several']);
+});

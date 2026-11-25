@@ -238,7 +238,8 @@ def _probe(config, name: str, record: str | None) -> int:
 def _check(config) -> int:
     """--check-config, once config.toml has passed: the provider files. Exit 2 when a section's
     `from` names a file that was left out, which would leave that source failing; the problems of
-    a file no section names, or of the folder, are warnings, and the exit is 0."""
+    a file no section names, or of the folder, are warnings, and the exit is 0, as are old
+    settings read in today's terms (config.translate)."""
     used = {name: kinds.provider_of(name, config.sources[name]) for name in config.refused_in_use()}
     filed = [p for found in config.providers.refused.values() for p in found]
     for pid, problems in config.providers.refused.items():
@@ -256,6 +257,8 @@ def _check(config) -> int:
         )
     if used:
         return 2
+    for warning in config.warnings:
+        print(f"warning: {warning}", file=sys.stderr)
     names = ", ".join(config.sources) or "none"
     line = f"config ok: {len(config.sources)} sources enabled ({names})"
     if config.devices:

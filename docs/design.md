@@ -1,8 +1,8 @@
 # Design
 
 Knightwatcher is a wall display for a homelab. A pixel-art knight fills a tablet's screen, in a
-scene and a state that mirror the machines being watched: the knight sweats when the CPU is
-pinned, takes to bed when a container is unhealthy, and goes to the royal court when someone
+scene and a state that mirror the machines being watched: the knight trains and sweats when a
+machine is under strain, takes to bed when a container is unhealthy, and goes to the royal court when someone
 opens a shell. A headline over the top says why in words, beside a wall clock.
 
 It has two parts that share one file.
@@ -257,14 +257,16 @@ and a state of the knight. Highest first:
 | `backup_overdue` | warning | house | hungry, thinking of food |
 | `pi_silent` | warning | house | staring at the empty dish |
 | `device_down` | warning | the quiet scene of the moment | stays put, frowning, looking towards the empty place |
-| `cpu_hot` | warning | training yard | training frantically, sweating |
-| `memory_tight` | warning | the quiet scene of the moment | bloated |
+| `cpu_hot` (Under strain) | warning | training yard | training frantically, sweating; bloated as well when memory is short |
 | `ssh_session` | at work | royal court | talking with the monarch |
 | `updating` | at work | smithy | hammering the weapon |
 | `streaming` | quiet | house | watching the television |
 | `night` | asleep | house | in bed, screen dimmed |
 
-That is each condition's own scene. The settings may move five of them to another scene that can
+That is each condition's own scene. `cpu_hot` is Under strain: a watched machine's CPU or memory,
+today this host's, averaged over a window at or above its threshold. It replaced Running hot and
+Memory tight (`memory_tight`), so memory under strain plays in `cpu_hot`'s scene, the knight
+training and bloated, rather than in the quiet scene of the moment. The settings may move five of them to another scene that can
 act them; see [Scenes chosen per condition](#scenes-chosen-per-condition).
 
 With no condition active the quiet scenes take turns: battlement, camp, house, training yard and
@@ -298,13 +300,13 @@ shows, where the knight stands and what the knight does. A scene that takes the 
 over for its own story (the court, where the knight talks with the monarch) acts only its own
 condition. The smithy has three acts of its own: the knight hammers the weapon on the anvil while
 updating, works the bellows while the CPU runs hot, the forge flaring with each push, and
-quenches a blade while all is quiet; with a device down or the memory tight the knight stands at
-the anvil, as in any quiet scene. The pie stands to the right of the knight's spot
+quenches a blade while all is quiet; with a device down the knight stands at the anvil, as in any
+quiet scene. Under strain with memory short, the knight works the bellows bloated. The pie stands to the right of the knight's spot
 in the battlement, the camp and the house, and to the left everywhere else, so only those three
 can show the knight staring at the empty dish. The weapon is put away in the house and the cellar,
 so neither can show it raised against an attack. A condition the knight strolls through (the
 crate of `disk_full`) needs a scene whose spots leave the knight's face alone: the cellar's guard
-spots and the yard's, not the spots where the knight sniffs or yawns. Running hot and hunger show
+spots and the yard's, not the spots where the knight sniffs or yawns. Under strain and hunger show
 on the knight alone, so every scene that leaves the pose alone can act them.
 
 | Condition | battlement | camp | house | yard | cellar | smithy | court |
@@ -317,7 +319,6 @@ on the knight alone, so every scene that leaves the pose alone can act them.
 | `pi_silent` | yes | yes | own | | | | |
 | `device_down` | yes | yes | yes | yes | | yes | |
 | `cpu_hot` | yes | yes | yes | own | yes | yes | |
-| `memory_tight` | yes | yes | yes | yes | | yes | |
 | `ssh_session` | | | | | | | own |
 | `updating` | | | | | | own | |
 | `streaming` | | | own | | | | |
@@ -328,8 +329,9 @@ one scene can act: `attack`, `disk_full`, `backup_overdue`, `pi_silent` and `cpu
 offered: `wan_down` (only the battlement has the bell's rope to cut), `container_unhealthy` and
 `night` (the bed is in the house; the night is left out by design, since the knight sleeps where
 the bed is), `streaming` (the television), `ssh_session` (the court) and `updating` (the smithy),
-each of which one scene alone can act; and `device_down` and `memory_tight`, which play in whichever
-quiet scene is showing. Nothing changes until a scene is chosen, and a choice the chosen scene
+each of which one scene alone can act; and `device_down`, which plays in whichever quiet scene is
+showing. The scenes still list `memory_tight` among what they can act, as the packs do, for a pack
+from before; the page never acts it on its own ([worlds.md](./worlds.md)). Nothing changes until a scene is chosen, and a choice the chosen scene
 cannot act is ignored, so the condition plays in its own scene. A chosen scene changes only where
 the condition plays: the condition's level, its headline and the knight's state stay as they are.
 
@@ -406,7 +408,7 @@ A small Python program with no third-party dependencies, run as a container:
   are unless turned on ([configuration.md](./configuration.md#usage-counts)).
 
 It keeps the short history that its judgements need (a CPU averaging 85 percent or more over the
-last 30 seconds is a condition; a spike of a few seconds is not), so the page stays stateless.
+last 30 seconds is Under strain; a spike of a few seconds is not), so the page stays stateless.
 Every source may fail on its own: the collector reports the source as unavailable and carries on.
 
 Sources are separate modules behind one small interface, so a homelab with different tools swaps

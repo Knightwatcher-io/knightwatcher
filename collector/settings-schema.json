@@ -10,8 +10,7 @@
     { "id": "backup_overdue", "name": "Backup overdue", "scene": "house", "help": "The last completed backup is too long ago." },
     { "id": "pi_silent", "name": "Pi silent", "scene": "house", "help": "The Pi of [sources.pi] has not answered for a while." },
     { "id": "device_down", "name": "Device down", "scene": null, "help": "A device that alerts is down. It plays in whichever quiet scene is showing." },
-    { "id": "cpu_hot", "name": "Running hot", "scene": "yard", "help": "CPU use, averaged over a window, is at or above a threshold." },
-    { "id": "memory_tight", "name": "Memory tight", "scene": null, "help": "Available memory, averaged over a window, is at or below a threshold. It plays in whichever quiet scene is showing." },
+    { "id": "cpu_hot", "name": "Under strain", "scene": "yard", "help": "A watched machine's CPU or memory, averaged over a window, is at or above its threshold. The machine is this host, named by name in [sources.host]." },
     { "id": "ssh_session", "name": "At court", "scene": "court", "help": "Someone has an SSH session open." },
     { "id": "updating", "name": "Updating", "scene": "smithy", "help": "A configured lock holder, such as nightly maintenance, is running." },
     { "id": "streaming", "name": "Now showing", "scene": "house", "help": "A stream is playing." },
@@ -62,7 +61,7 @@
       "help": "When each condition is raised. The whole table, and each condition's own table, may be left out to take the defaults.",
       "settings": [
         { "key": "priority", "type": "list", "items": "condition",
-          "default": ["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "device_down", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night"],
+          "default": ["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "device_down", "cpu_hot", "ssh_session", "updating", "streaming", "night"],
           "form": "condition ids, each once", "scope": "household",
           "gui": { "admin": { "section": "Conditions", "label": "Priority" } }, "editable": true,
           "help": "Conditions, highest first. One left out is never raised. Device down (device_down) must stay in the list while any device alerts." },
@@ -138,26 +137,20 @@
     },
     {
       "table": "conditions.cpu_hot",
-      "help": "Running hot: CPU use, averaged over the window, is at or above the threshold.",
+      "help": "Under strain: a watched machine's CPU or memory, averaged over the window, is at or above its threshold. Each machine and resource is judged on its own, and the condition is up while any one is. Its id stays cpu_hot, so saved scene choices and checks that borrow it carry over. It replaces Running hot and Memory tight: an old [conditions.memory_tight] is read as memory_pct here, with a warning.",
       "settings": [
         { "key": "pct", "type": "number", "default": 85.0, "above": 0, "max": 100, "unit": "percent", "scope": "household",
-          "gui": { "admin": { "section": "Conditions: running hot", "label": "CPU use" } }, "editable": true,
+          "gui": { "admin": { "section": "Conditions: under strain", "label": "CPU use" } }, "editable": true,
           "help": "CPU use, percent of all cores, averaged over the window: at or above." },
+        { "key": "memory_pct", "type": "number", "default": 90.0, "above": 0, "max": 100, "unit": "percent", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: under strain", "label": "Memory used" } }, "editable": true,
+          "help": "Memory used, percent of all memory, averaged over the window: at or above. Used is all but what the system counts as available (MemAvailable), so caches that can be dropped are not counted, and swap never is." },
         { "key": "window_s", "type": "integer", "default": 30, "min": 10, "unit": "seconds", "scope": "household",
-          "gui": { "admin": { "section": "Conditions: running hot", "label": "Window" } }, "editable": true,
-          "help": "The window the CPU is averaged over." }
-      ]
-    },
-    {
-      "table": "conditions.memory_tight",
-      "help": "Memory tight: available memory, averaged over the window, is at or below the threshold.",
-      "settings": [
-        { "key": "available_pct", "type": "number", "default": 10.0, "above": 0, "max": 100, "unit": "percent", "scope": "household",
-          "gui": { "admin": { "section": "Conditions: memory tight", "label": "Available" } }, "editable": true,
-          "help": "Memory available, as a percent of all memory, averaged over the window: at or below." },
-        { "key": "window_s", "type": "integer", "default": 30, "min": 10, "unit": "seconds", "scope": "household",
-          "gui": { "admin": { "section": "Conditions: memory tight", "label": "Window" } }, "editable": true,
-          "help": "The window available memory is averaged over." }
+          "gui": { "admin": { "section": "Conditions: under strain", "label": "Window" } }, "editable": true,
+          "help": "The window CPU and memory are both averaged over." },
+        { "key": "band", "type": "number", "default": 5.0, "min": 0, "max": 50, "unit": "percent", "scope": "household",
+          "gui": { "admin": { "section": "Conditions: under strain", "label": "Band" } }, "editable": true,
+          "help": "Points below its threshold that a raised machine and resource may fall and stay raised, so that a figure hovering at the threshold does not raise and clear over and over. Once its average is below the threshold less the band, it clears after clear_after_s. Must be below pct and memory_pct." }
       ]
     },
     {
@@ -205,9 +198,12 @@
         { "key": "enabled", "type": "boolean", "default": true, "scope": "household",
           "gui": { "admin": { "section": "Sources: host", "label": "On" } }, "editable": true,
           "help": "Whether the source is read. Off (false in config.toml) keeps its other settings for when it is turned on again." },
+        { "key": "name", "type": "string", "default": "Host", "form": "1 to 20 printable ASCII characters, no space at either end", "scope": "household",
+          "gui": { "admin": { "section": "Sources: host", "label": "Name" } }, "editable": true,
+          "help": "What the wall calls this host when it is under strain: HOST CPU 97%. When it is a device's name, ignoring case, the condition names that device." },
         { "key": "every_s", "type": "integer", "default": 10, "above": 0, "unit": "seconds", "scope": "household",
           "gui": { "admin": { "section": "Sources: host", "label": "Read every" } }, "editable": true,
-          "help": "How often the source is read. Should be at least as often as the shorter averaging window; when it is read less often, an average reaches back to the previous read instead." },
+          "help": "How often the source is read. Should be at least as often as the averaging window is long; when it is read less often, an average reaches back to the previous read instead." },
         { "key": "disks", "type": "list", "items": "table", "item_keys": ["mount", "path"], "default": [],
           "form": "tables of mount and path, such as { mount = \"/data\", path = \"/host/disks/data\" }", "scope": "household",
           "gui": { "admin": { "section": "Sources: host", "label": "Disks" } }, "editable": true,
@@ -544,7 +540,7 @@
         { "key": "detail", "type": "string", "default": "", "form": "at most 60 printable characters", "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Detail" } }, "editable": false,
           "help": "The line under the headline. {value} in it is the value found, cleaned and cut to fit, a number as the collector writes it and true or false as themselves; no other braces. Not {value} with missing." },
-        { "key": "as", "type": "string", "default": null, "required": true, "values": ["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "cpu_hot", "memory_tight", "ssh_session", "updating", "streaming", "night"], "scope": "household",
+        { "key": "as", "type": "string", "default": null, "required": true, "values": ["attack", "wan_down", "container_unhealthy", "disk_full", "backup_overdue", "pi_silent", "cpu_hot", "ssh_session", "updating", "streaming", "night"], "scope": "household",
           "gui": { "admin": { "section": "Sources: checks", "label": "Acts as" } }, "editable": false,
           "help": "The condition whose scene, knight and colour the check borrows; any but device_down, which needs devices to look towards. The check takes that condition's level and sits straight after it in the priority, checks in their order here. The condition must be in conditions.priority, or the check is refused, since it would never be raised. The scene [scenes] chooses for that condition is the check's too." },
         { "key": "every_s", "type": "integer", "default": 60, "min": 10, "max": 3600, "unit": "seconds", "scope": "household",
@@ -760,8 +756,8 @@
           "gui": { "admin": { "section": "Scenes", "label": "Pi silent" }, "wall": { "section": "Scenes", "label": "Pi silent" } }, "editable": true,
           "help": "Where the knight acts out a silent Pi." },
         { "key": "cpu_hot", "type": "string", "default": null, "values": ["battlement", "camp", "house", "yard", "cellar", "smithy", "court"], "long": true, "acts": ["battlement", "camp", "house", "yard", "cellar", "smithy"], "page_default": "yard", "scope": "display",
-          "gui": { "admin": { "section": "Scenes", "label": "Running hot" }, "wall": { "section": "Scenes", "label": "Running hot" } }, "editable": true,
-          "help": "Where the knight acts out a hot CPU." }
+          "gui": { "admin": { "section": "Scenes", "label": "Under strain" }, "wall": { "section": "Scenes", "label": "Under strain" } }, "editable": true,
+          "help": "Where the knight acts out a machine under strain: its CPU or its memory, on any watched machine. The knight trains, and is bloated as well while a machine is short of memory." }
       ]
     }
   ],

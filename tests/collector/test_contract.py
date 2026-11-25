@@ -190,6 +190,95 @@ class DevicesContractTest(unittest.TestCase):
         self.assertEqual(typed, set(contract.EVENT_PARTS))
 
 
+STRAINED = {
+    "id": "cpu_hot",
+    "level": "warning",
+    "since": "2026-01-15T21:30:02Z",
+    "headline": "VAULT MEMORY 93%",
+    "detail": "93% for 12 min · CPU 41% · load 3.1",
+    "machines": [
+        {
+            "name": "Vault",
+            "device": 1,
+            "window_s": 30,
+            "memory": {"pct": 93.4, "threshold": 90.0, "since": "2026-01-15T21:30:02Z"},
+        }
+    ],
+}
+
+
+class StrainContractTest(unittest.TestCase):
+    """cpu_hot, Under strain, carries the machines under strain."""
+
+    def check(self, change=None):
+        s = state(conditions=[DEVICE_DOWN, STRAINED])
+        if change:
+            change(s["conditions"][1])
+        return contract.validate(s)
+
+    def test_a_valid_entry_passes(self):
+        self.assertEqual(self.check(), [])
+
+        def both(c):
+            c["machines"][0].pop("device")
+            c["machines"][0]["cpu"] = {"pct": 97, "threshold": 85, "since": c["since"]}
+
+        self.assertEqual(self.check(both), [])
+
+    def test_the_machines(self):
+        w = "conditions[1].machines"
+        pair = {"pct": 97.0, "threshold": 85.0, "since": "2026-01-15T21:30:02Z"}
+
+        def machines(value):
+            return lambda c: c.__setitem__("machines", value)
+
+        def first(**over):
+            def change(c):
+                c["machines"][0].update(over)
+                for k, v in over.items():
+                    if v is None:
+                        del c["machines"][0][k]
+
+            return change
+
+        cases = [
+            (lambda c: c.pop("machines"), f"{w} is not a list of 1 to 33 machines"),
+            (machines([]), f"{w} is not a list of 1 to 33 machines"),
+            (machines([{"name": f"M{i}", "window_s": 30, "cpu": pair} for i in range(34)]),
+             f"{w} is not a list of 1 to 33 machines"),
+            (machines(["Vault"]), f"{w}[0] is not an object"),
+            (first(name=" Vault"), f"{w}[0].name is not 1 to 20 printable ASCII characters"),
+            (first(spare=1), f"{w}[0] has a key other than name, device, window_s, cpu and memory"),
+            (first(device=4), f"{w}[0].device is not a position in facts.devices.list"),
+            (first(device=True), f"{w}[0].device is not a position in facts.devices.list"),
+            (first(window_s=0), f"{w}[0].window_s is not a positive whole number"),
+            (first(memory=None), f"{w}[0] has neither cpu nor memory"),
+            (first(memory={"pct": 93.4}),
+             f"{w}[0].memory is not an object of pct, threshold and since"),
+            (first(memory={**pair, "pct": "93"}),
+             f"{w}[0].memory.pct and threshold are not numbers"),
+            (first(memory={**pair, "since": "now"}), f"{w}[0].memory.since is not a UTC timestamp"),
+            (
+                lambda c: c["machines"].append({"name": "VAULT", "window_s": 30, "cpu": pair}),
+                f"{w}[1].name is listed twice",
+            ),
+        ]  # fmt: skip
+        for change, problem in cases:
+            with self.subTest(problem=problem):
+                self.assertIn(problem, self.check(change))
+
+    def test_the_example_in_the_docs_names_its_machines(self):
+        with open(os.path.join(ROOT, "docs", "state.md"), encoding="utf-8") as fh:
+            doc = fh.read()
+        documents = [
+            d
+            for d in (json.loads(block) for block in re.findall(r"```json\n(.*?)\n```", doc, re.S))
+            if isinstance(d, dict) and "schema" in d
+        ]
+        strained = [c for d in documents for c in d["conditions"] if c["id"] == "cpu_hot"]
+        self.assertTrue(strained and all(c.get("machines") for c in strained))
+
+
 class DefaultsContractTest(unittest.TestCase):
     def test_the_section(self):
         whole = "defaults is not an object with look, display, quiet and scenes"

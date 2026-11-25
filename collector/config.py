@@ -26,6 +26,9 @@ section's, and two enabled sources that read one provider at one address are ref
 from a JSON reply and tested, compiled into a provider of the check kind (collector/kinds/check.py)
 rather than naming one. It borrows the scene of a condition (`as`), which must be in the priority
 list, and its one header, if it has one, reads its value from KW_<SECRET>_HEADER.
+Settings Under strain replaced (memory_tight's table, its place in the priority list and in a
+check's `as`) are read in today's terms by translate() before anything else is checked, each with
+a warning in the Config's `warnings`, which never stops the collector.
 Credentials come from environment variables named KW_<SECRET>_<FIELD>, where SECRET is
 the source's `secret` setting, the provider's id unless it is set; no message ever carries a
 credential's value.
@@ -112,6 +115,11 @@ REPLACED = {
     "conditions.cpu_hot.for_s": "window_s, the seconds the CPU is averaged over",
     "conditions.memory_tight.for_s": "window_s, the seconds available memory is averaged over",
 }
+
+# Memory tight, retired: Under strain (cpu_hot) covers memory as well as CPU. An old config.toml,
+# or an old admin.json laid over it, is read in today's terms by translate(), with a warning for
+# each old setting and no end date.
+RETIRED = "memory_tight"
 
 # What an old [sources.security] gets in place of "not used by fail2ban" or "unknown provider":
 # the fail2ban summary it read at url is no longer read, and fail2ban's own database replaces it.
@@ -224,6 +232,9 @@ class Config:
     # Each source of a list of tables, by its name, with where config.toml sets it:
     # {"imports:whisparr": "sources.imports[0]"}.
     places: dict[str, str] = field(default_factory=dict)
+    # Old settings read in today's terms (translate()), one line each, for the log and
+    # --check-config. They never stop the collector.
+    warnings: list[str] = field(default_factory=list)
 
     def secret_values(self) -> list[str]:
         """Every secret string, so that error text can be scrubbed of them."""
@@ -314,6 +325,9 @@ def _validate_conditions(c: dict, problems: list[str]) -> None:
     for key in ("start", "end"):
         if not _HHMM.match(c["night"][key]):
             problems.append(f"conditions.night.{key}: expected HH:MM, 24-hour")
+    hot = c["cpu_hot"]
+    if not problems and hot["band"] >= min(hot["pct"], hot["memory_pct"]):
+        problems.append("conditions.cpu_hot.band: must be below pct and memory_pct")
 
 
 def _table_of(source: str) -> str:
@@ -356,6 +370,10 @@ def _validate_source(name: str, s: dict, problems: list[str], registry, where=No
         if why:
             problems.append(f"{where}.from: {why}")
     if name == "host":
+        if not _DEVICE_NAME.match(s["name"]):
+            problems.append(
+                "sources.host.name: 1 to 20 printable ASCII characters, no space at either end"
+            )
         for i, d in enumerate(s["disks"]):
             if (
                 not isinstance(d, dict)
@@ -1146,6 +1164,112 @@ def _same_service(sources: dict[str, dict], places: dict[str, str], problems: li
             seen[key] = name
 
 
+def _number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def translate(raw: dict, problems: list[str]) -> tuple[dict, list[str]]:
+    """A parsed config.toml read in today's terms, and a warning for each old setting read so.
+
+    Under strain (cpu_hot) replaced Memory tight (memory_tight):
+      - [conditions.memory_tight]'s available_pct is read as memory_pct in [conditions.cpu_hot],
+        100 less it, unless that table sets memory_pct, and its window_s as cpu_hot's window_s
+        when it is the longer;
+      - "memory_tight" in conditions.priority is dropped, or read as "cpu_hot" where the list
+        does not name cpu_hot;
+      - a check of [[sources.json]] with as = "memory_tight" borrows cpu_hot.
+    A value of the wrong type or out of the old range is a problem named by its old key. raw is
+    not changed; nothing is copied when it holds nothing old.
+    """
+    warnings: list[str] = []
+    conditions = raw.get("conditions")
+    checks = raw.get("sources", {}).get("json") if isinstance(raw.get("sources"), dict) else None
+    old_priority = (
+        isinstance(conditions, dict)
+        and isinstance(conditions.get("priority"), list)
+        and RETIRED in conditions["priority"]
+    )
+    old_as = isinstance(checks, list) and any(
+        isinstance(e, dict) and e.get("as") == RETIRED for e in checks
+    )
+    old_table = isinstance(conditions, dict) and RETIRED in conditions
+    if not (old_table or old_priority or old_as):
+        return raw, warnings
+    out = copy.deepcopy(raw)
+    conditions = out.get("conditions")
+    new = "since Under strain (cpu_hot) now covers memory"
+    if old_table:
+        old = conditions.pop(RETIRED)
+        hot = conditions.setdefault("cpu_hot", {})
+        w = f"conditions.{RETIRED}"
+        if not isinstance(old, dict):
+            problems.append(f"{w}: expected a table")
+        elif not isinstance(hot, dict):
+            pass  # [conditions.cpu_hot] that is not a table is the merge's problem to report
+        else:
+            if not old:
+                warnings.append(f"{w}: an empty table, read as nothing, {new}; take it out")
+            for key, value in old.items():
+                if f"{w}.{key}" in REPLACED:
+                    problems.append(f"{w}.{key}: removed; use {REPLACED[f'{w}.{key}']}")
+                elif key == "available_pct":
+                    if not _number(value):
+                        problems.append(f"{w}.available_pct: expected float")
+                    elif not 0 < value < 100:
+                        problems.append(f"{w}.available_pct: must be above 0 and below 100")
+                    elif "memory_pct" in hot:
+                        warnings.append(
+                            f"{w}.available_pct: left unused, since conditions.cpu_hot.memory_pct "
+                            "is set; take it out"
+                        )
+                    else:
+                        used = round(100 - value, 1)
+                        hot["memory_pct"] = used
+                        warnings.append(
+                            f"{w}.available_pct = {value:g}: read as conditions.cpu_hot.memory_pct"
+                            f" = {used:g}, {new}; set that instead"
+                        )
+                elif key == "window_s":
+                    if not isinstance(value, int) or isinstance(value, bool):
+                        problems.append(f"{w}.window_s: expected int")
+                        continue
+                    held = hot.get("window_s", CONDITION_DEFAULTS["cpu_hot"]["window_s"])
+                    if isinstance(held, int) and not isinstance(held, bool) and value > held:
+                        hot["window_s"] = value
+                        warnings.append(
+                            f"{w}.window_s = {value}: read as conditions.cpu_hot.window_s = "
+                            f"{value}, the longer of the two, {new}; set that instead"
+                        )
+                    else:
+                        warnings.append(
+                            f"{w}.window_s: left unused, since conditions.cpu_hot.window_s "
+                            "covers memory too; take it out"
+                        )
+                else:
+                    problems.append(f"{w}.{key}: unknown setting")
+    if old_priority:
+        listed = conditions["priority"]
+        if "cpu_hot" in listed:
+            conditions["priority"] = [c for c in listed if c != RETIRED]
+            warnings.append(f'conditions.priority: "{RETIRED}" dropped, {new}; take it out')
+        else:
+            at = listed.index(RETIRED)
+            rest = [c for c in listed[at + 1 :] if c != RETIRED]
+            conditions["priority"] = [*listed[:at], "cpu_hot", *rest]
+            warnings.append(
+                f'conditions.priority: "{RETIRED}" read as "cpu_hot", {new}; write that instead'
+            )
+    if old_as:
+        for i, entry in enumerate(out["sources"]["json"]):
+            if isinstance(entry, dict) and entry.get("as") == RETIRED:
+                entry["as"] = "cpu_hot"
+                warnings.append(
+                    f'sources.json[{i}].as: "{RETIRED}" read as "cpu_hot", {new}; '
+                    "write that instead"
+                )
+    return out, warnings
+
+
 def build(
     raw: dict,
     env: Mapping[str, str] | None = None,
@@ -1166,6 +1290,7 @@ def build(
         raise ValueError(f"missing: {missing!r}")
     registry = providers if providers is not None else providers_mod.builtin_only()
     problems: list[str] = []
+    raw, warnings = translate(raw, problems)
     for key in raw:
         if key not in ("collector", "conditions", "sources", "device", *DEFAULT_TABLES):
             problems.append(f"{key}: unknown table")
@@ -1223,7 +1348,17 @@ def build(
     if problems:
         raise ConfigError(problems)
     return Config(
-        collector, conditions, sources, secrets, devices, defaults, scrub, lacking, registry, places
+        collector,
+        conditions,
+        sources,
+        secrets,
+        devices,
+        defaults,
+        scrub,
+        lacking,
+        registry,
+        places,
+        warnings,
     )
 
 

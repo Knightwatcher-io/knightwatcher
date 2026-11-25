@@ -50,6 +50,16 @@ def _paths() -> dict[str, dict[str, Any]]:
 
 
 PATHS = _paths()
+# Paths an admin.json from before Under strain may hold, which name settings that are gone. They
+# are still read: laid over config.toml like any other path, config.translate() reads them in
+# today's terms with a warning, and upgrade() rewrites them when the server next writes the file.
+LEGACY = {
+    "conditions.memory_tight.available_pct": {"type": "number"},
+    "conditions.memory_tight.window_s": {"type": "integer"},
+}
+# The retired condition, and the path of the priority list that may still name it.
+RETIRED = "memory_tight"
+PRIORITY = "conditions.priority"
 # Settings of the schema that the admin page shows but never sets.
 FIXED = {
     f"{t['table']}.{s['key']}"
@@ -92,7 +102,7 @@ def path_problem(path: Any, value: Any) -> str | None:
         return None
     if path in FIXED:
         return f"{path}: not set on the admin page"
-    spec = PATHS.get(path)
+    spec = PATHS.get(path) or LEGACY.get(path)
     if spec is None:
         return f"{path}: unknown setting"
     if not _type_ok(spec, value):
@@ -181,6 +191,32 @@ def lay(raw: dict[str, Any], given: dict[str, Any]) -> dict[str, Any]:
                 here[name] = {}
             here = here[name]
         here[key] = copy.deepcopy(value)
+    return out
+
+
+def upgrade(given: dict[str, Any]) -> dict[str, Any]:
+    """What a store sets, in today's terms, so that the server writes admin.json without the
+    settings Under strain replaced: its LEGACY paths, and "memory_tight" in its priority list. They
+    are read by config.translate()'s rule against what the store itself sets: memory tight's
+    available_pct becomes cpu_hot's memory_pct unless the store sets that, and its window_s
+    becomes cpu_hot's when it is longer than the store's, or than the default where the store sets
+    none. given is not changed."""
+    priority = given.get(PRIORITY)
+    old_priority = isinstance(priority, list) and RETIRED in priority
+    if not old_priority and not any(path in given for path in LEGACY):
+        return given
+    from collector import config as config_mod
+
+    hot = "conditions.cpu_hot."
+    out = {path: copy.deepcopy(v) for path, v in given.items() if path not in LEGACY}
+    old = {path: v for path, v in given.items() if path in LEGACY or path.startswith(hot)}
+    if old_priority:
+        old[PRIORITY] = priority
+    new, _ = config_mod.translate(lay({}, old), [])
+    for key, value in new.get("conditions", {}).get("cpu_hot", {}).items():
+        out[hot + key] = value
+    if old_priority:
+        out[PRIORITY] = new["conditions"]["priority"]
     return out
 
 

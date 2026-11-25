@@ -362,9 +362,8 @@ covers places, which the owner accepted: at the forge (650, about 2.2 s of each 
 bellows (612, all the time the CPU runs hot) the knight's head hides most of the owls in the high
 places `h1` (600) and `h2` (676), and at the water (228, about 5.5 s of each quench) the boots stand
 over the third ground place, `g3` (218), so a device there stands in front of them. Neither hides an
-alert: a device down outranks both all is quiet and the CPU running hot, and under `device_down`
-(and `memory_tight`) the smithy plays no act and the knight stays at its spot, 440, clear of every
-place. On each walk of the quench the knight passes in front of the pie, and at the water stands
+alert: a device down outranks both all is quiet and a machine under strain, and under
+`device_down` the smithy plays no act and the knight stays at its spot, 440, clear of every place. On each walk of the quench the knight passes in front of the pie, and at the water stands
 clear of it (the knight's right edge at 290, the pie's place from 295). `tests/web/places.test.js`
 holds the knight's drawing at the three stands to exactly these places.
 

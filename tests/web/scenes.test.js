@@ -196,8 +196,13 @@ function statesOf(KW, pack, name) {
   const sc = KW.scenes[name], out = [];
   const add = (label, st) => out.push([label, st]);
   add('idle', {});
-  // each condition the scene can act out
-  for (const id of sc.can || []) add(id, id === 'device_down' ? { id, devices: DEVICE_DOWN } : { id });
+  // each condition the scene can act out, Under strain short of memory too; never a retired id
+  // (memory_tight), which the page never acts on its own
+  for (const id of sc.can || []) {
+    if (Object.prototype.hasOwnProperty.call(KW.state.RETIRED, id)) continue;
+    add(id, id === 'device_down' ? { id, devices: DEVICE_DOWN } : { id });
+    if (id === 'cpu_hot') add('cpu_hot short of memory', { id, mem: true });
+  }
   // the helmet the other way from the scene's own
   if (sc.helmet === false) add('helmet on', { helmet: true }); else add('helmet off', { helmet: false });
   // the house's television on while all is quiet; streaming has it on already
@@ -242,15 +247,15 @@ function statesOf(KW, pack, name) {
 function frame(KW, name, st, t) {
   const sc = KW.scenes[name], K = KW.knight, V = KW.view, ST = KW.state;
   const id = st.id || 'idle', k = ST.CONDITIONS[id];
-  const w = k ? { id, lv: k.lv, st: ST.LEVELS[k.level], scene: k.scene, hl: '', sub: '' } : ST.IDLE;
+  const w = k ? { id, lv: k.lv, st: ST.LEVELS[k.level], scene: k.scene, hl: '', sub: '', mem: !!st.mem } : ST.IDLE;
   const list = st.devices ? ST.listFromHook(st.devices) : [{ kind: 'pi', state: id === 'pi_silent' ? 'down' : 'up', alert: true }];
   const inBed = !!sc.bed && (id === 'night' || id === 'container_unhealthy');
-  const o = K.pose(id, t); o.floor = V.HFL;
+  const o = K.pose(id, t, !!st.mem); o.floor = V.HFL;
   o.helmet = st.helmet === undefined ? sc.helmet !== false : st.helmet;
   if (sc.sword === false) o.sword = false;
   // where the knight stands in the scene's rounds: at the first spot, arrived at time 0, while free
   // to stroll
-  const free = (w.lv < 3 || id === 'memory_tight' || id === 'disk_full') && !inBed && w.lv !== 2 && id !== 'backup_overdue' && id !== 'pi_silent';
+  const free = (w.lv < 3 || id === 'disk_full') && !inBed && w.lv !== 2 && id !== 'backup_overdue' && id !== 'pi_silent';
   const here = sc.rounds && free ? { act: sc.rounds[0].act, el: t } : null;
   const kx = st.kx === undefined ? sc.spot * V.U : st.kx;
   o.x = kx;
@@ -462,8 +467,12 @@ if (MODE === 'write') {
 
   test('the states cover what the brief of the conversion asks', () => {
     const { KW } = load(SRC), names = n => statesOf(KW, SRC.pack, n).map(([l]) => l);
-    // every condition each scene can act out, and its idle
-    for (const n of Object.keys(KW.scenes)) for (const id of ['idle', ...KW.scenes[n].can]) assert.ok(names(n).includes(id), `${n}: ${id}`);
+    // every condition each scene can act out but a retired one (memory_tight), which the page never
+    // acts on its own, Under strain short of memory too, and its idle
+    for (const n of Object.keys(KW.scenes)) {
+      for (const id of ['idle', ...KW.scenes[n].can]) assert.equal(names(n).includes(id), !(id in KW.state.RETIRED), `${n}: ${id}`);
+      assert.equal(names(n).includes('cpu_hot short of memory'), KW.scenes[n].can.includes('cpu_hot'), n);
+    }
     assert.ok(names('house').includes('tv on') && names('house').includes('helmet on'));
     assert.ok(names('battlement').includes('wan_down') && names('house').includes('night') && names('house').includes('container_unhealthy'));
     assert.ok(names('yard').includes('dummy struck'));

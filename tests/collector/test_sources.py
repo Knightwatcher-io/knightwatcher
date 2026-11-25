@@ -60,8 +60,8 @@ class HostTest(unittest.TestCase):
         self.assertEqual(r.facts["mem_pct"], 75.0)
         self.assertEqual(r.facts["swap_pct"], 90.0)
         self.assertEqual(r.data["mem_available_pct"], 25.0)
-        self.assertEqual(r.data["mem_available_avg"], 25.0)
-        self.assertEqual(r.data["cpu_span_s"], 10.0)
+        self.assertEqual(r.data["mem_used_avg"], 75.0)
+        self.assertEqual(r.data["span_s"], 10.0)
         disk = r.facts["disks"][0]
         self.assertEqual(disk["mount"], "/data")
         self.assertTrue(0 <= disk["pct"] <= 100)
@@ -76,7 +76,7 @@ class HostTest(unittest.TestCase):
         r = s.fetch(at(10))
         # The window reaches back to the sample at -10 s: 190 busy of 1100.
         self.assertEqual(r.facts["cpu_pct"], 17.3)
-        self.assertEqual(r.data["cpu_span_s"], 20.0)
+        self.assertEqual(r.data["span_s"], 20.0)
 
     def test_the_window_average_is_exact_when_samples_are_uneven(self):
         # One core at 100 jiffies a second: 5 s fully busy, then 25 s idle.
@@ -105,10 +105,10 @@ class HostTest(unittest.TestCase):
         self.assertEqual(cpu_average(history, at(60), 30), (50.0, 60.0))
         self.assertEqual(mem_average(history, at(60), 30), (20.0, 60.0))
 
-    def test_history_is_kept_for_the_larger_window_and_one_read(self):
+    def test_history_is_kept_for_the_window_and_one_read(self):
         raw = {
             "collector": {"proc_root": self.proc.root},
-            "conditions": {"memory_tight": {"window_s": 60}},
+            "conditions": {"cpu_hot": {"window_s": 60}},
         }
         s = source(HostSource, "host", {}, raw)
         self.assertEqual(s.keep_s, 60 + 10 + 1)
@@ -123,7 +123,7 @@ class HostTest(unittest.TestCase):
         with mock.patch("collector.sources.host.time.sleep") as sleep:
             r = s.fetch(T0)
         sleep.assert_called_once_with(0.5)
-        self.assertEqual(r.data["cpu_span_s"], 0.5)
+        self.assertEqual(r.data["span_s"], 0.5)
         self.assertEqual([x.at for x in s.history], [at(-0.5), T0])
         self.assertIsNone(s.history[0].avail_pct)
 

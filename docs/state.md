@@ -193,11 +193,47 @@ level; its source is `json:nas-temp`. Only that source is shown:
 }
 ```
 
+This host under strain, short of memory: its average over the window has been at or above 90%
+for twelve minutes. The entry lists the machine in `machines`. Only the sections of `facts` and
+`sources` it comes from are shown:
+
+```json
+{
+  "schema": 1,
+  "generated_at": "2026-01-16T21:42:10Z",
+  "interval_s": 10,
+  "conditions": [
+    {
+      "id": "cpu_hot",
+      "level": "warning",
+      "since": "2026-01-16T21:30:02Z",
+      "headline": "HOST MEMORY 93%",
+      "detail": "93% for 12 min · CPU 41% · load 3.1",
+      "machines": [
+        { "name": "Host", "window_s": 30,
+          "memory": { "pct": 93.4, "threshold": 90.0, "since": "2026-01-16T21:30:02Z" } }
+      ]
+    }
+  ],
+  "quiet_line": "ALL QUIET · 29 up · backup 03:12 · 11.3k ads blocked",
+  "events": [],
+  "facts": {
+    "host": { "cpu_pct": 41.0, "load1": 3.1, "cores": 12, "mem_pct": 93.0, "swap_pct": 40.0,
+              "disks": [ { "mount": "/data", "pct": 71.0, "free_gb": 640 } ] }
+  },
+  "sources": {
+    "host": { "ok": true, "at": "2026-01-16T21:42:10Z", "error": "" }
+  },
+  "defaults": { "look": {}, "display": {}, "quiet": {}, "scenes": {} }
+}
+```
+
 ## Fields
 
 - **`schema`** is `1`. A page that meets a number it does not know shows NO SIGNAL once it has had
   a valid file; see [page.md](./page.md). Fields added later without changing it, such as
-  `quiet_parts`, an event's `parts`, `facts.streams.sessions` and `analytics`, are optional: a page from before them ignores them, and a
+  `quiet_parts`, an event's `parts`, `facts.streams.sessions`, `analytics` and `machines` on
+  `cpu_hot`, are optional: a page from before them ignores them, and a
   file from a collector before them lacks them. So are the conditions `check:<name>`, which a
   page from before them skips as ids it does not know.
 - **`generated_at`** and **`interval_s`**: when the file was written and how often it should be,
@@ -209,10 +245,18 @@ level; its source is `json:nas-temp`. Only that source is shown:
 - **`conditions`** lists what is true now, highest priority first. The page acts on the first and
   counts the rest. An empty list means all is quiet.
   - `id` is one of: `attack`, `wan_down`, `container_unhealthy`, `disk_full`, `backup_overdue`,
-    `pi_silent`, `device_down`, `cpu_hot`, `memory_tight`, `ssh_session`, `updating`, `streaming`,
-    `night`; or `check:<name>` for a generic check of `[[sources.json]]` that holds, `<name>` 1 to
-    20 of `a-z`, `0-9` and `-`, starting with a letter or digit. The page ignores an id it does
-    not know, so a page from before the checks shows none of them.
+    `pi_silent`, `device_down`, `cpu_hot`, `ssh_session`, `updating`, `streaming`, `night`; or
+    `check:<name>` for a generic check of `[[sources.json]]` that holds, `<name>` 1 to 20 of
+    `a-z`, `0-9` and `-`, starting with a letter or digit. The page ignores an id it does not know,
+    so a page from before the checks shows none of them.
+  - `cpu_hot` is Under strain: a watched machine's CPU or memory, averaged over a window, at or
+    above its threshold. The id is the one Running hot had, so saved scene choices and checks that
+    borrow it carry over; a page from before acts it as Running hot, with the new words and never
+    bloated.
+  - `memory_tight` (Memory tight) is written by a collector from before Under strain alone. The
+    page still knows it, and acts it as Under strain on memory: trained and bloated, in
+    `cpu_hot`'s scene, with that collector's words. A check from such a collector with
+    `as = "memory_tight"` is acted as `cpu_hot`, never bloated.
   - `as` is on a check alone: the condition it borrows, any of those ids but `device_down`. The
     page acts the check as that condition, in its scene and with its knight, but with the check's
     own words, and never with the facts tied to that condition (the streams, the pie's dish, the
@@ -220,8 +264,8 @@ level; its source is `json:nas-temp`. Only that source is shown:
     straight after it, checks in the order of `config.toml`
     ([configuration.md](./configuration.md#generic-checks)).
   - `level` is `critical`, `warning`, `work`, `quiet` or `sleep`. It sets the text colour.
-  - `since` is when the cause began, as a UTC timestamp. For `cpu_hot` and `memory_tight` that is
-    the start of the averaging window at the poll that raised it.
+  - `since` is when the cause began, as a UTC timestamp. For `cpu_hot` it is the earliest `since`
+    of its machines' resources, each the start of the averaging window at the poll that raised it.
   - `headline` is at most 16 characters, in capitals. `detail` is at most 60 characters. A
     check's are its own, its `{value}` filled with what it read.
   - `devices` is on `device_down` alone, and says which devices are down: one or more
@@ -231,6 +275,21 @@ level; its source is `json:nas-temp`. Only that source is shown:
     [Devices](./page.md#devices). One `device_down` covers every device that
     alerts and is down, however many there are. While it is held after the last of them has
     answered again, it keeps the positions it last had, and those devices are then `up`.
+  - `machines` is on `cpu_hot` alone: every machine under strain, 1 to 33, in the order each
+    was first raised, a machine strained on both resources once, at the place of the first. Today
+    the only machine is the collector's host. Each is an object:
+    - `name`: what the wall calls the machine, 1 to 20 printable ASCII characters
+      (`[sources.host] name` for the host, `Host` by default), unique ignoring case.
+    - `device`: its position in `facts.devices.list` when its name is a device's name, ignoring
+      case; left out otherwise. Nothing on the page reads it yet.
+    - `window_s`: the seconds its averages cover.
+    - `cpu` and `memory`: each there only while that resource is under strain, as
+      `{ "pct", "threshold", "since" }`: the average over the window to one decimal place (memory
+      as percent used), the threshold in force, and when the average first crossed it.
+
+    The page bloats the knight while any machine has `memory`. While the condition is held after
+    a resource has fallen back, the resource keeps the figure it last had while it counted
+    ([collector.md](./collector.md#under-strain)).
   - The `detail` of `streaming` is the first stream in `facts.streams.sessions` as one line,
     `Robin · The Night Shift S02E04 · 1 of 3`, with no `1 of 1` when one stream plays; without
     sessions it is the count, `3 streams`. A page from before the sessions shows it as it is, and
@@ -277,8 +336,8 @@ level; its source is `json:nas-temp`. Only that source is shown:
 - **`facts`** are the figures behind the conditions, for a page that wants to show them. Any
   section is `null` when its source is unavailable or not enabled. A source read less often than
   the file is written keeps its section from its last read until the next. `host.cpu_pct` is the
-  CPU use averaged over the `cpu_hot` window (30 seconds by default); `host.mem_pct` is the
-  latest reading. `adblock.blocked_today` counts the blocked queries since midnight in the
+  CPU use averaged over Under strain's window, `conditions.cpu_hot.window_s` (30 seconds by
+  default); `host.mem_pct` is the latest reading of memory used, not the average. `adblock.blocked_today` counts the blocked queries since midnight in the
   collector's time zone. `security.bans_24h` counts the bans of the last 24 hours, and
   `security.attack` says whether the `attack` condition is raised; a ban lifted by hand leaves
   `bans_24h` at the next read ([collector.md](./collector.md#attacks)). `pi.up` says whether the
@@ -427,6 +486,19 @@ level; its source is `json:nas-temp`. Only that source is shown:
   collector writes it whenever it runs from its command line, `--once` included, though only its
   loop sends; a runner made in code with no word on it, as the collector's own tests make, leaves
   it out, and so does a collector from before the counts. A page shows "not known" without it.
+
+## Under strain across versions
+
+Under strain replaced Running hot (`cpu_hot`) and Memory tight (`memory_tight`) without a change
+of schema, so a collector and a page on either side of it work together:
+
+| Collector | Page | What the wall shows |
+|---|---|---|
+| with Under strain | from before | `cpu_hot` acted as Running hot, in its chosen scene, with the new words; never bloated |
+| from before | with Under strain | `cpu_hot` trained as before; `memory_tight` acted as Under strain on memory, trained and bloated in `cpu_hot`'s scene, with the old collector's words |
+| with Under strain, and an old `config.toml` | any | the old settings read as the new ones, with a warning ([configuration.md](./configuration.md#removed-settings)) |
+
+The page goes out first, as [display.md](./display.md#deploying) says.
 
 ## Who decides what
 

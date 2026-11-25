@@ -6,7 +6,7 @@ two sets:
 
 | Mode | Does |
 |---|---|
-| `take DIR` | opens the page from disk once for each of the 294 shots of the main set, with time frozen by the address's `t=`, and writes `DIR/<name>.png` at 960 by 600, or at the size the shot names |
+| `take DIR` | opens the page from disk once for each of the 298 shots of the main set, with time frozen by the address's `t=`, and writes `DIR/<name>.png` at 960 by 600, or at the size the shot names |
 | `compare REF NEW` | decodes each pair of PNGs by name and counts the pixels that differ outside the clock; a pair of different sizes, or one missing or unreadable, is a failure |
 | `worlds DIR` | copies `web/` to a folder of its own outside the repository, adds the test world's carrier, takes the 47 shots of the worlds' set from that copy (7 `worldmix-`, 40 `orbit-`), puts the test world's copy of format 1.2 behind the same carrier, takes the 32 `orbit-fire-` shots, and removes the copy |
 | `compare-worlds REF NEW` | compares two sets that `worlds` took |
@@ -97,6 +97,13 @@ and `mon-a-colours-tan`, `mon-b-colours-deep` and `mon-c-colours-fair` in anothe
 skin. `settings-scenes` opens the Scenes page, and `settings-scenes-tablet` the same at the
 tablet's size with the attack set to the camp by the address (`sc=`); `scene-cpu-camp` shows
 running hot at the camp, and `scene-pi-battlement` the empty dish stared at from the battlement.
+
+Four shots after them show Under strain, beside `on-cpu` (one machine's CPU, `HOST CPU 96%`) and
+`on-swap` (`on=swap`, the older name of `on=mem`: one machine's memory, `NAS MEMORY 93%`, the knight
+bloated as it trains in the yard): both resources on one machine (`strain-cpumem`,
+`NAS UNDER STRAIN`), several machines (`strain-several`, `3 UNDER STRAIN`), and memory under strain
+bloated at the camp (`strain-mem-camp`, `sc=cpu_hot:camp`) and at the smithy's bellows
+(`strain-mem-smithy`, `sc=cpu_hot:smithy`, 240 ms).
 Against a reference from before these, the eight settings shots that show the rail differ in it
 (the Scenes entry), `settings-monarch` and `settings-monarch-skin` also in the rows below the skin
 tones, these eleven are missing, and the rest compare as usual.
@@ -127,8 +134,8 @@ hair, whose brows draw the dark edge (`look-brows`). Every other shot but `setti
 `arm=`, so against a copy of the page from before the hooks only these seven differ.
 
 The 56 `bd-` shots follow, 28 for Broad (`bd-b-`, `bd=b`) and 28 for Slim (`bd-c-`, `bd=c`): the
-four quiet scenes with the knight standing (`is-`); the attack, tight memory's bloat, the cellar's
-crate carried, the smithy's hammering, asleep in bed, the sick tint in bed, the hot tint in the yard
+four quiet scenes with the knight standing (`is-`); the attack, memory under strain (bloated as it
+trains), the cellar's crate carried, the smithy's hammering, asleep in bed, the sick tint in bed, the hot tint in the yard
 and the court (`on-`); the stance with the sword and shield (`arm-battlement`); the swat on the
 battlement, which is the swing, with each weapon (`swing-two-`, `swing-one-`), both ways at the
 wind-up (q .3), mid cut (q .42) and the cut's end (q .55); the goblin about each weapon's hit on
@@ -325,7 +332,7 @@ CHROME=/path/to/chrome-headless-shell PAGE=/tmp/kw-code/index.html tools/shots.s
 ```
 
 The comparison prints `identical bytes` only when both sets show the same minute on the clock;
-otherwise `pixels equal outside the clock` is the same result. A set of 294 takes about two minutes, so the two
+otherwise `pixels equal outside the clock` is the same result. A set of 298 takes about two minutes, so the two
 sets seldom show the same minute, and `pixels equal outside the clock` is the usual result.
 
 ## Against an older reference
@@ -343,8 +350,8 @@ page, a condition in a chosen scene) are missing likewise from a reference from 
 against which the eight settings shots that show the side rail differ in it, where the Scenes entry
 was added, and the two of the monarch's page also in its new rows. The 56 `bd-` shots after them
 draw the builds Broad (`bd-b-`) and Slim (`bd-c-`): every scene with the knight standing, the
-attack, tight memory, the cellar's crate, the smithy's hammering, in bed, the sick and hot tints,
-the sword and shield, the swat both ways with each weapon at three points of the swing, the goblin
+attack, memory under strain, the cellar's crate, the smithy's hammering, in bed, the sick and hot
+tints, the sword and shield, the swat both ways with each weapon at three points of the swing, the goblin
 at the hit with each weapon, and the settings screen's knight page, the build chosen by the
 address's `bd=` hook ([Taking and comparing them](#taking-and-comparing-them)). Against a reference
 from before them they are missing. The 62 `ref-` shots after them are the reference for moving the
@@ -431,6 +438,22 @@ and so are those given `PI`, which draws what the demo drew before.
 A headless browser has no saved choices, so every shot shows what its address asks for, and no
 set of devices saved in the demo's Devices row.
 [page.md](./page.md) has the rest.
+
+Against a reference from before Under strain, the four `strain-` shots are missing, and 22 of the
+294 others and 5 of the 79 of the worlds' set differ, every one for Under strain: the shots of the
+CPU running hot (`on=cpu`) in their words alone, `HOST CPU 96%` and its detail where they read
+`RUNNING HOT` (`on-cpu`, `helm-off-l`, `arm-yard`, `look-hot-brown`, `scene-cpu-camp`,
+`cpu-smithy`, `arm-cpu-smithy`, `bd-b-on-cpu`, `bd-c-on-cpu`, `ref-battlement-cpu`,
+`ref-house-cpu`, `ref-cellar-cpu`, `ref-yard-struck`, `free-kite-yard`, `free-hair-close`,
+`orbit-cpu`, `orbit-mix-unit-arm`, `orbit-mix-airlock` and `orbit-fire-practice-hot`); and the
+shots of `on=swap`, which showed the bloat in the quiet scene of the moment under `SWAP FILLING`
+and now show memory under strain in `cpu_hot`'s scene, the knight training bloated, under
+`NAS MEMORY 93%` (`on-swap`, `bd-b-on-swap`, `bd-c-on-swap`, `ref-camp-swap`, `ref-house-swap`,
+`ref-yard-swap`, `free-swap-cuirass` and `orbit-swap`). `on-many` is the same, since the attack
+leads it. The tall settings shots of the knight's page (`free-settings-`, `free-crossbow-settings`)
+show the clock where the comparison's mask, scaled for the shape of the screen, does not reach, so
+they differ when the hour changes between the two takes, and `cat-camp-goblin-pounce` can differ
+from one take to the next; both are the same in takes of the two trees made together.
 
 Against a reference from before the choices' even grid on the settings screen, every settings shot that
 shows choices differs (the grid, the framing of the monarch and of the devices, and the rings at the
