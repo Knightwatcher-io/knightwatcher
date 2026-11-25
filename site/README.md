@@ -13,7 +13,7 @@ Access, open to the owner alone.
 | `pages/404.html` | the page for an address with nothing at it |
 | `parts/` | the nav, the footer and the GitHub mark, which every page shares |
 | `css/site.css`, `js/site.js` | the stylesheet, and the script that draws the night sky and drives the demo's frame |
-| `img/` | the pictures of the landing page: screenshots of the real page, at 640 by 400 and 1280 by 800 |
+| `img/` | the pictures of the landing page: screenshots of the real page, at 640 by 400 and 1280 by 800, under CC BY-SA 4.0 with the rest of the art ([ART-LICENCE.md](../legal/ART-LICENCE.md)) |
 | `site.json` | the Cloudflare Web Analytics token, empty until it is set |
 | `build.mjs` | the build, which writes `dist/` |
 | `markdown.mjs` | the renderer of the legal pages |
@@ -37,7 +37,8 @@ The build empties `site/dist/` and writes:
 
 - the landing page, the 404 page, the stylesheet, the script and the pictures, with the logo, the
   favicon, the touch icon and the VT323 font (and its licence) copied from `web/`, so they are kept
-  once in the repository;
+  once in the repository (the logo and the icons are the project's own, under neither the code's
+  nor the art's licence: [NAME-AND-LOGO.md](../legal/NAME-AND-LOGO.md));
 - `privacy/` and `art-licence/`, rendered from `legal/PRIVACY.md` and `legal/ART-LICENCE.md`;
 - `demo/`, the display's page: a copy of `web/` without `admin/` and `data/`, stamped with the
   commit being built;

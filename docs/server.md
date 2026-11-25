@@ -161,7 +161,7 @@ to a temporary name, renamed into place, mode 640, at most once a minute (a post
 is written at its end, and what is pending is written as the server stops). A file that cannot
 be read counts as none seen. The server reads it at start; it never serves it, and the ids never
 leave the host. The collector, which mounts the folder read-only, counts the ids seen in the last
-six hours and sends the count alone in its heartbeat
+six hours and, when the usage counts are on, sends the count alone in its heartbeat
 ([configuration.md](./configuration.md#usage-counts)). `collector/displays.py` holds the file's
 form, and both read it with the same code. To forget every display, stop the server and delete the
 file.

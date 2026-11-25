@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Knightwatcher: a homelab wall display</title>
-<meta name="description" content="A pixel-art knight on your wall who acts out what your homelab is doing. Code under the AGPL-3.0, self-hosted in Docker. The art has its own licence.">
+<meta name="description" content="A pixel-art knight on your wall who acts out what your homelab is doing. Code under the AGPL-3.0 and art under CC BY-SA 4.0, self-hosted in Docker.">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -25,7 +25,7 @@
     </div>
     <div class="lic">
       <p><b>Code:</b> open source, under the AGPL-3.0.</p>
-      <p><b>Art:</b> <a href="/art-licence/">art licence</a>. Use it with Knightwatcher. Don't sell it, use it elsewhere or pass on a changed copy.</p>
+      <p><b>Art:</b> CC BY-SA 4.0. Use it, change it and share it, with credit: <a href="/art-licence/">art licence</a>.</p>
     </div>
   </div>
   <div class="merlons" aria-hidden="true"></div>
@@ -160,7 +160,7 @@ setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server</pre>
     </ol>
     <p class="note">The example config turns on the sources that read this machine, plus an internet check and a DNS check. Each service is written out in <code>config.toml</code> but commented: remove the <code>#</code>, add your address, and put its key in <code>.env</code>.</p>
     <p class="note">The display has no login, and a streams service shows who is watching what (<code>show = "count"</code> hides the names). Docker publishes it on every address of the host. Set <code>KW_SERVER_ADDRESS=127.0.0.1</code> to keep it to the machine, behind a reverse proxy with a login. The admin password covers the admin page only. Never put the display on the internet without a login.</p>
-    <p class="note">Usage counts are sent by default: <a href="#leaves">what leaves your network</a>.</p>
+    <p class="note">Usage counts are off unless you turn them on. If you are happy to help, set <code>KW_ANALYTICS=on</code> in <code>.env</code>: <a href="#leaves">what leaves your network</a>.</p>
   </div>
   <div class="links-row">
     <a href="https://github.com/knightwatcher-io/knightwatcher#quick-start">The full quick start</a>
@@ -172,11 +172,11 @@ setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server</pre>
 
 <section class="sec" id="leaves" aria-labelledby="leaves-h">
   <div class="head"><h2 id="leaves-h">What leaves your network</h2></div>
-  <p class="lead">Two things, and nothing else.</p>
+  <p class="lead">Two things at most, and nothing else.</p>
   <div class="leaves">
     <div class="panel">
       <h3>The usage counts</h3>
-      <p>At start and every six hours the collector sends one small report: a random install id, the version, the install's age and uptime, the world and look you chose, which built-in sources are on, how many imports and checks you have, and how many displays opened the page in the last six hours. The receiver adds the day and the country Cloudflare sees. No name, address, title or credential is in it. The receiver runs on Cloudflare, keeps no IP address, and its code is in the repository's <code>telemetry/</code> folder. Put <code>KW_ANALYTICS=off</code> in <code>.env</code> and nothing is sent.</p>
+      <p>If you turn them on, the collector sends one small report at start and every six hours: a random install id, the version, the install's age and uptime, the world and look you chose, which built-in sources are on, how many imports and checks you have, and how many displays opened the page in the last six hours. The receiver adds the day and the country Cloudflare sees. No name, address, title or credential is in it. The receiver runs on Cloudflare, keeps no IP address, and its code is in the repository's <code>telemetry/</code> folder. They stay off unless <code>.env</code> says <code>KW_ANALYTICS=on</code>; with <code>off</code>, or the line left out, nothing is sent.</p>
       <p><a href="https://github.com/knightwatcher-io/knightwatcher/blob/main/docs/telemetry.md">Every field</a> &middot; <a href="/privacy/">Privacy notice</a></p>
     </div>
     <div class="panel">
@@ -187,19 +187,18 @@ setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server</pre>
   <p class="more-line">Past that, the collector contacts only the addresses you give it, and the display and the server contact nothing outside your network.</p>
 </section>
 
-<section class="sec" id="next" aria-label="What's planned, and tips">
+<section class="sec" id="next" aria-label="Free and open, and tips">
   <div class="pair">
     <div class="panel">
-      <h2 class="h">What's planned</h2>
-      <p>Paid cosmetic packs are planned: more gear for the knight, and decorations for the scenes. They are completely optional.</p>
-      <p>Everything that is free now stays free, and nothing will be moved behind a paywall later. More free things will probably be added over time, with no commitment.</p>
-      <p>A pack you buy is a signed file on your machine. It needs no account and no server to run, and it keeps working if the project ever stops. It is data the engine draws, so no closed code runs.</p>
+      <h2 class="h">Free and open</h2>
+      <p>All of it is free: the code under the AGPL-3.0, the art under CC BY-SA 4.0. There are no paid packs, no accounts and nothing behind a paywall.</p>
+      <p>Contributions of code and art are welcome: <a href="https://github.com/knightwatcher-io/knightwatcher/blob/main/CONTRIBUTING.md">how to contribute</a>.</p>
     </div>
     <div class="panel tip">
       <h2 class="h">Tips</h2>
       <div class="row">
         <svg class="cup" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="1" height="2" fill="#aab6c6"/><rect x="8" y="0" width="1" height="3" fill="#aab6c6"/><rect x="2" y="4" width="10" height="9" fill="#f6f9fc"/><rect x="2" y="4" width="10" height="1" fill="#ffffff"/><rect x="3" y="5" width="8" height="2" fill="#6b4a2e"/><rect x="12" y="6" width="3" height="1" fill="#f6f9fc"/><rect x="14" y="6" width="1" height="4" fill="#f6f9fc"/><rect x="12" y="9" width="3" height="1" fill="#f6f9fc"/><rect x="5" y="8" width="4" height="3" fill="#ff4a3d"/><rect x="6" y="11" width="2" height="1" fill="#ff4a3d"/><rect x="10" y="5" width="2" height="8" fill="#d8e0ea"/><rect x="1" y="13" width="12" height="2" fill="#7d899b"/></svg>
-        <p>If the knight has earned a spot on your wall, you can leave a tip on Ko-fi.</p>
+        <p>If the knight has earned a spot on your wall, you can leave a tip on Ko-fi. It is entirely optional, and nothing is held back without one.</p>
       </div>
       <a class="btn primary" href="https://ko-fi.com/valtora">Tip on Ko-fi</a>
     </div>

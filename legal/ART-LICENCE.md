@@ -1,65 +1,67 @@
-# Knightwatcher art licence
+# Art licence
 
-Copyright (C) 2026 Valtora
+Copyright (C) 2026 Valtora and the Knightwatcher contributors
 
-Knightwatcher's code is under the GNU Affero General Public License, in [`LICENSE`](../LICENSE).
-Its art is under this licence instead. Valtora is the licensor.
+Knightwatcher's art is under the Creative Commons Attribution-ShareAlike 4.0 International licence
+(CC BY-SA 4.0). You may use it, change it, share it and sell it, for any purpose, as long as you
+give credit and share what you make from it under the same licence. The full legal text is in
+[LICENSE-ART](../LICENSE-ART), and Creative Commons has a short summary at
+[creativecommons.org/licenses/by-sa/4.0](https://creativecommons.org/licenses/by-sa/4.0/). Where
+this page and the legal text differ, the legal text is the licence.
 
-## What it covers
+## What is under CC BY-SA 4.0
 
-"The art" means these files, as Valtora publishes them in this repository:
+- The packs in `web/packs/`: `base.pack.json` and `base.pack.js` (the knight and the items),
+  `medieval.pack.json` and `medieval.pack.js` (the medieval world), and any pack the project adds
+  there later.
+- The drawings in the page's code that the packs mirror: the knight in `web/js/knight.js`, the
+  mouser cat in `web/js/cat.js`, the devices, props, foes and critters in `web/js/props.js`, the
+  small symbols in `web/js/sprites.js` and the scenes in `web/js/scenes/`. These files are code as
+  well, and as code they stay under the AGPL; the drawings in them are also under CC BY-SA 4.0, so
+  they can be taken out and used as art.
+- The pictures in `site/img/`, which are screenshots of the display, and the pixel drawings in the
+  website's landing page, `site/pages/index.html` (the torches and the cup).
+- The copies of the packs' contents, and the records of the drawings, that the tests keep in
+  `tests/web/fixtures/`.
 
-- The packs in `web/packs/`, which hold the shapes the knight, the items and the world are drawn
-  from: `base.pack.json` and `base.pack.js` (the knight and the items), `medieval.pack.json` and
-  `medieval.pack.js` (the medieval world), and any other pack file Valtora adds to `web/packs/`
-  later.
-- The logo: `web/logo.svg`, `web/logo-dark.svg` and `web/logo-mono.svg`.
-- The favicon and the app icons: `web/favicon.svg`, `web/favicon.ico`, `web/icon-192.png`,
-  `web/icon-512.png` and `web/apple-touch-icon.png`, and the drawings they are made from in
-  `tools/icons/`.
-- The copies of the packs' contents that the tests keep in `tests/web/fixtures/`.
+## How to give credit
 
-It does not cover:
+When you share the art, or something made from it, credit it like this:
 
-- the code, including the scenes in `web/js/scenes/` and the knight drawn in code in
-  `web/js/knight.js` for when no pack can be read, which is under the AGPL with the rest;
-- the VT323 font in `web/fonts/`, which has its own licence beside it, `web/fonts/OFL.txt`;
-- packs other people make themselves, which belong to the people who made them.
+```
+Art from Knightwatcher by Valtora and the Knightwatcher contributors, CC BY-SA 4.0, https://github.com/knightwatcher-io/knightwatcher
+```
 
-This licence covers the free art published in this repository. Packs sold separately come with
-their own terms.
+Link to the licence, [creativecommons.org/licenses/by-sa/4.0](https://creativecommons.org/licenses/by-sa/4.0/),
+where you can. If you changed the art, say so, for example by adding "changed by" and your name.
 
-## What you may do
+## Sharing what you make from it
 
-- Use the art with Knightwatcher, on as many displays as you like.
-- Pass it on unchanged inside a copy of Knightwatcher, with this licence beside it: a clone, a
-  fork, a mirror, a container image or any other copy. A fork may change the code and still carry
-  the art, as long as the art itself is unchanged.
-- Change it for your own use on your own install, as long as the changed version is never shared
-  with anyone.
-- Take screenshots, photos and recordings of Knightwatcher running, and share them for any purpose,
-  reviews and videos included, as long as you do not present the art as your own or sell the art
-  itself (as prints, stickers or merchandise, for example). This is the one way the art may appear
-  outside Knightwatcher.
+Art you change, or make from this art, and then share, goes under CC BY-SA 4.0 too, or a licence
+Creative Commons lists as compatible with it. You may not add terms or technical measures that
+stop others from doing what the licence allows.
 
-Choosing looks, colours and parts on the settings screen is using the art, not changing it.
+A pack you change no longer carries the project's signature. The project signs its own packs so
+that nothing can pass as one of them; the signature is not a licence check
+([packs.md](../docs/packs.md#signing)).
 
-## What you may not do
+## What is not under CC BY-SA 4.0
 
-- Take the art out of Knightwatcher and use it anywhere else: in another program, game, website or
-  product, or on its own.
-- Sell it. That includes charging for a copy of Knightwatcher, or for a device, that comes with the
-  art.
-- Pass on a changed version of it, in a fork or anywhere else. A fork that wants different art
-  replaces this art with its own.
+- The code, which is under the GNU Affero General Public License, version 3 or later, in
+  [LICENSE](../LICENSE). That includes the code in the files named above: only the drawings in
+  them are also under CC BY-SA 4.0.
+- The VT323 font in `web/fonts/`, which is under the SIL Open Font License, in
+  [web/fonts/OFL.txt](../web/fonts/OFL.txt).
+- The Knightwatcher name and logo, with the favicon and the app icons: `web/logo.svg`,
+  `web/logo-dark.svg`, `web/logo-mono.svg`, `web/favicon.svg`, `web/favicon.ico`,
+  `web/icon-192.png`, `web/icon-512.png`, `web/apple-touch-icon.png` and the drawings in
+  `tools/icons/` they are made from. [NAME-AND-LOGO.md](NAME-AND-LOGO.md) says how they may be
+  used.
+- The GitHub mark in `site/parts/gh.svg`, which belongs to GitHub.
+- Packs other people make from nothing of the project's, which belong to the people who made them,
+  under whatever licence they choose.
 
-## The rest
+## Contributions
 
-- Valtora keeps the copyright in the art. For anything this licence does not allow, you need
-  Valtora's permission in writing; ask at support@knightwatcher.io.
-- The art is given as it is, with no warranty of any kind. As far as the law allows, Valtora is
-  not liable for any loss or damage that comes from using it.
-- If you break this licence, it ends for you at once, and you must stop using and passing on the
-  art. Valtora may give it back to you in writing.
-- This licence is governed by the law of England and Wales, and the courts of England and Wales
-  decide any dispute about it.
+Art contributed to the project is under CC BY-SA 4.0 like the rest, and its author keeps the
+copyright in it. [CONTRIBUTING.md](../CONTRIBUTING.md) says how to contribute.

@@ -421,7 +421,7 @@ level; its source is `json:nas-temp`. Only that source is shown:
   [collector.md](./collector.md#taking-up-a-change) says when the collector takes up a change.
 
 - **`analytics`** says whether the collector's usage counts are on: `{ "on": true }`, or
-  `{ "on": false }` while `KW_ANALYTICS` in `.env` is `off`
+  `{ "on": false }` unless `KW_ANALYTICS` in `.env` is `on`
   ([configuration.md](./configuration.md#usage-counts)). It is an object with `on` alone. The
   settings screen's Status page shows it, read only; nothing on the page changes it. The
   collector writes it whenever it runs from its command line, `--once` included, though only its
