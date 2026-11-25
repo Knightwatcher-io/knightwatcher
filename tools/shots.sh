@@ -30,33 +30,42 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # the browser runs within the ceiling of tools/capped.sh
 [[ -n "${KW_CAPPED:-}" ]] || exec "$root/tools/capped.sh" "$0" "$@"
 
+# Sets of devices for the address's dv= hook, so that the shots show more than one setup. A shot
+# with no dv= shows the demo's own set: a NAS, a camera and a router, with the Pi put in the pie's
+# place, its dish empty, only while pi_silent is on. docs/shots.md says which shot has which set.
+PI="dv=pi"                            # the Pi alone, where the pie is the point
+PI_MIX="dv=pi,camera,machine"         # the Pi with a camera and a machine
+CAMS="dv=camera,camera,camera,vm"     # the three high places full, and a VM
+LAB="dv=machine,machine,vm,camera"    # the three ground places full, and a camera
+SPARE="dv=camera,box"                 # a camera and a router alone
+
 # name|address hash, or name|address hash|width,height. Every entry hides the review bar and freezes
 # time.
 SHOTS=(
   "is-battlement|bar=0&t=2300&is=battlement"
-  "is-camp|bar=0&t=2300&is=camp"
-  "is-house|bar=0&t=2300&is=house"
-  "is-yard|bar=0&t=2300&is=yard"
+  "is-camp|bar=0&t=2300&is=camp&$CAMS"
+  "is-house|bar=0&t=2300&is=house&$PI_MIX"
+  "is-yard|bar=0&t=2300&is=yard&$LAB"
   "on-attack|bar=0&t=2300&on=attack"
-  "on-wan|bar=0&t=2300&on=wan"
+  "on-wan|bar=0&t=2300&on=wan&$LAB"
   "on-sick|bar=0&t=2300&on=sick"
-  "on-disk|bar=0&t=2300&on=disk"
-  "on-backup|bar=0&t=2300&on=backup"
+  "on-disk|bar=0&t=2300&on=disk&$CAMS"
+  "on-backup|bar=0&t=2300&on=backup&$SPARE"
   "on-pi|bar=0&t=2300&on=pi"
-  "on-cpu|bar=0&t=2300&on=cpu"
+  "on-cpu|bar=0&t=2300&on=cpu&$SPARE"
   "on-swap|bar=0&t=2300&on=swap"
-  "on-ssh|bar=0&t=2300&on=ssh"
-  "on-update|bar=0&t=1250&on=update"
+  "on-ssh|bar=0&t=2300&on=ssh&$LAB"
+  "on-update|bar=0&t=1250&on=update&$PI_MIX"
   "on-plex|bar=0&t=2300&on=plex"
-  "on-night|bar=0&t=2300&on=night"
-  "on-many|bar=0&t=2300&on=attack,swap,ssh"
+  "on-night|bar=0&t=2300&on=night&$PI"
+  "on-many|bar=0&t=2300&on=attack,swap,ssh&$SPARE"
   "swat|bar=0&t=470&is=battlement&f=6&sw=1"
   "goblin|bar=0&t=1300&is=battlement&e=goblin"
   "crate|bar=0&t=1700&is=camp&e=crate"
   "feast|bar=0&t=1800&is=house&e=feast"
   "helm-off-l|bar=0&t=2300&is=yard&h=off&hs=l&on=cpu"
   "kx|bar=0&t=2300&is=camp&kx=60"
-  "mon-b|bar=0&t=3450&on=ssh&mon=b"
+  "mon-b|bar=0&t=3450&on=ssh&mon=b&$SPARE"
   "mon-c|bar=0&t=3450&on=ssh&mon=c"
   "devices-camp|bar=0&t=2300&is=camp&dv=pi,camera,camera!,machine-,vm,x,machine"
   "devices-court|bar=0&t=3600&on=ssh&dv=pi,camera!,machine,camera,vm-,x"
@@ -132,9 +141,9 @@ SHOTS=(
   "update-strike|bar=0&t=2804&on=update"
   "bd-b-update-strike|bar=0&t=2804&on=update&bd=b"
   "bd-c-update-strike|bar=0&t=2804&on=update&bd=c"
-  "is-smithy-forge|bar=0&t=600&is=smithy"
-  "is-smithy-steam|bar=0&t=5950&is=smithy"
-  "is-smithy-look|bar=0&t=8800&is=smithy"
+  "is-smithy-forge|bar=0&t=600&is=smithy&$PI"
+  "is-smithy-steam|bar=0&t=5950&is=smithy&$PI"
+  "is-smithy-look|bar=0&t=8800&is=smithy&$PI"
   "is-smithy-forge-devices|bar=0&t=600&is=smithy&dv=pi,camera,camera,camera,machine,vm,machine"
   "is-smithy-barrel-devices|bar=0&t=6600&is=smithy&dv=pi,camera,camera,camera,machine,vm,machine"
   "cpu-smithy|bar=0&t=240&on=cpu&sc=cpu_hot:smithy"
