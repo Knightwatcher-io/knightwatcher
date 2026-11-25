@@ -71,11 +71,12 @@ your own address ([Configuration](docs/configuration.md)), with its credential i
 `tools/clean-start.sh` runs these steps in a scratch copy, on a Docker network with no route out,
 and checks that the install starts cleanly ([Development](docs/development.md#the-clean-start)).
 
-The collector sends the project a few usage counts at start and every six hours: a random install
-id, the version, the built-in parts and sources in use and how many displays there are, never a
-name, an address or a credential. Put `KW_ANALYTICS=off` in `.env` to turn them off
-([Usage counts](docs/configuration.md#usage-counts), [telemetry.md](docs/telemetry.md)). The
-[privacy notice](legal/PRIVACY.md) says who keeps them, for how long, and how to have yours
+The usage counts are off unless you turn them on. If you are happy to help the project, set
+`KW_ANALYTICS=on` in `.env` in place of `off` and run `docker compose up -d` again: at start and
+every six hours the collector then sends the project a random install id, the version, the
+built-in parts and sources in use and how many displays there are, never a name, an address or a
+credential ([Usage counts](docs/configuration.md#usage-counts), [telemetry.md](docs/telemetry.md)).
+The [privacy notice](legal/PRIVACY.md) says who keeps them, for how long, and how to have yours
 deleted.
 
 The page is open to anyone on your network, with no login. Read [The server](docs/server.md#security)
@@ -145,6 +146,7 @@ For people making packs:
 For contributors:
 
 - [Design](docs/design.md): what the display is for, the terms, and how the two parts divide the work
+- [Contributing](CONTRIBUTING.md): the licences contributions are under, and signing off each commit
 - [Development](docs/development.md): layout, rules, checks, the icons and signing the packs
 - [The state file](docs/state.md): the contract between collector and page
 - [The collector](docs/collector.md): one poll, conditions, events, sources and how to add one
@@ -170,10 +172,16 @@ Affero General Public License for more details.
 
 The full text is in [LICENSE](LICENSE).
 
-The art has its own licence. The packs in `web/packs/`, the logo and the icons are under the
-[Knightwatcher art licence](legal/ART-LICENCE.md): they may be used with Knightwatcher and passed
-on unchanged inside a copy of it, and may not be taken out of it, sold or passed on changed. The
-VT323 font is under the SIL Open Font License, in [web/fonts/OFL.txt](web/fonts/OFL.txt).
+The art is under the Creative Commons Attribution-ShareAlike 4.0 International licence
+(CC BY-SA 4.0): the packs in `web/packs/`, the drawings in the page's code that the packs mirror,
+and the pictures of the website. Anyone may use, change, share and sell it, with credit, and what
+is made from it is shared under the same licence. [ART-LICENCE.md](legal/ART-LICENCE.md) lists what
+it covers and gives the line to credit it with, and [LICENSE-ART](LICENSE-ART) holds the full
+text. The VT323 font is under the SIL Open Font License, in [web/fonts/OFL.txt](web/fonts/OFL.txt).
 
-Contributions are welcome under the [contributor terms](legal/CONTRIBUTOR-TERMS.md), which opening
-a pull request accepts. The art is the exception: open an issue for it instead.
+The name and the logo are under neither licence. Anyone may use the name to refer to the project,
+and a fork that changes things uses a name and a logo of its own
+([NAME-AND-LOGO.md](legal/NAME-AND-LOGO.md)).
+
+Contributions of code and art are welcome, each commit signed off under the Developer Certificate
+of Origin. [CONTRIBUTING.md](CONTRIBUTING.md) says how.

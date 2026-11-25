@@ -483,18 +483,20 @@ has read. Only a collector killed without the chance leaves its session to expir
 
 ## The usage counts
 
-The long-running collector sends the project a heartbeat at start and every six hours
-(`collector/heartbeat.py`); [configuration.md](./configuration.md#usage-counts) says what it holds
-and how to turn it off, and [telemetry.md](./telemetry.md) gives every field. `KW_ANALYTICS` is read
-once at start: `off`, trimmed and in any case, means no heartbeat, no connection and no install id,
-and one line in the log, `usage counts off (KW_ANALYTICS=off): nothing is sent`; anything else, or
-nothing, means on. Only the loop of `python -m collector` sends: `--once`, `--probe`,
+When the user turns them on, the long-running collector sends the project a heartbeat at start
+and every six hours (`collector/heartbeat.py`); [configuration.md](./configuration.md#usage-counts)
+says what it holds and how to turn it on and off, and [telemetry.md](./telemetry.md) gives every
+field. `KW_ANALYTICS` is read once at start: `on`, trimmed and in any case, means on. Anything else
+(`off`, empty, unset or another value) means no heartbeat, no connection and no install id, and one
+line in the log, `usage counts off: nothing is sent. KW_ANALYTICS=on in .env turns them on; see
+docs/telemetry.md`; a value that is neither `on`, `off` nor empty is first logged as a warning,
+`KW_ANALYTICS is neither on nor off, so the usage counts stay off`, without the value. Only the loop of `python -m collector` sends: `--once`, `--probe`,
 `--check-config` and `--health` never make a heartbeat or an install id.
 
 **The install id** is a UUID version 4, made once and kept with the time it was made in
 `install.json` in the memory folder (`collector.state_dir`), mode 640. A file that is missing or
-cannot be read is a first start: a new id is made, and one notice is logged at info that says what
-is sent, where, and that `KW_ANALYTICS=off` in `.env` stops it. The memory file is not touched.
+cannot be read is a first start with the counts on: a new id is made, and one notice is logged at
+info that says what is sent, where, and that `KW_ANALYTICS=off` in `.env` stops it. The memory file is not touched.
 
 **The payload** is built at each send from the settings in use, so a change taken up between polls
 is in the next one, and held to the receiver's contract (`heartbeat.check`) before it goes; one
@@ -587,7 +589,7 @@ python3 -m collector --check-config     # validate config.toml alone, its creden
 python3 -m collector --once             # one poll, write state.json, exit
 python3 -m collector --health           # exit 1 if state.json is older than three intervals
 python3 -m collector --probe streams    # read one source through its provider once, masked
-python3 -m collector                    # poll until stopped, sending the usage counts
+python3 -m collector                    # poll until stopped, sending the usage counts if they are on
 ```
 
 `--probe <source>` reads one source read through a provider (`streams`, `adblock`, `security`,

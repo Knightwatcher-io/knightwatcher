@@ -140,15 +140,18 @@ treat `.env` as you would their own configuration; see [security.md](./security.
 
 ### Usage counts
 
-The collector sends the project a small heartbeat at start and every six hours after, so that the
-project knows how many installs there are and which of its parts are used. It is on by default.
-`KW_ANALYTICS=off` in `.env`, then `docker compose up -d`, turns it off: the collector then sends
-nothing, makes no connection for it and makes no install id, and says once at start that the
-counts are off. Any other value, or none, leaves it on. It is the only switch: there is none in
-`config.toml`, on the admin page or on a display, and `DO_NOT_TRACK` is not read. The settings
-screen's Status page says whether it is on.
+The collector can send the project a small heartbeat at start and every six hours after, so that
+the project knows how many installs there are and which of its parts are used. It is off unless
+you turn it on. `KW_ANALYTICS=on` in `.env`, then `docker compose up -d`, turns it on; the value is
+read without regard to case or surrounding spaces. `off`, an empty value or none at all leaves it
+off: the collector then sends nothing, makes no connection for it and makes no install id, and says
+once at start that the counts are off and how to turn them on. Any other value, such as `yes` or
+`true`, also leaves it off, with a warning in the log, so that only a plain `on` turns it on. It is
+the only switch: there is none in `config.toml`, on the admin page or on a display, and
+`DO_NOT_TRACK` is not read. The settings screen's Status page says whether it is on. If you are
+happy to help the project, please turn it on.
 
-One heartbeat is one JSON object posted to `https://telemetry.knightwatcher.io/v1/heartbeat`:
+When it is on, one heartbeat is one JSON object posted to `https://telemetry.knightwatcher.io/v1/heartbeat`:
 
 - a random install id, made once and kept in `install.json` in the collector's memory folder, and
   how many whole days ago it was made; emptying that folder makes a new one;
@@ -683,7 +686,7 @@ The services the sections read through a kind can read, each by its provider. A 
 
 ### .env
 
-Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, the admin password reaches the server alone, `KW_ANALYTICS` turns the collector's usage counts off, and the credentials reach the collector alone.
+Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, the admin password reaches the server alone, `KW_ANALYTICS` turns the collector's usage counts on, and the credentials reach the collector alone.
 
 | Variable | Scope | Values | Default | What it is |
 |---|---|---|---|---|
@@ -696,7 +699,7 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KW_SERVER_ADDRESS` | server | an address of this host, or empty for all of them, such as `127.0.0.1` | empty | The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network. |
 | `KW_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
 | `KW_ADMIN_PASSWORD` | server | a password of at least 12 characters, or empty to leave the admin page off, such as `a-long-password-of-your-own` | empty | The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out. |
-| `KW_ANALYTICS` | collector | off to send nothing; anything else, or empty, sends the usage counts, such as `on` | empty | The collector's usage counts: at start and every six hours it sends the project a random install id, the version, its uptime, the world and the built-in parts in use, which sources are on, and how many imports, checks and displays there are, never a name, title, address or credential (docs/telemetry.md). Passed to the collector alone. Set to off, it sends nothing and makes no install id. A change needs the containers made again. |
+| `KW_ANALYTICS` | collector | on to send the usage counts; off, empty or anything else sends nothing, such as `on` | empty | The collector's usage counts, off unless turned on: set to on, at start and every six hours it sends the project a random install id, the version, its uptime, the world and the built-in parts in use, which sources are on, and how many imports, checks and displays there are, never a name, title, address or credential (docs/telemetry.md). Passed to the collector alone. Otherwise it sends nothing and makes no install id; a value other than on, off or empty is also logged as a warning. A change needs the containers made again. |
 | `KW_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
 | `KW_PLEX_TOKEN` | credential | a Plex token, such as `AbCdEfGhIjKlMnOpQrSt` | none | The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = "plex". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
 | `KW_TRACEARR_API_KEY` | credential | trr_pub_ and 43 letters, digits, - and _, such as `trr_pub_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE` | none | Tracearr's public API key, for the tracearr provider, which [sources.streams] reads with from = "tracearr". Made by Tracearr's owner: Settings, Data & API, API, Generate Key. It is sent in the Authorization header as a bearer token, never in the address. The key reads all of Tracearr's data and can stop a stream: keep it as you would the password. Tracearr keeps one key, and Regenerate ends the old one for whatever else uses it. Read when the source is enabled; its `secret` setting names the variable. |

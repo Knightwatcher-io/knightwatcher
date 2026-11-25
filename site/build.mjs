@@ -38,8 +38,8 @@ export const LEGAL = [
     description: 'Knightwatcher\'s privacy notice: the usage counts, the website\'s visitor counts and mail to the support address.',
     sub: 'Who keeps what, for how long, and how to have it deleted.' },
   { dir: 'art-licence', from: 'legal/ART-LICENCE.md', title: 'Art licence',
-    description: 'The Knightwatcher art licence: what may be done with the packs, the logo and the icons.',
-    sub: 'Use it with Knightwatcher. Don\'t sell it, use it elsewhere or pass on a changed copy.' }
+    description: 'Knightwatcher\'s art is under CC BY-SA 4.0: what it covers, how to credit it, and what is not under it.',
+    sub: 'CC BY-SA 4.0. Use it, change it and share it, with credit.' }
 ];
 
 /** The files of web/ the site's own pages use, and where they go in dist/. */
