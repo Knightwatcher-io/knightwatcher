@@ -5,6 +5,7 @@
 #   tools/shots.sh compare REFERENCE_DIR RESULT_DIR
 #   CHROME=/path/to/chrome-headless-shell tools/shots.sh worlds DIR
 #   tools/shots.sh compare-worlds REFERENCE_DIR RESULT_DIR
+#   CHROME=/path/to/chrome-headless-shell tools/shots.sh site
 #
 # take opens web/index.html from disk once per entry in SHOTS, with time frozen by the address's
 # t= hook, and writes DIR/<name>.png at 960 by 600, or at the size an entry names after a second |.
@@ -23,6 +24,11 @@
 # outside the repository with the test world's carrier added (docs/tests.md, The test world),
 # which it removes afterwards: the test world never goes under web/. compare-worlds compares two
 # such sets.
+#
+# site writes the website's pictures, site/img/, from the shots of SITE_SHOTS: each at three times
+# its size in device pixels, from a copy of web/ outside the repository with the clock stopped
+# (tools/shots-clock.js), shrunk to its size by tools/shot-scale.js. site/img/ then holds those
+# pictures and no other PNG, the same bytes on every run of the same tree.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -563,10 +569,39 @@ FIRE_SHOTS=(
   "orbit-fire-glitch-right|bar=0&t=1370&e=goblin&kx=40&wd=test.orbit/world.orbit"
 )
 
+# The website's pictures, which site writes to site/img/ under these names; site/pages/index.html
+# shows them. Each is 640 by 400 but the settings screen, 1280 by 800, and each has a set of devices
+# of its own, so that the pictures show more than one setup: the Pi stands in ev-pie alone, and the
+# pie is drawn besides only in the settings screen's picture of the house. The stream shows the
+# second of the demo's invented streams (t=10300), and the crate the demo's invented title.
+# docs/shots.md says what each shows.
+SITE_SHOTS=(
+  "ev-fly|bar=0&t=470&is=battlement&f=6&sw=1"
+  "ev-goblin|bar=0&t=1657&is=battlement&e=goblin&dv=camera,camera,vm"
+  "ev-crate|bar=0&t=1700&is=camp&e=crate&dv=camera,machine,vm"
+  "ev-pie|bar=0&t=2300&on=pi"
+  "ev-strain|bar=0&t=2470&on=cpumem&dv=machine,machine,camera"
+  "ev-sick|bar=0&t=2300&on=sick&dv=camera,vm"
+  "ev-disk|bar=0&t=2300&on=disk&dv=machine,box,camera"
+  "ev-ssh|bar=0&t=3450&on=ssh&dv=camera,camera,camera,vm"
+  "ev-update|bar=0&t=2804&on=update&dv=machine,vm,box"
+  "ev-device|bar=0&t=2300&is=camp&on=device&dv=camera,machine!,vm,box"
+  "ev-stream|bar=0&t=10300&is=camp&on=plex&pt=3000&dv=camera,vm,box"
+  "ev-wan|bar=0&t=2300&on=wan&dv=machine,machine,vm,camera"
+  "look-a|bar=0&t=2300&is=battlement&h=off&sk=deep&hc=black&hy=curls&tb=sable&pm=gold&dv=camera,machine"
+  "look-b|bar=0&t=2300&is=yard&h=off&bd=b&arm=mace_and_shield&sh=round&sk=tan&hc=dark&hy=buzz&tb=wine&dv=camera,box"
+  "look-c|bar=0&t=2300&is=camp&bd=c&arm=crossbow&hm=kettle&ps=feather&bk=cloak&tb=forest&pm=gold&dv=vm,camera"
+  "look-mon|bar=0&t=3450&on=ssh&mon=b&dv=machine,camera"
+  "settings|bar=0&t=2300&is=battlement&set=knight|1280,800"
+)
+
 take() {
   local dir="$1"
   shift
-  local list=("$@")
+  local list=("$@") extra=()
+  # SIZE is the size of a shot that names none; SCALE shoots at that many device pixels to the
+  # page's pixel; PROFILES gives each shot a fresh browser profile of its own in that folder
+  [[ -z "${SCALE:-}" ]] || extra+=(--force-device-scale-factor="$SCALE")
   [[ ${#list[@]} -gt 0 ]] || list=("${SHOTS[@]}")
   if [[ -z "${CHROME:-}" || ! -x "$CHROME" ]]; then
     echo "shots: set CHROME to a headless Chromium binary" >&2
@@ -574,15 +609,18 @@ take() {
   fi
   local page="${PAGE:-$root/web/index.html}"
   mkdir -p "$dir"
-  local entry name hash size missed=()
+  local entry name hash size missed=() profile=()
   for entry in "${list[@]}"; do
     name="${entry%%|*}"
     hash="${entry#*|}"
-    size=960,600
+    size="${SIZE:-960,600}"
     if [[ "$hash" == *"|"* ]]; then size="${hash#*|}"; hash="${hash%%|*}"; fi
+    profile=()
+    [[ -z "${PROFILES:-}" ]] || profile=(--user-data-dir="$PROFILES/$name")
     # a file left from an earlier run must not pass for this one's
     rm -f "$dir/$name.png"
     "$CHROME" --no-sandbox --hide-scrollbars --window-size="$size" --virtual-time-budget=1500 \
+      "${extra[@]}" "${profile[@]}" \
       --screenshot="$dir/$name.png" "file://$page#$hash" </dev/null >/dev/null 2>&1 || true
     if [[ -s "$dir/$name.png" ]]; then echo "took $name"; else echo "shots: the browser wrote no screenshot for $name" >&2; missed+=("$name"); fi
   done
@@ -611,6 +649,31 @@ worlds() {
   node "$root/tools/pack-carrier.js" "$tmp/web/packs/test.orbit.pack.json" >/dev/null
   grep -q 'main.blaster' "$tmp/web/packs/test.orbit.pack.js" || { echo "shots: the test world's file of format 1.2 was not put in" >&2; exit 2; }
   PAGE="$tmp/web/index.html" take "$dir" "${FIRE_SHOTS[@]}"
+}
+
+# The website's pictures, from a copy of web/ outside the repository with tools/shots-clock.js
+# put before the page's scripts, so that every picture's clock reads 13:46. Each shot is taken at
+# three times its size (SCALE), where the scene is drawn at a whole scale, and shrunk to its size,
+# so that the same tree gives the same bytes. They are written to a folder of their own first, and
+# site/img/ is changed only once every one is written.
+site() {
+  local dest="$root/site/img" tmp entry names=() f
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "${tmp:-}"' RETURN EXIT
+  cp -r "$root/web" "$tmp/web"
+  cp "$root/tools/shots-clock.js" "$tmp/web/js/shots-clock.js"
+  sed -i 's#<script src="js/draw.js"></script>#<script src="js/shots-clock.js"></script>\n&#' "$tmp/web/index.html"
+  grep -q 'js/shots-clock.js' "$tmp/web/index.html" || { echo "shots: the clock's script was not added" >&2; exit 2; }
+  mkdir -p "$tmp/profiles"
+  SIZE=640,400 SCALE=3 PROFILES="$tmp/profiles" PAGE="$tmp/web/index.html" take "$tmp/big" "${SITE_SHOTS[@]}"
+  for entry in "${SITE_SHOTS[@]}"; do names+=("${entry%%|*}"); done
+  node "$root/tools/shot-scale.js" 3 "$tmp/big" "$tmp/img" "${names[@]}"
+  mkdir -p "$dest"
+  for f in "$dest"/*.png; do
+    [[ -e "$f" && ! -e "$tmp/img/$(basename "$f")" ]] || continue
+    rm -f "$f"; echo "removed site/img/$(basename "$f")"
+  done
+  cp "$tmp/img/"*.png "$dest/"
 }
 
 compare() {
@@ -695,5 +758,6 @@ case "${1:-}" in
   compare) [[ $# -eq 3 ]] || { echo "usage: $0 compare REFERENCE_DIR RESULT_DIR" >&2; exit 2; }; compare "$2" "$3" ;;
   worlds) [[ $# -eq 2 ]] || { echo "usage: $0 worlds DIR" >&2; exit 2; }; worlds "$2" ;;
   compare-worlds) [[ $# -eq 3 ]] || { echo "usage: $0 compare-worlds REFERENCE_DIR RESULT_DIR" >&2; exit 2; }; WHICH=worlds compare "$2" "$3" ;;
-  *) echo "usage: $0 take DIR | compare REFERENCE_DIR RESULT_DIR | worlds DIR | compare-worlds REFERENCE_DIR RESULT_DIR" >&2; exit 2 ;;
+  site) [[ $# -eq 1 ]] || { echo "usage: $0 site" >&2; exit 2; }; site ;;
+  *) echo "usage: $0 take DIR | compare REFERENCE_DIR RESULT_DIR | worlds DIR | compare-worlds REFERENCE_DIR RESULT_DIR | site" >&2; exit 2 ;;
 esac

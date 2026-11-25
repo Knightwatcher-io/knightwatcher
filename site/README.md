@@ -1,22 +1,25 @@
 # The website
 
-The website at `knightwatcher.io`: the landing page with the live demo, the privacy notice and the
-art licence. Static files built from this folder, `web/` and `legal/`, served by a small Cloudflare
-Worker and deployed by Workers Builds on each push to `main`, as the usage receiver in
+The website at `knightwatcher.io`: six sections with a nav on every page (Home with the live demo,
+Features, Supported Feeds, Install, Docs and Licence), the documentation rendered from the
+repository's markdown, and the legal pages. Static files built from this folder, `web/`, `legal/`,
+`docs/`, `README.md`, `CONTRIBUTING.md` and the provider files, served by a small Cloudflare Worker and deployed by Workers Builds on each push to `main`, as the usage receiver in
 [`telemetry/`](../telemetry/README.md) is. Until launch both of its hostnames sit behind Cloudflare
 Access, open to the owner alone.
 
 | Path | What it is |
 |---|---|
-| `pages/index.html` | the landing page, with the places the build fills marked `<!-- @name -->` |
-| `pages/legal.html` | the template of the privacy notice's and the art licence's pages |
+| `pages/index.html` | the home page: the hero, the live demo and four highlights, with the places the build fills marked `<!-- @name -->` |
+| `pages/features.html`, `pages/feeds.html`, `pages/install.html`, `pages/licence.html` | Features, Supported Feeds (its services filled in by the build), Install and Licence |
+| `pages/docs.html`, `pages/doc.html` | the docs' index, and the template of each doc's page |
+| `pages/legal.html` | the template of the privacy notice's, the art licence's and the name and logo's pages |
 | `pages/404.html` | the page for an address with nothing at it |
 | `parts/` | the nav, the footer and the GitHub mark, which every page shares |
 | `css/site.css`, `js/site.js` | the stylesheet, and the script that draws the night sky and drives the demo's frame |
-| `img/` | the pictures of the landing page: screenshots of the real page, at 640 by 400 and 1280 by 800, under CC BY-SA 4.0 with the rest of the art ([ART-LICENCE.md](../legal/ART-LICENCE.md)) |
+| `img/` | the pictures of Home and Features: screenshots of the real page written by `tools/shots.sh site` ([shots.md](../docs/shots.md)), all 640 by 400 but `settings.png` at 1280 by 800, under CC BY-SA 4.0 with the rest of the art ([ART-LICENCE.md](../legal/ART-LICENCE.md)) |
 | `site.json` | the Cloudflare Web Analytics token, empty until it is set |
 | `build.mjs` | the build, which writes `dist/` |
-| `markdown.mjs` | the renderer of the legal pages |
+| `markdown.mjs` | the markdown renderer of the docs and the legal pages |
 | `headers.mjs` | the response headers, for `_headers` and the Worker |
 | `src/index.mjs` | the Worker |
 | `wrangler.jsonc` | the Worker's name, its files, its two hostnames, observability off, no cron |
@@ -33,13 +36,17 @@ tools/capped.sh node site/build.mjs
 node site/preview.mjs            # http://127.0.0.1:8788/, Ctrl-C to stop
 ```
 
-The build empties `site/dist/` and writes:
+The build reads and renders everything first, and only then empties `site/dist/` and writes, so a
+build that fails leaves the last one as it was:
 
-- the landing page, the 404 page, the stylesheet, the script and the pictures, with the logo, the
-  favicon, the touch icon and the VT323 font (and its licence) copied from `web/`, so they are kept
-  once in the repository (the logo and the icons are the project's own, under neither the code's
-  nor the art's licence: [NAME-AND-LOGO.md](../legal/NAME-AND-LOGO.md));
-- `privacy/` and `art-licence/`, rendered from `legal/PRIVACY.md` and `legal/ART-LICENCE.md`;
+- the home page, `features/`, `feeds/`, `install/`, `licence/` and the 404 page, the stylesheet,
+  the script and the pictures, with the logo, the favicon, the touch icon and the VT323 font (and
+  its licence) copied from `web/`, so they are kept once in the repository (the logo and the icons
+  are the project's own, under neither the code's nor the art's licence:
+  [NAME-AND-LOGO.md](../legal/NAME-AND-LOGO.md));
+- `docs/`, the documentation ([The docs](#the-docs));
+- `privacy/`, `art-licence/` and `name-and-logo/`, rendered from `legal/PRIVACY.md`,
+  `legal/ART-LICENCE.md` and `legal/NAME-AND-LOGO.md`;
 - `demo/`, the display's page: a copy of `web/` without `admin/` and `data/`, stamped with the
   commit being built;
 - `_headers`, from `headers.mjs`.
@@ -51,9 +58,37 @@ and binds to `127.0.0.1` alone. The tests are in `tests/site/` ([tests.md](../do
 tools/capped.sh node --test --test-concurrency=2 tests/site/
 ```
 
+## The sections
+
+Every page has the same nav: Home, Features, Supported Feeds, Install, Docs and Licence, with the
+GitHub button. The build writes the links (`NAV` in `build.mjs`) and marks the page's own section,
+`aria-current="page"` on the section's own page and `"true"` on a page within it (a doc under Docs, a
+legal page under Licence). On a phone the links wrap onto a row of their own under the name and the
+GitHub button.
+
+- **Home** (`/`): the hero, the live demo and four highlights (a ban, an import, a stream and a
+  machine under strain), each a link to its card in Features.
+- **Features** (`/features/`): everything the display shows, each card with an id (`#ev-goblin`,
+  `#ev-strain` and so on), and the knight and the world.
+- **Supported Feeds** (`/feeds/`): the services, built from `collector/providers/builtin/*.toml`
+  (below), what the collector reads itself, and the requirements and supported systems.
+- **Install** (`/install/`): the quick start, and what leaves your network.
+- **Docs** (`/docs/`): the documentation ([The docs](#the-docs)).
+- **Licence** (`/licence/`): free and open, support (Ko-fi and GitHub Sponsors, both optional), the
+  code's and the art's licences, the name and the logo, and contributions signed off under the DCO,
+  linking the legal pages.
+
+**Supported Feeds' services** come from each provider file's top-level `name` and `kind`, grouped
+by kind in the order of `FEED_KINDS` in `build.mjs`, which gives each kind its heading (streams,
+adblock, imports, and usage as Machines' CPU and memory), and sorted by name. A file named
+`<base>_<variant>.toml` of the same kind as `<base>.toml`, whose name is the base's followed by
+`, with ...`, is shown with its base: `glances_basic.toml` (Glances 4, with a password) makes the
+one entry "Glances 4 with or without a password". So a new provider file shows on the site with no
+page edit. A file of a kind `FEED_KINDS` has no heading for stops the build, naming the file.
+
 ## The demo
 
-The demo is the real page, framed at `/demo/?demo#demo=1&bar=0` near the top of the landing page,
+The demo is the real page, framed at `/demo/?demo#demo=1&bar=0` near the top of the home page,
 drawn at 1280 by 800 and scaled to the frame, so it keeps its own layout at every width and is
 letterboxed on an upright phone.
 
@@ -71,22 +106,55 @@ letterboxed on an upright phone.
   reads as no packs, and the browser's console shows the 404.
 - **The buttons.** Full screen calls `requestFullscreen()` on the frame. Open the settings adds
   `set=knight` to the frame's hash, and the page's own listener opens the settings screen without a
-  reload ([The address](../docs/display.md#the-address)). A tap on the demo still brings back its
-  review bar.
+  reload ([The address](../docs/display.md#the-address)). Your devices sets `bar=dev` in the
+  frame's hash, which shows the review bar's Devices row alone (add, name, set down or remove the
+  demo's stand-in devices), and a second press sets `bar=0` to hide it again; the button reads the
+  frame's hash each time, so it follows whatever the demo did since. A tap on the demo still brings
+  back its whole review bar.
 
-## The legal pages
+## The docs
 
-`markdown.mjs` renders the subset the two files use: headings of levels one to three, paragraphs,
-`- ` lists, fenced code, links, bold and inline code, every piece of text escaped. Anything else,
-a table, a quote, a numbered list, raw HTML or italics, stops the build with the file and the line,
-so an edit to `legal/` that the site cannot show is found before it is deployed. Extend the
-renderer and its tests before using something new there.
+The docs' index comes from README.md's `## Documentation` section: its three groups, the lines
+"For people running it:", "For people making packs:" and "For contributors:", shown as Running it,
+Making packs and Contributing (`DOC_GROUPS` in `build.mjs`), and under each its bullets, each
+`- [Title](path): description`. Every file the section links gets a page at `/docs/<name>/`, its
+file's name in lower case (`docs/world-loading.md` is `/docs/world-loading/`, `CONTRIBUTING.md` is
+`/docs/contributing/`), but `site/README.md`, which is `/docs/website/`. A file in `docs/` the
+section does not link gets a page too, under a group More, by its own title. Anything else in the
+section (a group's line the build has no name for, a line of another shape, a link to a file that is
+not there, a doc linked twice, a group with no docs) stops the build, naming the line of README.md,
+and so does a missing section.
 
-A relative link goes to the file on GitHub, a folder to its tree, except that
-`legal/PRIVACY.md` and `legal/ART-LICENCE.md` link to each other's pages on the site. A level two
-heading's id is its words in lower case joined by hyphens, without a leading "the", so the privacy
-notice's section The website is `/privacy/#website`, where the footer's line on visitor counts
-points. Each page ends by naming its file in the repository.
+A doc's page has every doc in a side column by group, its own sections from its level two and
+three headings in a column on the right, and the doc between them; narrower, the contents fold
+into an "On this page" menu above the doc, and on a phone the docs fold into an "All the docs"
+menu too. There is no search. Each page ends by naming its file in the repository.
+
+## The markdown
+
+`markdown.mjs` renders the subset of GitHub's markdown the docs and the legal files use: headings of
+every level, paragraphs, `- ` and `1. ` lists nested to any depth with paragraphs, code and tables
+inside their items, fenced code with or without a language, tables with their columns' alignment (as
+classes, since the site's policy refuses an inline style), links, bold, inline code and backslash
+escapes. An HTML comment on lines of its own, such as the markers around the generated reference in
+`configuration.md`, is left out. Every piece of text is escaped. In a table, `\|` is a pipe that
+splits no cell, its backslash dropped, code spans included, as on GitHub. Two things still differ
+from GitHub on purpose, so that a slip in a doc reads as meant rather than broken: a bare `|` inside
+a code span in a table does not split the cell (GitHub's does; write `\|` there so both agree), and
+a placeholder in angle brackets outside code that is no HTML tag shows as written (GitHub strips it;
+put it in backticks so both agree). Anything outside the subset (raw HTML, italics, a quote, a `*`
+or `+` list, a rule, an indented code block, an underlined heading) stops the build with the file
+and the line, so an edit the site cannot show is found before it is deployed. Extend the renderer
+and its tests before using something new.
+
+A heading's id is GitHub's: its text in lower case, everything but letters, digits, spaces,
+hyphens and underscores taken out, each space a hyphen, and a repeat numbered `-1`, `-2`. So a link
+to a heading works the same on the site and on GitHub: the privacy notice's section The website is
+`/privacy/#the-website`, where the footer's line on visitor counts points. A relative link to a file
+the site renders (a doc, `CONTRIBUTING.md`, this file or a legal file) goes to its page on the site,
+anchor and all; a link to any other file of the repository goes to it on GitHub, `blob/main/` for a
+file and `tree/main/` for a folder. The tests build the site and check that every link between its
+pages and every anchor lands, and that every link to the repository names a file that is there.
 
 ## The headers
 
@@ -102,15 +170,16 @@ same headers on every response it passes on, so they hold however Cloudflare ser
 
 The display's page runs under its policy unchanged: `index.html` has no inline script, style or
 handler, and the scripts set styles through the DOM, which the policy allows. No page of the site
-has an inline script either, and `site.js` sizes the demo's frame the same way.
+has an inline script or style either, the docs' pages included, and `site.js` sizes the demo's
+frame the same way.
 
 ## Visitor counts
 
-Cloudflare Web Analytics counts visits to the landing page and the legal pages, never the demo or
-the 404 page ([the privacy notice](../legal/PRIVACY.md), section The website). The token is a
+Cloudflare Web Analytics counts visits to every page of the site, the docs' pages and the legal
+pages included, never the demo or the 404 page ([the privacy notice](../legal/PRIVACY.md), section The website). The token is a
 public value, kept in `site.json`. While it is empty the build leaves the snippet out and the
 policy names no Cloudflare host; once it is set, the next build adds Cloudflare's one script tag to
-those three pages and allows its script and its report in their policy. The site is added to Web
+those pages and allows its script and its report in their policy. The site is added to Web
 Analytics by hand, with the JavaScript snippet. **Do not turn on its automatic setup** for these
 hostnames: it would put the script into every HTML page Cloudflare serves, the demo's included,
 where the demo's policy would refuse it.
@@ -146,8 +215,9 @@ zone. No Cloudflare token is kept anywhere else.
    - the deploy command `npx wrangler deploy`;
    - the build variables `NODE_VERSION=24` and `WRANGLER_SEND_METRICS=false`;
    - Enable Preview Builds turned off, under Settings, Build, Branch control;
-   - build watch paths, if set at all, that take in `site/**`, `web/**`, `legal/**` and
-     `tests/site/**`, since the demo and the legal pages come from `web/` and `legal/`.
+   - build watch paths, if set at all, that take in `site/**`, `web/**`, `legal/**`, `docs/**`,
+     `README.md`, `CONTRIBUTING.md`, `collector/providers/builtin/**` and `tests/site/**`, since
+     the demo, the legal pages, the docs and Supported Feeds come from them.
 
    The deploy creates both custom domains, with no `workers.dev` or preview address, and clears
    any cron trigger. In the dashboard, the Worker's observability should show as off.

@@ -1,6 +1,7 @@
-// Tests for the website's build, site/build.mjs, and what it writes: the pages, the demo copied
-// from web/ and stamped, the legal pages against legal/, the Web Analytics snippet, _headers, and
-// the local preview's answers. Each build goes to a scratch folder that is removed afterwards.
+// Tests for the website's build, site/build.mjs, and what it writes: the pages and their nav, the
+// demo copied from web/ and stamped, the legal pages against legal/, the Web Analytics snippet,
+// _headers, and the local preview's answers. The docs and Supported Feeds are in docs.test.mjs.
+// Each build goes to a scratch folder that is removed afterwards.
 // Run with: node --test tests/site/
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { spawnSync } from 'node:child_process';
-import { build, stampIndex, resolveVersion, readToken, analyticsSnippet, LEGAL, ROOT } from '../../site/build.mjs';
+import { build, stampIndex, resolveVersion, readToken, analyticsSnippet, LEGAL, NAV, ROOT } from '../../site/build.mjs';
 import { siteCsp, DEMO_CSP } from '../../site/headers.mjs';
 import { handler } from '../../site/preview.mjs';
 
@@ -20,11 +21,13 @@ const scratch = () => fs.mkdtempSync(path.join(os.tmpdir(), 'kw-site-test-'));
 const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
 const rel = (dir, files) => files.map(f => path.relative(dir, f).split(path.sep).join('/')).sort();
 
-/* A copy of the repository's web/, site/ and legal/ in a scratch folder, with a data/ folder in
-   web/ as the collector leaves one, so the build can be shown to leave it out. */
+/* A copy of what the build reads, web/, site/, legal/, docs/, the provider files and the files the
+   docs' index links, in a scratch folder, with a data/ folder in web/ as the collector leaves one,
+   so the build can be shown to leave it out. */
+const COPIED = ['web', 'site', 'legal', 'docs', 'collector/providers/builtin', 'README.md', 'CONTRIBUTING.md'];
 function scratchRoot() {
   const root = scratch();
-  for (const d of ['web', 'site', 'legal']) fs.cpSync(path.join(ROOT, d), path.join(root, d), { recursive: true, filter: s => !s.includes(path.sep + 'dist') });
+  for (const d of COPIED) fs.cpSync(path.join(ROOT, d), path.join(root, d), { recursive: true, filter: s => !s.includes(path.sep + 'dist') });
   fs.mkdirSync(path.join(root, 'web/data/packs'), { recursive: true });
   fs.writeFileSync(path.join(root, 'web/data/state.json'), '{"schema": 1}');
   return root;
@@ -38,10 +41,16 @@ const textOf = html => html.replace(/<\/?(code|strong|a)\b[^>]*>/g, '').replace(
 /* The text of a markdown line as it reads on the page. */
 const mdText = line => line.replace(/^#+ |^- |^ +/g, '').replace(/\*\*/g, '').replace(/`/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').trim();
 
+/* The site's own pages, every page but the demo's. */
+const PAGES = ['index.html', 'features/index.html', 'feeds/index.html', 'install/index.html', 'licence/index.html', 'docs/index.html',
+  'docs/configuration/index.html', 'docs/contributing/index.html', 'docs/website/index.html', 'privacy/index.html', 'art-licence/index.html',
+  'name-and-logo/index.html', '404.html'];
+const allPages = out => rel(out, walk(out)).filter(f => f.endsWith('.html') && !f.startsWith('demo/'));
+
 test('the build writes the pages, the assets and the demo, and nothing of web/admin or web/data', () => {
   const { out } = once();
   const files = rel(out, walk(out));
-  for (const f of ['index.html', '404.html', 'privacy/index.html', 'art-licence/index.html', '_headers', 'css/site.css', 'js/site.js', 'logo.svg',
+  for (const f of [...PAGES, '_headers', 'css/site.css', 'js/site.js', 'logo.svg',
     'favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'fonts/VT323-Regular.ttf', 'fonts/OFL.txt', 'img/settings.png', 'img/ev-crate.png',
     'demo/index.html', 'demo/version.json', 'demo/js/main.js', 'demo/packs/base.pack.js', 'demo/packs/medieval.pack.json', 'demo/fonts/VT323-Regular.ttf']) {
     assert.ok(files.includes(f), f);
@@ -51,13 +60,35 @@ test('the build writes the pages, the assets and the demo, and nothing of web/ad
   const web = rel(path.join(once().root, 'web'), walk(path.join(once().root, 'web'))).filter(f => !/^(admin|data)\//.test(f));
   assert.deepEqual(files.filter(f => f.startsWith('demo/')).map(f => f.slice(5)).filter(f => f !== 'version.json'), web);
   for (const f of web.filter(f => f !== 'index.html')) assert.ok(fs.readFileSync(path.join(out, 'demo', f)).equals(fs.readFileSync(path.join(ROOT, 'web', f))), f);
-  // every picture and file the landing page names is in the build
-  const html = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
-  for (const [, ref] of html.matchAll(/(?:src|href)="(\/[^"#?]*)/g)) {
-    const p = ref.endsWith('/') ? ref + 'index.html' : ref;
-    assert.ok(fs.existsSync(path.join(out, p)), ref);
+  // every picture and file each page names is in the build (the docs' links and anchors are
+  // checked in docs.test.mjs)
+  for (const p of allPages(out)) {
+    const html = fs.readFileSync(path.join(out, p), 'utf8');
+    for (const [, ref] of html.matchAll(/(?:src|href)="(\/[^"#?]*)/g)) {
+      const f = ref.endsWith('/') ? ref + 'index.html' : ref;
+      assert.ok(fs.existsSync(path.join(out, f)), `${p}: ${ref}`);
+    }
+    assert.doesNotMatch(html, /<!-- @/, p);
   }
-  assert.doesNotMatch(html, /<!-- @/);
+  // no page names the picture the strain card had before it
+  for (const p of allPages(out)) assert.doesNotMatch(fs.readFileSync(path.join(out, p), 'utf8'), /ev-cpu\.png/, p);
+});
+
+test('every page has the nav, its own section marked, and the footer', () => {
+  const { out } = once();
+  for (const p of allPages(out)) {
+    const html = fs.readFileSync(path.join(out, p), 'utf8');
+    const nav = html.slice(html.indexOf('<nav class="nav"'), html.indexOf('</nav>', html.indexOf('<nav class="nav"')));
+    assert.deepEqual([...nav.matchAll(/<a href="(\/[^"]*)"[^>]*>([^<]+)<\/a>/g)].map(m => [m[1], m[2]]), NAV, p);
+    assert.match(nav, /href="https:\/\/github\.com\/knightwatcher-io\/knightwatcher"/, p);
+    assert.match(html, /<footer>/, p);
+    const marked = [...nav.matchAll(/<a href="([^"]+)" aria-current="(page|true)">/g)].map(m => m[1] + ' ' + m[2]);
+    const want = { 'index.html': ['/ page'], 'features/index.html': ['/features/ page'], 'feeds/index.html': ['/feeds/ page'], 'install/index.html': ['/install/ page'],
+      'licence/index.html': ['/licence/ page'], 'docs/index.html': ['/docs/ page'], '404.html': [] }[p];
+    if (want) assert.deepEqual(marked, want, p);
+    else if (p.startsWith('docs/')) assert.deepEqual(marked, ['/docs/ true'], p);
+    else assert.deepEqual(marked, ['/licence/ true'], p);
+  }
 });
 
 test('the demo is stamped with the commit, never dev, as tools/deploy.sh stamps a copy', () => {
@@ -110,19 +141,21 @@ test('the legal pages are legal/\'s text, every line of it, with their contents'
       for (const item of items) assert.ok(shown.includes(mdText(item.replace(/\n\s*/g, ' '))), `${L.from}: ${item.slice(0, 60)}`);
     }
     // each heading, and the level one heading as the page's own
-    for (const h of source.match(/^#{2,3} .+$/gm)) assert.ok(shown.includes(mdText(h)), h);
+    for (const h of source.match(/^#{2,3} .+$/gm) || []) assert.ok(shown.includes(mdText(h)), h);
     assert.match(page, new RegExp(`<h1>${source.match(/^# (.+)$/m)[1]}</h1>`));
     // the contents list each section, linked to its heading
-    for (const h of source.match(/^## .+$/gm)) assert.match(page, new RegExp(`<li><a href="#[\\w-]+">${mdText(h)}</a></li>`), h);
+    for (const h of source.match(/^## .+$/gm) || []) assert.match(page, new RegExp(`<li><a href="#[\\w-]+">${mdText(h)}</a></li>`), h);
   }
   const privacy = fs.readFileSync(path.join(out, 'privacy/index.html'), 'utf8');
-  assert.match(privacy, /<h2 id="website">The website<\/h2>/, 'the footer links to #website');
-  assert.match(fs.readFileSync(path.join(out, 'index.html'), 'utf8'), /href="\/privacy\/#website"/);
+  assert.match(privacy, /<h2 id="the-website">The website<\/h2>/, 'the footer links to #the-website');
+  assert.match(fs.readFileSync(path.join(out, 'index.html'), 'utf8'), /href="\/privacy\/#the-website"/);
 });
 
-test('the Web Analytics snippet is absent without a token, and only on the landing and legal pages with one', () => {
-  const pages = ['index.html', 'privacy/index.html', 'art-licence/index.html'];
+test('the Web Analytics snippet is absent without a token, and on every page but the demo and the 404 page with one', () => {
   const none = once().out, some = withToken().out;
+  const pages = allPages(some).filter(p => p !== '404.html');
+  for (const p of PAGES.filter(p => p !== '404.html')) assert.ok(pages.includes(p), p);
+  assert.ok(pages.filter(p => p.startsWith('docs/')).length > 20, 'every docs page');
   for (const f of walk(none).filter(f => /\.(html|js|css|json)$/.test(f))) assert.doesNotMatch(fs.readFileSync(f, 'utf8'), /beacon\.min\.js|data-cf-beacon/, f);
   for (const p of pages) assert.equal(fs.readFileSync(path.join(some, p), 'utf8').match(SNIPPET)[1], TOKEN, p);
   for (const f of walk(some).filter(f => /\.(html|js|css|json)$/.test(f) && !pages.includes(rel(some, [f])[0]))) {
@@ -181,19 +214,35 @@ test('the demo\'s files name no outside host, and its page has no inline script 
   assert.deepEqual([...html.matchAll(/<script(?![^>]* src=)[^>]*>/g)].map(m => m[0]), []);
   assert.doesNotMatch(html, /<style|\sstyle=|\son[a-z]+=/i);
   // the site's own pages hold no inline script, style or handler either, under their policy
-  for (const p of ['index.html', '404.html', 'privacy/index.html', 'art-licence/index.html']) {
+  for (const p of allPages(once().out)) {
     const page = fs.readFileSync(path.join(once().out, p), 'utf8');
     assert.deepEqual([...page.matchAll(/<script(?![^>]* src=)[^>]*>/g)].map(m => m[0]), [], p);
     assert.doesNotMatch(page, /<style|\sstyle=|\son[a-z]+=/i, p);
   }
 });
 
-test('the landing page frames the demo in ?demo, and links the docs and the repository on GitHub', () => {
+test('the home page frames the demo in ?demo, with its three buttons, and the pages link out only to the project', () => {
   const html = fs.readFileSync(path.join(once().out, 'index.html'), 'utf8');
   assert.match(html, /<iframe id="demoframe" src="\/demo\/\?demo#demo=1&amp;bar=0"[^>]* allow="fullscreen"/);
-  const outside = [...html.matchAll(/href="(https?:[^"]+)"/g)].map(m => m[1]);
-  for (const u of outside) assert.match(u, /^https:\/\/(github\.com\/knightwatcher-io\/knightwatcher([/#]|$)|ko-fi\.com\/valtora$)/, u);
-  assert.ok(outside.filter(u => u === 'https://github.com/knightwatcher-io/knightwatcher').length >= 3, 'the repository in the nav, the hero and the quick start');
+  for (const id of ['b-full', 'b-set', 'b-dev']) assert.match(html, new RegExp(`<button class="btn[^"]*" type="button" id="${id}"`), id);
+  // the four highlights, each linked to its place in Features
+  const features = fs.readFileSync(path.join(once().out, 'features/index.html'), 'utf8');
+  const hl = [...html.matchAll(/<a href="\/features\/#(ev-[a-z]+)"><img src="\/img\/(ev-[a-z]+)\.png"/g)].map(m => [m[1], m[2]]);
+  assert.deepEqual(hl, [['ev-goblin', 'ev-goblin'], ['ev-crate', 'ev-crate'], ['ev-stream', 'ev-stream'], ['ev-strain', 'ev-strain']]);
+  for (const [id] of hl) assert.match(features, new RegExp(`<li class="act" id="${id}">`), id);
+  assert.match(features, /<h3>A machine is under strain<\/h3><p class="via">This machine, or any device through Prometheus, Beszel or Glances<\/p>/);
+  assert.doesNotMatch(features + html, /The CPU is pinned/);
+  // outside addresses: the project on GitHub, and on the Licence page the two ways to support it
+  for (const p of allPages(once().out).filter(p => !p.startsWith('docs/') && !['privacy/index.html', 'art-licence/index.html', 'name-and-logo/index.html'].includes(p))) {
+    const page = fs.readFileSync(path.join(once().out, p), 'utf8');
+    for (const [, u] of page.matchAll(/href="(https?:[^"]+)"/g)) {
+      assert.match(u, /^https:\/\/(github\.com\/knightwatcher-io\/knightwatcher([/#]|$)|ko-fi\.com\/valtora$|github\.com\/sponsors\/Valtora$)/, `${p}: ${u}`);
+    }
+  }
+  const licence = fs.readFileSync(path.join(once().out, 'licence/index.html'), 'utf8');
+  assert.match(licence, /href="https:\/\/ko-fi\.com\/valtora"/);
+  assert.match(licence, /href="https:\/\/github\.com\/sponsors\/Valtora"/);
+  for (const to of ['/art-licence/', '/privacy/', '/name-and-logo/', '/docs/contributing/']) assert.match(licence, new RegExp(`href="${to}"`), to);
 });
 
 test('the preview answers as the Worker does: the headers, folders, and the 404 page', async () => {

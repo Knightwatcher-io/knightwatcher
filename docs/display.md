@@ -725,6 +725,7 @@ down is used.
 | `h=` | the helmet: `auto` (off in the house and the smithy), `on`, `off`. Without it the settings' helmet indoors chooses between `auto` and `on` |
 | `hs=` | the headline size: `s`, `m`, `l`. Without it the settings' headline size |
 | `bar=0` | hides the review bar |
+| `bar=dev` | shows the review bar's Devices row alone, the rest of the bar hidden; the website's Your devices button sets its demo frame's hash so. `bar=` is also read on a change of the hash, as `0`, `1` (the whole bar) or `dev` |
 | `demo=1` | runs the demo loop |
 | `t=` | freezes time at that many ms, `t=0` included, for screenshots |
 | `e=` | plays an event: `goblin`, `crate`, `feast` |
@@ -769,7 +770,7 @@ The demo rewrites the hash as its settings change, with the contract's ids in `o
 (`KW.hooks.fixed`), so that a reload keeps the bar's choice and otherwise leaves the settings' in
 force. The test hooks (`t=`, `kx=`, `pt=`, `dv=`, `pl=`, `set=`, the settings hooks, `f=`, `fa=`, `e=`, `sw=`, `st=` and `sm=`)
 are read once when the page loads, and the rewritten hash leaves them out, so they last until the
-page is opened again. `set=` alone is also read on a change of the hash, as the table says. The
+page is opened again. `set=` and `bar=` are also read on a change of the hash, as the table says. The
 demo rewrites the hash with `history.replaceState`, which is no such change.
 
 ## The admin page

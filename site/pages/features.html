@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Features: Knightwatcher</title>
+<meta name="description" content="Everything Knightwatcher shows on the wall, from a goblin over the wall to a machine under strain, and the knight and the world you choose.">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<header class="sky small-sky" id="top">
+  <canvas id="skycv" aria-hidden="true"></canvas>
+<!-- @nav -->
+  <div class="doc-title">
+    <h1>Features</h1>
+    <p>What the knight acts out, and how it looks.</p>
+  </div>
+  <div class="merlons" aria-hidden="true"></div>
+</header>
+<div class="wallband" aria-hidden="true"></div>
+
+<main>
+
+<section class="sec" id="shows" aria-labelledby="shows-h">
+  <div class="head"><h2 id="shows-h">What it shows</h2></div>
+  <p class="lead">It's made to be glanced at from across the room, not read like a dashboard. It is not a monitoring tool: no alerts and no history. Keep your monitoring; this is the part you glance at. A problem takes over the scene, with a headline saying why. Small events play out while all is quiet. The colour of the words is the status: green when quiet, amber for a warning, red when critical, blue while something is at work.</p>
+  <ul class="acts">
+    <li class="act" id="ev-fly"><img src="/img/ev-fly.png" alt="The knight swats a fly on the battlement" width="640" height="400" loading="lazy"><div><h3>An advert is blocked</h3><p class="via">AdGuard Home, Pi-hole or Technitium</p><p>A fly buzzes in and the knight swats it. Indoors, the cat catches it.</p></div></li>
+    <li class="act" id="ev-goblin"><img src="/img/ev-goblin.png" alt="The knight bonks a goblin on the battlement" width="640" height="400" loading="lazy"><div><h3>fail2ban bans someone</h3><p class="via">fail2ban</p><p>A goblin climbs over the castle wall, gets bonked on its saucepan and vanishes in a puff of smoke.</p></div></li>
+    <li class="act" id="ev-crate"><img src="/img/ev-crate.png" alt="A crate floats down on a parachute at the camp" width="640" height="400" loading="lazy"><div><h3>A download is imported</h3><p class="via">Sonarr, Radarr or Lidarr</p><p>A crate floats down on a parachute, with the title in the caption.</p></div></li>
+    <li class="act" id="ev-pie"><img src="/img/ev-pie.png" alt="The knight stares at the empty pie dish" width="640" height="400" loading="lazy"><div><h3>The Raspberry Pi goes quiet</h3><p class="via">A second machine</p><p>The raspberry pie is gone, down to its last slice, and the knight stares at the empty dish.</p></div></li>
+    <li class="act" id="ev-strain"><img src="/img/ev-strain.png" alt="The knight trains hard in the yard under a NAS UNDER STRAIN headline" width="640" height="400" loading="lazy"><div><h3>A machine is under strain</h3><p class="via">This machine, or any device through Prometheus, Beszel or Glances</p><p>The knight trains flat out in the yard, red in the face and sweating. The headline names the machine and the resource, such as NAS MEMORY 93%.</p></div></li>
+    <li class="act" id="ev-sick"><img src="/img/ev-sick.png" alt="The knight in bed with a thermometer" width="640" height="400" loading="lazy"><div><h3>A container is unhealthy</h3><p class="via">Docker</p><p>The knight takes to bed with a thermometer, and the headline names the container.</p></div></li>
+    <li class="act" id="ev-disk"><img src="/img/ev-disk.png" alt="The knight carries a heavy crate in the cellar" width="640" height="400" loading="lazy"><div><h3>A disk is filling up</h3><p class="via">This machine</p><p>Down in the cellar, the knight struggles with a heavy crate.</p></div></li>
+    <li class="act" id="ev-ssh"><img src="/img/ev-ssh.png" alt="The knight at court with the monarch" width="640" height="400" loading="lazy"><div><h3>Someone opens an SSH session</h3><p class="via">This machine</p><p>The knight is called to court to talk with the monarch.</p></div></li>
+    <li class="act" id="ev-update"><img src="/img/ev-update.png" alt="The knight hammers at the anvil in the smithy" width="640" height="400" loading="lazy"><div><h3>Updates are running</h3><p class="via">A job you name, such as nightly maintenance</p><p>The knight hammers at the anvil in the smithy.</p></div></li>
+    <li class="act" id="ev-device"><img src="/img/ev-device.png" alt="A toppled crystal ball with a question mark over it at the camp" width="640" height="400" loading="lazy"><div><h3>A device goes down</h3><p class="via">A NAS, a camera, a VM, anything with a port</p><p>Each device stands in the scene as a medieval thing: an owl, a crystal ball, a potion. When one goes down it breaks, and a question mark blinks over it.</p></div></li>
+    <li class="act" id="ev-stream"><img src="/img/ev-stream.png" alt="The knight beside the television at the camp" width="640" height="400" loading="lazy"><div><h3>Something is streaming</h3><p class="via">Plex, Jellyfin, Tautulli or Tracearr</p><p>A television appears in whatever scene is showing, and the knight stops by now and then to watch it. The line under the headline says who is watching what.</p></div></li>
+    <li class="act" id="ev-wan"><img src="/img/ev-wan.png" alt="The knight puzzled on the battlement under a red headline" width="640" height="400" loading="lazy"><div><h3>The internet drops</h3><p class="via">An address you choose</p><p>The bell rope on the battlement is cut, and the knight is puzzled.</p></div></li>
+  </ul>
+  <p class="more-line">There's more: an attack, a backup that's late or has just finished, and night, when the knight goes to bed and the screen dims. With nothing to report, the knight patrols the battlement, the camp, the house, the training yard and the smithy in turn.</p>
+</section>
+
+<section class="sec" id="look" aria-labelledby="look-h">
+  <div class="duo">
+    <div>
+      <div class="head"><h2 id="look-h">The knight and the world</h2></div>
+      <p class="lead">The look is chosen on the display itself. Press and hold the screen for two seconds and the settings open.</p>
+      <ul class="choices">
+        <li>Three builds: Classic, Broad and Slim</li>
+        <li>Five weapons, from a greatsword to a crossbow that fires</li>
+        <li>Six skin tones, six hair colours and five hair styles</li>
+        <li>Six tabards and six plumes</li>
+        <li>Shields, helmets and armour, and a cloak or a cape</li>
+        <li>Three monarchs: a king, a queen and a monarch with no title</li>
+        <li>A calico cat or a ginger tabby</li>
+      </ul>
+      <p>You also choose which quiet scenes take turns, and where some problems play out: running hot by the camp fire instead of in the yard, say.</p>
+      <p>A world sets the scenes, the cast, the words and their colours in one go. The medieval world is the one included. The pack format is <a href="/docs/worlds/">documented</a> for the curious; a normal page loads only packs the project has signed.</p>
+    </div>
+    <figure class="fig">
+      <div class="shot-frame"><img src="/img/settings.png" alt="The settings screen open on the knight's page, with builds and weapons to choose from" width="1280" height="800" loading="lazy"></div>
+      <figcaption class="cap">The settings screen, on the display.</figcaption>
+    </figure>
+  </div>
+  <ul class="looks">
+    <li><img src="/img/look-a.png" alt="A knight with dark skin, black curls and a sable tabard, helmet off" width="640" height="400" loading="lazy"><span>Classic, helmet off, curls</span></li>
+    <li><img src="/img/look-b.png" alt="A broad knight with a mace and a round shield in the training yard" width="640" height="400" loading="lazy"><span>Broad, mace and round shield</span></li>
+    <li><img src="/img/look-c.png" alt="A slim knight with a crossbow, a kettle hat and a cloak at the camp" width="640" height="400" loading="lazy"><span>Slim, crossbow and kettle hat</span></li>
+    <li><img src="/img/look-mon.png" alt="The knight at court before the queen" width="640" height="400" loading="lazy"><span>The queen, at court</span></li>
+  </ul>
+</section>
+
+</main>
+
+<!-- @footer -->
+
+<script src="/js/site.js"></script>
+<!-- @analytics -->
+</body>
+</html>

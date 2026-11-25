@@ -20,7 +20,7 @@
     <h1>Knightwatcher</h1>
     <p class="tag">A pixel-art knight on your wall who acts out what your homelab is doing.</p>
     <div class="cta">
-      <a class="btn primary" href="#start">Quick start</a>
+      <a class="btn primary" href="/install/">Quick start</a>
       <a class="btn gh" href="https://github.com/knightwatcher-io/knightwatcher"><!-- @gh -->View on GitHub</a>
     </div>
     <div class="lic">
@@ -49,159 +49,26 @@
   <div class="demo-ctl">
     <button class="btn primary" type="button" id="b-full"><svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h4v1H1v3H0zM6 0h4v4H9V1H6zM0 6h1v3h3v1H0zM9 6h1v4H6V9h3z"/></svg>Full screen</button>
     <button class="btn" type="button" id="b-set"><svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M4 0h2v2h1v1h1V2h1v2H8v2h1v2H8V7H7v1H6v2H4V8H3V7H2v1H1V6h1V4H1V2h1v1h1V2h1zM4 4v2h2V4z"/></svg>Open the settings</button>
+    <button class="btn" type="button" id="b-dev" aria-pressed="false"><svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h8v6H6v1h2v1H2V8h2V7H1zM2 2v4h6V2z"/></svg>Your devices</button>
   </div>
-  <p class="demo-note">This is the real display, running on invented data and stepping through its scenes. On your wall, press and hold the screen for two seconds to open the settings.</p>
+  <p class="demo-note">This is the real display, running on invented data and stepping through its scenes. On your wall, press and hold the screen for two seconds to open the settings. Your devices shows the demo's stand-ins for your own: add a NAS, a camera or a Pi, name it, and set it down.</p>
 </section>
 
 <main>
 
 <section class="sec" id="shows" aria-labelledby="shows-h">
   <div class="head"><h2 id="shows-h">What it shows</h2></div>
-  <p class="lead">It's made to be glanced at from across the room, not read like a dashboard. It is not a monitoring tool: no alerts and no history. Keep your monitoring; this is the part you glance at. A problem takes over the scene, with a headline saying why. Small events play out while all is quiet. The colour of the words is the status: green when quiet, amber for a warning, red when critical, blue while something is at work.</p>
-  <ul class="acts">
-    <li class="act"><img src="/img/ev-fly.png" alt="The knight swats a fly on the battlement" width="640" height="400" loading="lazy"><div><h3>An advert is blocked</h3><p class="via">AdGuard Home, Pi-hole or Technitium</p><p>A fly buzzes in and the knight swats it. Indoors, the cat catches it.</p></div></li>
-    <li class="act"><img src="/img/ev-goblin.png" alt="The knight bonks a goblin on the battlement" width="640" height="400" loading="lazy"><div><h3>fail2ban bans someone</h3><p class="via">fail2ban</p><p>A goblin climbs over the castle wall, gets bonked on its saucepan and vanishes in a puff of smoke.</p></div></li>
-    <li class="act"><img src="/img/ev-crate.png" alt="A crate floats down on a parachute at the camp" width="640" height="400" loading="lazy"><div><h3>A download is imported</h3><p class="via">Sonarr, Radarr or Lidarr</p><p>A crate floats down on a parachute, with the title in the caption.</p></div></li>
-    <li class="act"><img src="/img/ev-pie.png" alt="The knight stares at the empty pie dish" width="640" height="400" loading="lazy"><div><h3>The Raspberry Pi goes quiet</h3><p class="via">A second machine</p><p>The raspberry pie is gone, down to its last slice, and the knight stares at the empty dish.</p></div></li>
-    <li class="act"><img src="/img/ev-cpu.png" alt="The knight trains hard in the yard, red in the face" width="640" height="400" loading="lazy"><div><h3>The CPU is pinned</h3><p class="via">This machine</p><p>The knight trains flat out in the yard, red in the face and sweating.</p></div></li>
-    <li class="act"><img src="/img/ev-sick.png" alt="The knight in bed with a thermometer" width="640" height="400" loading="lazy"><div><h3>A container is unhealthy</h3><p class="via">Docker</p><p>The knight takes to bed with a thermometer, and the headline names the container.</p></div></li>
-    <li class="act"><img src="/img/ev-disk.png" alt="The knight carries a heavy crate in the cellar" width="640" height="400" loading="lazy"><div><h3>A disk is filling up</h3><p class="via">This machine</p><p>Down in the cellar, the knight struggles with a heavy crate.</p></div></li>
-    <li class="act"><img src="/img/ev-ssh.png" alt="The knight at court with the monarch" width="640" height="400" loading="lazy"><div><h3>Someone opens an SSH session</h3><p class="via">This machine</p><p>The knight is called to court to talk with the monarch.</p></div></li>
-    <li class="act"><img src="/img/ev-update.png" alt="The knight hammers at the anvil in the smithy" width="640" height="400" loading="lazy"><div><h3>Updates are running</h3><p class="via">A job you name, such as nightly maintenance</p><p>The knight hammers at the anvil in the smithy.</p></div></li>
-    <li class="act"><img src="/img/ev-device.png" alt="A toppled crystal ball with a question mark over it at the camp" width="640" height="400" loading="lazy"><div><h3>A device goes down</h3><p class="via">A NAS, a camera, a VM, anything with a port</p><p>Each device stands in the scene as a medieval thing: an owl, a crystal ball, a potion. When one goes down it breaks, and a question mark blinks over it.</p></div></li>
-    <li class="act"><img src="/img/ev-stream.png" alt="The knight watches the television at home" width="640" height="400" loading="lazy"><div><h3>Something is streaming</h3><p class="via">Plex, Jellyfin, Tautulli or Tracearr</p><p>A television appears in whatever scene is showing, and the knight stops by now and then to watch it. The line under the headline says who is watching what.</p></div></li>
-    <li class="act"><img src="/img/ev-wan.png" alt="The knight puzzled on the battlement under a red headline" width="640" height="400" loading="lazy"><div><h3>The internet drops</h3><p class="via">An address you choose</p><p>The bell rope on the battlement is cut, and the knight is puzzled.</p></div></li>
-  </ul>
-  <p class="more-line">There's more: an attack, a backup that's late or has just finished, memory running low, and night, when the knight goes to bed and the screen dims. With nothing to report, the knight patrols the battlement, the camp, the house, the training yard and the smithy in turn.</p>
-</section>
-
-<section class="sec" id="look" aria-labelledby="look-h">
-  <div class="duo">
-    <div>
-      <div class="head"><h2 id="look-h">The knight and the world</h2></div>
-      <p class="lead">The look is chosen on the display itself. Press and hold the screen for two seconds and the settings open.</p>
-      <ul class="choices">
-        <li>Three builds: Classic, Broad and Slim</li>
-        <li>Five weapons, from a greatsword to a crossbow that fires</li>
-        <li>Six skin tones, six hair colours and five hair styles</li>
-        <li>Six tabards and six plumes</li>
-        <li>Shields, helmets and armour, and a cloak or a cape</li>
-        <li>Three monarchs: a king, a queen and a monarch with no title</li>
-        <li>A calico cat or a ginger tabby</li>
-      </ul>
-      <p>You also choose which quiet scenes take turns, and where some problems play out: running hot by the camp fire instead of in the yard, say.</p>
-      <p>A world sets the scenes, the cast, the words and their colours in one go. The medieval world is the one included. The pack format is <a href="https://github.com/knightwatcher-io/knightwatcher/blob/main/docs/worlds.md">documented</a> for the curious; a normal page loads only packs the project has signed.</p>
-    </div>
-    <figure class="fig">
-      <div class="shot-frame"><img src="/img/settings.png" alt="The settings screen open on the knight's page, with builds and weapons to choose from" width="1280" height="800" loading="lazy"></div>
-      <figcaption class="cap">The settings screen, on the display.</figcaption>
-    </figure>
-  </div>
-  <ul class="looks">
-    <li><img src="/img/look-a.png" alt="A knight with dark skin, black curls and a sable tabard, helmet off" width="640" height="400" loading="lazy"><span>Classic, helmet off, curls</span></li>
-    <li><img src="/img/look-b.png" alt="A broad knight with a mace and a round shield in the training yard" width="640" height="400" loading="lazy"><span>Broad, mace and round shield</span></li>
-    <li><img src="/img/look-c.png" alt="A slim knight with a crossbow, a kettle hat and a cloak at the camp" width="640" height="400" loading="lazy"><span>Slim, crossbow and kettle hat</span></li>
-    <li><img src="/img/look-mon.png" alt="The knight at court before the queen" width="640" height="400" loading="lazy"><span>The queen, at court</span></li>
-  </ul>
-</section>
-
-<section class="sec" id="sources" aria-labelledby="sources-h">
-  <div class="head"><h2 id="sources-h">What it reads</h2></div>
-  <p class="lead">Built-in providers for the services most homelabs run, and a way to read anything else that answers with JSON. A small collector does the reading and writes one file; the display only reads that file. Your keys stay in a <code>.env</code> file on your machine, and each goes only to its own service. The collector only reads, but several services offer no read-only key, so <code>.env</code> may hold a login that could change them. Treat it as you treat those services' own configuration.</p>
-  <ul class="srcs">
-    <li class="src"><h3>Streams playing</h3><ul class="chips"><li>Tautulli</li><li>Plex Media Server</li><li>Jellyfin</li><li>Tracearr</li></ul></li>
-    <li class="src"><h3>Adverts blocked</h3><ul class="chips"><li>AdGuard Home</li><li>Pi-hole 6</li><li>Technitium DNS Server</li></ul></li>
-    <li class="src"><h3>Downloads imported</h3><ul class="chips"><li>Sonarr</li><li>Radarr</li><li>Lidarr</li><li>more than one of each</li></ul></li>
-    <li class="src"><h3>Bans</h3><ul class="chips"><li>fail2ban, from its own database</li></ul></li>
-    <li class="src"><h3>This machine</h3><ul class="chips"><li>CPU</li><li>Memory</li><li>Disks</li><li>Backup log</li><li>Updates running</li><li>SSH sessions</li></ul></li>
-    <li class="src"><h3>The network</h3><ul class="chips"><li>Internet</li><li>DNS</li><li>Up to 32 devices</li><li class="wide">Docker containers, through a read-only Docker API proxy that you run (the compose file has none, and the collector gets no Docker socket)</li></ul></li>
-    <li class="src wide"><h3>Anything else</h3><p>A generic check reads one value from any address that answers with JSON, tests it, and shows your own words when the test holds. For a whole service, write a provider file: it's data, read by the same rules as the built-in ones, and never runs as code.</p></li>
+  <p class="lead">It's made to be glanced at from across the room, not read like a dashboard.</p>
+  <ul class="acts hl">
+    <li class="act"><a href="/features/#ev-goblin"><img src="/img/ev-goblin.png" alt="The knight bonks a goblin on the battlement" width="640" height="400" loading="lazy"><div><h3>fail2ban bans someone</h3><p class="via">fail2ban</p><p>A goblin climbs over the castle wall, gets bonked on its saucepan and vanishes in a puff of smoke.</p></div></a></li>
+    <li class="act"><a href="/features/#ev-crate"><img src="/img/ev-crate.png" alt="A crate floats down on a parachute at the camp" width="640" height="400" loading="lazy"><div><h3>A download is imported</h3><p class="via">Sonarr, Radarr or Lidarr</p><p>A crate floats down on a parachute, with the title in the caption.</p></div></a></li>
+    <li class="act"><a href="/features/#ev-stream"><img src="/img/ev-stream.png" alt="The knight beside the television at the camp" width="640" height="400" loading="lazy"><div><h3>Something is streaming</h3><p class="via">Plex, Jellyfin, Tautulli or Tracearr</p><p>A television appears in whatever scene is showing, and the knight stops by now and then to watch it. The line under the headline says who is watching what.</p></div></a></li>
+    <li class="act"><a href="/features/#ev-strain"><img src="/img/ev-strain.png" alt="The knight trains hard in the yard under a NAS UNDER STRAIN headline" width="640" height="400" loading="lazy"><div><h3>A machine is under strain</h3><p class="via">This machine, or any device through Prometheus, Beszel or Glances</p><p>The knight trains flat out in the yard, red in the face and sweating. The headline names the machine and the resource, such as NAS MEMORY 93%.</p></div></a></li>
   </ul>
   <div class="links-row">
-    <a href="https://github.com/knightwatcher-io/knightwatcher/blob/main/docs/configuration.md">Every source and its settings</a>
-    <a href="https://github.com/knightwatcher-io/knightwatcher/blob/main/docs/providers.md">Provider files</a>
-  </div>
-</section>
-
-<section class="sec" id="start" aria-labelledby="start-h">
-  <div class="head">
-    <h2 id="start-h">Quick start</h2>
-    <a class="btn gh" href="https://github.com/knightwatcher-io/knightwatcher"><!-- @gh --><span><span class="long">knightwatcher-io/</span>knightwatcher</span></a>
-  </div>
-  <div class="panel">
-    <p class="intro">Three steps, one of them a permissions step, then you add the services you run.</p>
-    <p class="needs-h">What you need, all of it tested:</p>
-    <ul class="needs">
-      <li>Linux with Docker and its compose plugin, and the <code>acl</code> package. Tested on x86-64. ARM and the Raspberry Pi are untested.</li>
-      <li>Two containers from one image. They use about 35 MB of memory between them and almost no CPU while idle.</li>
-      <li>A modern browser on the display, a tablet's for example.</li>
-    </ul>
-    <ol class="steps">
-      <li>
-        <h3>Get the files and make the folders</h3>
-<pre>git clone https://github.com/knightwatcher-io/knightwatcher
-cd knightwatcher
-cp config.example.toml config.toml
-cp .env.example .env &amp;&amp; chmod 600 .env
-mkdir -p var/out var/server
-setfacl -m u:10001:rwx var var/out var/server
-setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server</pre>
-        <p>The containers run as uid 10001; the last two lines let them write to those folders.</p>
-      </li>
-      <li>
-        <h3>Point it at two things</h3>
-        <p>In <code>.env</code>, set <code>KW_BACKUP_LOG</code> to your backup log and <code>KW_DATA_DISK</code> to any folder on the disk to watch. Both must exist. No backup log yet? Run <code>touch var/backup.log</code> and use <code>./var/backup.log</code>.</p>
-      </li>
-      <li>
-        <h3>Start it</h3>
-<pre>docker compose up -d</pre>
-        <p>Compose pulls <code>ghcr.io/knightwatcher-io/knightwatcher</code> and runs the collector and the display's server from it. Open <code>http://&lt;this machine&gt;:8080/</code>: the knight appears at once, and the first readings within a minute.</p>
-      </li>
-    </ol>
-    <p class="note">The example config turns on the sources that read this machine, plus an internet check and a DNS check. Each service is written out in <code>config.toml</code> but commented: remove the <code>#</code>, add your address, and put its key in <code>.env</code>.</p>
-    <p class="note">The display has no login, and a streams service shows who is watching what (<code>show = "count"</code> hides the names). Docker publishes it on every address of the host. Set <code>KW_SERVER_ADDRESS=127.0.0.1</code> to keep it to the machine, behind a reverse proxy with a login. The admin password covers the admin page only. Never put the display on the internet without a login.</p>
-    <p class="note">Usage counts are off unless you turn them on. If you are happy to help, set <code>KW_ANALYTICS=on</code> in <code>.env</code>: <a href="#leaves">what leaves your network</a>.</p>
-  </div>
-  <div class="links-row">
-    <a href="https://github.com/knightwatcher-io/knightwatcher#quick-start">The full quick start</a>
-    <a href="https://github.com/knightwatcher-io/knightwatcher/blob/main/docs/configuration.md">Configuration</a>
-    <a href="https://github.com/knightwatcher-io/knightwatcher/blob/main/docs/monitor.md">A screen on the host</a>
-    <a href="https://github.com/knightwatcher-io/knightwatcher#documentation">All the documentation</a>
-  </div>
-</section>
-
-<section class="sec" id="leaves" aria-labelledby="leaves-h">
-  <div class="head"><h2 id="leaves-h">What leaves your network</h2></div>
-  <p class="lead">Two things at most, and nothing else.</p>
-  <div class="leaves">
-    <div class="panel">
-      <h3>The usage counts</h3>
-      <p>If you turn them on, the collector sends one small report at start and every six hours: a random install id, the version, the install's age and uptime, the world and look you chose, which built-in sources are on, how many imports and checks you have, and how many displays opened the page in the last six hours. The receiver adds the day and the country Cloudflare sees. No name, address, title or credential is in it. The receiver runs on Cloudflare, keeps no IP address, and its code is in the repository's <code>telemetry/</code> folder. They stay off unless <code>.env</code> says <code>KW_ANALYTICS=on</code>; with <code>off</code>, or the line left out, nothing is sent.</p>
-      <p><a href="https://github.com/knightwatcher-io/knightwatcher/blob/main/docs/telemetry.md">Every field</a> &middot; <a href="/privacy/">Privacy notice</a></p>
-    </div>
-    <div class="panel">
-      <h3>Two checks</h3>
-      <p>The example config asks <code>https://1.1.1.1/cdn-cgi/trace</code> (Cloudflare's) whether the internet is up, and asks your DNS server (the example uses the host's own resolver) to look up <code>example.com</code>. Both addresses are in <code>config.toml</code>, and either check can be removed there.</p>
-    </div>
-  </div>
-  <p class="more-line">Past that, the collector contacts only the addresses you give it, and the display and the server contact nothing outside your network.</p>
-</section>
-
-<section class="sec" id="next" aria-label="Free and open, and tips">
-  <div class="pair">
-    <div class="panel">
-      <h2 class="h">Free and open</h2>
-      <p>All of it is free: the code under the AGPL-3.0, the art under CC BY-SA 4.0. There are no paid packs, no accounts and nothing behind a paywall.</p>
-      <p>Contributions of code and art are welcome: <a href="https://github.com/knightwatcher-io/knightwatcher/blob/main/CONTRIBUTING.md">how to contribute</a>.</p>
-    </div>
-    <div class="panel tip">
-      <h2 class="h">Tips</h2>
-      <div class="row">
-        <svg class="cup" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="1" height="2" fill="#aab6c6"/><rect x="8" y="0" width="1" height="3" fill="#aab6c6"/><rect x="2" y="4" width="10" height="9" fill="#f6f9fc"/><rect x="2" y="4" width="10" height="1" fill="#ffffff"/><rect x="3" y="5" width="8" height="2" fill="#6b4a2e"/><rect x="12" y="6" width="3" height="1" fill="#f6f9fc"/><rect x="14" y="6" width="1" height="4" fill="#f6f9fc"/><rect x="12" y="9" width="3" height="1" fill="#f6f9fc"/><rect x="5" y="8" width="4" height="3" fill="#ff4a3d"/><rect x="6" y="11" width="2" height="1" fill="#ff4a3d"/><rect x="10" y="5" width="2" height="8" fill="#d8e0ea"/><rect x="1" y="13" width="12" height="2" fill="#7d899b"/></svg>
-        <p>If the knight has earned a spot on your wall, you can leave a tip on Ko-fi. It is entirely optional, and nothing is held back without one.</p>
-      </div>
-      <a class="btn primary" href="https://ko-fi.com/valtora">Tip on Ko-fi</a>
-    </div>
+    <a href="/features/">Everything it shows</a>
+    <a href="/feeds/">The services it reads</a>
+    <a href="/install/">Install it</a>
   </div>
 </section>
 
