@@ -1,0 +1,60 @@
+# Machines' CPU and memory, from the node_exporter series in Prometheus, by two instant queries,
+# sent with HTTP basic credentials: a Prometheus started with a web config's basic_auth_users.
+# Each machine is a series' instance label, matched against the id of each machine the entry
+# lists. CPU is all but idle and iowait over all the machine's cores, as this host's is; memory
+# used is MemTotal less MemAvailable, never swap. Both are percentages.
+format = 1
+id = "prometheus_basic"
+kind = "usage"
+name = "Prometheus (node_exporter), with a login"
+docs = "https://prometheus.io/docs/prometheus/latest/querying/api/"
+
+[credentials]
+username = "A user name of the web config's basic_auth_users."
+password = "Its password, as typed: Prometheus keeps its bcrypt hash."
+
+[auth]
+method = "basic"
+username = "{credential.username}"
+password = "{credential.password}"
+
+[settings]
+match = { type = "string", default = 'job!=""', help = "Label matchers added to every node_exporter series, such as job=\"node\"; the default matches every series." }
+range = { type = "string", default = "2m", help = "The range the CPU's rate is taken over: at least twice the scrape interval, so that it always finds two samples." }
+
+# The braces of PromQL's label matchers are doubled, since one brace starts a template here.
+[[request]]
+id = "cpu"
+path = "/api/v1/query"
+query = { query = '100 * (1 - sum by (instance) (rate(node_cpu_seconds_total{{mode=~"idle|iowait",{setting.match}}}[{setting.range}])) / count by (instance) (node_cpu_seconds_total{{mode="idle",{setting.match}}}))' }
+statuses = { 401 = "Prometheus refused the user name or password", 400 = "Prometheus refused the query; check match and range", 422 = "Prometheus could not run the query", 503 = "Prometheus timed out or aborted the query" }
+not_json = "not Prometheus's HTTP API"
+require = [
+  { path = "$.status", equals = "success", message = "Prometheus reported an error" },
+  { path = "$.data.result[0]", present = true, message = "Prometheus gave no node_exporter series" },
+]
+
+[[request]]
+id = "memory"
+path = "/api/v1/query"
+query = { query = '100 * (1 - node_memory_MemAvailable_bytes{{{setting.match}}} / node_memory_MemTotal_bytes{{{setting.match}}})' }
+statuses = { 401 = "Prometheus refused the user name or password", 400 = "Prometheus refused the query; check match and range", 422 = "Prometheus could not run the query", 503 = "Prometheus timed out or aborted the query" }
+not_json = "not Prometheus's HTTP API"
+require = [
+  { path = "$.status", equals = "success", message = "Prometheus reported an error" },
+  { path = "$.data.result[0]", present = true, message = "Prometheus gave no node_exporter series" },
+]
+
+# Each series: {"metric": {"instance": "192.0.2.40:9100", ...}, "value": [<time>, "93.4"]}, the
+# value as text.
+[fill.cpu]
+from = "cpu"
+each = "$.data.result[*]"
+vars = { machine = { path = "$.metric.instance", type = "string" }, pct = "$.value[1]" }
+fields = { machine = "machine", pct = "pct" }
+
+[fill.memory]
+from = "memory"
+each = "$.data.result[*]"
+vars = { machine = { path = "$.metric.instance", type = "string" }, pct = "$.value[1]" }
+fields = { machine = "machine", pct = "pct" }

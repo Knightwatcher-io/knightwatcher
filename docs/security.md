@@ -157,9 +157,25 @@ read where its `detail` asks for it, cleaned and cut to 60 characters: what a ch
 wall is what its entry chose to show. The list is set in `config.toml` alone.
 
 An entry of `[[sources.usage]]` reads the address it names through the engine with the same rules:
-a provider file of your own of the usage kind at its `url`, or with `from = "json"` one GET to the
-address given whole, its one header read from `.env` as `KW_<SECRET>_HEADER` and handled as a
-check's. It writes to the state file only the figures of the machines it lists, under the names
+a provider of the usage kind at its `url`, or with `from = "json"` one GET to the address given
+whole, its one header read from `.env` as `KW_<SECRET>_HEADER` and handled as a check's. The
+built-in providers make these requests, and no other:
+
+- `prometheus`: two GETs of `/api/v1/query` with a PromQL query each, no credential;
+  `prometheus_basic` the same with HTTP basic credentials, `KW_PROMETHEUS_BASIC_USERNAME` and
+  `KW_PROMETHEUS_BASIC_PASSWORD`, sent with every request.
+- `beszel`: a POST of `KW_BESZEL_USERNAME` (the email) and `KW_BESZEL_PASSWORD` as JSON to the
+  hub's `/api/collections/users/auth-with-password`, when it holds no session, and one GET of
+  `/api/collections/systems/records` with the token the login gave, in `Authorization`. The token
+  is kept in memory alone, like every session's id, and never written to the state file, the
+  memory file, a log or a recording. The user should be one of the hub's users with the watched
+  systems shared with it, never a superuser, whose token reaches the whole hub. A wrong password is
+  refused credentials, with the 20-minute pause, so the collector never tries one at every read.
+- `glances`: one GET of `/api/4/quicklook`, no credential; `glances_basic` the same with HTTP basic
+  credentials, `KW_GLANCES_BASIC_USERNAME` and `KW_GLANCES_BASIC_PASSWORD`.
+
+Basic credentials go with every request, in the clear over `http`: use an `https` url where the
+network between is not your own. It writes to the state file only the figures of the machines it lists, under the names
 the entry gives them; a machine the service reports that is not listed is ignored, and its key
 is never written to the state file, the memory file or a log. The figures are kept in the running
 process alone. The list is set in `config.toml` alone.

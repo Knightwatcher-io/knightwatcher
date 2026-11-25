@@ -1,0 +1,35 @@
+{
+ "about": "Something else at the address: 404 at the login.",
+ "settings": {},
+ "credentials": [
+  "username",
+  "password"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "POST",
+    "path": "/api/collections/users/auth-with-password",
+    "headers": {
+     "Content-Type": "application/json"
+    },
+    "json": {
+     "identity": "{credential.username}",
+     "password": "{credential.password}"
+    }
+   },
+   "reply": {
+    "status": 404,
+    "json": {
+     "data": {},
+     "message": "The requested resource wasn't found.",
+     "status": 404
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "not a Beszel hub"
+ }
+}

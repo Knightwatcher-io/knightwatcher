@@ -1,0 +1,103 @@
+{
+ "about": "Two instant queries, CPU and memory, each a vector of one series for each machine, the values as text. Shapes checked against Prometheus 3.16.0 and 2.53.4 scraping node_exporter 1.8.2 (tools/throwaway/usage.sh), every value invented.",
+ "settings": {},
+ "credentials": [],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/query?query=100+%2A+%281+-+sum+by+%28instance%29+%28rate%28node_cpu_seconds_total%7Bmode%3D~%22idle%7Ciowait%22%2Cjob%21%3D%22%22%7D%5B2m%5D%29%29+%2F+count+by+%28instance%29+%28node_cpu_seconds_total%7Bmode%3D%22idle%22%2Cjob%21%3D%22%22%7D%29%29",
+    "headers": {}
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "status": "success",
+     "data": {
+      "resultType": "vector",
+      "result": [
+       {
+        "metric": {
+         "instance": "192.0.2.40:9100"
+        },
+        "value": [
+         1768510800.123,
+         "41.37"
+        ]
+       },
+       {
+        "metric": {
+         "instance": "192.0.2.41:9100"
+        },
+        "value": [
+         1768510800.123,
+         "97.02"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/query?query=100+%2A+%281+-+node_memory_MemAvailable_bytes%7Bjob%21%3D%22%22%7D+%2F+node_memory_MemTotal_bytes%7Bjob%21%3D%22%22%7D%29",
+    "headers": {}
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "status": "success",
+     "data": {
+      "resultType": "vector",
+      "result": [
+       {
+        "metric": {
+         "instance": "192.0.2.40:9100",
+         "job": "node"
+        },
+        "value": [
+         1768510800.123,
+         "93.41"
+        ]
+       },
+       {
+        "metric": {
+         "instance": "192.0.2.41:9100",
+         "job": "node"
+        },
+        "value": [
+         1768510800.123,
+         "52.8"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  }
+ ],
+ "fill": {
+  "cpu": [
+   {
+    "machine": "192.0.2.40:9100",
+    "pct": "41.37"
+   },
+   {
+    "machine": "192.0.2.41:9100",
+    "pct": "97.02"
+   }
+  ],
+  "memory": [
+   {
+    "machine": "192.0.2.40:9100",
+    "pct": "93.41"
+   },
+   {
+    "machine": "192.0.2.41:9100",
+    "pct": "52.8"
+   }
+  ]
+ }
+}

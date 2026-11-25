@@ -1,0 +1,57 @@
+{
+ "about": "One read of /api/4/quicklook: cpu and mem as numbers. Shape of Glances 4.5.9 and 4.0.8 (tools/throwaway/usage.sh), trimmed to one core, every value invented.",
+ "settings": {},
+ "credentials": [],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/4/quicklook",
+    "headers": {}
+   },
+   "reply": {
+    "status": 200,
+    "json": {
+     "cpu_name": "Example 8-core processor",
+     "cpu_hz_current": 3600000000.0,
+     "cpu_hz": 4400000000.0,
+     "cpu": 12.5,
+     "percpu": [
+      {
+       "key": "cpu_number",
+       "cpu_number": 0,
+       "total": 14.2,
+       "user": 9.1,
+       "system": 4.0,
+       "idle": 85.8,
+       "nice": 0.0,
+       "iowait": 1.1,
+       "irq": 0.0,
+       "softirq": 0.0,
+       "steal": 0.0,
+       "guest": 0.0,
+       "guest_nice": 0.0
+      }
+     ],
+     "mem": 48.6,
+     "swap": 3.2,
+     "load": 6.1,
+     "cpu_log_core": 8,
+     "cpu_phys_core": 8
+    }
+   }
+  }
+ ],
+ "fill": {
+  "cpu": [
+   {
+    "pct": 12.5
+   }
+  ],
+  "memory": [
+   {
+    "pct": 48.6
+   }
+  ]
+ }
+}

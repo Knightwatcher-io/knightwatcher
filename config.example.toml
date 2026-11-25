@@ -201,11 +201,13 @@ ignore_sources = []
 # read for one machine (from = "json"). Each is the source usage:<name>. Set them here; the admin
 # page lists them. Remove the "# " before each line to use one.
 
-# A NAS whose status page gives its CPU and memory in percent. A provider file that reads several
-# machines lists each with its key in the service: machines = [{ id = "nas-01", name = "NAS" }].
+# A NAS whose status page gives its CPU and memory in percent. A provider that reads several
+# machines (prometheus, prometheus_basic, beszel) lists each with its key in the service: its
+# instance label in Prometheus, its name in Beszel: machines = [{ id = "nas-01", name = "NAS" }].
+# glances and glances_basic read one machine, listed with no id.
 # [[sources.usage]]
 # name = "nas-status"        # 1 to 20 of a-z, 0-9 and -
-# from = "json"              # "json", or a provider file of your own of the usage kind
+# from = "json"              # "json", prometheus, prometheus_basic, beszel, glances, glances_basic or your own
 # url = "http://192.0.2.40:8080/api/status"   # with json, the whole address, path and query
 # cpu = "$.cpu.busy_pct"     # with json: where CPU busy is, in percent
 # memory = "$.memory.used_pct"   # with json: where memory used is, in percent

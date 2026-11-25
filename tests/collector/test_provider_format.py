@@ -95,10 +95,15 @@ class BuiltInTest(unittest.TestCase):
             sorted(files),
             [
                 "adguard",
+                "beszel",
+                "glances",
+                "glances_basic",
                 "jellyfin",
                 "lidarr",
                 "pihole",
                 "plex",
+                "prometheus",
+                "prometheus_basic",
                 "radarr",
                 "sonarr",
                 "tautulli",
@@ -291,6 +296,22 @@ class RefusedTest(unittest.TestCase):
             "auth.require[0]: give exactly one of equals, type or present",
         )
         r(lambda d: session(d).update(not_json=""), "auth.not_json: expected text")
+        # refused adds 400 alone to the statuses a login counts as refused credentials
+        self.assertEqual(auth.refused, frozenset())
+        with_refused = with_session()
+        with_refused["auth"]["refused"] = [400]
+        self.assertEqual(check(with_refused).auth.refused, frozenset({400}))
+        for bad in ([404], [500], 400, ["400"], [True]):
+            r(
+                lambda d, bad=bad: session(d).update(refused=bad),
+                "auth.refused: a list of the statuses 400 alone",
+            )
+        self.refused(
+            lambda d: d.update(
+                auth={"method": "basic", "username": "x", "password": "x", "refused": [400]}
+            ),
+            "auth.refused: unknown field",
+        )
         r(
             lambda d: d["settings"].update(
                 verify_tls={"type": "boolean", "default": True, "help": "x"}

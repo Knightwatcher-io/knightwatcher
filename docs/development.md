@@ -82,7 +82,7 @@ tools/
   capped.sh          runs a command within a ceiling on CPU and memory, for the checks
   throwaway/         scripts that start a real service from its published image, read it with the
                      collector, and remove everything again (fail2ban.sh, pihole.sh,
-                     technitium.sh, lidarr.sh)
+                     technitium.sh, lidarr.sh, usage.sh)
   clean-start.sh     the README's quick start in a scratch copy, both containers on a network
                      with no route out, checked and removed
   check-private.sh   the check that no private detail is tracked
@@ -193,6 +193,7 @@ tools/throwaway/fail2ban.sh     # crazymax/fail2ban: a ban, the attack, an unban
 tools/throwaway/pihole.sh       # pihole/pihole: flies, one session, a wrong password, https, v5
 tools/throwaway/technitium.sh   # technitium/dns-server: a token by API, flies, a wrong token, v14
 tools/throwaway/lidarr.sh       # linuxserver/lidarr: its key from config.xml, an empty history, a list entry, a wrong key
+tools/throwaway/usage.sh        # Prometheus 3 and 2, Glances 4, a Beszel hub and agent: each usage provider, wrong passwords
 ```
 
 A service with no throwaway, such as Plex Media Server, which needs a Plex account, Tracearr,

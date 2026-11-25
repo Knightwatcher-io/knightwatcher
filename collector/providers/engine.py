@@ -274,7 +274,12 @@ class DataProvider(Provider):
             if self._test(require.test, reply):
                 continue
             if require.auth is not None and self._test(require.auth, reply):
-                raise AuthError(require.auth_message)
+                refused = AuthError(require.auth_message)
+                # A session from an earlier read that a service no longer honours may be answered
+                # so (Beszel's records read as a guest's, empty): log in again once before it
+                # counts as refused credentials.
+                refused.relogin = True
+                raise refused
             raise SourceError(require.message)
         return reply
 
@@ -333,9 +338,20 @@ class DataProvider(Provider):
                 what["reply"] = _masked(what["reply"])
             self._note("auth.login", "POST", url, {}, json=auth.body_text, **what)
 
-        body = self._fetch(
-            url, {}, auth.statuses, note, method="POST", json_body=self._body(auth.body)
-        )
+        try:
+            body = self._fetch(
+                url, {}, auth.statuses, note, method="POST", json_body=self._body(auth.body)
+            )
+        except AuthError:
+            raise
+        except SourceError as exc:
+            # A status the file names in refused is refused credentials too, with the back-off.
+            if exc.status not in auth.refused:
+                raise
+            said = str(exc) if str(exc) != f"HTTP {exc.status}" else ""
+            out = AuthError(said or f"HTTP {exc.status}: credentials refused")
+            out.status = exc.status
+            raise out from None
         reply = self._parse(body, auth.not_json, auth.require, note)
         found = self._find(auth.sid, reply)
         sid = found[0] if found else None
@@ -434,8 +450,10 @@ class DataProvider(Provider):
                 replies[request.id] = self._get(request)
             except AuthError as exc:
                 # A session made at an earlier read that the service no longer knows (it
-                # restarted, or the session expired early) is made again, once.
-                if not session or made or exc.status != 401:
+                # restarted, or the session expired early) is made again, once: on a 401, or on a
+                # reply a require's auth test reads as refused.
+                again = exc.status == 401 or getattr(exc, "relogin", False)
+                if not session or made or not again:
                     if session:
                         self._sid = None
                     raise

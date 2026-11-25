@@ -1,0 +1,31 @@
+{
+ "about": "A match that does not parse: Prometheus answers 400 with errorType bad_data.",
+ "settings": {},
+ "credentials": [
+  "username",
+  "password"
+ ],
+ "exchanges": [
+  {
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/query?query=100+%2A+%281+-+sum+by+%28instance%29+%28rate%28node_cpu_seconds_total%7Bmode%3D~%22idle%7Ciowait%22%2Cjob%21%3D%22%22%7D%5B2m%5D%29%29+%2F+count+by+%28instance%29+%28node_cpu_seconds_total%7Bmode%3D%22idle%22%2Cjob%21%3D%22%22%7D%29%29",
+    "headers": {
+     "Authorization": "Basic {credential.username}:{credential.password}"
+    }
+   },
+   "reply": {
+    "status": 400,
+    "json": {
+     "status": "error",
+     "errorType": "bad_data",
+     "error": "invalid parameter \"query\": 1:60: parse error: unexpected character inside braces: '!'"
+    }
+   }
+  }
+ ],
+ "error": {
+  "auth": false,
+  "message": "Prometheus refused the query; check match and range"
+ }
+}

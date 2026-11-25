@@ -108,7 +108,8 @@ A source that logs in reads its credentials from `KW_<SECRET>_<FIELD>`, in capit
 Its provider names the fields (Tautulli's, Tracearr's and Jellyfin's are `api_key`, Plex's `token`, AdGuard Home's `username`
 and `password`, Pi-hole's `password`, Technitium's `token`; [Providers](#providers) lists them),
 and `SECRET` is the source's `secret` setting, which is the provider's id unless set: `tautulli`,
-`plex`, `tracearr`, `jellyfin`, `adguard`, `pihole`, `technitium`, `sonarr`, `radarr` or `lidarr`. A source given
+`plex`, `tracearr`, `jellyfin`, `adguard`, `pihole`, `technitium`, `sonarr`, `radarr`, `lidarr`,
+`prometheus_basic`, `beszel` or `glances_basic`. A source given
 `secret = "sonarr_4k"` therefore reads `KW_SONARR_4K_API_KEY`, and a source reading a
 provider file of your own with the id `myflix` and a `token` reads `KW_MYFLIX_TOKEN`.
 The same holds for each entry of `[[sources.imports]]` ([More imports](#more-imports)). A check of
@@ -563,7 +564,7 @@ Machines other than this host whose CPU and memory Under strain watches, each a 
 | Key | Values | Default | Scope | What it does |
 |---|---|---|---|---|
 | `name` | 1 to 20 of a-z, 0-9 and -, starting with a letter or digit | required | household | The source's own name: usage:<name> in the state file. Unique among the list. It is not what the wall calls a machine: that is each machine's name in machines. |
-| `from` | a provider of the usage kind (see Providers below) | required | household | The provider it is read through, by its id: a provider file of your own of the usage kind, or "json" for one JSON address read for one machine, its figures at the paths cpu and memory. A user's provider file named json.toml cannot be chosen, since json names the generic source. Two sources that read one provider at one url are refused. |
+| `from` | `"beszel"`, `"glances"`, `"glances_basic"`, `"prometheus"` or `"prometheus_basic"`: a provider of the usage kind (see Providers below) | required | household | The provider it is read through, by its id: a built-in one (prometheus or prometheus_basic for node_exporter's series in Prometheus, beszel for a Beszel hub, glances or glances_basic for one Glances 4), a provider file of your own of the usage kind, or "json" for one JSON address read for one machine, its figures at the paths cpu and memory. A user's provider file named json.toml cannot be chosen, since json names the generic source. Two sources that read one provider at one url are refused. |
 | `enabled` | `true` or `false` | `true` | household | Whether the source is read. Off (false) keeps the table for when it is turned on again. |
 | `every_s` | a whole number of seconds, from 10 to 3600 | `30` | household | How often the source is read. A window shorter than this reaches back to the previous read. |
 | `url` | an http:// or https:// address; with from = "json" the whole address, path and query included | required | household | Base URL of the service the provider reads, or with from = "json" the whole address read, with one GET and no redirect followed: no user name or password in it, no fragment, and each name of its query once. |
@@ -691,11 +692,16 @@ The services the sections read through a kind can read, each by its provider. A 
 | Provider | Kind | Service | Read by | Credentials |
 |---|---|---|---|---|
 | `adguard` | adblock | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome/blob/master/openapi/openapi.yaml) | `[sources.adblock]` by default | `KW_ADGUARD_USERNAME`, `KW_ADGUARD_PASSWORD` |
+| `beszel` | usage | [Beszel](https://beszel.dev/guide/rest-api) | `[[sources.usage]]` with `from = "beszel"` | `KW_BESZEL_USERNAME`, `KW_BESZEL_PASSWORD` |
 | `fail2ban` | security | [fail2ban](https://github.com/fail2ban/fail2ban/blob/master/fail2ban/server/database.py) | `[sources.security]` by default | none |
+| `glances` | usage | [Glances 4](https://glances.readthedocs.io/en/latest/api/restful.html) | `[[sources.usage]]` with `from = "glances"` | none |
+| `glances_basic` | usage | [Glances 4, with a password](https://glances.readthedocs.io/en/latest/api/restful.html) | `[[sources.usage]]` with `from = "glances_basic"` | `KW_GLANCES_BASIC_USERNAME`, `KW_GLANCES_BASIC_PASSWORD` |
 | `jellyfin` | streams | [Jellyfin](https://api.jellyfin.org/) | `[sources.streams]` with `from = "jellyfin"` | `KW_JELLYFIN_API_KEY` |
 | `lidarr` | imports | [Lidarr](https://github.com/Lidarr/Lidarr/blob/develop/src/Lidarr.Api.V1/openapi.json) | `[sources.lidarr]`, `[[sources.imports]]` with `from = "lidarr"` | `KW_LIDARR_API_KEY` |
 | `pihole` | adblock | [Pi-hole 6](https://docs.pi-hole.net/api/) | `[sources.adblock]` with `from = "pihole"` | `KW_PIHOLE_PASSWORD` |
 | `plex` | streams | [Plex Media Server](https://developer.plex.tv/pms/) | `[sources.streams]` with `from = "plex"` | `KW_PLEX_TOKEN` |
+| `prometheus` | usage | [Prometheus (node_exporter)](https://prometheus.io/docs/prometheus/latest/querying/api/) | `[[sources.usage]]` with `from = "prometheus"` | none |
+| `prometheus_basic` | usage | [Prometheus (node_exporter), with a login](https://prometheus.io/docs/prometheus/latest/querying/api/) | `[[sources.usage]]` with `from = "prometheus_basic"` | `KW_PROMETHEUS_BASIC_USERNAME`, `KW_PROMETHEUS_BASIC_PASSWORD` |
 | `radarr` | imports | [Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json) | `[sources.radarr]`, `[[sources.imports]]` with `from = "radarr"` | `KW_RADARR_API_KEY` |
 | `sonarr` | imports | [Sonarr](https://github.com/Sonarr/Sonarr/blob/main/src/Sonarr.Api.V3/openapi.json) | `[sources.sonarr]`, `[[sources.imports]]` with `from = "sonarr"` | `KW_SONARR_API_KEY` |
 | `tautulli` | streams | [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) | `[sources.streams]` by default | `KW_TAUTULLI_API_KEY` |
@@ -729,6 +735,12 @@ Every variable the project reads from `.env`. The host paths are the folders and
 | `KW_SONARR_API_KEY` | credential | 32 hexadecimal characters, such as `fedcba9876543210fedcba9876543210` | none | Sonarr's API key, for the sonarr provider, which [sources.sonarr] reads. In Sonarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 | `KW_RADARR_API_KEY` | credential | 32 hexadecimal characters, such as `00112233445566778899aabbccddeeff` | none | Radarr's API key, for the radarr provider, which [sources.radarr] reads. In Radarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
 | `KW_LIDARR_API_KEY` | credential | 32 hexadecimal characters, such as `0f1e2d3c4b5a69780f1e2d3c4b5a6978` | none | Lidarr's API key, for the lidarr provider, which [sources.lidarr] reads. In Lidarr: Settings, General, Security, API Key. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_PROMETHEUS_BASIC_USERNAME` | credential | a user name, such as `knightwatcher` | none | A user name of the basic_auth_users in Prometheus's web config, for the prometheus_basic provider, which an entry of [[sources.usage]] reads with from = "prometheus_basic". Prometheus marks its basic authentication experimental; one behind a proxy that wants a token needs a provider file of your own. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_PROMETHEUS_BASIC_PASSWORD` | credential | a password, such as `an-invented-password` | none | That user's password as typed: the web config keeps its bcrypt hash. Sent with every query as HTTP basic credentials, so use an https url where the network is not your own. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_BESZEL_USERNAME` | credential | an email address, such as `watcher@example.com` | none | The email of a Beszel user, for the beszel provider, which an entry of [[sources.usage]] reads with from = "beszel". A user of the hub's users, never a superuser, with the watched systems shared with it; a user of its own is best. The collector logs in once and keeps the token it is given. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_BESZEL_PASSWORD` | credential | a password, such as `an-invented-password` | none | That user's password. Beszel answers a wrong one with 400, which the collector counts as refused credentials and pauses for 20 minutes. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_GLANCES_BASIC_USERNAME` | credential | a user name, such as `glances` | none | Glances's user name, for the glances_basic provider, which an entry of [[sources.usage]] reads with from = "glances_basic": glances, unless Glances was started with --username. Read when the source is enabled; its `secret` setting names the variable. |
+| `KW_GLANCES_BASIC_PASSWORD` | credential | a password, such as `an-invented-password` | none | The password Glances was started with (--password). Sent with every read as HTTP basic credentials, so use an https url where the network is not your own. Read when the source is enabled; its `secret` setting names the variable. |
 
 <!-- settings-reference:end -->
 
@@ -836,11 +848,37 @@ only as safe as the network between. It is refused with an `http` `url`
 
 Under strain (`[conditions.cpu_hot]`) watches this host's CPU and memory, and those of any machine
 an entry of `[[sources.usage]]` lists. Each entry is a table of its own, at most 16, and a source
-of its own, `usage:<name>`, read every 30 seconds by default (`every_s`, 10 to 3600). It reads one
-JSON address for one machine (`from = "json"`), or a service that reads one or more machines
-through a provider file of your own of the usage kind ([providers.md](./providers.md#the-usage-kind)):
+of its own, `usage:<name>`, read every 30 seconds by default (`every_s`, 10 to 3600). It reads a
+service through a provider of the usage kind ([providers.md](./providers.md#the-usage-kind)), or
+one JSON address for one machine (`from = "json"`):
+
+| `from` | Reads | `id` of each machine | Credentials |
+|---|---|---|---|
+| `prometheus` | node_exporter's series in Prometheus, by two instant queries; settings `match` (label matchers, default `job!=""`) and `range` (the CPU rate's, default `2m`) | the series' `instance` label, `192.0.2.40:9100` | none |
+| `prometheus_basic` | the same, from a Prometheus whose web config asks for basic credentials | as above | `KW_PROMETHEUS_BASIC_USERNAME`, `KW_PROMETHEUS_BASIC_PASSWORD` |
+| `beszel` | a Beszel hub's systems that are up, as a user they are shared with | the system's name in Beszel | `KW_BESZEL_USERNAME` (the email), `KW_BESZEL_PASSWORD` |
+| `glances` | one Glances 4, on its own port, 61208 by default | none: one machine | none |
+| `glances_basic` | the same, started with `--password` | none: one machine | `KW_GLANCES_BASIC_USERNAME`, `KW_GLANCES_BASIC_PASSWORD` |
+| `json` | one JSON address, the entry's `cpu` and `memory` paths | none: one machine | with `header`, `KW_<SECRET>_HEADER` |
+| a file of your own | as it says | when it reads several machines | as it names |
 
 ```toml
+[[sources.usage]]
+name = "beszel"                    # the source usage:beszel
+from = "beszel"                    # reads KW_BESZEL_USERNAME and KW_BESZEL_PASSWORD
+url = "http://192.0.2.5:8090"
+machines = [
+  { id = "nas-01", name = "NAS 2" },
+  { id = "buildbox", name = "Buildbox", cpu_pct = 95 },
+]
+
+[[sources.usage]]
+name = "prometheus"
+from = "prometheus"
+url = "http://192.0.2.7:9090"
+match = 'job="node"'               # only the series of the job named node
+machines = [{ id = "192.0.2.41:9100", name = "Gatehouse" }]
+
 [[sources.usage]]
 name = "nas-status"                # the source usage:nas-status
 from = "json"                      # one JSON address, one machine
@@ -848,16 +886,14 @@ url = "http://192.0.2.40:8080/api/status"   # given whole, path and query
 cpu = "$.cpu.busy_pct"             # where CPU busy is, in percent
 memory = "$.memory.used_pct"       # where memory used is, in percent
 machines = [{ name = "NAS", memory_pct = 95 }]
-
-[[sources.usage]]
-name = "fleet"
-from = "fleet"                     # providers/fleet.toml, of the usage kind
-url = "http://192.0.2.5:8090"
-machines = [
-  { id = "nas-01", name = "NAS 2" },
-  { id = "buildbox", name = "Buildbox", cpu_pct = 95 },
-]
 ```
+
+A Beszel user for the collector is a user of the hub's users (Beszel's Settings, Users), never a
+superuser, with the systems to watch shared with it.
+Beszel answers a wrong password with 400, which the collector counts as refused credentials and
+pauses for 20 minutes, and a user with no systems shared reads as refused too
+(`Beszel lists no systems for this user: a wrong login, or none shared with it`), since Beszel
+answers a read it does not take as the user's the same way.
 
 - **`machines`** lists the machines it watches, 1 to 32 in an entry and 32 in all beside this
   host. `name` is what the wall calls the machine (`NAS MEMORY 93%`): 1 to 20 printable ASCII

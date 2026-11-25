@@ -38,16 +38,20 @@ SQLite database, is the one built in ([collector.md](./collector.md#kinds-and-pr
 | `sonarr` | imports | Sonarr's import history | `[sources.sonarr]`, or an entry of `[[sources.imports]]` |
 | `radarr` | imports | Radarr's import history | `[sources.radarr]`, or an entry of `[[sources.imports]]` |
 | `lidarr` | imports | Lidarr's history of album imports, one record for each album | `[sources.lidarr]`, or an entry of `[[sources.imports]]` |
+| `prometheus` | usage | two instant queries of Prometheus's `/api/v1/query` on node_exporter's series, each machine its `instance` label | an entry of `[[sources.usage]]` with `from = "prometheus"` |
+| `prometheus_basic` | usage | the same, with HTTP basic credentials, for a Prometheus whose web config has `basic_auth_users` | an entry with `from = "prometheus_basic"` |
+| `beszel` | usage | a Beszel hub's systems collection, through a session, each machine a system's name, the systems that are up | an entry with `from = "beszel"` |
+| `glances` | usage | one Glances 4's `/api/4/quicklook`, one machine | an entry with `from = "glances"` |
+| `glances_basic` | usage | the same, with HTTP basic credentials, for a Glances started with `--password` | an entry with `from = "glances_basic"` |
 
 `[sources.streams]`, `[sources.adblock]` and `[sources.security]` name their provider with `from`,
 a built-in's id or one of your own; `[sources.sonarr]`, `[sources.radarr]` and `[sources.lidarr]`
 read the provider of their own name. Each entry of `[[sources.imports]]` names any provider of the
 imports kind with `from`, a built-in's or one of your own, and is a source of its own,
 `imports:<name>` ([configuration.md](./configuration.md#more-imports)). Each entry of
-`[[sources.usage]]` names a provider file of your own of the usage kind, or `json`, the generic
-source, and is a source of its own, `usage:<name>`
-([configuration.md](./configuration.md#machines-under-strain)); no built-in file fills the usage
-kind yet. Every request a provider makes goes to the
+`[[sources.usage]]` names a provider of the usage kind, a built-in's or one of your own, or `json`,
+the generic source, and is a source of its own, `usage:<name>`
+([configuration.md](./configuration.md#machines-under-strain)). Every request a provider makes goes to the
 section's `url`, and its credentials are read from `.env` as `KW_<SECRET>_<FIELD>`, where
 `<SECRET>` is the section's `secret`, the provider's id when it is left out, and `<FIELD>` each
 credential the file names.
@@ -232,6 +236,44 @@ of the same name. `json` is therefore no id a file of your own can take for the 
 The kind has no facts and no events. It keeps each machine's readings in the running process alone
 and gives Under strain each machine's average over its window.
 
+The built-in files of the kind, each checked against the real service in a throwaway run
+(`tools/throwaway/usage.sh`, [tests.md](./tests.md#the-throwaway-services)):
+
+- **`prometheus`** and **`prometheus_basic`** make two GETs of the HTTP API's instant query,
+  `/api/v1/query`: CPU as 100 less the rate of `idle` and `iowait` over all the machine's cores,
+  summed by `instance` and divided by its count of CPUs, and memory as 100 times one less
+  `node_memory_MemAvailable_bytes` over `node_memory_MemTotal_bytes`, so the figures are counted as
+  this host's are. Two settings: `match`, label matchers added to every series (default
+  `job!=""`, which matches every one), and `range`, the rate's range (default `2m`, at least twice
+  the scrape interval). The reply is a vector, each series `{"metric": {"instance": ...}, "value":
+  [<time>, "<value>"]}`, the value as text. A query that does not parse is answered 400, one that
+  cannot run 422, one that timed out 503, each with a message of the file's own; an empty result,
+  node_exporter not scraped or `match` matching nothing, fails the read (`Prometheus gave no
+  node_exporter series`). Prometheus has no login by default; `prometheus_basic` sends HTTP basic
+  credentials for one started with a web config's `basic_auth_users`, which Prometheus marks
+  experimental, and a Prometheus that asks for them answers 401 without them.
+- **`beszel`** logs in to the hub, which is PocketBase, as a user of its `users` collection:
+  `POST /api/collections/users/auth-with-password` with `identity` (the email) and `password`, the
+  reply's `token` sent in `Authorization` as it is with each read after. One GET of
+  `/api/collections/systems/records` (`fields=name,status,info`, `perPage=500`, `skipTotal=true`)
+  gives every system shared with the user; only those whose `status` is `up` are read, since one
+  that is `down` or `paused` holds the figures of its last contact. Each system's `name` is the
+  machine's key, `info.cpu` its CPU (all but idle and iowait) and `info.mp` its memory used (used
+  over total, used being total less available). The hub asks each agent every 60 seconds. A wrong
+  email or password is answered 400, which `[auth] refused` makes refused credentials. A read with
+  no token is answered as a guest's, 200 and no systems, and a token that is not one 401; so a
+  read that lists no system at all is refused credentials, after one fresh login when the token is
+  from an earlier read, rather than no machines. Beszel's API may change in a minor release; the
+  file and its fixtures were written from Beszel 0.21.2. An agent run with `MEM_CALC=htop` counts
+  used memory without buffers and cache, and on a ZFS host the agent takes the ARC out of used:
+  both the choice of that agent's owner.
+- **`glances`** and **`glances_basic`** make one GET of `/api/4/quicklook` on Glances's own port
+  (61208 by default), which gives `cpu`, psutil's `cpu_percent` since the previous call by any
+  client (iowait counted as idle), and `mem`, total less available over total. One Glances is one
+  machine. A Glances that has just started gives 0 for `cpu` at its first call. `glances_basic`
+  sends HTTP basic credentials, for a Glances started with `--password`; its user name is
+  `glances` unless it was started with `--username`. Glances 3 has no `/api/4`, and is told so.
+
 ### imports
 
 | Field | Type | Required | Meaning |
@@ -384,14 +426,18 @@ message = "Pi-hole has no password set; the collector needs one"
 | `send` | yes | where the id goes with each request after: `{ header = "<name>" }`, a header named as a request's are, or `{ query = "<name>" }`. A request may not set that header or parameter itself |
 | `logout` | no | `path`, where a DELETE with the session's id ends the session when the provider is closed |
 | `statuses`, `not_json`, `require` | no | as a request's, for the login's reply |
+| `refused` | no | statuses of the login, beyond 401, 403 and 429, that count as refused credentials, with the back-off: `[400]`, the one that may be given, for a service that answers a wrong password with 400 (PocketBase, under Beszel). It applies to the login alone |
 
 The engine logs in before the first read and keeps the session's id in memory alone. The session
 is used until 30 seconds before `valid_s` runs out (half a session shorter than a minute), counted
 from its last use, since a service such as Pi-hole extends a session at each use; then the next
 read logs in again. A 401 on a session made at an earlier read (the service restarted, or dropped
 it early) logs in again once, in the same read. A refused login (401, 403 or 429), and a 401 on a
-session just made, are refused credentials, with the back-off; so is a `require` of the login whose
-`auth` test matches.
+session just made, are refused credentials, with the back-off, and so is a status the login's
+`refused` names; so is a `require` of the login whose `auth` test matches. A request's `require`
+whose `auth` test matches on a session made at an earlier read logs in again once, in the same
+read, as a 401 does, and is refused credentials only when the fresh session meets it too: Beszel
+answers a read whose token it no longer honours as a guest's, with nothing listed.
 
 ### [[request]]
 
