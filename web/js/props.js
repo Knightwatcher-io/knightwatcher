@@ -569,135 +569,222 @@
   }
 
   /* ---- The goblin -------------------------------------------------------------------------------
-     A foe of the ip_banned event, full size beside the knight: 160 pixels from its feet to the top
-     of the saucepan it wears for a helmet, in a patched sackcloth tunic, all ears and nose. It is
-     drawn facing left, frontal like the knight with its face turned the way it looks, standing on
-     its feet at (x, y), lit from the left. Each pose is painted once into a canvas of its own and
-     blitted from there by the engine, mirrored or squashed as the moment needs (see foeSprite). */
+     A foe of the ip_banned event, full size beside the knight: the pot-thief, a stocky, cheeky
+     goblin 159 pixels from its feet to the top of the dented saucepan it wears for a helmet. Long
+     pointed ears, a big hooked nose with a wart, two small tusks up from an underbite, beady black
+     eyes in shaded sockets under heavy brows, a ragged leather tunic (a jagged hem of uneven
+     tatters, a stitched seam, a patch and a small tear), a belt with a gold buckle, leather wraps at
+     the wrists and ankles, three-toed feet, and a sack of loot hanging at its hip with a candlestick
+     and a coin poking out. Never scary: the tusks are stubs, and the eyes widen white and round when
+     it is alarmed. It is drawn facing left, frontal like the knight with its face turned the way it
+     looks, standing on its feet at (x, y), lit from the left. Each pose is painted once into a canvas
+     of its own and blitted from there by the engine, mirrored or squashed as the moment needs (see
+     foeSprite).
+
+     It is drawn as parts that the poses share, in the order GOB_PARTS gives, then each pose's own
+     shapes (the face, the nose, the pot and, in the brace, the arms clutched in front), as the
+     medieval world's pack draws its copy (cast.md, the goblin as data). */
   const GOB = {
     skin: [[.16, '#c8f3ae'], [.55, '#93d97c'], [.86, '#64b553'], [1, '#3f8a3a']], limb: [[.3, '#93d97c'], [.75, '#78c565'], [1, '#4f9a45']],
-    jaw: [[.4, '#64b553'], [1, '#3f8a3a']], arm: '#86d070', finger: '#93d97c', nose: '#78c565', dark: '#2f6b3a', light: '#c8f3ae',
-    earIn: '#f2a08c', blush: '#e98f7c', tongue: '#ff6f8a', tongueLine: '#d24a6a', mouth: '#4a1424',
-    tunic: [[.15, '#c99a5b'], [.55, '#a8763c'], [.85, '#855726'], [1, '#5f3b17']], patch: '#d7b98a', pot: [[.14, C.S2], [.5, C.S3], [.85, C.S4], [1, '#3a4150']]
+    jaw: [[.4, '#64b553'], [1, '#3f8a3a']], arm: '#86d070', toe: '#93d97c', nose: '#78c565', dark: '#2f6b3a', light: '#dcf8c8', socket: '#5aa64a',
+    earIn: '#f2a08c', blush: '#e98f7c', tongue: '#ff6f8a', tongueLine: '#d24a6a', mouth: '#4a1424', tusk: '#fffbe8', tuskShade: '#d8d0b0', white: '#fffbe8',
+    pot: [[.14, C.S2], [.5, C.S3], [.85, C.S4], [1, '#3a4150']],
+    leather: [[.18, '#a8743f'], [.55, '#8a5a2e'], [.85, '#6e4522'], [1, '#52321a']], hide: { hi: '#a8743f', a: '#8a5a2e', b: '#6e4522', c: '#52321a', d: '#3a2312', patch: '#c08a4e', stitch: '#e8c99a' },
+    sack: [[.18, '#e6c98f'], [.55, '#cfa96a'], [.85, '#a98148'], [1, '#7a5a2c']], sackNeck: '#cfa96a', sackLip: '#e6c98f', sackDark: '#7a5a2c', sackLine: '#5e4420',
+    sackPatch: '#c4a06a', sackLight: '#f3e1b4', sackTie: '#b08a52', candle: '#fff6dc'
   };
-  function gLimb(pts) { SP.stroke(pts, 7.5, C.K); SP.stroke(pts, 4.5, GOB.arm); }
+  const HIDE = GOB.hide;
+  function gLimb(pts) { SP.stroke(pts, 7, C.K); SP.stroke(pts, 4, GOB.arm); }
   /* A three-fingered hand at (hx, hy), the fingers spread along the angle a (0 is up). */
   function gHand(hx, hy, a) {
-    const f = [-.65, 0, .65].map(d => [hx + Math.sin(a + d) * 9, hy - Math.cos(a + d) * 9]);
+    const f = [-.7, 0, .7].map(d => [hx + Math.sin(a + d) * 9, hy - Math.cos(a + d) * 9]);
     for (const [fx, fy] of f) ell(fx, fy, 4.5, 4.5, C.K);
     ell(hx, hy, 9, 8, C.K);
-    for (const [fx, fy] of f) ell(fx, fy, 2.5, 2.5, GOB.finger);
+    for (const [fx, fy] of f) ell(fx, fy, 2.5, 2.5, GOB.arm);
     ell(hx, hy, 6.5, 5.5, GOB.limb); Rh(hx - 4, hy - 3, 2, 2, GOB.light);
   }
-  /* An ear from the side of the head at (bx, by), pointing to side d, its tip lowered by droop. */
-  function gEar(bx, by, d, droop) {
-    const tip = [bx + d * 46, by - 20 + droop];
-    poly([[bx, by - 15], [tip[0] + d * 3, tip[1] - 2], [bx + d * 2, by + 16]], C.K);
-    poly([[bx + d * 2, by - 12], [tip[0] - d * 2, tip[1] - 1], [bx + d * 3, by + 12]], GOB.limb);
-    poly([[bx + d * 5, by - 7], [bx + d * 2 + (tip[0] - bx - d * 2) * .62, by - 2 + (tip[1] - by + 2) * .62], [bx + d * 6, by + 7]], GOB.earIn);
+  /* A leather wrap round the forearm, 0.62 of the way from the elbow e to the hand h. Its ends are
+     kept to eighths, as a pack's numbers are: no eighths fill the pixels of some of the exact ends,
+     and the goblin is always painted with its feet on a whole pixel. */
+  const e8 = v => Math.round(v * 8) / 8;
+  function gWrap(e, h) {
+    const dx = h[0] - e[0], dy = h[1] - e[1], n = Math.hypot(dx, dy) || 1, wx = e[0] + dx * .62, wy = e[1] + dy * .62, ux = dx / n * 4, uy = dy / n * 4;
+    strip(e8(wx - ux), e8(wy - uy), e8(wx + ux), e8(wy + uy), 7, 7, C.K);
+    strip(e8(wx - ux + dx / n), e8(wy - uy + dy / n), e8(wx + ux - dx / n), e8(wy + uy - dy / n), 5, 5, HIDE.b);
   }
+  /* A three-toed foot at the end of the leg at (fx, fy), pointing to side d, with a wrap round the
+     ankle. */
   function gFoot(fx, fy, d) {
-    const cx = fx + d * 7;
-    ell(cx, fy + 2, 18, 8, C.K); ell(cx, fy + 1, 15, 5.5, GOB.limb);
-    for (const k of [0, 5]) Rh(cx + d * (9 + k) - (d < 0 ? 1 : 0), fy - 3, 1, 4, GOB.dark);
-    Rh(cx - 8, fy - 3, 7, 1, GOB.light);
+    const cx = fx + d * 8;
+    ell(cx, fy + 2, 19, 8, C.K); ell(cx, fy + 1, 16, 5.5, GOB.limb);
+    for (const k of [0, 6, 12]) ell(cx + d * (11 + k * .5), fy - 1 + k * .15, 3.5, 3.5, C.K);
+    for (const k of [0, 6, 12]) ell(cx + d * (11 + k * .5), fy - 1 + k * .15, 2, 2, GOB.toe);
+    Rh(cx - 9, fy - 3, 8, 1, GOB.light);
+    Rh(fx - 6, fy - 9, 13, 6, C.K); Rh(fx - 5, fy - 8, 11, 4, HIDE.b); Rh(fx - 5, fy - 8, 11, 1, HIDE.hi);
   }
+  /* The legs, with knobbly knees, and the feet. */
   function gLegs(x, y) {
-    const L = [[x - 13, y - 40], [x - 18, y - 10], [x + 13, y - 40], [x + 18, y - 10]];
+    const L = [[x - 15, y - 36], [x - 20, y - 10], [x + 15, y - 36], [x + 20, y - 10]];
     for (let i = 0; i < 4; i += 2) { strip(L[i][0], L[i][1], L[i + 1][0], L[i + 1][1], 8, 7, C.K); strip(L[i][0], L[i][1], L[i + 1][0], L[i + 1][1], 5, 4, GOB.limb); }
+    for (const i of [0, 2]) { const kx = (L[i][0] + L[i + 1][0]) / 2, ky = (L[i][1] + L[i + 1][1]) / 2 + 2; ell(kx, ky, 7, 6, C.K); ell(kx, ky, 4.5, 3.5, GOB.limb); Rh(kx - 2, ky - 2, 2, 1, GOB.light); }
     gFoot(L[1][0], L[1][1], -1); gFoot(L[3][0], L[3][1], 1);
   }
+  /* The ragged leather tunic from the shoulders (86 above the feet) to the hem (34 above them), 30
+     across the shoulders and 39 across the hem either side: a jagged hem of uneven tatters, a seam
+     with stitches, a patch, a tear and the belt (60 above the feet) with its gold buckle. */
+  const GOB_TATTERS = [[-41, 9], [-30, 14], [-19, 7], [-9, 12], [2, 6], [12, 13], [23, 8]];
   function gTunic(x, y) {
-    Rh(x - 11, y - 96, 18, 10, C.K); Rh(x - 9, y - 96, 14, 9, GOB.dark);
-    for (let i = -40; i < 32; i += 12) poly([[x + i, y - 37], [x + i + 6, y - 27], [x + i + 12, y - 37]], C.K);
-    poly([[x - 31, y - 91], [x + 29, y - 91], [x + 38, y - 34], [x - 40, y - 34]], C.K);
-    poly([[x - 28, y - 88], [x + 26, y - 88], [x + 35, y - 37], [x - 37, y - 37]], GOB.tunic);
-    for (let i = -40; i < 32; i += 12) poly([[x + i + 3, y - 38], [x + i + 6, y - 31], [x + i + 9, y - 38]], i < -10 ? GOB.tunic[1][1] : GOB.tunic[2][1]);
-    // the patch, stitched on
-    Rh(x + 5, y - 84, 16, 14, C.K); Rh(x + 7, y - 82, 12, 10, GOB.patch); for (let k = 0; k < 3; k++) { Rh(x + 4, y - 81 + k * 4, 3, 1, C.K); Rh(x + 19, y - 81 + k * 4, 3, 1, C.K); }
-    // the rope belt and its knot
-    Rh(x - 37, y - 64, 72, 8, C.K); Rh(x - 35, y - 63, 68, 6, C.N0); for (let i = 0; i < 68; i += 5) Rh(x - 35 + i, y - 63, 2, 6, C.N2);
-    strip(x + 14, y - 58, x + 18, y - 44, 3, 3, C.K); strip(x + 14, y - 58, x + 18, y - 44, 1.5, 1.5, C.N0);
-    ell(x + 13, y - 60, 6, 5, C.K); ell(x + 13, y - 60, 4, 3, C.N1);
+    Rh(x - 10, y - 92, 17, 10, C.K); Rh(x - 8, y - 92, 13, 9, GOB.dark);
+    for (const [tx, ln] of GOB_TATTERS) poly([[x + tx - 1, y - 36], [x + tx + 5, y - 32 + ln], [x + tx + 12, y - 36]], C.K);
+    poly([[x - 33, y - 89], [x + 31, y - 89], [x + 42, y - 33], [x - 44, y - 33]], C.K);
+    poly([[x - 30, y - 86], [x + 28, y - 86], [x + 39, y - 36], [x - 41, y - 36]], GOB.leather);
+    for (const [tx, ln] of GOB_TATTERS) poly([[x + tx + 2, y - 37], [x + tx + 5, y - 35 + ln], [x + tx + 9, y - 37]], tx < -10 ? HIDE.a : HIDE.b);
+    poly([[x - 30, y - 86], [x + 28, y - 86], [x + 26, y - 81], [x - 28, y - 81]], HIDE.c);
+    strip(x - 14, y - 80, x - 18, y - 38, 1, 1, HIDE.d);
+    for (let k = 0; k < 5; k++) Rh(x - 14 - k * 36 / 52 - 3, y - 76 + k * 9, 7, 1, HIDE.stitch);
+    Rh(x + 6, y - 50, 15, 13, C.K); Rh(x + 8, y - 48, 11, 9, HIDE.patch);
+    for (let k = 0; k < 3; k++) { Rh(x + 5, y - 48 + k * 4, 3, 1, HIDE.stitch); Rh(x + 19, y - 48 + k * 4, 3, 1, HIDE.stitch); }
+    poly([[x + 14, y - 74], [x + 22, y - 72], [x + 16, y - 67]], HIDE.d);
+    Rh(x - 38, y - 61, 75, 10, C.K); Rh(x - 36, y - 60, 71, 7, HIDE.d); Rh(x - 36, y - 60, 71, 1, HIDE.b);
+    Rh(x - 9, y - 63, 14, 13, C.K); Rh(x - 7, y - 61, 10, 9, C.G1); Rh(x - 4, y - 58, 4, 3, C.K); Rh(x - 7, y - 61, 10, 1, C.G0);
   }
-  /* The eyes: open, wide (alarmed), squint (pleased with itself) or shut tight (struck). */
+  /* The sack hanging at the hip, its middle at (x + 45, y - 38), its neck tied at (x + 41, y - 58),
+     with a gold candlestick, its candle and a coin poking out of the mouth, a few dark lines of the
+     weave, a patch and a highlight. */
+  function gSack(x, y) {
+    const cx = x + 45, cy = y - 38, rx = 17, ry = 19, nx = x + 41, ny = y - 58, mx = nx, my = ny - 5;
+    strip(mx - 6, my + 4, mx - 13, my - 20, 4.5, 3.5, C.K); strip(mx - 6, my + 4, mx - 13, my - 20, 2.5, 1.5, [[.5, C.G0], [1, C.G2]]);
+    ell(mx - 14, my - 21, 6, 3, C.K); ell(mx - 14, my - 21, 4, 1.5, C.G1);
+    Rh(mx - 17, my - 30, 6, 9, C.K); Rh(mx - 16, my - 29, 4, 8, GOB.candle);
+    ell(mx + 7, my - 5, 7, 7, C.K); ell(mx + 7, my - 5, 5, 5, [[.4, C.G0], [1, C.G1]]); Rh(mx + 6, my - 8, 2, 6, C.G2); Rh(mx + 4, my - 7, 1, 1, C.W);
+    poly([[nx - 9, ny - 6], [nx + 9, ny - 6], [nx + 7, ny + 8], [nx - 7, ny + 8]], C.K);
+    ell(cx, cy, rx + 3, ry + 3, C.K); ell(cx, cy, rx, ry, GOB.sack);
+    poly([[nx - 6, ny - 3], [nx + 6, ny - 3], [nx + 4, ny + 7], [nx - 4, ny + 7]], GOB.sackNeck);
+    ell(nx, ny - 5, 9, 4, C.K); ell(nx, ny - 5, 7, 2.5, GOB.sackLip);
+    Rh(nx - 8, ny + 2, 16, 4, C.K); Rh(nx - 7, ny + 3, 14, 2, GOB.sackTie);
+    for (const [dx, dy] of [[-.5, -.1], [-.15, .35], [.3, .05], [.15, -.45], [-.45, .45]]) Rh(cx + dx * rx, cy + dy * ry, 5, 1, GOB.sackDark);
+    rrect(cx + rx * .1, cy + ry * .1, 11, 10, 2, GOB.sackLine); Rh(cx + rx * .1 + 2, cy + ry * .1 + 2, 7, 6, GOB.sackPatch);
+    Rh(cx - rx * .55, cy - ry * .4, 3, 6, GOB.sackLight);
+  }
+  /* An ear from the side of the head at (bx, by), pointing to side d, 52 long, its tip 20 up and
+     lowered by droop, with a light along its upper edge. The ear and its outline are triangles: the
+     mock-up's ear dipped a little along its upper edge, which a pack's convex polygon cannot draw,
+     so each is drawn as its hull. The inner ear's tip, 0.66 of the way to the ear's, is kept to
+     eighths as the wraps' ends are. */
+  function gEar(bx, by, d, droop) {
+    const tip = [bx + d * 52, by - 20 + droop], mid = [e8(bx + d * 52 * .55), by - 9 + droop * .5 - 3];
+    poly([[bx, by - 15], [tip[0] + d * 3, tip[1] - 2], [bx + d * 4, by + 15]], C.K);
+    poly([[bx + d * 2, by - 12], [tip[0] - d * 2, tip[1] - 1], [bx + d * 4, by + 11]], GOB.limb);
+    poly([[bx + d * 5, by - 6], [e8(bx + d * 3 + (tip[0] - bx - d * 3) * .66), e8(by - 1 + (tip[1] - by + 1) * .66)], [bx + d * 7, by + 7]], GOB.earIn);
+    strip(bx + d * 6, by - 11, mid[0] - d * 2, mid[1] - 1, 1, 1, GOB.light);
+  }
+  /* The two ears, the far one 4 lower. */
+  function gEars(x, y, droop) { gEar(x - 35, y - 108, -1, droop); gEar(x + 27, y - 108, 1, droop + 4); }
+  /* The head, the cranium over a wide jaw, a spot on the far cheek, two blushes and a light on the
+     brow. */
+  function gHead(x, y) {
+    ell(x - 3, y - 112, 36, 28, C.K); ell(x - 5, y - 97, 40, 21, C.K);
+    ell(x - 3, y - 112, 33, 25, GOB.skin); ell(x - 5, y - 97, 37, 18, GOB.skin);
+    ell(x - 5, y - 97, 37, 18, GOB.jaw, y - 93);
+    ell(x + 22, y - 100, 3, 3, GOB.dark); Rh(x + 21, y - 101, 1, 1, GOB.light);
+    ell(x + 18, y - 97, 6, 3, GOB.blush); ell(x - 34, y - 100, 4, 3, GOB.blush);
+    ell(x - 17, y - 126, 7, 3, GOB.light);
+  }
+  /* The eyes: beady black in shaded sockets, open, wide (alarmed: white round the bead), squint
+     (pleased with itself) or shut tight (struck); look moves the beads. */
   function gEyes(x, y, kind, look) {
-    const E = [[x - 21, y - 117], [x + 4, y - 118]];
+    const E = [[x - 23, y - 114], [x + 5, y - 115]];
     for (let i = 0; i < 2; i++) {
       const [cx, cy] = E[i], d = i ? 1 : -1;
-      if (kind === 'shut') { strip(cx + 7 * d, cy - 6, cx - 5 * d, cy, 2.2, 2.2, C.K); strip(cx - 5 * d, cy, cx + 7 * d, cy + 6, 2.2, 2.2, C.K); continue; }
-      if (kind === 'squint') { Rh(cx - 7, cy - 3, 14, 3, C.K); Rh(cx - 10, cy - 1, 4, 5, C.K); Rh(cx + 6, cy - 1, 4, 5, C.K); continue; }
-      const wide = kind === 'wide';
-      ell(cx, cy, wide ? 11 : 9.5, wide ? 13 : 11.5, C.K); ell(cx, cy, wide ? 9 : 7.5, wide ? 11 : 9.5, C.W);
-      const px = cx + (wide ? 0 : -2 + look * 2), py = cy + 1;
-      ell(px, py, wide ? 3 : 4, wide ? 3.5 : 5, C.K); Rh(px - (wide ? 2 : 3), py - 3, 2, 2, C.W);
+      if (kind === 'shut') { strip(cx + 7 * d, cy - 6, cx - 5 * d, cy, 2.125, 2.125, C.K); strip(cx - 5 * d, cy, cx + 7 * d, cy + 6, 2.125, 2.125, C.K); continue; }
+      if (kind === 'squint') { ell(cx, cy + 1, 9, 6, GOB.socket); Rh(cx - 7, cy - 2, 14, 3, C.K); Rh(cx - 9, cy, 3, 4, C.K); Rh(cx + 6, cy, 3, 4, C.K); continue; }
+      if (kind === 'wide') { ell(cx, cy, 10, 11, C.K); ell(cx, cy, 8, 9, GOB.white); ell(cx + look * 2, cy + 1, 3.5, 4, C.K); Rh(cx + look * 2 - 2, cy - 2, 2, 2, C.W); continue; }
+      ell(cx, cy + 1, 9, 7, GOB.socket);
+      ell(cx - 1 + look * 2, cy + 1, 5, 6, C.K); Rh(cx - 3 + look * 2, cy - 2, 2, 2, C.W); Rh(cx + look * 2 + 1, cy + 3, 1, 1, '#8a8aa0');
     }
   }
   function gBrows(x, y, kind) {
     if (kind === 'none') return;
-    const B = kind === 'worried' ? [[x - 31, y - 128, x - 14, y - 133], [x - 3, y - 134, x + 13, y - 129]]
-      : [[x - 32, y - 131, x - 13, y - 135], [x - 4, y - 131, x + 13, y - 128]];
-    for (const b of B) strip(b[0], b[1], b[2], b[3], 2.5, 2.5, C.K);
+    const B = kind === 'worried' ? [[x - 33, y - 124, x - 15, y - 130], [x - 3, y - 131, x + 14, y - 125]]
+      : [[x - 35, y - 127, x - 14, y - 123], [x - 4, y - 128, x + 15, y - 134]];
+    for (const b of B) { strip(b[0], b[1], b[2], b[3], 3.5, 3.5, C.K); strip(b[0], b[1], b[2], b[3], 1.5, 1.5, GOB.dark); }
   }
+  /* The nose: big and hooked, from between the eyes, its bulb hanging over the mouth, a wart on its
+     side. */
   function gNose(x, y) {
-    strip(x - 8, y - 109, x - 28, y - 98, 7, 5, C.K); strip(x - 8, y - 109, x - 28, y - 98, 4, 2.5, GOB.nose);
-    ell(x - 31, y - 96, 7.5, 6.5, C.K); ell(x - 31, y - 97, 5.5, 4.5, [[.4, GOB.finger], [1, '#5fae4f']]); Rh(x - 35, y - 100, 2, 2, GOB.light);
+    const bx = x - 11, by = y - 100;
+    poly([[x - 13, y - 122], [x - 3, y - 120], [bx + 9, by - 2], [bx - 9, by - 2]], C.K);
+    ell(bx, by, 12, 10, C.K);
+    poly([[x - 11, y - 119], [x - 5, y - 118], [bx + 7, by - 2], [bx - 6, by - 2]], [[.4, GOB.skin[0][1]], [1, GOB.nose]]);
+    ell(bx, by, 9, 7.5, [[.3, GOB.skin[0][1]], [.7, GOB.nose], [1, GOB.skin[2][1]]]);
+    Rh(bx - 6, by - 4, 3, 2, GOB.light);
+    Rh(bx - 5, by + 4, 3, 2, GOB.dark); Rh(bx + 3, by + 4, 3, 2, GOB.dark);
+    ell(bx + 8, by - 6, 2.5, 2.5, C.K); ell(bx + 8, by - 6, 1.5, 1.5, GOB.dark);
   }
-  /* The mouth: a toothy grin, the grin with the tongue out, a small gulp, or a wail. */
+  /* A small tusk up from the lower jaw at (tx, ty), h tall. */
+  function gTusk(tx, ty, h) { poly([[tx - 4, ty + 1], [tx, ty - h - 1], [tx + 4, ty + 1]], C.K); poly([[tx - 2, ty], [tx, ty - h + 1], [tx + 2, ty]], GOB.tusk); Rh(tx + 1, ty - 2, 1, 2, GOB.tuskShade); }
+  /* The mouth with its underbite and two small tusks: a grin, the grin with the tongue out, a small
+     gulp, or a wail. */
   function gMouth(x, y, kind) {
-    const mx = x - 3, my = y - 88;
-    if (kind === 'small') { ell(mx + 2, my, 4, 4, C.K); return; }
-    if (kind === 'wail') { ell(mx, my + 1, 13, 10, C.K); ell(mx, my + 2, 10, 7, GOB.mouth); ell(mx, my + 6, 6, 3, GOB.tongue); Rh(mx - 7, my - 6, 5, 4, C.W); Rh(mx + 2, my - 6, 5, 4, C.W); return; }
-    ell(mx, my - 2, 19, 9, C.K, my - 2); ell(mx, my - 2, 15, 6, GOB.mouth, my - 1);
-    Rh(mx - 9, my - 1, 5, 4, C.W); Rh(mx + 2, my - 1, 5, 4, C.W);
-    if (kind === 'tongue') { ell(mx - 4, my + 9, 7, 7, C.K); ell(mx - 4, my + 8, 5, 5, GOB.tongue); Rh(mx - 4, my + 5, 1, 5, GOB.tongueLine); }
+    const mx = x - 6, my = y - 88;
+    if (kind === 'small') { ell(mx + 2, my, 5, 4, C.K); ell(mx + 2, my + 1, 3, 2, GOB.mouth); gTusk(mx - 6, my + 3, 6); gTusk(mx + 10, my + 3, 6); return; }
+    if (kind === 'wail') { ell(mx, my + 1, 14, 11, C.K); ell(mx, my + 2, 11, 8, GOB.mouth); ell(mx, my + 7, 6, 3, GOB.tongue); gTusk(mx - 8, my + 9, 6); gTusk(mx + 8, my + 9, 6); return; }
+    ell(mx, my - 2, 20, 10, C.K, my - 3); ell(mx, my - 2, 16, 6.5, GOB.mouth, my - 2);
+    if (kind === 'tongue') { ell(mx - 5, my + 9, 7, 7, C.K); ell(mx - 5, my + 8, 5, 5, GOB.tongue); Rh(mx - 5, my + 5, 1, 5, GOB.tongueLine); }
+    gTusk(mx - 11, my + 3, 8); gTusk(mx + 10, my + 3, 8);
   }
-  /* The saucepan, dy below where it sits on the head, its handle out behind. */
+  /* The dented saucepan, dy below where it sits on the head, its handle out behind. */
   function gPot(x, y, dy) {
-    const py = y + dy - 4;
-    strip(x + 26, py - 136, x + 54, py - 146, 5, 5, C.K); strip(x + 26, py - 136, x + 52, py - 145, 2.5, 2.5, [[.4, C.N0], [1, C.N2]]);
-    rrect(x - 31, py - 156, 56, 24, 8, C.K); rrect(x - 28, py - 153, 50, 19, 6, GOB.pot);
-    Rh(x - 21, py - 151, 3, 14, C.S1); Rh(x - 2, py - 150, 6, 2, C.S4); Rh(x - 1, py - 148, 4, 1, '#3a4150');
-    rrect(x - 36, py - 138, 66, 9, 3, C.K); Rh(x - 34, py - 136, 62, 5, C.S2); Rh(x - 34, py - 136, 62, 1, C.S1); Rh(x + 14, py - 133, 16, 2, C.S3);
+    const px = x - 3, py = y - 125 + dy;
+    strip(px + 26, py - 14, px + 54, py - 24, 5, 5, C.K); strip(px + 26, py - 14, px + 52, py - 23, 2.5, 2.5, [[.4, C.N0], [1, C.N2]]);
+    rrect(px - 29, py - 34, 56, 24, 8, C.K); rrect(px - 26, py - 31, 50, 19, 6, GOB.pot);
+    ell(px + 8, py - 27, 6, 3, C.S4); Rh(px + 5, py - 29, 6, 1, C.S1);
+    Rh(px - 19, py - 29, 3, 14, C.S1);
+    rrect(px - 34, py - 16, 66, 9, 3, C.K); Rh(px - 32, py - 14, 62, 5, C.S2); Rh(px - 32, py - 14, 62, 1, C.S1); Rh(px + 16, py - 11, 16, 2, C.S3);
   }
-  /* The arms of each pose, both sides: the shoulder, the elbow and the hand from the feet, and
-     the angle the fingers spread along. Arms in front of the body are marked front. */
+  /* The arms of each kind, both sides: the shoulder, the elbow and the hand from the feet, and the
+     angle the fingers spread along. Each arm is the limb, a wrap and the hand. The hands flung up
+     when it is struck stop 4 short of the mock-up's and 4 higher, and its ears droop no further
+     than in the brace: with the knight at its nearest, the near hand and ear met the greatsword's
+     cross in the bounce (the contact standard, tests.md). */
   const GOB_ARMS = {
-    hips: [[[-28, -84], [-48, -70], [-36, -56], 2.6], [[26, -84], [46, -70], [34, -56], -2.6]],
-    up: [[[-28, -84], [-50, -112], [-44, -146], -.2], [[26, -84], [48, -114], [42, -148], .2]],
-    ears0: [[[-28, -84], [-58, -98], [-48, -130], -.5], [[26, -84], [56, -98], [46, -132], .5]],
-    ears1: [[[-28, -84], [-60, -96], [-52, -128], -.9], [[26, -84], [58, -96], [50, -130], .9]],
-    clutch: [[[-28, -84], [-42, -64], [-16, -70], 1.2], [[26, -84], [40, -64], [12, -70], -1.2]],
-    flung: [[[-28, -84], [-58, -94], [-72, -110], -.9], [[26, -84], [56, -96], [70, -112], .9]]
+    hips: [[[-30, -80], [-50, -66], [-38, -52], 2.6], [[28, -80], [48, -66], [36, -52], -2.6]],
+    up: [[[-30, -80], [-52, -108], [-46, -142], -.2], [[28, -80], [50, -110], [44, -144], .2]],
+    ears0: [[[-30, -80], [-62, -94], [-56, -124], -.5], [[28, -80], [60, -94], [52, -126], .5]],
+    ears1: [[[-30, -80], [-64, -92], [-60, -122], -.9], [[28, -80], [62, -92], [56, -124], .9]],
+    clutch: [[[-30, -80], [-44, -60], [-18, -66], 1.2], [[28, -80], [42, -60], [14, -66], -1.2]],
+    flung: [[[-30, -80], [-60, -90], [-72, -110], -.9], [[28, -80], [58, -92], [70, -112], .9]]
   };
-  const GOB_FRONT = { clutch: true };
-  /* The poses: arms, eyes, brows, mouth, how far the pot sits down (dy) and the ears droop. */
-  const GOB_POSES = {
-    stand: { arms: 'hips', eyes: 'open', brows: 'cheeky', mouth: 'grin' },
-    climb: { arms: 'up', eyes: 'open', brows: 'cheeky', mouth: 'grin' },
-    taunt0: { arms: 'ears0', eyes: 'squint', brows: 'cheeky', mouth: 'tongue' },
-    taunt1: { arms: 'ears1', eyes: 'open', brows: 'cheeky', mouth: 'tongue', look: -1 },
-    brace: { arms: 'clutch', eyes: 'wide', brows: 'worried', mouth: 'small', droop: 14 },
-    hit: { arms: 'flung', eyes: 'shut', brows: 'none', mouth: 'wail', pot: 6, droop: 16 }
-  };
-  function gArms(x, y, kind, front) {
-    if (!!GOB_FRONT[kind] !== front) return;
-    for (const [s, e, h, a] of GOB_ARMS[kind]) { gLimb([[x + s[0], y + s[1]], [x + e[0], y + e[1]], [x + h[0], y + h[1]]]); gHand(x + h[0], y + h[1], a); }
+  function gArms(x, y, kind) {
+    for (const [s, e, h, a] of GOB_ARMS[kind]) {
+      const P = [[x + s[0], y + s[1]], [x + e[0], y + e[1]], [x + h[0], y + h[1]]];
+      gLimb(P); gWrap(P[1], P[2]); gHand(P[2][0], P[2][1], a);
+    }
   }
+  /* The parts the poses share, in the order a pose draws them: the arms behind the body, the legs,
+     feet and tunic, the sack, the ears (lowered by 0, or by 14 as it flinches and once it is struck),
+     the head. */
+  const GOB_PARTS = {
+    'arms.hips': (x, y) => gArms(x, y, 'hips'), 'arms.up': (x, y) => gArms(x, y, 'up'), 'arms.ears0': (x, y) => gArms(x, y, 'ears0'),
+    'arms.ears1': (x, y) => gArms(x, y, 'ears1'), 'arms.flung': (x, y) => gArms(x, y, 'flung'),
+    body: (x, y) => { gLegs(x, y); gTunic(x, y); }, sack: gSack,
+    ears: (x, y) => gEars(x, y, 0), 'ears.droop': (x, y) => gEars(x, y, 14), head: gHead
+  };
+  /* The poses: the parts each draws, then its eyes, brows, mouth, the nose, the pot (6 lower in hit)
+     and the arms in front, in the brace alone. */
+  const GOB_POSES = {
+    stand: { parts: ['arms.hips', 'body', 'sack', 'ears', 'head'], eyes: 'open', brows: 'cheeky', mouth: 'grin' },
+    climb: { parts: ['arms.up', 'body', 'sack', 'ears', 'head'], eyes: 'open', brows: 'cheeky', mouth: 'grin' },
+    taunt0: { parts: ['arms.ears0', 'body', 'sack', 'ears', 'head'], eyes: 'squint', brows: 'cheeky', mouth: 'tongue' },
+    taunt1: { parts: ['arms.ears1', 'body', 'sack', 'ears', 'head'], eyes: 'open', brows: 'cheeky', mouth: 'tongue', look: -1 },
+    brace: { parts: ['body', 'sack', 'ears.droop', 'head'], eyes: 'wide', brows: 'worried', mouth: 'small', front: 'clutch' },
+    hit: { parts: ['arms.flung', 'body', 'sack', 'ears.droop', 'head'], eyes: 'shut', brows: 'none', mouth: 'wail', pot: 6 }
+  };
   function goblinHD(x, y, pose) {
-    const p = GOB_POSES[pose] || GOB_POSES.stand, droop = p.droop || 0;
-    gArms(x, y, p.arms, false);
-    gLegs(x, y);
-    gTunic(x, y);
-    gEar(x - 33, y - 110, -1, droop); gEar(x + 27, y - 110, 1, droop + 4);
-    ell(x - 3, y - 109, 38, 30, C.K); ell(x - 3, y - 109, 35, 27, GOB.skin); ell(x - 3, y - 109, 35, 27, GOB.jaw, y - 95);
-    ell(x + 22, y - 104, 3, 3, GOB.dark); Rh(x + 21, y - 105, 1, 1, GOB.light);
-    ell(x + 18, y - 99, 6, 3, GOB.blush); ell(x - 34, y - 104, 4, 3, GOB.blush);
-    gEyes(x, y, p.eyes, p.look || 0); gBrows(x, y, p.brows);
-    gMouth(x, y, p.mouth);
-    gPot(x, y, p.pot || 0);
-    gNose(x, y);
-    gArms(x, y, p.arms, true);
+    const p = GOB_POSES[pose] || GOB_POSES.stand;
+    for (const n of p.parts) GOB_PARTS[n](x, y);
+    gEyes(x, y, p.eyes, p.look || 0); gBrows(x, y, p.brows); gMouth(x, y, p.mouth); gNose(x, y); gPot(x, y, p.pot || 0);
+    if (p.front) gArms(x, y, p.front);
   }
 
   /* ---- Foes -------------------------------------------------------------------------------------
@@ -712,7 +799,7 @@
                    blade stops at the first of them it meets, so no blade passes through it
        exit        which of the engine's exits it leaves by (FOE.exits in engine.js)
      A later foe gives the same, at its own size, and the entrance and the exit work unchanged. */
-  const SPR = { w: 220, h: 230, ax: 110, ay: 214 };
+  const SPR = { w: 256, h: 250, ax: 128, ay: 236 };
   function foeSprites(paint, poses) {
     const cache = {};
     return name => {
@@ -726,11 +813,13 @@
     };
   }
   const FOES = {
-    goblin: { pose: foeSprites(goblinHD, GOB_POSES), poses: Object.keys(GOB_POSES), anchor: [SPR.ax, SPR.ay], size: [SPR.w, SPR.h], h: 160, w: 40, mid: 78, exit: 'poof',
-      // the outline of its top as it flinches: the near ear's upper edge and tip, the pot's rim,
-      // its rounded corners and top, its handle, and the far ear's tip
-      crown: [[-83, -119], [-80, -112], [-70, -121], [-58, -123], [-45, -125], [-36, -133], [-36, -141], [-31, -150], [-30, -155], [-27, -159], [-23, -160],
-        [-10, -160], [0, -160], [10, -160], [17, -160], [21, -159], [24, -155], [25, -150], [30, -141], [30, -133], [40, -143], [54, -146], [59, -147], [76, -114]] }
+    goblin: { pose: foeSprites(goblinHD, GOB_POSES), poses: Object.keys(GOB_POSES), anchor: [SPR.ax, SPR.ay], size: [SPR.w, SPR.h], h: 159, w: 40, mid: 80, exit: 'poof',
+      // the outline of its top as it flinches, read off the brace as painted: the near ear's upper
+      // edge and tip, the end of the pot's rim, its rounded corner and top, its handle, and the far
+      // ear's upper edge and tip
+      crown: [[-90, -116], [-86, -116], [-82, -117], [-78, -117], [-74, -118], [-70, -118], [-66, -119], [-62, -119], [-58, -120], [-54, -120], [-50, -121],
+        [-46, -121], [-42, -122], [-38, -122], [-37, -140], [-33, -141], [-32, -154], [-30, -157], [-27, -159], [-18, -159], [-6, -159], [6, -159], [15, -159],
+        [20, -158], [23, -154], [31, -147], [40, -150], [49, -154], [52, -146], [53, -117], [82, -112]] }
   };
 
   /* ---- What a foe leaves by ---------------------------------------------------------------------

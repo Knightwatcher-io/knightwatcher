@@ -412,8 +412,8 @@ for twelve minutes. The entry lists the machine in `machines`. Only the sections
     each also a long name (a body of a world pack for `build`, a patron for `monarch`); `weapon` is `greatsword`,
     `sword_and_shield`, `longsword`, `mace_and_shield` or `crossbow`; `skin` and `monarch_skin` are `fair`,
     `warm`, `golden`, `tan`, `brown` or `deep`; `hair` and `monarch_hair` are `black`, `dark`,
-    `brown`, `auburn`, `blonde` or `silver`; `hair_style` is `short`, `tied`, `curls`, `long` or
-    `close`; `tabard` and `monarch_robe` are `blue`, `forest`, `violet`, `wine`, `teal` or
+    `brown`, `auburn`, `blonde` or `silver`; `hair_style` is `short`, `tied`, `curls`, `long`,
+    `close` or `buzz`; `tabard` and `monarch_robe` are `blue`, `forest`, `violet`, `wine`, `teal` or
     `sable`; `plume` is `red`, `white`, `gold`, `royal`, `green` or `violet`; `skin`, `hair`,
     `tabard` and `plume` each also take the long name of a swatch of that set from a world pack,
     and so do `monarch_skin`, `monarch_hair` and `monarch_robe`, of the skin, hair and tabard

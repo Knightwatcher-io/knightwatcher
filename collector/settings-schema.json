@@ -627,7 +627,7 @@
         { "key": "hair", "type": "string", "default": null, "values": ["black", "dark", "brown", "auburn", "blonde", "silver"], "long": true, "page_default": "brown", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Hair colour" }, "wall": { "section": "The knight", "label": "Hair colour" } }, "editable": true,
           "help": "The knight's hair colour, or a hair swatch of a loaded pack by its long name, \"<pack>/<swatch>\"." },
-        { "key": "hair_style", "type": "string", "default": null, "values": ["short", "tied", "curls", "long", "close"], "page_default": "short", "scope": "display",
+        { "key": "hair_style", "type": "string", "default": null, "values": ["short", "tied", "curls", "long", "close", "buzz"], "page_default": "short", "scope": "display",
           "gui": { "admin": { "section": "Household look", "label": "Hair style" }, "wall": { "section": "The knight", "label": "Hair style" } }, "editable": true,
           "help": "The knight's hair." },
         { "key": "tabard", "type": "string", "default": null, "values": ["blue", "forest", "violet", "wine", "teal", "sable"], "long": true, "page_default": "blue", "scope": "display",

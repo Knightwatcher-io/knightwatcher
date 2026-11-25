@@ -594,7 +594,7 @@ const RULES = [
   ['counts: 65 decorations', 'counts', p => { for (const i of range(64)) p.decorations['d' + i] = lantern(p); }, "pack.decorations: holds 65 decorations, more than 64"],
   ['counts: the default look over 1200 shapes', 'counts', p => {
     for (const s of ['legs', 'boots', 'torso']) { p.items[s + '.big'] = backItem(4, 100); p.items[s + '.big'].slot = s; p.items[s + '.big'].parts.forEach(pt => { pt.at = s === 'legs' ? 'hipL' : s === 'boots' ? 'footL' : 'neck'; }); p.defaults.items[s] = s + '.big'; }
-  }, "pack.defaults: the default look draws 1269 shapes with build \"build.a\", more than 1200"]
+  }, "pack.defaults: the default look draws 1285 shapes with build \"build.a\", more than 1200"]
 ];
 for (const [rule, step, edit, re] of RULES) test('refused at ' + step + ': ' + rule, () => { rejected(edit, step, re); });
 
@@ -1015,7 +1015,7 @@ test('a look naming the head or an unknown slot is told so, and the head comes f
   const L = PK.resolve(library(), { items: { head: 'kw.base/head.plain', tail: 'kw.base/x', companion: 'kw.base/y' }, swatches: { cape: 'kw.base/blue' } });
   assert.deepEqual(L.ignored, [{ key: 'head', reason: 'the head comes from the build' }, { key: 'tail', reason: 'not a slot' },
     { key: 'companion', reason: 'reserved' }, { key: 'cape', reason: 'not a swatch set' }]);
-  assert.equal(L.lists.headOff.length, 6 + 8);
+  assert.equal(L.lists.headOff.length, 6 + 41);
 });
 
 test('with no base pack the result says so, for the caller to draw the knight from code', () => {
@@ -1033,7 +1033,9 @@ test('hostile looks resolve to the defaults without throwing', () => {
 
 test('a look at exactly 1200 shapes is kept, and one over falls back slot by slot until it fits', () => {
   const n0 = baseLook().shapes;
-  assert.equal(n0, 30 + 31 + 6 + 4 + 6 + 22);
+  // the head group with the helmet off, the plain head and the short crop of 1.6.0 (47), is the
+  // larger of the two since the crop was redrawn; the helmet's was (31)
+  assert.equal(n0, 30 + 47 + 6 + 4 + 6 + 22);
   // back 400, legs 400 and boots of whatever brings the total to exactly 1200
   const bootsN = 1200 - n0 - 400 - (400 - 8) + 6;
   const big = (slot, at, n) => ({ slot, name: 'Big', parts: range(Math.ceil(n / 100)).map(i => ({ at, shapes: range(Math.min(100, n - i * 100)).map(() => rect()) })) });
@@ -1059,7 +1061,7 @@ test('a look at exactly 1200 shapes is kept, and one over falls back slot by slo
 test('the one-handed sword and the shield: hold point folded in, shield drawn only with that grip', () => {
   const L = PK.resolve(library(), { items: { main: 'kw.base/main.arming', off: 'kw.base/off.round' } });
   assert.equal(L.grip.kind, 'one');
-  assert.equal(L.shapes, 30 + 31 + 6 + 4 + 6 + 6 + 3);
+  assert.equal(L.shapes, 30 + 47 + 6 + 4 + 6 + 6 + 3);
   const R = recorder(), A = PK.newAnchors(), V = PK.newValues();
   A[2 * PK.ANCHOR.off] = 400; A[2 * PK.ANCHOR.off + 1] = 300;
   PK.draw(L.lists.off, A, V, R.P);
@@ -1319,9 +1321,11 @@ test('the present knight\'s cost, by grip mode', () => {
   const r = load(BASE()), S = r.sums, it = id => S[id].parts.cost;
   const common = it('legs.plate') + it('boots.leather') + it('torso.tabard') + it('pauldrons.plate') + it('arms.plate') + it('gauntlets.plate');
   const headOn = it('plume.crest') + it('helm.open'), headOff = it('head.plain') + it('hair.short');
-  assert.deepEqual([common, headOn, headOff, it('main.greatsword')], [5560, 1720, 1632, 4652]);
-  assert.equal(baseLook().cost, common + headOn + it('main.greatsword'));
-  assert.equal(baseLook().cost, 11932);
+  // since the short crop was redrawn in 1.6.0 (753, where it was 318) the head group with the
+  // helmet off is the costlier, and the look counts it
+  assert.deepEqual([common, headOn, headOff, it('main.greatsword')], [5560, 1720, 2067, 4652]);
+  assert.equal(baseLook().cost, common + headOff + it('main.greatsword'));
+  assert.equal(baseLook().cost, 12279);
 });
 
 test('refused at counts: an item over 8000, and accepted at 8000', () => {
@@ -1345,20 +1349,20 @@ test('refused at counts: a decoration over 8000, its scale counted, and accepted
 test('refused at counts: a default look over the cost cap', () => {
   rejected(p => {
     for (const [s, at] of [['legs', 'hipL'], ['boots', 'footL'], ['torso', 'neck'], ['pauldrons', 'shoulderL']]) { p.items[s + '.big'] = costlyItem(s, at, 8000); p.defaults.items[s] = s + '.big'; }
-  }, 'counts', 'pack.defaults: the default look costs up to 41944 fills with build "build.a", more than 40000');
+  }, 'counts', 'pack.defaults: the default look costs up to 42291 fills with build "build.a", more than 40000');
 });
 
 test('a look at a cost of exactly 40000 is kept, and one over falls back slot by slot until it fits', () => {
   const pack = n => extra('kw.costly', { items: { 'legs.c': costlyItem('legs', 'hipL', n), 'boots.c': costlyItem('boots', 'footL', 7514),
     'torso.c': costlyItem('torso', 'neck', 7514), 'pauldrons.c': costlyItem('pauldrons', 'shoulderL', 7514), 'back.c': costlyItem('back', 'neck', 8000) } });
   const look = { items: { legs: 'kw.costly/legs.c', boots: 'kw.costly/boots.c', torso: 'kw.costly/torso.c', pauldrons: 'kw.costly/pauldrons.c' } };
-  const at = PK.resolve(PK.gather([load(BASE()), load(pack(7514))]), look);
+  const at = PK.resolve(PK.gather([load(BASE()), load(pack(7167))]), look);
   assert.equal(at.cost, 40000);
   assert.equal(at.fallbacks.filter(f => /cap/.test(f.reason)).length, 0);
-  const over = PK.resolve(PK.gather([load(BASE()), load(pack(7515))]), look);
+  const over = PK.resolve(PK.gather([load(BASE()), load(pack(7168))]), look);
   assert.deepEqual(over.fallbacks.filter(f => /cap/.test(f.reason)), [{ kind: 'item', key: 'legs', wanted: 'kw.costly/legs.c', used: 'kw.base/legs.plate', reason: 'over the cost cap of 40000 fills' }]);
-  assert.equal(over.cost, 40001 - 7515 + 559);
-  const far = PK.resolve(PK.gather([load(BASE()), load(pack(7514))]), Object.assign({}, look, { items: Object.assign({ back: 'kw.costly/back.c' }, look.items) }));
+  assert.equal(over.cost, 40001 - 7168 + 559);
+  const far = PK.resolve(PK.gather([load(BASE()), load(pack(7167))]), Object.assign({}, look, { items: Object.assign({ back: 'kw.costly/back.c' }, look.items) }));
   assert.deepEqual(far.fallbacks.filter(f => /cap/.test(f.reason)).map(f => f.key), ['back']);
   assert.ok(far.cost <= 40000);
 });

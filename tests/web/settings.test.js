@@ -707,8 +707,8 @@ test('every combination renders: weapon by skin by hair by hair style, the build
     most = Math.max(most, L.cost);
     n++;
   }
-  assert.equal(n, 5 * 6 * 6 * 5);
-  assert.equal(seen.size, 3 * (5 + 6 + 6 + 5), 'every build with every weapon, skin, hair colour and hair style');
+  assert.equal(n, 5 * 6 * 6 * 6);
+  assert.equal(seen.size, 3 * (5 + 6 + 6 + 6), 'every build with every weapon, skin, hair colour and hair style');
   assert.ok(most <= PK.LIMITS.lookCost);
 });
 
@@ -819,7 +819,7 @@ test('the screen\'s and the admin page\'s choices of gear are the base pack\'s, 
   assert.deepEqual(names('legs'), ['Plate greaves', 'Mail chausses', 'Padded hose']);
   assert.deepEqual(names('feet'), ['Riding boots', 'Sabatons', 'Turnshoes']);
   assert.deepEqual(names('back'), ['Nothing', 'Long cloak', 'Short cape']);
-  assert.deepEqual(names('hair_style'), ['Short crop', 'Tied back', 'Curls', 'Long', 'Close crop']);
+  assert.deepEqual(names('hair_style'), ['Short crop', 'Tied back', 'Curls', 'Long', 'Close crop', 'Buzzcut']);
   // a base pack without an item offers only what it draws, as a fork's might
   const fewer = JSON.parse(JSON.stringify(PACK)); delete fewer.items['helm.coif']; delete fewer.items['main.mace'];
   assert.deepEqual(SET.itemChoices(fewer, 'helmet').map(c => c.id), ['open', 'kettle', 'bascinet']);
@@ -848,7 +848,7 @@ test('every gear choice renders on every build with each kind of weapon, from th
     assert.ok(L.shapes <= PK.LIMITS.lookShapes && L.cost <= PK.LIMITS.lookCost, what + ' within the caps');
     n++;
   }
-  assert.equal(n, 3 * (3 + 4 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 5));
+  assert.equal(n, 3 * (3 + 4 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 6));
 });
 
 test('the status page says whether the usage counts are on, read only, and how .env changes it', () => {

@@ -52,9 +52,10 @@ tests/
                      fire, test.orbit-fire.pack.json, and orbit.js, which writes both (never
                      signed, never under web/; see The test world below)
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
-                     shield as approved (base-onehand.items.json), its free options as
-                     approved (base-options.json), its three builds and the items fitted to
-                     them as approved (base-builds.json), its free items of 1.4.0 as approved
+                     shield as approved (base-onehand.items.json), its free options and the
+                     hair of 1.6.0 as approved (base-options.json), its three builds and the
+                     items fitted to them as approved (base-builds.json), its free items of
+                     1.4.0 as approved, the long and close hair as redrawn in 1.6.0
                      (base-free-items.json), its crossbow of 1.5.0 as approved
                      (base-crossbow.json), a world pack of format 1.1 for the library's tests
                      (world-1.1.json), the base pack's read, first stored from the library
@@ -366,7 +367,11 @@ which adds the mouser cat and the redesigned scenes and devices, was signed on 1
 the base pack and version 0.7.1 of the medieval world's pack change only the licence line, to the
 [art licence](../legal/ART-LICENCE.md), and were both signed on 23 November. Version 0.8.0 of the
 medieval world's pack, which moves it to format `[1, 3]` and gives the smithy its three acts, the
-hammer, the bellows and the quench, was signed on 24 November; the base pack is unchanged. A signed version is drawn from by a deployed
+hammer, the bellows and the quench, was signed on 24 November; the base pack is unchanged. Version
+1.6.0 of the base pack, which redraws the hair and adds the buzzcut, and version 0.9.0 of the
+medieval world's pack, which redraws the goblin, both with the licence line naming CC BY-SA 4.0,
+carry no signature until their signing run: the old ones were taken off with
+`node tools/sign-pack.js --unsign`. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
