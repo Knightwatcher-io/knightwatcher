@@ -408,7 +408,7 @@ the redesigned scenes and devices, and version 0.7.1, which changes only the
 licence line, are signed with `kw1`; version 0.8.0, which gives the smithy its three acts (format
 1.3's bellows and quench) and makes it a quiet scene of the preset, is signed with `kw1` too.
 Version 0.9.0, which redraws the goblin as the pot-thief and puts the pack under CC BY-SA 4.0,
-ships unsigned until its signing run. It holds every scene as data, the three
+was signed on 25 November. It holds every scene as data, the three
 monarchs, the goblin, the fly and the mouser cat as its cast, the devices as the prop set
 `props.medieval`, the word set `words.medieval`, the overlay `overlay.phosphor`, the preset
 `world.medieval`, the stamps the scenes and devices use (the sconce, the barrel, the house's peg and
@@ -489,8 +489,8 @@ knight reads every carried text, so while `kw.medieval` ships unsigned (between 
 signature step: sig: is missing, and this page accepts only signed packs`). Where the scenes are
 drawn from is the scene compiler's to say, in a line of its own ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)).
 
-**Today the base pack, version 1.6.0, ships unsigned** until its signing run (see
-[development.md](./development.md#signing-the-packs)); version 1.5.1 was signed with `kw1`. Signed,
+**Today the base pack, version 1.6.0, is signed** with `kw1`, on 25 November (see
+[development.md](./development.md#signing-the-packs)). Signed,
 a deployed page draws the knight from it as a `dev` page does, in every build and with every item.
 A version changed after signing ships unsigned until the next signing run: meanwhile a `dev` page still draws from it, and a deployed
 page refuses it at the `signature` step and draws the knight from the code in `knight.js`, the
