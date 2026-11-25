@@ -638,7 +638,7 @@
   function usageLines(view, mode) {
     if (!view) return [['quiet', mode === 'demo' ? 'Not known. The display is showing the demo.' : 'Not known yet.']];
     if (view.analytics === true) return [['', 'On. The collector sends a few counts every six hours.'], ['quiet', 'KW_ANALYTICS=off in .env turns them off.']];
-    if (view.analytics === false) return [['', 'Off. The collector sends nothing.'], ['quiet', 'KW_ANALYTICS in .env turns them on again, set to anything but off or left out.']];
+    if (view.analytics === false) return [['', 'Off. The collector sends nothing.'], ['quiet', 'KW_ANALYTICS=on in .env turns them on.']];
     return [['quiet', 'Not known: the state file does not say.']];
   }
 

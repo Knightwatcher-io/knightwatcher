@@ -1,12 +1,13 @@
 # Usage counts
 
-Knightwatcher's collector sends a small heartbeat to the project: a random install id, the
+Knightwatcher's collector can send a small heartbeat to the project: a random install id, the
 version, and counts of which built-in parts and sources are in use. It shows how many installs are
 running, which versions they run, and which worlds, parts and services they use. This page is the
-complete description of what is sent, what is kept and how to turn it off.
+complete description of what is sent, what is kept, and how to turn it on and off.
 
-It is on unless turned off. `KW_ANALYTICS=off` in `.env` stops it
-([How to turn it off](#how-to-turn-it-off)).
+It is off unless you turn it on. `KW_ANALYTICS=on` in `.env` turns it on
+([Turning it on and off](#turning-it-on-and-off)). If you are happy to help the project, please
+do: the counts are how it learns which parts are worth working on.
 
 ## What is sent
 
@@ -94,38 +95,47 @@ or with the name of the field it refused, and every other request with an empty 
 
 ## When it is sent
 
-Only the long-running collector sends. A one-shot run, such as `--once`, `--probe`,
-`--check-config` or `--health`, never does.
+Nothing is sent unless `KW_ANALYTICS` is `on`. Only the long-running collector sends. A one-shot
+run, such as `--once`, `--probe`, `--check-config` or `--health`, never does.
 
 - The first heartbeat goes when the collector starts, then one every six hours.
 - After a failure the next attempt is an hour later, and then the six-hour rhythm resumes.
 - Each attempt gives up after 10 seconds. Sending never delays or stops the reading of any
   source, and never changes what the wall shows.
 
-At its first start, when it makes the install id, the collector logs one notice at info level:
-what is sent, where, and that `KW_ANALYTICS=off` in `.env` stops it, with a link to this page.
+At its first start with the counts on, when it makes the install id, the collector logs one
+notice at info level: what is sent, where, and that `KW_ANALYTICS=off` in `.env` stops it, with a
+link to this page.
 Each heartbeat sent is logged at info level with the endpoint. A failure is logged as a warning at
 most once an hour.
 
-## How to turn it off
+## Turning it on and off
 
-Set this in `.env`, beside `compose.yaml`:
+To turn it on, set this in `.env`, beside `compose.yaml`:
 
 ```dotenv
-KW_ANALYTICS=off
+KW_ANALYTICS=on
 ```
 
 and apply it with `docker compose up -d`. The value is read without regard to case or surrounding
-spaces, so `OFF` and ` off ` work too. With it the collector sends nothing, opens no connection to
-the receiver and makes no install id, and logs once at start that the usage counts are off.
+spaces, so `ON` and ` on ` work too.
 
-This is the only control. Any other value, an empty one, or none at all leaves the heartbeat on.
+To turn it off again, set `KW_ANALYTICS=off`, or leave the value empty or the line out, and run
+`docker compose up -d`. The collector then sends nothing, opens no connection to the receiver and
+makes no install id, and logs once at start that the usage counts are off and how to turn them on.
+Turning it off stops new rows; it does not delete the rows already kept, which the
+[privacy notice](../legal/PRIVACY.md#your-rights) says how to have deleted.
 
-You can also block the hostname `telemetry.knightwatcher.io` at your DNS or firewall. The
-collector then logs a failed attempt, as a warning at most once an hour, and nothing else in
-Knightwatcher is affected.
+This is the only control. Only `on` turns it on. Any other value, such as `yes`, `true` or `1`,
+leaves it off and is logged once at start as a warning, so that a value meant as yes is not
+silently ignored. `.env.example` sets `KW_ANALYTICS=off`, so a new install sends nothing until
+you change it.
 
-Turning it off changes nothing else: no feature depends on it.
+You can also block the hostname `telemetry.knightwatcher.io` at your DNS or firewall. With the
+counts on, the collector then logs a failed attempt, as a warning at most once an hour, and nothing
+else in Knightwatcher is affected.
+
+Turning it on or off changes nothing else: no feature depends on it.
 
 ## The receiver's code
 
