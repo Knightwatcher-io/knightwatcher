@@ -141,18 +141,49 @@ SHOTS=(
   "strain-mem-camp|bar=0&t=2300&on=mem&sc=cpu_hot:camp"
   "strain-mem-smithy|bar=0&t=240&on=mem&sc=cpu_hot:smithy"
   # the smithy's three acts: the hammer's face on the blade 4 ms into the blow (t 2804) on each
-  # build; the quench at the forge, in the steam at the barrel and as the blank is looked over, and
-  # with every place filled at the forge (the head over h1 and h2) and at the barrel (the boots over
-  # g3), the overlaps docs/page.md accepts; the bellows pressed, with the greatsword on the anvil and
-  # with the arming sword and the shield on the wall
+  # build; the quench at its stop of the patrol (pt=, the stop beginning 16.8 s in: 12 s at the
+  # anvil and the walk to the forge), at the forge, in the steam at the barrel and as the blank is
+  # looked over, and with every place filled at the forge (the head over h1 and h2, the boot's toe
+  # at g3's left end) and at the barrel, the overlaps docs/page.md accepts; the bellows pressed, with
+  # the greatsword on the anvil and with the arming sword and the shield on the wall
   "update-strike|bar=0&t=2804&on=update"
   "bd-b-update-strike|bar=0&t=2804&on=update&bd=b"
   "bd-c-update-strike|bar=0&t=2804&on=update&bd=c"
-  "is-smithy-forge|bar=0&t=600&is=smithy&$PI"
-  "is-smithy-steam|bar=0&t=5950&is=smithy&$PI"
-  "is-smithy-look|bar=0&t=8800&is=smithy&$PI"
-  "is-smithy-forge-devices|bar=0&t=600&is=smithy&dv=pi,camera,camera,camera,machine,vm,machine"
-  "is-smithy-barrel-devices|bar=0&t=6600&is=smithy&dv=pi,camera,camera,camera,machine,vm,machine"
+  "is-smithy-forge|bar=0&t=600&is=smithy&pt=17400&$PI"
+  "is-smithy-steam|bar=0&t=5950&is=smithy&pt=22750&$PI"
+  "is-smithy-look|bar=0&t=8800&is=smithy&pt=25600&$PI"
+  "is-smithy-forge-devices|bar=0&t=600&is=smithy&pt=17400&dv=pi,camera,camera,camera,machine,vm,machine"
+  "is-smithy-barrel-devices|bar=0&t=6600&is=smithy&pt=23400&dv=pi,camera,camera,camera,machine,vm,machine"
+  # the patrol (pt=, how long it has been going): walking between stops on the battlement, at the
+  # camp's second stop, and in the yard walking from the dummy; the television while something
+  # streams, the knight watching it in each quiet scene with a set of its own (pt=3000, after the
+  # walk to it) and the set behind the cellar's crates and at court; a stream at night, the knight
+  # asleep in the house with the set's light over the dark room; and the devices at rest, up and
+  # down, every ground place full, with the places outlined; and the goblin and the crate in front
+  # of the set while something streams
+  "patrol-battlement-walk|bar=0&t=2300&is=battlement&pt=17200&$LAB"
+  "patrol-camp-look|bar=0&t=2300&is=camp&pt=22000"
+  "patrol-yard-walk|bar=0&t=2300&is=yard&pt=23000&$LAB"
+  "patrol-house-yawn|bar=0&t=4300&is=house&pt=20000&$PI_MIX"
+  "tv-battlement|bar=0&t=2300&is=battlement&on=plex&pt=3000&$LAB"
+  "tv-camp|bar=0&t=2300&is=camp&on=plex&pt=3000"
+  "tv-yard|bar=0&t=2300&is=yard&on=plex&pt=3000&$LAB"
+  "tv-smithy|bar=0&t=2300&is=smithy&on=plex&pt=3000&$PI_MIX"
+  "tv-house|bar=0&t=2300&is=house&on=plex&pt=3000"
+  "tv-battlement-walk|bar=0&t=2300&is=battlement&on=plex&pt=31700"
+  "tv-cellar|bar=0&t=2300&on=disk,plex"
+  "tv-court|bar=0&t=3450&on=ssh,plex"
+  "tv-camp-goblin|bar=0&t=1300&is=camp&on=plex&e=goblin"
+  "tv-camp-goblin-bonk|bar=0&t=1661&is=camp&on=plex&e=goblin"
+  "tv-battlement-goblin|bar=0&t=1300&is=battlement&on=plex&e=goblin"
+  "tv-camp-crate|bar=0&t=3000&is=camp&on=plex&e=crate"
+  "tv-yard-crate|bar=0&t=3000&is=yard&on=plex&e=crate"
+  "night-tv|bar=0&t=2300&on=plex,night&$PI"
+  "night-tv-dim|bar=0&t=9100&on=plex,night&$PI"
+  "rest-camp-up|bar=0&t=2300&is=camp&dv=pi,camera,machine,vm,box"
+  "rest-camp-down|bar=0&t=2300&is=camp&dv=pi,camera,machine-,vm-,box-"
+  "rest-yard-places|bar=0&t=2300&is=yard&pl=1&dv=pi,camera,machine,vm,box"
+  "rest-smithy-down|bar=0&t=2300&is=smithy&dv=pi,camera,box-,vm-,machine-"
   "cpu-smithy|bar=0&t=240&on=cpu&sc=cpu_hot:smithy"
   "arm-cpu-smithy|bar=0&t=240&on=cpu&sc=cpu_hot:smithy&arm=one"
   # the builds Broad (bd=b) and Slim (bd=c), each in turn: every scene with the knight standing, the
@@ -372,14 +403,14 @@ SHOTS=(
   "cat-ginger-cellar|bar=0&t=2300&on=disk&pc=ginger"
   "cat-ginger-smithy|bar=0&t=1250&on=update&pc=ginger"
   "cat-ginger-court|bar=0&t=3450&on=ssh&pc=ginger"
-  "cat-house-notice|bar=0&t=800&on=plex&f=1&fa=0"
-  "cat-house-alert|bar=0&t=12500&on=plex&f=1"
-  "cat-house-stalk|bar=0&t=14500&on=plex&f=1"
-  "cat-house-pounce|bar=0&t=15870&on=plex&f=1"
-  "cat-house-poof|bar=0&t=15990&on=plex&f=1"
-  "cat-house-pleased|bar=0&t=17200&on=plex&f=1"
-  "cat-house-walk|bar=0&t=19500&on=plex&f=1"
-  "cat-house-pounce-ginger|bar=0&t=15870&on=plex&f=1&pc=ginger"
+  "cat-house-notice|bar=0&t=800&on=plex&is=house&f=1&fa=0"
+  "cat-house-alert|bar=0&t=12500&on=plex&is=house&f=1"
+  "cat-house-stalk|bar=0&t=14500&on=plex&is=house&f=1"
+  "cat-house-pounce|bar=0&t=15870&on=plex&is=house&f=1"
+  "cat-house-poof|bar=0&t=15990&on=plex&is=house&f=1"
+  "cat-house-pleased|bar=0&t=17200&on=plex&is=house&f=1"
+  "cat-house-walk|bar=0&t=19500&on=plex&is=house&f=1"
+  "cat-house-pounce-ginger|bar=0&t=15870&on=plex&is=house&f=1&pc=ginger"
   "cat-night-pounce|bar=0&t=15870&on=night&f=1"
   "cat-smithy-pounce|bar=0&t=15870&on=update&f=1"
   "cat-court-pounce|bar=0&t=15870&on=ssh&f=1"

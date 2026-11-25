@@ -66,8 +66,9 @@ test('the kinds the page draws, and a kind it does not know drawn as the plain b
 });
 
 /* The box each kind fits in from the base, x0, y0, x1, y1, x1 and y1 exclusive: the owl 80 by 64,
-   as the high class has always held it, the rest the ground class's box, as pack.js's CLASS_BOX. */
-const CLASS = { camera: [-40, -64, 41, 2], machine: [-66, -93, 56, 2], vm: [-66, -93, 56, 2], box: [-66, -93, 56, 2] };
+   as the high class has always held it, the rest the ground class's box of format 1.4, as pack.js's
+   CLASS_BOX_14, tall enough for the crystal on its stool. */
+const CLASS = { camera: [-40, -64, 41, 2], machine: [-66, -117, 56, 2], vm: [-66, -117, 56, 2], box: [-66, -117, 56, 2] };
 
 test('each new kind fits within its class box above its base, up and gone: the owl the high class\'s, the rest the ground class\'s', () => {
   const { P, take } = load();

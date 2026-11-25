@@ -243,7 +243,9 @@ for twelve minutes. The entry lists the machine in `machines`. Only the sections
   collector's must agree to well within three intervals. A display whose clock runs far ahead
   shows "no signal" over a healthy collector.
 - **`conditions`** lists what is true now, highest priority first. The page acts on the first and
-  counts the rest. An empty list means all is quiet.
+  counts the rest. An empty list means all is quiet. One exception: while `streaming` is first and
+  `night` is also in the list, the page acts `night` (the knight asleep in the house, the
+  television playing) and still shows the stream's headline and detail.
   - `id` is one of: `attack`, `wan_down`, `container_unhealthy`, `disk_full`, `backup_overdue`,
     `pi_silent`, `device_down`, `cpu_hot`, `ssh_session`, `updating`, `streaming`, `night`; or
     `check:<name>` for a generic check of `[[sources.json]]` that holds, `<name>` 1 to 20 of

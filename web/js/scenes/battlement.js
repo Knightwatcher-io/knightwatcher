@@ -66,15 +66,20 @@
     spot: 92, places: PLACES, outdoors: true,
     // The conditions this scene can act out (docs/page.md): the attack with the weapon raised, the
     // WAN's cut rope, which only it has, hunger, the stare at the empty dish to the knight's right,
-    // and running hot; and, as a quiet scene, a device down and memory running tight. Kept as plain
-    // data for the world format being drafted to take over.
-    can: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight'],
+    // and running hot; and, as a quiet scene, a device down, memory running tight and a stream on the
+    // television. Kept as plain data for the world format being drafted to take over.
+    can: ['attack', 'wan_down', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming'],
     // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
     hosts: ['flies', 'crate', 'feast', 'foe'],
-    rounds: [{ x: 92, act: 'guard', dur: 18 }, { x: 88, act: 'look', dur: 16 }, { x: 96, act: 'sniff', dur: 12 }],
+    // the stops of the knight's patrol (docs/page.md): on guard at the spot, a sniff of the air at the
+    // right, a look out at the left
+    rounds: [{ x: 92, act: 'guard', dur: 16 }, { x: 120, act: 'sniff', dur: 12 }, { x: 88, act: 'look', dur: 14 }],
+    // where the television stands while something streams (docs/scenes.md): its middle, what it
+    // stands on, and where the knight watches it from, in units of U as the spot
+    tv: { x: 255, stand: 'table', watch: 80 },
     key: s => s.w.id === 'wan_down' ? 'wan' : '', paint, draw, wallAt, foeZone: FOE_ZONE,
     // where the crate may land (docs/scenes.md): the stretch of walkway between the device at the left
-    // edge and the knight's boots at its leftmost spot
+    // edge and the knight's boots at the spot
     crate: { span: [150, 384] }
   };
 })(window.KW);

@@ -11,9 +11,11 @@ when it is short of memory, takes to bed when a container is unhealthy, and swat
 every scene and catches the flies the knight cannot: indoors, and outdoors while the knight is
 busy. A headline says why, beside a wall clock.
 
-The scene is a night in the knight's world. When all is quiet the knight stands on the
-battlement, by the camp fire, in the house or in the training yard, and strolls to another spot
-every 12 to 22 seconds, or quenches a blade in the smithy. A fault changes the scene to one that
+The scene is a night in the knight's world. When all is quiet the knight patrols the battlement,
+the camp, the house, the training yard or the smithy, walking between two or three stops and
+spending 12 to 22 seconds at each: on guard, looking round, training at the dummy, quenching a
+blade. While something streams, a television stands in whichever scene is showing and the knight
+stops by now and then to watch it. A fault changes the scene to one that
 suits it: the cellar for a full disk, the smithy's anvil during an update, the royal court while
 someone has a shell open. The text
 colour carries the status, green when quiet, amber for a warning, red when critical and blue

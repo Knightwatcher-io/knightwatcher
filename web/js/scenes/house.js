@@ -160,9 +160,14 @@
     if (s.helmOff) K.rest.draw('helmet', RESTS.stool.x, RESTS.stool.y);
   }
 
-  /* At night the engine dims the screen, and the sleeper's Zs rise from the bed over it. */
+  /* At night the engine dims the screen, and the sleeper's Zs rise from the bed over it. With the
+     television on, its light plays softly over the dark room, waxing and waning slowly: a wide pool
+     in the picture's blue round the set, four faint lights one inside the other so that it fades
+     out without an edge, and a smaller one on the bed on a clock of its own. */
+  const GLIMMER = [[764, 396, 460, '#7fb0ff', .012, .006, 1300, 0], [764, 396, 350, '#7fb0ff', .014, .007, 1300, 0], [764, 396, 250, '#7fb0ff', .016, .008, 1300, 0], [764, 396, 160, '#7fb0ff', .018, .009, 1300, 0], [258, 420, 230, '#9fb8ff', .014, .007, 1700, 2.625], [258, 420, 150, '#9fb8ff', .016, .008, 1700, 2.625]];
   function over(t, s) {
     if (s.w.id !== 'night') return;
+    if (s.tv) for (const [x, y, r, c, a, amp, div, ph] of GLIMMER) E.flicker.draw({ p: [x, y], r, colour: c, a, amp, div, ph }, t);
     for (let i = 0; i < 3; i++) {
       const ph = ((t / 2600) + i / 3) % 1;
       alpha(ph > .8 ? (1 - ph) * 5 : 1); SP.zed(150 + ph * 110, 270 - ph * 140, Math.round(16 + ph * 16)); alpha(1);
@@ -184,14 +189,18 @@
   KW.scenes.house = {
     spot: 114, places: PLACES, rests: RESTS, bed: true, helmet: false, sword: false,
     // The conditions this scene can act out (docs/page.md): sick in bed and asleep at night, which
-    // need the bed, the television, which only it has, hunger, the stare at the empty dish to the
-    // knight's right, and running hot; and, as a quiet scene, a device down and memory running
-    // tight. Not the attack: the weapon is put away here. Kept as plain data for the world format
-    // being drafted to take over.
+    // need the bed, hunger, the stare at the empty dish to the knight's right, and running hot; and,
+    // as a quiet scene, a device down, memory running tight and a stream on the television, which
+    // stands here on its own table. Not the attack: the weapon is put away here. Kept as plain data
+    // for the world format being drafted to take over.
     can: ['container_unhealthy', 'backup_overdue', 'pi_silent', 'device_down', 'cpu_hot', 'memory_tight', 'streaming', 'night'],
     // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
     hosts: ['feast'],
-    rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 108, act: 'yawn', dur: 14 }, { x: 111, act: 'look', dur: 14 }],
+    // the stops of the knight's patrol (docs/page.md): a sniff by the table, a yawn by the stool
+    rounds: [{ x: 114, act: 'sniff', dur: 16 }, { x: 98, act: 'yawn', dur: 14 }],
+    // where the television stands (docs/scenes.md): the house draws its own set on its table (its
+    // screen), so the engine draws none, and the knight watches it from beside the table
+    tv: { x: 771, stand: 'none', watch: 112 },
     key: s => (s.tv ? 'tv' : '') + '|' + K.rest.key('main') + offKey(), paint, draw, over
   };
 })(window.KW);

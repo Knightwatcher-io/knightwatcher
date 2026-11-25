@@ -279,8 +279,9 @@ lacks.
 
 ## The devices
 
-A prop set is `{ name, kinds }`, `name` 1 to 48 characters and `kinds` giving one or more of `pi`,
-`camera`, `machine`, `vm` and `box`. A kind has `name` (1 to 48 characters), `mark` (1 to 160) and
+A prop set is `{ name, kinds, tv }`, `name` 1 to 48 characters, `kinds` giving one or more of `pi`,
+`camera`, `machine`, `vm` and `box`, and, in format 1.4, an optional `tv`, its television
+([The television](#the-television)). A kind has `name` (1 to 48 characters), `mark` (1 to 184) and
 the two states `up` and `gone`, each `{ still, moving, lamp }` with `still` required and each of
 `still` and `moving` 1 to 128 shapes. A state with no `lamp` shows no light, as every medieval
 kind does when down. A lamp is a pair, where the engine draws its own
@@ -293,7 +294,8 @@ is down and keeps a lamp blinks only red in any world. The medieval world gives 
 while down, so its devices are unlit when down and the question mark carries the alert.
 
 At `rules` every drawing of a kind, in both states and both parts, lies inside its class box (the
-pie's for `pi`, the high one for `camera`, the ground one for the rest), worked out from each shape's
+pie's for `pi`, the high one for `camera`, the ground one for the rest, 24 taller in format 1.4,
+[scenes.md](./scenes.md#the-fields-of-a-scene)), worked out from each shape's
 extent at the ends of its values: a stamp by its shapes, a lamp by its box (12 by 12 for the
 engine's), an effect by its point alone, and a glow not at all, as the class boxes were measured. A
 strip whose ends and widths are all fixed, as every value of a prop is, is measured by the pixels
@@ -334,9 +336,10 @@ no light: every medieval kind while down.
   loop's level, then the dark canvas, then the lit canvas at the loop's level. The two drawings must
   lie inside `box` around `at`, or the kind is refused. The pie's lamp up is the filling in the gaps
   of its lattice, 398 pixels over 56 by 23, at `[1, -30]` in a box of 56 by 26, red with the light
-  `#ff4a3d`. The crystal's is its ball, at `[0, -67]` in a box of 50 by 50, light `#cde4ff`; the
-  flask's its potion, at `[0, -13]` in a box of 34 by 22, light `#6fb4ff`; the owl's its eyes,
-  light `#ffb000`; and the chest's its jewel, at `[0, -39]` in a box of 20 by 20, light `#ffb000`.
+  `#ff4a3d`. The crystal's is its ball, at `[0, -91]` on its stool in a box of 50 by 50, light
+  `#cde4ff`; the flask's its potion, at `[18, -13]` beside the satchel in a box of 34 by 22, light
+  `#6fb4ff`; the owl's its eyes, light `#ffb000`; and the chest's its jewel, at `[0, -44]` on its mat
+  in a box of 20 by 20, light `#ffb000`.
   Both drawings of each cover the same pixels, so the lit canvas is the lit drawing alone, and the
   dark drawing is a dimmer colour of the same hue, so that at the low point of the pulse the lamp
   still reads as lit. The lamps' stamps hold 9 760 pixels in all.
@@ -350,7 +353,11 @@ that a prop cannot name. An effect's points are moved to the base like the other
 counted from the base, in the order the code draws. The owl, the crystal, the flask and the chest
 are written out by recording the calls of `cameraHD`, `machineHD`, `vmHD` and `boxHD` from a base at
 (0, 0), so each shape is one call of the code; their lamps of their own are written from the maps in
-`DEVICE_LAMPS`. Their numbers are all eighths: the owl's feathers have radii of 1.25, which at a
+`DEVICE_LAMPS`. Since `kw.medieval` 0.10.0 the crystal, the flask and the chest carry their rests in
+their still parts ([page.md](./page.md#devices)): the stool, the satchel, the mat and the shadows
+written by recording `stoolHD`, `satchelHD`, `matHD` and `shadowHD` from the same base, the device's
+own shapes moved by the rest's offsets (the crystal 24 up, the flask 18 right, the chest 5 up), and
+the fallen crystal's stand and shards moved up onto the stool, its ball left on the floor. Their numbers are all eighths: the owl's feathers have radii of 1.25, which at a
 whole centre fill the pixels a radius of 1.2 would, and each number of the crystal, the flask and
 the chest at their sizes is an eighth that fills the same pixels as the size's own value. Five
 things needed more than that:
@@ -384,4 +391,36 @@ owner chose the redesign: the cauldron gave way to the scrying crystal, the crys
 were drawn at twice their size and the flask at 1.4 times, the ground class's box grew from
 `[-36, -58, 41, 2]` to `[-66, -93, 56, 2]` and a ground place from 88 to 132 wide, and the lights
 took colours of their own, none green. The chest's `mark` is 158, past the 128 a mark could be,
-so a mark may now be up to 160.
+so a mark may now be up to 160. On 25 November 2026 the owner gave each ground device a resting
+place (the stool, the satchel, the mat) and a shadow; the stool raised the crystal past the ground
+box, so format 1.4 grew it to `[-66, -117, 56, 2]`, and the chest on its mat raised its `mark` to
+163, so a mark may be up to 184.
+
+## The television
+
+A prop set of format 1.4 may give `tv`, the television the engine stands in a scene while something
+streams ([page.md](./page.md#the-television)): `{ name, still, moving, stands }`. `still` is the set
+drawn from the middle of its foot, 1 to 128 shapes, and `moving`, optional, its picture, drawn each
+frame; `stands` gives both `table` and `crate`, each `{ h, still }`: its drawing from the middle of
+its foot on the floor, and `h`, a whole number from 0 to 120, how high above the floor it holds the
+set's foot. At `rules` the set on each stand, and the stand, lie inside the television's box,
+`[-56, -176, 56, 2]` from the middle of the stand's foot, as a kind lies inside its class box; at
+`counts` the set and each stand together cost no more than a kind's still part may (4 000 fills),
+and the picture no more than its moving part (600). The medieval world's costs 590 fills on its
+table and 121 for its picture.
+
+`KW.tv` is the television the engine draws, with the interface of `KW.props.TV`: `draw(x, y, t,
+stand, part)` draws it with the middle of the stand's foot at `(x, y)`, the stand and the set on it
+in the still part and the picture in the moving part. `start` compiles the medieval prop set's into
+the base world's (`KW.world.tv.source` says `pack` or `code`), and `KW.world.useKinds()` puts in
+`KW.tv` the television of the prop set most of the kinds are chosen from, or the base world's where
+that set gives none, which is no fault. A television that fails to compile or throws while drawing
+gives way to the code's, as a kind does.
+
+The medieval world's is the house's set, written by recording `tvSetHD`, `tvTableHD` and
+`tvCrateHD` in `props.js` from (0, 0): a wooden set with two dials and a grille, a rounded screen and
+a pair of rabbit ears; a small table 104 by 60, its grain where `tableHD` puts it on a table at x 0;
+and a crate of slats 104 by 30 with its shadow. Its picture is the effect `picture`
+([scenes.md](./scenes.md#the-effects)), the house's six colours changing every 400 ms and a figure
+crossing it every 700 ms. The house draws its own set on its table, as its `screen`, and stands
+none.

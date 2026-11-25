@@ -1,6 +1,6 @@
 # Scenes as data
 
-For anyone making a world pack: a scene of format 1.1 as data, with the parts format 1.3 adds. It gives the shapes, coordinates
+For anyone making a world pack: a scene of format 1.1 as data, with the parts formats 1.3 and 1.4 add. It gives the shapes, coordinates
 and terms the world sections share, the fields of a scene, how the page compiles a scene and acts
 it out, and how the medieval world's scenes were written from their code. The sections of format
 1.1, its costs and limits, and the presets that name scenes are in [worlds.md](./worlds.md); the
@@ -85,7 +85,7 @@ Nothing else may lean on a named value: stamps, the cast and props are drawn at 
 rig's named values (`drop`, `dShoulder` and the rest) are refused in every 1.1 section.
 
 **Effects.** `fx` is one of `sky`, `stars`, `ridge`, `bricks`, `pines`, `tree`, `arch`, `shelf`,
-`stacks`, `tufts`, `pebbles`, `planks`, `rafters`, `horseshoe`, `hood`, `flame`, `candle`, `twinkle`, `drift`, `wander`, `coals`, `steam`, `flutes`, `crust`, `fingers`, `fringe`, `flicker` and `burst`, and the other
+`stacks`, `tufts`, `pebbles`, `planks`, `rafters`, `horseshoe`, `hood`, `flame`, `candle`, `twinkle`, `drift`, `wander`, `coals`, `steam`, `flutes`, `crust`, `fingers`, `fringe`, `flicker`, `picture` and `burst`, and the other
 fields of an `fx` shape are the fields of that effect's table in `effects.js`
 ([page.md](./page.md#the-effects) lists them): a field the table lacks is refused, one without a
 default is required, and each holds a value of its kind in its range. A point, an offset or a length
@@ -109,7 +109,7 @@ loaded`).
 |---|---|
 | `name` | 1 to 32 characters |
 | `spot` | where the watcher stands, in units of 5 pixels, a whole number from 30 to 162 |
-| `rounds` | 1 to 6 `{ x, act, dur }`: `x` as `spot`, `act` one of `guard`, `look`, `sniff`, `yawn`, `train`, `dur` 2 to 120 seconds, whole |
+| `rounds` | 1 to 6 `{ x, act, dur }`, the stops of the watcher's patrol: `x` as `spot`, `act` one of `guard`, `look`, `sniff`, `yawn`, `train`, and from format 1.4 `quench` (one loop of the scene's quench), `dur` 2 to 120 seconds, whole |
 | `quiet` | `true` or `false` |
 | `can` | condition ids of the contract, each once |
 | `hosts` | each of `flies`, `crate`, `feast`, `foe` at most once |
@@ -119,7 +119,8 @@ loaded`).
 | `things` | the seven places for devices |
 | `rests`, `decor` | optional: places for gear at rest and for decorations |
 | `bed`, `screen`, `seat`, `anvil`, `target` | optional: the parts an act needs |
-| `quench`, `bellows` | optional, format 1.3 alone: the parts of the smith's quiet act and of the CPU running hot ([worlds.md](./worlds.md#format-13)) |
+| `quench`, `bellows` | optional, format 1.3 and later: the parts of the smith's quiet act and of the CPU running hot ([worlds.md](./worlds.md#format-13)) |
+| `tv` | optional, format 1.4 alone: where the television stands while something streams, `{ x, stand, watch }` (below) |
 | `foe` | optional: where a foe may stand |
 | `pole` | optional: 1 to 16 shapes |
 | `sound`, `companion` | reserved: an object or absent, never read |
@@ -168,13 +169,17 @@ the pie's place and a high place 88 by 112. At `rules` each place's class box, m
 must lie on the 960 by 600 grid, no two may overlap (touching is allowed), a high place's base must
 be at y 300 or lower and a ground place's from 500 to 598. The class boxes, from the base, measured
 on the medieval world's drawings (the ground class on the scrying crystal and the chest, its two
-largest):
+largest; in format 1.4 on the crystal standing on its stool):
 
 | Class | x | y |
 |---|---|---|
 | `pie` | -46 to 45 | -107 to 33 |
 | `high` | -34 to 32 | -64 to 0 |
-| `ground` | -66 to 56 | -93 to 2 |
+| `ground`, formats 1.0 to 1.3 | -66 to 56 | -93 to 2 |
+| `ground`, format 1.4 | -66 to 56 | -117 to 2 |
+
+A pack of 1.3 or before keeps the shorter ground box, so that a world whose places only just clear
+it is not refused.
 
 `rests` holds up to 8: a place `{ kind, x, y, w, h }` (`w` and `h` 1 to 240) for a rest view, or a
 frame `{ x, y, a }` for the weapon, `a` being `upright`, `flat` or a number of radians from -3.142 to
@@ -202,7 +207,8 @@ optional `wall` `{ period, offset, high: [width, y], low }`: `period` from 2 to 
 `0 <= from`, `to <= 960` and `to - from >= 60`, the crate's width. The engine lands the crate's
 middle at `clamp(kx - 160, from + 30, to - 30)`, `kx` the watcher's x, so as near 160 left of the
 watcher as the stretch allows. At `rules` the span must lie clear of the class boxes of the pie's
-place and the ground places (touching is allowed). A target has no `aim` field in any format: a shot
+place and the ground places (touching is allowed). While the television stands in the scene the
+crate lands as ever, in front of the set ([page.md](./page.md#the-television)). A target has no `aim` field in any format: a shot
 aims at the middle of the target group's box (The target's act, below).
 
 **What a scene can act.** At `rules` a scene that lists a condition in `can` must meet its needs:
@@ -215,12 +221,23 @@ aims at the middle of the target group's box (The target's act, below).
 | `disk_full` | rounds at two different spots |
 | `pi_silent` | the pie's place right of the spot (`x` greater than `spot` times 5) |
 | `device_down`, `memory_tight` | `quiet` `true` |
+| `streaming`, format 1.4 | `quiet` `true`, and a `screen` or a `tv` |
 | `ssh_session` | `seat` |
 | `updating` | `anvil`, whose rest is a frame for the weapon |
-| `streaming` | `screen` |
+| `streaming`, formats 1.1 to 1.3 | `screen` |
 | `backup_overdue`, `cpu_hot` | nothing |
 
-A scene that hosts `foe` needs a `foe` zone, and one that hosts `crate` needs a `crate` span.
+A scene that hosts `foe` needs a `foe` zone, and one that hosts `crate` needs a `crate` span. A
+round whose act is `quench` needs the scene's `quench`.
+
+**The television** (format 1.4). `tv` is `{ x, stand, watch }`: `x` the middle of the stand's foot
+on the grid, a whole number from 0 to 960; `stand` `table` or `crate`, the stand the engine sets the
+prop set's television on, or `none` where the scene draws its own set, as the house's `screen`;
+and `watch`, optional, where the watcher stands to watch it, as `spot`. Without `watch` the watcher
+never goes to the set, as in the cellar and the court, which are not quiet scenes. At `rules` a
+set on a stand keeps its box, `[-56, -176, 56, 2]` from `(x, 530)`, on the grid and clear of every
+place's class box, and of the watcher's boots, 52 either side, at the spot and at `watch`. The
+medieval world's are in [page.md](./page.md#the-patrol).
 
 ## The effects
 
@@ -270,7 +287,8 @@ the shipped packs does ([page.md](./page.md#the-acts-with-a-weapon-that-fires)).
 | `steam` | `p`, `n` (3), `gap` (14), `period` (1800), `sway` ([7, 5]), `rise` (46), `r` ([4, 7]), `a` (0.8), `colour` | an ell a puff | the pie, while up |
 | `flutes` | `p`, `n` (6), `top` (5.3), `bottom` (4.5), `h` (18), `hw` (0.6), `of` (1 to 33, one a groove from the left) | a strip a groove | the pie's dish, up and down: the grooves stand at fractions of a pixel a pack's eighths cannot give |
 | `crust` | `p`, `rim` ([38, 9]), `dome` ([32, 21]), `crimp` (35), `crust` (four colours), `filling` (three), `colour` (K) | a fill a pixel of its top, painted in one pass, and three a crimp | the pie's top, while up: 83 pixels across, wider than a pix shape may be |
-| `flicker` | `p`, `r`, `colour`, `a`, `amp`, `div`, `ph` (0) | a glow | the court as data, each torch's light: a glow's alpha in a pack takes a wave of a fixed phase alone, and the court's torches each flicker from their pillar's x; `court.js` keeps its own loop |
+| `flicker` | `p`, `r`, `colour`, `a`, `amp`, `div`, `ph` (0) | a glow | the court as data, each torch's light: a glow's alpha in a pack takes a wave of a fixed phase alone, and the court's torches each flicker from their pillar's x; `court.js` keeps its own loop. The house's light of the television at night |
+| `picture` | `p`, `of` (the house's six colours), `ms` (400), `walk` ([700, 6]) | a glow, two rrects, an ell, the figure's rrect, ell and two fills, 12 scan lines and a highlight | the medieval prop set's television: its picture, 58 by 50 from `p`, one colour of `of` at a time, the next every `ms`, a figure crossing it 6 pixels every `walk[0]` ms over `walk[1]` steps; the house's set draws its own with a palette track and a `dx` track |
 | `fringe` | `p`, `colour` | a fill a row, 25 rows | monarch C's fringe in the medieval world's cast: its lower edge turns in, so no convex polygon fills its rows alike; `court.js` keeps its own polygon |
 | `fingers` | `p`, `a` (the angle, 0 up), `reach` (9), `spread` (0.65), `r`, `colour` | an ell a finger | the goblin's hands in the medieval world's cast: the fingers stand at fractions of a pixel a pack's eighths cannot give; `props.js` keeps its own loop |
 | `burst` | `p`, `n` (7), `piece` (`spark` or `straw`), `of` | sparks: a glow and 4 a spark; straw: a strip a piece | smithy (sparks), yard (straw) |
@@ -310,6 +328,7 @@ The fields' ranges, and the defaults the table above leaves out:
 | `fingers` | `p` a point; `a` -4 to 4; `reach` 0 to 64 (9); `spread` 0 to 4 (0.65); `r` 0 to 32; `colour` a colour |
 | `fringe` | `p` a point; `colour` a colour |
 | `flicker` | `p` a point; `r` 1 to 512; `colour` a colour; `a` 0 to 1; `amp` 0 to 1; `div` 1 to 100000; `ph` a scalar, -8192 to 8192 (0) |
+| `picture` | `p` a point; `of` 1 to 8 colours (`#7fe9ff`, `#e8f0ff`, `#6f9eff`, `#ff8fb0`, `#fff3a0`, `#8fe07a`); `ms` whole, 1 to 60000 (400); `walk` [1 to 60000, 1 to 8] (700, 6) |
 | `burst` | `p` a point; `n` whole, 1 to 16 (7); `piece` one of `spark`, `straw` (`spark`); `of` 2 colours (`#ffb000`, `#fff3a0`) |
 
 ## How a scene compiles
@@ -326,7 +345,8 @@ What a compiled scene gives, from the pack's fields ([page.md](./page.md#the-sce
 | Interface | From |
 |---|---|
 | `spot`, `can`, `hosts` | the same fields |
-| `rounds` | the same field, but in a scene with an `anvil` or a `seat`, below |
+| `rounds` | the same field, but in a scene with a `seat`, and before format 1.4 in a scene with an `anvil`, below |
+| `tv` | the same field |
 | `places` | `things`, each place copied as it is |
 | `rests` | `rests`, below; only when there are any |
 | `sword: false` | `"weapon": "away"` |
@@ -356,7 +376,7 @@ written: `c`, the named values `L`, `R`, `T` and `W` (the canvas's edges and wid
 from `KW.view`, `W` being `HR - HL`), inside a tile `x` and `h` (`hsh(x, seed) % mod`), and in a
 moving or over layer `wave` (`amp * Math.sin(t / div + phase)`), in a scene with a target
 `targetDx` (the pixels the training act moves the target by), in a scene with an anvil `spot`
-(the x of the spot the watcher works the anvil from, `s.kx`) and in a scene with bellows `pump`
+(the x of the scene's spot, which the anvil counts from, `s.spot`) and in a scene with bellows `pump`
 (how far they are pressed), all below. The first key gives the value and
 each next one is added to it, so a term is written in the order the code adds: `{ "x": 1, "c": 178 }`
 for `x + 178`, `{ "c": 0.09, "wave": [0.025, 150, 0] }` for `.09 + .025 * Math.sin(t / 150)`. That
@@ -391,7 +411,8 @@ while the blank is in it (below); the mark `sleeper` is where the watcher's head
 **Rests and the rest mark.** A scene's `rests` compile to the form the code scenes give in `RESTS`:
 a frame for the weapon, `{ x, y, a }`, its angle `"upright"` as 0, `"flat"` as `Math.PI / 2` and a
 number as it is, and a place, `{ kind, x, y, w, h }`, for a rest view. A rest with `"from": "spot"`
-counts its x from where the watcher stands, `s.kx`; the interface leaves that field out, as the code
+counts its x from the scene's spot, `s.spot`, wherever the watcher has walked to; the interface
+leaves that field out, as the code
 scenes have it, and `x` is then the distance from the spot. The mark `{ "k": "rest", "slot": "main",
 "at": "anvil" }` draws the watcher's equipped gear of its slot at that rest through
 `KW.knight.rest.draw`: the weapon on the frame with its angle, the helmet or the shield in the place
@@ -512,14 +533,16 @@ the blow; the body moves by the act alone (`o.bob` 0), and a progress bar fills 
 blow's progress, from 0 to 1 over it, which is the sparks; while it does not, no triggered effect is
 drawn. The act gives the moving and over layers the named value `spot`, the watcher's x, which the
 anvil's places count from, so that the sparks fly where the hammer's face meets the blade: the
-smithy's are at `[{ "spot": 1, "c": 148 }, 412]`, the code's `[s.kx + 148, 412]`, on the
+smithy's are at `[{ "spot": 1, "c": 148 }, 412]`, the code's `[s.spot + 148, 412]`, on the
 greatsword's top edge. The anvil's `spark` is optional, reserved and not read: the sparks are the
 scene's own `burst`, in a layer that waits on `strike`, and the smithy gives none.
 
-The act holds the watcher at the anvil, so a scene with an `anvil` gives no `rounds`, as
-`smithy.js` gives none: with rounds the engine would walk the watcher between them, and the hammer
-would follow. The format asks for one round at least, so the smithy's data has one at its spot,
-guarding, which is where the act keeps the watcher.
+The anvil counts from the scene's spot, `s.spot`, not from where the watcher stands, and the
+engine walks the watcher back to the spot before the hammer plays ([page.md](./page.md#the-patrol)).
+So from format 1.4 a scene with an `anvil` gives its `rounds`, and the smithy patrols between the
+anvil and the forge, as `smithy.js` does. Before 1.4 the act held the watcher at the anvil and a
+compiled scene with an `anvil` gave no `rounds`, since the engine would have walked the hammer away
+with the watcher.
 
 **The bellows' act** (format 1.3). A scene with `bellows`, `{ stand, handle, travel, div }`, gets
 `bellows()` in `smithy.js` with its numbers in the compiler's table `BELLOWS`, while the CPU runs
@@ -538,8 +561,11 @@ without the other drifts the flare off the push. A flame's `size` is a plain num
 light pulses.
 
 **The quench** (format 1.3). A scene with a `quench`, `{ water, stand }`, gets `quench()` in
-`smithy.js` with its numbers in the compiler's table `QUENCH`, while all is quiet: a loop of 14.4
-seconds. The watcher heats a plain blank in the fire at `stand[0]` (1.0 s), steps back 80 drawing it
+`smithy.js` with its numbers in the compiler's table `QUENCH`: a loop of 14.4 seconds. In a scene
+with a round whose act is `quench` (format 1.4) it plays once at that stop of the patrol, from the
+stop's start (`s.here.el`), while all is quiet or something streams; the smithy's stop lasts 15
+seconds, the loop and a short pause at the fire. Otherwise it plays while all is quiet, on the
+scene's time. The watcher heats a plain blank in the fire at `stand[0]` (1.0 s), steps back 80 drawing it
 out (0.7 s), raises it (0.5 s), walks to the water at `stand[1]` with it held up behind (2.8 s),
 swings it down past the right and in front of the legs into the water (0.6 s), quenches it, the
 eyes shut in a burst of steam and the glow gone in 0.6 s (1.7 s), lifts it out to the left, dripping
@@ -583,8 +609,12 @@ rises and a `dy` would move all of it.
 A scene with a `screen`, `{ group, glow }`, has that group's shapes drawn only while the television
 is on (`s.tv`), whatever the layer's `when`; the house's picture is in the group `tv`, in a layer
 that waits on `tv` as well. `glow` is optional, reserved and not read: the television's light is a
-`glow` of the scene's own, in the palette track's colour. Streaming is the watcher's pose, which the
-engine sets, so the screen gives no act of its own, and nor does the bed: the house has no `act`.
+`glow` of the scene's own, in the palette track's colour. Watching is a stop of the watcher's
+patrol, which the engine plays, so the screen gives no act of its own, and nor does the bed: the
+house has no `act`. The house's over layer that waits on `cond:night` and `tv` lays the set's
+light over the dark room at night: six `flicker` glows in the picture's blues, four one inside the
+other round the set, so that the light fades out with no edge, and two on the bed, each faint
+(0.006 to 0.027 strong) and slow (a swell every 8 to 11 seconds).
 
 **The seat's act.** A scene with a `seat`, `{ x, y, bubble, turn, mouth }`, gets the court's talk,
 `draw()` in `court.js` with its numbers from the part. The patron and the watcher take turns of
@@ -607,14 +637,14 @@ settings. The patron may be another world's, by its long name: the mark draws wh
 **Each act in its own condition.** The court acts one condition and the smithy three, and a scene
 of another world may hold more than one act, as Orbit's Bridge holds a seat and an anvil and acts
 both a shell open and an update. So an act plays while its own condition is up (the seat's while
-`ssh_session` is, the anvil's while `updating` is, the bellows' while `cpu_hot` is, the quench's
-while all is quiet), and the seat's, the anvil's and the bellows' always in a scene whose `can`
+`ssh_session` is, the anvil's while `updating` is, the bellows' while `cpu_hot` is, the quench's at
+its stop, or while all is quiet in a scene without one), and the seat's, the anvil's and the bellows' always in a scene whose `can`
 lists nothing else. While the seat's act does not play the patron sits silent, mouth shut, with no
 bubble, and the watcher's mouth is its own; while the anvil's does not, `strike` never holds and the
 blade shows no hot tip; while the bellows' does not, `pump` is 0; and while the quench does not, no
 blank, steam or rings are drawn. Under strain with memory short, the bellows' act plays as ever,
 the watcher bloated. With a device down, which outranks all is quiet, the smithy plays none of its
-three: the watcher stands at its spot, clear of every place.
+three: the watcher stands where it is.
 The court plays exactly as before.
 
 **What it does not build,** it refuses by name: the scene does not compile, the reason says

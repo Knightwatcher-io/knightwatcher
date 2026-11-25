@@ -46,10 +46,10 @@ test('the test world\'s copy of format 1.2 is what its generator writes, and rea
   assert.equal(PK.read(FIRE_TEXT).step, 'signature', 'never signed');
 });
 
-test('the library reads formats 1.0 to 1.3, and refuses 1.4 at format', () => {
-  assert.deepEqual(PK.FORMAT, [1, 3]);
-  for (const f of [[1, 0], [1, 1], [1, 2], [1, 3]]) assert.equal(read(small(f, { 'main.x': SWORD })).ok, true, f.join('.'));
-  assert.deepEqual(read(small([1, 4], { 'main.x': SWORD })), { ok: false, step: 'format', reason: 'pack.format: is 1.4, newer than this engine\'s 1.3', id: 'test.fire' });
+test('the library reads formats 1.0 to 1.4, and refuses 1.5 at format', () => {
+  assert.deepEqual(PK.FORMAT, [1, 4]);
+  for (const f of [[1, 0], [1, 1], [1, 2], [1, 3], [1, 4]]) assert.equal(read(small(f, { 'main.x': SWORD })).ok, true, f.join('.'));
+  assert.deepEqual(read(small([1, 5], { 'main.x': SWORD })), { ok: false, step: 'format', reason: 'pack.format: is 1.5, newer than this engine\'s 1.4', id: 'test.fire' });
   assert.equal(read(orbit()).ok, true);
 });
 

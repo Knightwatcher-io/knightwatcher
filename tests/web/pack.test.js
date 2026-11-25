@@ -361,7 +361,7 @@ for (const [name, make] of Object.entries(POSES)) {
 const RULES = [
   // 3.11 the format
   ['format: the major version must be 1', 'format', p => { p.format = [2, 0]; }, "pack.format: is major version 2, and this engine reads major version 1"],
-  ['format: a minor version newer than the engine\'s is refused', 'format', p => { p.format = [1, 4]; }, "pack.format: is 1.4, newer than this engine's 1.3"],
+  ['format: a minor version newer than the engine\'s is refused', 'format', p => { p.format = [1, 5]; }, "pack.format: is 1.5, newer than this engine's 1.4"],
   ['format: must be two whole numbers', 'format', p => { p.format = [1]; }, "pack.format: must be [major, minor], two whole numbers"],
   ['format: must not be a string', 'format', p => { p.format = '1.0'; }, "pack.format: must be [major, minor], two whole numbers"],
   ['format: is required', 'format', p => { delete p.format; }, "pack.format: must be [major, minor], two whole numbers"],

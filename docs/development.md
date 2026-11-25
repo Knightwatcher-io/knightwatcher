@@ -245,8 +245,8 @@ the next deploy; [site/README.md](../site/README.md) says how to preview the sit
 
 After any change to a weapon, the strike, the goblin or a scene that hosts it, run the contact
 sweep as well. The page's tests hold the swung weapons to the contact standard at a few dozen spots;
-the sweep holds them to it at every spot the knight strolls over, on every build, in about four
-minutes, and exits 1 on any fault ([tests.md](./tests.md#the-contact-standard)):
+the sweep holds them to it at every spot the knight walks over on its patrol, on every build, in
+about fourteen minutes, and exits 1 on any fault ([tests.md](./tests.md#the-contact-standard)):
 
 ```bash
 tools/contact-sweep.sh /tmp/kw-contact
@@ -371,8 +371,10 @@ medieval world's pack, which moves it to format `[1, 3]` and gives the smithy it
 hammer, the bellows and the quench, was signed on 24 November; the base pack is unchanged. Version
 1.6.0 of the base pack, which redraws the hair and adds the buzzcut, and version 0.9.0 of the
 medieval world's pack, which redraws the goblin, both with the licence line naming CC BY-SA 4.0,
-carry no signature until their signing run: the old ones were taken off with
-`node tools/sign-pack.js --unsign`. A signed version is drawn from by a deployed
+were signed on 25 November. Version 0.10.0 of the medieval world's pack, which moves it to format
+`[1, 4]` for the knight's patrol, the television in every scene and the devices' resting places,
+carries no signature until its signing run: the old one was taken off with
+`node tools/sign-pack.js --unsign`; the base pack is unchanged. A signed version is drawn from by a deployed
 page and a `dev` page alike, every scene, every device and the cast it gives, with its words and its
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature

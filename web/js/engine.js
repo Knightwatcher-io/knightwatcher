@@ -9,7 +9,8 @@
      turnMs  how long each quiet scene lasts while they take turns
      devices  the devices standing in the scene's places, as KW.state.map() gives them:
              { place, kind, ok, alert }, place naming one of the scene's places
-     tv      whether the television in the house is on
+     tv      whether the television is on: the house's on its table, and the set every other scene
+             with a tv part stands while something streams
      helmet  'auto' (off indoors), 'on' or 'off'
      patron  the patron at court, the monarch: { id, skin, hair, robe }. id is 'a', 'b' or 'c',
              or another world's patron by its long name, 'a' when it is left out; skin is { id, face, cheek } from one of the base pack's skin
@@ -63,13 +64,22 @@
     return sc && Array.isArray(sc.hosts) ? sc.hosts.includes(hostOf(type)) : EVENTS[type].where.includes(name);
   }
 
-  let main = null, kx = 96 * U, ev = null, curScene = '', fadeAt = -1e9, sceneT0 = 0, round = { i: 0, arr: 0 };
+  let main = null, kx = 96 * U, ev = null, curScene = '', fadeAt = -1e9, sceneT0 = 0, pat = null;
   const flies = []; let swat = null, lastSwat = -1e9, pendingFlies = 0;
   // the pet's catches, in the order its flies came, the time it is free again after the last, and
   // the flies leaving the scene under a warning
   const catches = [], leaving = []; let petFree = -1e9;
   const bgCache = { key: '', changes: 0, cv: document.createElement('canvas') };
 
+  /* The condition the knight acts: the winning one, w, but night while something streams at night,
+     which the state file marks on streaming (w.night, KW.state.map): the knight sleeps in the house
+     with the television playing, and the headline still shows the stream. */
+  function actedOf(w) {
+    if (!w || w.id !== 'streaming' || !w.night) return w;
+    const n = KW.state.CONDITIONS.night;
+    return Object.assign({}, w, { id: 'night', lv: n.lv, scene: n.scene });
+  }
+  const acted = () => actedOf(E.input.w);
   /* The scene the winning condition w plays in at t: the one the input's scenes chose for it,
      when that scene can act it, else the condition's own in the world in use (the input's homes),
      else its own in code (w.scene), else the quiet scene of the moment. */
@@ -107,7 +117,7 @@
     return { side, r: 130 + (h % 110), th: .35 + ((h >> 5) % 100) / 100 * 1.1, ph: (h >> 9) % 7, born: t, dead: 0, h };
   };
   function addFly(t) {
-    const w = E.input.w;
+    const w = acted();
     if (w.lv >= 3) return;
     // the scene on screen, or before the first frame the one the input gives
     const name = curScene || sceneOf(w, frozen() ? KW.hooks.t : t), sc = KW.scenes[name], pet = petNow(), spot = pet && sc ? spotOf(pet, name, sc, w) : null;
@@ -265,23 +275,151 @@
     const segs = []; if (live.some(f => f.side > 0)) segs.push(1); if (live.some(f => f.side < 0)) segs.push(-1);
     swat = { t0: frozen() ? 0 : t, segs };
   }
-  /* Stroll to the next spot, stand there a while doing what the spot is for, move on. The walk
-     moves the knight a step each frame, so with time frozen the knight stays where they are, in
-     mid-stride. With a weapon that fires, the spot for training stands PRACTICE short of
-     the scene's target instead (practiceX, below). */
-  function stroll(list, t, o, busy, sc) {
-    const st = list[round.i % list.length], px = st.act === 'train' ? practiceX(sc) : null, dx = (px === null ? st.x * U : px) - kx;
-    if (busy) return null;
-    if (Math.abs(dx) > 2) { if (!frozen()) kx += Math.sign(dx) * 1.5; o.walk = true; round.arr = 0; return null; }
-    if (!round.arr) round.arr = frozen() ? 1 : t;
-    const el = Math.max(0, t - round.arr); if (el > st.dur * 1000) { round.i++; round.arr = 0; }
-    return { act: st.act, el };
+  /* ---- The patrol ------------------------------------------------------------------------------
+     In a quiet scene the knight patrols between the scene's stops (its rounds): walks to one, stands
+     there for its dur doing what it is for (guard, look, sniff, yawn, train at the target, quench at
+     the forge), walks on to the next, and round again. While something streams in a scene whose
+     television has a place to watch it from (sc.tv.watch) the knight walks to the set at once, from
+     the stop it is at, watches it for VISIT.watch ms, and patrols on; it comes back after the first
+     stop that ends VISIT.gap ms or more after the last visit ended. The disk full carries its crate
+     between the cellar's stops the same way.
+
+     The plan is a list of legs, each a walk { k: 'walk', x0, x1, t0, t1, n } or a stop { k: 'stop',
+     x, t0, t1, act, i }, worked out from the time and the knight's x when it is made, so the knight's
+     place is a function of the time since then and the same at any frame rate. It is made again
+     when the scene changes (from its first stop), when the mode changes and when a pause ends:
+       quiet   all is quiet, or the disk is full: the stops
+       stream  something streams: the stops and the visits to the set
+       hold    anything else, and the knight in bed: the knight stays where it stands, a walk in
+               progress stopping with its feet together; a condition whose act needs a place of its
+               own walks there first (holdAt), as the anvil's hammer and the training at the target
+       pause   an event or the swat: the knight stays where it stands, and the plan is made again
+               from there when it ends
+     A plan made again carries on to the stop the knight was at or heading for, and plays it in full;
+     a visit to the set that was cut short is taken up again. With time frozen (t=) the first plan
+     starts KW.hooks.pt ms before the frozen time, so that a screenshot can show any moment of it.
+
+     The walk is a side-step, since the knight always faces out of the screen: the foot on the side
+     of travel lifts and steps out, then the other lifts and follows it in, so that a boot on the
+     ground never slides (gaitAt, on the pose as o.gait, docs/rig.md). Each step moves the body
+     GAIT.stride px in GAIT.step ms, about 47 px a second; the foot that moves travels twice that,
+     eased, lifted up to GAIT.lift on an arc, and each hip follows its foot by GAIT.hip. The body sinks
+     GAIT.drop as each foot lands and rises over the step, leans GAIT.lean into the walk and looks
+     ahead. A walk is a whole number of pairs of steps, so the feet close together as it ends. */
+  const GAIT = Object.freeze({ step: 300, stride: 14, lift: 7, hip: .5, drop: 2, lean: 2 });
+  /* The visits to the set: how long each lasts, the least time from the end of one to the end of
+     the stop after which the next begins, and the happy blink every blink ms, from happy[0] to
+     happy[1] of it. */
+  const VISIT = Object.freeze({ watch: 30000, gap: 60000, blink: 9000, happy: Object.freeze([6500, 7700]) });
+  const SMOOTH = q => q * q * (3 - 2 * q);
+  /* The patrol's mode under the acted condition w in the scene sc. */
+  function patrolMode(w, sc, inBed) {
+    if (inBed || !sc.rounds || !sc.rounds.length) return 'hold';
+    if (w.id === 'idle' || w.id === 'disk_full' || w.id === 'memory_tight') return 'quiet';
+    return w.id === 'streaming' ? 'stream' : 'hold';
+  }
+  /* Where a condition's act needs the knight in the scene sc, or null where it plays wherever the
+     knight stands (or puts the knight where it wants it by s.dx, as the bellows do): the anvil's
+     hammer while updating at the spot, and running hot at the target where the training is, or
+     PRACTICE short of it with a weapon that fires. */
+  function holdAt(w, sc) {
+    if (w.id === 'updating' && sc.act) return sc.spot * U;
+    if (w.id === 'cpu_hot' && Array.isArray(sc.target)) { const px = practiceX(sc); return px === null ? sc.spot * U : px; }
+    return null;
+  }
+  /* The walk from x0 to x1 starting at t: a whole number of pairs of steps, the fewest that keep
+     each step near GAIT.stride. */
+  function walkLeg(x0, x1, t, i, tv) {
+    const n = Math.max(2, 2 * Math.round(Math.abs(x1 - x0) / (2 * GAIT.stride)));
+    return { k: 'walk', x0, x1, t0: t, t1: t + n * GAIT.step, n, i, tv: !!tv };
+  }
+  /* The knight's feet e ms into the walk leg: each foot's offset from where it would stand still and
+     its lift, each hip's share of its foot's offset, and the body's drop, lean and look. The lead
+     foot moves on the even steps and the trailing foot on the odd ones, each by two strides. */
+  function gaitAt(leg, e) {
+    const dir = Math.sign(leg.x1 - leg.x0) || 1, n = leg.n, s = Math.abs(leg.x1 - leg.x0) / n;
+    const i = Math.min(n - 1, Math.floor(e / GAIT.step)), p = clamp01((e - i * GAIT.step) / GAIT.step), body = s * (i + p);
+    const done = k => Math.floor(k / 2) * 2 * s;
+    const lead = done(i + 1) + (i % 2 === 0 ? 2 * s * SMOOTH(p) : 0), trail = done(i) + (i % 2 === 1 ? 2 * s * SMOOTH(p) : 0);
+    const g = { L: 0, R: 0, liftL: 0, liftR: 0, hip: GAIT.hip }, leadSide = dir > 0 ? 'R' : 'L', trailSide = dir > 0 ? 'L' : 'R';
+    g[leadSide] = Math.round(dir * (lead - body)) || 0; g[trailSide] = Math.round(dir * (trail - body)) || 0;
+    g['lift' + (i % 2 === 0 ? leadSide : trailSide)] = Math.round(GAIT.lift * Math.sin(Math.PI * p));
+    return { g, drop: Math.round(GAIT.drop * (1 - Math.sin(Math.PI * p))), lean: dir * GAIT.lean, look: dir };
+  }
+  /* A new plan in the scene sc from x at t, in mode, carrying on from the plan before (prev) where
+     there is one: the next stop, when the last visit ended, and whether a visit was cut short. */
+  function newPlan(sc, mode, hold, x, t, prev) {
+    const stops = (sc.rounds || []).map(r => ({ x: r.act === 'train' && practiceX(sc) !== null ? practiceX(sc) : r.x * U, act: r.act, dur: r.dur * 1000 }));
+    const tv = sc.tv && sc.tv.watch != null ? { x: sc.tv.watch * U, look: Math.sign(sc.tv.x - sc.tv.watch * U) || 1 } : null;
+    const P = { mode, hold, x, t, legs: [], stops, tv, i: 0, lastEnd: -Infinity, after: false, watching: false, streamed: false };
+    if (prev) {
+      const l = legAt(prev, t);
+      P.i = l ? l.i : prev.i; P.lastEnd = prev.lastEnd; P.streamed = prev.streamed && mode !== 'quiet';
+      P.watching = !!(l && l.tv) || (prev.mode === 'hold' && prev.watching);
+      for (const m of prev.legs) if (m.act === 'watch' && m.t1 <= t) P.lastEnd = Math.max(P.lastEnd, m.t1);
+    }
+    // a stream that begins, or comes into the scene, sends the knight to the set first; so does a
+    // visit cut short
+    P.go = mode === 'stream' && !!tv && (!P.streamed || P.watching);
+    if (mode === 'stream') P.streamed = true;
+    return P;
+  }
+  const push = (P, l) => { P.legs.push(l); P.x = l.k === 'walk' ? l.x1 : l.x; P.t = l.t1; };
+  /* Makes the plan's legs until they reach past until. */
+  function extend(P, until) {
+    while (P.t <= until && P.legs.length < 64) {
+      if (P.mode === 'hold' || !P.stops.length) {
+        if (P.hold !== null && Math.abs(P.hold - P.x) > 2) push(P, walkLeg(P.x, P.hold, P.t, P.i));
+        push(P, { k: 'stop', x: P.x, t0: P.t, t1: Infinity, act: 'hold', i: P.i });
+        return;
+      }
+      if (P.mode === 'stream' && P.tv && (P.go || (P.after && P.t - P.lastEnd >= VISIT.gap))) {
+        if (Math.abs(P.tv.x - P.x) > 2) push(P, walkLeg(P.x, P.tv.x, P.t, P.i, true));
+        push(P, { k: 'stop', x: P.x, t0: P.t, t1: P.t + VISIT.watch, act: 'watch', i: P.i, tv: true, look: P.tv.look });
+        P.lastEnd = P.t; P.go = false; P.after = false;
+        continue;
+      }
+      const n = P.stops.length, i = P.i % n, st = P.stops[i];
+      if (Math.abs(st.x - P.x) > 2) push(P, walkLeg(P.x, st.x, P.t, i));
+      push(P, { k: 'stop', x: P.x, t0: P.t, t1: P.t + st.dur, act: st.act, i });
+      P.i = (i + 1) % n; P.after = true;
+    }
+  }
+  /* The leg of the plan P at t, the last one when t lies past them all. */
+  function legAt(P, t) { for (const l of P.legs) if (t < l.t1) return l; return P.legs[P.legs.length - 1] || null; }
+  /* Where the knight is on its patrol at t in the scene sc, under the acted condition w, and what
+     it is doing there: { x, here }, here as a scene's act reads it ({ act, el }, null on a walk or a
+     hold), with the walk put on the pose o. null while paused (the knight stays where it stands). */
+  function patrol(t, sc, w, inBed, paused, o) {
+    if (paused) { if (pat) pat.stale = true; return null; }
+    const mode = patrolMode(w, sc, inBed), hold = mode === 'hold' ? holdAt(w, sc) : null;
+    if (!pat || pat.stale || pat.mode !== mode || pat.hold !== hold) {
+      const t0 = !pat && frozen() ? t - (Number(KW.hooks.pt) || 0) : t;
+      pat = newPlan(sc, mode, hold, kx, t0, pat);
+    }
+    extend(pat, t);
+    // the legs that have ended, but the last, are forgotten
+    while (pat.legs.length > 2 && pat.legs[0].t1 <= t) pat.legs.shift();
+    const l = legAt(pat, t);
+    if (!l) return { x: kx, here: null };
+    if (l.k === 'walk') {
+      const a = gaitAt(l, t - l.t0);
+      o.walk = true; o.gait = a.g; o.bob = a.drop / U; o.lean = a.lean; o.look = a.look;
+      return { x: Math.round(lerp(l.x0, l.x1, clamp01((t - l.t0) / (l.t1 - l.t0)))), here: null };
+    }
+    if (l.act === 'hold') return { x: l.x, here: null };
+    const el = t - l.t0;
+    if (l.act === 'watch') {
+      o.look = l.look; o.mouth = 'smile';
+      const b = el % VISIT.blink; if (b > VISIT.happy[0] && b < VISIT.happy[1]) o.eyes = 'happy';
+    }
+    return { x: l.x, here: { act: l.act, el } };
   }
 
   /* An event: the caption shows whatever happens, and the event plays out only while nothing at
      warning or above is up, in a scene that suits it, and with no swat under way. */
   function fireEvent(type, text) {
-    const e = EVENTS[type], w = E.input.w; if (!e) return;
+    const e = EVENTS[type], w = acted(); if (!e) return;
     if (text) KW.ui.caption(text, e.dur + 1500);
     if (w.lv >= 3 || !hosts(sceneOf(w, frozen() ? KW.hooks.t : performance.now()), type) || swat) return;
     ev = { type, t0: frozen() ? 0 : performance.now(), dur: e.dur };
@@ -436,8 +574,12 @@
   const FOE = {
     // the distance from the knight's middle to the foe's, least, wanted and most. The least keeps
     // the foe clear of the knight; the weapon's reach can bring the other two in (foeGaps), so the
-    // blade always meets the foe, whatever the weapon
-    gap: [150, 210, 240],
+    // blade always meets the foe, whatever the weapon. The wanted gap is 206, pulled in from 210 on
+    // 25 November 2026: on the patrol a zone's edge can hold the foe a few pixels short of the
+    // wanted gap, and from 207 to 209 the arming sword on Broad meets the foe at the very end of its
+    // point, where the band the engine measures and the point as drawn part, and went 4 pixels in
+    // (tools/contact-sweep.sh)
+    gap: [150, 206, 240],
     // how far inside the weapon's furthest reach the foe wants to stand, as a share of the blade's
     // length, so the blade meets it a little short of the point
     reachIn: .12,
@@ -482,7 +624,9 @@
   const restsWeapon = sc => !!(sc && sc.rests) && Object.keys(sc.rests).some(k => sc.rests[k] && typeof sc.rests[k].a === 'number');
   /* Where the crate of an import lands, its left edge: in a scene that gives the stretch of floor
      it may land on (crate.span, docs/scenes.md), its middle as near 160 left of the knight as the
-     stretch allows; elsewhere 320 left of the knight, and never past the screen's left edge. */
+     stretch allows; elsewhere 320 left of the knight, and never past the screen's left edge. While
+     the television stands in the scene the crate lands in front of it, as the goblin climbs in front
+     of it: both are drawn after the scene, the set among it. */
   function crateX(sc, kx) {
     const sp = sc && sc.crate && sc.crate.span;
     if (!sp) return Math.max(V.HL + 70, kx - 320);
@@ -496,28 +640,24 @@
     return typeof want === 'string' && Object.prototype.hasOwnProperty.call(F, want) ? F[want] : F[e.foe];
   }
 
-  /* Each class of place's box, as pack.js's CLASS_BOX gives it ([x0, y0, x1, y1] from the base):
-     what any device of the class may paint. */
-  const CLASS_BOX = { pie: [-46, -107, 45, 33], high: [-34, -64, 32, 0], ground: [-66, -93, 56, 2] };
+  /* Each class of place's box, as pack.js's CLASS_BOX_14 gives it ([x0, y0, x1, y1] from the base):
+     what any device of the class may paint. A pack of format 1.3 or before keeps the ground class
+     24 shorter, inside this one. */
+  const CLASS_BOX = { pie: [-46, -107, 45, 33], high: [-34, -64, 32, 0], ground: [-66, -117, 56, 2] };
   /* Where the foe F stands with the knight at kx in scene sc, as { x, side }, or null when there is
      no room. The scene's foeZone gives the side tried first and the spans of ground clear of its
      own props; the places that hold a device on the ground or the pie's are kept clear too, each
-     across the whole of its class box and its place's width, mirrored where the place is flipped.
-     The spot is the one nearest the wanted gap on the first side that has room. */
+     across the whole of its class box and its place's width, mirrored where the place is flipped,
+     but not the television, in front of which the foe stands and climbs. The spot is the one
+     nearest the wanted gap on the first side that has room. */
   function foeSpot(F, sc, devices, places, kx, gaps) {
     const z = sc.foeZone; if (!z) return null;
-    const m = F.w + FOE.clear, blocked = [];
-    for (const dv of devices || []) {
-      const pl = dv && places && places[dv.place];
-      if (!pl || !(pl.cls === 'pie' || pl.cls === 'ground')) continue;
-      const b = CLASS_BOX[pl.cls], x0 = pl.flip ? -b[2] : b[0], x1 = pl.flip ? -b[0] : b[2];
-      blocked.push([pl.x + Math.min(-pl.w / 2, x0) - m, pl.x + Math.max(pl.w / 2, x1) + m]);
-    }
+    const blocked = foeBlocked(F, devices, places);
     const first = z.side < 0 ? -1 : 1;
     for (const side of [first, -first]) {
       const g = gaps ? gaps[side] : FOE.gap; if (!g) continue;
       const [gMin, gWant, gMax] = g, want = kx + side * gWant, lo = side > 0 ? kx + gMin : kx - gMax, hi = side > 0 ? kx + gMax : kx - gMin;
-      const ok = x => x >= lo && x <= hi && z.spans.some(([a, b]) => x >= a && x <= b) && !blocked.some(([a, b]) => x > a && x < b);
+      const ok = x => x >= lo && x <= hi && foeRoom(z, blocked, x);
       const cands = [want, lo, hi];
       for (const sp of z.spans.concat(blocked)) cands.push(sp[0], sp[1]);
       let pick = null;
@@ -525,6 +665,20 @@
       if (pick !== null) return { x: Math.round(pick), side };
     }
     return null;
+  }
+  /* Whether the foe's middle may stand at x: inside a span of the zone z and clear of blocked. */
+  const foeRoom = (z, blocked, x) => z.spans.some(([a, b]) => x >= a && x <= b) && !blocked.some(([a, b]) => x > a && x < b);
+  /* The stretches of grid x a foe's middle keeps out of: every place holding a device on the ground,
+     or the pie's, across its class box and its width, widened by the foe's half width. */
+  function foeBlocked(F, devices, places) {
+    const m = F.w + FOE.clear, blocked = [];
+    for (const dv of devices || []) {
+      const pl = dv && places && places[dv.place];
+      if (!pl || !(pl.cls === 'pie' || pl.cls === 'ground')) continue;
+      const b = CLASS_BOX[pl.cls], x0 = pl.flip ? -b[2] : b[0], x1 = pl.flip ? -b[0] : b[2];
+      blocked.push([pl.x + Math.min(-pl.w / 2, x0) - m, pl.x + Math.max(pl.w / 2, x1) + m]);
+    }
+    return blocked;
   }
 
   /* The blade in the knight's pose o: its frame and its extent along it, outline included. The
@@ -580,14 +734,14 @@
      left, one left of it is drawn the other way round. */
   function crownNear(bl, F, fx, side, floor) {
     const sx = Math.sin(bl.a), sy = -Math.cos(bl.a), nx = Math.cos(bl.a), ny = Math.sin(bl.a);
-    let near = { gap: Infinity, x: fx, y: floor };
+    let near = { gap: Infinity, x: fx, y: floor, along: null };
     for (const [cx, cy] of F.crown) {
       const x = fx + side * cx, y = floor + cy, px = x - bl.x, py = y - bl.y, along = px * sx + py * sy;
       if (along < bl.from || along > bl.to) continue;
       // a point further from the whole head than the nearest so far is passed by
       if (bl.head && Math.hypot(along - bl.head.bc[0], px * nx + py * ny - bl.head.bc[1]) - bl.head.br >= near.gap) continue;
       const gap = bl.head ? headGap(bl.head, along, px * nx + py * ny) : bandGap(bl, along, px * nx + py * ny);
-      if (gap < near.gap) near = { gap, x, y };
+      if (gap < near.gap) near = { gap, x, y, along };
     }
     return near;
   }
@@ -631,10 +785,10 @@
     const gaps = { 1: foeGaps(F, o, 1), '-1': foeGaps(F, o, -1) }, spot = foeSpot(F, sc, s.devices, s.places, o.x, gaps);
     if (!spot) return null;
     const q = contactQ(F, spot.x, spot.side, o), S = FOE.strike; if (q >= 1) return null;
-    const burrow = !sc.wallAt, lineAt = burrow ? () => V.HFL + FOE.enter.holeLine : sc.wallAt;
     // where the blade touches, for the burst
     const p = Object.assign({}, o, { bob: 0 }); K.swing(p, q, spot.side);
     const touch = crownNear(bladeOf(p), F, spot.x, spot.side, o.floor);
+    const burrow = !sc.wallAt, lineAt = burrow ? () => V.HFL + FOE.enter.holeLine : sc.wallAt;
     return { F, x: spot.x, side: spot.side, burrow, lineAt, q, hit: Math.round(S.at + q * S.dur), touch: [Math.round(touch.x), Math.round(touch.y)],
       exit: exitOf(F, e) };
   }
@@ -912,9 +1066,25 @@
     }
   }
 
+  /* The television the engine stands in a scene while something streams: KW.tv, which the world's
+     prop set fills (world.js), or the code's own, KW.props.TV, on a page without the compiler. Its
+     still part (the stand and the set) is painted once into a canvas of its own, as a device's is,
+     and its picture is drawn each frame. set is the scene's tv part, { x, stand }: the middle of the
+     stand's foot on the floor, and what it stands on; none where the scene draws its own set, as the
+     house does. */
+  const tvNow = () => KW.tv || P.TV || null;
+  function tvHD(set, t) {
+    const T = tvNow(); if (!T) return;
+    const x = set.x, y = V.HFL, ctx = D.getCtx();
+    const sp = cached(['tv', x, set.stand, T.from || 'code'].join('|'), x - 72, y - 200, 144, 208, false, x, () => T.draw(x, y, 0, set.stand, 'still'));
+    ctx.drawImage(sp.cv, sp.ox, sp.oy);
+    T.draw(x, y, t, set.stand, 'moving');
+  }
+
   KW.devices = {
-    /* For a scene's draw: the devices behind the knight. */
-    draw(t, s) { placesHD(t, s, false); },
+    /* For a scene's draw: the television while it is on in a scene that stands one (s.set), then the
+       devices behind the knight. */
+    draw(t, s) { if (s.tv && s.set && s.set.stand !== 'none') tvHD(s.set, t); placesHD(t, s, false); },
     /* The x of a place with a device in it, or null. */
     placeX(s, name) { const pl = s.places && name ? s.places[name] : null; return pl && s.devices.some(dv => dv && dv.place === name) ? pl.x : null; }
   };
@@ -935,9 +1105,10 @@
 
   function draw(t) {
     const { HL, HR, HT, HH, HFL } = V, freeze = frozen();
-    const inp = E.input, w = inp.w, scene = sceneOf(w, t), sc = KW.scenes[scene], devices = inp.devices || [];
-    // a new scene starts with no flies, no catch, no shot and nothing waiting, so nothing spills into it
-    if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; catches.length = 0; leaving.length = 0; pendingFlies = 0; petFree = -1e9; clearShots(); } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; round = { i: 0, arr: 0 }; }
+    const inp = E.input, w = actedOf(inp.w), scene = sceneOf(w, t), sc = KW.scenes[scene], devices = inp.devices || [];
+    // a new scene starts with no flies, no catch, no shot and nothing waiting, so nothing spills into
+    // it, and the patrol starts again from its first stop
+    if (scene !== curScene) { if (curScene) { flies.length = 0; swat = null; ev = null; fadeAt = t; catches.length = 0; leaving.length = 0; pendingFlies = 0; petFree = -1e9; clearShots(); } curScene = scene; kx = +(KW.hooks.kx || sc.spot) * U; pat = null; }
     const serious = w.lv >= 3, inBed = !!sc.bed && (w.id === 'night' || w.id === 'container_unhealthy');
     if (serious) leaveAll(t);
     // the pet's spot: a catch worked out from another spot in this scene (by the bed, or not) is
@@ -955,16 +1126,17 @@
       petFree = catches.length ? Math.max(t, catches[catches.length - 1].end) : petFree;
     }
     const funOK = !serious && !!sc.outdoors;
-    const o = K.pose(w.id, t, !!w.mem); o.floor = HFL;
+    // streaming has no pose of its own: the knight patrols as when all is quiet, and watches the set
+    const o = K.pose(w.id === 'streaming' ? 'idle' : w.id, t, !!w.mem); o.floor = HFL;
     o.helmet = inp.helmet === 'on' ? true : inp.helmet === 'off' ? false : sc.helmet !== false;
     if (sc.sword === false) o.sword = false;
     if (ev && (serious || !hosts(scene, ev.type))) ev = null;
 
-    // strolling, and what each spot is for
-    const free = w.lv < 3 || w.id === 'disk_full';
+    // the patrol, and what each stop is for; paused while an event or the swat plays
+    const pt = patrol(t, sc, w, inBed, !!ev || !!swat, o);
     let here = null;
-    if (sc.rounds && free && !inBed && w.lv !== 2 && w.id !== 'backup_overdue' && w.id !== 'pi_silent') {
-      here = stroll(sc.rounds, t, o, !!ev || !!swat, sc);
+    if (pt) {
+      kx = pt.x; here = pt.here;
       if (here) {
         const el = here.el;
         if (here.act === 'look') o.look = [0, -1, 0, 1][Math.floor(el / 2600) % 4];
@@ -972,16 +1144,12 @@
         if (here.act === 'yawn') { const c = el % 6500; if (c > 3800 && c < 5600) { o.eyes = 'closed'; o.mouth = 'o'; } }
       }
     }
-    const pt = inp.patron || {};
-    const s = { w, devices, places: sc.places || null, tv: inp.tv, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false, dx: 0,
-      patron: { id: pt.id || 'a', skin: pt.skin || null, hair: pt.hair || null, robe: pt.robe || null } };
+    const pr = inp.patron || {};
+    const s = { w, devices, places: sc.places || null, tv: inp.tv, set: sc.tv || null, spot: sc.spot * U, kx, o, here, inBed, helmOff: inBed || o.helmet === false, strike: false, dx: 0,
+      patron: { id: pr.id || 'a', skin: pr.skin || null, hair: pr.hair || null, robe: pr.robe || null } };
     // a device down: the knight stays put and looks towards its place, or straight ahead
     // when it is not drawn
     if (w.id === 'device_down') { const px = KW.devices.placeX(s, w.place); o.look = px === null ? 0 : Math.sign(px - kx); }
-    // running hot with a weapon that fires, the watcher walks to where it shoots at the target from,
-    // and the scene's act fires once it is there
-    const hotX = w.id === 'cpu_hot' ? practiceX(sc) : null;
-    if (hotX !== null && Math.abs(hotX - kx) > 2) { if (!freeze) kx += Math.sign(hotX - kx) * 1.5; s.kx = kx; o.walk = true; }
     // the acts aim on the rig, so the watcher stands at its x before they play
     o.x = kx;
     if (sc.act) sc.act(t, s);
@@ -1079,6 +1247,10 @@
     /* The foe player's parts, for the tests: the tables, where a foe stands, when the blade meets
        it, the plan of an event, the strike on a pose and the foe at a moment. */
     crateX, CLASS_BOX,
+    /* The patrol's parts, for the tests: the walk's numbers and the visits', the gait at a moment of a
+       walk, the walk between two xs, the mode and the place a condition's act needs, and the plan
+       now (its legs, the next stop, when the last visit ended). */
+    patrol: { GAIT, VISIT, gaitAt, walkLeg, mode: patrolMode, holdAt, plan: () => pat, acted: actedOf },
     foe: { FOE, spot: foeSpot, gaps: foeGaps, contactQ, bladeOf, bandGap, bladeGap, crownNear, plan: foePlan, strike, at: foeAt, shotPlan, shot: foeShot, fires: foeFires, shotOf: foeShotOf },
     init(ctx) { main = ctx; D.setCtx(ctx); },
     draw, addFly, startSwat, fireEvent,
@@ -1095,7 +1267,7 @@
     invalidate() { bgCache.key = ''; },
     /* Clears the flies, the swat, any event, the shots and the scene, when the page turns to live
        data, so the first live scene comes in without a fade. */
-    reset() { flies.length = 0; swat = null; ev = null; pendingFlies = 0; curScene = ''; catches.length = 0; leaving.length = 0; petFree = -1e9; clearShots(); },
+    reset() { flies.length = 0; swat = null; ev = null; pendingFlies = 0; curScene = ''; pat = null; catches.length = 0; leaving.length = 0; petFree = -1e9; clearShots(); },
     /* The pet's catches and the flies leaving, for the tests. */
     pet: { PET, catches: () => catches.slice(), leaving: () => leaving.slice(), pending: () => pendingFlies, flies: () => flies.slice(), at: petAt, prey: preyAt, plan: catchPlan, now: petNow }
   });

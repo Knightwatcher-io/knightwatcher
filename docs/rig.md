@@ -35,12 +35,20 @@ Every anchor is an `[x, y]` pair apart from `main`, and "left" is the viewer's l
 **The lean.** A pose's `lean`, in whole pixels, leans the upper body to the right when positive and
 to the left when negative: `neck`, both shoulders and `head` move across by it, `belt` and `hem` by
 half of it, rounded, and the hips and the feet not at all. The smith's acts lean the knight into
-the hammer's blow and the bellows' push. Every list of the base pack hangs on these anchors, so a
-lean needs nothing of a pack.
+the hammer's blow and the bellows' push, and the patrol's walk leans it 2 into its step. Every list
+of the base pack hangs on these anchors, so a lean needs nothing of a pack.
+
+**The gait.** A pose's `gait`, `{ L, R, liftL, liftR, hip }`, is the patrol's side-step
+([page.md](./page.md#the-patrol)), which the engine sets for each frame of a walk: `footL` and
+`footR` move across by `L` and `R` and up by `liftL` and `liftR`, and `hipL` and `hipR` across by
+`hip` of their foot's move, rounded, so a greave stays over its boot. With a gait `stepL` and
+`stepR` stay 0, so no boot is lifted twice. Like the lean it needs nothing of a pack: every item of
+the base pack walks on the anchors alone. A pose without `gait` walks as before: `walk` lifts the
+boots in turn by `stepL` and `stepR`, as the smithy's quench still walks.
 
 The values are whole numbers: `drop`, how far the upper body sinks (`(bob + crouch) * 5`);
 `bloat`, how far each side swells when memory is tight (`bloat * 5`); `stepL` and `stepR`, 1 while
-that foot is lifted in the walk; `sway`, the plume's sway from -4 to 4; and the build's eight
+that foot is lifted in a walk without a gait (`walk`, every 320 ms in turn), 0 on a gait; `sway`, the plume's sway from -4 to 4; and the build's eight
 differences, `dShoulder`, `dChest`, `dWaist`, `dHip`, `dStance`, `dLeg`, `dHeight` and `dHead`.
 
 **The build.** The knight's shape is eight measurements in grid pixels, held in `KW.knight.build`:

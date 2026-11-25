@@ -380,7 +380,7 @@ test('Orbit unchosen on the display: the medieval world returns exactly, frame f
 
 test('a library of format 1.0 refuses Orbit at format, and this one reads it', () => {
   const src = fs.readFileSync(path.join(WEB, 'js/pack.js'), 'utf8');
-  const old = src.replace('const FORMAT = Object.freeze([1, 3]);', 'const FORMAT = Object.freeze([1, 0]);');
+  const old = src.replace('const FORMAT = Object.freeze([1, 4]);', 'const FORMAT = Object.freeze([1, 0]);');
   assert.notEqual(old, src, 'the library\'s format is swapped in the sandbox');
   const mod = { exports: {} };
   vm.runInContext(old, vm.createContext({ module: mod, require: p => require(path.join(WEB, 'js', p)), console }), { filename: 'pack-1.0.js' });
@@ -395,7 +395,7 @@ test('a library of format 1.0 refuses Orbit at format, and this one reads it', (
 test('a library of format 1.1 refuses Orbit\'s copy of format 1.2 at format, reads the 1.1 file as before, and this one reads both', () => {
   const FIRE = fs.readFileSync(ORBIT.FIRE_FILE, 'utf8');
   const src = fs.readFileSync(path.join(WEB, 'js/pack.js'), 'utf8');
-  const old = src.replace('const FORMAT = Object.freeze([1, 3]);', 'const FORMAT = Object.freeze([1, 1]);');
+  const old = src.replace('const FORMAT = Object.freeze([1, 4]);', 'const FORMAT = Object.freeze([1, 1]);');
   assert.notEqual(old, src, 'the library\'s format is swapped in the sandbox');
   const mod = { exports: {} };
   vm.runInContext(old, vm.createContext({ module: mod, require: p => require(path.join(WEB, 'js', p)), console }), { filename: 'pack-1.1.js' });

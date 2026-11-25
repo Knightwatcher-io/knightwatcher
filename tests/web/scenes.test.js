@@ -205,15 +205,18 @@ function statesOf(KW, pack, name) {
   }
   // the helmet the other way from the scene's own
   if (sc.helmet === false) add('helmet on', { helmet: true }); else add('helmet off', { helmet: false });
-  // the house's television on while all is quiet; streaming has it on already
-  if (name === 'house') add('tv on', { tv: true });
-  // the smithy's backdrop follows the knight's spot; its quench while all is quiet, past the five
-  // moments (the blank into the water, the steam and the rings, the drips, the glint, the nod and
-  // the walk back to the fire), and its bellows at the push, pressed, at the flare's height and
-  // letting up
+  // the television on while all is quiet, in every scene that stands one (the house's on its own
+  // table); streaming has it on already. And the house at night with a stream: the set's light over
+  // the dark room
+  if (sc.tv) add('tv on', { tv: true });
+  if (name === 'house') add('night, tv on', { id: 'night', tv: true });
+  // the smithy with the knight away from its spot, where the backdrop stays (the weapon on the anvil
+  // counts from the spot); its quench at the quench stop of the patrol, past the five moments (the
+  // blank into the water, the steam and the rings, the drips, the glint, the nod and the walk back to
+  // the fire), and its bellows at the push, pressed, at the flare's height and letting up
   if (name === 'smithy') {
     add('kx 300', { kx: 300 });
-    add('quench', { times: QUENCH });
+    add('quench', { times: QUENCH, here: 'quench', kx: 650 });
     add('bellows', { id: 'cpu_hot', times: PUMP });
   }
   // the yard's dummy struck
@@ -250,16 +253,17 @@ function frame(KW, name, st, t) {
   const w = k ? { id, lv: k.lv, st: ST.LEVELS[k.level], scene: k.scene, hl: '', sub: '', mem: !!st.mem } : ST.IDLE;
   const list = st.devices ? ST.listFromHook(st.devices) : [{ kind: 'pi', state: id === 'pi_silent' ? 'down' : 'up', alert: true }];
   const inBed = !!sc.bed && (id === 'night' || id === 'container_unhealthy');
-  const o = K.pose(id, t, !!st.mem); o.floor = V.HFL;
+  // streaming has no pose of its own: the knight patrols as when all is quiet
+  const o = K.pose(id === 'streaming' ? 'idle' : id, t, !!st.mem); o.floor = V.HFL;
   o.helmet = st.helmet === undefined ? sc.helmet !== false : st.helmet;
   if (sc.sword === false) o.sword = false;
-  // where the knight stands in the scene's rounds: at the first spot, arrived at time 0, while free
-  // to stroll
-  const free = (w.lv < 3 || id === 'disk_full') && !inBed && w.lv !== 2 && id !== 'backup_overdue' && id !== 'pi_silent';
-  const here = sc.rounds && free ? { act: sc.rounds[0].act, el: t } : null;
+  // where the knight stands on its patrol: at its first stop (or the stop st.here names), arrived at
+  // time 0, while it patrols (all quiet, the disk full, a stream)
+  const free = (id === 'idle' || id === 'disk_full' || id === 'streaming') && !inBed;
+  const here = sc.rounds && free ? { act: st.here || sc.rounds[0].act, el: t } : null;
   const kx = st.kx === undefined ? sc.spot * V.U : st.kx;
   o.x = kx;
-  return { w, devices: ST.arrange(list).devices, places: sc.places || null, tv: st.tv === undefined ? id === 'streaming' : st.tv, kx, o, here, inBed,
+  return { w, devices: ST.arrange(list).devices, places: sc.places || null, tv: st.tv === undefined ? id === 'streaming' : st.tv, set: sc.tv || null, spot: sc.spot * V.U, kx, o, here, inBed,
     helmOff: inBed || o.helmet === false, strike: false,
     patron: { id: st.mon || 'a', skin: st.skin || null, hair: st.hair || null, robe: st.robe || null } };
 }
@@ -436,8 +440,9 @@ if (MODE === 'write') {
     test(`${name} from kw.medieval has the code scene's interface: the same data, and the same parts drawn`, () => {
       const code = load(SRC).KW.scenes[name], pack = load(SRC, undefined, 'pack').KW.scenes[name];
       assert.notEqual(code, pack);
-      // target: where a shot at the training target aims, the middle of the target's group
-      const DATA = ['spot', 'places', 'rests', 'rounds', 'can', 'hosts', 'outdoors', 'bed', 'helmet', 'sword', 'foeZone', 'crate', 'target'];
+      // target: where a shot at the training target aims, the middle of the target's group; tv: where
+      // the television stands
+      const DATA = ['spot', 'places', 'rests', 'rounds', 'tv', 'can', 'hosts', 'outdoors', 'bed', 'helmet', 'sword', 'foeZone', 'crate', 'target'];
       for (const k of DATA) assert.deepEqual(plain(pack[k]), plain(code[k]), `${name}.${k}`);
       // key may be given by either, since a scene without one keeps one backdrop
       // drawn, the court's colours of each patron for the settings' "As drawn", in the court alone

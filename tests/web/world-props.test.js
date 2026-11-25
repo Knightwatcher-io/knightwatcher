@@ -114,13 +114,15 @@ test('the prop set props.medieval reads clean, gives the five kinds with their m
   assert.deepEqual(plain(set.kinds.pi.up.moving), [{ k: 'fx', fx: 'steam', p: [-14, -53] }]);
   assert.equal(set.kinds.pi.gone.moving, undefined);
   // the costs the counts step found, still and moving (the moving part with the lamp of the kind's
-  // own), against limits of 4 000 and 600
+  // own), against limits of 4 000 and 600: the ground kinds with their rests and shadows; and the
+  // television's set (on its dearer stand, the table) and picture
   assert.deepEqual(plain(r.world.props['props.medieval']), {
     pi: { up: { still: 3308, moving: 411 }, gone: { still: 633, moving: 0 } },
     camera: { up: { still: 539, moving: 32 }, gone: { still: 664, moving: 0 } },
-    machine: { up: { still: 336, moving: 430 }, gone: { still: 603, moving: 0 } },
-    vm: { up: { still: 185, moving: 92 }, gone: { still: 155, moving: 0 } },
-    box: { up: { still: 252, moving: 64 }, gone: { still: 354, moving: 0 } }
+    machine: { up: { still: 472, moving: 430 }, gone: { still: 746, moving: 0 } },
+    vm: { up: { still: 564, moving: 92 }, gone: { still: 527, moving: 0 } },
+    box: { up: { still: 314, moving: 64 }, gone: { still: 416, moving: 0 } },
+    tv: { still: 590, moving: 121 }
   });
 });
 

@@ -492,6 +492,28 @@
     draw(f, t) { glow(f.p[0], f.p[1], f.r, f.colour, f.a + f.amp * Math.sin(t / f.div + f.ph)); }
   };
 
+  /* picture: a television's picture, 58 by 50 with its top left at p, as the house's set shows it: one
+     colour of of at a time, the next every ms milliseconds, with a soft light round it in that
+     colour; its lower part shaded, a shine at the upper right, a figure crossing it 6 pixels every
+     walk[0] ms over walk[1] steps, scan lines every 4 rows and a highlight at the upper left. */
+  const picture = {
+    clock: 'time',
+    fields: { p: { kind: 'point' }, of: { kind: 'colours', min: 1, max: 8, def: ['#7fe9ff', '#e8f0ff', '#6f9eff', '#ff8fb0', '#fff3a0', '#8fe07a'] },
+      ms: { kind: 'int', lo: 1, hi: 60000, def: 400 }, walk: { kind: 'pair', of: [[1, 60000], [1, 8]], def: [700, 6] } },
+    cost: () => B.glow + B.rrect(50) + B.rrect(18) + B.ell(5) + B.rrect(15) + B.ell(4) + 2 + 12 + 1,
+    glows: () => 1,
+    draw(f, t) {
+      const [x, y] = f.p, sc = f.of[Math.floor(t / f.ms) % f.of.length];
+      glow(x + 29, y + 25, 130, sc, .07);
+      rrect(x, y, 58, 50, 10, sc); rrect(x, y + 32, 58, 18, 6, 'rgba(0,0,0,.25)', y + 32);
+      ell(x + 45, y + 10, 5, 5, 'rgba(255,255,255,.6)');
+      const fx = x + 9 + (Math.floor(t / f.walk[0]) % f.walk[1]) * 6;
+      rrect(fx, y + 21, 10, 15, 4, K); ell(fx + 5, y + 14, 4, 4, K); Rh(fx + 1, y + 36, 3, 5, K); Rh(fx + 6, y + 36, 3, 5, K);
+      for (let yy = y + 2; yy < y + 49; yy += 4) Rh(x + 2, yy, 54, 1, 'rgba(0,0,0,.14)');
+      Rh(x + 6, y + 4, 12, 3, 'rgba(255,255,255,.45)');
+    }
+  };
+
   /* crust: a pie's top seen from the side and a little above, the middle of its rim at p: the rim
      a flat ellipse rim[0] across and rim[1] high either side of p, and behind its middle a dome
      dome[0] across and dome[1] high, outlined in colour. The crust shades from crust[0], lit from
@@ -560,7 +582,7 @@
   /* ---- The library ------------------------------------------------------------------------------ */
 
   /* The effects, in the order the world format lists them (pack.js names the same list). */
-  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, flutes, crust, fingers, fringe, flicker, burst };
+  const TABLE = { sky, stars, ridge, bricks, pines, tree, arch, shelf, stacks, tufts, pebbles, planks, rafters, horseshoe, hood, flame, candle, twinkle, drift, wander, coals, steam, flutes, crust, fingers, fringe, flicker, picture, burst };
   const NAMES = Object.freeze(Object.keys(TABLE));
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const SCALAR = ['offset', 'length', 'term'];

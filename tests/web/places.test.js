@@ -108,28 +108,32 @@ test('a camera\'s question mark is never higher than y 172, clear of the headlin
 });
 
 /* The smithy's acts walk the knight off its spot (scenes/smithy.js): to the forge at 650 and the
-   water at 228 in the quench, and to the bellows at 612 while the CPU runs hot. There the knight,
-   drawn with its tool, fill by fill, covers some places, which the owner accepted: at
-   the forge and at the bellows the head over the high places h1 and h2, and at the water the boots
-   over the third ground place, g3. A device down outranks both acts, so nothing hidden is an alert;
-   with a device down the knight stays at its spot, clear of every place but the pie's table, beside
-   which it has always stood. Under strain short of memory the knight works the bellows bloated,
-   and covers what it covers there unbloated. */
+   water at 228 in the quench, a stop of the patrol, and to the bellows at 612 while the CPU runs
+   hot. There the knight, drawn with its tool, fill by fill, covers some places, which the owner
+   accepted: at the forge and at the bellows the head over the high places h1 and h2. The third
+   ground place, g3, stands before the bellows at 760 since the television took its room by the
+   water, so the boots at the water cover none; at the forge the right boot's toe meets the left end
+   of what stands at g3 (the chest's mat, the satchel), a few pixels at the floor, for the moments
+   of each quench the knight stands there. A device down outranks both acts, so nothing hidden
+   is an alert; with a device down the knight stays where it is. Under strain short of memory the
+   knight works the bellows bloated, and covers what it covers there unbloated. */
 const SMITHY_COVERS = {
-  'the forge, quiet t600': ['h1', 'h2'],
-  'the water, quiet t6600': ['g3'],
+  'the forge, quiet t600': ['h1', 'h2', 'g3'],
+  'the water, quiet t6600': [],
   'the bellows, running hot t240': ['h1', 'h2'],
   'the spot, a device down t2300': [],
   'the bellows, bloated under strain t240': ['h1', 'h2']
 };
 
-test('the smithy\'s acts cover only the places the owner accepted: h1 and h2 at the forge and the bellows, g3 at the water', () => {
+test('the smithy\'s acts cover only the places the owner accepted: h1 and h2 at the forge and the bellows, g3 a little at the forge', () => {
   const { KW, take, every } = load(), K = KW.knight, S = KW.scenes.smithy, got = {};
   const meet = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
   const at = { 'the forge, quiet t600': ['idle', 600], 'the water, quiet t6600': ['idle', 6600], 'the bellows, running hot t240': ['cpu_hot', 240],
     'the spot, a device down t2300': ['device_down', 2300], 'the bellows, bloated under strain t240': ['cpu_hot', 240, true] };
   for (const [label, [id, t, mem]] of Object.entries(at)) {
-    const o = Object.assign(K.pose(id, t, mem), { floor: 530, x: S.spot * 5, helmet: false, sword: false }), s = { w: { id }, kx: S.spot * 5, o, strike: false, dx: 0 };
+    // all quiet at the patrol's quench stop, by the forge, arrived at time 0
+    const kx = id === 'idle' ? 650 : S.spot * 5, here = id === 'idle' ? { act: 'quench', el: t } : null;
+    const o = Object.assign(K.pose(id, t, mem), { floor: 530, x: kx, helmet: false, sword: false }), s = { w: { id }, kx, spot: S.spot * 5, here, o, strike: false, dx: 0 };
     S.act(t, s); o.x = s.kx + s.dx;
     const fills = every(() => K.draw(o));
     got[label] = Object.entries(S.places).filter(([p, pl]) => p !== 'pie' && placeBoxes(KW, take, pl).some(({ box: b }) => fills.some(f => meet(f, b)))).map(([p]) => p);

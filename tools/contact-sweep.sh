@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # The contact sweep: every weapon the settings offer against the drawn goblin, held to the contact
 # standard (docs/tests.md, The contact standard) on Classic, Broad and Slim, in every scene that
-# hosts the goblin, at every whole pixel the knight strolls over, with every combination of the pie
-# and the ground devices. Run it after any change to a weapon, the strike, the goblin or a scene that
-# hosts it; the page's tests check the same standard at a few dozen spots, this checks all of them.
+# hosts the goblin, at every whole pixel the knight walks over on its patrol, with every combination
+# of the pie and the ground devices. Run it after any change to a weapon, the strike, the goblin or a
+# scene that hosts it; the page's tests check the same standard at a few dozen spots, this checks all
+# of them.
 #
 #   tools/contact-sweep.sh DIR           the sweep from the medieval world's pack, then the same
 #                                        from the code's scenes and goblin, and the two compared

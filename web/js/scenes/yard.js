@@ -20,15 +20,18 @@
      every second while the CPU runs hot. With a weapon that fires, a shot on the same beats from
      where the engine puts the knight, PRACTICE short of the dummy (KW.engine.shots), the dummy
      struck when the shot lands; running hot, once the knight has walked there. */
+  /* Whether the knight trains at a stop of its patrol: while all is quiet, and while something
+     streams, which the knight patrols through too. */
+  const trains = s => s.w.lv === 0 || s.w.id === 'streaming';
   function act(t, s) {
     const o = s.o, here = s.here;
     if (K.fired()) {
       const shot = (t0, len) => { const l = KW.engine.shots.practice(o, t, t0, len, TARGET); if (l !== null && dummyHit < l - 1) dummyHit = l; };
-      if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % 5600; if (c < 900) shot(t - c, 900); }
+      if (here && here.act === 'train' && trains(s)) { const c = here.el % 5600; if (c < 900) shot(t - c, 900); }
       if (s.w.id === 'cpu_hot') { o.eyes = 'half'; o.bob = Math.floor(t / 170) % 2; if (!o.walk) shot(t - t % 1000, 1000); }
       return;
     }
-    if (here && here.act === 'train' && s.w.lv === 0) { const c = here.el % 5600; if (c < 900) { K.swing(o, c / 900, 1); if (c > 420 && t - dummyHit > 2000) dummyHit = t; } }
+    if (here && here.act === 'train' && trains(s)) { const c = here.el % 5600; if (c < 900) { K.swing(o, c / 900, 1); if (c > 420 && t - dummyHit > 2000) dummyHit = t; } }
     if (s.w.id === 'cpu_hot') { const c = t % 1000; K.swing(o, c / 1000, 1); if (c > 470 && t - dummyHit > 600) dummyHit = t; o.eyes = 'half'; o.bob = Math.floor(t / 170) % 2; }
   }
 
@@ -80,7 +83,7 @@
     ell(690, HFL + 30, 150, 16, '#1b160f');
     rack();
     // the barrel the pie stands on, in front of the rack between the two devices at the left, and the hay
-    P.barrelHD(102, 458, 84, 72);
+    P.barrelHD(102, 434, 84, 96);
     bale(828, 474, 66, 56); bale(890, 474, 66, 56); bale(856, 424, 68, 52);
     // the dummy's post, which stays put while the dummy wobbles on it
     rrect(704, 440, 18, 90, 3, C.K); rrect(707, 440, 12, 90, 2, [[.3, C.N0], [1, C.N2]]); ell(713, 528, 22, 5, C.K);
@@ -114,7 +117,7 @@
   /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
   const PLACES = {
-    pie: { cls: 'pie', kind: 'surface', x: 144, y: 463, w: 88, h: 112 },
+    pie: { cls: 'pie', kind: 'surface', x: 144, y: 439, w: 88, h: 112 },
     h1: { cls: 'high', kind: 'surface', x: 926, y: 360, w: 88, h: 112 },
     h2: { cls: 'high', kind: 'surface', x: 250, y: 310, w: 88, h: 112, flip: true },
     h3: { cls: 'high', kind: 'surface', x: 40, y: 300, w: 88, h: 112, flip: true },
@@ -127,20 +130,24 @@
     spot: 104, places: PLACES, outdoors: true,
     // The conditions this scene can act out (docs/page.md): the attack with the weapon raised, the
     // crate carried between its spots, whose acts leave the knight's face alone, hunger, and running
-    // hot at the dummy; and, as a quiet scene, a device down and memory running tight. Not the stare
-    // at the empty dish: the pie stands to the knight's left. Kept as plain data for the world
-    // format being drafted to take over.
-    can: ['attack', 'disk_full', 'backup_overdue', 'device_down', 'cpu_hot', 'memory_tight'],
+    // hot at the dummy; and, as a quiet scene, a device down, memory running tight and a stream on
+    // the television. Not the stare at the empty dish: the pie stands to the knight's left. Kept as
+    // plain data for the world format being drafted to take over.
+    can: ['attack', 'disk_full', 'backup_overdue', 'device_down', 'cpu_hot', 'memory_tight', 'streaming'],
     // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
     hosts: ['flies', 'crate', 'feast'],
-    rounds: [{ x: 104, act: 'train', dur: 21 }, { x: 98, act: 'look', dur: 14 }],
+    // the stops of the knight's patrol (docs/page.md): training at the dummy, a look round by the door
+    rounds: [{ x: 104, act: 'train', dur: 22 }, { x: 88, act: 'look', dur: 14 }],
+    // where the television stands while something streams (docs/scenes.md): its middle, what it
+    // stands on, and where the knight watches it from, in units of U as the spot
+    tv: { x: 330, stand: 'table', watch: 90 },
     act, paint, draw,
     // where a shot at the dummy aims, and so where the knight trains from with a weapon that fires
     target: TARGET,
     // the moment the dummy was last struck, for the tests
     struck: () => dummyHit,
     // where the crate may land (docs/scenes.md): the beaten earth in front of the door, between the
-    // devices by the rack and the knight's boots at its look spot
+    // devices by the rack and the knight's boots at the dummy
     crate: { span: [298, 436] }
   };
 })(window.KW);

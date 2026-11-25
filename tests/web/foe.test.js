@@ -66,7 +66,7 @@ function planFor(m, scene, kx, devices) {
   const sc = m.KW.scenes[scene];
   return m.F.plan('goblin', sc, { devices, places: sc.places }, pose(m.K, m.V, kx, 0));
 }
-/* Every spot the knight strolls to in a scene, and a few between them, in grid pixels. */
+/* Every stop of the knight's patrol in a scene, and a few between them, in grid pixels. */
 function spots(m, scene) {
   const xs = m.KW.scenes[scene].rounds.map(r => r.x * m.V.U);
   const lo = Math.min(...xs), hi = Math.max(...xs), out = new Set(xs);
@@ -148,7 +148,7 @@ test('where the goblin stands: in its zone, clear of the knight, the pie and eve
       }
     }
   }
-  // the usual case, the pie alone: room at every spot the knight strolls to
+  // the usual case, the pie alone: room at every stop of the patrol
   for (const scene of ['battlement', 'camp']) for (const r of m.KW.scenes[scene].rounds) assert.ok(seen[scene].has('pie|' + r.x * m.V.U), `${scene} ${r.x}`);
   const camp = m.KW.scenes.camp, bat = m.KW.scenes.battlement, G = m.P.FOES.goblin;
   // left of the knight in both, in the clear stretch the crate lands on too: on the battlement from
@@ -165,7 +165,7 @@ test('where the goblin stands: in its zone, clear of the knight, the pie and eve
    drawn pixel of the goblin, through the whole strike, the bounce included, never more than 2 px in,
    and at the hit no more than 3 px from the goblin as drawn then, on every build. It is measured
    from the page's own drawing by tools/contact-sweep, whose sweep checks it at every spot the knight
-   strolls over; here it is checked at the spots the knight strolls to, every 30 between, and the
+   walks over; here it is checked at the stops of the patrol, every 30 between, and the
    spots the sweep found hardest: where the greatsword's quillon came nearest the flung hand in the
    bounce (440 to 453 on the battlement), the mace's flanges the hand at the hit (443 to 475, and
    490 to 509 at the camp), and the arming sword's point (the far spots, 474 to 480 and 508 to 520). */

@@ -13,7 +13,7 @@
     { "id": "cpu_hot", "name": "Under strain", "scene": "yard", "help": "A watched machine's CPU or memory, averaged over a window, is at or above its threshold: this host, named by name in [sources.host], and the machines of [[sources.usage]]." },
     { "id": "ssh_session", "name": "At court", "scene": "court", "help": "Someone has an SSH session open." },
     { "id": "updating", "name": "Updating", "scene": "smithy", "help": "A configured lock holder, such as nightly maintenance, is running." },
-    { "id": "streaming", "name": "Now showing", "scene": "house", "help": "A stream is playing." },
+    { "id": "streaming", "name": "Now showing", "scene": null, "help": "A stream is playing. It plays in whichever quiet scene is showing, with the television there; at night the knight sleeps in the house with the television on." },
     { "id": "night", "name": "Night watch", "scene": "house", "help": "The quiet hours." }
   ],
   "scenes": [
@@ -172,7 +172,7 @@
     },
     {
       "table": "conditions.streaming",
-      "help": "Now showing: a stream is playing.",
+      "help": "Now showing: a stream is playing. It plays in whichever quiet scene is showing, the television standing in it; at night the knight sleeps in the house with the television on.",
       "settings": [
         { "key": "min_streams", "type": "integer", "default": 1, "min": 1, "scope": "household",
           "gui": { "admin": { "section": "Conditions: now showing", "label": "Streams" } }, "editable": true,

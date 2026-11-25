@@ -16,16 +16,19 @@ a world pack holds, and the rules it is checked by, are in [worlds.md](./worlds.
 | `compile(pack, id)` | the scene `id` of a loaded pack (a `read()` result of format 1.1) as an object with the scene interface; throws when the scene names something the compiler does not build |
 | `start(texts, allowUnsigned, opts)` | reads `kw.medieval` from `texts` and puts its scenes in place, as above, each behind a guard ([When a part throws](#when-a-part-throws)), and every other world pack's parts under their long names ([Other worlds](./worlds.md#other-worlds)); `opts.keys` replaces `KEYS` in `read()`, for the tests only |
 | `compileKind(pack, set, kind)` | the kind of device `kind` of the prop set `set` of a loaded pack, as an entry of `KW.kinds` ([The devices](./cast.md#the-devices-on-the-page)); throws when it names something the compiler does not build |
+| `compileTv(pack, set)` | the television of the prop set `set` of a loaded pack (format 1.4), as `KW.tv` ([The television](./cast.md#the-television)); throws when it names something the compiler does not build |
 | `compileMember(pack, id)` | the cast member `id` of a loaded pack, as an entry of `KW.cast` ([The cast](./cast.md#the-cast-on-the-page)); throws when it names something the compiler does not build |
 | `status` | what the last `start` found, with any fault since, or `null` before it |
 | `changes` | a count that goes up at each `start` and each part that gives way to its code copy, which tells the engine and the settings screen to paint their backdrops and pictures again ([When a part throws](#when-a-part-throws)) |
 | `props` | what the last `start` found for the devices, or `null` before it |
+| `tv` | what the last `start` found for the television, `{ source, set, fault }`: `pack` or `code`, the prop set `useKinds` took it from, and why it is the code's, or `null` before it |
 | `cast` | what the last `start` found for the cast, or `null` before it |
 | `compileWords(pack, id)`, `compileOverlay(pack, id)` | the word set or the overlay `id` of a loaded pack, compiled ([The words and the overlay](./worlds.md#the-words-and-the-overlay-on-the-page)); each throws when it names something the compiler does not build |
 | `join(parts, sets, limit)` | the line a list of parts makes in a set of templates, within `limit` characters, or `null` ([worlds.md](./worlds.md#the-words-and-the-overlay-on-the-page)) |
 | `catalogue()` | what is loaded, for the settings ([What the page lists for the settings](#what-the-page-lists-for-the-settings)) |
 | `swatchOf(set, name)` | another pack's swatch of one of the user's sets, by its long name, or `null` |
-| `useKinds(choice)` | puts each kind of device's drawing from its chosen prop set in `KW.kinds`; `devices` holds what it did |
+| `useKinds(choice)` | puts each kind of device's drawing from its chosen prop set in `KW.kinds`, and in `KW.tv` the television of the set most of the kinds are chosen from, or the base world's; `devices` holds what it did |
+| `tvOf(name)` | one prop set's television, or the reason it cannot give one, without touching `KW.tv` |
 | `drawingOf(name, kind)` | one prop set's drawing of one kind, or the reason it cannot, without touching `KW.kinds` |
 | `quietLine(parts, text)`, `caption(type, parts, text)` | the quiet line and an event's caption the page shows: built from the parts in the words in use, or `text` as it is |
 | `words`, `overlay` | the word set and the overlay in use: what the last `start` found, or the one `useWords` or `useOverlay` put in use since, or `null` before it |
@@ -34,8 +37,9 @@ a world pack holds, and the rules it is checked by, are in [worlds.md](./worlds.
 | `MEDIEVAL`, `PROPS`, `WORDS`, `OVERLAY` | `'kw.medieval'`, `'props.medieval'`, `'words.medieval'`, `'overlay.phosphor'` |
 | `QUIET_MAX`, `CAPTION_MAX` | 52 and 44, the longest quiet line and caption, as the collector's |
 
-It also defines `KW.kinds`, the drawing of each kind of device the engine draws, and `KW.cast`, the
-engine's supporting cast ([cast.md](./cast.md)).
+It also defines `KW.kinds`, the drawing of each kind of device the engine draws, `KW.tv`, the
+television the engine stands in a scene while something streams, and `KW.cast`, the engine's
+supporting cast ([cast.md](./cast.md)).
 
 ## Where the scenes are drawn from
 
@@ -62,7 +66,7 @@ A scene is drawn from code when:
 | that scene threw while drawing, in this version of the pack ([When a part throws](#when-a-part-throws)) | `knightwatcher: the scene camp is drawn from code: it threw while drawing: <message>` |
 
 Otherwise the line is `knightwatcher: the scenes battlement, camp, yard, cellar, smithy, house and court are drawn
-from the pack kw.medieval 0.9.0, signed` (or `unsigned`), written with `console.info`; the others
+from the pack kw.medieval 0.10.0, signed` (or `unsigned`), written with `console.info`; the others
 are `console.warn`. The line lists the scenes drawn from the pack in the pack's order, so with the
 cellar failing to compile it is `the scenes battlement, camp, yard, smithy, house and court are drawn ...`, after
 the cellar's own line. Of two copies of `kw.medieval` the higher
@@ -91,7 +95,8 @@ The devices are read in the same call, from the same pack: each kind of the prop
 `props.medieval` that the engine draws is compiled ([The devices](./cast.md#the-devices-on-the-page)) and takes the
 code's drawing's place in `KW.kinds`. A kind the set does not give, and every kind when the pack is
 refused, missing or not loaded, keeps the code's drawing from `KW.props.KINDS`; a kind nobody gives
-is drawn as `box`, as before. A kind that fails to compile is drawn from code, with a line of its
+is drawn as `box`, as before. The set's television, where it gives one, takes the place of the
+code's, `KW.props.TV`, the same way. A kind that fails to compile is drawn from code, with a line of its
 own, `knightwatcher: the device kind camera is drawn from code: it could not be compiled: <reason>`
 (`console.warn`), written before the scenes' line, which stays the last. A pack whose kinds all
 compile adds no line. `KW.world.props` holds what `start` found for them:
@@ -412,5 +417,6 @@ over nine seconds with its sparks and its hot tip, the bellows' and the quench's
 code smithy's with the knight's moves and the steam and the rings, the `dx`, `dy`, wave and palette tracks, the
 house's screen, its sleeper with the ice bag and the blanket's breath, the Zs at night, the pegs
 from the blade and the stamp a rest names, a rest view held to its place, the pack library's rules
-for `targetDx` and `spot`, format 1.3's quench, bellows and `pump`, read in 1.3 alone, and that
-what the compiler does not build is refused by name.
+for `targetDx` and `spot`, format 1.3's quench, bellows and `pump`, read in 1.3 and later alone, the
+smithy's rounds and its quench at their stop, and that what the compiler does not build is refused
+by name.

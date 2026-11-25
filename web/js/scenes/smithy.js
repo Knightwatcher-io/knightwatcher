@@ -12,11 +12,15 @@
   const IRON = [[.15, '#7d899b'], [.5, '#525c6e'], [1, '#353b48']];
   /* The places for the knight's gear at rest (docs/rig.md): the anvil, where the weapon lies under
      the hammer, x and y the middle of its grip and a its angle, which lays it flat, x counted from
-     the knight's spot, s.kx, so that the blade lies where the hammer falls; and the wall over the
+     the scene's spot, s.spot, so that the blade lies where the hammer falls; and the wall over the
      quench barrel, where a shield hangs from a nail, x and y the nail and w by h the room below. */
   const RESTS = { anvil: { x: 50, y: 425, a: Math.PI / 2 }, wall: { kind: 'hang', x: 145, y: 312, w: 100, h: 132 } };
   /* What the shield on the wall adds to the backdrop key: '|' and its name when one is equipped. */
   const offKey = () => { const k = K.rest.key('off'); return k && k !== 'code' ? '|' + k : ''; };
+  /* The x of the scene's spot, which the anvil counts from: the knight patrols away from it, and the
+     engine walks the knight back to it before the hammer plays (s.spot; s.kx where a frame gives no
+     spot). */
+  const spotX = s => (s.spot !== undefined ? s.spot : s.kx);
 
   /* ---- The acts ---------------------------------------------------------------------------------
      Three, each in its own condition and each a function of the time alone, so that a frozen time
@@ -61,7 +65,7 @@
   }
   function hammer(t, s) {
     const o = s.o, c = (t % HAMMER.period) / HAMMER.period, [k0, k1, e] = seg(HAMMER.keys, c), v = i => lerp(k0[i], k1[i], e);
-    const r = v(2), th = v(3), gx = s.kx + RESTS.anvil.x, gy = RESTS.anvil.y, st = strikeAt(gx, gy);
+    const r = v(2), th = v(3), gx = spotX(s) + RESTS.anvil.x, gy = RESTS.anvil.y, st = strikeAt(gx, gy);
     o.bob = 0; o.lean = Math.round(v(5)); o.crouch = Math.round(v(6)) / 5; o.headDy = v(7);
     o.tool = { kind: 'hammer', a: v(1), R: { off: [Math.sin(th) * r, -Math.cos(th) * r], at: st.hand, pin: v(4) }, L: { at: [gx - 5, gy + 1] } };
     s.strike = c < HAMMER.strike;
@@ -151,11 +155,15 @@
   }
 
   const cond = s => (s.w ? s.w.id : 'idle');
+  /* The quench's clock, ms into its loop: one loop from the start of the patrol's quench stop
+     (s.here), while all is quiet or something streams; null when it does not play. */
+  const quenchClock = s => (s.here && s.here.act === 'quench' && s.here.el < QUENCH.period ? s.here.el : null);
   function act(t, s) {
-    const id = cond(s);
-    if (id === 'updating') hammer(t, s);
+    const id = cond(s), q = quenchClock(s);
+    // the hammer plays once the engine has walked the knight back to the anvil
+    if (id === 'updating') { if (Math.abs(s.kx - spotX(s)) <= 2) hammer(t, s); }
     else if (id === 'cpu_hot') bellows(t, s);
-    else if (id === 'idle') quench(t, s);
+    else if (q !== null) quench(q, s);
   }
 
   /* The tools hung on a board on the wall: a hammer, tongs, two horseshoes. */
@@ -181,7 +189,7 @@
   }
 
   function paint(s) {
-    const { HL, HR, HT, HH, HFL } = V, kx = s.kx;
+    const { HL, HR, HT, HH, HFL } = V, kx = spotX(s);
     E.bricks.draw({ p: [HL, HT], w: HR - HL, h: HFL - HT, size: [62, 28], of: WALL, mortar: '#0d0807', seed: 7 });
     rrect(HL - 4, 128, HR - HL + 8, 26, 2, C.K); Rv(HL, 131, HR - HL, 20, [[.2, '#4a301a'], [.6, '#3a2514'], [1, '#26180c']]);
     tools();
@@ -298,7 +306,7 @@
     // The blade's hot tip while the hammer works it, at the weapon's point (to along the blade) and
     // between its edges (half either side), in bands that start 73, 57 and 43 short of the point.
     // A weapon that gives no blade, or only fires, shows none.
-    const fw = K.fired(), gx = s.kx + RESTS.anvil.x, gy = RESTS.anvil.y, b = id === 'updating' && !(fw && fw.use === 'fire') ? K.rest.reach() : null;
+    const fw = K.fired(), gx = spotX(s) + RESTS.anvil.x, gy = RESTS.anvil.y, b = id === 'updating' && !(fw && fw.use === 'fire') ? K.rest.reach() : null;
     if (b) {
       const to = b.to, h = b.half;
       glow(gx + (to - 31), gy, 56, '#ff8a3d', .14 + .03 * Math.sin(t / 120));
@@ -308,13 +316,13 @@
       Rh(gx + (to - 71), gy - (h - 3), 42, 2, 'rgba(255,240,180,.55)'); Rh(gx + (to - 71), gy + (h - 6), 42, 2, 'rgba(60,10,0,.35)');
     }
     // the rings on the water while the blank is in it, then the pie
-    const tq = t % QUENCH.period;
-    if (id === 'idle' && tq >= QUENCH.wet[0] && tq < QUENCH.wet[1]) ringsHD(tq);
+    const tq = quenchClock(s);
+    if (tq !== null && tq >= QUENCH.wet[0] && tq < QUENCH.wet[1]) ringsHD(tq);
     KW.devices.draw(t, s);
     // the sparks where the hammer's face meets the blade, through the blow
-    if (s.strike) E.burst.draw({ p: [s.kx + 148, 412] }, (t % HAMMER.period) / HAMMER.period / HAMMER.strike);
+    if (s.strike) E.burst.draw({ p: [spotX(s) + 148, 412] }, (t % HAMMER.period) / HAMMER.period / HAMMER.strike);
   }
-  function over(t, s) { if (cond(s) === 'idle') quenchOver(t % QUENCH.period); }
+  function over(t, s) { const tq = quenchClock(s); if (tq !== null) quenchOver(tq); }
 
   /* The places for devices (docs/page.md): the pie's, three high ones for cameras and three
      on the ground for the other devices. x is the middle and y the base. */
@@ -325,17 +333,24 @@
     h3: { cls: 'high', kind: 'surface', x: 40, y: 300, w: 88, h: 112, flip: true },
     g1: { cls: 'ground', kind: 'floor', x: 70, y: 594, w: 132, h: 112, front: true },
     g2: { cls: 'ground', kind: 'floor', x: 883, y: 594, w: 132, h: 112, front: true },
-    g3: { cls: 'ground', kind: 'floor', x: 218, y: 594, w: 132, h: 112, front: true }
+    g3: { cls: 'ground', kind: 'floor', x: 760, y: 594, w: 132, h: 112, front: true }
   };
 
   KW.scenes.smithy = {
     spot: 88, places: PLACES, rests: RESTS, helmet: false, sword: false,
     // The conditions this scene can act out (docs/page.md): the update by the hammer, the CPU running
-    // hot by the bellows, and a device down and the memory tight standing at the spot, as a quiet
-    // scene does; all is quiet by the quench, which every quiet scene acts in its own way.
-    can: ['device_down', 'cpu_hot', 'memory_tight', 'updating'],
+    // hot by the bellows, and a device down and the memory tight standing where the knight is, as a
+    // quiet scene does, and a stream on the television; all is quiet by the quench, a stop of the
+    // knight's patrol.
+    can: ['device_down', 'cpu_hot', 'memory_tight', 'updating', 'streaming'],
     // the events it plays (docs/page.md): which of the flies, the crate, the feast and the foe
     hosts: [],
-    key: s => Math.round(s.kx) + '|' + K.rest.key('main') + offKey(), act, paint, draw, over
+    // the stops of the knight's patrol (docs/page.md): a look round at the anvil, and one loop of the
+    // quench from the fire (14.4 s, rounded up to whole seconds)
+    rounds: [{ x: 88, act: 'look', dur: 12 }, { x: 130, act: 'quench', dur: 15 }],
+    // where the television stands while something streams (docs/scenes.md): its middle, what it
+    // stands on, and where the knight watches it from, in units of U as the spot
+    tv: { x: 239, stand: 'table', watch: 88 },
+    key: s => Math.round(spotX(s)) + '|' + K.rest.key('main') + offKey(), act, paint, draw, over
   };
 })(window.KW);

@@ -25,7 +25,7 @@ world rule, the shared settings and the screen.
 | `js/draw.js` | `KW.view` (the grid and the canvas's real edges), the palette, the drawing primitives |
 | `js/sprites.js` | small symbols drawn by code: `mark`, `heart`, `zed`, `drum`, `spark`, `stroke` |
 | `js/effects.js` | `KW.effects`: the effects, drawings the engine owns that a scene names with numbers (sky, stars, bricks, flame and the rest), each with its table of fields, its cost and its drawing; see [The effects](#the-effects) |
-| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's, and `pieShapes`, the maps of the pie's lamp and its last slice), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), the fly (`flyHD`, `deadFlyHD` and `CRITTERS`, the code's critters and the fallback for the pack's; see [The cast](#the-cast)), the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures, its crown and its exit, the code's foes and the fallback for the pack's) with the smoke, the sparkles and the hole they come and go by |
+| `js/props.js` | props used by more than one scene or drawn by the engine: the greatsword (`swordHD`), `bricksHD` (the bricks effect under its old name, for the previews of the settings screen and the admin page), `barrelHD`, `tableHD`, `sconceHD`, the pie and the other devices (`KINDS`, the code's drawings and the fallback for the pack's, and `pieShapes`, the maps of the pie's lamp and its last slice), their lamps (`LAMP`, `lampLevel`, `lampHD`, `LAMP_REDS`), the fly (`flyHD`, `deadFlyHD` and `CRITTERS`, the code's critters and the fallback for the pack's; see [The cast](#the-cast)), the crate and its parachute, and the foes (`FOES`: the goblin, its poses painted once each, its measures, its crown and its exit, the code's foes and the fallback for the pack's) with the smoke, the sparkles and the hole they come and go by; the devices' rests (`stoolHD`, `satchelHD`, `matHD`, `shadowHD`) and the television (`TV`, its set, table and crate), the code's and the fallback for the pack's |
 | `js/cat.js` | the mouser cat, the first pet: its drawing in code, each pose worked out into cells and painted once from them, in two coats, its spot in each scene and the measures of its pounce (`PETS`, the code's pets and the fallback for the pack's; see [The cast](#the-cast)) |
 | `js/knight.js` | the knight: `pose(id, t)` turns a condition into a pose, `rig(o)` turns a pose into the points the knight is drawn on (see [The knight's rig](./rig.md#anchors-values-and-poses)), `draw(o)` draws the knight in it, from the base pack or from code (see [The knight from the base pack](./rig.md#the-knight-from-the-base-pack)), `start()` and `add()` load the packs, `fetchPacks()` fetches the downloaded ones and `look()` draws another look from the packs already loaded, `basePack()` gives the base pack in use, `swing()` animates a cut, `ownReturn()` says whether a swing comes back by a return of its own (see [The knight's rig](./rig.md#anchors-values-and-poses)), `aim` holds the aiming stances of a weapon that fires and the angle that points it, `fire()` animates a shot, `volley()` the swat by shot, `muzzle()` gives where it leaves and `fired()` the look's weapon when it fires (see [Aiming and firing](./rig.md#aiming-and-firing)), `shieldFace()` and `headBox()` give where the shield's face and the head group are drawn, for a foe's shot (see [A foe's shot](./rig.md#a-foes-shot)), `head()` draws the bare head and `speech()` a speech bubble, and `rest` draws the gear a scene shows off the knight (see [Gear at rest](./rig.md#gear-at-rest)); `build` holds the knight's measurements. It also creates `KW.packText`, which the carriers fill |
 | `js/scenes/*.js` | one file per scene: battlement, camp, house, yard, cellar, smithy, court. Each declares the conditions it can act out (`can`). The court draws the monarch in the skin, hair and robe it is given |
@@ -35,7 +35,7 @@ world rule, the shared settings and the screen.
 | `packs/base.pack.js` | the carrier of the base pack: one line that pushes the text of `packs/base.pack.json` onto `KW.packText`. The JSON file is the source and is not loaded itself; see [library.md](./library.md#carriers) |
 | `packs/medieval.pack.js` | the carrier of the medieval world's pack, `packs/medieval.pack.json`, which holds every scene, the devices and the cast as data; see [worlds.md](./worlds.md) |
 | `js/state.js` | reading `data/state.json` and turning it into what the engine needs, the words for the streams (`streamWords`), deciding when to reload for a new version, and the display's id it posts to the server (`displayId`, `reportDisplay`) |
-| `js/engine.js` | the frame: scene choice, strolling, the swat, the pet's catch (`KW.engine.pet`), events and the foe player that plays a foe's entrance, strike and exit, and the shot of a foe that fires (`KW.engine.foe`), the shots of a weapon that fires, their flash and their burst (`KW.engine.shots`; see [The effects](#the-effects)), drawing order, and the devices in their places (`KW.devices`) |
+| `js/engine.js` | the frame: scene choice, the patrol and its walk, the television, the swat, the pet's catch (`KW.engine.pet`), events and the foe player that plays a foe's entrance, strike and exit, and the shot of a foe that fires (`KW.engine.foe`), the shots of a weapon that fires, their flash and their burst (`KW.engine.shots`; see [The effects](#the-effects)), drawing order, and the devices in their places (`KW.devices`) |
 | `js/demo.js` | the invented conditions and streams, the review bar and the demo loop |
 | `js/settings.js` | `KW.settings`: the levels the display's settings come from, the saved settings (the server's, shared by every display, or this browser's own), keeping them in step with the server (`connect`), the look and the engine's input made from them, the clock's words, and the settings screen (see [Settings](./display.md#settings)) |
 | `js/main.js` | start-up (starting the knight and then the world from the medieval world's pack, setting the overlay's custom properties on the display, reading the address's hooks, applying the settings and mounting their screen, asking the server for the shared settings, fetching the downloaded packs and starting the world again with them, posting the display's id to the server, sizing), the clock and the words over the scene, the choice of mode (a demo forced by `?demo` asks the server nothing), the hash listener that opens the settings screen, the check for a new version |
@@ -98,17 +98,18 @@ the interface.
 | `places` | yes | the places for devices: `pie`, three high ones (`h1` to `h3`) and three on the ground (`g1` to `g3`); see [Devices](#devices) |
 | `rests` | no | the places where the scene sets the knight's gear down, by name; the scene reads them itself, see [Gear at rest](./rig.md#gear-at-rest) |
 | `draw(t, s)` | yes | draws the scene at time `t` in ms: everything on a scene without `paint`, otherwise what moves. It calls `KW.devices.draw(t, s)` at the point where the devices behind the knight belong in its drawing order |
-| `rounds` | no | the spots the knight strolls between while free to move: `[{ x, act, dur }]`, `x` in units of `U`, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles |
+| `rounds` | no | the stops of the knight's patrol ([The patrol](#the-patrol)): `[{ x, act, dur }]`, `x` in units of `U`, `dur` in seconds, `act` one of `guard`, `look`, `sniff`, `yawn`, or a name the scene's `act` handles (`train` in the yard, `quench` in the smithy). The first is the scene's spot, where the knight comes in |
+| `tv` | no | where the television stands while something streams: `{ x, stand, watch }`, `x` the middle of the stand's foot on the grid, `stand` `table`, `crate` or `none` (the scene draws its own set, as the house's on its table), and `watch`, where the knight watches it from in units of `U`, or left out where the knight never goes to it (the cellar, the court). The engine draws the set at the scene's `KW.devices.draw` call, before the devices behind the knight |
 | `paint(s)` | no | the still part, painted once into a cached canvas 32 pixels wider than the view, and kept until the key or the screen's shape changes |
 | `key(s)` | no | a string, asked for each frame of a scene with `paint`; the cache is keyed on the scene's name and the key. The cached backdrop is painted again when it changes, and when `KW.world.changes` does (the world started again, or a part of a pack gave way to its code copy; [world-loading.md](./world-loading.md#when-a-part-throws)). A scene that paints the knight's gear at rest into its backdrop includes `KW.knight.rest.key(slot)` for each such item |
-| `act(t, s)` | no | called each frame after strolling and before the foe's plan, the swat and the events, which may override it; may change the knight's pose `s.o`, and move the knight off its spot for the frame by `s.dx`. No transform is set for it |
+| `act(t, s)` | no | called each frame after the patrol and before the foe's plan, the swat and the events, which may override it; may change the knight's pose `s.o`, and move the knight off its spot for the frame by `s.dx`. No transform is set for it |
 | `over(t, s)` | no | drawn after the knight, the flies and the events |
 | `wallAt(x)` | no | the y of the top of whatever a foe climbs over at grid x; without it a foe digs up out of the ground |
 | `foeZone` | no | where a foe may stand: `{ side, spans }`, the side of the knight tried first (`1` right, `-1` left) and the spans of grid x, `[[x0, x1], ...]`, where its middle may stand clear of the scene's own props. The engine also keeps it clear of every place holding a device on the ground or the pie, and 150 to 240 pixels from the knight's middle, within the reach of the weapon the knight holds, or with a weapon that fires at the shot's gap, the knight stepping back for it ([The acts with a weapon that fires](#the-acts-with-a-weapon-that-fires)); with no room the event shows its caption alone. A scene that hosts the foe without it plays the event's 3.4 seconds with no foe drawn, the knight standing still |
 | `hosts` | no | the events the scene plays, each of `flies`, `crate`, `feast` and `foe` (the event with a foe, the banned address's): `['flies', 'crate', 'feast', 'foe']` at the battlement and the camp, `['flies', 'crate', 'feast']` in the yard, `['feast']` in the house and `[]` elsewhere. The engine plays the crate, the feast and the foe only in a scene that hosts them (`KW.engine.hosts(name, type)`); a scene without `hosts` plays the events whose `where` in `EVENTS` names it, the medieval world's lists, which the medieval scenes' `hosts` repeat. The flies follow `outdoors`, which a compiled scene gives when its `hosts` names both the flies and the crate. The settings read `foe` from it, to offer the foe's rows |
 | `outdoors` | no | `true` where the knight's flies gather and are swatted, and, for a scene without `hosts`, where the crate may land; elsewhere a fly is the pet's |
-| `crate` | where the crate lands | `{ span: [from, to] }`, the stretch of floor the crate may land on, at least 60 wide. The engine (`crateX`) lands the crate's middle at `clamp(kx - 160, from + 30, to - 30)`, as near 160 left of the knight as the stretch allows; the stretch lies clear of the ground places and the pie. The battlement gives `[150, 384]`, the camp and the yard `[298, 436]`. Without it the crate's left edge lands 320 left of the knight, and at least 70 inside the view's left edge, as it did before scenes gave one |
-| `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy`: in bed the knight is not drawn standing and does not stroll, the helmet is off, the pet keeps its spot by the bed and the scene is dimmed at night |
+| `crate` | where the crate lands | `{ span: [from, to] }`, the stretch of floor the crate may land on, at least 60 wide. The engine (`crateX`) lands the crate's middle at `clamp(kx - 160, from + 30, to - 30)`, as near 160 left of the knight as the stretch allows; the stretch lies clear of the ground places and the pie. While the television stands in the scene the crate lands as ever, in front of it. The battlement gives `[150, 384]`, the camp and the yard `[298, 436]`. Without it the crate's left edge lands 320 left of the knight, and at least 70 inside the view's left edge, as it did before scenes gave one |
+| `bed` | no | `true` where the knight takes to bed for `night` and `container_unhealthy`: in bed the knight is not drawn standing and does not patrol, the helmet is off, the pet keeps its spot by the bed and the scene is dimmed at night |
 | `helmet` | no | `false` where the helmet comes off, unless the address's `h=` or the display's setting for the helmet indoors says otherwise |
 | `sword` | no | `false` where the knight puts the sword away. Where none of the scene's `rests` is a frame (a place with an angle `a`), a weapon put away is worn by its stowed view, if it has one ([Gear at rest](./rig.md#gear-at-rest)) |
 | `target` | no | where a shot at the scene's training target aims, `[x, y]` on the grid, the middle of the target: `[710, 380]`, the dummy's, in the yard. With a weapon that fires the knight trains from 300 short of it ([The acts with a weapon that fires](#the-acts-with-a-weapon-that-fires)). A compiled scene with a `target` gives the middle of the box of its target group's shapes |
@@ -124,10 +125,12 @@ the interface.
 | `devices` | the devices standing in the places, each `{ place, kind, ok, alert }` with `place` the name of one of the scene's places |
 | `places` | the scene's `places` |
 | `tv` | whether the television is on |
-| `kx` | the knight's x on the grid: its spot, or where it has strolled to |
+| `set` | the scene's `tv` part, where the television stands, or `null` |
+| `spot` | the x of the scene's spot on the grid, `spot` times `U`: what the smithy's anvil counts from, wherever the knight has walked to |
+| `kx` | the knight's x on the grid: where its patrol has taken it |
 | `dx` | 0, for a scene's `act` to move the knight for the frame: the knight is drawn at `kx + dx`, worked out from `t` alone, while `kx`, the spot and everything the scene counts from it stay where they are. The smithy's walks to the forge, the water and the bellows use it; the smithy hosts no event, swat or foe, so nothing after the act reads the knight's place from `kx` there |
 | `o` | the knight's pose for this frame |
-| `here` | where the knight stands in the scene's `rounds`, `{ act, el }` with `el` the ms spent there, or `null` |
+| `here` | the stop of the patrol the knight stands at, `{ act, el }` with `el` the ms spent there (`act` `watch` at the television), or `null` while it walks or holds |
 | `inBed`, `helmOff` | whether the knight is in bed, and whether the helmet is off |
 | `strike` | free for a scene's `act` to pass to its `draw` (the smithy's hammer blow) |
 | `patron` | the patron at court, the monarch, from the engine's input (the settings): `{ id, skin, hair, robe }`; the admin page's previews give `skin`, `hair` and `robe` as `undefined` |
@@ -146,9 +149,11 @@ gives `drawn(mon)`, each monarch's own hair and robe colours, from its patron, f
 screen's "As drawn" choices. The monarch itself is the patron's drawing ([The cast](#the-cast)). How a swatch's bands become the monarch's is in the comment above `hairOf` in `court.js`. The smithy's `act`
 plays one of three acts by the winning condition, each a function of the time alone: while
 updating the hammer, setting the knight's smith grip (`o.tool`, [rig.md](./rig.md#anchors-values-and-poses))
-and `strike`; while the CPU runs hot the bellows, at x 612 by `s.dx`; and while all is quiet the
-quench, walking the knight by `s.dx` between the forge at 650 and the water at 228. Its `paint` lays
-the weapon across the anvil with `KW.knight.rest`; its `draw` draws the fire, calm or flared while
+and `strike`, at the anvil, which counts from the scene's spot (`s.spot`); while the CPU runs hot
+the bellows, at x 612 by `s.dx`; and at the patrol's quench stop, while all is quiet or something
+streams, one loop of the quench from the stop's start (`s.here.el`), walking the knight by `s.dx`
+between the forge at 650 and the water at 228. Its `paint` lays the weapon across the anvil, from
+the spot, with `KW.knight.rest`; its `draw` draws the fire, calm or flared while
 the bellows work, the bellows, the hot tip on the blade while the hammer works it (none for a weapon
 that only fires), the rings on the water while the blank is in it, and the sparks of the blow; and
 its `over` the quench's steam, drips and glint. [scenes.md](./scenes.md#how-a-scene-compiles) has
@@ -163,7 +168,7 @@ pixels wider than the view, made the drawing context with `KW.draw.setCtx()`, wi
 16 pixels in, and the backdrop is laid 16 pixels left of the drift. Besides the key, the screen's
 shape and `KW.world.changes`, the engine drops every cached backdrop (`KW.engine.invalidate()`) when
 `main.js` changes the prop set in use, changes the knight's look, or adds downloaded packs.
-`act(t, s)` runs after the stroll and before the foe's plan, the swat and the events, with the
+`act(t, s)` runs after the patrol and before the foe's plan, the swat and the events, with the
 knight's pose already at its x (`s.o.x`), since a shot is aimed on the rig. `over(t, s)`
 runs after the knight, the pet, the devices in front, the flies, the foe's effects, the attack's red
 and the night's dimming. `wallAt(x)` is called through the foe's plan, once for each column across
@@ -173,6 +178,87 @@ moment, on the bare grid (`HL` 0, `HR` 960, `HT` 0), with `s` fixed: idle, the p
 television off, the knight at the scene's `spot`, out of bed; they never call `act`, `over` or
 `key`. A compiled scene's `paint`, `draw`, `over` and `act` run behind a guard, which gives way to
 the code scene when one throws ([world-loading.md](./world-loading.md#when-a-part-throws)).
+
+## The patrol
+
+In a scene with `rounds` the engine walks the knight between them (`patrol` in `engine.js`). Each
+round is a stop: the knight walks to its `x`, stands there `dur` seconds doing its `act`, and walks
+on to the next, round again; the first is the scene's spot, where the knight comes in. While the
+knight stands at a stop, `s.here` is `{ act, el }`, which the engine reads for `look`, `sniff` and
+`yawn` and a scene's `act` for its own (the yard's training at `train`, the smithy's quench at
+`quench`, one loop of 14.4 s from the stop's start). The medieval world's stops, x on the grid:
+
+| Scene | Stops (act, seconds) | Television: middle, stand | Watched from |
+|---|---|---|---|
+| battlement | 460 guard 16, 600 sniff 12, 440 look 14 | 255, table | 400 |
+| camp | 540 sniff 18, 480 look 14 | 330, table | 470 |
+| house | 570 sniff 16, 490 yawn 14 | its own table, 771 | 560 |
+| yard | 520 train 22, 440 look 14 | 330, table | 450 |
+| smithy | 440 look 12, 650 quench 15 | 239, table | 440 |
+| cellar | 620 guard 7, 730 guard 7 (the disk full) | 376, crate | not visited |
+| court | none | 520, table | not visited |
+
+**The plan.** The patrol is a plan of legs, walks and stops, worked out from the time and the
+knight's x when it is made, so the knight's place is a function of the time since then, the same
+at any frame rate, and with time frozen the same in every frame. It is made again when the scene
+changes (from its first stop), when its mode changes, and when a pause ends:
+
+| Mode | When | What the knight does |
+|---|---|---|
+| quiet | all is quiet, or the disk is full | the stops in turn |
+| stream | something streams | the stops, and visits to the television |
+| hold | anything else, and in bed | stays where it stands, a walk stopping with the feet together; a condition whose act needs a place of its own walks there first (`holdAt`): the hammer to the spot while updating, and running hot in a scene with a `target` to the spot, or 300 short of the target with a weapon that fires |
+| pause | an event or the swat | stays where it stands, and the plan is made again from there once it ends |
+
+A plan made again carries on to the stop the knight was at or heading for and plays it in full,
+and a visit to the set cut short is taken up again. So a warning in the same scene (a device down)
+holds the knight and the patrol resumes when it clears, a condition with a scene of its own changes
+the scene and the patrol starts again at the first stop when the quiet scene comes back, and the
+bellows, which place the knight themselves by `s.dx`, play wherever the knight stood.
+
+**The visits.** While something streams in a scene whose `tv` gives `watch`, the knight walks to
+the television as the stream begins (or comes into the scene), cutting short the stop it is at,
+watches it for 30 s (`VISIT.watch`): looking at the set, smiling, with a happy blink every 9 s
+(`here.act` `watch`); and patrols on. It comes back after the first stop that ends 60 s
+(`VISIT.gap`) or more after the last visit ended, so about a third of the time goes to the set.
+
+**The walk.** A side-step, since the knight always faces out of the screen: the foot on the side
+of travel lifts and steps out, then the other lifts and follows it in, so that a boot on the ground
+never slides. Each step moves the body 14 pixels in 300 ms (`GAIT`), about 47 pixels a second; the
+moving foot travels twice that, eased, lifted up to 7 on an arc, and each hip follows its foot by
+half. The body sinks 2 as each foot lands and rises over the step, leans 2 into the walk and looks
+ahead. A walk is a whole number of pairs of steps, so the feet close together as it ends. The
+engine puts the step on the pose as `o.gait` ([rig.md](./rig.md#anchors-values-and-poses)), with
+`o.bob`, `o.lean` and `o.look`.
+
+**Frozen time.** With `t=` the first plan starts `pt=` ms before the frozen time (0 without it), so
+`is=battlement&t=2300&pt=20000` shows the knight 20 s into the battlement's patrol, and with a
+stream (`on=plex`) `pt=2000` shows it watching the set. `KW.engine.patrol` gives the parts for the
+tests: `GAIT`, `VISIT`, `gaitAt`, `walkLeg`, `mode`, `holdAt`, `plan()` (the plan now) and
+`acted` (the condition acted, below).
+
+## The television
+
+While the television is on (`s.tv`: a stream counted or the condition up), the engine draws it in
+every scene whose `tv` stands it (`stand` `table` or `crate`), at the scene's
+`KW.devices.draw(t, s)` call, before the devices behind the knight: its stand and the set painted
+once into a canvas of their own, as a device's still part is, and its picture each frame. It is
+`KW.tv`, the television of the world's prop set ([cast.md](./cast.md#the-television)), or the code's,
+`KW.props.TV`: the house's set with its two dials, its grille and its rabbit ears, on a small table
+104 by 60 or on a crate 30 high, its picture (the effect `picture`) changing colour every 400 ms
+with a figure crossing it. The house, whose `tv` stands `none`, draws its own set on its table, as
+before. The goblin and the crate do not keep clear of the set: they are drawn after the scene, and
+so in front of it, the goblin climbing in and the crate landing where they would with the set off,
+still clear of the devices and the knight. A ban or an import plays as usual while something
+streams, by the owner's decision of 25 November 2026.
+
+**Night with a stream.** While streaming is the winning condition and `night` is also up, the
+state file marks it (`w.night`, [state.md](./state.md)) and the engine acts `night` (`actedOf`):
+the knight sleeps in the house, the television on its table plays in the background, and the
+house's over layer lays the set's light over the dark room, waxing and waning slowly (`flicker`):
+a wide pool in the picture's blue round the set, four faint lights one inside the other so that it
+fades out with no edge, and a smaller one on the bed on a clock of its own. The headline still shows the stream. Streaming has no pose of its own: the knight is posed as
+when all is quiet, and the watching is a stop of the patrol.
 
 ## The effects
 
@@ -237,7 +323,7 @@ shield; the test world's blaster and prod are the others the tests and the scree
 | Act | By shot |
 |---|---|
 | the swat | one shot per settled fly (`volleyPlan`): the flies on the oldest fly's side first, each side oldest first, then the other side's, so the watcher turns once. The first shot leaves after a raise of 450 (`VOLLEY.raise`), each next one 300 later (`VOLLEY.gap`); after the last, the recoil of 80 and the return of 560 (`VOLLEY.after`), then the swat is over. Each shot flies from the muzzle as the pose stood aimed at its fly (the aim up to `AIM.swatAbove`, 1.4 above level) to where the fly was as it left, and the fly is popped, with the poof, when the shot reaches it. Seven flies: the last shot at 2 250, the return over by 2 890. The cat's rules about when the knight is busy are the same |
-| practice | the training spot stands 300 short of the scene's `target` (`PRACTICE`, `practiceX`), and the watcher strolls there in place of the round's `train` spot. The scene's act fires on the training's beats, `fire()` over 900 every 5 600 while quiet and over 1 000 every second while the CPU runs hot, the shot leaving at the middle of the beat (`practice(o, t, t0, len, at)`): from the muzzle to the target's middle, landing with the burst, and the target struck as it lands (its wobble and its straw). Running hot, the watcher first walks to that spot from wherever it stands, and fires once there |
+| practice | the training spot stands 300 short of the scene's `target` (`PRACTICE`, `practiceX`), and the watcher patrols to it in place of the round's `train` stop. The scene's act fires on the training's beats, `fire()` over 900 every 5 600 while quiet and over 1 000 every second while the CPU runs hot, the shot leaving at the middle of the beat (`practice(o, t, t0, len, at)`): from the muzzle to the target's middle, landing with the burst, and the target struck as it lands (its wobble and its straw). Running hot, the watcher first walks to that spot from wherever it stands, and fires once there |
 | the foe | `shotPlan()`: on each side the least gap is 200, or the muzzle's reach from the watcher's middle aimed level plus the foe's half width and 30 when that is more (`FOE.shot.clear`); the wanted 300 and the most 320, raised to the least for a long barrel, and never past the weapon's `range` or 420. Where the foe's zone has no room at the wanted gap, the watcher steps back from the zone's side, 4 at a time and up to 160 (`FOE.shot.step`), to the least step that gives it, or the widest gap found, never nearer the screen's edge than 90; the foe stands in its zone, clear of the devices, as for a blade. The event (`foeShot`): the step back over the first 900, while the foe climbs in; `fire()` at the foe's middle from 1 250 (`aim`), the shot leaving at 1 400 (`fire`), the recoil over 80 and the return over 560 (the strike's `rebound` and `recover`). The hit is where the shot meets the foe's body, its half width short of the middle: for a bolt when it gets there, at once for a tracer or a beam. With the blaster on the battlement the watcher steps back 132 and the goblin is hit at 1 473; the exit is the engine's, as for a blade, all within the event's 3 400 |
 | a foe that fires | whatever the watcher holds, a foe with `fires` (format 1.2) shows its `aim` pose in place of its taunt from 1 230 (`FOE.fires.aim`) and fires once at 1 350 (`fire`), before the watcher's strike or shot, unless it is hit first (`foeFires`, `foeShotOf`). The shot is made with `shoot()` in the foe's kind and colours from its muzzle as drawn, mirrored with the foe, the watcher posed as the strike or the shot has it at 1 350. The watcher is never hit. Without a shield the shot misses: aimed 40 (`over`) above the corner of the head group nearest the foe, as drawn (`KW.knight.headBox`), and carried on along that line off the screen, with no burst. With a shield carried and the foe on its side, the left, the shot stops at the shield's face (`KW.knight.shieldFace`), on its edge nearest the foe 0.4 of the way down (`face`), with the spark: `poofHD()`, the blade's burst, for 80 (`spark`). As the shot passes the point it was aimed at or stops at the shield (at once for a tracer or a beam, when it gets there for a bolt) the watcher flinches: the eyes are `wide` for 200 (`flinch`), and then whatever the event sets; nothing else of the pose changes. The watcher then strikes or shoots back as before, and with a weapon that fires both shots show. Known limit: the shield is always in the left hand, so a foe on the right misses overhead even with a shield carried, and its line can cross the weapon the watcher holds out or raises on that side. The medieval scenes and Orbit's put the foe on the left first, so a foe stands on the right only where the left has no room |
 
@@ -357,21 +443,25 @@ accepted, as the owner approved it: in the court, the lower owl's question mark 
 the upper owl (`h1`) while the lower one is down, since between the right pillar's torch, the
 throne and the cat's leap there is no spot for two owls that avoids it.
 
-The smithy's acts walk the knight off its spot, which no other scene does, and there the knight
-covers places, which the owner accepted: at the forge (650, about 2.2 s of each quench) and at the
-bellows (612, all the time the CPU runs hot) the knight's head hides most of the owls in the high
-places `h1` (600) and `h2` (676), and at the water (228, about 5.5 s of each quench) the boots stand
-over the third ground place, `g3` (218), so a device there stands in front of them. Neither hides an
-alert: a device down outranks both all is quiet and a machine under strain, and under
-`device_down` the smithy plays no act and the knight stays at its spot, 440, clear of every place. On each walk of the quench the knight passes in front of the pie, and at the water stands
+The smithy's acts walk the knight further than its stops, and there the knight covers places,
+which the owner accepted: at the forge (650, about 2.2 s of each quench) and at the bellows (612,
+all the time the CPU runs hot) the knight's head hides most of the owls in the high places `h1`
+(600) and `h2` (676), and at the forge the right boot's toe meets the left end of what stands at
+the third ground place, `g3` (760, the chest's mat or the satchel), a few pixels at the floor.
+`g3` stood at 218, before the quench barrel, until 25 November 2026, when the television took its
+room and it moved before the bellows, as the design's mock-up placed it; the boots at the water now
+cover no place. None of this hides an alert: a device down outranks both all is quiet and a machine
+under strain, and under `device_down` the smithy plays no act and the knight holds where it
+stands. On each walk of the quench the knight passes in front of the pie, and at the water stands
 clear of it (the knight's right edge at 290, the pie's place from 295). `tests/web/places.test.js`
 holds the knight's drawing at the three stands to exactly these places.
 
 The ground places stand along the front edge of the floor (base y 594, `front: true`), in front of
-the knight and never under the knight's boots at any spot it strolls to, by the owner's decision of
-17 November 2026; the smithy's quench, which walks rather than strolls, stands the boots over `g3`
-at the water, as accepted above. Where a scene hosts the goblin or the crate, a stretch of floor is kept clear left
-of the knight: the goblin comes up there, and the crate lands there (the scene's `crate`).
+the knight and never under the knight's boots at any stop of its patrol, by the owner's decisions of
+17 and 25 November 2026; the knight passes behind them only while it walks, and the smithy's quench
+meets `g3` at the forge, as above. Where a scene hosts the goblin or the crate, a stretch of floor
+is kept clear left of the knight: the goblin comes up there, and the crate lands there (the scene's
+`crate`), in front of the television while it stands in the scene.
 
 **The kinds.** `KW.props.KINDS` holds the code's drawing of each kind, `draw(x, y, t, ok, part)`,
 standing on the base `(x, y)`, and `mark`, the height above the base of the top of its question
@@ -384,18 +474,29 @@ it with the kinds the medieval world's prop set gives, and keeps `KW.props.KINDS
 |---|---|---|
 | `pi` | the pie in its dish, steaming, its filling lit through the lattice | the empty dish with crumbs and the last slice |
 | `camera` | a barn owl on an iron wall bracket, its eyes the lamp, glowing amber | hanging upside down from the bracket by its talons, wings drooping, dazed spirals for eyes, unlit, two feathers drifting down |
-| `machine` | a scrying crystal in a gilt claw stand on a wooden foot, the whole ball the lamp, glowing pale blue-white | the stand toppled, the ball lying beside it, dark, with a crack across it |
-| `vm` | a corked glass flask with a paper tag, its blue potion the lamp | on its side with its cork out beside it, the last of the potion spilt and dark |
-| any other | an iron-bound chest, the lamp the jewel in its lock plate, glowing gold | on its end, its lid knocked off beside it, three coins spilt, the jewel dark |
+| `machine` | a scrying crystal in a gilt claw stand on a wooden foot, on a three-legged stool, the whole ball the lamp, glowing pale blue-white | the stand toppled on the stool, the ball rolled onto the floor beside it, dark, with a crack across it |
+| `vm` | a corked glass flask with a paper tag beside the knight's satchel, its blue potion the lamp | on its side against the satchel with its cork out beside it, the last of the potion spilt and dark |
+| any other | an iron-bound chest on a woven mat, the lamp the jewel in its lock plate, glowing gold | on its end on the mat, its lid knocked off beside it, three coins spilt, the jewel dark |
 
 Each kind is a medieval thing that stands for the device, by the owner's choice of 16 November 2026
 ([design.md](./design.md#devices)), and the crystal, the chest's sizes and the colours of the lamps
 by the owner's choice of 17 November. A kind the page does not know is drawn as the chest. The kind
 is only ever a key into `KW.kinds`. The crystal and the chest are drawn at twice the size they were
 first drawn at and the flask at 1.4 times, each a redraw at that size whose outlines keep their
-thickness; the crystal is the first drawing's at 1.85 times, its ball's top 93 above the base.
-They fit within the ground class's box, 66 left of the base's middle to 56 right of it and 93
-above the base to 2 below; the owl within the high class's.
+thickness; the crystal is the first drawing's at 1.85 times, its ball's top 93 above its foot.
+
+**At rest.** Each kind on the ground brings its resting place in its still part, by the owner's
+decision of 25 November 2026, so that it is the same in every place: the crystal stands on a
+three-legged stool, 24 high, which raises its ball's top to 117 above the base; the flask stands 18
+right of the base's middle with the knight's satchel on its left; the chest stands on a woven mat,
+5 high. Each casts a soft shadow on the floor (`shadowHD`, a translucent black ell 7 rows high).
+Down, the crystal's stand topples on the stool, pushed 19 to the right, and the ball rolls off onto
+the floor beside it under a shadow of its own; the flask lies spilt against the satchel; the chest
+stands on its end on the mat. The question marks stand where they did, the chest's 5 higher
+(`mark` 163). They fit within the ground class's box of format 1.4, 66 left of the base's middle to
+56 right of it and 117 above the base to 2 below ([scenes.md](./scenes.md#the-fields-of-a-scene));
+the owl within the high class's. `KW.props` gives the rests' drawings (`stoolHD`, `satchelHD`,
+`matHD`, `shadowHD`) and their offsets (`STOOL`, `FLASK_AT`, `MAT_RAISE`).
 
 **The lamps.** A device's light is a lamp of its own, drawn as a pack draws one (`ownLampHD`): a
 light of radius 24 in its own colour, the dark drawing, and the lit drawing over it at the loop's
@@ -449,7 +550,7 @@ mark stands where it always has. Every mark keeps clear of the knight, the thron
 the resting cat in every scene, as the places are set.
 
 **`device_down`.** The condition has no scene of its own: the knight stays in the quiet scene of
-the moment, does not stroll, and frowns, as for `pi_silent`. `map` gives the winning `device_down`
+the moment, holds where it stands on its patrol, and frowns, as for `pi_silent`. `map` gives the winning `device_down`
 a `place`: the place of the first position in its `devices` that stands in one, or `null` when
 none does. The knight looks towards that place (`look` is the sign of the place's x less the
 knight's), or straight ahead when there is none. A device that does not alert has no effect on the
