@@ -25,8 +25,8 @@ services:
       timeout: 10s
       start_period: 60s
       retries: 2
-    # KW_ANALYTICS, the usage counts (docs/telemetry.md): left out, or any value but off, the
-    # collector sends the project a few counts at start and every six hours; off sends nothing.
+    # KW_ANALYTICS, the usage counts (docs/telemetry.md): on, and the collector sends the project
+    # a few counts at start and every six hours; left out, off or anything else sends nothing.
     # Then the credentials, read once at start. Each is named here, so that the container gets
     # these from .env and nothing else in it. One a config does not use may be unset: it arrives
     # empty, and the collector's own check names any credential it needs and lacks. A variable

@@ -9,9 +9,11 @@ URL or credential. The fields are fixed by the receiver's contract, schema 1, an
 every payload to it before it is sent. docs/telemetry.md describes what is sent and why, and
 docs/collector.md how the collector sends it.
 
-KW_ANALYTICS in .env is the only control: unset, or any value but "off" (trimmed, in any case),
-sends; "off" sends nothing, makes no connection and makes no install id. Only the loop of
-`python -m collector` sends; --once, --probe, --check-config and --health never do.
+The counts are off unless the user turns them on. KW_ANALYTICS in .env is the only control: "on"
+(trimmed, in any case) sends; anything else, "off", empty or unset, sends nothing, makes no
+connection and makes no install id. A value that is neither "on" nor "off" nor empty is also
+logged once as a warning, so that a "yes" or a "true" meant as consent is not silently ignored.
+Only the loop of `python -m collector` sends; --once, --probe, --check-config and --health never do.
 
 The install id is a UUID4 made once and kept with the time it was made in install.json in the
 collector's memory folder, so emptying that folder makes a new one. The display count comes from
@@ -93,10 +95,20 @@ _OWN_FIELDS = ("world", "build", "items", "devices")
 log = logging.getLogger("collector")
 
 
-def enabled(env: Mapping[str, str]) -> bool:
-    """Whether the usage counts are on: unless KW_ANALYTICS is "off", trimmed, in any case."""
+def _value(env: Mapping[str, str]) -> str:
     value = env.get(VARIABLE)
-    return not (isinstance(value, str) and value.strip().lower() == "off")
+    return value.strip().lower() if isinstance(value, str) else ""
+
+
+def enabled(env: Mapping[str, str]) -> bool:
+    """Whether the usage counts are on: only when KW_ANALYTICS is "on", trimmed, in any case."""
+    return _value(env) == "on"
+
+
+def unclear(env: Mapping[str, str]) -> bool:
+    """Whether KW_ANALYTICS holds something other than on, off or nothing, which leaves the counts
+    off and is worth a warning."""
+    return _value(env) not in ("", "on", "off")
 
 
 def version(web: str = WEB) -> str:
@@ -367,11 +379,13 @@ def notice(endpoint: str) -> str:
         f"usage counts: at start and every six hours this collector sends {endpoint} a random "
         "install id, the version, its uptime, the world and the built-in parts in use, which "
         "sources are on, and how many imports, checks and displays there are; never a name, "
-        f"a title, an address or a credential. KW_ANALYTICS=off in .env stops it. See {DOCS}"
+        f"a title, an address or a credential. They are on because KW_ANALYTICS=on in .env; "
+        f"KW_ANALYTICS=off stops them. See {DOCS}"
     )
 
 
-OFF_LINE = "usage counts off (KW_ANALYTICS=off): nothing is sent"
+OFF_LINE = f"usage counts off: nothing is sent. KW_ANALYTICS=on in .env turns them on; see {DOCS}"
+UNCLEAR_LINE = "KW_ANALYTICS is neither on nor off, so the usage counts stay off"
 
 
 class Heartbeat:
@@ -480,9 +494,11 @@ class Heartbeat:
 
 
 def start(env: Mapping[str, str], state_dir: str, server_dir: str | None, **kw: Any):
-    """The heartbeat of a long-running collector, or None when KW_ANALYTICS is off, which is
-    then logged once."""
+    """The heartbeat of a long-running collector when KW_ANALYTICS is on; otherwise None, which is
+    logged once, after a warning when the value is neither on nor off."""
     if not enabled(env):
+        if unclear(env):
+            log.warning(UNCLEAR_LINE)
         log.info(OFF_LINE)
         return None
     return Heartbeat(state_dir, server_dir, **kw)

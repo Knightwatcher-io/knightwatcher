@@ -642,6 +642,11 @@ costs 4670 and slung 1639, and the larger counts.
 
 ## Signing
 
+The project signs its own packs so that nothing can pass as one of them. A good signature under
+the project's key says the pack is one the project released, unchanged; it says nothing about who
+may use the art, which is under CC BY-SA 4.0 ([ART-LICENCE.md](../legal/ART-LICENCE.md)) and may
+be changed and shared. A pack you change, or make yourself, does not carry the project's signature.
+
 The signature covers the bytes of the line `knightwatcher pack v1` and a line feed, followed by the
 UTF-8 bytes of the canonical form of the envelope's `pack`. The envelope, `sig` and the file's
 layout are not signed, so one signature holds for a pretty-printed copy, a minified one and one

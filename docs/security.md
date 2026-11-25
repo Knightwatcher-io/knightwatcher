@@ -31,7 +31,7 @@ protects.
 
 The collector reads and never writes, except for its output folder (`state.json`, the packs it
 downloads and `credentials.json`) and its memory folder (`memory.json`, and `install.json`, the
-usage counts' install id).
+usage counts' install id, made only when they are on).
 
 - It has no Docker socket. Container state comes from a Docker API proxy that allows read calls
   alone.
@@ -42,11 +42,13 @@ usage counts' install id).
   own.
 - It opens no listening port.
 - It connects only to the addresses in its configuration, the services it reads and the
-  machines listed as devices, and to one address of the project's own: the usage counts go to
+  machines listed as devices, and, only when you turn the usage counts on with
+  `KW_ANALYTICS=on` in `.env`, to one address of the project's own: the usage counts go to
   `https://telemetry.knightwatcher.io/v1/heartbeat` at start and every six hours, a `POST` of a
   few counts and built-in ids with no name, address, title or credential in it, its certificate
   checked ([configuration.md](./configuration.md#usage-counts), [telemetry.md](./telemetry.md)).
-  `KW_ANALYTICS=off` in `.env` stops it, and the collector then makes no connection there at all. A device gets a TCP connection, or one `GET` with no
+  They are off unless turned on, and while they are off the collector makes no connection there
+  at all. A device gets a TCP connection, or one `GET` with no
   credentials, at the pace set for it. No request goes through a proxy named in the
   environment, and only `http` and `https` addresses are opened. A web address's certificate is
   not checked unless its `verify_tls` is `true`. The check sends nothing and trusts nothing it
@@ -195,7 +197,7 @@ The page fetches `state.json` and, served, `api/settings` from its own origin an
 loads no third-party script, and sends nothing anywhere but the settings chosen on its screen and
 its random display id, to its own server. Forced into the demo by `?demo`, as on the website, it
 asks nothing under `api/` and sends nothing at all. Only the collector contacts anything outside the
-host, for the usage counts; the page and the server never do.
+host, for the usage counts when they are turned on; the page and the server never do.
 
 `state.json` is not public information. The bundled server is open to anyone who can reach its
 port, with no login, by default; put authentication in front of it, or bind it to the loopback

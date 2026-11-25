@@ -4,15 +4,18 @@ Valtora makes Knightwatcher and is the controller of the personal data this noti
 Contact: support@knightwatcher.io.
 
 The notice covers three things: the usage counts that Knightwatcher's collector sends (the
-heartbeat), visits to the website at knightwatcher.io, and mail sent to support@knightwatcher.io.
-Nothing else in Knightwatcher sends anything to Valtora.
+heartbeat) if you turn them on, visits to the website at knightwatcher.io, and mail sent to
+support@knightwatcher.io. Nothing else in Knightwatcher sends anything to Valtora.
 
 ## The usage counts
 
 ### What is sent, and when
 
-The collector sends one heartbeat to `telemetry.knightwatcher.io` when it starts, then one every
-six hours. After a failed attempt it tries again an hour later. A heartbeat holds:
+The usage counts are off unless you turn them on, as "How to turn them on and off" below says.
+While they are off, the collector sends nothing to Valtora and makes no install id.
+
+With them on, the collector sends one heartbeat to `telemetry.knightwatcher.io` when it starts,
+then one every six hours. After a failed attempt it tries again an hour later. A heartbeat holds:
 
 - a random install id, made once by the collector and not made from anything about your machine
   or your network;
@@ -59,22 +62,26 @@ such transfers.
 
 ### Why: the lawful basis
 
-Legitimate interests. Valtora needs to know how many installs are running, which versions they
-run, and which worlds, parts and services they use, to decide what to build and fix next. The
-heartbeat holds no names, addresses or credentials, and one setting stops it, so Valtora's view is
-that this interest does not override yours.
+Consent. The usage counts are off until you turn them on yourself, after this notice and the
+documentation have told you what is sent and why. Turning them on is your consent to this one use.
+Valtora uses the counts to learn how many installs are running, which versions they run, and which
+worlds, parts and services they use, to decide what to build and fix next, and for nothing else.
 
-### How to turn it off
+You can withdraw your consent at any time, as easily as you gave it, by turning the counts off.
+Withdrawing stops new heartbeats; it does not make unlawful what was sent before.
 
-Put this in `.env`, beside `compose.yaml`, and run `docker compose up -d`:
+### How to turn them on and off
+
+To turn them on, put this in `.env`, beside `compose.yaml`, and run `docker compose up -d`:
 
 ```dotenv
-KW_ANALYTICS=off
+KW_ANALYTICS=on
 ```
 
-The collector then sends nothing, opens no connection to the receiver and makes no install id. It
-is the only switch. Blocking `telemetry.knightwatcher.io` at your DNS or firewall also stops the
-heartbeat from arriving.
+To turn them off, set `KW_ANALYTICS=off`, or remove the line, and run `docker compose up -d`
+again. With anything but `on` the collector sends nothing, opens no connection to the receiver and
+makes no install id. It is the only switch. Blocking `telemetry.knightwatcher.io` at your DNS or
+firewall also stops the heartbeat from arriving.
 
 ## The website
 
@@ -154,6 +161,8 @@ Under UK data protection law you can ask Valtora to:
 - delete it;
 - stop using it, or use it only in limited ways.
 
+You can also withdraw your consent to the usage counts at any time, by turning them off.
+
 Valtora answers within one month and charges nothing.
 
 **For the usage counts, the install id is the only link between you and your rows.** Without it,
@@ -167,8 +176,9 @@ be traced to you.
 For the website, Valtora holds nothing that identifies you, so there is no visit it can find, copy
 or delete for you.
 
-`KW_ANALYTICS=off` stops new rows. It does not delete the old ones, which are deleted after 24
-months unless you ask sooner.
+Turning the usage counts off stops new rows. It does not delete the old ones: the rows hold
+nothing but the install id to link them to you, so Valtora cannot tell from its side that you have
+turned them off. They are deleted after 24 months, or sooner if you send the install id and ask.
 
 ## Complaints
 

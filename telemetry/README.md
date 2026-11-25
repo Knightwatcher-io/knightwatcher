@@ -3,7 +3,8 @@
 The Cloudflare Worker that receives Knightwatcher's usage heartbeat at
 `https://telemetry.knightwatcher.io/v1/heartbeat` and writes it to a Cloudflare D1 database. It
 is in this repository so that [docs/telemetry.md](../docs/telemetry.md), the description for the
-people whose installs send it, can be checked against the code that stores what they send.
+people whose installs send it, can be checked against the code that stores what they send. A
+collector sends the heartbeat only when its user turns the usage counts on.
 
 | | |
 |---|---|
@@ -167,7 +168,7 @@ the free limit holds roughly 2,500 install-years. Rows are kept for 24 months, s
 running all the time holds at most about 400 KB, and the size stops growing once the number of
 installs does: the free limit holds about 1,250 installs, and the paid limit about 25,000.
 
-Each install sends four heartbeats a day, each a write of its row and its index entry. Once its
+Each install with the counts on sends four heartbeats a day, each a write of its row and its index entry. Once its
 rows reach 24 months, each day's row is deleted once, another write of the row and its index
 entry, so an install costs about ten rows written a day and the free plan's 100,000 rows written a
 day cover about 10,000 installs. A free-plan account over a daily D1 limit gets errors until
