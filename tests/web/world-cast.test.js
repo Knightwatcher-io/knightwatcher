@@ -138,17 +138,20 @@ test('the goblin as written: the code\'s measures, its parts shared between its 
   assert.deepEqual([g.h, g.w, g.mid], [G.h, G.w, G.mid]);
   assert.deepEqual(plain(g.crown), plain(G.crown));
   assert.deepEqual(Object.keys(g.poses), POSES);
-  assert.deepEqual(Object.keys(g.parts), ['arms.hips', 'arms.up', 'arms.ears0', 'arms.ears1', 'arms.flung', 'body', 'ears', 'ears.droop', 'ears.limp', 'head']);
-  // the arms behind the body, the legs and the tunic, the ears, the head; then the pose's face, its
-  // pot, its nose and, for the brace alone, the arms clutched in front
-  assert.deepEqual(POSES.map(n => plain(g.poses[n].parts)), [['arms.hips', 'body', 'ears', 'head'], ['arms.up', 'body', 'ears', 'head'], ['arms.ears0', 'body', 'ears', 'head'],
-    ['arms.ears1', 'body', 'ears', 'head'], ['body', 'ears.droop', 'head'], ['arms.flung', 'body', 'ears.limp', 'head']]);
+  assert.deepEqual(Object.keys(g.parts), ['arms.hips', 'arms.up', 'arms.ears0', 'arms.ears1', 'arms.flung', 'body', 'sack', 'ears', 'ears.droop', 'head']);
+  // the arms behind the body, the legs and the tunic, the sack at the hip, the ears, the head; then
+  // the pose's face, its nose, its pot and, for the brace alone, the arms clutched in front
+  assert.deepEqual(POSES.map(n => plain(g.poses[n].parts)), [['arms.hips', 'body', 'sack', 'ears', 'head'], ['arms.up', 'body', 'sack', 'ears', 'head'],
+    ['arms.ears0', 'body', 'sack', 'ears', 'head'], ['arms.ears1', 'body', 'sack', 'ears', 'head'], ['body', 'sack', 'ears.droop', 'head'],
+    ['arms.flung', 'body', 'sack', 'ears.droop', 'head']]);
   // each hand's fingers are the effect fingers, outline and fill, at the hand's angle
   const hands = Object.keys(g.parts).filter(n => n.startsWith('arms.')).map(n => g.parts[n].filter(s => s.k === 'fx').map(s => [s.fx, s.a, s.r]));
   assert.deepEqual(hands[0], [['fingers', 2.6, 4.5], ['fingers', 2.6, 2.5], ['fingers', -2.6, 4.5], ['fingers', -2.6, 2.5]]);
   assert.deepEqual(g.poses.brace.shapes.filter(s => s.k === 'fx').map(s => s.a), [1.2, 1.2, -1.2, -1.2]);
+  // spread a little wider than the effect's default, 0.7 either side of the hand's angle
+  for (const n of Object.keys(g.parts)) for (const s of g.parts[n].concat(...Object.values(g.poses).map(p => p.shapes))) if (s.k === 'fx') assert.equal(s.spread, 0.7);
   // the costs the counts step found, against a limit of 8 000 for each pose, its parts included
-  assert.deepEqual(plain(r.world.cast['foe.goblin']), { poses: { stand: 2778, climb: 2894, taunt0: 2811, taunt1: 2929, brace: 2743, hit: 2682 } });
+  assert.deepEqual(plain(r.world.cast['foe.goblin']), { poses: { stand: 3712, climb: 3832, taunt0: 3831, taunt1: 3867, brace: 3707, hit: 3624 } });
 });
 
 test('the fly as written: its wings in a group at an alpha of 0.85, and its costs', () => {
@@ -284,7 +287,7 @@ test('the goblin from the pack gives the code\'s interface and measures, and eac
   const before = canvases;
   for (const n of POSES) {
     const a = G.pose(n), b = C.pose(n);
-    assert.deepEqual([a.width, a.height], [220, 230]);
+    assert.deepEqual([a.width, a.height], [256, 250]);
     assert.ok(b[LOG].length > 500, n + ' draws something');
     assert.deepEqual(a[LOG], b[LOG], n);
     assert.equal(G.pose(n), a, n + ' is painted once');
@@ -304,7 +307,7 @@ test('the goblin from the pack gives the code\'s interface and measures, and eac
 function goblin(s, scene, step) {
   const KW = s.KW, E = KW.engine, out = [], log = [];
   KW.hooks = { frozen: true, t: 0 };
-  E.init(context(log, img => img.width === 220 && img.height === 230));
+  E.init(context(log, img => img.width === 256 && img.height === 250));
   E.reset();
   E.input = { w: KW.state.IDLE, is: scene, turnMs: 60000, devices: [{ place: 'pie', kind: 'pi', ok: true, alert: true }], tv: false, helmet: 'auto' };
   E.draw(0);
@@ -324,7 +327,7 @@ test('the engine\'s goblin, coming in, taunting, bonked and gone in its poof, dr
     for (let i = 0; i < a.length; i++) assert.deepEqual(a[i][1], b[i][1], scene + ': the frame at ' + a[i][0]);
     // every pose is drawn
     const all = b.map(f => f[1].join('\n')).join('\n'), C = page().KW.props.FOES.goblin;
-    assert.ok(all.includes('drawImage canvas 220x230'), scene + ': the goblin is drawn');
+    assert.ok(all.includes('drawImage canvas 256x250'), scene + ': the goblin is drawn');
     for (const n of POSES) assert.ok(all.includes(C.pose(n)[LOG].slice(0, 40).map(l => '| ' + l).join('\n')), scene + ': ' + n);
   }
 });
@@ -425,8 +428,8 @@ test('what the compiler does not build in the cast is refused by name', () => {
   refused(d => { fly(d).frames.flap0[2].g = 'legs'; }, 'critter.fly', 'cast.critter.fly.frames.flap0[2].g: "g" outside its layer\'s groups is not built in this engine yet');
   refused(d => { delete d.cast['critter.fly']; }, 'critter.fly', 'cast.critter.fly: the pack has no such cast member');
   // the same in a foe's parts and poses
-  refused(d => { gob(d).parts.head.push({ k: 'things' }); }, 'foe.goblin', 'cast.foe.goblin.parts.head[7].k: the mark "things" in the cast is not built in this engine yet');
-  refused(d => { gob(d).poses.hit.shapes.push({ k: 'fx', fx: 'pebbles', y: 0 }); }, 'foe.goblin', 'cast.foe.goblin.poses.hit.shapes[25].fx: the effect "pebbles", placed on the screen by its field "y", in the cast is not built in this engine yet');
+  refused(d => { gob(d).parts.head.push({ k: 'things' }); }, 'foe.goblin', 'cast.foe.goblin.parts.head[10].k: the mark "things" in the cast is not built in this engine yet');
+  refused(d => { gob(d).poses.hit.shapes.push({ k: 'fx', fx: 'pebbles', y: 0 }); }, 'foe.goblin', 'cast.foe.goblin.poses.hit.shapes[33].fx: the effect "pebbles", placed on the screen by its field "y", in the cast is not built in this engine yet');
   // the same in a patron, whose colours are resolved as its own look compiles
   refused(d => { pat(d).still[0].shapes.push({ k: 'things' }); }, 'patron.a', 'cast.patron.a.still[0].shapes[120].k: the mark "things" in the cast is not built in this engine yet');
   refused(d => { pat(d).states.open[0].fill = '@mon.pupil'; }, 'patron.a', 'cast.patron.a.states.open[0].fill: the palette "mon" gives no "pupil"');

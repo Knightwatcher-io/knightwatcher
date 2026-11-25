@@ -2,7 +2,8 @@
 // knight, complete, with the arming sword and the heater shield besides, the free options (six of
 // each colour set and three hair styles), the three builds and the items fitted to them, the free
 // items of 1.4.0 (two to four more in every slot the user chooses), the crossbow of 1.5.0, a weapon
-// that fires, and nothing more, that every choice of them resolves, and
+// that fires, the hair of 1.6.0 (the six styles redrawn, the buzzcut among them), and nothing more,
+// that every choice of them resolves, and
 // that the page's rules for signing apply to it, whether it ships signed or not. Run with:
 // node --test tests/web/
 // That drawing it gives the same calls as the code is checked pose by pose in knight.test.js.
@@ -26,8 +27,10 @@ const FIXTURE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base.p
 // The two items of the one-handed look, as approved, which the test fixture does not hold: its own
 // main.arming is a smaller sword made for the library's tests.
 const ONEHAND = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-onehand.items.json'), 'utf8'));
-// The free options as approved: the swatches beside today's and the two hair styles beside the
-// short crop.
+// The free options as approved: the swatches beside today's, and the hair of 1.6.0 as approved, the
+// tied hair and the curls redrawn and the new buzzcut (the short crop of 1.6.0 is the library
+// fixture's, which follows knight.js, and the long and close hair of 1.6.0 are in
+// base-free-items.json, with the free items of 1.4.0 they belong to).
 const OPTIONS = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-options.json'), 'utf8'));
 // The three builds as approved, with their names, and the three items refitted to them: the tabard
 // in pieces that narrow to the waist and widen to the hip, the greaves that grow with the leg and
@@ -50,10 +53,10 @@ const ORDER = { skin: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], hair: 
   tabard: ['blue', 'forest', 'violet', 'wine', 'teal', 'sable'], plume: ['red', 'white', 'gold', 'royal', 'green', 'violet'] };
 // The builds in the order the settings screen shows them, by the names it shows.
 const BUILD_NAMES = { 'build.a': 'Classic', 'build.b': 'Broad', 'build.c': 'Slim' };
-// Every item of each slot a look chooses, today's first and then the free items of 1.4.0 and the
-// crossbow of 1.5.0 in the order the settings screen shows them.
+// Every item of each slot a look chooses, today's first and then the free items of 1.4.0, the
+// crossbow of 1.5.0 and the buzzcut of 1.6.0 in the order the settings screen shows them.
 const SLOTS = { legs: ['legs.plate', 'legs.mail', 'legs.hose'], boots: ['boots.leather', 'boots.sabatons', 'boots.shoes'],
-  torso: ['torso.tabard', 'torso.cuirass', 'torso.gambeson'], head: ['head.plain'], hair: ['hair.short', 'hair.tied', 'hair.curls', 'hair.long', 'hair.close'],
+  torso: ['torso.tabard', 'torso.cuirass', 'torso.gambeson'], head: ['head.plain'], hair: ['hair.short', 'hair.tied', 'hair.curls', 'hair.long', 'hair.close', 'hair.buzz'],
   helmet: ['helm.open', 'helm.kettle', 'helm.coif', 'helm.bascinet'], plume: ['plume.crest', 'plume.feather', 'plume.horsehair'],
   pauldrons: ['pauldrons.plate', 'pauldrons.lames', 'pauldrons.leather'], arms: ['arms.plate', 'arms.mail', 'arms.padded'],
   gauntlets: ['gauntlets.plate', 'gauntlets.leather', 'gauntlets.mail'], main: ['main.greatsword', 'main.arming', 'main.longsword', 'main.mace', 'main.crossbow'],
@@ -67,7 +70,7 @@ test('the base pack unsigned is read on a dev page and refused at the signature 
   const r = PK.read(UNSIGNED, { allowUnsigned: true, verify });
   assert.equal(r.ok, true, r.reason);
   assert.equal(r.id, 'kw.base');
-  assert.equal(r.version, '1.5.1');
+  assert.equal(r.version, '1.6.0');
   assert.deepEqual(r.format, [1, 2]);
   assert.equal(r.signed, false);
   assert.deepEqual(r.provides, ['builds', 'items', 'palettes', 'swatches']);
@@ -113,22 +116,23 @@ test('three builds as approved, Classic the present knight\'s measurements, all 
   assert.equal(c.height, a.height - 6);
 });
 
-test('every slot the present drawing has, the one-handed sword and the shield, five hair styles, the free items of 1.4.0, the crossbow, and nothing else', () => {
+test('every slot the present drawing has, the one-handed sword and the shield, six hair styles, the free items of 1.4.0, the crossbow, and nothing else', () => {
   const slots = {};
   for (const [id, it] of Object.entries(PACK.items)) (slots[it.slot] = slots[it.slot] || []).push(id);
   for (const s of Object.keys(slots)) slots[s].sort();
   const want = {};
   for (const s of Object.keys(SLOTS)) want[s] = SLOTS[s].slice().sort();
   assert.deepEqual(slots, want);
-  // the 15 of 1.3.0 first, as they were, then the 25 free items in the fixture's order, then the
-  // crossbow of 1.5.0
-  assert.equal(Object.keys(PACK.items).length, 41);
+  // the 15 of 1.3.0 first, then the 25 free items in the fixture's order, then the crossbow of
+  // 1.5.0 and the buzzcut of 1.6.0
+  assert.equal(Object.keys(PACK.items).length, 42);
   assert.deepEqual(Object.keys(PACK.items).slice(15, 40), Object.keys(FREE.items));
-  assert.deepEqual(Object.keys(PACK.items).slice(40), ['main.crossbow']);
+  assert.deepEqual(Object.keys(PACK.items).slice(40), ['main.crossbow', 'hair.buzz']);
   // format 1.2, which the crossbow's fields need, and the one weapon that fires
   assert.deepEqual(PACK.format, [1, 2]);
   assert.deepEqual(SLOTS.main.filter(id => !SWUNG.includes(id)), ['main.crossbow']);
-  // the defaults are 1.3.0's, so the default knight is drawn exactly as before, and nothing on the back
+  // the defaults are 1.3.0's, the short crop among them under its id of 1.3.0 though redrawn in
+  // 1.6.0 (in the fixture too, as knight.js draws it), and nothing on the back
   assert.deepEqual(PACK.defaults, FIXTURE.defaults);
   assert.equal(PACK.defaults.items.back, undefined);
   // the pack's own palette holds the wool of the hose and the turnshoes, and nothing else
@@ -150,7 +154,7 @@ test('each item and swatch is as approved: the fixture\'s, the one-handed items,
     assert.deepEqual(PACK.items[id], w, id);
   }
   assert.deepEqual(Object.keys(ONEHAND), ['main.arming', 'off.heater']);
-  assert.deepEqual(Object.keys(OPTIONS.items), ['hair.tied', 'hair.curls']);
+  assert.deepEqual(Object.keys(OPTIONS.items), ['hair.tied', 'hair.curls', 'hair.buzz']);
   assert.deepEqual(Object.keys(BUILDS.items), ['legs.plate', 'torso.tabard', 'pauldrons.plate']);
   assert.equal(Object.keys(FREE.items).length, 25);
   // no free item shares an id with an item of 1.3.0; the library's fixture has a long hair and a
@@ -187,16 +191,19 @@ test('the default look resolves with nothing missing, on Classic, and every buil
   assert.equal(L.look.build, 'kw.base/build.a');
   assert.deepEqual(L.grip, { kind: 'two', hands: [2, -30] });
   // the cost is counted at the ends of every value's range, so it is the same on every build; the
-  // tabard's outline and cloth are four pieces each, where they were one, 99 shapes and 11932 before
-  assert.equal(L.cost, 13878);
-  assert.equal(L.shapes, 105);
+  // tabard's outline and cloth are four pieces each, where they were one, 99 shapes and 11932 before.
+  // Since the short crop was redrawn in 1.6.0 (41 shapes at 753, where it was 8 at 318) the head
+  // group with the helmet off, the plain head and the crop, is the larger of the two head groups:
+  // 2067 against the helmet and plume's 1720, where the look cost 13 878 and drew 105 shapes before
+  assert.equal(L.cost, 14225);
+  assert.equal(L.shapes, 121);
   assert.ok(L.plumeShown);
   for (const id of Object.keys(BUILD_NAMES)) {
     const Lb = PK.resolve(lib, { build: 'kw.base/' + id });
     assert.equal(Lb.look.build, 'kw.base/' + id);
     assert.deepEqual(Lb.fallbacks.map(f => f.reason).filter(r => r !== 'not set'), [], id);
     assert.deepEqual(Lb.m, PACK.builds[id].m, id);
-    assert.deepEqual([Lb.shapes, Lb.cost], [105, 13878], id);
+    assert.deepEqual([Lb.shapes, Lb.cost], [121, 14225], id);
   }
 });
 
@@ -209,7 +216,7 @@ test('the one-handed look resolves with nothing missing: the arming sword in one
   assert.deepEqual(L.look.items.off, 'kw.base/off.heater');
   assert.deepEqual(L.grip, { kind: 'one', hands: [0] });
   assert.deepEqual(L.blade, { from: 34, to: 175, half: 10 });
-  assert.equal(L.shapes, 105 + 20, 'the base look and the shield; the two swords have 22 shapes each');
+  assert.equal(L.shapes, 121 + 20, 'the base look and the shield; the two swords have 22 shapes each');
   assert.equal(L.lists.off.length, 20);
   assert.equal(L.lists.restOff.length, 26);
   // the shield is the tabard's colours with the gold eye: the field follows the tabard swatch
@@ -220,7 +227,7 @@ test('the one-handed look resolves with nothing missing: the arming sword in one
 
 test('every choice of build, skin, hair colour, hair style, tabard and plume resolves with nothing missing, with either weapon, well under the caps', () => {
   const lib = [PK.read(TEXT, { allowUnsigned: true, verify })];
-  const B = id => 'kw.base/' + id, styles = ['hair.short', 'hair.tied', 'hair.curls'];
+  const B = id => 'kw.base/' + id, styles = ['hair.short', 'hair.tied', 'hair.curls', 'hair.buzz'];
   const weapons = [{}, { main: B('main.arming'), off: B('off.heater') }];
   let n = 0, most = { shapes: 0, cost: 0 };
   for (const build of Object.keys(BUILD_NAMES)) for (const skin of ORDER.skin) for (const hair of ORDER.hair) for (const tabard of ORDER.tabard) for (const plume of ORDER.plume) for (const style of styles) for (const w of weapons) {
@@ -235,10 +242,11 @@ test('every choice of build, skin, hair colour, hair style, tabard and plume res
     if (L.cost > most.cost) most = { shapes: L.shapes, cost: L.cost, style, w: !!w.main };
     n++;
   }
-  assert.equal(n, 3 * 6 * 6 * 6 * 6 * 3 * 2);
-  // the heaviest is the tied hair with the sword and shield, on any build, about a ninth of the shape
-  // cap and well under half the cost cap
-  assert.deepEqual(most, { shapes: 135, cost: 14470, style: 'hair.tied', w: true });
+  assert.equal(n, 3 * 6 * 6 * 6 * 6 * 4 * 2);
+  // the heaviest is the curls of 1.6.0 with the sword and shield, on any build (the tied hair, at 135
+  // shapes and 14 470, was before the redraw), about a seventh of the shape cap and well under half
+  // the cost cap
+  assert.deepEqual(most, { shapes: 183, cost: 15490, style: 'hair.curls', w: true });
   assert.ok(most.shapes <= PK.LIMITS.lookShapes && most.cost <= PK.LIMITS.lookCost);
 });
 
@@ -268,7 +276,7 @@ test('every item of every slot resolves with nothing missing on every build, wit
       }
     }
   }
-  assert.equal(n, 3 * (5 * (3 + 3 + 3 + 5 + 4 + 3 + 3 + 3 + 3 + 2) + 5 + 3 * 2));
+  assert.equal(n, 3 * (5 * (3 + 3 + 3 + 6 + 4 + 3 + 3 + 3 + 3 + 2) + 5 + 3 * 2));
   // a shield with a two-handed weapon is carried nowhere, as the heater shield is
   for (const m of two) for (const off of SLOTS.off) {
     const L = PK.resolve(lib, { items: { main: B(m), off: B(off) } });
@@ -335,7 +343,7 @@ test('the crossbow fires: a two-handed weapon with its barrel, muzzle, range and
     assert.deepEqual([L.use, L.barrel, L.muzzle, L.range, L.shot], [it.use, it.barrel, it.muzzle, it.range, it.shot], id);
     assert.ok(L.lists.bodyStowed && L.lists.bodyStowed.length > L.lists.body.length, id + ': the stowed view has its body list');
     // the default look with the crossbow for the greatsword: the larger of the weapon held and slung
-    assert.deepEqual([L.shapes, L.cost], [105 - 22 + 33, 13878 - 4652 + 4670], id);
+    assert.deepEqual([L.shapes, L.cost], [121 - 22 + 33, 14225 - 4652 + 4670], id);
   }
 });
 
@@ -360,8 +368,9 @@ test('the heaviest whole look of the free items stays well under the caps, on ev
     out[k + ' ' + kind] = got[0];
   }
   // the mace and the kite shield, and the longsword, each with the bascinet and its tall feather, the
-  // tied hair, the breastplate, the layered spaulders, mail sleeves and chausses, plate gauntlets,
-  // turnshoes and the long cloak: about a sixth of the shape cap and half the cost cap
-  assert.deepEqual(out, { 'cost one': [201, 20493], 'cost two': [188, 19721] });
-  for (const [n, cost] of Object.values(out)) assert.ok(n <= PK.LIMITS.lookShapes / 5 && cost <= PK.LIMITS.lookCost * 0.52);
+  // long hair of 1.6.0, the breastplate, the layered spaulders, mail sleeves and chausses, plate
+  // gauntlets, turnshoes and the long cloak: about a sixth of the shape cap and just over half the
+  // cost cap (201 and 20 493, 188 and 19 721 with the tied hair, before the redraw)
+  assert.deepEqual(out, { 'cost one': [209, 21400], 'cost two': [196, 20628] });
+  for (const [n, cost] of Object.values(out)) assert.ok(n <= PK.LIMITS.lookShapes / 5 && cost <= PK.LIMITS.lookCost * 0.54);
 });

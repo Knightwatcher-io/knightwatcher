@@ -248,14 +248,35 @@
     rrect(hx - 60, hy + 37, 120, 14, 6, C.K); rrect(hx - 57, hy + 39, 114, 9, 4, STEEL2);
     faceHD(hx, hy, o, SKINS[o.face || 'F'], CODE_FACE);
   }
+  /* The short crop, in the brown hair's three bands (H, light to dark), as kw.base's hair.short
+     draws it: two small locks standing up at the crown, a cap that stops above the brow, short
+     sideburns, a fringe of seven pointed locks with skin between their tips (each [left, right,
+     tip x, tip y, band]), a line between each lock, lock lines from the crown, a sheen of the light
+     band on the lit side and a glint. */
+  const CROP_LOCKS = [[-50, -36, -36, -15, 1], [-38, -20, -22, -13, 0], [-22, -4, -6, -12, 1], [-6, 12, 10, -13, 0], [10, 28, 26, -14, 1], [28, 46, 44, -17, 2], [42, 56, 56, -20, 2]];
+  const CROP_SEAMS = [[-37, -31.75], [-21, -15.75], [-5, .25], [11, 16.25], [29, 34.25], [43, 47.75]];
+  const CROP_LINES = [[-4, -58, -26, -44, .75, 1], [0, -56, -8, -40, .75, 1], [6, -56, 14, -40, .75, 1], [10, -58, 34, -46, .75, 1], [-30, -36, -20, -44, .75, .75], [22, -36, 30, -44, .75, .75]];
+  const GLINT = 'rgba(255,255,255,.4)';
+  function cropHD(hx, hy) {
+    const H = [C.N0, C.N1, C.N2], P = pts => pts.map(([x, y]) => [hx + x, hy + y]);
+    poly(P([[-12, -66], [-2, -66], [-10, -82]]), C.K); poly(P([[-4, -66], [8, -66], [6, -84]]), C.K);
+    rrect(hx - 58, hy - 67, 116, 40, 32, C.K); Rh(hx - 57, hy - 40, 10, 32, C.K); Rh(hx + 47, hy - 40, 10, 32, C.K);
+    for (const [a, b, tx, ty] of CROP_LOCKS) poly(P([[a - 2, -30], [b + 2, -30], [tx, ty + 3]]), C.K);
+    rrect(hx - 55, hy - 64, 110, 36, 29, [[.2, H[0]], [.7, H[1]], [1, H[2]]]);
+    Rh(hx - 54, hy - 38, 6, 27, H[1]); Rh(hx + 48, hy - 38, 6, 27, H[2]); Rh(hx - 54, hy - 38, 2, 27, H[0]);
+    for (const [a, b, tx, ty, c] of CROP_LOCKS) poly(P([[a, -31], [b, -31], [tx, ty]]), H[c]);
+    for (const [x0, x1] of CROP_SEAMS) strip(hx + x0, hy - 30, hx + x1, hy - 24, .75, .5, H[2]);
+    poly(P([[-10, -65], [-4, -65], [-8, -79]]), H[0]); poly(P([[-2, -65], [6, -65], [5, -80]]), H[1]);
+    for (const [x0, y0, x1, y1, w0, w1] of CROP_LINES) strip(hx + x0, hy + y0, hx + x1, hy + y1, w0, w1, H[2]);
+    strip(hx - 44, hy - 40, hx - 22, hy - 58, 2.5, 2, H[0]); strip(hx - 20, hy - 58, hx - 6, hy - 62, 2, 1.5, H[0]);
+    Rh(hx - 34, hy - 54, 4, 2, GLINT); Rh(hx - 30, hy - 56, 3, 2, GLINT);
+  }
   /* The bare head: ears, skull, hair and the face. */
   function bareHD(hx, hy, o) {
-    const skin = SKINS[o.face || 'F'], hair = [[.2, C.N0], [.7, C.N1], [1, C.N2]];
+    const skin = SKINS[o.face || 'F'];
     for (const x of [-57, 57]) { ell(hx + x, hy + 4, 11, 14, C.K); ell(hx + x, hy + 4, 8, 11, skin); }
     rrect(hx - 54, hy - 56, 108, 104, 40, C.K); rrect(hx - 51, hy - 53, 102, 98, 37, skin);
-    rrect(hx - 58, hy - 67, 116, 54, 34, C.K); rrect(hx - 55, hy - 64, 110, 48, 31, hair);
-    for (const [x, y, rx, c] of [[-36, -18, 15, C.N1], [-10, -15, 15, C.N0], [17, -17, 16, C.N1], [40, -22, 12, C.N2]]) ell(hx + x, hy + y, rx, 10, c);
-    ell(hx - 4, hy - 70, 11, 10, C.K); ell(hx - 4, hy - 70, 8, 7, C.N0);
+    cropHD(hx, hy);
     faceHD(hx, hy, o, skin, CODE_FACE);
   }
   function armHD(sx, sy, hx, hy) { strip(sx, sy, hx, hy, 11, 10, C.K); strip(sx, sy, hx, hy, 8, 7, STEEL2); }

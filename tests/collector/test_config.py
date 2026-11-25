@@ -868,7 +868,7 @@ class DefaultsConfigTest(unittest.TestCase):
         )
         self.assertProblems(
             {"look": {"hair_style": "bald", "tabard": "red", "plume": "blue"}},
-            'look.hair_style: unknown value "bald"; use short, tied, curls, long or close',
+            'look.hair_style: unknown value "bald"; use short, tied, curls, long, close or buzz',
             'look.tabard: unknown value "red"; use blue, forest, violet, wine, teal or sable, '
             + long,
             'look.plume: unknown value "blue"; use red, white, gold, royal, green or violet, '

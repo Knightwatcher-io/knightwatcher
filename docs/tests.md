@@ -32,7 +32,7 @@ out.
 | `tests/web/props.test.js` | the devices inside their places, gone against up, only what moves drawn each frame |
 | `tests/web/scenes.test.js` | every scene's paint and draw against the stored records, from code and from the pack |
 | `tests/web/settings-schema.test.js` | the page's lists of settings, scenes and conditions against the settings schema |
-| `tests/web/settings.test.js` | the settings' levels, storage, look and engine input, the knight in 900 looks, and the status page's read-only line on the usage counts |
+| `tests/web/settings.test.js` | the settings' levels, storage, look and engine input, the knight in 1 080 looks, and the status page's read-only line on the usage counts |
 | `tests/web/shared-settings.test.js` | the shared settings against a fake server |
 | `tests/web/state.test.js` | reading the state file, against the examples in [state.md](./state.md); Under strain bloated while any machine in `machines` has `memory`, `memory_tight` from a collector from before acted as Under strain on memory, and a check that borrows either never bloated; a generic check acted as the condition it borrows, its words and level its own, a check the page cannot act skipped, and none of the borrowed condition's facts taken (the television, the streams' badge and detail, the pie's dish); `analytics` read as on, off or not known; the display's id made once and kept, replaced when malformed, fresh each load without storage, and posted to `api/displays` at load and every 30 minutes |
 | `tests/web/streams.test.js` | the streams' detail line and badge |
@@ -347,11 +347,12 @@ every build and with each weapon the goblin comes wherever it comes on Classic, 
 and is struck within 12 ms of Classic's hit, or 16 with the mace, which meets the goblin at the end
 of its reach, where each build changes which point of a flange meets it first (15 ms at most
 between the tested spots); at the knight's first spot the hits are, on Classic, Broad and Slim,
-with the greatsword 1657, 1659 and 1656 ms on the battlement and 1661, 1663 and 1659 at the camp,
-with the longsword 1658, 1661 and 1657 and 1662, 1664 and 1660, with the sword and shield 1703,
-1707 and 1699 on the battlement and 1710, 1712 and 1710 at the camp, and with the mace and shield
-1698, 1709 and 1684 on the battlement and 1706, 1710 and 1703 at the camp, the goblin coming left
-of the knight in both since the scenes' redesign. The blade `bladeOf` measures is the rig's on the
+with the greatsword 1657, 1659 and 1655 ms on the battlement and 1661, 1663 and 1659 at the camp,
+with the longsword 1658, 1661 and 1657 and 1662, 1664 and 1660, with the sword and shield 1702,
+1706 and 1698 on the battlement and 1710, 1712 and 1709 at the camp, and with the mace and shield
+1703, 1709 and 1690 on the battlement and 1706, 1710 and 1702 at the camp, the goblin coming left
+of the knight in both since the scenes' redesign (the hits of the pot-thief's crown, `kw.medieval`
+0.9.0). The blade `bladeOf` measures is the rig's on the
 look's build, its grip raised by the build's height, and the present knight's on the code path. A
 blade too short to reach it anywhere, its reach and its point shortened, keeps the goblin away.
 
@@ -449,11 +450,11 @@ none is given or one cannot be read, each swatch's bands where one is, and the b
 from the base pack's names with Ready under each, a renamed build shown by its new name, and a
 base pack that draws build A alone greying the other two by their letters. It also draws the
 knight from the base pack in every combination the settings offer, weapon by skin by hair by hair
-style with the build, the tabard and the plume cycled, 900 looks, the build turning so that each
+style with the build, the tabard and the plume cycled, 1 080 looks, the build turning so that each
 meets every weapon, skin, hair colour and hair style, each standing, attacking and swinging both
 ways, helmet on and off, the bare head and the gear at rest, and checks that none throws, falls
 back or passes the caps, that it is rigged on its build, and that its colours are drawn; every
-choice of the gear on every build, 108 looks, beside the longsword and the mace in turn, the long
+choice of the gear on every build, 111 looks, beside the longsword and the mace in turn, the long
 cloak drawn in the gold plume's colours; and every monarch in every skin, hair and robe, "As drawn"
 among them, 882 courts, each drawing its own colours. For the gear it checks that every value names
 an item of its slot in the base pack and every item of a slot is offered, the page's own being the
@@ -760,7 +761,7 @@ the reset, the 12-hour clock, the monarch's hair and robe with "As drawn", the s
 condition and which scenes can act which condition, the build row's names from the base pack), the
 engine's quiet rotation (the five by default, and a list saved with the four there were before
 the smithy kept as four) and its choice of scene, the monarch's skin, hair and robe, and the knight
-drawn from the base pack in 900 looks of the settings', each build meeting every weapon, skin, hair
+drawn from the base pack in 1 080 looks of the settings', each build meeting every weapon, skin, hair
 colour and hair style, every choice of the gear on every build, the gear's look, what the screen
 greys and the choices' names, and every monarch in every skin, hair and robe.
 
@@ -956,7 +957,7 @@ that each cost function bounds what the effect draws. [The page's tests](#the-pa
 
 `tests/web/base-read.test.js` reads the shipped base pack with the library as it is and compares the
 whole result with `tests/web/fixtures/base-read.json`, first stored from the library before format
-1.1 and stored again for base packs 1.4.0, 1.5.0 and 1.5.1: the read of the file signed (with a key made for the run,
+1.1 and stored again for base packs 1.4.0, 1.5.0, 1.5.1 and 1.6.0: the read of the file signed (with a key made for the run,
 which reads as the file signed with `kw1` does), unsigned on a `dev` page and unsigned on a
 deployed page, the SHA-256 and length of the bytes its signature covers, and `resolve()` with every
 record on each build, for the default look, the sword and shield, three looks that wear the 25
@@ -964,7 +965,10 @@ free items between them, and the crossbow of 1.5.0 with the long cloak, its stow
 cloak in the body's list. Storing it for 1.5.0 changed only the version, the format, the new item
 and its sums, and the empty `world` a pack of format 1.1 or later reads with; every earlier look's
 records and costs stayed as stored. Storing it for 1.5.1 changed only the version, the licence line
-and the signed bytes' SHA-256 and length. The file as it ships must read as the signed read when it carries a `sig`
+and the signed bytes' SHA-256 and length. Storing it for 1.6.0 changed the version, the licence
+line, the signed bytes' SHA-256 and length, the six hair items and their sums, and in each stored
+look the lists that hold its hair and the look's shapes and cost; every other record stayed as
+stored. The file as it ships must read as the signed read when it carries a `sig`
 and as the deployed refusal when it does not, so the test holds in either state. Store it again
 only when the base pack is meant to change, from a library known to read it right:
 
@@ -990,26 +994,29 @@ the `signature` step otherwise; the file as it ships is read on every page when 
 signature, and on a `dev` page alone when it does not. It also checks the three builds as
 approved in `fixtures/base-builds.json`, with their names, Classic the present measurements, every
 head 51, every torso within the rule and every measurement at least 6 from the ends of its range;
-one item for each slot the present drawing has, the arming sword and the heater shield, the five
-hair styles, the free items of 1.4.0 after the 15 of 1.3.0, the crossbow of 1.5.0 last, format
+one item for each slot the present drawing has, the arming sword and the heater shield, the six
+hair styles, the free items of 1.4.0 after the 15 of 1.3.0, then the crossbow of 1.5.0 and the
+buzzcut of 1.6.0, format
 `[1, 2]`, the wool palette, and nothing more;
 six swatches in each set in the settings screen's order, today's the defaults; each item and
 swatch equal to the fixture's, to `fixtures/base-builds.json` for the three items fitted to the
 builds, to `fixtures/base-onehand.items.json` for the one-handed items, to
-`fixtures/base-options.json` for the free options, to `fixtures/base-free-items.json` for the
-free items or to `fixtures/base-crossbow.json` for the crossbow (named "Crossbow" and with no flash
+`fixtures/base-options.json` for the free options and the tied hair, curls and buzzcut of 1.6.0, to `fixtures/base-free-items.json` for the free items, the long and close hair
+of 1.6.0 among them, or to `fixtures/base-crossbow.json` for the crossbow (named "Crossbow" and with no flash
 of its own, the approved flash being the engine's pale snap), with the iris of the shield, worn and at rest, on `@tabard.3` and no `@base.b3` left; a
-default look that resolves with nothing missing at a cost of 13 878, and each build likewise; the
-look with the sword and shield resolving with nothing missing, one-handed, at 125 shapes; every one
-of the 23 328 combinations of build, skin, hair colour, the first three hair styles, tabard, plume
-and the first two weapons resolving with nothing missing, the heaviest at 135 shapes and 14 470;
+default look that resolves with nothing missing at a cost of 14 225 and 121 shapes, and each build
+likewise; the look with the sword and shield resolving with nothing missing, one-handed, at 141
+shapes; every one of the 31 104 combinations of build, skin, hair colour, the first three hair
+styles and the buzzcut, tabard, plume and the first two weapons resolving with nothing missing, the
+heaviest the curls with the sword and shield at 183 shapes and 15 490;
 every item of every slot on every build, with each weapon where the grip matters and a shield with
 each one-handed weapon, resolving with nothing missing, and every shield refused beside a
 two-handed weapon; the mail coif drawing no plume and every other helmet each plume; the long
 cloak changing with the plume and not the tabard and the short cape the other way round; each
 swung weapon's grip and blade; the crossbow's fields, its 45 shapes at 6 309 held and slung, no
-blade, and its look on every build at 116 shapes and 13 896 with its stowed list; and the costliest whole look of the free items, with each grip, at 201
-shapes and 20 493 and at 188 and 19 721, the same on every build. `tests/web/knight.test.js` draws the
+blade, and its look on every build at 132 shapes and 14 243 with its stowed list; and the costliest whole look of the free items, the long hair among
+them, with each grip, at 209 shapes and 21 400 and at 196 and 20 628, the same on every build, under
+0.54 of the cost cap. `tests/web/knight.test.js` draws the
 knight's 105 poses, the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy painted and drawn, from the base
 pack as the page does, and compares every call with the record taken from the code. It draws the
 code path from the unsigned copy, which a deployed page always refuses, and edits only that copy, so

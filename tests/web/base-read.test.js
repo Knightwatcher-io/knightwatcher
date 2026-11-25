@@ -28,8 +28,9 @@ const TEXT = fs.readFileSync(path.join(ROOT, 'web/packs/base.pack.json'), 'utf8'
 const LIB = process.env.BASE_READ_LIB ? path.resolve(process.env.BASE_READ_LIB) : path.join(ROOT, 'web/js/pack.js');
 const PK = require(LIB);
 
-// The result as JSON. A function in a record (a pix shape's colour lookup, which the base pack does
-// not use) is written as the word, so that one appearing or vanishing still shows.
+// The result as JSON. A function in a record (a pix shape's colour lookup, which in the base pack only
+// the buzzcut has, and no stored look wears) is written as the word, so that one appearing or
+// vanishing still shows.
 const plain = v => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'function' ? 'function' : x)));
 // Whether the shipped file carries a signature.
 const SIGNED = Object.prototype.hasOwnProperty.call(JSON.parse(TEXT), 'sig');
@@ -90,9 +91,9 @@ if (process.env.BASE_READ === 'write') {
   const want = JSON.parse(fs.readFileSync(STORED, 'utf8'));
   const got = snapshot();
 
-  test('the stored read is of the base pack as it ships, version 1.5.1, format [1, 2]', () => {
+  test('the stored read is of the base pack as it ships, version 1.6.0, format [1, 2]', () => {
     assert.equal(want.dev.ok, true);
-    assert.equal(want.dev.version, '1.5.1');
+    assert.equal(want.dev.version, '1.6.0');
     assert.deepEqual(want.dev.format, [1, 2]);
     assert.equal(want.shipped.signed, true);
     assert.equal(Object.keys(want.looks).length, 18);

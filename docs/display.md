@@ -117,7 +117,8 @@ hides the review bar and drives the display:
   the crate and `backup_done` the feast, each with a caption built from its `parts` in the world's
   words, or its `text` as it is. The goblin is a foe
   as tall as the knight's shoulders: it climbs over the battlement's wall or digs up out of the
-  camp's grass beside the knight, pulls a face, is bonked on the saucepan it wears, and vanishes
+  camp's grass beside the knight with a sack of loot at its hip, pulls a face, is bonked on the
+  dented saucepan it wears, and vanishes
   in a puff of smoke. The knight's swing stops where the blade meets the pot, so the blade never
   passes through it; nothing gory is shown. The goblin keeps its flinch for 16 ms after the blow,
   so the blade lands on the pose it was aimed at, and then flings up its hands. In the bounce the
@@ -745,7 +746,7 @@ down is used.
 | `arm=` | the knight's weapon: `one` the base pack's arming sword in one hand and its shield in the other, `two` the greatsword, or any weapon by its contract name: `longsword`, `mace_and_shield`, `crossbow`; or a loaded pack's weapon by its long name, `arm=test.orbit/main.blaster`, which `sh=` may match with a loaded pack's shield by its long name, `sh=test.orbit/off.deflector`. A page that cannot draw from the base pack draws the greatsword whatever the hook says |
 | `sh=`, `hm=`, `ps=`, `bo=`, `so=`, `am=`, `hn=`, `lg=`, `ft=`, `bk=` | the knight's gear by its contract value: the shield (`sh=round`), the helmet (`hm=coif`), the plume's style (`ps=feather`), the body (`bo=cuirass`), the shoulders (`so=lames`), the arms (`am=mail`), the hands (`hn=leather`), the legs (`lg=hose`), the feet (`ft=sabatons`) and the back (`bk=cloak`, or `bk=none`); the values are in [state.md](./state.md) |
 | `sk=`, `hc=`, `tb=`, `pm=` | the knight's skin, hair colour, tabard and plume: the id of one of the base pack's swatches, such as `sk=deep&hc=black&tb=sable&pm=gold` (the ids are in [library.md](./library.md#the-base-pack)) |
-| `hy=` | the knight's hair style: `short`, `tied`, `curls`, `long` or `close`, the base pack's `hair.<value>` |
+| `hy=` | the knight's hair style: `short`, `tied`, `curls`, `long`, `close` or `buzz`, the base pack's `hair.<value>` |
 | `pl=1` | outlines the scene's seven places and names them (`P`, `H1` to `H3`, `G1` to `G3`): the place's box; inside it the class box, the most any kind of the place's class may fill (the pie's from 46 left to 45 right and from 107 above the base to 33 below it, a high place's from 34 left to 32 right and 64 up, a ground place's from 66 left to 56 right and from 93 above the base to 2 below it), mirrored where the place is flipped; and the base, a white line. The pie's place is white, high places blue and ground places amber, and a place in front of the knight has a broken outline |
 
 `e=` and `sw=1` act 300 ms after the page loads, or before the first frame when `t=` freezes time,
