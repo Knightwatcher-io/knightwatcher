@@ -450,12 +450,13 @@ a module and leaves the rest alone.
 ## Serving
 
 The page is static files, and `docker compose up` serves it with the bundled server, a second
-container from the same image: the page, `state.json`, the settings saved for every display, and
-the count of displays the collector sends with its usage counts ([server.md](./server.md)). It holds no credential, mounts no secret and writes only its own
+container from the same image: the page, `state.json`, the settings saved for every display, the
+count of displays the collector sends with its usage counts, and the admin page, where the
+household's settings are changed behind a password ([server.md](./server.md)). It holds no credential, mounts no secret and writes only its own
 folder. It is open to the LAN with no login by default; it is the operator's job to put
 authentication in front of it before it is reached from anywhere else, since `state.json` holds
 container names, addresses and what is being watched. Any other web server will do instead, with
-each browser then keeping its own settings. The collector opens no port.
+each browser then keeping its own settings and no admin page. The collector opens no port.
 
 ## Decisions not yet made
 

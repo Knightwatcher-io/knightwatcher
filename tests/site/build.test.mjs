@@ -24,7 +24,7 @@ const rel = (dir, files) => files.map(f => path.relative(dir, f).split(path.sep)
 /* A copy of what the build reads, web/, site/, legal/, docs/, the provider files and the files the
    docs' index links, in a scratch folder, with a data/ folder in web/ as the collector leaves one,
    so the build can be shown to leave it out. */
-const COPIED = ['web', 'site', 'legal', 'docs', 'collector/providers/builtin', 'README.md', 'CONTRIBUTING.md'];
+const COPIED = ['web', 'site', 'legal', 'docs', 'collector/providers/builtin', '.github/CONTRIBUTING.md'];
 function scratchRoot() {
   const root = scratch();
   for (const d of COPIED) fs.cpSync(path.join(ROOT, d), path.join(root, d), { recursive: true, filter: s => !s.includes(path.sep + 'dist') });

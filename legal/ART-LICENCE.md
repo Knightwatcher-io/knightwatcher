@@ -5,7 +5,7 @@ Copyright (C) 2026 Valtora and the Knightwatcher contributors
 Knightwatcher's art is under the Creative Commons Attribution-ShareAlike 4.0 International licence
 (CC BY-SA 4.0). You may use it, change it, share it and sell it, for any purpose, as long as you
 give credit and share what you make from it under the same licence. The full legal text is in
-[LICENSE-ART](../LICENSE-ART), and Creative Commons has a short summary at
+[LICENSE-ART](LICENSE-ART), and Creative Commons has a short summary at
 [creativecommons.org/licenses/by-sa/4.0](https://creativecommons.org/licenses/by-sa/4.0/). Where
 this page and the legal text differ, the legal text is the licence.
 
@@ -64,4 +64,4 @@ that nothing can pass as one of them; the signature is not a licence check
 ## Contributions
 
 Art contributed to the project is under CC BY-SA 4.0 like the rest, and its author keeps the
-copyright in it. [CONTRIBUTING.md](../CONTRIBUTING.md) says how to contribute.
+copyright in it. [CONTRIBUTING.md](../.github/CONTRIBUTING.md) says how to contribute.

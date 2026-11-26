@@ -1,5 +1,5 @@
 /* Knightwatcher's website: the markdown renderer for the legal pages and the docs. It renders the
-   subset of GitHub's markdown that legal/, docs/, CONTRIBUTING.md and site/README.md use, and
+   subset of GitHub's markdown that legal/, docs/, .github/CONTRIBUTING.md and site/README.md use, and
    nothing more: headings of levels one to six, paragraphs, lists of "- " and "1. " items nested to
    any depth, with paragraphs, code and tables inside them, fenced code blocks with or without a
    language, tables with their columns' alignment, links, bold, inline code and backslash escapes.

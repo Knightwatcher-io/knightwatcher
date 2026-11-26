@@ -11,8 +11,8 @@
      font taken from web/ at build time;
    - Supported Feeds' services from the provider files in collector/providers/builtin/, so that a new
      provider file shows on the site with no page edit;
-   - docs/, the documentation: its index from README.md's "## Documentation" section, and a page
-     for every file that section links and every other file in docs/, rendered by markdown.mjs;
+   - docs/, the documentation: its index from docs/README.md, and a page for every file that index
+     links and every other file in docs/ but the index itself, rendered by markdown.mjs;
    - privacy/, art-licence/ and name-and-logo/, rendered from legal/, so they never drift from it;
    - demo/, a copy of web/ without admin/ or data/, stamped as tools/deploy.sh stamps a deployed
      copy but with the version of the commit built: the kw-version meta tag, ?v= on each local
@@ -59,10 +59,12 @@ const OWN = [
   { page: 'licence.html', out: 'licence/index.html', nav: '/licence/' }
 ];
 
-/** The groups of README.md's "## Documentation" section, by the line that opens each, and the name
- *  each has on the site. */
+/** The groups of the docs' index, docs/README.md, by the line that opens each, and the name each
+ *  has on the site. */
 export const DOC_GROUPS = { 'For people running it:': 'Running it', 'For people making packs:': 'Making packs', 'For contributors:': 'Contributing' };
-/** The group a file in docs/ that the section does not link goes in. */
+/** The docs' index, which is no doc page of its own. */
+export const DOCS_INDEX = 'docs/README.md';
+/** The group a file in docs/ that the index does not link goes in. */
 export const MORE = 'More';
 /** A doc's address on the site is /docs/<its file's name>/, but for these, whose file's name says
  *  nothing on its own. */
@@ -165,21 +167,24 @@ export function navLinks(current, here = current) {
 /* ---- The docs ---------------------------------------------------------------------------------- */
 
 /**
- * The docs' index, from README.md's "## Documentation" section: its groups in order, each with the
- * docs it links, and a group More for any file in docs/ the section does not link. Each doc is
- * { from, title, description (HTML), name, url }. Throws, naming the line, on anything the section
- * holds that is not a group's line, a blank or a "- [Title](path): description" line, on a group
- * with no docs, on a link to a file that is not there, and when the section is missing.
+ * The docs' index, from docs/README.md: its title, any lines of prose before the first group, then
+ * the groups in order, each with the docs it links, and a group More for any other file in docs/
+ * but the index. Each doc is { from, title, description (HTML), name, url }. Throws, naming the
+ * line, on anything after the first group that is not a group's line, a blank or a
+ * "- [Title](path): description" line, on a group with no docs, on a link to a file that is not
+ * there, and when the index or its title is missing. Its links are relative to docs/.
  */
 export function readDocsIndex(root = ROOT) {
-  const readme = read(root, 'README.md').replace(/\r\n?/g, '\n').split('\n');
-  const start = readme.indexOf('## Documentation');
-  if (start < 0) throw new Error('build: README.md has no "## Documentation" section for the docs\' index');
+  if (!isFile(path.join(root, DOCS_INDEX))) throw new Error(`build: ${DOCS_INDEX}, the docs' index, is not there`);
+  const index = read(root, DOCS_INDEX).replace(/\r\n?/g, '\n').split('\n');
+  if (!/^# \S/.test(index[0])) throw new Error(`build: ${DOCS_INDEX}:1: the docs' index starts with its title, a level one heading`);
   const groups = [], seen = new Set();
   let group = null;
-  for (let i = start + 1; i < readme.length && !/^#{1,2} /.test(readme[i]); i++) {
-    const line = readme[i], where = `build: README.md:${i + 1}`;
+  for (let i = 1; i < index.length; i++) {
+    const line = index[i], where = `build: ${DOCS_INDEX}:${i + 1}`;
     if (/^\s*$/.test(line)) continue;
+    // the intro: prose between the title and the first group
+    if (!group && !/^For .+:$/.test(line) && !/^(- |#)/.test(line)) continue;
     if (/^For .+:$/.test(line)) {
       if (!DOC_GROUPS[line]) throw new Error(`${where}: the docs' index has no name for the group "${line}": add it to DOC_GROUPS in site/build.mjs`);
       if (group && !group.docs.length) throw new Error(`${where}: the group "${group.line}" links no docs`);
@@ -189,16 +194,17 @@ export function readDocsIndex(root = ROOT) {
     const m = /^- \[([^\]]+)\]\(([^()\s#]+)\): (\S.*)$/.exec(line);
     if (!m) throw new Error(`${where}: a line the docs' index cannot read, not a group's line or "- [Title](path): description": ${line.slice(0, 60)}`);
     if (!group) throw new Error(`${where}: a doc before the first group's line`);
-    const from = repoPath(m[2], 'README.md');
+    const from = repoPath(m[2], DOCS_INDEX);
     if (!from.endsWith('.md') || !isFile(path.join(root, from))) throw new Error(`${where}: the docs' index links ${m[2]}, which is not a markdown file in the repository`);
+    if (from === DOCS_INDEX) throw new Error(`${where}: the docs' index links itself`);
     if (seen.has(from)) throw new Error(`${where}: the docs' index links ${from} twice`);
     seen.add(from);
     group.docs.push({ from, title: m[1], descriptionMd: m[3], line: i });
   }
-  if (!groups.length) throw new Error('build: README.md\'s "## Documentation" section has no groups for the docs\' index');
-  if (!group.docs.length) throw new Error(`build: README.md: the group "${group.line}" links no docs`);
-  // every other file in docs/, under More, by its own title
-  const more = fs.readdirSync(path.join(root, 'docs')).filter(f => f.endsWith('.md')).sort().map(f => 'docs/' + f).filter(f => !seen.has(f));
+  if (!groups.length) throw new Error(`build: ${DOCS_INDEX} has no groups for the docs' index`);
+  if (!group.docs.length) throw new Error(`build: ${DOCS_INDEX}: the group "${group.line}" links no docs`);
+  // every other file in docs/ but the index, under More, by its own title
+  const more = fs.readdirSync(path.join(root, 'docs')).filter(f => f.endsWith('.md')).sort().map(f => 'docs/' + f).filter(f => f !== DOCS_INDEX && !seen.has(f));
   if (more.length) groups.push({ line: null, label: MORE, docs: more.map(from => ({ from, title: null, descriptionMd: '' })) });
   // each doc's address, from its file's name
   const names = new Map();
@@ -212,11 +218,12 @@ export function readDocsIndex(root = ROOT) {
   return groups;
 }
 
-/** The site's page for each file of the repository it renders, so that a link between them stays
- *  on the site. */
+/** The site's page for each file of the repository it renders, the docs' index as /docs/, so that
+ *  a link between them stays on the site. */
 export function sitePages(groups) {
   const pages = {};
   for (const L of LEGAL) pages[L.from] = `/${L.dir}/`;
+  pages[DOCS_INDEX] = '/docs/';
   for (const g of groups) for (const d of g.docs) pages[d.from] = d.url;
   return pages;
 }
@@ -301,7 +308,7 @@ export function build({ out = path.join(SITE, 'dist'), version = resolveVersion(
     const r = render(d.from);
     rendered.set(d.from, r);
     if (d.title === null) d.title = textOf(r.title);
-    d.description = d.descriptionMd ? inline(d.descriptionMd, { where: `README.md:${d.line + 1}`, from: 'README.md', pages, isDir }) : '';
+    d.description = d.descriptionMd ? inline(d.descriptionMd, { where: `${DOCS_INDEX}:${d.line + 1}`, from: DOCS_INDEX, pages, isDir }) : '';
   }
   const legal = LEGAL.map(L => ({ L, r: render(L.from) }));
 

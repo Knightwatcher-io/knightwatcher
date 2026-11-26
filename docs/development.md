@@ -35,7 +35,7 @@ server/              the bundled server: Python, standard library only, reusing 
                      displays seen, stamp.py the page's version stamp at build time)
 telemetry/           the Cloudflare Worker that receives the usage heartbeat; see telemetry/README.md
 site/                the website at knightwatcher.io: its pages and pictures, build.mjs, which writes
-                     dist/ with the docs from the README's list, Supported Feeds from the provider
+                     dist/ with the docs from docs/README.md's index, Supported Feeds from the provider
                      files, the legal pages from legal/ and a stamped copy of web/ as the demo, the
                      Worker that serves it and a local preview; see site/README.md
 tests/
@@ -92,10 +92,14 @@ tools/
                      with no route out, checked and removed
   check-private.sh   the check that no private detail is tracked
   private-patterns.example.txt  the template of the patterns check-private.sh reads
-docs/                this documentation
+docs/                this documentation, indexed in docs/README.md; install.md is the full install
+legal/               the privacy notice, the art licence (ART-LICENCE.md, the full text in
+                     LICENSE-ART), the name and the logo, and the DCO
+.github/             CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md and SUPPORT.md, the issue
+                     forms, the pull request template and the workflows
 providers/           provider files of the user's own: shipped empty with a .gitkeep, everything
                      else in it ignored by git, mounted read-only into both containers
-compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
+README.md  LICENSE  compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 ```
 
 ## Rules
@@ -135,7 +139,7 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
   matches, in the same commit. A change whose docs are stale is not finished.
 - **Prose is plain.** British English, no emojis, no em dashes, no filler.
 - **Every commit is signed off.** `git commit -s` adds the `Signed-off-by:` line of the Developer
-  Certificate of Origin; [CONTRIBUTING.md](../CONTRIBUTING.md) says what it certifies.
+  Certificate of Origin; [CONTRIBUTING.md](../.github/CONTRIBUTING.md) says what it certifies.
 - **Commits follow Conventional Commits.**
 
 ## Checks

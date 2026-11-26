@@ -140,7 +140,7 @@ test('a comment on lines of its own is left out; italics, quotes, HTML and the r
 test('every legal file and every doc renders whole, with its links resolved', async () => {
   const fs = await import('node:fs');
   const root = new URL('../../', import.meta.url);
-  const files = ['legal/PRIVACY.md', 'legal/ART-LICENCE.md', 'legal/NAME-AND-LOGO.md', 'CONTRIBUTING.md', 'site/README.md',
+  const files = ['legal/PRIVACY.md', 'legal/ART-LICENCE.md', 'legal/NAME-AND-LOGO.md', '.github/CONTRIBUTING.md', 'site/README.md',
     ...fs.readdirSync(new URL('docs/', root)).filter(f => f.endsWith('.md')).map(f => 'docs/' + f)];
   for (const from of files) {
     const r = md(fs.readFileSync(new URL(from, root), 'utf8'), from);

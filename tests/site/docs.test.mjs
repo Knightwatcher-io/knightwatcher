@@ -1,5 +1,5 @@
 // Tests for the website's docs and Supported Feeds, from site/build.mjs: the docs' index read from
-// README.md's "## Documentation" section, a page for every doc, every link between the site's pages
+// docs/README.md, a page for every doc, every link between the site's pages
 // and every anchor resolving, links to the rest of the repository going to files that are there,
 // and the services of Supported Feeds read from the provider files. Each build goes to a scratch
 // folder that is removed afterwards. Run with: node --test 'tests/site/**/*.test.mjs'
@@ -8,11 +8,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { build, readDocsIndex, readFeeds, DOC_GROUPS, MORE, FEED_KINDS, ROOT } from '../../site/build.mjs';
+import { build, readDocsIndex, readFeeds, DOC_GROUPS, DOCS_INDEX, MORE, FEED_KINDS, ROOT } from '../../site/build.mjs';
 import { REPO, escapeHtml } from '../../site/markdown.mjs';
 
 const VERSION = 'abc123def456';
-const COPIED = ['web', 'site', 'legal', 'docs', 'collector/providers/builtin', 'README.md', 'CONTRIBUTING.md'];
+const COPIED = ['web', 'site', 'legal', 'docs', 'collector/providers/builtin', '.github/CONTRIBUTING.md'];
 const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
 const roots = [];
 /* A copy of what the build reads in a scratch folder, `change` applied to it before the build. */
@@ -26,22 +26,24 @@ function scratchRoot(change = () => {}) {
 const built = (() => { let r = null; return () => (r = r || (() => { const root = scratchRoot(); return { root, ...build({ out: path.join(root, 'out'), version: VERSION, token: '', root }) }; })()); })();
 test.after(() => { for (const r of roots) fs.rmSync(r, { recursive: true, force: true }); });
 const page = (out, url) => fs.readFileSync(path.join(out, url.replace(/^\//, ''), url.endsWith('/') ? 'index.html' : ''), 'utf8');
-const readme = root => fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-const editReadme = (root, f) => fs.writeFileSync(path.join(root, 'README.md'), f(readme(root)));
+const index = root => fs.readFileSync(path.join(root, DOCS_INDEX), 'utf8');
+const editIndex = (root, f) => fs.writeFileSync(path.join(root, DOCS_INDEX), f(index(root)));
 
-test('the docs\' index is README.md\'s Documentation section: its three groups, each doc with its line', () => {
+test('the docs\' index is docs/README.md: its three groups, each doc with its line', () => {
   const groups = readDocsIndex(ROOT);
   assert.deepEqual(groups.map(g => g.label), ['Running it', 'Making packs', 'Contributing']);
   assert.deepEqual(Object.values(DOC_GROUPS), ['Running it', 'Making packs', 'Contributing']);
   // every bullet of the section, in order, with its link and its words
-  const section = readme(ROOT).split('## Documentation')[1].split(/\n## /)[0];
-  const bullets = [...section.matchAll(/^- \[([^\]]+)\]\(([^)]+)\): (.+)$/gm)].map(m => [m[1], m[2], m[3]]);
-  assert.deepEqual(groups.flatMap(g => g.docs.map(d => [d.title, d.from, d.descriptionMd])), bullets);
+  const bullets = [...index(ROOT).matchAll(/^- \[([^\]]+)\]\(([^)]+)\): (.+)$/gm)].map(m => [m[1], m[2], m[3]]);
+  assert.deepEqual(groups.flatMap(g => g.docs.map(d => [d.title, path.posix.relative('docs', d.from), d.descriptionMd])), bullets);
   const at = Object.fromEntries(groups.flatMap(g => g.docs.map(d => [d.from, d.url])));
   assert.equal(at['docs/configuration.md'], '/docs/configuration/');
-  assert.equal(at['CONTRIBUTING.md'], '/docs/contributing/');
+  assert.equal(at['docs/install.md'], '/docs/install/');
+  assert.equal(at['.github/CONTRIBUTING.md'], '/docs/contributing/');
   assert.equal(at['site/README.md'], '/docs/website/');
   assert.equal(at['docs/world-loading.md'], '/docs/world-loading/');
+  // the index is no doc of its own
+  assert.ok(!groups.some(g => g.docs.some(d => d.from === DOCS_INDEX)));
 });
 
 test('the docs\' index page lists every group and doc, and each doc has its page with the nav of them all', () => {
@@ -84,7 +86,7 @@ test('every link between the site\'s pages resolves, anchors included, and every
         assert.equal(fs.statSync(target).isDirectory(), m[1] === 'tree', `${where}: ${href}`);
         // a markdown file the site renders is linked on the site, not on GitHub
         if (m[1] === 'blob' && /\.md$/.test(m[2]) && m[2] !== 'README.md') {
-          assert.ok(!/^(docs\/[^/]+|CONTRIBUTING|site\/README|legal\/(PRIVACY|ART-LICENCE|NAME-AND-LOGO))\.md$/.test(m[2]) || html.includes(`<p class="src-note">This page is <a href="${href}">`), `${where}: ${href} is on the site`);
+          assert.ok(!/^(docs\/[^/]+|\.github\/CONTRIBUTING|site\/README|legal\/(PRIVACY|ART-LICENCE|NAME-AND-LOGO))\.md$/.test(m[2]) || html.includes(`<p class="src-note">This page is <a href="${href}">`), `${where}: ${href} is on the site`);
         }
         repo++;
         continue;
@@ -106,7 +108,7 @@ test('every link between the site\'s pages resolves, anchors included, and every
   }
   assert.deepEqual(broken, [], 'links to a heading that is not there');
   assert.ok(internal > 500 && anchors > 300 && repo > 20, `${internal} links, ${anchors} anchors, ${repo} repository links`);
-  // a link from one docs page to a heading of another, and one from README.md's own style of link
+  // a link from one docs page to a heading of another, and one from .github/CONTRIBUTING.md's style of link
   assert.match(page(out, '/docs/packs/') + page(out, '/docs/page/') + page(out, '/docs/scenes/'), /href="\/docs\/world-loading\/#where-the-scenes-are-drawn-from"/);
   assert.match(page(out, '/docs/contributing/'), /href="\/docs\/development\/#checks"/);
 });
@@ -120,22 +122,27 @@ test('a file in docs/ that the index does not link is under More, by its own tit
   assert.match(page(r.out, '/docs/'), /<h2 id="[^"]+">More<\/h2>/);
   assert.match(page(r.out, '/docs/zz-extra/'), /<h1>An extra page<\/h1>/);
   assert.match(page(r.out, '/docs/zz-extra/'), /href="\/docs\/design\/#the-terms"/);
-  // without one, there is no More
+  // without one, there is no More, and the index itself is never under it
   assert.ok(!built().docs.some(g => g.label === MORE));
+  assert.ok(!fs.existsSync(path.join(built().out, 'docs', 'readme')));
 });
 
-test('a Documentation section the build cannot read stops it, naming the line, before dist/ is touched', () => {
+test('a docs\' index the build cannot read stops it, naming the line, before dist/ is touched', () => {
   const cases = [
-    ['no section', t => t.replace('## Documentation', '## Docs'), /no "## Documentation" section/],
-    ['a group with no name', t => t.replace('For people making packs:', 'For people painting:'), /README\.md:\d+: the docs' index has no name for the group "For people painting:"/],
-    ['a line it cannot read', t => t.replace('- [Packs](docs/packs.md): ', '- [Packs] docs/packs.md, '), /README\.md:\d+: a line the docs' index cannot read/],
-    ['a link to no file', t => t.replace('(docs/packs.md)', '(docs/no-such.md)'), /links docs\/no-such\.md, which is not a markdown file/],
-    ['a doc twice', t => t.replace('(docs/packs.md)', '(docs/worlds.md)'), /links docs\/worlds\.md twice/],
+    ['no title', t => t.replace(/^# .*\n/, ''), /docs\/README\.md:1: the docs' index starts with its title/],
+    ['a group with no name', t => t.replace('For people making packs:', 'For people painting:'), /docs\/README\.md:\d+: the docs' index has no name for the group "For people painting:"/],
+    ['a line it cannot read', t => t.replace('- [Packs](packs.md): ', '- [Packs] packs.md, '), /docs\/README\.md:\d+: a line the docs' index cannot read/],
+    ['a heading in the index', t => t.replace('For people making packs:', '## Packs\n\nFor people making packs:'), /docs\/README\.md:\d+: a line the docs' index cannot read/],
+    ['a link to no file', t => t.replace('(packs.md)', '(no-such.md)'), /links no-such\.md, which is not a markdown file/],
+    ['a doc twice', t => t.replace('(packs.md)', '(worlds.md)'), /links docs\/worlds\.md twice/],
+    ['the index linked from itself', t => t.replace('(packs.md)', '(README.md)'), /the docs' index links itself/],
     ['an empty group', t => t.replace(/For people making packs:\n\n(- .*\n)+/, 'For people making packs:\n\n'), /the group "For people making packs:" links no docs/],
     ['a doc before any group', t => t.replace('For people running it:\n', ''), /a doc before the first group's line/]
   ];
+  // an index that is not there at all
+  cases.push(['no index', null, /docs\/README\.md, the docs' index, is not there/]);
   for (const [name, change, error] of cases) {
-    const root = scratchRoot(r => editReadme(r, change));
+    const root = scratchRoot(r => (change ? editIndex(r, change) : fs.rmSync(path.join(r, DOCS_INDEX))));
     const out = path.join(root, 'out');
     fs.mkdirSync(out); fs.writeFileSync(path.join(out, 'keep'), 'x');
     assert.throws(() => build({ out, version: VERSION, token: '', root }), error, name);

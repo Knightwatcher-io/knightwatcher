@@ -1,5 +1,5 @@
 # Every commit of a pull request carries a Signed-off-by: trailer with its author's name and email,
-# certifying the Developer Certificate of Origin (DCO, CONTRIBUTING.md). Merge commits are passed
+# certifying the Developer Certificate of Origin (DCO, .github/CONTRIBUTING.md). Merge commits are passed
 # over, and so are commits by a GitHub App's bot account (Dependabot's, for one), whose sign-off
 # names another email. Every action is pinned to a full commit SHA.
 name: DCO
@@ -48,6 +48,6 @@ jobs:
           done
           echo "$checked commit(s) checked, $missing without a matching sign-off."
           if [[ $missing -gt 0 ]]; then
-            echo "Sign off each commit with git commit -s; git rebase --signoff origin/$BASE_REF signs off a whole branch. CONTRIBUTING.md says why."
+            echo "Sign off each commit with git commit -s; git rebase --signoff origin/$BASE_REF signs off a whole branch. .github/CONTRIBUTING.md says why."
             exit 1
           fi

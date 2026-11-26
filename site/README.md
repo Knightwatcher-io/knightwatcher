@@ -3,7 +3,7 @@
 The website at `knightwatcher.io`: six sections with a nav on every page (Home with the live demo,
 Features, Supported Feeds, Install, Docs and Licence), the documentation rendered from the
 repository's markdown, and the legal pages. Static files built from this folder, `web/`, `legal/`,
-`docs/`, `README.md`, `CONTRIBUTING.md` and the provider files, served by a small Cloudflare Worker and deployed by Workers Builds on each push to `main`, as the usage receiver in
+`docs/`, `.github/CONTRIBUTING.md` and the provider files, served by a small Cloudflare Worker and deployed by Workers Builds on each push to `main`, as the usage receiver in
 [`telemetry/`](../telemetry/README.md) is. Until launch both of its hostnames sit behind Cloudflare
 Access, open to the owner alone.
 
@@ -114,16 +114,19 @@ letterboxed on an upright phone.
 
 ## The docs
 
-The docs' index comes from README.md's `## Documentation` section: its three groups, the lines
-"For people running it:", "For people making packs:" and "For contributors:", shown as Running it,
-Making packs and Contributing (`DOC_GROUPS` in `build.mjs`), and under each its bullets, each
-`- [Title](path): description`. Every file the section links gets a page at `/docs/<name>/`, its
-file's name in lower case (`docs/world-loading.md` is `/docs/world-loading/`, `CONTRIBUTING.md` is
+The docs' index comes from [docs/README.md](../docs/README.md), which GitHub shows under `docs/`:
+its title and a line of prose, then its three groups, the lines "For people running it:", "For
+people making packs:" and "For contributors:", shown as Running it, Making packs and Contributing
+(`DOC_GROUPS` in `build.mjs`), and under each its bullets, each `- [Title](path): description`, the
+path relative to `docs/`. Every file the index links gets a page at `/docs/<name>/`, its file's
+name in lower case (`docs/world-loading.md` is `/docs/world-loading/`, `.github/CONTRIBUTING.md` is
 `/docs/contributing/`), but `site/README.md`, which is `/docs/website/`. A file in `docs/` the
-section does not link gets a page too, under a group More, by its own title. Anything else in the
-section (a group's line the build has no name for, a line of another shape, a link to a file that is
-not there, a doc linked twice, a group with no docs) stops the build, naming the line of README.md,
-and so does a missing section.
+index does not link gets a page too, under a group More, by its own title. The index itself gets
+no page of its own: a link to it is a link to `/docs/`. Anything after the first group that is
+not a group's line, a blank or a bullet (a group's line the build has no name for, a heading, a
+line of another shape, a link to a file that is not there, a doc linked twice, the index linking
+itself, a group with no docs) stops the build, naming the line of `docs/README.md`, and so do a
+missing index and one with no title on its first line.
 
 A doc's page has every doc in a side column by group, its own sections from its level two and
 three headings in a column on the right, and the doc between them; narrower, the contents fold
@@ -151,8 +154,8 @@ A heading's id is GitHub's: its text in lower case, everything but letters, digi
 hyphens and underscores taken out, each space a hyphen, and a repeat numbered `-1`, `-2`. So a link
 to a heading works the same on the site and on GitHub: the privacy notice's section The website is
 `/privacy/#the-website`, where the footer's line on visitor counts points. A relative link to a file
-the site renders (a doc, `CONTRIBUTING.md`, this file or a legal file) goes to its page on the site,
-anchor and all; a link to any other file of the repository goes to it on GitHub, `blob/main/` for a
+the site renders (a doc, the docs' index, `.github/CONTRIBUTING.md`, this file or a legal file) goes
+to its page on the site, anchor and all; a link to any other file of the repository goes to it on GitHub, `blob/main/` for a
 file and `tree/main/` for a folder. The tests build the site and check that every link between its
 pages and every anchor lands, and that every link to the repository names a file that is there.
 
@@ -216,7 +219,7 @@ zone. No Cloudflare token is kept anywhere else.
    - the build variables `NODE_VERSION=24` and `WRANGLER_SEND_METRICS=false`;
    - Enable Preview Builds turned off, under Settings, Build, Branch control;
    - build watch paths, if set at all, that take in `site/**`, `web/**`, `legal/**`, `docs/**`,
-     `README.md`, `CONTRIBUTING.md`, `collector/providers/builtin/**` and `tests/site/**`, since
+     `.github/CONTRIBUTING.md`, `collector/providers/builtin/**` and `tests/site/**`, since
      the demo, the legal pages, the docs and Supported Feeds come from them.
 
    The deploy creates both custom domains, with no `workers.dev` or preview address, and clears

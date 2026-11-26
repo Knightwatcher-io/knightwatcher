@@ -6,6 +6,20 @@ deploying the page. `config.toml` and `.env` are in [configuration.md](./configu
 bundled server in [server.md](./server.md), and how the page is built, for anyone changing it, in
 [page.md](./page.md).
 
+## Trying the page
+
+Open `web/index.html` in a browser. With no `state.json` beside it, the page runs the demo on
+invented data ([Modes](#modes)), with a bar of controls for every scene and state.
+
+Press and hold anywhere on the display for two seconds to open the settings screen
+([The settings screen](#the-settings-screen)). It sets the world, the knight's build, weapon,
+colours, armour and cloak, the monarch, the cat's coat, the headline size, the clock, the helmet
+indoors, which quiet scenes take turns, and the scene some conditions play in: a machine under
+strain at the camp instead of the training yard, say. Served by Knightwatcher's own server, what is
+chosen there is saved for every display. Opened from disk, it is kept in that browser. The defaults
+under it are set in `config.toml`
+([The settings screen's defaults](./configuration.md#the-settings-screens-defaults)).
+
 ## Modes
 
 **Demo.** Invented conditions, the review bar, and a loop through every scene and state. The
@@ -280,6 +294,13 @@ the words: on the 12-hour clock the hour after midnight is `12:05 AM` and the ha
 `12:30 PM`.
 
 ### Worlds
+
+The knight lives in the medieval world: its seven scenes, the monarchs, the goblin, the flies and
+the cat, the devices drawn as medieval things, and the words and colours of the text over the
+scene. Choosing a world sets all of that at once, and the settings screen can still mix single
+parts across worlds, a monarch from one world on another's throne, say
+([The settings screen](#the-settings-screen)). Another world comes as a pack
+([Another world pack](#another-world-pack)), and [worlds.md](./worlds.md) says how one is made.
 
 A world is a preset, every part of the look, the quiet scenes and the scene of each condition at
 once, held in a world pack's `worlds` section ([worlds.md](./worlds.md#presets-on-the-page)). The page

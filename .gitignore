@@ -20,6 +20,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 dist/
+node_modules/
 
 # The list of private patterns names what it protects
 /tools/private-patterns.txt

@@ -30,6 +30,6 @@ An acknowledgement of the report, then a fix in a release. There is no bug bount
 
 ## Hardening
 
-[docs/security.md](docs/security.md) describes the collector's and the server's privileges and what
-the page sends, and [docs/server.md](docs/server.md#security) how to keep the server off the
+[docs/security.md](../docs/security.md) describes the collector's and the server's privileges and what
+the page sends, and [docs/server.md](../docs/server.md#security) how to keep the server off the
 internet or put a login in front of it.
