@@ -10,6 +10,8 @@ Knightwatcher, and making packs. Most questions are answered there, and searchin
   under Q&A.
 - **Ideas:** share them in Discussions, under Ideas. Show your wall is for photos of yours, and
   Announcements carries the releases and other news.
+- **Talk and photos:** [r/KnightWatcher](https://www.reddit.com/r/KnightWatcher/) on Reddit is the
+  project's community. Bugs and requests still go to the issue forms, where they are tracked.
 - **Bugs:** open a bug report through the
   [issue forms](https://github.com/knightwatcher-io/knightwatcher/issues/new/choose).
 - **A service the collector should read:** open a provider request through the same forms.

@@ -6,6 +6,9 @@ contact_links:
   - name: Questions and ideas
     url: https://github.com/knightwatcher-io/knightwatcher/discussions
     about: Ask how to do something, or share an idea or a photo of your wall, in Discussions.
+  - name: r/KnightWatcher on Reddit
+    url: https://www.reddit.com/r/KnightWatcher/
+    about: The project's community, for talk and photos of your wall.
   - name: Report a vulnerability
     url: https://github.com/knightwatcher-io/knightwatcher/security/advisories/new
     about: Report a security problem privately, never in a public issue.
