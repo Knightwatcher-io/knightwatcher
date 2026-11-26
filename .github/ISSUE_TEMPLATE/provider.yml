@@ -27,7 +27,7 @@ body:
     attributes:
       label: How it authenticates
       options:
-        - None
+        - No authentication
         - An API key or token in a header
         - An API key or token in the address
         - HTTP basic authentication

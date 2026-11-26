@@ -1,0 +1,74 @@
+name: Hardware or platform report
+description: How Knightwatcher runs, or fails to run, on a host or display not yet tested.
+labels: ["platform", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for trying it somewhere new. Knightwatcher has been tested on x86-64 Linux and on a Raspberry Pi 5 with 64-bit Debian 13. NAS systems such as Synology, Unraid and TrueNAS have not been tried. [What you need](https://knightwatcher.io/docs/install/#what-you-need) lists the requirements. Please remove every credential, token, address and name from your own network before you post anything here.
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      options:
+        - It works
+        - It works with changes (say which below)
+        - It does not work
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host
+      description: The machine and its operating system, with the output of `uname -sr`.
+      placeholder: Synology DS923+, DSM 7.2, Linux 5.10
+    validations:
+      required: true
+  - type: dropdown
+    id: arch
+    attributes:
+      label: CPU architecture
+      options:
+        - x86-64
+        - 64-bit ARM
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: docker
+    attributes:
+      label: Docker and Compose versions
+      description: The output of `docker version --format '{{.Server.Version}}'` and `docker compose version`.
+      placeholder: Docker 28.1.1, Compose 2.35.1
+    validations:
+      required: true
+  - type: dropdown
+    id: permissions
+    attributes:
+      label: Folder permissions
+      description: How you let the containers write in `var`.
+      options:
+        - setfacl, as in the quick start
+        - The chown fallback
+        - Something else (say which below)
+    validations:
+      required: true
+  - type: input
+    id: display
+    attributes:
+      label: Display device and browser
+      description: The device and browser that show the page, if you tried one.
+      placeholder: Android tablet, Fully Kiosk Browser
+  - type: textarea
+    id: what
+    attributes:
+      label: What you did and what happened
+      description: The steps you followed, anything you had to change, and what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The relevant lines of `docker compose logs`, with every credential removed. They are formatted as code.
+      render: text

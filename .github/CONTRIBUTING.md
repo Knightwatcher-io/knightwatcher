@@ -16,6 +16,8 @@ privately, as [SECURITY.md](SECURITY.md) says, never in an issue.
   [good first issue](https://github.com/knightwatcher-io/knightwatcher/labels/good%20first%20issue)
   or [help wanted](https://github.com/knightwatcher-io/knightwatcher/labels/help%20wanted).
 - **Hardware.** Running it on a machine or a NAS it has not been tried on, and saying how it went
+  in a
+  [hardware report](https://github.com/knightwatcher-io/knightwatcher/issues/new?template=hardware.yml)
   ([what you need](../docs/install.md#what-you-need)).
 - **Worlds and packs.** New items for the knight, scenes and whole worlds
   ([docs/worlds.md](../docs/worlds.md), [docs/packs.md](../docs/packs.md)).

@@ -12,7 +12,9 @@ How to install Knightwatcher on a Linux host, step by step. The
   cannot run it.
 
 It has been tested on x86-64 Linux and on a Raspberry Pi 5 with 64-bit Debian 13. Other systems,
-including NAS systems such as Synology, Unraid and TrueNAS, have not been tried.
+including NAS systems such as Synology, Unraid and TrueNAS, have not been tried. If you run it on
+one, a [hardware report](https://github.com/knightwatcher-io/knightwatcher/issues/new?template=hardware.yml)
+says how it went.
 
 Compose 2.18 is the oldest release that reads `compose.yaml`: 2.17 and older refuse the variable
 nested inside another in the server's `ports` line. `docker compose version` prints yours.

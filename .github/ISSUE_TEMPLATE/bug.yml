@@ -6,11 +6,44 @@ body:
     attributes:
       value: |
         Thank you for the report. Please remove every credential, token, address and name from your own network before you post anything here. A security problem goes to the [security policy](https://github.com/knightwatcher-io/knightwatcher/security/policy) instead, never to a public issue.
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched the [existing issues](https://github.com/knightwatcher-io/knightwatcher/issues?q=is%3Aissue), and this is not a security problem.
+          required: true
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part
+      description: The part where you see the problem.
+      options:
+        - The display (the page)
+        - The collector
+        - The bundled server
+        - The admin page
+        - A provider or a source
+        - Installing or upgrading
+        - Something else
+    validations:
+      required: true
   - type: textarea
     id: happened
     attributes:
       label: What happened
       description: What you did, and what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered, from the start, so that someone else can follow them.
+      value: |
+        1.
+        2.
+        3.
     validations:
       required: true
   - type: textarea
@@ -25,6 +58,17 @@ body:
       label: Version or commit
       description: The image's tag, such as 0.1.0, or the commit you built from. The display's settings screen shows the page's version under Status.
       placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: runs
+    attributes:
+      label: How it runs
+      options:
+        - The published image (docker compose up)
+        - Built from a checkout (docker compose build)
+        - The page opened from disk
+        - The page served by another web server
     validations:
       required: true
   - type: input
@@ -42,8 +86,31 @@ body:
       description: The browser and device that show the page, if the problem is on the display.
       placeholder: Fully Kiosk Browser on an Android tablet
   - type: textarea
+    id: config
+    attributes:
+      label: The relevant part of config.toml
+      description: Only the sections involved. Replace every address, name and token with an invented one, such as 192.0.2.10 or example.com. Never paste `.env`. It is formatted as code.
+      render: toml
+  - type: textarea
     id: logs
     attributes:
-      label: Relevant collector log lines
-      description: From `docker compose logs collector`, with every credential removed. They are formatted as code.
+      label: Collector logs
+      description: The relevant lines of `docker compose logs collector`, with every credential removed. They are formatted as code.
       render: text
+  - type: textarea
+    id: server-logs
+    attributes:
+      label: Server logs
+      description: The relevant lines of `docker compose logs server`, with every credential removed. They are formatted as code.
+      render: text
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console
+      description: Errors from the browser's developer tools, if the problem is on the display, with every credential removed. They are formatted as code.
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag images into this box. Keep every real address, name and title off screen.

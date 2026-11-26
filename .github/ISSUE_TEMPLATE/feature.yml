@@ -6,6 +6,19 @@ body:
     attributes:
       value: |
         For a service the collector should read, use the provider request instead. For a large change, opening this issue first means nobody spends days on something that cannot be merged.
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part
+      description: The part the idea is for, if you know.
+      options:
+        - The display (the page)
+        - The collector
+        - The bundled server
+        - The admin page
+        - A provider or a source
+        - Installing or upgrading
+        - Something else
   - type: textarea
     id: problem
     attributes:

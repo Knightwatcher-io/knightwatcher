@@ -13,6 +13,8 @@ Knightwatcher, and making packs. Most questions are answered there, and searchin
 - **Bugs:** open a bug report through the
   [issue forms](https://github.com/knightwatcher-io/knightwatcher/issues/new/choose).
 - **A service the collector should read:** open a provider request through the same forms.
+- **A new host or display:** say how it runs, or fails to, through a hardware report on the same
+  forms.
 - **Vulnerabilities:** report them privately, as [SECURITY.md](SECURITY.md) says, never in an
   issue or a discussion.
 

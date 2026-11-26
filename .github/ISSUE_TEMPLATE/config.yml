@@ -7,5 +7,5 @@ contact_links:
     url: https://github.com/knightwatcher-io/knightwatcher/discussions
     about: Ask how to do something, or share an idea or a photo of your wall, in Discussions.
   - name: Report a vulnerability
-    url: https://github.com/knightwatcher-io/knightwatcher/security/policy
+    url: https://github.com/knightwatcher-io/knightwatcher/security/advisories/new
     about: Report a security problem privately, never in a public issue.
