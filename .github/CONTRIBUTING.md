@@ -56,10 +56,6 @@ To sign off commits you have already made, `git commit --amend -s` does the last
 `git rebase --signoff main` every commit of your branch. A check on every pull request fails while
 any commit in it lacks a `Signed-off-by:` line naming its author.
 
-The history from before the project went public was written by its sole author and predates this
-rule, so only 2 of its first 151 commits carry the line; every contribution from now on is signed
-off.
-
 ## Pull requests and checks
 
 The project's owner pushes to `main`. Every other change comes as a pull request, which is merged
