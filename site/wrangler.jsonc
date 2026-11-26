@@ -21,8 +21,7 @@
     "enabled": false
   },
 
-  // Reached at these two hostnames alone, both behind Cloudflare Access until launch: no
-  // workers.dev address and no preview addresses, since neither would sit behind it.
+  // Reached at these two hostnames alone: no workers.dev address and no preview addresses.
   "workers_dev": false,
   "preview_urls": false,
   "routes": [
