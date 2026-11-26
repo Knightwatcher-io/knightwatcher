@@ -8,7 +8,7 @@
   <p><a href="LICENSE"><img src="https://img.shields.io/github/license/knightwatcher-io/knightwatcher" alt="Licence"></a>
     <a href="https://github.com/knightwatcher-io/knightwatcher/releases/latest"><img src="https://img.shields.io/github/v/release/knightwatcher-io/knightwatcher" alt="Latest release"></a>
     <a href="https://github.com/knightwatcher-io/knightwatcher/actions/workflows/ci.yml"><img src="https://github.com/knightwatcher-io/knightwatcher/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI on main"></a></p>
-  <p><a href="https://knightwatcher.io/demo/?demo">Live demo</a> · <a href="https://knightwatcher.io/">Website</a> · <a href="docs/README.md">Docs</a> · <a href=".github/CONTRIBUTING.md">Contributing</a></p>
+  <p><a href="https://knightwatcher.io/demo/?demo">Live demo</a> · <a href="https://knightwatcher.io/">Website</a> · <a href="docs/README.md">Docs</a> · <a href=".github/CONTRIBUTING.md">Contributing</a> · <a href="https://www.reddit.com/r/KnightWatcher/">r/KnightWatcher</a></p>
   <img src="site/img/ev-goblin.png" alt="The knight on the battlement with a goblin beside it, under the headline BANISHED 203.0.113.77 and a wall clock" width="640">
 </div>
 
