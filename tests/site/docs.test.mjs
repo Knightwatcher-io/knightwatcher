@@ -163,7 +163,7 @@ test('Supported Feeds lists every provider file by kind, the _basic variants wit
   assert.match(html, /<li>Glances 4 <span class="also">with or without a password<\/span><\/li>/);
   assert.doesNotMatch(html, /What it reads/);
   assert.match(html, /<h1>Supported Feeds<\/h1>/);
-  assert.match(html, /Tested on x86-64\. ARM and the Raspberry Pi are untested\./);
+  assert.match(html, /published for x86-64 and 64-bit ARM, and tested on both/);
   assert.match(html, /Windows and macOS hosts are not supported\./);
   // a new provider file shows up; one of a kind the page has no heading for stops the build
   const root = scratchRoot(r => fs.writeFileSync(path.join(r, 'collector/providers/builtin/example.toml'), 'format = 1\nid = "example"\nkind = "streams"\nname = "Example Media"\n\n[auth]\nname = "not this"\n'));
