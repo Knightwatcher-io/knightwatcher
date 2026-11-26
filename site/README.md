@@ -55,7 +55,7 @@ The preview serves `dist/` with the same headers the Worker sets, the 404 page f
 and binds to `127.0.0.1` alone. The tests are in `tests/site/` ([tests.md](../docs/tests.md#the-websites-tests)):
 
 ```bash
-tools/capped.sh node --test --test-concurrency=2 tests/site/
+tools/capped.sh node --test --test-concurrency=2 'tests/site/**/*.test.mjs'
 ```
 
 ## The sections

@@ -1,6 +1,6 @@
 // Tests for the script that runs the project's checks, tools/check.sh, and for the CI workflow
 // that calls it, .github/workflows/ci.yml. Run with:
-// node --test tests/tools/
+// node --test 'tests/tools/**/*.test.js'
 // Only the script's arguments are tried here, since each is refused before any check runs; the
 // checks themselves are run by the script, never by these tests.
 'use strict';

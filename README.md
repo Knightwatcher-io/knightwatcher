@@ -156,7 +156,7 @@ For people making packs:
 For contributors:
 
 - [Design](docs/design.md): what the display is for, the terms, and how the two parts divide the work
-- [Contributing](CONTRIBUTING.md): the licences contributions are under, and signing off each commit
+- [Contributing](CONTRIBUTING.md): the licences, signing off each commit, and the checks on a pull request
 - [Development](docs/development.md): layout, rules, checks, the icons and signing the packs
 - [The state file](docs/state.md): the contract between collector and page
 - [The collector](docs/collector.md): one poll, conditions, events, sources and how to add one

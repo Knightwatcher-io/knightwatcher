@@ -1,6 +1,6 @@
 // Tests for the scenes of the medieval world's pack, web/packs/medieval.pack.json, against what the
 // page still reads from code, and the checks of the foe and the places run on them. Run with:
-// node --test tests/web/
+// node --test 'tests/web/**/*.test.js'
 //
 // Until worlds can be chosen the engine and the settings keep their own lists of which scenes take
 // turns while all is quiet and which events each scene plays (TURNS and EVENTS in engine.js, the

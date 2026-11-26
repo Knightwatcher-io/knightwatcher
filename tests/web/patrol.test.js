@@ -2,7 +2,7 @@
 // the side-step walk, the plan of stops worked out from the time alone, the visits to the set while
 // something streams, how a warning, a condition with a scene of its own, an act that needs a place
 // and an event hand over and resume, the set drawn in every scene and kept clear by the goblin and
-// the crate, and the night with a stream. Run with: node --test tests/web/
+// the crate, and the night with a stream. Run with: node --test 'tests/web/**/*.test.js'
 //
 // The page's scripts run under Node into a sandbox, with the knight from the base pack and, where a
 // test says so, the medieval world started from its pack on dev terms. Time runs from the frames

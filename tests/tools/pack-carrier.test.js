@@ -1,5 +1,5 @@
 // Tests for the carrier tool, tools/pack-carrier.js, and for the carriers it wrote under
-// web/packs/. Run with: node --test tests/tools/
+// web/packs/. Run with: node --test 'tests/tools/**/*.test.js'
 // A carrier is one line that pushes its pack file's text onto KW.packText. Each test here runs the
 // carriers in a sandbox and requires the text they push to be the file's, byte for byte.
 'use strict';

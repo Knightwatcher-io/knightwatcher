@@ -1,4 +1,5 @@
-// Tests for the page's reading of the state file, web/js/state.js. Run with: node --test tests/web/
+// Tests for the page's reading of the state file, web/js/state.js. Run with:
+// node --test 'tests/web/**/*.test.js'
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

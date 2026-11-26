@@ -1,6 +1,6 @@
 // Tests for format 1.1 in the pack library, web/js/pack.js: the world sections (scenes, the cast,
 // props, stamps, words, overlays, presets and the reserved sounds), read, checked and kept as data,
-// with nothing compiled from them yet. Run with: node --test tests/web/
+// with nothing compiled from them yet. Run with: node --test 'tests/web/**/*.test.js'
 // The fixture in fixtures/world-1.1.json is a world pack made of the world format's own worked
 // examples (the cellar, the house's planks and blanket, the act parts, the places, the patron, the
 // goblin, the fly, the devices, the words, the overlay and the preset) and of today's seven scenes'

@@ -1,5 +1,6 @@
 // Tests for tools/settings-schema.js, and for what it wrote: the copy of the settings schema in
-// web/js/settings.js and the reference in docs/configuration.md. Run with: node --test tests/tools/
+// web/js/settings.js and the reference in docs/configuration.md. Run with:
+// node --test 'tests/tools/**/*.test.js'
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

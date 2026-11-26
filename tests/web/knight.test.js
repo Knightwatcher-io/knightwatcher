@@ -1,5 +1,5 @@
 // Tests for the knight, web/js/knight.js: the drawing, call by call, the gear at rest, and the rig it
-// stands on. Run with: node --test tests/web/
+// stands on. Run with: node --test 'tests/web/**/*.test.js'
 //
 // The drawing code runs under Node against a fake canvas context that records every call and every
 // property it is given. Each pose in POSES is drawn twice, once from code and once from the base

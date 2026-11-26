@@ -5,7 +5,7 @@
 // that fires, the hair of 1.6.0 (the six styles redrawn, the buzzcut among them), and nothing more,
 // that every choice of them resolves, and
 // that the page's rules for signing apply to it, whether it ships signed or not. Run with:
-// node --test tests/web/
+// node --test 'tests/web/**/*.test.js'
 // That drawing it gives the same calls as the code is checked pose by pose in knight.test.js.
 'use strict';
 const test = require('node:test');

@@ -1,5 +1,5 @@
 // Tests for the pack library, web/js/pack.js, and the format of docs/packs.md.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 // The fixture in fixtures/base.pack.json is a base-like pack: the helmet, plume, tabard and
 // greatsword of the worked example and the rest of the knight transcribed from knight.js. Every
 // rejection test changes one thing in a copy of it, signs the copy and reads it back.

@@ -1,6 +1,6 @@
 // Tests for the website's markdown renderer, site/markdown.mjs: the subset the legal pages and the
 // docs use, every piece of text escaped, the links, GitHub's heading ids, and everything outside
-// the subset refused. Run with: node --test tests/site/
+// the subset refused. Run with: node --test 'tests/site/**/*.test.mjs'
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderMarkdown, resolveLink, escapeHtml, inline, slug, slugger, REPO } from '../../site/markdown.mjs';

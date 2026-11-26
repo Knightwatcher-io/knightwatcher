@@ -2,7 +2,7 @@
 // gone state draws differently from its up state, and only what moves (the pie's steam and its
 // lamp, and a device's lamp) is drawn each frame. The pie's lamp is the filling under its lattice
 // up and the last slice's filling down, and lies exactly where the still part leaves filling.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // The drawing code runs under Node against a fake canvas context that records every fillRect,
 // every arc and every drawImage, the calls that put pixels down. The pie's lamp is painted once

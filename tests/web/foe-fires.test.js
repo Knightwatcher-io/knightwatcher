@@ -3,7 +3,7 @@
 // taunt and firing once at 1350; the shot that misses over the head group with no shield, and the
 // one that stops at the shield's face with the spark; the foe on the right, which misses with a
 // shield carried, the known limit; and the watcher's flinch, which changes the eyes alone. Run
-// with: node --test tests/web/
+// with: node --test 'tests/web/**/*.test.js'
 //
 // The foe is the test world's Glitch from its copy of format 1.2, which fires a tracer; the looks
 // are its blaster with the deflector (one hand and a shield, shot from range), its prod (two hands,

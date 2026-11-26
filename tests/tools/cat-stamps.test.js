@@ -1,5 +1,5 @@
 // Tests for the cat's stamps, tools/cat-stamps.js, and for what it wrote into the medieval world's
-// pack, web/packs/medieval.pack.json. Run with: node --test tests/tools/
+// pack, web/packs/medieval.pack.json. Run with: node --test 'tests/tools/**/*.test.js'
 // The tool works the cat out from its drawing in code, web/js/cat.js, into stamps of pix shapes and
 // the cast member pet.cat. These tests work it out again and require the pack to hold exactly that,
 // and the stamps, read back by the pack library, to give the code's cells pixel for pixel.

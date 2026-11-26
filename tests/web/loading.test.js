@@ -2,7 +2,7 @@
 // index of downloaded packs and their fetch, the rule that a deployed page reads only signed packs,
 // the list of refused packs and its console lines, the fallback to the base pack's defaults, the
 // knight drawn from code when no base pack can be used, and a throw inside a draw list.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // The page's scripts run under Node in a sandbox, as in knight.test.js. Signed packs are signed
 // with keys generated in memory for the run and handed to read() through start()'s keys option;

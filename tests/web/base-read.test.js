@@ -1,6 +1,6 @@
 // The base pack, web/packs/base.pack.json, read by the pack library as it is now, against the read
 // stored in fixtures/base-read.json from the library before it learnt format 1.1. Run with:
-//   node --test tests/web/
+//   node --test 'tests/web/**/*.test.js'
 // The stored read is the whole result of read() for the file signed (with a key made for the run, as
 // a signed file reads with kw1), for the file unsigned on a dev page, and for the file unsigned on a
 // deployed page; the bytes the signature covers, by their SHA-256 and length; and resolve() on each

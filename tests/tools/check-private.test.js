@@ -1,5 +1,5 @@
 // Tests for the check that no private detail is tracked, tools/check-private.sh. Run with:
-// node --test tests/tools/
+// node --test 'tests/tools/**/*.test.js'
 // Each test makes a small git repository in a temporary folder, with the tool, a tracked file and
 // a pattern file of its own, so the repository's own patterns are never read.
 'use strict';

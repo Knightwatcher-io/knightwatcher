@@ -3,7 +3,7 @@
 // with the watcher stepping back, the attack aimed and never fired, the weapon that is both swung and
 // fired, the reach that spaces the pegs and lays the weapon on the anvil with no hot tip, and the
 // stowed view. The frame-by-frame checks of the barrel and the shield are in fire-barrel.test.js.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // The weapons are the test world's, from its copy of format 1.2 (the blaster with its deflector,
 // and the prod, which is both swung and fired), the trial crossbow made in memory

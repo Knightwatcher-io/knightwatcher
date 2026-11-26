@@ -4,7 +4,7 @@
 // refuses, the reset of a section, the look and the engine's input made from them, the 12-hour
 // clock, the quiet rotation in web/js/engine.js, the monarch's skin in web/js/scenes/court.js, and
 // a knight drawn from the base pack in every combination the settings offer.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // The pure part of settings.js loads under Node as it is. The engine, the court and the knight run
 // in a sandbox as index.html loads them, drawing into a fake context that records what is filled.

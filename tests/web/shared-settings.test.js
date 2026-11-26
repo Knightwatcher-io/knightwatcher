@@ -3,7 +3,7 @@
 // connect(), which keeps a store in step with the server's api/settings: the first answer, the
 // carry-over of a browser's own choices, a page with no server behind it, choices sent with PUT,
 // a refused write, and two displays sharing one server.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // The server here is a fake that keeps the settings as the real one does (server/store.py), and
 // answers each request when the test lets it, so that the order of answers can be chosen.

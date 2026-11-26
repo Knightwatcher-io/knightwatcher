@@ -1,6 +1,6 @@
 // Tests for the scenes, web/js/scenes/*.js: every scene's paint() and draw() recorded call by call,
 // in every state that changes them, at three sizes of screen, and compared with the stored records
-// in fixtures/scenes/. Run with: node --test tests/web/
+// in fixtures/scenes/. Run with: node --test 'tests/web/**/*.test.js'
 //
 // The page's drawing code runs under Node against a fake canvas context that records every call and
 // every property it is given, as tests/web/knight.test.js does for the knight. The devices are drawn

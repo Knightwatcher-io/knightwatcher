@@ -3,7 +3,7 @@
 // on a deployed page; its parts compiled and put in place under their long names by KW.world; the
 // settings resolving Orbit chosen whole, and its parts mixed with the medieval world's, into the
 // knight's look and the engine's input; and the engine drawing Orbit's scenes, foe, critter and pet.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // Orbit is never under web/ and never signed: it is read here, on dev terms, and shot from a copy
 // of web/ outside the repository (docs/tests.md, The test world).

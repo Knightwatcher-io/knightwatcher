@@ -1,7 +1,7 @@
 // Tests for the places of the devices in every scene (docs/page.md, Devices): that
 // whatever may stand in a place, up or gone, with its question mark and its pole, is drawn wholly
 // on the 960 by 600 grid, which is all a 960-wide display shows, and that no two places' drawings
-// overlap. Run with: node --test tests/web/
+// overlap. Run with: node --test 'tests/web/**/*.test.js'
 //
 // Each kind is drawn under Node against a fake context that keeps the box every fillRect and every
 // drawImage covers, so the boxes are what the page paints, not what a place declares.

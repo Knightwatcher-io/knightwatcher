@@ -4,7 +4,7 @@
 // caption), held to the collector's quiet_line() and text.join_fitting(); where the words and the
 // overlay come from on a 'dev' page and a deployed one; the overlay's CSS custom properties against
 // the values web/css/display.css keeps as its fallback; how main.js writes the words; and the demo's
-// quiet line and captions. Run with: node --test tests/web/
+// quiet line and captions. Run with: node --test 'tests/web/**/*.test.js'
 //
 // The page's scripts run under Node in a sandbox, as in tests/web/world.test.js; a signed pack is
 // signed with a key generated in memory for the run.

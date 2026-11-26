@@ -3,7 +3,7 @@
 // throw, a fallback or a broken number, each frame within the look's cost, in its own outfit with
 // the pry bar in both hands and in the base pack's gear with a weapon in one hand and a shield in
 // the other; the hands on the grip through both swings and the strike; and a foe met by the weapon
-// on the Deck and on the battlement. Run with: node --test tests/web/
+// on the Deck and on the battlement. Run with: node --test 'tests/web/**/*.test.js'
 //
 // Orbit is never under web/ and never signed: it is read here, on dev terms (docs/tests.md,
 // The test world).

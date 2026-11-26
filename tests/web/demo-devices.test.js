@@ -2,7 +2,8 @@
 // by kind, name, remove, up and down, the page's limits of places, the set kept in this browser's
 // storage and restored, Reset), device_down's words held to the collector's, the Pi added for
 // pi_silent, the address's dv= hook and the demo loop taking the set's place, nothing sent anywhere,
-// and nothing done once the demo has stopped for live mode. Run with: node --test tests/web/
+// and nothing done once the demo has stopped for live mode. Run with:
+// node --test 'tests/web/**/*.test.js'
 //
 // demo.js runs in a sandbox with the real KW.state, a small stand-in for the document (elements
 // that keep their children, attributes, listeners and focus) and stand-ins for the engine, the

@@ -1,7 +1,7 @@
 // Tests for the effects, web/js/effects.js: that each effect's cost function bounds the fills its
 // drawing really makes, for a spread of its fields on three sizes of screen and at several moments,
 // and that the pack library, web/js/pack.js, holds a world pack's effects to the same tables of
-// fields and costs them with the same functions. Run with: node --test tests/web/
+// fields and costs them with the same functions. Run with: node --test 'tests/web/**/*.test.js'
 //
 // The drawing runs under Node against a fake canvas context that counts the calls that fill: each
 // fillRect, and each fill() of a glow's three discs. The scenes' calls to the effects, and so their

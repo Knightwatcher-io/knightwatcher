@@ -1,7 +1,7 @@
 // Tests for the streams on the page: the detail line that takes each stream in turn by the clock,
 // its words held to the collector's streams.line(), the fallback to the collector's detail, the
 // badge while a higher condition hides streaming, and the demo's invented streams. Every name and
-// title here is invented. Run with: node --test tests/web/
+// title here is invented. Run with: node --test 'tests/web/**/*.test.js'
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

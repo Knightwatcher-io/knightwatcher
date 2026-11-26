@@ -1,7 +1,7 @@
 // Tests for the website's Worker, site/src/index.mjs, and its configuration, site/wrangler.jsonc:
 // the redirect from www to the apex, the headers on what the static files answer, no logging, and
 // the Worker's reach (its two hostnames, no workers.dev or preview address, observability off).
-// Run with: node --test tests/site/
+// Run with: node --test 'tests/site/**/*.test.mjs'
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

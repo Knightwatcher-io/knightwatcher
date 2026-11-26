@@ -3,7 +3,7 @@
 // world's devices in its places, all on the grid and clear of each other; the drone resting clear of
 // every place; the Captain talking on the Bridge while a shell is open and silent while updating;
 // its overlay's colours at the edges of their bands, and one past an edge refused; and its reserved
-// fields, which a signature covers and nothing draws. Run with: node --test tests/web/
+// fields, which a signature covers and nothing draws. Run with: node --test 'tests/web/**/*.test.js'
 //
 // Orbit is never under web/ and never signed with the project's key: here it is signed with a key
 // made for the run, and otherwise read on dev terms (docs/tests.md, The test world).

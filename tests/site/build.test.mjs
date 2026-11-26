@@ -2,7 +2,7 @@
 // demo copied from web/ and stamped, the legal pages against legal/, the Web Analytics snippet,
 // _headers, and the local preview's answers. The docs and Supported Feeds are in docs.test.mjs.
 // Each build goes to a scratch folder that is removed afterwards.
-// Run with: node --test tests/site/
+// Run with: node --test 'tests/site/**/*.test.mjs'
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

@@ -1,6 +1,6 @@
 // Tests for the pet, the mouser cat: its drawing in code (web/js/cat.js), the pet of the medieval
 // world's pack as the compiler builds it (web/js/world.js), and the catch the engine plays
-// (web/js/engine.js). Run with: node --test tests/web/
+// (web/js/engine.js). Run with: node --test 'tests/web/**/*.test.js'
 //
 // The page's scripts run under Node in a sandbox, against a fake canvas context that writes one line
 // per call, as in tests/web/world-cast.test.js. The cat from the pack is held to the cat from code

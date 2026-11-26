@@ -3,7 +3,7 @@
 // the camp, the yard, the cellar and the smithy from (the pack on a 'dev' page, code on a deployed
 // page until the pack is signed, code when the pack is refused, missing or fails to compile), the
 // console lines and the status, the long names, and what the compiler builds and refuses. Run with:
-// node --test tests/web/
+// node --test 'tests/web/**/*.test.js'
 //
 // That each scene from the pack draws what the code draws, call for call, and keys its backdrop
 // alike, is tests/web/scenes.test.js's; that its hosts and quiet agree with the engine's lists, and

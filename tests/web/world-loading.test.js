@@ -4,7 +4,7 @@
 // throws while drawing (a scene, a kind of device, each role of the cast, the word set), caught and
 // drawn from its code copy alone from the next frame; a throw outside a part not put down to the
 // pack; the packs the collector downloaded starting the world again; and the admin page loading
-// what the compiler needs. Run with: node --test tests/web/
+// what the compiler needs. Run with: node --test 'tests/web/**/*.test.js'
 //
 // The page's scripts run under Node in a sandbox, as in tests/web/world-cast.test.js, against a fake
 // canvas context that writes one line per call. A part is made to throw while drawing by a pack the

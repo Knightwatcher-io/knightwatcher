@@ -1,7 +1,7 @@
 // Tests for the foe player in web/js/engine.js and the goblin in web/js/props.js: the timing
 // table, where a foe stands, and that the knight's weapon, whichever it is, meets the goblin at the
 // bonk and never passes through any part of it, the bounce included.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // The page's scripts run under Node as index.html loads them, into a sandbox whose document gives
 // fake canvases. Each fake canvas keeps the rectangles filled in it, so a pose of the goblin,

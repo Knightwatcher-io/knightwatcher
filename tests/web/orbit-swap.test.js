@@ -7,7 +7,7 @@
 // unchosen; a library of format 1.0 refuses Orbit at format; and one of format 1.1 refuses the copy
 // of format 1.2 at format and reads the 1.1 file as this one does. Both refuse the base pack, of
 // format 1.2 since its crossbow.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // The engine's reads of KW.scenes, KW.cast and KW.kinds are watched while it draws, so a test sees
 // which scene, member and kind each frame was drawn from by the name the engine asked for.

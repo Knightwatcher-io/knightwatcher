@@ -2,7 +2,7 @@
 // README.md's "## Documentation" section, a page for every doc, every link between the site's pages
 // and every anchor resolving, links to the rest of the repository going to files that are there,
 // and the services of Supported Feeds read from the provider files. Each build goes to a scratch
-// folder that is removed afterwards. Run with: node --test tests/site/
+// folder that is removed afterwards. Run with: node --test 'tests/site/**/*.test.mjs'
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

@@ -1,6 +1,6 @@
 // The knight's gear at rest in the house and the smithy drawn from the medieval world's pack,
 // web/packs/medieval.pack.json: the checks tests/web/knight.test.js makes of the two scenes, run on
-// the scenes compiled from the pack. Run with: node --test tests/web/
+// the scenes compiled from the pack. Run with: node --test 'tests/web/**/*.test.js'
 //
 // knight.test.js draws the house and the smithy from code, with the knight's gear at rest on both of
 // the knight's paths, against the records stored in fixtures/knight/, and stays as it is. Here the

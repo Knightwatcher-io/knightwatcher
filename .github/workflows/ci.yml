@@ -108,7 +108,7 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: node --test tests/tools/ and tests/site/
+      - name: The tools' and the site's tests
         run: tools/check.sh tools-site
 
       - name: settings-schema --check

@@ -1,7 +1,7 @@
 // The page's settings lists against the settings schema, collector/settings-schema.json: the
 // values each key may take, the page's own defaults, the quiet scenes and every scene, the
 // conditions and their own scenes, and which scenes the page offers for each condition.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // The collector's side is checked by tests/collector/test_schema.py, and the copy of the schema
 // in web/js/settings.js by tests/tools/settings-schema.test.js, so the three cannot drift apart.

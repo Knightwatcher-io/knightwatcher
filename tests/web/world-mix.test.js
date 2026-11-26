@@ -6,7 +6,7 @@
 // world's own, the amber line of a part that cannot be used where it is chosen, the roles' labels,
 // and the admin page's household look built on the same rows. The second world is the test world,
 // test.orbit (docs/tests.md, The test world), read on dev terms.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

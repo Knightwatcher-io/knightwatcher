@@ -1,7 +1,7 @@
 // Tests for weapons and foes that fire, format 1.2: the fields and rules of the pack library
 // (web/js/pack.js), the aim and fire() in the knight (web/js/knight.js), and the shot effects in the
 // engine (web/js/engine.js). The barrel check, frame by frame, is in fire-barrel.test.js.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 //
 // The weapons are the test world's, from its copy of format 1.2 (fixtures/worlds/orbit.js writes
 // test.orbit-fire.pack.json): the blaster, one-handed, that fires a bolt; the prod, two-handed, both

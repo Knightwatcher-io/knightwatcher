@@ -1,5 +1,5 @@
 // Tests for the Ed25519 verifier, web/js/ed25519.js.
-// Run with: node --test tests/web/
+// Run with: node --test 'tests/web/**/*.test.js'
 // The signatures of RFC 8032 section 7.1 and the SHA-512 digests of RFC 6234 section 8.5 are copied
 // from the text of those RFCs. Every other key is generated here, by node:crypto or at random, and
 // node:crypto is the independent implementation the verifier is compared with. The curve arithmetic

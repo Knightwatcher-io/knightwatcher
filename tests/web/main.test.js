@@ -1,5 +1,6 @@
 // Tests for the page's start-up, web/js/main.js: which calls it makes to the display's server in
-// each mode, and the hash listener that opens the settings screen. Run with: node --test tests/web/
+// each mode, and the hash listener that opens the settings screen. Run with:
+// node --test 'tests/web/**/*.test.js'
 //
 // main.js runs in a sandbox with the real KW.state and stand-ins for everything else: the drawing,
 // the engine, the demo, the knight, the world and the settings are objects that take any call, and

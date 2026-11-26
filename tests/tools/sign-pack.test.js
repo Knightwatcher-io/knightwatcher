@@ -1,5 +1,5 @@
 // Tests for the signing tool, tools/sign-pack.js, and for the signatures of the packs that ship
-// with the page. Run with: node --test tests/tools/
+// with the page. Run with: node --test 'tests/tools/**/*.test.js'
 // Every key pair here is generated for the run and held in memory: the private half reaches the
 // tool through its module interface or through the environment of a child process, and is never
 // written anywhere. The files signed are copies in a temporary folder outside the repository.

@@ -1,6 +1,6 @@
 // Tests for the cast of the medieval world's pack, the cast section of web/packs/medieval.pack.json,
 // against the code's drawings of it: the fly and the goblin in web/js/props.js, and the three
-// monarchs, the patrons, in web/js/scenes/court.js. Run with: node --test tests/web/
+// monarchs, the patrons, in web/js/scenes/court.js. Run with: node --test 'tests/web/**/*.test.js'
 //
 // The page's scripts run under Node in a sandbox, against a fake canvas context that writes one line
 // per call, as in tests/web/scenes.test.js. The engine draws the cast from KW.cast, which the

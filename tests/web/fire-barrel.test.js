@@ -2,7 +2,7 @@
 // weapon's barrel forward of the front hand, from the barrel's from to its muzzle, nor over the face
 // of a shield, in any frame the aiming stances, fire(), the swat's volley and the attack can draw;
 // with a shield the turn across the body lifts it out of the weapon arm's way (docs/rig.md, Aiming
-// and firing). Run with: node --test tests/web/
+// and firing). Run with: node --test 'tests/web/**/*.test.js'
 //
 // The page's drawing code runs under Node, as tests/web/knight.test.js runs it, against a fake
 // context that keeps, for every pixel of the 960 by 600 grid, which of the look's lists painted it

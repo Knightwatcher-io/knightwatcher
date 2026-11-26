@@ -1,5 +1,5 @@
 // Tests for the shrinking of the website's pictures, tools/shot-scale.js, and for the pictures
-// tools/shots.sh site writes into site/img/. Run with: node --test tests/tools/
+// tools/shots.sh site writes into site/img/. Run with: node --test 'tests/tools/**/*.test.js'
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

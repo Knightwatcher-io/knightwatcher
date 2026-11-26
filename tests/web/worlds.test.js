@@ -3,7 +3,7 @@
 // rule that resolves a world against the parts set beside it (KW.settings.resolve), the long names
 // the settings take, the store's chooseWorld, the scene each condition plays in from the world in
 // use (the engine's homes), and the devices drawn per kind from the prop set chosen for each
-// (KW.world.useKinds). Run with: node --test tests/web/
+// (KW.world.useKinds). Run with: node --test 'tests/web/**/*.test.js'
 //
 // A second world pack, kw.test, is made here: a prop set that draws two kinds, copied from
 // props.medieval with the stamps their lamps are drawn from, and a preset built from the base pack's

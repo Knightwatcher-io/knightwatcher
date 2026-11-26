@@ -1,6 +1,6 @@
 // Tests for the devices of the medieval world's pack, the prop set props.medieval in
 // web/packs/medieval.pack.json, against the code's drawings of them in web/js/props.js. Run with:
-// node --test tests/web/
+// node --test 'tests/web/**/*.test.js'
 //
 // The page's scripts run under Node in a sandbox, against a fake canvas context that writes one line
 // per call, as in tests/web/scenes.test.js: a canvas painted once and drawn with drawImage (a
