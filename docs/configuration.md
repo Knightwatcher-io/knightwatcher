@@ -6,9 +6,11 @@ Knightwatcher is configured in two files beside `compose.yaml`, both ignored by 
   committed template is `config.example.toml`. As it stands it turns on the general sources
   alone, which read this host or a fixed address and so work on any Linux host with Docker:
   `host`, `wan`, `dns`, `backup`, `updates` and `ssh`. Every source that reads a service
-  (`containers`, which needs a Docker API proxy, the Pi, `streams`, `adblock`, `security`,
-  `sonarr`, `radarr` and `lidarr`), the entries of `[[sources.imports]]`, `[[sources.usage]]` and
-  `[[sources.json]]`, this host's own thresholds, the settings screen's defaults and the devices are written out but commented: remove the `# ` before
+  (`containers`, which needs a
+  [Docker API proxy](./install.md#a-docker-api-proxy-for-the-containers), the Pi, `streams`,
+  `adblock`, `security`, `sonarr`, `radarr` and `lidarr`), the entries of `[[sources.imports]]`,
+  `[[sources.usage]]` and `[[sources.json]]`, this host's own thresholds, the settings screen's
+  defaults and the devices are written out but commented: remove the `# ` before
   a table's lines to use it. A line starting `# or:` stays commented, since it replaces another.
 - `.env`: the host paths `compose.yaml` mounts, the address and port of the bundled server, the
   admin page's password, the switch for the usage counts ([Usage counts](#usage-counts)), and the
@@ -758,6 +760,9 @@ means every poll.
 calls it, `Host` by default: `HOST CPU 97%`. A name of up to seven characters always shows whole
 beside the resource, and one of up to four beside `MEMORY`. When it is the name of a device,
 ignoring case, the condition's entry in the state file gives that device's place.
+
+`[sources.containers]` reads a Docker API proxy, never the Docker socket itself;
+[Installing](./install.md#a-docker-api-proxy-for-the-containers) has a recipe for one.
 
 `[sources.streams]`, `[sources.adblock]` and `[sources.security]` read a service through a
 provider, named by `from`: `tautulli`, `adguard` and `fail2ban`, the defaults, so a table without

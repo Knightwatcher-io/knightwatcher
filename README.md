@@ -25,7 +25,7 @@ Knightwatcher turns a tablet on the wall into a window on your homelab. A small 
 
 ## Quick start
 
-You need Linux with Docker and its compose plugin, and the `acl` package.
+You need Linux with Docker and its compose plugin, and the `acl` package ([what you need](docs/install.md#what-you-need)).
 
 1. Clone the repository and copy the two example files.
    ```bash
@@ -51,7 +51,8 @@ You need Linux with Docker and its compose plugin, and the `acl` package.
 4. Open `http://<this machine>:8080/`. The knight appears at once, and the first readings within a minute.
 
 The page has no login, so keep it on your own network.\
-Usage counts are off unless you set `KW_ANALYTICS=on` in `.env`.
+Usage counts are off unless you set `KW_ANALYTICS=on` in `.env`.\
+The internet check fetches a page from Cloudflare every 30 seconds ([the checks](docs/install.md#the-internet-and-dns-checks)).
 
 [Installing](docs/install.md) explains each step, the image versions, the admin page and turning on sources.
 

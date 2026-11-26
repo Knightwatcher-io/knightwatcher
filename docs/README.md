@@ -2,9 +2,22 @@
 
 Every page of Knightwatcher's documentation, by who it is for.
 
+The words these pages use most, as [Design](design.md#terms) defines them:
+
+| Word | What it means |
+|---|---|
+| Knight | The figure in the middle of the scene that acts out what the homelab is doing. Design calls any world's figure the watcher, and the medieval world's watcher is the knight. |
+| Condition | Something the collector judges true, such as `attack` or `disk_full`, reported by id in priority order. |
+| Scene | Where the knight acts out a condition: the battlement, the camp, the house, the training yard, the cellar, the smithy or the royal court. |
+| Source | One thing the collector reads, such as this host's CPU, a DNS server or a service, set in a `[sources.<name>]` table of `config.toml`. |
+| Provider | A TOML file that says how to read one service: the requests to make, the login, and where in the replies each value is ([Providers](providers.md)). |
+| Device | A machine you list to watch, such as a NAS or a camera. It stands in the scene as a medieval thing and breaks when it goes down. |
+| Pack | A JSON file that carries the knight's gear or a world's parts as data. |
+| World | The knight's surroundings as one set: the scenes, the cast, the drawings of the devices, the words and the overlay, carried in a world pack. The medieval world ships with the page. |
+
 For people running it:
 
-- [Installing](install.md): what you need, the quick start step by step, the image, turning on sources, the admin page and the usage counts
+- [Installing](install.md): what you need, the quick start step by step, the image, the internet and DNS checks, turning on sources with a Docker API proxy, the admin page and the usage counts
 - [Configuration](configuration.md): how settings work, `config.toml`, `.env`, and a reference of every setting
 - [Providers](providers.md): the provider files the services are read through, the path syntax, `--probe`, the safety rules, and provider files of your own
 - [The display](display.md): the modes, the settings and worlds, the settings screen, the address's hooks, the admin page and deploying

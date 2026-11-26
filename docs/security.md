@@ -12,6 +12,9 @@ This repository is public: anyone can read everything in it, and every commit in
 Examples, tests and screenshots use invented data. Addresses come from the documentation ranges
 (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`) and names from `example.com`.
 
+Third-party licence texts are kept word for word, their authors' contact details included, since
+the licences require it. The font's licence, `web/fonts/OFL.txt`, is one.
+
 Site configuration lives in `config.toml` and the host paths and credentials in `.env`, both
 beside the repository's files and both ignored by git. `config.example.toml` and `.env.example`
 are the committed templates, with invented values only.
@@ -33,7 +36,8 @@ downloads and `credentials.json`) and its memory folder (`memory.json`, and `ins
 usage counts' install id, made only when they are on).
 
 - It has no Docker socket. Container state comes from a Docker API proxy that allows read calls
-  alone.
+  alone. [Installing](./install.md#a-docker-api-proxy-for-the-containers) has a recipe for one,
+  bound to the host's loopback.
 - It runs as a non-root user with a read-only root filesystem and no capabilities.
 - It mounts host paths read-only, and only the ones a source needs, apart from the output folder
   and the memory folder. It also mounts the bundled server's folder read-only, to take up what is

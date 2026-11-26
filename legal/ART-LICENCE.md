@@ -9,6 +9,14 @@ give credit and share what you make from it under the same licence. The full leg
 [creativecommons.org/licenses/by-sa/4.0](https://creativecommons.org/licenses/by-sa/4.0/). Where
 this page and the legal text differ, the legal text is the licence.
 
+## How the art is made
+
+The knight, the scenes, the cast and the devices are drawn in code, with no image files: canvas
+drawing calls in the page's scripts, and the same drawings as data in the packs in `web/packs/`.
+The logo is SVG written by hand, the icons are rendered from it and from small pixel drawings of
+it by `tools/icons.sh`, and the website's pictures are screenshots of the page taken by
+`tools/shots.sh`.
+
 ## What is under CC BY-SA 4.0
 
 - The packs in `web/packs/`: `base.pack.json` and `base.pack.js` (the knight and the items),

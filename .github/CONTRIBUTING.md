@@ -7,6 +7,28 @@ spends days on something that cannot be merged.
 Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). A vulnerability is reported
 privately, as [SECURITY.md](SECURITY.md) says, never in an issue.
 
+## Where to help
+
+- **Providers.** A
+  [provider request](https://github.com/knightwatcher-io/knightwatcher/issues/new?template=provider.yml)
+  or a provider file is the easiest start ([docs/providers.md](../docs/providers.md)).
+- **Labelled issues.** Those marked
+  [good first issue](https://github.com/knightwatcher-io/knightwatcher/labels/good%20first%20issue)
+  or [help wanted](https://github.com/knightwatcher-io/knightwatcher/labels/help%20wanted).
+- **Hardware.** Running it on a machine or a NAS it has not been tried on, and saying how it went
+  ([what you need](../docs/install.md#what-you-need)).
+- **Worlds and packs.** New items for the knight, scenes and whole worlds
+  ([docs/worlds.md](../docs/worlds.md), [docs/packs.md](../docs/packs.md)).
+
+## How the project is run
+
+Valtora maintains the project and reviews every pull request, as [CODEOWNERS](CODEOWNERS) sets.
+The packs the page ships are signed with the project's key, which is held privately. You never
+need it: a change to a pack takes its signature off, as [Before you open a pull
+request](#before-you-open-a-pull-request) says, and the project signs the pack again at release.
+A release is a tag, and CI builds and publishes the image from it
+([Releases and images](../docs/development.md#releases-and-images)).
+
 ## The licences
 
 What you contribute is under the same licence as the part it goes into, the licence everyone
@@ -44,6 +66,10 @@ The project's owner pushes to `main`. Every other change comes as a pull request
 once it passes the `CI gate` check and the sign-off check and the code owner has reviewed it. The
 `CI gate` check runs the project's checks, and `tools/check.sh` runs the same ones on your own
 machine ([docs/development.md](../docs/development.md#checks)).
+
+One check is the maintainer's alone: `tools/check-private.sh`, which looks for the operator's
+private details in a list kept outside the repository. It runs before a merge. Without that list,
+your `tools/check.sh` skips it and says so, without failing.
 
 ## Before you open a pull request
 

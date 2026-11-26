@@ -132,8 +132,8 @@ README.md  LICENSE  compose.yaml  Dockerfile  config.example.toml  .env.example 
   `node tools/sign-pack.js --unsign`. See [Signing the packs](#signing-the-packs).
 - **No key in the repository.** No private key of any kind is committed, test keys included; the
   tests generate theirs in memory for each run.
-- **Invented data everywhere.** See [security.md](./security.md). Run `tools/check-private.sh`
-  before every push.
+- **Invented data everywhere.** See [security.md](./security.md). The maintainer runs
+  `tools/check-private.sh` before every push and before merging a pull request ([Checks](#checks)).
 - **Docs describe what is built.** The last step of every change is the docs: check each doc
   that describes what you changed against what you built, and correct whatever no longer
   matches, in the same commit. A change whose docs are stale is not finished.
@@ -183,7 +183,9 @@ not: the receiver's `npm ci` and `npm run check` in `telemetry/`, and `docker bu
 `docker compose config -q` with `.env.example` and `config.example.toml` copied into place. A job
 named `CI gate` passes when every other job has, and is the check a pull request must pass, with
 `Signed-off-by on every commit` from `.github/workflows/dco.yml`. `tools/check-private.sh` does not
-run in CI, since its patterns are never in the repository.
+run in CI, since its patterns are never in the repository. It is the maintainer's check, run before
+every push and before a pull request is merged. A contributor has no pattern file, so their
+`tools/check.sh` skips it, says so, and does not fail.
 
 The commands each step runs are listed below for reference, with the checks the script leaves out,
 such as the image, the throwaway services and the screenshots.
