@@ -1,0 +1,186 @@
+# The checks of every pull request and of every push to main. Each job runs one subset of
+# tools/check.sh, which defines the checks for a local run and for this workflow alike
+# (docs/development.md, Checks); the image and compose job and the receiver's job are the two
+# that check.sh does not cover. CI gate passes when every other job passed, and is the check a
+# pull request must pass, with the sign-off check of dco.yml. tools/check-private.sh does not run
+# here: its patterns are the operator's own and are never in the repository. Every action is
+# pinned to a full commit SHA.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels the run still going for the one before it; runs on main
+# are left to finish, one after another.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  python:
+    name: Collector and server tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: unittest, tests/collector and tests/server
+        run: tools/check.sh python
+
+  lint:
+    name: Ruff
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # uvx fetches the ruff version tools/check.sh names.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          enable-cache: "false"
+
+      - name: ruff check and ruff format --check
+        run: tools/check.sh lint
+
+  # The page's tests in three parts, run side by side. The first part also runs node --check on
+  # every script of the page.
+  page:
+    name: Page tests (${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      KW_TEST_CONCURRENCY: 4
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: node --test tests/web/, part ${{ matrix.shard }} of 3
+        run: tools/check.sh page --shard=${{ matrix.shard }}/3
+
+  # The website's build test stamps the page with server/stamp.py, so it needs Python as well.
+  tools-site:
+    name: Tools, website and settings schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: node --test tests/tools/ and tests/site/
+        run: tools/check.sh tools-site
+
+      - name: settings-schema --check
+        run: tools/check.sh schema
+
+  # The receiver of the usage counts, a Cloudflare Worker with dependencies of its own.
+  telemetry:
+    name: Usage counts' receiver
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: telemetry
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Type check and tests
+        run: npm run check
+
+  # The image builds, and compose.yaml reads with the example files in place of a real .env and
+  # config.toml. Nothing is pushed or started.
+  container:
+    name: Image and compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: docker build
+        run: docker build -t knightwatcher:ci .
+
+      - name: docker compose config
+        run: cp .env.example .env && cp config.example.toml config.toml && docker compose config -q
+
+  ci-gate:
+    name: CI gate
+    if: always()
+    needs:
+      - python
+      - lint
+      - page
+      - tools-site
+      - telemetry
+      - container
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          set -euo pipefail
+          echo "results: $RESULTS"
+          for result in $RESULTS; do
+            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+              echo "::error::a job the gate needs did not pass (result: $result)"
+              exit 1
+            fi
+          done
+          echo "every job passed"

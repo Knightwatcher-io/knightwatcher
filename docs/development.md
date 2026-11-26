@@ -140,13 +140,53 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
 
 ## Checks
 
+`tools/check.sh` runs every check a pull request must pass, in order, and stops at the first
+failure:
+
+```bash
+tools/check.sh                     # all of them
+tools/check.sh python              # one subset: python, lint, page, tools-site, schema or private
+tools/check.sh page --shard=1/3    # the first of three parts of the page's tests
+```
+
+| Subset | What it runs |
+|---|---|
+| `page` | `node --check` on every script under `web/js`, `web/packs` and `web/admin`, then `node --test tests/web/` |
+| `python` | the collector's and the server's unittest suites |
+| `lint` | `ruff check` and `ruff format --check` on `collector`, `server` and `tests` at ruff 0.17.6: the `ruff` on the path when it is that version, otherwise `uvx ruff@0.17.6` |
+| `tools-site` | `node --test tests/tools/ 'tests/site/*.test.mjs'` |
+| `schema` | `node tools/settings-schema.js --check` |
+| `private` | `tools/check-private.sh` |
+
+`all`, the default, runs `node --check` first, then python, lint, the page's tests, tools-site and
+schema, and private last when `tools/private-patterns.txt` exists, saying so when it skips it.
+`tools/check.sh private` alone runs the check whether or not the file exists, so without one it
+fails with exit 2. `--shard=N/M` passes `--test-shard` to node, and a part after the first leaves
+`node --check` out, so a sharded run does it once. `KW_TEST_CONCURRENCY` (default 2) is node's
+`--test-concurrency`. Each step prints a line as it starts and one as it ends, the run stops with
+the failing command's exit code, and the script exits 2 on an argument it does not take. It puts
+itself inside the ceiling described below. The whole set takes about 13 minutes, nearly all of it
+the page's tests.
+
+CI, in `.github/workflows/ci.yml`, runs the same subsets through `tools/check.sh` on every pull
+request and every push to `main`: python, lint, the page in three parts side by side (with
+`KW_TEST_CONCURRENCY=4`), tools-site and schema. Two jobs of its own cover what the script does
+not: the receiver's `npm ci` and `npm run check` in `telemetry/`, and `docker build` followed by
+`docker compose config -q` with `.env.example` and `config.example.toml` copied into place. A job
+named `CI gate` passes when every other job has, and is the check a pull request must pass, with
+`Signed-off-by on every commit` from `.github/workflows/dco.yml`. `tools/check-private.sh` does not
+run in CI, since its patterns are never in the repository.
+
+The commands each step runs are listed below for reference, with the checks the script leaves out,
+such as the image, the throwaway services and the screenshots.
+
 The checks and the screenshots are run inside a ceiling on CPU and memory, `tools/capped.sh`, so
 that they never crowd out the services on the machine they run on. The page's tests alone would
 otherwise take a core for each test file at once, and the scene records' file grows to about 1 GB.
 Under a systemd user session the wrapper runs its command in a transient scope with `CPUQuota=400%`
 (four cores) and `MemoryMax=4G`, at `nice` 10; without systemd it lowers the priority alone.
 `KW_CPU` and `KW_MEM` change the ceiling, for example `KW_CPU=200% tools/capped.sh ...`.
-`tools/shots.sh` puts itself inside the same ceiling, and `node --test` is given
+`tools/check.sh` and `tools/shots.sh` put themselves inside the same ceiling, and `node --test` is given
 `--test-concurrency=2`, so at most two test files run at once. The wrapper exports `KW_CAPPED` in
 the scope it makes, and a script that caps itself, as `tools/shots.sh` does, sees it and does not
 cap itself again; `tools/capped.sh` called inside a scope runs its command at `nice` 10 without a
@@ -157,7 +197,7 @@ The collector and the server:
 ```bash
 tools/capped.sh python3 -m unittest discover -s tests/collector -v
 tools/capped.sh python3 -m unittest discover -s tests/server -v
-uvx ruff check collector server tests && uvx ruff format --check collector server tests
+uvx ruff@0.17.6 check collector server tests && uvx ruff@0.17.6 format --check collector server tests
 docker build -t knightwatcher:dev .
 docker compose config -q
 python3 -m collector --check-config --config config.toml --env-file .env
@@ -243,7 +283,7 @@ The website, in `site/`, needs Node 24 or newer and nothing else. Its tests, and
 writes `site/dist/` (ignored by git):
 
 ```bash
-tools/capped.sh node --test --test-concurrency=2 tests/site/
+tools/capped.sh node --test --test-concurrency=2 'tests/site/*.test.mjs'
 tools/capped.sh node site/build.mjs
 ```
 
@@ -398,10 +438,17 @@ alone), with the OCI labels: the source repository, the licence `AGPL-3.0-or-lat
 description. It refuses a tag that does not match `pyproject.toml`. A manual run (Run workflow,
 with the tag chosen under "Use workflow from") builds that tag again; run on a branch, it stops.
 
+Once the image is pushed, the same run makes the tag's GitHub Release, unless the tag has one
+already: a few lines naming the image, `ghcr.io/knightwatcher-io/knightwatcher:X.Y.Z`, and its
+digest, then the notes GitHub writes from the pull requests and commits since the last release. A
+pre-release tag makes a pre-release. The job is given `contents: write` for the release, beside the
+`packages: write` that pushes the image.
+
 ```bash
 git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
 gh run watch "$(gh run list --workflow image.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
 docker buildx imagetools inspect ghcr.io/knightwatcher-io/knightwatcher:0.1.0   # both platforms
+gh release view v0.1.0                                                            # the release
 ```
 
 The package's visibility is set once, after the first push, in the package's settings on GitHub

@@ -1,0 +1,89 @@
+# The labels of Knightwatcher's issues and pull requests. The labels themselves live in the
+# repository's settings on GitHub, so this file is applied with gh rather than read by anything:
+# from the repository's root, with an authenticated gh, this creates each label or brings it up to
+# date, and is safe to run again after any change to the file:
+#
+#   python3 - <<'EOF'
+#   import re, subprocess
+#   text = open(".github/labels.yml", encoding="utf-8").read()
+#   pattern = r'- name: "([^"]+)"\n  color: "([0-9a-f]{6})"\n  description: "([^"]*)"'
+#   for name, color, description in re.findall(pattern, text):
+#       subprocess.run(["gh", "label", "create", name, "--color", color,
+#                       "--description", description, "--force"], check=True)
+#   EOF
+#
+# Add a label here first, then apply the file. A label removed from here is deleted on GitHub by
+# hand. GitHub's other default labels (accessibility, duplicate, invalid, wontfix) and the
+# ecosystem labels Dependabot adds are not managed here. Colours are six hex digits without a #.
+# The issue forms add needs-triage, and Dependabot's pull requests get dependencies.
+
+# Severity: how badly the problem affects the people running Knightwatcher.
+- name: "severity:critical"
+  color: "b60205"
+  description: "Data loss, a security exposure, or the display or collector unusable."
+- name: "severity:high"
+  color: "d93f0b"
+  description: "A major function broken with no easy way round it."
+- name: "severity:medium"
+  color: "fbca04"
+  description: "Important, but with a way round it, or affecting some setups alone."
+- name: "severity:low"
+  color: "0e8a16"
+  description: "Minor or cosmetic, or a rare edge case."
+
+# Scope: which part of the project the work belongs to.
+- name: "scope:collector"
+  color: "1d76db"
+  description: "The collector, in collector/."
+- name: "scope:server"
+  color: "1d76db"
+  description: "The bundled server and the admin page, in server/ and web/admin/."
+- name: "scope:page"
+  color: "1d76db"
+  description: "The display page, in web/: the knight, the scenes and the settings screen."
+- name: "scope:packs"
+  color: "5319e7"
+  description: "Packs and worlds, their format, art and signatures."
+- name: "scope:providers"
+  color: "5319e7"
+  description: "Built-in providers, provider files and generic checks."
+- name: "scope:site"
+  color: "0075ca"
+  description: "The website at knightwatcher.io, in site/."
+- name: "scope:docs"
+  color: "0075ca"
+  description: "Documentation alone."
+- name: "scope:security"
+  color: "b60205"
+  description: "Credentials, the admin page's login, privileges and pack signing."
+
+# Workflow: triage and where an item came from.
+- name: "needs-triage"
+  color: "ededed"
+  description: "Waiting for the maintainer to read and label it."
+- name: "dependencies"
+  color: "0366d6"
+  description: "A dependency update, from Dependabot."
+- name: "provider request"
+  color: "c5def5"
+  description: "A service the collector should read through a built-in provider."
+
+# Type: GitHub's defaults, kept as GitHub creates them.
+- name: "bug"
+  color: "d73a4a"
+  description: "Something isn't working"
+- name: "enhancement"
+  color: "a2eeef"
+  description: "New feature or request"
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good for newcomers"
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention is needed"
+- name: "question"
+  color: "d876e3"
+  description: "Further information is requested"
+- name: "documentation"
+  color: "0075ca"
+  description: "Improvements or additions to documentation"

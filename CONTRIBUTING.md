@@ -38,9 +38,17 @@ The history from before the project went public was written by its sole author a
 rule, so only 2 of its first 151 commits carry the line; every contribution from now on is signed
 off.
 
+## Pull requests and checks
+
+The project's owner pushes to `main`. Every other change comes as a pull request, which is merged
+once it passes the `CI gate` check and the sign-off check and the code owner has reviewed it. The
+`CI gate` check runs the project's checks, and `tools/check.sh` runs the same ones on your own
+machine ([docs/development.md](docs/development.md#checks)).
+
 ## Before you open a pull request
 
-Run the checks in [docs/development.md](docs/development.md#checks), and follow its
+Run the checks with `tools/check.sh`, as [docs/development.md](docs/development.md#checks) says,
+and follow its
 [rules](docs/development.md#rules): among them, update the docs that describe what you changed in
 the same commit, and write the commit message as a Conventional Commit. A change to a pack in
 `web/packs/` breaks its signature: take it off with `node tools/sign-pack.js --unsign`, and the
