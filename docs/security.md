@@ -241,8 +241,8 @@ sign in.
 The website at knightwatcher.io is static files behind a small Worker that logs nothing. Its pages
 load nothing from another host but, once a token is set, Cloudflare Web Analytics' one script, and
 its demo, the page itself under `/demo/`, is held by its own Content Security Policy to its own
-files. Until launch both hostnames sit behind Cloudflare Access, and every deploy is checked to
-still be closed. [site/README.md](../site/README.md) has the headers and the checks.
+files. Both hostnames are open to anyone; the site asks for no login and sets no cookie.
+[site/README.md](../site/README.md) has the headers and the checks.
 
 ## Commits
 

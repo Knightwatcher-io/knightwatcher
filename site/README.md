@@ -4,8 +4,7 @@ The website at `knightwatcher.io`: six sections with a nav on every page (Home w
 Features, Supported Feeds, Install, Docs and Licence), the documentation rendered from the
 repository's markdown, and the legal pages. Static files built from this folder, `web/`, `legal/`,
 `docs/`, `.github/CONTRIBUTING.md` and the provider files, served by a small Cloudflare Worker and deployed by Workers Builds on each push to `main`, as the usage receiver in
-[`telemetry/`](../telemetry/README.md) is. Until launch both of its hostnames sit behind Cloudflare
-Access, open to the owner alone.
+[`telemetry/`](../telemetry/README.md) is. Both of its hostnames are open to anyone.
 
 | Path | What it is |
 |---|---|
@@ -193,22 +192,16 @@ The Worker runs before every request (`run_worker_first`), for two things the st
 do alone: `www.knightwatcher.io` answers `301` to the same path and query on `knightwatcher.io`, and
 every other answer gets the headers above. An address with no file gets the nearest `404.html`, with
 the status `404`. Observability is off and the Worker calls no `console` method, so no log of its
-requests is kept. It has no `workers.dev` or preview address, since neither
-would sit behind Access, and no cron. Each request runs the Worker once, which counts towards the
+requests is kept. It has no `workers.dev` or preview address, so the two hostnames are the only
+addresses it answers at, and no cron. Each request runs the Worker once, which counts towards the
 Workers plan's daily requests.
 
 ## Deploying it
 
-Done once, by the owner, with access to the Cloudflare account that holds the `knightwatcher.io`
+Done once, with access to the Cloudflare account that holds the `knightwatcher.io`
 zone. No Cloudflare token is kept anywhere else.
 
-1. **Create the Access application, before the first deploy.** In Cloudflare Zero Trust, under
-   Access, Applications, add a self-hosted application with two application domains,
-   `knightwatcher.io` and `www.knightwatcher.io`, each with no path, so it covers every address;
-   one policy, action Allow, including the owner's email address alone (for example
-   `owner@example.com`): no "everyone", no email domain, no service token. Creating it first means
-   both hostnames are behind Access from the moment the deploy creates them.
-2. **Create the Worker with Workers Builds.** In the dashboard, under Workers & Pages, create a
+1. **Create the Worker with Workers Builds.** In the dashboard, under Workers & Pages, create a
    Worker by importing this repository, with:
    - the Worker's name `knightwatcher-site`, as in `wrangler.jsonc`;
    - the production branch `main`;
@@ -224,30 +217,19 @@ zone. No Cloudflare token is kept anywhere else.
 
    The deploy creates both custom domains, with no `workers.dev` or preview address, and clears
    any cron trigger. In the dashboard, the Worker's observability should show as off.
-3. **Set the Web Analytics token.** In Cloudflare's Web Analytics, add the site
+2. **Set the Web Analytics token.** In Cloudflare's Web Analytics, add the site
    `knightwatcher.io` by hand (not the automatic setup), copy the token from the snippet it shows
    into `analyticsToken` in `site.json`, and commit. The next deploy adds the snippet.
-4. **After every deploy, check both hostnames are still closed**, from a machine that is not signed
-   in:
+3. **After every deploy, check both hostnames answer**, from a machine that is not signed in to
+   anything:
 
    ```bash
-   for u in https://knightwatcher.io/ https://knightwatcher.io/demo/ https://knightwatcher.io/privacy/ https://www.knightwatcher.io/; do
+   for u in https://knightwatcher.io/ https://knightwatcher.io/demo/ https://www.knightwatcher.io/privacy/ https://knightwatcher.io/no-such-page; do
      curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' "$u"
    done
    ```
 
-   Each should print `302` with a redirect to `<team name>.cloudflareaccess.com` (the Access
-   login), or `403`. A `200`, or a `301` from `www` to the apex, means the site is open to anyone:
-   remove the custom domains or fix the Access application before doing anything else. Then sign
-   in through a browser and check the demo runs, on a phone, a tablet and a desktop.
+   The home page and the demo answer `200`, `www` answers `301` to the same path on
+   `knightwatcher.io`, and an address with nothing at it answers `404`. Then check the demo runs on a
+   phone, a tablet and a desktop.
 
-## Opening it at launch
-
-On the day the repository goes public, and once the images the quick start pulls are published:
-
-1. Reconnect the Worker's Workers Builds to the public repository, with the same settings as in
-   step 2 above, and let it deploy.
-2. Remove the Access application for `knightwatcher.io` and `www.knightwatcher.io`.
-3. Check from a machine that is not signed in: `https://knightwatcher.io/` answers `200`,
-   `https://www.knightwatcher.io/privacy/` answers `301` to `https://knightwatcher.io/privacy/`, and
-   an address with nothing at it answers `404`.
