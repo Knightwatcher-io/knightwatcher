@@ -42,7 +42,7 @@
       },
       {
        "movieId": 344,
-       "sourceTitle": "Night.Lines.0.1080p",
+       "sourceTitle": "Night.Rooks.0.1080p",
        "quality": {
         "quality": {
          "id": 7,
@@ -53,8 +53,8 @@
        "eventType": "downloadFolderImported",
        "data": {},
        "movie": {
-        "title": "Night Lines",
-        "originalTitle": "Night Lines",
+        "title": "Night Rooks",
+        "originalTitle": "Night Rooks",
         "year": 0,
         "id": 344
        },
@@ -73,7 +73,7 @@
    },
    {
     "id": 304,
-    "title": "Night Lines"
+    "title": "Night Rooks"
    }
   ]
  }

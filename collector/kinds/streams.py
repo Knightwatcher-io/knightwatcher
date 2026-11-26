@@ -76,7 +76,7 @@ def _order(session: dict, seen: dict[str, int]) -> tuple:
 
 
 def line(session: dict, i: int, n: int) -> str:
-    """One stream in words, the i-th of n: `Robin · The Night Shift S02E04 · 1 of 3`, with no
+    """One stream in words, the i-th of n: `Robin · The Gull Ledger S02E04 · 1 of 3`, with no
     `1 of 1` for a single stream. The name and the count are kept whole and the title gives way,
     cut with an ellipsis to fit the detail's limit, or left out when nothing of it would fit."""
     who = text.clip(session.get("who") or "", NAME_MAX)
@@ -116,7 +116,7 @@ class StreamsKind(Kind):
             "type": "list",
             "required": True,
             "items": {
-                # What plays, composed by the provider (The Night Shift S02E04).
+                # What plays, composed by the provider (The Gull Ledger S02E04).
                 "title": {"type": "string", "show": "titles"},
                 # Who is watching.
                 "who": {"type": "string", "show": "names"},

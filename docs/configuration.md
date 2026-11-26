@@ -710,19 +710,20 @@ The services the sections read through a kind can read, each by its provider. A 
 
 ### .env
 
-Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, the admin password reaches the server alone, `KW_ANALYTICS` turns the collector's usage counts on, and the credentials reach the collector alone.
+Every variable the project reads from `.env`. The host paths are the folders and files `compose.yaml` mounts, the server's address and port are where it publishes the bundled server, the admin password reaches the server alone, `KW_ANALYTICS` turns the collector's usage counts on, `KW_VERSION` pins the published image both services run, and the credentials reach the collector alone.
 
 | Variable | Scope | Values | Default | What it is |
 |---|---|---|---|---|
 | `KW_OUT` | path | a host path, such as `./var/out` | required | The host folder the collector writes state.json to. Mounted at /out in both containers, read-only in the server's, which serves it as data/: state.json, and the packs placed in its packs/ folder, which the page reads. Must exist and be writable by the collector's account. |
-| `KW_BACKUP_LOG` | path | a host path, such as `/var/log/backup.log` | required | The host's backup log, a single file. Mounted read-only at /host/backup.log. |
-| `KW_DATA_DISK` | path | a host path, such as `/data/lost+found` | required | Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size. |
+| `KW_BACKUP_LOG` | path | a host path, such as `/var/log/backup.log` | required | The host's backup log, a single file. Mounted read-only at /host/backup.log. .env.example sets ./var/backup.log, the empty file the quick start makes, which raises nothing until it records a completed backup: point it at the real log once there is one. |
+| `KW_DATA_DISK` | path | a host path, such as `/data/lost+found` | required | Any folder on the data volume, so the collector can see the volume's size. Mounted read-only at /host/disks/data. An empty folder shares nothing but the size. .env.example sets ./var, on whichever disk holds the checkout: point it at a folder on the disk to watch. |
 | `KW_VAR` | path | a host path, such as `./var` | `./var` | The host folder for the collector's memory between restarts. Mounted at /var/lib/knightwatcher. Must exist and be writable by the collector's account. |
 | `KW_PROVIDERS` | path | a host path, such as `./providers` | `./providers` | The host folder of provider files of your own, for services no built-in provider reads. Mounted read-only at /etc/knightwatcher/providers in both containers: the collector reads the files, and the server checks a change on the admin page by them. Must exist and be readable by uid 10001; the repository's own providers folder, empty, is the default. |
 | `KW_SERVER_VAR` | path | a host path, such as `./var/server` | `./var/server` | The host folder for the bundled server's own files: the settings saved for every display, in settings.json, and those set on the admin page, in admin.json, with the admin page's sessions. Mounted at /var/lib/knightwatcher-server, the one place the server writes, and read-only at the same place in the collector, which takes up admin.json. Must exist and be writable by the server's account. |
 | `KW_SERVER_ADDRESS` | server | an address of this host, or empty for all of them, such as `127.0.0.1` | empty | The host address the bundled server is published on. Left empty, it is all of the host's addresses, IPv4 and IPv6. 127.0.0.1 keeps it to this machine, for a reverse proxy or a monitor on the host; one of the host's own addresses keeps it to that network. |
 | `KW_SERVER_PORT` | server | a TCP port number from 1 to 65535, such as `8080` | `8080` | The host port the bundled server is published on. The server listens on 8080 inside its container whatever this is. |
 | `KW_ADMIN_PASSWORD` | server | a password of at least 12 characters, or empty to leave the admin page off, such as `a-long-password-of-your-own` | empty | The password of the admin page, which changes what the collector watches. Passed to the server alone, never shown, logged or written anywhere else. Left empty, or shorter than 12 characters, the admin page stays off and says why; the walls work as before. A change needs the containers made again, which signs every browser out. |
+| `KW_VERSION` | image | latest, a release (X.Y.Z), or a release line (X.Y) for its latest fix, such as `0.1.0` | `latest` | The release of the published image, ghcr.io/knightwatcher-io/knightwatcher, that both containers run. Left empty or out, it is latest, the newest release; a release such as 0.1.0 pins the install to it, so that it changes only when this does. docker compose pulls a release it does not have yet; docker compose build builds the checkout under the same name instead. A change needs the containers made again. |
 | `KW_ANALYTICS` | collector | on to send the usage counts; off, empty or anything else sends nothing, such as `on` | empty | The collector's usage counts, off unless turned on: set to on, at start and every six hours it sends the project a random install id, the version, its uptime, the world and the built-in parts in use, which sources are on, and how many imports, checks and displays there are, never a name, title, address or credential (docs/telemetry.md). Passed to the collector alone. Otherwise it sends nothing and makes no install id; a value other than on, off or empty is also logged as a warning. A change needs the containers made again. |
 | `KW_TAUTULLI_API_KEY` | credential | 32 hexadecimal characters, such as `0123456789abcdef0123456789abcdef` | none | Tautulli's API key, for the tautulli provider, which [sources.streams] reads by default. In Tautulli: Settings, Web Interface, API, with Enable API ticked. Read when the source is enabled; its `secret` setting names the variable. |
 | `KW_PLEX_TOKEN` | credential | a Plex token, such as `AbCdEfGhIjKlMnOpQrSt` | none | The Plex token of the server's owner, for the plex provider, which [sources.streams] reads with from = "plex". Plex lists every stream to its owner alone. In Plex Web, signed in as the owner: any library item's menu, Get Info, View XML; the X-Plex-Token at the end of the address it opens. It is sent in the X-Plex-Token header, never in the address. A Plex token reaches the owner's whole account: keep it as you would the password. Read when the source is enabled; its `secret` setting names the variable. |
@@ -1032,7 +1033,7 @@ url = "http://192.0.2.20:32400"  # Plex's own address and port
 show = "titles"                  # reads KW_PLEX_TOKEN
 ```
 
-The reading is the same as Tautulli's: the same title of each stream (`The Night Shift S02E04`,
+The reading is the same as Tautulli's: the same title of each stream (`The Gull Ledger S02E04`,
 `<artist> - <track>`, a film's title), the same count, and the streams in the order they started,
 by Plex's session key, which is the number Tautulli lists as its own. `who` is the user's Plex
 name, where Tautulli gives the friendly name set in Tautulli. Plex lists its sessions to the
@@ -1071,7 +1072,7 @@ show = "titles"                  # reads KW_TRACEARR_API_KEY
 ```
 
 The reading is of the same kind as Tautulli's and Plex's: the same title of each stream
-(`The Night Shift S02E04`, `<artist> - <track>`, a film's title), the count, and the streams in
+(`The Gull Ledger S02E04`, `<artist> - <track>`, a film's title), the count, and the streams in
 the order they started, by the moment Tracearr says each began. `who` is the display name set in
 Tracearr, else the user's name on the media server. The streams are those of every server
 Tracearr watches, Plex, Jellyfin and Emby alike, and the count is theirs together.
@@ -1101,7 +1102,7 @@ show = "titles"                  # reads KW_JELLYFIN_API_KEY
 ```
 
 The reading is of the same kind as Tautulli's, Plex's and Tracearr's: the same title of each stream
-(`The Night Shift S02E04`, `<artist> - <track>`, a film's title), the count, and `who`, the user's
+(`The Gull Ledger S02E04`, `<artist> - <track>`, a film's title), the count, and `who`, the user's
 Jellyfin name. Jellyfin lists every session it holds, those of clients that are connected but play
 nothing among them; only those playing something are streams, and the count is theirs. With no
 client connected the list is empty. Jellyfin gives no start time and lists its sessions by their

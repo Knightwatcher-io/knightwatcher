@@ -495,21 +495,21 @@ class ImportsTest(unittest.TestCase):
         self.records = [
             {
                 "id": 12,
-                "sourceTitle": "The.Night.Shift.S02E05.1080p",
-                "series": {"title": "The Night Shift"},
+                "sourceTitle": "The.Gull.Ledger.S02E05.1080p",
+                "series": {"title": "The Gull Ledger"},
                 "episode": {"seasonNumber": 2, "episodeNumber": 5},
             },
-            {"id": 11, "sourceTitle": "The.Night.Shift.S02E04.1080p"},
+            {"id": 11, "sourceTitle": "The.Gull.Ledger.S02E04.1080p"},
             {"id": 10, "sourceTitle": "Old.Show.S01E01.1080p"},
         ]
         events = s.observe(s.fetch(T0), memory, T0)
         self.assertEqual(
             [e["text"] for e in events],
-            ["IMPORTED · The.Night.Shift.S02E04.1080p", "IMPORTED · The Night Shift S02E05"],
+            ["IMPORTED · The.Gull.Ledger.S02E04.1080p", "IMPORTED · The Gull Ledger S02E05"],
         )
         self.assertEqual(
             [e["parts"] for e in events],
-            [{"title": "The.Night.Shift.S02E04.1080p"}, {"title": "The Night Shift S02E05"}],
+            [{"title": "The.Gull.Ledger.S02E04.1080p"}, {"title": "The Gull Ledger S02E05"}],
         )
         self.assertEqual(memory["last_id"], 12)
         path, headers = self.http.requests[-1]
@@ -546,14 +546,14 @@ class StreamsTest(unittest.TestCase):
         return self.fetch("titles", list(sessions), str(len(sessions)))["titles"]
 
     def test_titles(self):
-        episode = {"media_type": "episode", "grandparent_title": "The Night Shift"}
+        episode = {"media_type": "episode", "grandparent_title": "The Gull Ledger"}
         self.assertEqual(
             self.titles(
                 {**episode, "parent_media_index": "2", "media_index": "4"},
                 {**episode, "parent_media_index": 2, "media_index": 11},
                 {"media_type": "episode", "parent_media_index": "1", "media_index": "2"},
                 {**episode, "media_index": "4", "full_title": "Unused"},
-                {"media_type": "episode", "full_title": "The Night Shift - Pilot"},
+                {"media_type": "episode", "full_title": "The Gull Ledger - Pilot"},
                 {"media_type": "movie", "title": "A Film"},
                 {"media_type": "movie", "full_title": "A Film, Whole"},
                 {"media_type": "track", "grandparent_title": "Band", "title": "Song"},
@@ -563,11 +563,11 @@ class StreamsTest(unittest.TestCase):
                 {"title": "No Kind"},
             ),
             [
-                "The Night Shift S02E04",
-                "The Night Shift S02E11",
+                "The Gull Ledger S02E04",
+                "The Gull Ledger S02E11",
                 "S01E02",
-                "The Night Shift",
-                "The Night Shift - Pilot",
+                "The Gull Ledger",
+                "The Gull Ledger - Pilot",
                 "A Film",
                 "A Film, Whole",
                 "Band - Song",
@@ -635,7 +635,7 @@ class StreamsTest(unittest.TestCase):
             "session_key": "7",
             "friendly_name": "Robin",
             "media_type": "episode",
-            "grandparent_title": "The Lantern Keepers",
+            "grandparent_title": "The Saltmarsh Bells",
             "parent_media_index": "1",
             "media_index": "3",
         },
@@ -645,7 +645,7 @@ class StreamsTest(unittest.TestCase):
             "user": "alex",
             "media_type": "track",
             "grandparent_title": "Fen Owls",
-            "title": "Low Tide",
+            "title": "Reedsong",
         },
     ]
 
@@ -664,11 +664,11 @@ class StreamsTest(unittest.TestCase):
             self.fetch(),
             {
                 "count": 3,
-                "titles": ["The Lantern Keepers S01E03", "Harbour of Glass", "Fen Owls - Low Tide"],
+                "titles": ["The Saltmarsh Bells S01E03", "Harbour of Glass", "Fen Owls - Reedsong"],
                 "sessions": [
-                    {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+                    {"who": "Robin", "title": "The Saltmarsh Bells S01E03"},
                     {"who": "Sam", "title": "Harbour of Glass"},
-                    {"who": "alex", "title": "Fen Owls - Low Tide"},
+                    {"who": "alex", "title": "Fen Owls - Reedsong"},
                 ],
             },
         )
@@ -721,11 +721,11 @@ class StreamsTest(unittest.TestCase):
             facts,
             {
                 "count": 3,
-                "titles": ["The Lantern Keepers S01E03", "Harbour of Glass", "Fen Owls - Low Tide"],
+                "titles": ["The Saltmarsh Bells S01E03", "Harbour of Glass", "Fen Owls - Reedsong"],
                 "sessions": [
-                    {"title": "The Lantern Keepers S01E03"},
+                    {"title": "The Saltmarsh Bells S01E03"},
                     {"title": "Harbour of Glass"},
-                    {"title": "Fen Owls - Low Tide"},
+                    {"title": "Fen Owls - Reedsong"},
                 ],
             },
         )
@@ -750,9 +750,9 @@ class StreamsTest(unittest.TestCase):
             self.assertNotIn(detail, written)
 
     def test_the_line_of_a_stream(self):
-        robin = {"who": "Robin", "title": "The Lantern Keepers S01E03"}
-        self.assertEqual(line(robin, 1, 3), "Robin · The Lantern Keepers S01E03 · 1 of 3")
-        self.assertEqual(line(robin, 1, 1), "Robin · The Lantern Keepers S01E03")
+        robin = {"who": "Robin", "title": "The Saltmarsh Bells S01E03"}
+        self.assertEqual(line(robin, 1, 3), "Robin · The Saltmarsh Bells S01E03 · 1 of 3")
+        self.assertEqual(line(robin, 1, 1), "Robin · The Saltmarsh Bells S01E03")
         self.assertEqual(line({"title": "Harbour of Glass"}, 2, 3), "Harbour of Glass · 2 of 3")
         self.assertEqual(line({"who": "Sam"}, 2, 2), "Sam · 2 of 2")
         self.assertEqual(line({"title": "Harbour of Glass"}, 1, 1), "Harbour of Glass")
@@ -908,7 +908,7 @@ class PlexTest(unittest.TestCase):
             "User": {"title": "Sam"},
         }
         episode = {
-            "type": "episode", "sessionKey": "21", "grandparentTitle": "The Lantern Keepers",
+            "type": "episode", "sessionKey": "21", "grandparentTitle": "The Saltmarsh Bells",
             "parentIndex": 1, "index": 3, "title": "The Tide Bell", "User": {"title": "Robin"},
         }  # fmt: skip
         self.reply = {"MediaContainer": {"size": 2, "Metadata": [episode, item]}}
@@ -923,15 +923,15 @@ class PlexTest(unittest.TestCase):
             self.fetch(),
             {
                 "count": 2,
-                "titles": ["Harbour of Glass", "The Lantern Keepers S01E03"],
+                "titles": ["Harbour of Glass", "The Saltmarsh Bells S01E03"],
                 "sessions": [
                     {"who": "Sam", "title": "Harbour of Glass"},
-                    {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+                    {"who": "Robin", "title": "The Saltmarsh Bells S01E03"},
                 ],
             },
         )
         titles = self.fetch("titles")
-        self.assertEqual(titles["titles"], ["Harbour of Glass", "The Lantern Keepers S01E03"])
+        self.assertEqual(titles["titles"], ["Harbour of Glass", "The Saltmarsh Bells S01E03"])
         for name in ("Sam", "Robin"):
             self.assertNotIn(name, json.dumps(titles))
         self.assertEqual(self.fetch("count"), {"count": 2})
@@ -970,7 +970,7 @@ class TracearrTest(unittest.TestCase):
         }  # fmt: skip
         episode = {
             "id": "00000000-0000-4000-8000-000000005003", "media_type": "episode",
-            "media_title": "The Tide Bell", "show_title": "The Lantern Keepers",
+            "media_title": "The Tide Bell", "show_title": "The Saltmarsh Bells",
             "season_number": 1, "episode_number": 3, "username": "Robin",
             "started_at": "2026-11-21T19:05:12.000Z",
         }  # fmt: skip
@@ -985,7 +985,7 @@ class TracearrTest(unittest.TestCase):
         return source("streams", settings).fetch(T0).facts
 
     def test_streams_in_the_order_they_started_at_each_show(self):
-        both = ["Harbour of Glass", "The Lantern Keepers S01E03"]
+        both = ["Harbour of Glass", "The Saltmarsh Bells S01E03"]
         self.assertEqual(
             self.fetch(),
             {
@@ -993,7 +993,7 @@ class TracearrTest(unittest.TestCase):
                 "titles": both,
                 "sessions": [
                     {"who": "Sam", "title": "Harbour of Glass"},
-                    {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+                    {"who": "Robin", "title": "The Saltmarsh Bells S01E03"},
                 ],
             },
         )
@@ -1036,14 +1036,14 @@ class JellyfinTest(unittest.TestCase):
     EPISODE: ClassVar[dict] = {
         "Id": "7b3e5d2a9c4f4e8b8a1d6c0f2e9b5a13", "UserName": "Robin",
         "NowPlayingItem": {
-            "Type": "Episode", "Name": "The Tide Bell", "SeriesName": "The Lantern Keepers",
+            "Type": "Episode", "Name": "The Tide Bell", "SeriesName": "The Saltmarsh Bells",
             "ParentIndexNumber": 1, "IndexNumber": 3,
         },
     }  # fmt: skip
     TRACK: ClassVar[dict] = {
         "Id": "0f2a9c4e6b8d4a1c9e3f5b7d1a2c4e68", "UserName": "alex",
         "NowPlayingItem": {
-            "Type": "Audio", "Name": "Low Tide", "AlbumArtist": "Fen Owls",
+            "Type": "Audio", "Name": "Reedsong", "AlbumArtist": "Fen Owls",
             "Artists": ["Fen Owls"],
         },
     }  # fmt: skip
@@ -1068,29 +1068,29 @@ class JellyfinTest(unittest.TestCase):
             streams.fetch(T0).facts,
             {
                 "count": 2,
-                "titles": ["Harbour of Glass", "The Lantern Keepers S01E03"],
+                "titles": ["Harbour of Glass", "The Saltmarsh Bells S01E03"],
                 "sessions": [
                     {"who": "Sam", "title": "Harbour of Glass"},
-                    {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+                    {"who": "Robin", "title": "The Saltmarsh Bells S01E03"},
                 ],
             },
         )
         # Jellyfin lists by last activity, which moves at every report of progress, and a new
         # stream joins the end though its id comes first.
         self.reply = [self.TRACK, self.FILM, self.IDLE, self.EPISODE]
-        both = ["Harbour of Glass", "The Lantern Keepers S01E03", "Fen Owls - Low Tide"]
+        both = ["Harbour of Glass", "The Saltmarsh Bells S01E03", "Fen Owls - Reedsong"]
         self.assertEqual(streams.fetch(T0).facts["titles"], both)
         self.reply = [self.EPISODE, self.TRACK, self.FILM]
         self.assertEqual(streams.fetch(T0).facts["titles"], both)
         # A stream that ends leaves the others in their places.
         self.reply = [self.TRACK, self.FILM]
         self.assertEqual(
-            streams.fetch(T0).facts["titles"], ["Harbour of Glass", "Fen Owls - Low Tide"]
+            streams.fetch(T0).facts["titles"], ["Harbour of Glass", "Fen Owls - Reedsong"]
         )
         # A source made afresh, as a change of show makes it, starts its order afresh.
         self.reply = [self.EPISODE, self.IDLE, self.FILM]
         titles = self.make("titles").fetch(T0).facts
-        self.assertEqual(titles["titles"], ["Harbour of Glass", "The Lantern Keepers S01E03"])
+        self.assertEqual(titles["titles"], ["Harbour of Glass", "The Saltmarsh Bells S01E03"])
         for name in ("Sam", "Robin"):
             self.assertNotIn(name, json.dumps(titles))
         self.assertEqual(self.make("count").fetch(T0).facts, {"count": 2})

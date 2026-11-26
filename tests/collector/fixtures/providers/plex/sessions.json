@@ -31,7 +31,7 @@
         "grandparentKey": "/library/metadata/5001",
         "grandparentRatingKey": "5001",
         "grandparentThumb": "/library/metadata/5001/thumb/1731000000",
-        "grandparentTitle": "The Lantern Keepers",
+        "grandparentTitle": "The Saltmarsh Bells",
         "guid": "plex://episode/0000000000000000000a5003",
         "index": 3,
         "key": "/library/metadata/5003",
@@ -218,12 +218,12 @@
         "parentKey": "/library/metadata/7002",
         "parentRatingKey": "7002",
         "parentThumb": "/library/metadata/7002/thumb/1731000000",
-        "parentTitle": "Night Lines",
+        "parentTitle": "Night Rooks",
         "parentYear": 2022,
         "ratingKey": "7003",
         "sessionKey": "24",
         "thumb": "/library/metadata/7002/thumb/1731000000",
-        "title": "Low Tide",
+        "title": "Reedsong",
         "type": "track",
         "updatedAt": 1731000000,
         "viewOffset": 90000,
@@ -290,7 +290,7 @@
    "count": 3,
    "sessions": [
     {
-     "title": "The Lantern Keepers S01E03",
+     "title": "The Saltmarsh Bells S01E03",
      "who": "Robin",
      "order": "21"
     },
@@ -300,7 +300,7 @@
      "order": "19"
     },
     {
-     "title": "Fen Owls - Low Tide",
+     "title": "Fen Owls - Reedsong",
      "who": "alex",
      "order": "24"
     }
@@ -310,7 +310,7 @@
    "count": 3,
    "sessions": [
     {
-     "title": "The Lantern Keepers S01E03",
+     "title": "The Saltmarsh Bells S01E03",
      "order": "21"
     },
     {
@@ -318,7 +318,7 @@
      "order": "19"
     },
     {
-     "title": "Fen Owls - Low Tide",
+     "title": "Fen Owls - Reedsong",
      "order": "24"
     }
    ]

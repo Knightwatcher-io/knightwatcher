@@ -250,7 +250,7 @@ with a figure crossing it. The house, whose `tv` stands `none`, draws its own se
 before. The goblin and the crate do not keep clear of the set: they are drawn after the scene, and
 so in front of it, the goblin climbing in and the crate landing where they would with the set off,
 still clear of the devices and the knight. A ban or an import plays as usual while something
-streams, by the owner's decision of 25 November 2026.
+streams.
 
 **Night with a stream.** While streaming is the winning condition and `night` is also up, the
 state file marks it (`w.night`, [state.md](./state.md)) and the engine acts `night` (`actedOf`):
@@ -439,26 +439,24 @@ Whatever a place may show is drawn wholly on the 960 by 600 grid, which is all a
 two places in a scene draw over each other. `tests/web/places.test.js` draws each of them and checks
 both, from what is painted rather than from a place's declared box: a place's box is the room it
 was planned with, and may reach past the grid's edge where its drawing does not. One overlap is
-accepted, as the owner approved it: in the court, the lower owl's question mark (`h2`) stands over
+accepted by design: in the court, the lower owl's question mark (`h2`) stands over
 the upper owl (`h1`) while the lower one is down, since between the right pillar's torch, the
 throne and the cat's leap there is no spot for two owls that avoids it.
 
 The smithy's acts walk the knight further than its stops, and there the knight covers places,
-which the owner accepted: at the forge (650, about 2.2 s of each quench) and at the bellows (612,
+which is accepted: at the forge (650, about 2.2 s of each quench) and at the bellows (612,
 all the time the CPU runs hot) the knight's head hides most of the owls in the high places `h1`
 (600) and `h2` (676), and at the forge the right boot's toe meets the left end of what stands at
 the third ground place, `g3` (760, the chest's mat or the satchel), a few pixels at the floor.
-`g3` stood at 218, before the quench barrel, until 25 November 2026, when the television took its
-room and it moved before the bellows, as the design's mock-up placed it; the boots at the water now
-cover no place. None of this hides an alert: a device down outranks both all is quiet and a machine
+`g3` stood at 218, before the quench barrel, until the television took its room and it moved
+before the bellows; the boots at the water now cover no place. None of this hides an alert: a device down outranks both all is quiet and a machine
 under strain, and under `device_down` the smithy plays no act and the knight holds where it
 stands. On each walk of the quench the knight passes in front of the pie, and at the water stands
 clear of it (the knight's right edge at 290, the pie's place from 295). `tests/web/places.test.js`
 holds the knight's drawing at the three stands to exactly these places.
 
 The ground places stand along the front edge of the floor (base y 594, `front: true`), in front of
-the knight and never under the knight's boots at any stop of its patrol, by the owner's decisions of
-17 and 25 November 2026; the knight passes behind them only while it walks, and the smithy's quench
+the knight and never under the knight's boots at any stop of its patrol; the knight passes behind them only while it walks, and the smithy's quench
 meets `g3` at the forge, as above. Where a scene hosts the goblin or the crate, a stretch of floor
 is kept clear left of the knight: the goblin comes up there, and the crate lands there (the scene's
 `crate`), in front of the television while it stands in the scene.
@@ -478,15 +476,14 @@ it with the kinds the medieval world's prop set gives, and keeps `KW.props.KINDS
 | `vm` | a corked glass flask with a paper tag beside the knight's satchel, its blue potion the lamp | on its side against the satchel with its cork out beside it, the last of the potion spilt and dark |
 | any other | an iron-bound chest on a woven mat, the lamp the jewel in its lock plate, glowing gold | on its end on the mat, its lid knocked off beside it, three coins spilt, the jewel dark |
 
-Each kind is a medieval thing that stands for the device, by the owner's choice of 16 November 2026
-([design.md](./design.md#devices)), and the crystal, the chest's sizes and the colours of the lamps
-by the owner's choice of 17 November. A kind the page does not know is drawn as the chest. The kind
+Each kind is a medieval thing that stands for the device
+([design.md](./design.md#devices)). A kind the page does not know is drawn as the chest. The kind
 is only ever a key into `KW.kinds`. The crystal and the chest are drawn at twice the size they were
 first drawn at and the flask at 1.4 times, each a redraw at that size whose outlines keep their
 thickness; the crystal is the first drawing's at 1.85 times, its ball's top 93 above its foot.
 
-**At rest.** Each kind on the ground brings its resting place in its still part, by the owner's
-decision of 25 November 2026, so that it is the same in every place: the crystal stands on a
+**At rest.** Each kind on the ground brings its resting place in its still part, so that it is
+the same in every place: the crystal stands on a
 three-legged stool, 24 high, which raises its ball's top to 117 above the base; the flask stands 18
 right of the base's middle with the knight's satchel on its left; the chest stands on a woven mat,
 5 high. Each casts a soft shadow on the floor (`shadowHD`, a translucent black ell 7 rows high).
@@ -506,7 +503,7 @@ jewel gold (`#ffb000`). Each pulses over 3.6 seconds from its full colour, the l
 dark drawing, a dimmer colour of the same hue that still reads as lit (the crystal `#7894c0`, the
 potion `#3f78c8`, the jewel and the owl's eyes `#c98600`, the pie `rgb(168,49,40)`), so a device up
 never looks like one that is down. No device light is green. Down, no kind has a lamp: one rule
-for every device, by the owner's decision of 17 November 2026. A down device is unlit and nothing
+for every device. A down device is unlit and nothing
 of it blinks; the owl's dazed spirals and the chest's dark jewel are part of its still drawing,
 and the question mark carries the alert. Their maps are `pieShapes` and `DEVICE_LAMPS`. The
 loop starts 523 ms later in each place than in the one before it (`pie`, `h1` to `h3`, `g1` to
@@ -543,7 +540,7 @@ with the pie alone.
 
 **The question mark.** Over every gone device the engine draws the question mark, blinking every
 400 ms, with its foot at least 4 pixels above the gone device, whether or not the device alerts:
-since 17 November 2026 `placeHD` no longer reads `alert`, by the owner's decision, because the
+`placeHD` does not read `alert`, because the
 crystal, the flask and the pie go dark when down and would otherwise show nothing that moves.
 `alert` still decides whether the device raises `device_down` and so turns the knight. The pie's
 mark stands where it always has. Every mark keeps clear of the knight, the throne, the monarch and
@@ -593,7 +590,7 @@ The fly's are `flyHD` and `deadFlyHD`. `KW.props.FOES` holds the code's foes by 
 | `spots` | its spot in each scene by the scene's name (see below) |
 | `paw`, `take`, `land`, `lift` | the measures of its pounce, as [cast.md](./cast.md#the-cast-on-the-page) gives them |
 
-The cat's drawing is the approved one, each part an outline of many points (a closed curve through
+In the cat's drawing each part is an outline of many points (a closed curve through
 a few control points, or a limb round a centre line whose width changes along it), filled into a
 mask of whole pixels with a dark outline of two pixels round it and bands lit from the left, the
 lowest part of each a band darker; the patches and stripes of a coat lie only on the part they are

@@ -82,12 +82,12 @@ test('everything a place may show stands wholly on the 960 by 600 grid, in every
   assert.deepEqual(bad, []);
 });
 
-/* The one overlap the owner accepted: in the court the lower owl's question mark stands over the
+/* The one overlap accepted by design: in the court the lower owl's question mark stands over the
    upper owl while the lower one is down. Between the right pillar's torch, the throne and the cat's
    leap there is no spot for two owls that avoids it. */
 const ACCEPTED = ["court: h1 (camera) and h2 (camera's question mark)"];
 
-test('no two places in a scene draw over each other, but the one overlap the owner accepted', () => {
+test('no two places in a scene draw over each other, but the one accepted overlap', () => {
   const { KW, take } = load(), bad = [];
   for (const [name, sc] of Object.entries(KW.scenes)) {
     const boxes = Object.entries(sc.places).map(([p, pl]) => [p, placeBoxes(KW, take, pl)]);
@@ -109,7 +109,7 @@ test('a camera\'s question mark is never higher than y 172, clear of the headlin
 
 /* The smithy's acts walk the knight off its spot (scenes/smithy.js): to the forge at 650 and the
    water at 228 in the quench, a stop of the patrol, and to the bellows at 612 while the CPU runs
-   hot. There the knight, drawn with its tool, fill by fill, covers some places, which the owner
+   hot. There the knight, drawn with its tool, fill by fill, covers some places, which is
    accepted: at the forge and at the bellows the head over the high places h1 and h2. The third
    ground place, g3, stands before the bellows at 760 since the television took its room by the
    water, so the boots at the water cover none; at the forge the right boot's toe meets the left end
@@ -125,7 +125,7 @@ const SMITHY_COVERS = {
   'the bellows, bloated under strain t240': ['h1', 'h2']
 };
 
-test('the smithy\'s acts cover only the places the owner accepted: h1 and h2 at the forge and the bellows, g3 a little at the forge', () => {
+test('the smithy\'s acts cover only the accepted places: h1 and h2 at the forge and the bellows, g3 a little at the forge', () => {
   const { KW, take, every } = load(), K = KW.knight, S = KW.scenes.smithy, got = {};
   const meet = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
   const at = { 'the forge, quiet t600': ['idle', 600], 'the water, quiet t6600': ['idle', 6600], 'the bellows, running hot t240': ['cpu_hot', 240],

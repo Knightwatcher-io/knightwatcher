@@ -40,6 +40,10 @@
     return e;
   }
   function logo(cls) { const i = el('img', cls); i.src = '../logo.svg'; i.alt = ''; return i; }
+  /* The offer of the source the AGPL asks of a program used over a network: a link to the
+     repository, KW.settings.SOURCE, which the walls' status page links to as well. */
+  function sourceLink() { const a = el('a', 'src', 'Source code (AGPL-3.0)'); a.href = KW.settings.SOURCE; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a; }
+  function sourceNote() { const p = el('p', 'note src-note'); p.appendChild(sourceLink()); return p; }
 
   /* ---- Talking to the server ------------------------------------------------------------------- */
   async function call(method, path, body) {
@@ -877,7 +881,8 @@
     m.appendChild(a);
     const groups = [['Credentials', 'For the collector alone. The server is told only whether each is there, by name.', credList()],
       ['Host', 'The host folders compose.yaml mounts. Read by docker compose when it makes the containers; the server never sees them.', S.env.filter(e => e.gui.admin.section === 'Host')],
-      ['Server', 'Where compose.yaml publishes the server. Read by docker compose; the server never sees them.', S.env.filter(e => e.gui.admin.section === 'Server')]];
+      ['Server', 'Where compose.yaml publishes the server. Read by docker compose; the server never sees them.', S.env.filter(e => e.gui.admin.section === 'Server')],
+      ['Image', 'The release of the published image both containers run. Read by docker compose; the server never sees it.', S.env.filter(e => e.gui.admin.section === 'Image')]];
     for (const [title, help, list] of groups) {
       const c = card(title, null, help);
       for (const e of list) {
@@ -997,6 +1002,7 @@
       c.appendChild(rich('p', '', 'To turn it on, give `KW_ADMIN_PASSWORD` a password of your own of at least 12 characters in .env beside compose.yaml (.env.example shows the line), then make the containers again:'));
       c.appendChild(el('pre', 'cmd', 'docker compose up -d'));
       c.appendChild(el('p', 'note', 'Until then the collector\'s settings are changed in config.toml, as before.'));
+      c.appendChild(sourceNote());
       g.appendChild(c); return g;
     }
     const f = el('form');
@@ -1023,6 +1029,7 @@
     });
     c.appendChild(f);
     c.appendChild(el('p', 'note', 'The admin password is the one in .env. The wall displays need none: their settings screens change only how the knight looks, and this page changes what the collector watches.'));
+    c.appendChild(sourceNote());
     g.appendChild(c); return g;
   }
   let pauseTimer = 0;
@@ -1096,7 +1103,8 @@
       const [w, bad] = countWords(p); if (w) b.appendChild(el('span', 'n' + (bad ? ' bad' : ''), w));
       rail.appendChild(b);
     });
-    rail.appendChild(el('div', 'foot', 'The look, display, quiet scenes and scenes are shared with every wall\'s settings screen.'));
+    const foot = el('div', 'foot', 'The look, display, quiet scenes and scenes are shared with every wall\'s settings screen.');
+    foot.appendChild(el('br')); foot.appendChild(sourceLink()); rail.appendChild(foot);
     body.appendChild(rail);
     const main = el('main', 'main'), inner = el('div', 'inner' + (st.sec === 'look' ? ' wide' : '')), pg = PAGES.find(p => p.id === st.sec) || PAGES[0];
     inner.appendChild(el('span', 'crumb', 'Household settings'));
@@ -1146,6 +1154,7 @@
     sh.appendChild(nav);
     const sf = el('div', 'sf'); sf.appendChild(pulse('pulse-s'));
     sf.appendChild(btn('btn line', 'Download config.toml', () => { st.menu = false; exportOpen(); })); sf.appendChild(btn('btn', 'Sign out', signOut));
+    sf.appendChild(sourceLink());
     sh.appendChild(sf);
     return sh;
   }

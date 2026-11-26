@@ -24,7 +24,7 @@ ACTIVITY = {
                 {"session_key": "4", "friendly_name": "Robin", "media_type": "movie",
                  "title": "Harbour of Glass"},
                 {"session_key": "2", "user": "Sam", "media_type": "episode",
-                 "grandparent_title": "The Lantern Keepers", "parent_media_index": "1",
+                 "grandparent_title": "The Saltmarsh Bells", "parent_media_index": "1",
                  "media_index": "3"},
             ],
         },
@@ -74,7 +74,7 @@ class ProbeTest(unittest.TestCase):
 
     def assertNothingPrivate(self, *texts):
         for text in texts:
-            for private in ("Robin", "Sam", "Harbour", "Lantern", self.key, self.password):
+            for private in ("Robin", "Sam", "Harbour", "Saltmarsh", self.key, self.password):
                 self.assertNotIn(private, text)
 
     def test_a_probe_prints_the_fill_and_the_facts_masked(self):

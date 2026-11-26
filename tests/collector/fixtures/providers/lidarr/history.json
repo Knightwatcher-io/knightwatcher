@@ -26,7 +26,7 @@
        "albumId": 18,
        "artistId": 41,
        "trackId": 0,
-       "sourceTitle": "Alex Rowan - Night Lines (2025) [FLAC]",
+       "sourceTitle": "Alex Rowan - Night Rooks (2025) [FLAC]",
        "quality": {
         "quality": {
          "id": 6,
@@ -48,7 +48,7 @@
         "releaseGroup": null
        },
        "album": {
-        "title": "Night Lines",
+        "title": "Night Rooks",
         "albumType": "Album",
         "artistId": 41,
         "id": 18,
@@ -100,7 +100,7 @@
        "albumId": 16,
        "artistId": 41,
        "trackId": 0,
-       "sourceTitle": "Robin.Ash-Lanterns-WEB-2023",
+       "sourceTitle": "Robin.Ash-Rushwick-WEB-2023",
        "quality": {
         "quality": {
          "id": 6,
@@ -184,7 +184,7 @@
   "records": [
    {
     "id": 212,
-    "title": "Alex Rowan - Night Lines"
+    "title": "Alex Rowan - Night Rooks"
    },
    {
     "id": 211,
@@ -192,7 +192,7 @@
    },
    {
     "id": 210,
-    "title": "Robin.Ash-Lanterns-WEB-2023"
+    "title": "Robin.Ash-Rushwick-WEB-2023"
    }
   ]
  }

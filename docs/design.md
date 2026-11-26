@@ -41,7 +41,7 @@ It is read from 3 to 4 metres across a room, on a 14.6 inch tablet. At that dist
 holds about four lines of a dozen characters, so the state is carried by the scene, the knight's
 posture and colour, and words are kept to one headline and one line of reason.
 
-Rules that follow from this, each decided by the owner:
+Rules that follow from this:
 
 - The scene fills the screen. Text lies over it: a headline and one line when something needs
   saying, and only the clock and one small line when all is quiet.
@@ -71,8 +71,8 @@ Rules that follow from this, each decided by the owner:
 ## The knight
 
 Open-faced helm, red plume, blue tabard, and a greatsword held and swung in both hands. That is the
-default look. The base pack also carries a one-handed arming sword and a heater shield, free, which
-the owner chose to ship beside the greatsword: the shield's field is in the tabard's colours, so it
+default look. The base pack also carries a one-handed arming sword and a heater shield, free, beside
+the greatsword: the shield's field is in the tabard's colours, so it
 follows the tabard, with the gold eye of the watch on it, as on the tabard and the banners. The
 eye's iris takes the tabard's darkest band, so the emblem is in the coat's colours; on the default
 blue it is the blue it always was. The
@@ -84,8 +84,7 @@ the sword crosses the body, and the blade passes in front of it, so a blow struc
 always seen; the sword then comes back low across the shield and rises again on its own side. A shield is carried only with a
 one-handed weapon, and a one-handed weapon without a shield leaves the other hand hanging free.
 
-The knight comes in three builds, all free and all in the base pack, which the owner approved from
-a mock-up and named: **Classic**, the present knight and the default; **Broad**, wider at the
+The knight comes in three builds, all free and all in the base pack: **Classic**, the present knight and the default; **Broad**, wider at the
 shoulders and chest, narrower at the hips and a little taller; and **Slim**, narrower at the
 shoulders, with a defined waist, hips a little wider than Classic's, and a little shorter. The
 names describe the shape and nothing else. The tabard narrows to the belt and widens to the hem on
@@ -97,15 +96,14 @@ build meets it.
 Every user chooses on the settings screen, free, the build, the weapon and the knight's skin tone, hair colour,
 hair style, tabard colour and plume colour, from six skins, six hair colours, three styles (short
 crop, tied back, curls; with the long hair and the close crop of 1.4.0 and the buzzcut of 1.6.0,
-six), six tabards and six plumes, all in the base pack and chosen by the owner
-from a mock-up. Each skin turns green when the knight is sick and red when the knight is running
+six), six tabards and six plumes, all in the base pack. Each skin turns green when the knight is sick and red when the knight is running
 hot, each tint at about the skin's own lightness, so the conditions read on every tone. No tabard is
 bright red, orange or amber, so the coat is never read as a status. The brows carry a one-pixel dark
 edge wherever their colour is too close to the skin's to show, so a face never loses its brows;
 today's knight needs none.
 
-The free base pack is generous: every slot a user chooses has three to five free choices. The
-owner approved the set from a mock-up, and base pack 1.4.0 carries 25 more items, each plain
+The free base pack is generous: every slot a user chooses has three to five free choices. Base
+pack 1.4.0 carries 25 more items, each plain
 medieval kit a viewer knows at a glance and none copying a design from a game or film: a longsword
 in both hands and a flanged mace in one; a round and a kite shield beside the heater; a kettle
 hat, a mail coif and a bascinet beside the open helm; a tall feather and a horsehair plume beside
@@ -123,26 +121,25 @@ longsword as the greatsword is; the smithy heats the mace's head as it heats a b
 look is unchanged, and the colour sets stay at six each. Eight more items were drawn and held back
 as close to something already offered or weak at wall distance.
 
-Base pack 1.5.0 adds a fifth free weapon, a crossbow, the first that fires. The owner chose it from
-three designs drawn for the purpose: a wooden crossbow with a light ash tiller, a steel prod and a
-pale string, the plainest silhouette of the three at wall size, the same on both sides of its line
-and the cheapest to draw. It is held in both hands and carries no shield, so the shield row greys
+Base pack 1.5.0 adds a fifth free weapon, a crossbow, the first that fires. It is a
+wooden crossbow with a light ash tiller, a steel prod and a pale string: a plain silhouette at wall
+size, the same on both sides of its line and cheap to draw. It is held in both hands and carries no shield, so the shield row greys
 beside it as beside the greatsword. It shoots where the swords swing: a bolt at each fly, at the
 practice dummy from 300 short of it and at the goblin after a step back, and it is aimed in the
 attack but never fired. It lies on the house's pegs and across the smithy's anvil, cold, and is
 slung across the back where the weapon is put away and the scene has no rest place for it, as in
 the cellar.
 
-Base pack 1.6.0 redraws the hair and adds a sixth style. The owner approved it from a mock-up:
+Base pack 1.6.0 redraws the hair and adds a sixth style:
 every style keeps its silhouette, so each is still the one chosen, and gains shading in the hair
 colour's three bands lit from the left, locks or strands, a sheen and a glint, and a hairline where
 it meets the forehead. The short crop's round tuft became two small upright locks. The new buzzcut
 is stubble drawn into the skull itself, with nothing above the skull's outline, so it reads apart
 from the close crop at a glance. The same redraw made the goblin of a banned address a cheeky
-fantasy goblin, the pot-thief of three designs (`kw.medieval` 0.9.0): stocky, with long pointed
+fantasy goblin, the pot-thief (`kw.medieval` 0.9.0): stocky, with long pointed
 ears, a hooked nose with a wart, two stub tusks, a ragged leather tunic, the dented saucepan of the
 old goblin for a helmet, since the bonk on the pot is the joke the strike is built round, and a sack
-of loot at its hip, the clearest of the three at wall distance. Nothing about it is sharp or gory.
+of loot at its hip, a shape that reads clearly at wall distance. Nothing about it is sharp or gory.
 
 No arm or gauntlet is ever drawn over a blade or its guard, over the barrel of a weapon that
 fires forward of the front hand, nor over the face of a shield. With
@@ -178,9 +175,9 @@ steam rises from the top of its crust. The pie's lamp is its filling, which ligh
 of the lattice: while the Pi is up it glows red and pulses slowly to a dimmer red and back, never
 unlit, on the same loop as every other device's light (until 17 November 2026 it faded from green
 to near black, in the green every device's lamp then shared). Until 16 November 2026 a large raspberry stood on top and was the lamp,
-glowing in its own crimson because a green raspberry would have read as unripe; the owner chose to
-take it off and let the light come from under the lattice, where green reads as light rather than
-as fruit. When the Pi is judged down, silent for its `down_after_s`, the pie is gone and the empty
+glowing in its own crimson because a green raspberry would have read as unripe; it was taken
+off so that the light comes from under the lattice, where green reads as light rather than as
+fruit. When the Pi is judged down, silent for its `down_after_s`, the pie is gone and the empty
 dish is left, with a few crumbs and the last slice lying in it, unlit and without steam, as every
 down device is unlit. A collector from
 before devices gives no judgement, and with it the dish empties at the first missed check, as it
@@ -188,8 +185,7 @@ always did.
 
 ## The cat
 
-A mouser cat lives in the knight's world, the first pet, by the owner's decision of 16 November
-2026 from a mock-up. It catches the flies the knight cannot, so that a blocked advert indoors is
+A mouser cat lives in the knight's world, the first pet. It catches the flies the knight cannot, so that a blocked advert indoors is
 caught rather than left buzzing. It is always present, resting at a spot of its own in every
 scene: on the battlement's left merlon, the bough over the camp's fire, the top of the yard's
 curtain wall, the house's floor in front of the hearth (at the foot of the bed while the knight is
@@ -209,7 +205,7 @@ ends in the poof.
 
 The cat is drawn as the rest of the page is, in hard pixels lit from the left with a dark outline,
 at 1.3 times the size it was first drawn at, curled when resting and in a long leap when it
-pounces. It comes in two coats, both shipped and chosen by the owner on the settings screen:
+pounces. It comes in two coats, both shipped, chosen on the settings screen:
 calico, the default, whose white coat and dark outline read across the room in every scene, and a
 ginger tabby. The cat cannot be turned off.
 
@@ -217,12 +213,11 @@ ginger tabby. The cat cannot be turned off.
 
 Besides the Pi, a user may list other machines to watch (a NAS, a camera, a laptop, a virtual
 machine), each with a kind. In the medieval world each kind is drawn as a medieval thing that
-stands for it, by the owner's decision of 16 November 2026. Until then each kind was drawn as the
-device it is (a white bullet camera, a grey tower case, the same case in dots, a plain grey box),
-which sat oddly in a medieval scene. On 17 November 2026 the owner chose a redesign from a
-mock-up: the scrying crystal in place of the cauldron, which is gone entirely, the crystal and the
-chest at twice their first size and the flask at 1.4 times, and lights in colours of their own with
-no green left. Together the four make a small workshop:
+stands for it. Each kind was first drawn as the device it is (a white bullet camera, a grey tower
+case, the same case in dots, a plain grey box), which sat oddly in a medieval scene. A later
+redesign put the scrying crystal in place of the cauldron, which is gone entirely, drew the crystal
+and the chest at twice their first size and the flask at 1.4 times, and gave the lights colours of
+their own with no green left. Together the four make a small workshop:
 
 - **Camera:** a pale barn owl on an iron wall bracket, keeping watch, its eyes the lamp. Its wall
   plate stands where the camera's did, so the poles of the high places still meet it.
@@ -236,7 +231,7 @@ no green left. Together the four make a small workshop:
 They are drawn as plainly as the rest of the display, in hard pixels and the palette's colours.
 
 Each device on the ground has a resting place of its own, so that nothing looks dropped on the
-floor, by the owner's decision of 25 November 2026: the crystal stands on a three-legged stool, the
+floor: the crystal stands on a three-legged stool, the
 flask beside the knight's satchel, set down on its side, and the chest on a woven mat with a red
 stripe and fringed ends. Each casts a soft shadow on the floor. The rest belongs to the device's
 drawing, so it is the same wherever the device stands. When a device is down it falls as before
@@ -244,20 +239,20 @@ from its rest: the crystal's stand topples on the stool and the ball rolls off o
 beside it, the flask lies spilt against the satchel, and the chest stands on its end on the mat.
 
 Every scene has places for them where such devices would be. Cameras are mounted high, at or above
-the knight's head, on a wall, a tree, a pier or a pole; the other devices stand on the ground, by
-the owner's choice, along the front edge of the floor, in front of the knight and never under its
+the knight's head, on a wall, a tree, a pier or a pole; the other devices stand on the ground,
+along the front edge of the floor, in front of the knight and never under its
 boots. Each scene has three high places and three ground places, besides the pie's, and they fill
 in the order of the list, so a device keeps its place whether it is up or down. A device with no
 place left is not drawn but is still watched. Where a scene hosts the goblin or the crate, a
 stretch of floor is kept clear left of the knight for them. While the television stands in the
 scene the goblin climbs in and the crate lands in front of it, so a ban or an import plays as
-usual while something streams, by the owner's decision of 25 November 2026.
+usual while something streams.
 
 While a machine is up its light pulses slowly between its full colour and a dimmer one of the same
 hue, and is never unlit, so a device that is up never reads as down: the pie's filling red through
 the gaps of its lattice, with its steam, the owl's eyes amber, the crystal pale blue-white, the
-potion blue and the chest's jewel gold. One rule holds for every device that is down, by the
-owner's decision of 17 November 2026: it is unlit, nothing of it blinks, and it looks broken from
+potion blue and the chest's jewel gold. One rule holds for every device that is down: it
+is unlit, nothing of it blinks, and it looks broken from
 across the room. The pie's dish holds only the last slice, without steam; the owl hangs upside
 down from its bracket by its talons, wings drooping, with dazed spirals for eyes and two feathers
 drifting down; the crystal's stand has toppled and the ball lies beside it, dark, with a crack
@@ -299,8 +294,8 @@ training and bloated, rather than in the quiet scene of the moment. The settings
 act them; see [Scenes chosen per condition](#scenes-chosen-per-condition).
 
 With no condition active the quiet scenes take turns: battlement, camp, house, training yard and
-smithy, ten minutes each by default, and a minute each in the demo. In each the knight patrols,
-decided by the owner on 25 November 2026: two or three stops, the first the scene's own spot
+smithy, ten minutes each by default, and a minute each in the demo. In each the knight patrols:
+two or three stops, the first the scene's own spot
 where the knight comes in, each with what the knight does there (stands guard, looks round, sniffs
 the air, yawns, trains at the yard's dummy), and a walk between them with a real step, the knight
 side-stepping since it always faces out of the screen. In the smithy one stop is the quench: the

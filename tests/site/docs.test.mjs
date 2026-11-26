@@ -106,7 +106,7 @@ test('every link between the site\'s pages resolves, anchors included, and every
   }
   assert.deepEqual(broken, [], 'links to a heading that is not there');
   assert.ok(internal > 500 && anchors > 300 && repo > 20, `${internal} links, ${anchors} anchors, ${repo} repository links`);
-  // the link the brief names, and one from README.md's own style of link
+  // a link from one docs page to a heading of another, and one from README.md's own style of link
   assert.match(page(out, '/docs/packs/') + page(out, '/docs/page/') + page(out, '/docs/scenes/'), /href="\/docs\/world-loading\/#where-the-scenes-are-drawn-from"/);
   assert.match(page(out, '/docs/contributing/'), /href="\/docs\/development\/#checks"/);
 });

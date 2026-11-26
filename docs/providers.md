@@ -72,7 +72,7 @@ kind cleans it), `bool` true or false, `time` a moment, and `raw` a value the ki
 |---|---|---|---|---|
 | `count` | int, 0 or more | no | any | how many streams the service reports; when absent, the number of `sessions` |
 | `sessions` | list of objects | yes, may be empty | any (its length alone with `count`) | one for each stream playing |
-| `sessions[].title` | string | no | `titles`, `names` | what plays, composed by the provider (`The Night Shift S02E04`) |
+| `sessions[].title` | string | no | `titles`, `names` | what plays, composed by the provider (`The Gull Ledger S02E04`) |
 | `sessions[].who` | string | no | `names` | who is watching |
 | `sessions[].order` | raw | no | `titles`, `names` | a key that rises as streams start: a value whose text is all digits sorts by its number, a time (a var of type `time`) by its moment, others after |
 | `sessions[].key` | string | no | `titles`, `names` | the stream's identity, for a service that gives no `order` (Jellyfin's session id); with a time as `order`, it breaks ties |

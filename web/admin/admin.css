@@ -52,6 +52,12 @@ body { font-family: var(--sans); }
 .rail button[aria-current="page"] .n { color: var(--ink); }
 .rail hr { width: 100%; border: 0; border-top: 2px solid var(--line); margin: 6px 0; }
 .rail .foot { margin-top: auto; padding: 10px 4px 0; font-size: 12px; color: var(--dim); line-height: 1.4; }
+/* The link to the source, at the foot of the rail, the sheet and the sign-in card. */
+a.src { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+a.src:hover { color: var(--text2); }
+.rail .foot a.src { display: inline-block; margin-top: 8px; }
+.sheet .sf a.src { justify-self: center; padding: 6px 0; font-size: 13px; }
+.gcard .src-note { text-align: center; }
 
 .main { overflow-y: auto; min-height: 0; scrollbar-color: var(--dimmer) var(--panel); }
 .inner { max-width: 940px; padding: 22px 36px 120px; }
@@ -375,7 +381,7 @@ pre.cmd { margin: 8px 0 0; padding: 8px 12px; background: var(--well); border: 2
   .gcard { padding: 22px 18px 20px; }
 }
 
-/* What the page needs beyond the approved design's styles. */
+/* What the page needs beyond the design's shared styles. */
 .msg .hint { margin-top: 8px; color: var(--red-l); }
 .msg.inset { margin: 0 18px 10px; }
 .msg.trouble { margin: 0 0 18px; }

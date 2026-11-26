@@ -2,6 +2,9 @@
 # Host paths, the server's address and port, the admin password and the credentials come from .env
 # beside this file (ignored by git; .env.example is the template); see docs/configuration.md and
 # docs/server.md.
+# Both services run the published image, ghcr.io/knightwatcher-io/knightwatcher, at the release
+# KW_VERSION names in .env (latest when it is empty or left out): docker compose pulls it the first
+# time. `docker compose build` builds it from this checkout instead, under the same name.
 # Every host path is bound with create_host_path: false, so a missing path stops the container
 # instead of Docker creating an empty folder in its place. The provider files' default folder,
 # ./providers, is tracked in git with a .gitkeep, so a checkout always has it.
@@ -9,6 +12,7 @@ name: knightwatcher
 
 services:
   collector:
+    image: ghcr.io/knightwatcher-io/knightwatcher:${KW_VERSION:-latest}
     build: .
     container_name: knightwatcher-collector
     restart: unless-stopped
@@ -107,6 +111,7 @@ services:
   # port to publish it. The walls are open to the LAN by default; docs/server.md says how to put a
   # login in front.
   server:
+    image: ghcr.io/knightwatcher-io/knightwatcher:${KW_VERSION:-latest}
     build: .
     container_name: knightwatcher-server
     entrypoint: ["python", "-m", "server"]

@@ -81,8 +81,8 @@ hides the review bar and drives the display:
 - The "+N MORE" badge counts the other known conditions at warning or critical, and turns red
   when any of them is critical.
 - While `streaming` is shown, the detail line takes each stream in `facts.streams.sessions` in
-  turn, eight seconds each (`KW.state.STREAM_MS`), as `Robin · The Night Shift S02E04 · 2 of 3`;
-  one stream reads `Robin · The Night Shift S02E04`. Which stream shows is worked out from the
+  turn, eight seconds each (`KW.state.STREAM_MS`), as `Robin · The Gull Ledger S02E04 · 2 of 3`;
+  one stream reads `Robin · The Gull Ledger S02E04`. Which stream shows is worked out from the
   clock alone, `Math.floor(now / 8000) % n` on the wall clock (the frozen time of `t=` in a
   screenshot), so every display shows the same stream at the same moment, and the collector keeps
   the streams in the order they started, so a new file does not move the line on. The name and the
@@ -551,7 +551,7 @@ draws it draws it (`KW.world.drawingOf`), each in a frame of 130 by 104 grid pix
 size for every kind and set, so the largest device shows whole, the world's set first and named "the world's"
 (`KW.settings.screen.deviceRows`). A choice saves the set for that kind in `look.devices`; the
 world's set clears a kind this display chose, so that it follows the world again
-(`KW.settings.screen.devicesAfter`). With one prop set, as at launch, there are no device rows. The
+(`KW.settings.screen.devicesAfter`). With one prop set, as the project ships, there are no device rows. The
 page ends with the reset of the look: "The default is the Medieval world, every part as it comes",
 or with the parts `config.toml` sets beside it ("with a forest tabard").
 
@@ -639,7 +639,9 @@ bridge, from Orbit, which cannot act it. Shown in the training yard."), and so i
 with no room for a foe. A choice applies at once, and the scene behind changes if that condition is
 showing.
 
-**Status**, read only: the page's version (the deploy's hash, or `dev`), how long ago the state file
+**Status**, read only: the page's version (the deploy's hash, or `dev`) and a link, Source code
+(AGPL-3.0), to the repository the page, the collector and the server are built from, which opens
+beside the display (`KW.settings.SOURCE`; a fork that changes them points it at its own), how long ago the state file
 was written and how often the collector writes it, the sources in it (all working, or each failing
 one with its error and the time of its last read), whether the collector's usage counts are on
 (On., or Off., with a line saying that `KW_ANALYTICS` in `.env` changes it; "Not known" before a
@@ -813,7 +815,12 @@ change.
 
 The layout is a side rail of nine sections with a count of
 what is set there or failing, the collector's pulse, Download config.toml and Sign out in the
-header; below 720 pixels one column, with the sections in a sheet. Each row shows where its value
+header; below 720 pixels one column, with the sections in a sheet. The foot of the rail, the
+sheet, and the card shown while signed out or while the page is off each link to the source, as
+the status page does: Source code (AGPL-3.0), to `KW.settings.SOURCE`, opened in a new tab. The
+`.env` section shows the admin password, then the variables by group, by name and never by value:
+the credentials, the host folders, the server's address, port and folder, and the image's release
+(`KW_VERSION`). Each row shows where its value
 comes from: `config.toml`, `Default`, or `Set here` in gold with what the file or the default holds
 and a Reset. A change applies on the click, or on Enter or leaving a field: the page sends it, and
 shows it kept when the server keeps it ("Checked by the collector's rules", then "In use by the
@@ -827,13 +834,17 @@ section, asks first and says what it clears.
 
 ## Deploying
 
-`docker compose up -d --build` builds the image, which holds the collector, the server and a copy
-of `web/` stamped with its version, and starts both. The bundled server serves that copy, stamped
-at build time by `server/stamp.py` with the same version, `version.json`, meta tag and `?v=`
-addresses that `tools/deploy.sh` gives the same files ([server.md](./server.md#what-it-serves)).
-Open displays reload onto a new image within about five minutes, as after a deploy. A tree run
-straight from git builds from the working tree, so build from a clean export (`git archive`) when
-other changes are in progress.
+The image holds the collector, the server and a copy of `web/` stamped with its version.
+`docker compose up -d` runs the published image, `ghcr.io/knightwatcher-io/knightwatcher`, at the
+release `KW_VERSION` in `.env` names (`latest` unless set), pulling it the first time;
+`docker compose pull` and `docker compose up -d` again move to a newer one. `docker compose up -d
+--build` builds the image from the checkout instead, under the same name, and starts both. The
+bundled server serves that copy, stamped at build time by `server/stamp.py` with the same version,
+`version.json`, meta tag and `?v=` addresses that `tools/deploy.sh` gives the same files
+([server.md](./server.md#what-it-serves)). Open displays reload onto a new image within about five
+minutes, as after a deploy. A tree run straight from git builds from the working tree, so build
+from a clean export (`git archive`) when other changes are in progress. How a release is tagged and
+published is in [development.md](./development.md#releases-and-images).
 
 ### The page alone, to a web server of your own
 

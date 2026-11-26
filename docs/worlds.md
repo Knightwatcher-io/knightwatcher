@@ -192,7 +192,7 @@ checks the parts and `pump`, and their refusal in 1.1 and 1.2.
 ## Format 1.4
 
 Format 1.4 carries the knight's patrol, the television in every scene and the devices' resting
-places, decided by the owner on 25 November 2026. As before, a field a pack of 1.0 to 1.3 does not
+places. As before, a field a pack of 1.0 to 1.3 does not
 have is refused there at `fields` by name (`pack.scenes.battlement.tv: is not a field here`), a pack
 of 1.1 to 1.3 reads exactly as before on a page of 1.4, and a page of 1.3 refuses a pack of 1.4 at
 the `format` step, so that every part it would have set takes the base world's. What 1.4 adds:

@@ -191,8 +191,11 @@ it is reading or failing, the condition it acts as, its words and its pace, and 
 variable when it has a header; a priority set on the page that leaves out a condition a check
 borrows is refused, as `config.toml` would be.
 Download config.toml writes a setting
-the chosen provider does not use as a comment, and the list's entries as `config.toml` has them. The page itself is described in
-[display.md](./display.md#the-admin-page).
+the chosen provider does not use as a comment, and the list's entries as `config.toml` has them.
+The page, signed in or out, links to the source of the page and the server,
+as the AGPL asks of a program used over a network: Source code (AGPL-3.0), to the repository
+(`KW.settings.SOURCE` in `web/js/settings.js`, which a fork points at its own). The page itself is
+described in [display.md](./display.md#the-admin-page).
 
 It is behind the admin password, `KW_ADMIN_PASSWORD` in `.env`, which `compose.yaml`
 gives to the server alone. While it is missing, or shorter than 12 characters, the page is off and
@@ -316,7 +319,7 @@ request from another site, so a page elsewhere can neither sign in nor change a 
 ## The admin store
 
 What is set on the admin page is kept in its own file in the server's folder, `admin.json`, never
-in `config.toml`, which stays the owner's file and the level under it:
+in `config.toml`, which stays the operator's file and the level under it:
 
 ```json
 {
@@ -388,8 +391,10 @@ its own browser. The levels, the carry-over of a browser's earlier choices and t
 
 ## Running it
 
-`docker compose up -d` starts the collector and the server together. The README's quick start
-does it from nothing. The server's part of `compose.yaml`:
+`docker compose up -d` starts the collector and the server together, both from the published
+image, `ghcr.io/knightwatcher-io/knightwatcher`, at the release `KW_VERSION` in `.env` names
+(`latest` unless set), or from the image `docker compose build` makes of the checkout under the
+same name. The README's quick start does it from nothing. The server's part of `compose.yaml`:
 
 - the image's `python -m server`, as uid and gid 10001, with a read-only root filesystem, no
   capabilities and `no-new-privileges`;
@@ -434,8 +439,8 @@ unless given, and the providers folder beside it; without the password the admin
 
 **The walls are open on the LAN, with no login.** By default the server is published on every
 address of the host, and anyone who can reach that port can see the display, read `state.json` and
-change the shared settings. The admin page is behind its own password; everything else is not. `state.json` describes the homelab: its containers, its machines, what is being
-watched. That is the owner's call for a home network, and it is the default because a wall
+change the shared settings. The admin page is behind its own password; everything else is not. `state.json` describes the network it watches: its containers, its machines, what is being
+watched. That is the operator's call for a home network, and it is the default because a wall
 display has no keyboard to log in with. Choose it knowingly:
 
 - **Never publish the server to the internet without a login in front of it.** Put it behind your

@@ -111,7 +111,7 @@
       .filter(Boolean).map(v => ({ who: single(v.who || ''), title: single(v.title || '') })).filter(v => v.who || v.title);
     return { n, sessions: list.length ? list : null };
   }
-  /* One stream in words, the i-th of n: "Robin · The Night Shift S02E04 · 1 of 3", with no "1 of 1"
+  /* One stream in words, the i-th of n: "Robin · The Gull Ledger S02E04 · 1 of 3", with no "1 of 1"
      for a single stream; the collector's streams.line(). The name, cut at NAME_MAX, and the count
      stay whole and the title gives way, cut with an ellipsis to fit DETAIL_MAX. */
   function streamLine(s, i, n) {

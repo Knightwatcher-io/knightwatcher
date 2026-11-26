@@ -327,7 +327,7 @@ test('the scenes from the pack: everything a place may show stands wholly on the
   assert.deepEqual(bad, []);
 });
 
-test('the scenes from the pack: no two places draw over each other, but the court\'s owl mark the owner accepted (places.test.js)', () => {
+test('the scenes from the pack: no two places draw over each other, but the court\'s accepted owl mark (places.test.js)', () => {
   const { KW, take, scenes } = loadPlaces(), bad = [];
   for (const [name, sc] of scenes) {
     const boxes = Object.entries(sc.places).map(([p, pl]) => [p, placeBoxes(KW, take, pl)]);

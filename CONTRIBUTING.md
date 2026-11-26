@@ -4,6 +4,9 @@ Contributions of code and art are welcome: fixes, providers for more services, f
 items for the knight, scenes and worlds. For a large change, open an issue first, so that nobody
 spends days on something that cannot be merged.
 
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). A vulnerability is reported
+privately, as [SECURITY.md](SECURITY.md) says, never in an issue.
+
 ## The licences
 
 What you contribute is under the same licence as the part it goes into, the licence everyone
@@ -28,7 +31,12 @@ git commit -s -m "fix(collector): read the pool's state"
 ```
 
 To sign off commits you have already made, `git commit --amend -s` does the last one and
-`git rebase --signoff main` every commit of your branch.
+`git rebase --signoff main` every commit of your branch. A check on every pull request fails while
+any commit in it lacks a `Signed-off-by:` line naming its author.
+
+The history from before the project went public was written by its sole author and predates this
+rule, so only 2 of its first 151 commits carry the line; every contribution from now on is signed
+off.
 
 ## Before you open a pull request
 

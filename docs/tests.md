@@ -10,7 +10,7 @@ out.
 
 | File | Checks |
 |---|---|
-| `tests/web/base-pack.test.js` | the shipped base pack: its contents, the free options, builds and items as approved, and whether it ships signed |
+| `tests/web/base-pack.test.js` | the shipped base pack: its contents, the free options, builds and items as designed, and whether it ships signed |
 | `tests/web/base-read.test.js` | the base pack's whole read, its signed bytes and its stored looks against the copy first stored before format 1.1 |
 | `tests/web/demo-devices.test.js` | the demo's devices: the default set, the Devices row's add, name, remove, up and down, the page's limits of places, the set kept and restored, Reset, `device_down`'s words held to the collector's, the Pi put in for `pi_silent`, `dv=` and the demo loop taking the set's place, nothing sent, and nothing done once the demo has stopped; Under strain's four entries in the collector's words, `mem`, `swap` and `memory_tight` bloated, one shown at a time; `bar=dev`, the Devices row alone, at load or on a change of the hash |
 | `tests/web/ed25519.test.js` | the verifier against RFC 8032's vectors and `node:crypto` |
@@ -33,7 +33,7 @@ out.
 | `tests/web/props.test.js` | the devices inside their places, gone against up, only what moves drawn each frame |
 | `tests/web/scenes.test.js` | every scene's paint and draw against the stored records, from code and from the pack |
 | `tests/web/settings-schema.test.js` | the page's lists of settings, scenes and conditions against the settings schema |
-| `tests/web/settings.test.js` | the settings' levels, storage, look and engine input, the knight in 1 080 looks, and the status page's read-only line on the usage counts |
+| `tests/web/settings.test.js` | the settings' levels, storage, look and engine input, the knight in 1 080 looks, the status page's read-only line on the usage counts, and its source code link |
 | `tests/web/shared-settings.test.js` | the shared settings against a fake server |
 | `tests/web/state.test.js` | reading the state file, against the examples in [state.md](./state.md); Under strain bloated while any machine in `machines` has `memory`, `memory_tight` from a collector from before acted as Under strain on memory, and a check that borrows either never bloated; a generic check acted as the condition it borrows, its words and level its own, a check the page cannot act skipped, and none of the borrowed condition's facts taken (the television, the streams' badge and detail, the pie's dish); `analytics` read as on, off or not known; the display's id made once and kept, replaced when malformed, fresh each load without storage, and posted to `api/displays` at load and every 30 minutes |
 | `tests/web/streams.test.js` | the streams' detail line and badge |
@@ -49,7 +49,7 @@ out.
 | `tests/tools/settings-schema.test.js` | `tools/settings-schema.js` and what it writes |
 | `tests/tools/shot-scale.test.js` | `tools/shot-scale.js` reads, shrinks and writes PNGs the same each time, and `site/img/` holds exactly the pictures of `SITE_SHOTS` |
 | `tests/tools/sign-pack.test.js` | the signing tool, and the shipped packs' signatures |
-| `tests/site/build.test.mjs` | the website's build: every page with its nav and footer and the demo (no `admin/` or `data/`, stamped with the commit, never `dev`, the stamp the same as `server/stamp.py`'s), the home page's demo buttons and highlights, the legal pages against `legal/`, the Web Analytics snippet on every page but the demo and the 404 page, `_headers`, no outside host in the demo, and the local preview |
+| `tests/site/build.test.mjs` | the website's build: every page with its nav and footer and the demo (no `admin/` or `data/`, stamped with the commit, never `dev`, the stamp the same as `server/stamp.py`'s), the home page's demo buttons and highlights, the legal pages against `legal/`, the Web Analytics snippet on every page but the demo and the 404 page, `_headers`, no outside host in the demo but the source link, and the local preview |
 | `tests/site/docs.test.mjs` | the website's docs and Supported Feeds: the docs' index from README.md's Documentation section and the build stopping on a section it cannot read, a page for every doc, a file of `docs/` the list leaves out under More, every link between the site's pages and every anchor landing, every link to the repository naming a file that is there, and the services read from the provider files |
 | `tests/site/markdown.test.mjs` | the markdown renderer of the docs and the legal pages: escaping, links, GitHub's heading ids, nested and numbered lists, tables and their escaped pipes, fenced code, comments left out, and everything outside its subset refused |
 | `tests/site/worker.test.mjs` | the website's Worker, the redirect from `www` and the headers it sets, and `wrangler.jsonc` |
@@ -60,7 +60,7 @@ out.
 | `tests/collector/test_devices.py` | the checks behind devices, against local sockets and a local HTTP server |
 | `tests/collector/test_reload.py` | `admin.json` laid over `config.toml`, the start and reload rules, the credentials' names, the providers folder watched and moved |
 | `tests/collector/test_runner.py` | one poll: the file it writes, the defaults, failing and slow sources, each source's pace; a source replaced or taken away by a change closed, one kept not, and every source closed as the collector stops |
-| `tests/collector/test_schema.py` | the settings schema against the collector, the example files and `compose.yaml` (`KW_ANALYTICS` and the credentials alone in the collector's environment), the providers folder's mount, its `.gitkeep` and its lines in `.gitignore`, and `.dockerignore` letting `collector/`, `server/` and `web/` alone into the image |
+| `tests/collector/test_schema.py` | the settings schema against the collector, the example files and `compose.yaml` (`KW_ANALYTICS` and the credentials alone in the collector's environment, both services on the published image with `build: .` kept), the providers folder's mount, its `.gitkeep` and its lines in `.gitignore`, and `.dockerignore` letting `collector/`, `server/` and `web/` alone into the image |
 | `tests/collector/test_heartbeat.py` | the usage counts, every send to a local fake receiver: the payload's exact fields and the form of each, `check()` refusing each breach of the contract, built-in ids against `custom` for worlds, builds, items, look values and a provider file of the user's own, imports and checks counted and never named, no name, title, address, URL or credential from a config full of them, the household look from the server's `settings.json` over `[look]`, the version stamp, whole days and hours; the install id made once with the notice, kept, and made again when its file is emptied or broken; `KW_ANALYTICS` (only `on`, trimmed and in any case, turns it on; `off`, empty and unset leave it off, and near misses such as `yes` leave it off with a warning), off making no id and no connection; the schedule on a fake clock (at start, every six hours, an hour after a failure, the warning at most once an hour, the 10-second timeout, no send overlapping or holding up a tick); the display count from `displays.json` with ids older than six hours dropped; `analytics` in the state file only when the command line sets it, so the port proof holds; and `--once`, `--check-config`, `--health` and `--probe` never sending while the loop sends at start when the counts are on, and sends nothing with `KW_ANALYTICS` off or unset |
 | `tests/collector/test_sources.py` | each source of its own against invented answers |
 | `tests/collector/test_kinds.py` | the streams, adblock and imports kinds through their built-in providers against invented answers; the streams kind through the plex provider (the order the streams started at each `show`, the token in its header with JSON asked for, nothing playing, a refused token) and through the tracearr provider (the order of the start times at each `show` whatever order Tracearr lists in, the key in the `Authorization` header with JSON asked for, nothing playing, a refused key) and through the jellyfin provider (the order of first sight across reads whatever order Jellyfin lists in, a new stream at the end, an idle session left out, the key in Jellyfin's `Authorization` form with JSON asked for, nothing playing with the playing item left out or `null` and with no session at all, a refused key), its first-seen order from fills (a new stream at the end, keys seen together by number then text, only the keys playing kept, nothing read or kept with `count`, a start order first, nothing of the key in the facts or the memory, one order for each source), and a start time as the order (by its moment, ties by the key); the adblock kind's `recent` mode through the technitium provider (first sight, minutes added as they appear and never twice, a minute left until it has settled, a gap longer than the hour, the rate and the first count from the last day, midnight, a marker of the other mode dropped, a marker that cannot be true, the token in the `Authorization` header, an error and a refused token); the security kind from fills (the counts, the window, a watched jail's ban, new bans by key, one event a read, first sight, a restart, the memory's cap and floor) and from a provider file of a user's own; the fill's checks, and when a source read through a provider starts afresh |
@@ -78,7 +78,7 @@ out.
 | `tests/collector/test_text.py` | clipping, joining and formatting the collector's words |
 | `tests/server/test_server.py` | the bundled server on the loopback |
 | `tests/server/test_displays.py` | `POST /api/displays` and its store: an id recorded, every other body refused with nothing kept or logged, the size, type and origin checks, `POST` alone, the ids never served, at most 1,000 kept with the oldest dropped, the write at most once a minute and at stop |
-| `tests/server/test_admin.py` | the admin page's side of the server, provider files of the user's own in its checks, `[[sources.imports]]` and `[[sources.json]]` given to the page, never set there, checked with every change and kept by the export, its answer and the export included |
+| `tests/server/test_admin.py` | the admin page's side of the server, provider files of the user's own in its checks, `[[sources.imports]]` and `[[sources.json]]` given to the page, never set there, checked with every change and kept by the export, its answer and the export included, and the source code link signed in and out |
 | `tests/server/test_stamp.py` | the version stamp, `server/stamp.py`, against `tools/deploy.sh` |
 | `telemetry/test/payload.test.ts` | the receiver's check of a heartbeat: every field's limits, the row it makes, and the cutoff for rows past 24 months |
 | `telemetry/test/worker.test.ts` | the receiver's handler end to end, against `schema.sql` in `node:sqlite` with a fake rate limiter: each answer, the upsert of a day's row, the delete of rows past 24 months (the cutoff's own day kept, a failed delete still `204`), and the connecting address never stored or logged |
@@ -650,7 +650,7 @@ Every swung weapon meets the goblin as drawn, not as planned. The rule:
 - **On Classic, Broad and Slim alike**, each build struck within 12 ms of Classic's hit, or 16
   with the mace.
 
-The shield is not held to it: it is drawn over the goblin at the hit, as accepted. The crossbow,
+The shield is not held to it: it is drawn over the goblin at the hit, by design. The crossbow,
 which never strikes, must never be drawn on the goblin at all.
 
 `tools/contact-sweep/lib.js` and `measure.js` measure it from the page's own drawing: the knight
@@ -728,10 +728,10 @@ drawing and drawn from code alone from the next frame, a throw in the engine's o
 down to the pack, the world started again with the downloaded packs, and the admin page's scripts
 against the walls'; its signed packs use keys generated for the run too. `tests/web/places.test.js`
 draws whatever may stand in every scene's places and checks that it stays on the 960 by 600 grid
-and that no two places draw over each other, but the court's owls the owner accepted; and draws the
+and that no two places draw over each other, but the court's owls, an accepted overlap; and draws the
 knight, fill by fill, where the smithy's acts stand it (the forge, the water and the bellows, the
 bellows bloated under strain short of memory, and its spot with a device down), holding the places
-it covers to those the owner accepted: `h1` and `h2` at the forge and the bellows, bloated or not,
+it covers to those accepted: `h1` and `h2` at the forge and the bellows, bloated or not,
 `g3` at the water, none at the spot. `tests/web/world-scenes.test.js` runs those checks of
 `foe.test.js` and `places.test.js` that depend on a scene on each scene of the medieval world's pack,
 compiled from it with the goblin from its cast, holds the goblin's plan there to the code scene's
@@ -1035,7 +1035,7 @@ the same answer as this verifier for every signature the tests put to both.
 unsigned copy (the shipped file with any `sig` taken off) is read on a `dev` page and refused at
 the `signature` step otherwise; the file as it ships is read on every page when it carries a
 signature, and on a `dev` page alone when it does not. It also checks the three builds as
-approved in `fixtures/base-builds.json`, with their names, Classic the present measurements, every
+recorded in `fixtures/base-builds.json`, with their names, Classic the present measurements, every
 head 51, every torso within the rule and every measurement at least 6 from the ends of its range;
 one item for each slot the present drawing has, the arming sword and the heater shield, the six
 hair styles, the free items of 1.4.0 after the 15 of 1.3.0, then the crossbow of 1.5.0 and the
@@ -1046,7 +1046,7 @@ swatch equal to the fixture's, to `fixtures/base-builds.json` for the three item
 builds, to `fixtures/base-onehand.items.json` for the one-handed items, to
 `fixtures/base-options.json` for the free options and the tied hair, curls and buzzcut of 1.6.0, to `fixtures/base-free-items.json` for the free items, the long and close hair
 of 1.6.0 among them, or to `fixtures/base-crossbow.json` for the crossbow (named "Crossbow" and with no flash
-of its own, the approved flash being the engine's pale snap), with the iris of the shield, worn and at rest, on `@tabard.3` and no `@base.b3` left; a
+of its own, its flash being the engine's pale snap), with the iris of the shield, worn and at rest, on `@tabard.3` and no `@base.b3` left; a
 default look that resolves with nothing missing at a cost of 14 225 and 121 shapes, and each build
 likewise; the look with the sword and shield resolving with nothing missing, one-handed, at 141
 shapes; every one of the 31 104 combinations of build, skin, hair colour, the first three hair

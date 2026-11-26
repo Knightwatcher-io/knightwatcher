@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not work as the documentation says it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report. Please remove every credential, token, address and name from your own network before you post anything here. A security problem goes to the [security policy](https://github.com/knightwatcher-io/knightwatcher/security/policy) instead, never to a public issue.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: What you did, and what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The image's tag, such as 0.1.0, or the commit you built from. The display's settings screen shows the page's version under Status.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host OS and Docker version
+      description: The output of `uname -sr` and `docker version --format '{{.Server.Version}}'`, for example.
+      placeholder: Ubuntu 24.04, Linux 6.8, Docker 28.1.1
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser on the display
+      description: The browser and device that show the page, if the problem is on the display.
+      placeholder: Fully Kiosk Browser on an Android tablet
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant collector log lines
+      description: From `docker compose logs collector`, with every credential removed. They are formatted as code.
+      render: text

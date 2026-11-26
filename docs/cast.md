@@ -105,8 +105,7 @@ so the code's goblin and the pack's never share one. `exit` names one of the eng
 engine has it and by the event's otherwise, so a world chooses an exit and never describes one.
 The code's goblin gives `exit: 'poof'` too.
 
-**The goblin as data.** Since `kw.medieval` 0.9.0 the goblin is the pot-thief, which the owner chose
-on 25 November 2026 from a mock-up of three designs: a stocky, cheeky goblin with long pointed ears,
+**The goblin as data.** Since `kw.medieval` 0.9.0 the goblin is the pot-thief: a stocky, cheeky goblin with long pointed ears,
 a big hooked nose with a wart, two small tusks up from an underbite, beady black eyes in shaded
 sockets, a ragged leather tunic with a jagged hem, a stitched seam, a patch and a tear, a belt
 with a gold buckle, leather wraps at the wrists and ankles, three-toed feet, the dented saucepan
@@ -152,13 +151,13 @@ Four things needed more than writing the numbers out:
   light along each ear's upper edge ends at an eighth too. Two of the sack's weave lines, at 42.45
   and 47.55 across, are given the eighths that fill the same pixels with the goblin at its feet,
   where it is always painted;
-- the mock-up's ears dipped a little along their upper edge, which is not convex, and a pack's
-  polygon must be; each ear and its outline are drawn as their hull, a triangle, in code and pack
+- an ear that dips a little along its upper edge is not convex, and a pack's polygon must be;
+  each ear and its outline are drawn as their hull, a triangle, in code and pack
   alike;
 - with the knight at its nearest on the battlement, the hands flung up as it is struck and its ears
   lowered by 18 met the greatsword's and the longsword's cross in the bounce, past the contact
-  standard ([tests.md](./tests.md#the-contact-standard)); the flung hands stand 4 nearer the body
-  and 4 higher than the mock-up's, and the struck ears droop by 14, as in the brace.
+  standard ([tests.md](./tests.md#the-contact-standard)), so the flung hands stand 4 nearer the body
+  and 4 higher than they were first drawn, and the struck ears droop by 14, as in the brace.
 
 Before 0.9.0 the goblin was 160 tall in a patched sackcloth tunic and a rope belt, in a sprite of
 220 by 230, with ten parts and a crown of 24 points picked by hand.
@@ -382,17 +381,17 @@ things needed more than that:
   shapes;
 - the crystal's claws are strips whose outlines, at 1.85 times, no eighths fill alike. They are
   drawn at the nearest eighths, `[3.5, 2]` for the outline and `[2.25, 0.875]` for the gilt, in
-  code and in the pack alike, which leaves each claw's outline 2 pixels from the mock-up's.
+  code and in the pack alike, which leaves each claw's outline 2 pixels from the claw as first drawn.
 
-Until 16 November 2026 the devices were drawn as the devices they are: a bullet camera, a tower
+The devices were first drawn as the devices they are: a bullet camera, a tower
 case, the same case in 88 dots for a virtual machine (in six stamps, past the 128 shapes a part may
-hold), and a grey box. The owner chose the medieval things in their place. On 17 November 2026 the
-owner chose the redesign: the cauldron gave way to the scrying crystal, the crystal and the chest
+hold), and a grey box. The medieval things took their place, and a redesign followed: the cauldron
+gave way to the scrying crystal, the crystal and the chest
 were drawn at twice their size and the flask at 1.4 times, the ground class's box grew from
 `[-36, -58, 41, 2]` to `[-66, -93, 56, 2]` and a ground place from 88 to 132 wide, and the lights
 took colours of their own, none green. The chest's `mark` is 158, past the 128 a mark could be,
-so a mark may now be up to 160. On 25 November 2026 the owner gave each ground device a resting
-place (the stool, the satchel, the mat) and a shadow; the stool raised the crystal past the ground
+so a mark may now be up to 160. Each ground device then gained a resting place (the stool, the
+satchel, the mat) and a shadow; the stool raised the crystal past the ground
 box, so format 1.4 grew it to `[-66, -117, 56, 2]`, and the chest on its mat raised its `mark` to
 163, so a mark may be up to 184.
 

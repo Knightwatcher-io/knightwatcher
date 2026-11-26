@@ -51,7 +51,7 @@ page reads it only when it carries a signature that verifies against a key in `K
 Each scene of `kw.medieval` whose id names a code scene (today every scene) is compiled and takes that scene's place in `KW.scenes`. It is also put under its long name, `kw.medieval/cellar`,
 which is not enumerable, so the engine and the settings, which list the base world's scenes by
 their short names, see the same seven scenes as before. The code scenes stay where they
-are, in `js/scenes/`, and are the fallback: the owner decided that the medieval world keeps a copy
+are, in `js/scenes/`, and are the fallback: the medieval world keeps a copy
 drawn from code, as the knight does.
 
 A scene is drawn from code when:
@@ -161,8 +161,8 @@ monarchs from the pack ([display.md](./display.md#the-admin-page)).
 
 A compiled part should never throw while it is drawn: the checks and the compiler see to that. One
 that does anyway is caught for that frame, and from the next frame that part alone is drawn from
-its code copy, while the rest of the pack stays in use, as when a part fails to compile. The owner
-decided this, a part at a time rather than the whole pack. It mirrors rule 4 of the knight's
+its code copy, while the rest of the pack stays in use, as when a part fails to compile. The fallback
+is a part at a time rather than the whole pack. It mirrors rule 4 of the knight's
 ([library.md](./library.md#when-packs-fail)):
 
 | Part | Caught in | From the next frame | The line in the console (`console.warn`) |
@@ -217,7 +217,7 @@ load, with `KW.knight.fetchPacks(fetch)`, and hands them to `KW.knight.add()`
 `KW.world.start(KW.packText.concat(<the downloaded texts>), ownVersion === 'dev')`, with every
 text, those the page ships with first, and then sets the overlay's properties again (taking off
 any the overlay no longer sets), chooses each kind's prop set again and paints its backdrops again.
-The owner decided on the switch at once, rather than at the next scene or by holding the first
+The switch is at once, rather than at the next scene or by holding the first
 frame. Only a fetch that brought nothing, or refusals alone, leaves the world as it started.
 
 The same rules hold as for the packs that ship with the page:

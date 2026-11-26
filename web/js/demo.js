@@ -43,9 +43,9 @@
      3 without it) and sm= the collector's setting show (names, titles or count, names without
      it). */
   const STREAMS = [
-    { who: 'Robin', title: 'The Lantern Keepers S01E03' },
+    { who: 'Robin', title: 'The Saltmarsh Bells S01E03' },
     { who: 'Sam', title: 'Harbour of Glass' },
-    { who: 'Alex', title: 'Fen Owls - Low Tide' } ];
+    { who: 'Alex', title: 'Fen Owls - Reedsong' } ];
   const SHOWS = ['names', 'titles', 'count'];
   /* facts.streams as the collector writes it for n of the streams under the setting show. */
   function streamsFor(n, show) {

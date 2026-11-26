@@ -113,11 +113,13 @@ class SchemaShapeTest(unittest.TestCase):
                         self.assertIn(s["page_default"], allowed, where)
         for e in S["env"]:
             self.assertLessEqual(set(e), ENV_FIELDS, e["name"])
-            self.assertIn(e["scope"], ("credential", "path", "server", "collector"), e["name"])
+            self.assertIn(
+                e["scope"], ("credential", "path", "server", "collector", "image"), e["name"]
+            )
             self.assertLessEqual(set(e.get("services", ["collector"])), set(SERVICES), e["name"])
             if e["scope"] == "credential":
                 self.assertEqual(e.get("services", ["collector"]), ["collector"], e["name"])
-            if e["scope"] in ("server", "collector"):
+            if e["scope"] in ("server", "collector", "image"):
                 self.assertTrue(e["form"] and isinstance(e["default"], str), e["name"])
             if e["scope"] == "collector":
                 self.assertEqual(e["services"], ["collector"], e["name"])
@@ -376,6 +378,19 @@ class TemplatesAgreeTest(unittest.TestCase):
                 default = re.search(r"\$\{" + e["name"] + r":-([^}]*)\}", volumes)
                 if not e["required"]:
                     self.assertEqual(default.group(1), e["default"], f"{name}: {e['name']}")
+
+    def test_both_services_run_the_published_image_and_can_build_it(self):
+        # One image for both, at the release KW_VERSION names, and build: . for a checkout.
+        version = next(e for e in S["env"] if e["name"] == "KW_VERSION")
+        self.assertEqual(version["scope"], "image")
+        self.assertEqual(sorted(version["services"]), sorted(SERVICES))
+        line = "    image: ghcr.io/knightwatcher-io/knightwatcher:${KW_VERSION:-latest}"
+        self.assertEqual(version["default"], "latest")
+        for name, block in services(compose_text()).items():
+            lines = block.splitlines()
+            self.assertIn(line, lines, name)
+            self.assertIn("    build: .", lines, name)
+            self.assertEqual(sum(ln.startswith("    image:") for ln in lines), 1, name)
 
     def test_the_server_gets_the_admin_password_alone_from_env(self):
         server = services(compose_text())["server"]

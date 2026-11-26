@@ -568,7 +568,7 @@ class StreamsShowTest(unittest.TestCase):
             "session_key": "9",
             "user": "Sam",
             "media_type": "episode",
-            "grandparent_title": "The Lantern Keepers",
+            "grandparent_title": "The Saltmarsh Bells",
             "parent_media_index": "1",
             "media_index": "3",
         },
@@ -621,7 +621,7 @@ class StreamsShowTest(unittest.TestCase):
             state["facts"]["streams"]["sessions"],
             [
                 {"who": "Robin", "title": "Harbour of Glass"},
-                {"who": "Sam", "title": "The Lantern Keepers S01E03"},
+                {"who": "Sam", "title": "The Saltmarsh Bells S01E03"},
             ],
         )
         # Tautulli stops answering as the setting changes: the condition is held on its last words
@@ -639,10 +639,10 @@ class StreamsShowTest(unittest.TestCase):
             state["facts"]["streams"],
             {
                 "count": 2,
-                "titles": ["Harbour of Glass", "The Lantern Keepers S01E03"],
+                "titles": ["Harbour of Glass", "The Saltmarsh Bells S01E03"],
                 "sessions": [
                     {"title": "Harbour of Glass"},
-                    {"title": "The Lantern Keepers S01E03"},
+                    {"title": "The Saltmarsh Bells S01E03"},
                 ],
             },
         )
@@ -651,7 +651,7 @@ class StreamsShowTest(unittest.TestCase):
         state, written = self.poll("count")
         self.assertEqual(state["facts"]["streams"], {"count": 2})
         self.assertEqual(state["conditions"][0]["detail"], "2 streams")
-        for held in ("Robin", "Sam", "Harbour", "Lantern"):
+        for held in ("Robin", "Sam", "Harbour", "Saltmarsh"):
             self.assertNotIn(held, written)
 
 
