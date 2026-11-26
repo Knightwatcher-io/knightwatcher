@@ -1,6 +1,6 @@
 name: Provider request
 description: A service the collector should read, through a built-in provider.
-labels: ["enhancement"]
+labels: ["provider request", "needs-triage"]
 body:
   - type: markdown
     attributes:

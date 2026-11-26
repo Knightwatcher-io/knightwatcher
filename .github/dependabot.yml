@@ -1,5 +1,9 @@
-# Weekly update checks, a few pull requests at a time. The sign-off check (workflows/dco.yml)
-# passes over commits made by GitHub's own bots, Dependabot among them.
+# Weekly update checks, a few pull requests at a time. The minor and patch updates of each
+# ecosystem come together in one pull request, and a major update in one of its own. The commit
+# messages are Conventional Commits (ci: for the actions, build: for pip and the base image,
+# chore: for the receiver's npm packages), and every pull request is labelled dependencies. The
+# sign-off check (workflows/dco.yml) passes over commits made by GitHub's own bots, Dependabot
+# among them.
 version: 2
 updates:
   # pyproject.toml at the root: the collector and the server use the standard library alone.
@@ -8,6 +12,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "build"
+    groups:
+      pip-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # The usage counts' receiver.
   - package-ecosystem: "npm"
@@ -15,6 +26,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "chore"
+    groups:
+      npm-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # The Dockerfile's base image.
   - package-ecosystem: "docker"
@@ -22,6 +40,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "build"
+    groups:
+      docker-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # The workflows' actions, pinned to commit SHAs.
   - package-ecosystem: "github-actions"
@@ -29,3 +54,10 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "ci"
+    groups:
+      github-actions-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

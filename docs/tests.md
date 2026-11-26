@@ -44,6 +44,7 @@ out.
 | `tests/web/worlds.test.js` | worlds as presets, the catalogue, the resolution rule and the devices per kind |
 | `tests/tools/cat-stamps.test.js` | the medieval world's pack holds what `tools/cat-stamps.js` writes, pixel for pixel |
 | `tests/tools/check-private.test.js` | `tools/check-private.sh` in a small repository made for the run: clean, a match, no patterns, and a pattern `git grep` cannot read |
+| `tests/tools/check.test.js` | `tools/check.sh` refuses an argument it does not take; the CI workflow runs every subset but `all` and `private` through it and never the private check, and `CI gate` needs every other job |
 | `tests/tools/deploy.test.js` | `tools/deploy.sh` run on temporary folders and copies of `web/` |
 | `tests/tools/pack-carrier.test.js` | each carrier pushes its pack file's exact text |
 | `tests/tools/settings-schema.test.js` | `tools/settings-schema.js` and what it writes |

@@ -1,6 +1,6 @@
 name: Feature request
 description: Something new for the knight, the collector, the server or the admin page.
-labels: ["enhancement"]
+labels: ["enhancement", "needs-triage"]
 body:
   - type: markdown
     attributes:

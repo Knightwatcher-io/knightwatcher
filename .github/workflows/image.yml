@@ -1,8 +1,8 @@
 # The published image: the collector and the bundled server, built from the Dockerfile for amd64
 # and arm64 and pushed to ghcr.io/knightwatcher-io/knightwatcher when a release tag vX.Y.Z is
-# pushed, tagged X.Y.Z, X.Y and latest. A manual run builds the tag it is run on, chosen under
-# "Use workflow from". docs/development.md describes a release. Every action is pinned to a full
-# commit SHA.
+# pushed, tagged X.Y.Z, X.Y and latest. The run then makes the tag's GitHub Release, unless the
+# tag has one already. A manual run builds the tag it is run on, chosen under "Use workflow from".
+# docs/development.md describes a release. Every action is pinned to a full commit SHA.
 name: Image
 
 on:
@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   IMAGE: ghcr.io/knightwatcher-io/knightwatcher
@@ -22,6 +21,10 @@ jobs:
   image:
     name: Build and push
     runs-on: ubuntu-latest
+    # packages: write pushes the image; contents: write makes the release.
+    permissions:
+      contents: write
+      packages: write
     steps:
       - name: Check out the tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -87,6 +90,7 @@ jobs:
             org.opencontainers.image.url=https://knightwatcher.io/
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -95,3 +99,33 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
+
+      # The release's notes: a few lines naming the image and its digest, then the notes GitHub
+      # writes from the pull requests and commits since the last release, which it puts after any
+      # notes it is given. A pre-release tag such as v0.2.0-rc.1 makes a pre-release. A tag that
+      # has a release already (made by hand, or by an earlier run) keeps it as it is.
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "$GITHUB_REF_NAME has a release already"
+            exit 0
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          notes="$RUNNER_TEMP/release-notes.md"
+          {
+            echo "The image, for linux/amd64 and linux/arm64:"
+            echo
+            echo '```'
+            echo "docker pull $IMAGE:$version"
+            echo '```'
+            echo
+            echo "Its digest is \`$DIGEST\`."
+          } > "$notes"
+          prerelease=()
+          if [[ "$version" == *-* ]]; then prerelease=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --notes-file "$notes" "${prerelease[@]}"
