@@ -75,11 +75,11 @@ THREE = [
         "session_key": "7",
         "friendly_name": "Robin",
         "media_type": "episode",
-        "grandparent_title": "The Lantern Keepers",
+        "grandparent_title": "The Saltmarsh Bells",
         "parent_media_index": "1",
         "media_index": "3",
         "title": "The Tide Bell",
-        "full_title": "The Lantern Keepers - The Tide Bell",
+        "full_title": "The Saltmarsh Bells - The Tide Bell",
     },
     {
         "session_key": "30",
@@ -87,7 +87,7 @@ THREE = [
         "user": "alex",
         "media_type": "track",
         "grandparent_title": "Fen Owls",
-        "title": "Low Tide",
+        "title": "Reedsong",
     },
 ]
 
@@ -96,9 +96,9 @@ VARIED = [
     {"session_key": "41", "friendly_name": " \t", "user": "Robin", "media_type": "movie",
      "title": "Harbour‮ of\tGlass\r\n"},
     {"session_key": 9, "friendly_name": None, "username": "sam_k", "media_type": "episode",
-     "grandparent_title": "The Lantern Keepers", "parent_media_index": 2, "media_index": 11},
+     "grandparent_title": "The Saltmarsh Bells", "parent_media_index": 2, "media_index": 11},
     {"session_key": "3", "friendly_name": 7, "user": "", "username": "alex",
-     "media_type": "episode", "grandparent_title": "The Lantern Keepers"},
+     "media_type": "episode", "grandparent_title": "The Saltmarsh Bells"},
     {"session_key": "5", "friendly_name": "Alex", "media_type": "episode",
      "parent_media_index": "4", "media_index": "1", "full_title": "Unused"},
     {"session_key": "6", "friendly_name": "The Whole\x00 Family\nDownstairs",
@@ -106,12 +106,12 @@ VARIED = [
     {"session_key": "8", "media_type": "episode", "parent_media_index": "x",
      "media_index": "2", "grandparent_title": "Brine"},
     {"session_key": "2", "user": "Sam", "media_type": "track", "grandparent_title": "Fen Owls"},
-    {"session_key": "4", "user": "Robin", "media_type": "track", "title": "Low Tide"},
+    {"session_key": "4", "user": "Robin", "media_type": "track", "title": "Reedsong"},
     {"session_key": "10", "user": "Alex", "media_type": "track"},
     {"session_key": "abc", "friendly_name": "Sam", "media_type": "movie",
      "full_title": "A Film Seen Whole"},
     {"friendly_name": "Robin", "media_type": "clip"},
-    {"session_key": "0", "friendly_name": "Robin", "media_type": "photo", "title": 1917},
+    {"session_key": "0", "friendly_name": "Robin", "media_type": "photo", "title": 4417},
     {"session_key": "13", "friendly_name": "A Name Far Too Long For The Wall",
      "media_type": "movie", "title": "A Very Long Title " * 6},
     {"session_key": "", "friendly_name": "Alex", "title": "No Kind Given"},
@@ -249,9 +249,9 @@ def history(records):
     return (200, {"page": 1, "pageSize": 10, "totalRecords": len(records), "records": records})
 
 
-def episode(rid, series="The Lantern Keepers", season=1, number=3, source=None):
+def episode(rid, series="The Saltmarsh Bells", season=1, number=3, source=None):
     record = {"id": rid, "eventType": "downloadFolderImported"}
-    record["sourceTitle"] = source or f"The.Lantern.Keepers.S{season}E{number}.1080p"
+    record["sourceTitle"] = source or f"The.Saltmarsh.Bells.S{season}E{number}.1080p"
     if series is not None:
         record["series"] = {"title": series}
     record["episode"] = {"seasonNumber": season, "episodeNumber": number}
@@ -301,7 +301,7 @@ def sonarr_polls() -> list[dict]:
         {"at": 0, "routes": {route: history([episode(10), episode(9, number=2)])}},
         {"at": 30, "routes": {route: history([episode(10), episode(9, number=2)])}},
         {"at": 60, "routes": {route: history([episode(12, number=5),
-                                               episode(11, source="The.Lantern.Keepers.S01E04"),
+                                               episode(11, source="The.Saltmarsh.Bells.S01E04"),
                                                episode(10)])}},
         {"at": 90, "routes": {route: history(SONARR_VARIED)}},
         {"at": 120, "routes": {route: history([])}},
@@ -325,7 +325,7 @@ def radarr_polls() -> list[dict]:
         {"at": 30, "routes": {route: history([film(1)])}},
         {"at": 60, "routes": {route: history([*RADARR_VARIED, film(1)])}},
         {"at": 90, "routes": {route: history([film(12, title="Harbour of Glass", year=2024),
-                                               film(10, title="Low Tide", year=2021)])}},
+                                               film(10, title="Reedsong", year=2021)])}},
         {"at": 120, "routes": {route: (403, {"error": "forbidden"})}},
     ]  # fmt: skip
 

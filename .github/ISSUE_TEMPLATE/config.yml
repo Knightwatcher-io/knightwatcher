@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://knightwatcher.io/docs/
+    about: Installing, configuring and running Knightwatcher, and making packs.
+  - name: Report a vulnerability
+    url: https://github.com/knightwatcher-io/knightwatcher/security/policy
+    about: Report a security problem privately, never in a public issue.

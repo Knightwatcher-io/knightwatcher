@@ -1,7 +1,6 @@
 # Security
 
-This repository is private and may become public. Everything in it, and every commit in its
-history, is written as though it already were.
+This repository is public: anyone can read everything in it, and every commit in its history.
 
 ## What never enters the repository
 

@@ -470,7 +470,7 @@ if (MODE === 'write') {
     assert.deepEqual(partedAlike(['a', 'b', 'c'], ['x', 'y', 'x']), [0, 2]);
   });
 
-  test('the states cover what the brief of the conversion asks', () => {
+  test('the states cover every condition each scene acts, its idle, the monarchs and every place', () => {
     const { KW } = load(SRC), names = n => statesOf(KW, SRC.pack, n).map(([l]) => l);
     // every condition each scene can act out but a retired one (memory_tight), which the page never
     // acts on its own, Under strain short of memory too, and its idle

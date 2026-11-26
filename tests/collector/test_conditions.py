@@ -736,8 +736,8 @@ class EachConditionTest(unittest.TestCase):
             streams=Reading(
                 {
                     "count": 1,
-                    "titles": ["The Night Shift S02E04"],
-                    "sessions": [{"title": "The Night Shift S02E04"}],
+                    "titles": ["The Gull Ledger S02E04"],
+                    "sessions": [{"title": "The Gull Ledger S02E04"}],
                 }
             ),
         )
@@ -745,7 +745,7 @@ class EachConditionTest(unittest.TestCase):
         self.assertEqual(out[0]["detail"], "1 ssh session from 192.0.2.10")
         self.assertEqual(out[0]["level"], "work")
         self.assertEqual(out[1]["detail"], "nightly maintenance running for 0 s")
-        self.assertEqual(out[2]["detail"], "The Night Shift S02E04")
+        self.assertEqual(out[2]["detail"], "The Gull Ledger S02E04")
         self.assertEqual(out[2]["level"], "quiet")
 
     def test_two_streams(self):
@@ -1264,11 +1264,11 @@ class StreamWordsTest(unittest.TestCase):
     KEY: ClassVar[dict] = {"KW_TAUTULLI_API_KEY": "tk-example"}
     FACTS: ClassVar[dict] = {
         "count": 3,
-        "titles": ["The Lantern Keepers S01E03", "Harbour of Glass", "Fen Owls - Low Tide"],
+        "titles": ["The Saltmarsh Bells S01E03", "Harbour of Glass", "Fen Owls - Reedsong"],
         "sessions": [
-            {"who": "Robin", "title": "The Lantern Keepers S01E03"},
+            {"who": "Robin", "title": "The Saltmarsh Bells S01E03"},
             {"who": "Sam", "title": "Harbour of Glass"},
-            {"who": "Alex", "title": "Fen Owls - Low Tide"},
+            {"who": "Alex", "title": "Fen Owls - Reedsong"},
         ],
     }
 
@@ -1281,10 +1281,10 @@ class StreamWordsTest(unittest.TestCase):
         return c.evaluate({"streams": Reading(facts)}, T0)[0]["detail"]
 
     def test_names_titles_and_count(self):
-        self.assertEqual(self.detail(self.FACTS), "Robin · The Lantern Keepers S01E03 · 1 of 3")
+        self.assertEqual(self.detail(self.FACTS), "Robin · The Saltmarsh Bells S01E03 · 1 of 3")
         self.assertEqual(
             self.detail(streams_source.shown(self.FACTS, "titles")),
-            "The Lantern Keepers S01E03 · 1 of 3",
+            "The Saltmarsh Bells S01E03 · 1 of 3",
         )
         self.assertEqual(self.detail(streams_source.shown(self.FACTS, "count")), "3 streams")
         one = {"count": 1, "titles": ["Harbour of Glass"], "sessions": [self.FACTS["sessions"][1]]}
@@ -1297,12 +1297,12 @@ class StreamWordsTest(unittest.TestCase):
     def test_held_words_follow_a_change_of_the_setting(self):
         c = Conditions(self.config("names"))
         out = c.evaluate({"streams": Reading(self.FACTS)}, T0)
-        self.assertEqual(out[0]["detail"], "Robin · The Lantern Keepers S01E03 · 1 of 3")
+        self.assertEqual(out[0]["detail"], "Robin · The Saltmarsh Bells S01E03 · 1 of 3")
         # the source restarts on the change and has no reading yet: the words are held
         c.reconfigure(self.config("titles"))
         out = c.evaluate({}, at(10))
         self.assertEqual(ids(out), ["streaming"])
-        self.assertEqual(out[0]["detail"], "The Lantern Keepers S01E03 · 1 of 3")
+        self.assertEqual(out[0]["detail"], "The Saltmarsh Bells S01E03 · 1 of 3")
         c.reconfigure(self.config("count"))
         out = c.evaluate({}, at(20))
         self.assertEqual(out[0]["detail"], "3 streams")

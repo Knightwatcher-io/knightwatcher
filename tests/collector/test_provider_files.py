@@ -66,8 +66,8 @@ BROKEN = MYFLIX.replace('path = "/api/sessions"', 'path = "api/sessions"')
 REPLY = {
     "total": 2,
     "sessions": [
-        {"id": 7, "title": "The Night Shift", "user": "Robin"},
-        {"id": 9, "title": "Harbour Lights", "user": "Sam"},
+        {"id": 7, "title": "The Gull Ledger", "user": "Robin"},
+        {"id": 9, "title": "Quayside Lamps", "user": "Sam"},
     ],
 }
 
@@ -341,7 +341,7 @@ class ReadTest(Folder):
         self.assertEqual(reading.facts["count"], 2)
         self.assertEqual(
             [(s["title"], s["who"]) for s in reading.facts["sessions"]],
-            [("The Night Shift", "Robin"), ("Harbour Lights", "Sam")],
+            [("The Gull Ledger", "Robin"), ("Quayside Lamps", "Sam")],
         )
         path, headers = self.http.requests[-1]
         self.assertEqual(path, "/api/sessions?limit=20&mode=live")

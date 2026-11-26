@@ -1,0 +1,31 @@
+# Weekly update checks, a few pull requests at a time. The sign-off check (workflows/dco.yml)
+# passes over commits made by GitHub's own bots, Dependabot among them.
+version: 2
+updates:
+  # pyproject.toml at the root: the collector and the server use the standard library alone.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+
+  # The usage counts' receiver.
+  - package-ecosystem: "npm"
+    directory: "/telemetry"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+
+  # The Dockerfile's base image.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+
+  # The workflows' actions, pinned to commit SHAs.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3

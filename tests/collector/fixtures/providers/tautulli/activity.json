@@ -27,11 +27,11 @@
          "friendly_name": "Robin",
          "user": "robin.k",
          "username": "robink",
-         "grandparent_title": "The Lantern Keepers",
+         "grandparent_title": "The Saltmarsh Bells",
          "parent_media_index": "1",
          "media_index": "3",
          "title": "The Tide Bell",
-         "full_title": "The Lantern Keepers - The Tide Bell",
+         "full_title": "The Saltmarsh Bells - The Tide Bell",
          "year": "2024",
          "player": "Lounge TV",
          "state": "playing",
@@ -60,9 +60,9 @@
          "user": "alex",
          "username": "alexr",
          "grandparent_title": "Fen Owls",
-         "parent_title": "Night Lines",
-         "title": "Low Tide",
-         "full_title": "Fen Owls - Low Tide",
+         "parent_title": "Night Rooks",
+         "title": "Reedsong",
+         "full_title": "Fen Owls - Reedsong",
          "player": "Kitchen speaker",
          "state": "playing"
         }
@@ -78,7 +78,7 @@
    "count": 3,
    "sessions": [
     {
-     "title": "The Lantern Keepers S01E03",
+     "title": "The Saltmarsh Bells S01E03",
      "who": "Robin",
      "order": "21"
     },
@@ -88,7 +88,7 @@
      "order": "19"
     },
     {
-     "title": "Fen Owls - Low Tide",
+     "title": "Fen Owls - Reedsong",
      "who": "alex",
      "order": "24"
     }
@@ -98,7 +98,7 @@
    "count": 3,
    "sessions": [
     {
-     "title": "The Lantern Keepers S01E03",
+     "title": "The Saltmarsh Bells S01E03",
      "order": "21"
     },
     {
@@ -106,7 +106,7 @@
      "order": "19"
     },
     {
-     "title": "Fen Owls - Low Tide",
+     "title": "Fen Owls - Reedsong",
      "order": "24"
     }
    ]

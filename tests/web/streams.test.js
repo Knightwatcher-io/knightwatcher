@@ -24,25 +24,25 @@ function file(conditions, streams) {
 }
 const THREE = {
   count: 3,
-  titles: ['The Lantern Keepers S01E03', 'Harbour of Glass', 'Fen Owls - Low Tide'],
-  sessions: [{ who: 'Robin', title: 'The Lantern Keepers S01E03' }, { who: 'Sam', title: 'Harbour of Glass' }, { who: 'Alex', title: 'Fen Owls - Low Tide' }] };
-const STREAMING = cond('streaming', 'quiet', 'STREAMING', 'Robin · The Lantern Keepers S01E03 · 1 of 3');
+  titles: ['The Saltmarsh Bells S01E03', 'Harbour of Glass', 'Fen Owls - Reedsong'],
+  sessions: [{ who: 'Robin', title: 'The Saltmarsh Bells S01E03' }, { who: 'Sam', title: 'Harbour of Glass' }, { who: 'Alex', title: 'Fen Owls - Reedsong' }] };
+const STREAMING = cond('streaming', 'quiet', 'STREAMING', 'Robin · The Saltmarsh Bells S01E03 · 1 of 3');
 
 test('the line takes each stream in turn, eight seconds each, by the clock alone', () => {
   const v = ST.streamsOf(THREE), line = t => ST.streamWords(v, t).line;
   assert.equal(ST.STREAM_MS, 8000);
-  assert.equal(line(0), 'Robin · The Lantern Keepers S01E03 · 1 of 3');
-  assert.equal(line(2300), 'Robin · The Lantern Keepers S01E03 · 1 of 3');
-  assert.equal(line(7999), 'Robin · The Lantern Keepers S01E03 · 1 of 3');
+  assert.equal(line(0), 'Robin · The Saltmarsh Bells S01E03 · 1 of 3');
+  assert.equal(line(2300), 'Robin · The Saltmarsh Bells S01E03 · 1 of 3');
+  assert.equal(line(7999), 'Robin · The Saltmarsh Bells S01E03 · 1 of 3');
   assert.equal(line(8000), 'Sam · Harbour of Glass · 2 of 3');
   assert.equal(line(10300), 'Sam · Harbour of Glass · 2 of 3');
-  assert.equal(line(16000), 'Alex · Fen Owls - Low Tide · 3 of 3');
+  assert.equal(line(16000), 'Alex · Fen Owls - Reedsong · 3 of 3');
   assert.equal(line(24000), line(0));
   // the wall clock, as a display shows it: the same moment gives the same stream on every display
   const now = Date.UTC(2026, 0, 15, 21, 42, 12);
-  assert.equal(line(now), ['Robin · The Lantern Keepers S01E03 · 1 of 3', 'Sam · Harbour of Glass · 2 of 3', 'Alex · Fen Owls - Low Tide · 3 of 3'][Math.floor(now / 8000) % 3]);
+  assert.equal(line(now), ['Robin · The Saltmarsh Bells S01E03 · 1 of 3', 'Sam · Harbour of Glass · 2 of 3', 'Alex · Fen Owls - Reedsong · 3 of 3'][Math.floor(now / 8000) % 3]);
   // a time before the epoch still picks a stream
-  assert.equal(line(-1), 'Alex · Fen Owls - Low Tide · 3 of 3');
+  assert.equal(line(-1), 'Alex · Fen Owls - Reedsong · 3 of 3');
   // the order is the collector's, whatever the count says
   assert.equal(ST.streamWords(ST.streamsOf(Object.assign({}, THREE, { count: 5 })), 8000).line, 'Sam · Harbour of Glass · 2 of 3');
 });
@@ -82,7 +82,7 @@ test('the page words the streams as the collector does', t => {
   if (!python) { t.skip('python3 is not on the path'); return; }
   const title = 'An Extraordinarily Long Film Title: The Sequel to the Sequel';
   const cases = [
-    [{ who: 'Robin', title: 'The Lantern Keepers S01E03' }, 1, 3], [{ who: 'Robin', title: 'Harbour of Glass' }, 1, 1],
+    [{ who: 'Robin', title: 'The Saltmarsh Bells S01E03' }, 1, 3], [{ who: 'Robin', title: 'Harbour of Glass' }, 1, 1],
     [{ title: 'Harbour of Glass' }, 2, 3], [{ who: 'Sam' }, 2, 2], [{ who: 'Robin', title }, 2, 3],
     [{ who: 'A Name Far Too Long', title }, 12, 12], [{ title: title + ' and More' }, 1, 1], [{ who: 'Alex', title: '🎬'.repeat(70) }, 3, 4],
     [{ who: 'Sam', title: 'x'.repeat(44) }, 30, 32]];
@@ -175,9 +175,9 @@ test('the demo\'s invented streams, as the collector would send them in each mod
   assert.deepEqual(plain(D.streamsFor(2, 'titles')), { count: 2, titles: THREE.titles.slice(0, 2), sessions: [{ title: THREE.titles[0] }, { title: THREE.titles[1] }] });
   assert.deepEqual(plain(D.streamsFor(3, 'count')), { count: 3 });
   // the detail the collector would write, which a page shows without sessions
-  assert.equal(D.detailFor(D.streamsFor(3, 'names')), 'Robin · The Lantern Keepers S01E03 · 1 of 3');
-  assert.equal(D.detailFor(D.streamsFor(1, 'names')), 'Robin · The Lantern Keepers S01E03');
-  assert.equal(D.detailFor(D.streamsFor(3, 'titles')), 'The Lantern Keepers S01E03 · 1 of 3');
+  assert.equal(D.detailFor(D.streamsFor(3, 'names')), 'Robin · The Saltmarsh Bells S01E03 · 1 of 3');
+  assert.equal(D.detailFor(D.streamsFor(1, 'names')), 'Robin · The Saltmarsh Bells S01E03');
+  assert.equal(D.detailFor(D.streamsFor(3, 'titles')), 'The Saltmarsh Bells S01E03 · 1 of 3');
   assert.equal(D.detailFor(D.streamsFor(3, 'count')), '3 streams');
   assert.equal(D.detailFor(D.streamsFor(1, 'count')), '1 stream');
   // and its headline is the collector's

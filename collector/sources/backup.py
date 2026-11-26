@@ -1,6 +1,7 @@
 """The nightly backup: the last completion line in its log.
 
-The log is rotated by truncation, so it can hold no completion at all for a few hours each week.
+A log rotated by truncation, weekly for example, can hold no completion at all for a few hours
+after each rotation.
 The last completion seen is therefore kept in the source's memory and used when the log is empty.
 """
 

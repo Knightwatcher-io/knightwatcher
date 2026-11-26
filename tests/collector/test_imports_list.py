@@ -317,10 +317,10 @@ class OwnProviderTest(unittest.TestCase):
         self.assertEqual(memory, {"last_id": 3})
         self.http.routes["/api/imports"] = (
             200,
-            {"items": [{"n": 4, "name": "Lanterns"}, {"n": 3, "name": "Paper Tide"}]},
+            {"items": [{"n": 4, "name": "Rushwick"}, {"n": 3, "name": "Paper Tide"}]},
         )
         events = source.observe(source.fetch(T0), memory, T0)
-        self.assertEqual([e["text"] for e in events], [f"IMPORTED{text.SEP}Lanterns"])
+        self.assertEqual([e["text"] for e in events], [f"IMPORTED{text.SEP}Rushwick"])
         path, headers = self.http.requests[-1]
         self.assertEqual((path, headers["X-Api-Key"]), ("/api/imports", self.key))
 
@@ -358,7 +358,7 @@ class LidarrTest(unittest.TestCase):
         self.http.routes[LIDARR_PATH] = (
             200,
             history(
-                album(212, "Alex Rowan", "Night Lines"), album(211, "Sam Vale", "Harbour of Glass")
+                album(212, "Alex Rowan", "Night Rooks"), album(211, "Sam Vale", "Harbour of Glass")
             ),
         )
         events = source.observe(source.fetch(T0), memory, T0)
@@ -368,8 +368,8 @@ class LidarrTest(unittest.TestCase):
                 {
                     "type": "import",
                     "count": 1,
-                    "text": "IMPORTED · Alex Rowan - Night Lines",
-                    "parts": {"title": "Alex Rowan - Night Lines"},
+                    "text": "IMPORTED · Alex Rowan - Night Rooks",
+                    "parts": {"title": "Alex Rowan - Night Rooks"},
                 }
             ],
         )
@@ -424,7 +424,7 @@ class CommandLineTest(unittest.TestCase):
 
     def test_check_config_and_probe(self):
         self.write_config("")
-        self.http.routes[LIDARR_PATH] = (200, history(album(212, "Alex Rowan", "Night Lines")))
+        self.http.routes[LIDARR_PATH] = (200, history(album(212, "Alex Rowan", "Night Rooks")))
         code, out, err = self.run_cli("--check-config")
         self.assertEqual(
             (code, out, err), (0, "config ok: 1 sources enabled (imports:lidarr-two)\n", "")
@@ -434,7 +434,7 @@ class CommandLineTest(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertIn("probe imports:lidarr-two: provider lidarr (Lidarr)\n", out)
         self.assertIn("credentials: KW_LIDARR_TWO_API_KEY\n", out)
-        self.assertNotIn("Night Lines", out)
+        self.assertNotIn("Night Rooks", out)
         (name,) = os.listdir(folder)
         self.assertTrue(name.startswith("imports-lidarr-two-"), name)
         with open(os.path.join(folder, name), encoding="utf-8") as fh:
@@ -474,7 +474,7 @@ class CommandLineTest(unittest.TestCase):
         self.http.routes[LIDARR_PATH] = (
             200,
             history(
-                album(212, "Alex Rowan", "Night Lines"), album(211, "Sam Vale", "Harbour of Glass")
+                album(212, "Alex Rowan", "Night Rooks"), album(211, "Sam Vale", "Harbour of Glass")
             ),
         )
         clock.advance(31)
@@ -485,7 +485,7 @@ class CommandLineTest(unittest.TestCase):
         self.assertTrue(state["sources"]["imports:lidarr-two"]["ok"])
         self.assertEqual(
             [(e["type"], e["text"]) for e in state["events"]],
-            [("import", "IMPORTED · Alex Rowan - Night Lines")],
+            [("import", "IMPORTED · Alex Rowan - Night Rooks")],
         )
         with open(os.path.join(self.var, "memory.json"), encoding="utf-8") as fh:
             memory = json.load(fh)

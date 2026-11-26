@@ -1,0 +1,97 @@
+# The published image: the collector and the bundled server, built from the Dockerfile for amd64
+# and arm64 and pushed to ghcr.io/knightwatcher-io/knightwatcher when a release tag vX.Y.Z is
+# pushed, tagged X.Y.Z, X.Y and latest. A manual run builds the tag it is run on, chosen under
+# "Use workflow from". docs/development.md describes a release. Every action is pinned to a full
+# commit SHA.
+name: Image
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/knightwatcher-io/knightwatcher
+
+jobs:
+  image:
+    name: Build and push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # A tag v0.1.0 releases the version pyproject.toml gives, 0.1.0, and nothing else.
+      - name: Check the tag against pyproject.toml
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [[ "$REF" != refs/tags/v* ]]; then
+            echo "::error::$REF is not a release tag: run this workflow on a tag vX.Y.Z"
+            exit 1
+          fi
+          tag="${REF#refs/tags/v}"
+          version="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if [[ "$tag" != "$version" ]]; then
+            echo "::error::the tag says $tag and pyproject.toml says $version"
+            exit 1
+          fi
+          echo "releasing $version"
+
+      - name: Set up QEMU, for arm64
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # X.Y.Z, X.Y and latest from the tag (a pre-release such as v0.2.0-rc.1 gets its own tag
+      # alone), with the OCI labels and annotations ghcr.io shows on the package's page.
+      - name: Tags and labels
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: |
+            latest=auto
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=Knightwatcher
+            org.opencontainers.image.description=A wall display for a homelab: a pixel-art knight mirrors the state of the machines being watched. The collector and the bundled server in one image.
+            org.opencontainers.image.licenses=AGPL-3.0-or-later
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.url=https://knightwatcher.io/
+          annotations: |
+            org.opencontainers.image.title=Knightwatcher
+            org.opencontainers.image.description=A wall display for a homelab: a pixel-art knight mirrors the state of the machines being watched. The collector and the bundled server in one image.
+            org.opencontainers.image.licenses=AGPL-3.0-or-later
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.url=https://knightwatcher.io/
+
+      - name: Build and push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}

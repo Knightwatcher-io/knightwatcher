@@ -59,7 +59,7 @@ const len = s => Array.from(s).length;
 
 // ---- The words in the pack ---------------------------------------------------------------------------
 
-test('kw.medieval gives the word set words.medieval as the owner chose it', () => {
+test('kw.medieval gives the word set words.medieval as designed', () => {
   const r = PK.read(TEXT, { allowUnsigned: true });
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual(plain(r.data.words), { 'words.medieval': {
@@ -95,7 +95,7 @@ test('the quiet line from the medieval words: ads slain, shortened and dropped a
 test('each caption from the medieval words', () => {
   const s = started(), C = (type, parts) => s.W.caption(type, parts, 'OWN');
   assert.equal(C('ip_banned', { addr: '203.0.113.77', jail: 'sshd' }), 'BANISHED 203.0.113.77 · sshd');
-  assert.equal(C('import', { title: 'The Night Shift S02E04' }), 'DELIVERED · The Night Shift S02E04');
+  assert.equal(C('import', { title: 'The Gull Ledger S02E04' }), 'DELIVERED · The Gull Ledger S02E04');
   assert.equal(C('backup_done', { at: '03:12' }), 'STORES SAFE 03:12');
   // a ban with no jail passes over the template that needs one
   assert.equal(C('ip_banned', { addr: '203.0.113.77' }), 'BANISHED 203.0.113.77');
@@ -162,7 +162,7 @@ test('join: characters are counted by code point, and runs of white space are ma
   // an astral character is one character, not two
   assert.equal(J([{ k: 'a', x: '\u{1F3AC}'.repeat(4) }], { a: ['{x}'] }, 4), '\u{1F3AC}'.repeat(4));
   assert.equal(J([{ k: 'a', x: '\u{1F3AC}'.repeat(5) }], { a: ['{x}'] }, 4), '\u{1F3AC}'.repeat(3) + '…');
-  assert.equal(J([{ k: 'a', x: ' The   Night\tShift ' }], { a: ['DELIVERED · {x}'] }, 44), 'DELIVERED · The Night Shift');
+  assert.equal(J([{ k: 'a', x: ' The   Gull\tLedger ' }], { a: ['DELIVERED · {x}'] }, 44), 'DELIVERED · The Gull Ledger');
 });
 
 test('join: a value is text, never markup, and main.js writes the words with textContent', () => {

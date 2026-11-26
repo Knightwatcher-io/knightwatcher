@@ -11,6 +11,10 @@ when it is short of memory, takes to bed when a container is unhealthy, and swat
 every scene and catches the flies the knight cannot: indoors, and outdoors while the knight is
 busy. A headline says why, beside a wall clock.
 
+[Try the live demo](https://knightwatcher.io/) on the project's website.
+
+<img src="site/img/ev-goblin.png" alt="The knight on the battlement with a goblin beside it, under the headline BANISHED 203.0.113.77 and a wall clock" width="640">
+
 The scene is a night in the knight's world. When all is quiet the knight patrols the battlement,
 the camp, the house, the training yard or the smithy, walking between two or three stops and
 spending 12 to 22 seconds at each: on guard, looking round, training at the dummy, quenching a
@@ -42,7 +46,8 @@ words to show, and the display acts it as a condition of your choice, in that co
 
 ## Quick start
 
-On a machine with Docker and its compose plugin, from a checkout of this repository:
+You need Linux with Docker and its compose plugin, and the `acl` package; Windows and macOS hosts are
+not supported. From a checkout of this repository:
 
 ```bash
 cp config.example.toml config.toml
@@ -50,20 +55,23 @@ cp .env.example .env && chmod 600 .env
 mkdir -p var/out var/server
 setfacl -m u:10001:rwx var var/out var/server
 setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server
+touch var/backup.log
 ```
 
-The containers run as uid 10001, and the last two lines let it write in those three folders
-([configuration.md](docs/configuration.md#the-accounts)). Then, in `.env`, point
-`KW_BACKUP_LOG` at your backup log and `KW_DATA_DISK` at any folder on the
-disk to watch. Both must exist. With no backup log yet, `touch var/backup.log` and point at that
-(`./var/backup.log`): an empty log is read cleanly and raises nothing until it records a
-completed backup. Then:
+The containers run as uid 10001, and the two `setfacl` lines let it write in those three folders
+([configuration.md](docs/configuration.md#the-accounts)). `.env` as copied points `KW_BACKUP_LOG`
+at the empty `var/backup.log`, which is read cleanly and raises nothing until it records a
+completed backup, and `KW_DATA_DISK` at `var`, so the install starts as it is. Point them at your
+real backup log and at any folder on the disk to watch when you can; both must exist. Then:
 
 ```bash
 docker compose up -d
 ```
 
-and open `http://<this machine>:8080/` in a browser. The knight appears at once and the collector's
+Compose pulls the published image, `ghcr.io/knightwatcher-io/knightwatcher`, at the release
+`KW_VERSION` in `.env` names (the newest unless you pin one), or `docker compose build` builds it
+from the checkout first. Open `http://<this machine>:8080/` in a browser, or the port
+`KW_SERVER_PORT` sets. The knight appears at once and the collector's
 first readings within a minute. The example config turns on only the general sources, which read
 this machine (its CPU, memory, disk, backup log, updates and SSH sessions) or ask a fixed address
 (the internet and a DNS server). Each source that reads a service (the containers through a
@@ -162,7 +170,7 @@ For contributors:
 
 ## Licence
 
-Copyright (C) 2026 Valtora
+Copyright (C) 2026 Valtora and the Knightwatcher contributors
 
 This program is free software: you can redistribute it and/or modify it under the terms of the
 GNU Affero General Public License as published by the Free Software Foundation, either version 3

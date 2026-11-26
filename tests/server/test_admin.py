@@ -1001,6 +1001,30 @@ class PageTest(unittest.TestCase):
             finally:
                 s.close()
 
+    def test_the_page_links_to_the_source_signed_in_and_out(self):
+        # The AGPL's offer of the source: the walls' link, KW.settings.SOURCE, at the foot of the
+        # rail, in the sheet of sections below 720 pixels, and on the card shown while signed out
+        # or while the page is off.
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        with open(os.path.join(root, "web", "admin", "admin.js"), encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertIn(
+            "function sourceLink() { const a = el('a', 'src', 'Source code (AGPL-3.0)'); "
+            "a.href = KW.settings.SOURCE; a.target = '_blank'; a.rel = 'noopener noreferrer'; "
+            "return a; }",
+            text,
+        )
+        rail = text[text.index("const foot = el('div', 'foot'") :]
+        self.assertIn("foot.appendChild(sourceLink()); rail.appendChild(foot);", rail[:300])
+        sheet = text[text.index("function sheet()") : text.index("async function exportOpen()")]
+        self.assertIn("sf.appendChild(sourceLink());", sheet)
+        gate = text[text.index("function gate()") : text.index("let pauseTimer")]
+        self.assertEqual(gate.count("c.appendChild(sourceNote());"), 2)
+        with open(os.path.join(root, "web", "js", "settings.js"), encoding="utf-8") as fh:
+            self.assertIn(
+                "const SOURCE = 'https://github.com/knightwatcher-io/knightwatcher';", fh.read()
+            )
+
 
 class StartTest(unittest.TestCase):
     def test_the_password_is_taken_out_of_the_environment_and_never_logged(self):

@@ -97,7 +97,7 @@ class EngineTest(unittest.TestCase):
 
     def test_requests_are_made_in_order_and_each_part_reads_its_own(self):
         self.serve("/a", {"n": 2})
-        self.serve("/b", {"items": [{"t": "Harbour of Glass"}, {"t": "Low Tide"}]})
+        self.serve("/b", {"items": [{"t": "Harbour of Glass"}, {"t": "Reedsong"}]})
         data = streams(
             {
                 "count": {"from": "a", "path": "$.n"},
@@ -108,7 +108,7 @@ class EngineTest(unittest.TestCase):
         )  # fmt: skip
         _, fill = self.read(data)
         self.assertEqual(
-            fill, {"count": 2, "sessions": [{"title": "Harbour of Glass"}, {"title": "Low Tide"}]}
+            fill, {"count": 2, "sessions": [{"title": "Harbour of Glass"}, {"title": "Reedsong"}]}
         )
         self.assertEqual([p for p, _ in self.http.requests], ["/a", "/b"])
 
@@ -339,12 +339,12 @@ class EngineTest(unittest.TestCase):
 
     def test_cases_and_templates(self):
         items = [
-            {"kind": "episode", "show": "The Lantern Keepers", "s": "1", "e": 3},
+            {"kind": "episode", "show": "The Saltmarsh Bells", "s": "1", "e": 3},
             {"kind": "episode", "s": 2, "e": "11"},
             {"kind": "episode", "show": "Brine", "s": "x"},
             {"kind": "episode"},
-            {"kind": "track", "show": "Fen Owls", "name": "Low Tide"},
-            {"kind": "movie", "name": 1917},
+            {"kind": "track", "show": "Fen Owls", "name": "Reedsong"},
+            {"kind": "movie", "name": 4417},
             {"kind": "movie", "name": 0, "full": "Whole"},
             {"kind": "movie", "name": "  ", "full": "Whole"},
             {"kind": "movie", "name": [1], "full": "Whole"},
@@ -367,12 +367,12 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(
             [s.get("title") for s in got],
             [
-                "The Lantern Keepers S01E03",
+                "The Saltmarsh Bells S01E03",
                 "S02E11",
                 "Brine",
                 None,  # the case matched and none of its templates gave a value
-                "Fen Owls - Low Tide",
-                "1917",
+                "Fen Owls - Reedsong",
+                "4417",
                 "Whole",
                 "Whole",
                 "Whole",

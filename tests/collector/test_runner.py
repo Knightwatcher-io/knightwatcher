@@ -626,7 +626,7 @@ class RunnerTest(unittest.TestCase):
         )
 
     def test_a_part_is_cleaned_and_capped_as_the_caption_is(self):
-        title = "The  Night\tShift\n" + "x" * 60
+        title = "The  Gull\tLedger\n" + "x" * 60
         [event] = self.events_written(
             [
                 {
@@ -639,8 +639,8 @@ class RunnerTest(unittest.TestCase):
         )
         # The caption is as it always was; the part is cleaned by the same rule.
         self.assertEqual(event["text"], text.event_text(f"IMPORTED · {title}"))
-        self.assertEqual(event["text"], "IMPORTED · The Night Shift " + "x" * 16 + "…")
-        self.assertEqual(event["parts"], {"title": "The Night Shift " + "x" * 27 + "…"})
+        self.assertEqual(event["text"], "IMPORTED · The Gull Ledger " + "x" * 16 + "…")
+        self.assertEqual(event["parts"], {"title": "The Gull Ledger " + "x" * 27 + "…"})
         self.assertEqual(len(event["parts"]["title"]), text.EVENT_TEXT_MAX)
 
     def test_parts_that_clean_to_nothing_are_left_out(self):

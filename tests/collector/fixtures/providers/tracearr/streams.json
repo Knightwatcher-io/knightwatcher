@@ -28,7 +28,7 @@
        "user_avatar_url": "https://plex.tv/users/0a1b2c3d4e5f138b/avatar?c=1731000000",
        "media_title": "The Tide Bell",
        "media_type": "episode",
-       "show_title": "The Lantern Keepers",
+       "show_title": "The Saltmarsh Bells",
        "season_number": 1,
        "episode_number": 3,
        "year": 2024,
@@ -201,14 +201,14 @@
        "username": "alex",
        "user_thumb": "https://plex.tv/users/0a1b2c3d4e5f1b5b/avatar?c=1731000000",
        "user_avatar_url": "https://plex.tv/users/0a1b2c3d4e5f1b5b/avatar?c=1731000000",
-       "media_title": "Low Tide",
+       "media_title": "Reedsong",
        "media_type": "track",
        "show_title": "Fen Owls",
        "season_number": null,
        "episode_number": null,
        "year": null,
        "artist_name": "Fen Owls",
-       "album_name": "Night Lines",
+       "album_name": "Night Rooks",
        "track_number": 4,
        "disc_number": 1,
        "thumb_path": "/library/metadata/7003/thumb/1731000000",
@@ -293,7 +293,7 @@
    "count": 3,
    "sessions": [
     {
-     "title": "The Lantern Keepers S01E03",
+     "title": "The Saltmarsh Bells S01E03",
      "who": "Robin",
      "order": "2026-11-21T19:05:12Z",
      "key": "00000000-0000-4000-8000-00000000138b"
@@ -305,7 +305,7 @@
      "key": "00000000-0000-4000-8000-0000000017d4"
     },
     {
-     "title": "Fen Owls - Low Tide",
+     "title": "Fen Owls - Reedsong",
      "who": "alex",
      "order": "2026-11-21T19:22:47Z",
      "key": "00000000-0000-4000-8000-000000001b5b"
@@ -316,7 +316,7 @@
    "count": 3,
    "sessions": [
     {
-     "title": "The Lantern Keepers S01E03",
+     "title": "The Saltmarsh Bells S01E03",
      "order": "2026-11-21T19:05:12Z",
      "key": "00000000-0000-4000-8000-00000000138b"
     },
@@ -326,7 +326,7 @@
      "key": "00000000-0000-4000-8000-0000000017d4"
     },
     {
-     "title": "Fen Owls - Low Tide",
+     "title": "Fen Owls - Reedsong",
      "order": "2026-11-21T19:22:47Z",
      "key": "00000000-0000-4000-8000-000000001b5b"
     }

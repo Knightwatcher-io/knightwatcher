@@ -1,0 +1,53 @@
+# Every commit of a pull request carries a Signed-off-by: trailer with its author's name and email,
+# certifying the Developer Certificate of Origin (DCO, CONTRIBUTING.md). Merge commits are passed
+# over, and so are commits by a GitHub App's bot account (Dependabot's, for one), whose sign-off
+# names another email. Every action is pinned to a full commit SHA.
+name: DCO
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  sign-off:
+    name: Signed-off-by on every commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the pull request with its history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check each commit's sign-off
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          missing=0
+          checked=0
+          for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            author="$(git log -1 --format='%an <%ae>' "$c")"
+            subject="$(git log -1 --format='%s' "$c")"
+            if [[ "$author" == *"[bot]@users.noreply.github.com>" ]]; then
+              echo "skipped ${c:0:12} by $author: a bot's commit"
+              continue
+            fi
+            checked=$((checked + 1))
+            if git log -1 --format='%(trailers:key=Signed-off-by,valueonly,unfold)' "$c" \
+                | sed 's/[[:space:]]*$//' | grep -Fxq -- "$author"; then
+              echo "ok      ${c:0:12} $subject"
+            else
+              echo "::error::${c:0:12} \"$subject\" has no Signed-off-by: $author"
+              missing=$((missing + 1))
+            fi
+          done
+          echo "$checked commit(s) checked, $missing without a matching sign-off."
+          if [[ $missing -gt 0 ]]; then
+            echo "Sign off each commit with git commit -s; git rebase --signoff origin/$BASE_REF signs off a whole branch. CONTRIBUTING.md says why."
+            exit 1
+          fi

@@ -24,29 +24,29 @@ const SIGNED = Object.prototype.hasOwnProperty.call(JSON.parse(TEXT), 'sig');
 const UNSIGNED = withoutSig(TEXT);
 const verify = ED.verify;
 const FIXTURE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base.pack.json'), 'utf8')).pack;
-// The two items of the one-handed look, as approved, which the test fixture does not hold: its own
+// The two items of the one-handed look, as designed, which the test fixture does not hold: its own
 // main.arming is a smaller sword made for the library's tests.
 const ONEHAND = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-onehand.items.json'), 'utf8'));
-// The free options as approved: the swatches beside today's, and the hair of 1.6.0 as approved, the
+// The free options as designed: the swatches beside today's, and the hair of 1.6.0, the
 // tied hair and the curls redrawn and the new buzzcut (the short crop of 1.6.0 is the library
 // fixture's, which follows knight.js, and the long and close hair of 1.6.0 are in
 // base-free-items.json, with the free items of 1.4.0 they belong to).
 const OPTIONS = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-options.json'), 'utf8'));
-// The three builds as approved, with their names, and the three items refitted to them: the tabard
+// The three builds as designed, with their names, and the three items refitted to them: the tabard
 // in pieces that narrow to the waist and widen to the hip, the greaves that grow with the leg and
 // the pauldrons that grow with the shoulders. The tabard's iris already follows the tabard there.
 const BUILDS = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-builds.json'), 'utf8'));
-// The free items of 1.4.0 as approved, 25 of them, and the wool of the pack's own cloth palette that
+// The free items of 1.4.0 as designed, 25 of them, and the wool of the pack's own cloth palette that
 // the padded hose and the turnshoes are drawn in.
 const FREE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-free-items.json'), 'utf8'));
-// The crossbow of 1.5.0 as approved: the wooden crossbow, its shapes, stations, barrel, shot and
+// The crossbow of 1.5.0 as designed: the wooden crossbow, its shapes, stations, barrel, shot and
 // stowed view exactly. The pack names it plainly, as it names the swords, and gives it no flash of
-// its own, since the approved flash is the engine's pale snap (SHOT.snap), which a shot with none
+// its own, since its flash is the engine's pale snap (SHOT.snap), which a shot with none
 // shows.
 const CROSSBOW = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-crossbow.json'), 'utf8'));
 const asShipped = item => { const o = JSON.parse(JSON.stringify(item)); o.name = 'Crossbow'; delete o.shot.flash; return o; };
 // The iris of the watch's eye follows the tabard: the tabard's and the shield's, worn and at rest,
-// take the tabard's darkest band where the fixture and the approved shield have the fixed blue.
+// take the tabard's darkest band where the fixture and the stored shield have the fixed blue.
 const irisFollows = item => JSON.parse(JSON.stringify(item).split('"@base.b3"').join('"@tabard.3"'));
 // Each set's choices in the order the settings screen should show them, today's among them.
 const ORDER = { skin: ['fair', 'warm', 'golden', 'tan', 'brown', 'deep'], hair: ['black', 'dark', 'brown', 'auburn', 'blonde', 'silver'],
@@ -92,7 +92,7 @@ test('the base pack as it ships is read on every page when signed, and on a dev 
   }
 });
 
-test('three builds as approved, Classic the present knight\'s measurements, all with the plain head at its one size', () => {
+test('three builds as designed, Classic the present knight\'s measurements, all with the plain head at its one size', () => {
   assert.deepEqual(Object.keys(PACK.builds), Object.keys(BUILD_NAMES));
   assert.deepEqual(PACK.builds, BUILDS.builds);
   const want = Object.fromEntries(PK.MEASURES.map(m => [m[0], m[1]]));
@@ -147,7 +147,7 @@ test('six choices in each colour set, in the order the settings screen shows the
   for (const set of Object.keys(ORDER)) for (const id of ORDER[set]) assert.ok(PACK.swatches[set][id].name.length > 0, set + '/' + id);
 });
 
-test('each item and swatch is as approved: the fixture\'s, the one-handed items, the free options, the iris following the tabard', () => {
+test('each item and swatch is as designed: the fixture\'s, the one-handed items, the free options, the iris following the tabard', () => {
   const want = id => (id === 'main.crossbow' ? asShipped(CROSSBOW.items[id]) : FREE.items[id] || BUILDS.items[id] || OPTIONS.items[id] || ONEHAND[id] || FIXTURE.items[id]);
   for (const id of Object.keys(PACK.items)) {
     const w = id === 'off.heater' ? irisFollows(want(id)) : want(id);
@@ -165,7 +165,7 @@ test('each item and swatch is as approved: the fixture\'s, the one-handed items,
   assert.notDeepEqual(PACK.items['off.round'], FIXTURE.items['off.round']);
   for (const set of Object.keys(PACK.swatches)) for (const sw of Object.keys(PACK.swatches[set])) {
     const today = FIXTURE.swatches[set][sw];
-    // today's swatch is unchanged; the rest are the approved options, the green tabard of the
+    // today's swatch is unchanged; the rest are the stored options, the green tabard of the
     // library's fixture not among them
     assert.deepEqual(PACK.swatches[set][sw], PACK.defaults.swatches[set] === sw ? today : OPTIONS.swatches[set][sw], set + '/' + sw);
   }
@@ -333,7 +333,7 @@ test('the crossbow fires: a two-handed weapon with its barrel, muzzle, range and
   assert.deepEqual(it.shot, { kind: 'bolt', colour: '#d9b77a' });
   assert.equal(it.stowed.layer, 'back');
   const lib = [PK.read(TEXT, { allowUnsigned: true, verify })];
-  // 33 shapes held and 12 slung, 4670 and 1639 of the fills: the 45 and 6309 approved
+  // 33 shapes held and 12 slung, 4670 and 1639 of the fills: 45 and 6309 together
   assert.deepEqual(lib[0].sums['main.crossbow'], { parts: { n: 33, cost: 4670 }, view: { n: 0, cost: 0 }, rest: { n: 0, cost: 0 }, stowed: { n: 12, cost: 1639 } });
   for (const id of Object.keys(BUILD_NAMES)) {
     const L = PK.resolve(lib, { build: B(id), items: { main: B('main.crossbow') } });

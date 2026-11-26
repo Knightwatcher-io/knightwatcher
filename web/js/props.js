@@ -214,8 +214,8 @@
   }
 
   /* ---- The other devices -------------------------------------------------------------
-     In the medieval world each kind is drawn as a medieval thing that stands for it, by the
-     owner's choices of 16 and 17 November 2026: the camera a barn owl on watch on an iron bracket,
+     In the medieval world each kind is drawn as a medieval thing that stands for it: the
+     camera a barn owl on watch on an iron bracket,
      the machine a scrying crystal in a gilt claw stand, the virtual machine a corked potion flask,
      and a kind the page does not know an iron-bound chest. Each takes (x, y, t, ok, part) like the
      pie, but (x, y) is the middle of the base, the line it stands on (for the owl, the foot of the
@@ -778,9 +778,9 @@
     Rh(cx - rx * .55, cy - ry * .4, 3, 6, GOB.sackLight);
   }
   /* An ear from the side of the head at (bx, by), pointing to side d, 52 long, its tip 20 up and
-     lowered by droop, with a light along its upper edge. The ear and its outline are triangles: the
-     mock-up's ear dipped a little along its upper edge, which a pack's convex polygon cannot draw,
-     so each is drawn as its hull. The inner ear's tip, 0.66 of the way to the ear's, is kept to
+     lowered by droop, with a light along its upper edge. The ear and its outline are triangles: an
+     ear that dips a little along its upper edge is not convex, which a pack's polygon must be, so
+     each is drawn as its hull. The inner ear's tip, 0.66 of the way to the ear's, is kept to
      eighths as the wraps' ends are. */
   function gEar(bx, by, d, droop) {
     const tip = [bx + d * 52, by - 20 + droop], mid = [e8(bx + d * 52 * .55), by - 9 + droop * .5 - 3];
@@ -855,7 +855,7 @@
   }
   /* The arms of each kind, both sides: the shoulder, the elbow and the hand from the feet, and the
      angle the fingers spread along. Each arm is the limb, a wrap and the hand. The hands flung up
-     when it is struck stop 4 short of the mock-up's and 4 higher, and its ears droop no further
+     when it is struck stop 4 short of where they were first drawn and 4 higher, and its ears droop no further
      than in the brace: with the knight at its nearest, the near hand and ear met the greatsword's
      cross in the bounce (the contact standard, tests.md). */
   const GOB_ARMS = {

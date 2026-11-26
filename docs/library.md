@@ -259,7 +259,7 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   cheek, a hair swatch's three bands and a tabard swatch's four as the robe, laid over the court's
   own drawing ([page.md](./page.md#the-scene-interface)), so no pack change is needed for it;
 - 25 free items, new in 1.4.0, so that every slot a user chooses has three to five free choices.
-  The owner approved them from a mock-up; their ids, names, shapes and costs (each item's own,
+  Their ids, names, shapes and costs (each item's own,
   worn, viewed and at rest together, against 400 shapes and 8000):
 
   | Slot | Item | Name | Shapes | Cost |
@@ -313,12 +313,11 @@ Whether it ships signed is said under [Where the knight is drawn from](#where-th
   the muzzle. Its `stowed` view, on the `back` layer, slings it across the back from the left
   shoulder to the right hip while it is put away. It has no `blade`, so the house's pegs sit under
   its barrel and the smithy's anvil shows no hot tip. 33 shapes held at a cost of 4 670, and 12
-  slung at 1 639, 45 at 6 309 together; a look counts the larger. The owner approved it from a
-  mock-up of three designs, and it is kept as approved in `tests/web/fixtures/base-crossbow.json`.
+  slung at 1 639, 45 at 6 309 together; a look counts the larger. It is
+  kept as designed in `tests/web/fixtures/base-crossbow.json`.
   The settings call it `crossbow`, and it carries no shield;
 - the hair of 1.6.0: every style redrawn with more detail, each keeping its silhouette, and a sixth,
-  the buzzcut, `hair.buzz` ("Buzzcut"). The owner approved them from a mock-up on 25 November 2026.
-  Each is shaded in the hair swatch's three bands lit from the left, with locks or strands, a sheen
+  the buzzcut, `hair.buzz` ("Buzzcut"). Each is shaded in the hair swatch's three bands lit from the left, with locks or strands, a sheen
   of the light band on the lit side, a glint (the one colour of its own, white at 0.4) and a
   hairline where the hair meets the forehead; the tie of the tied hair is the base palette's
   leather. Shapes and costs, worn and with the `helmeted` view (before the redraw in brackets):
@@ -382,13 +381,12 @@ at rest](#gear-at-rest). The eleven items and today's swatches are the test fixt
 apart from the iris and the three items fitted to the builds (the fixture follows `knight.js`, so
 it holds the short crop of 1.6.0 too); the fixture also carries extras the
 tests need (a second build of its own, long hair, a smaller arming sword of its own, a round
-shield, a pennant and a lantern). The one-handed items are kept, as approved, in
+shield, a pennant and a lantern). The one-handed items are kept, as designed, in
 `tests/web/fixtures/base-onehand.items.json`, the free options (the twenty new swatches) and the
 hair of 1.6.0 (the tied hair, the curls and the buzzcut) in
 `tests/web/fixtures/base-options.json`, and the three builds with their names and the three fitted
 items in `tests/web/fixtures/base-builds.json`, and the free items of 1.4.0 with the wool in
-`tests/web/fixtures/base-free-items.json`, copied from the approved trial pack, with the long and
-close hair as redrawn in 1.6.0. The default look costs 14 225 and draws at most 121 shapes; since
+`tests/web/fixtures/base-free-items.json`, with the long and close hair as redrawn in 1.6.0. The default look costs 14 225 and draws at most 121 shapes; since
 the short crop was redrawn its head group with the helmet off, 2 067, is the larger of the two
 head groups (it was 13 878 and 105 before). The look with the sword and shield draws at most 141
 at a cost of 14 328, and with the crossbow 132 at a cost of 14 243. Neither colours nor the build
@@ -604,7 +602,7 @@ The knight never vanishes. In order:
    `codeHD` in `knight.js`. The sleeper's head in the house is drawn by `bareHD`, and the gear at
    rest by code too: the helmet on the stool, the greatsword on the pegs and across the anvil, and
    the hot tip from the greatsword's blade. `rest.reach()` is `{ from: 34, to: 263, half: 15 }` and
-   `rest.key()` is `'code'`. The code path has the greatsword only, as the owner decided: a look
+   `rest.key()` is `'code'`. The code path has the greatsword only, by design: a look
    with the sword and shield is drawn with the greatsword, and no shield hangs anywhere. The reason is in the status and the console. Nothing plainer than this
    knight is ever drawn.
 4. **A compiled list throws while drawing**, which the checks should make impossible. The throw is

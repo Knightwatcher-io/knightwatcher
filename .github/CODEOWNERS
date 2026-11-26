@@ -1,0 +1,11 @@
+# Every change is reviewed by the project's owner.
+* @Valtora
+
+# The pack-signing trust path. These files are synced to a separate private repository, which signs
+# the packs with them, so no change may land here without the owner's review.
+/tools/sign-pack.js @Valtora
+/tools/pack-carrier.js @Valtora
+/web/js/pack.js @Valtora
+/web/js/effects.js @Valtora
+/web/js/ed25519.js @Valtora
+/web/packs/ @Valtora

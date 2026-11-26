@@ -35,8 +35,8 @@ Every value below is invented.
     "backup": { "last_ok": "2026-01-15T03:12:00Z", "age_h": 18.5 },
     "pi": { "up": true },
     "updates": { "running": false, "what": "" },
-    "streams": { "count": 1, "titles": ["The Night Shift S02E04"],
-                 "sessions": [ { "who": "Robin", "title": "The Night Shift S02E04" } ] },
+    "streams": { "count": 1, "titles": ["The Gull Ledger S02E04"],
+                 "sessions": [ { "who": "Robin", "title": "The Gull Ledger S02E04" } ] },
     "ssh": { "count": 0, "sources": [] },
     "adblock": { "blocked_today": 4812 },
     "security": { "bans_24h": 14, "attack": false },
@@ -145,7 +145,7 @@ and `sources` the parts come from are shown:
     { "seq": 4502, "type": "backup_done", "at": "2026-01-16T03:12:40Z", "count": 1,
       "text": "BACKUP DONE 03:12", "parts": { "at": "03:12" } },
     { "seq": 4503, "type": "import", "at": "2026-01-16T19:02:10Z", "count": 1,
-      "text": "IMPORTED · The Night Shift S02E05", "parts": { "title": "The Night Shift S02E05" } },
+      "text": "IMPORTED · The Gull Ledger S02E05", "parts": { "title": "The Gull Ledger S02E05" } },
     { "seq": 4504, "type": "ip_banned", "at": "2026-01-16T20:14:50Z", "count": 1,
       "text": "BANNED 203.0.113.77 · sshd", "parts": { "addr": "203.0.113.77", "jail": "sshd" } },
     { "seq": 4505, "type": "ad_blocked", "at": "2026-01-16T20:15:00Z", "count": 1, "text": "" }
@@ -296,7 +296,7 @@ for twelve minutes. The entry lists the machine in `machines`. Only the sections
     a resource has fallen back, the resource keeps the figure it last had while it counted
     ([collector.md](./collector.md#under-strain)).
   - The `detail` of `streaming` is the first stream in `facts.streams.sessions` as one line,
-    `Robin · The Night Shift S02E04 · 1 of 3`, with no `1 of 1` when one stream plays; without
+    `Robin · The Gull Ledger S02E04 · 1 of 3`, with no `1 of 1` when one stream plays; without
     sessions it is the count, `3 streams`. A page from before the sessions shows it as it is, and
     a newer page takes each stream in turn from the sessions ([display.md](./display.md#modes)).
 - **`quiet_line`** is shown when `conditions` is empty. At most 52 characters. The collector
@@ -357,7 +357,7 @@ for twelve minutes. The entry lists the machine in `machines`. Only the sections
   - `count`, always: how many streams the service reports, or the number of its sessions when it
     gives no count.
   - `titles`, with `show` `names` or `titles`: what each stream plays, sorted as `sessions` is.
-    Episodes read `The Night Shift S02E04` and tracks `<artist> - <track>`.
+    Episodes read `The Gull Ledger S02E04` and tracks `<artist> - <track>`.
   - `sessions`, with `show` `names` or `titles`, when any stream has a name or a title to show:
     1 to 32 of them, in the order the streams started (the provider's order: the session key of
     Tautulli and of Plex, or the start time Tracearr gives; for Jellyfin, which gives neither, the

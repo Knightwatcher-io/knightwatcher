@@ -852,6 +852,15 @@ test('every gear choice renders on every build with each kind of weapon, from th
   assert.equal(n, 3 * (3 + 4 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 3 + 6));
 });
 
+test('the status page links to the source, as the AGPL asks of a page used over a network', () => {
+  assert.equal(SET.SOURCE, 'https://github.com/knightwatcher-io/knightwatcher');
+  // the Version entry ends with the link, opened beside the display rather than in its place
+  const text = fs.readFileSync(path.join(WEB, 'js/settings.js'), 'utf8');
+  const version = text.slice(text.indexOf("stat('Version'"), text.indexOf("stat('State file'"));
+  assert.match(version, /const src = el\('a', '', 'Source code \(AGPL-3\.0\)'\); src\.href = SOURCE; src\.target = '_blank'; src\.rel = 'noopener noreferrer';/);
+  assert.match(version, /line\(dd, 'quiet', ''\)\.appendChild\(src\);/);
+});
+
 test('the status page says whether the usage counts are on, read only, and how .env changes it', () => {
   const on = SET.usageLines({ analytics: true }, 'live'), off = SET.usageLines({ analytics: false }, 'live');
   assert.match(on[0][1], /^On\./); assert.match(on[1][1], /KW_ANALYTICS=off in \.env/);

@@ -53,11 +53,11 @@ tests/
                      fire, test.orbit-fire.pack.json, and orbit.js, which writes both (never
                      signed, never under web/; see The test world below)
     fixtures/        a fixture pack for the pack library's tests, the base pack's sword and
-                     shield as approved (base-onehand.items.json), its free options and the
-                     hair of 1.6.0 as approved (base-options.json), its three builds and the
-                     items fitted to them as approved (base-builds.json), its free items of
-                     1.4.0 as approved, the long and close hair as redrawn in 1.6.0
-                     (base-free-items.json), its crossbow of 1.5.0 as approved
+                     shield (base-onehand.items.json), its free options and the
+                     hair of 1.6.0 (base-options.json), its three builds and the
+                     items fitted to them (base-builds.json), its free items of
+                     1.4.0, the long and close hair as redrawn in 1.6.0
+                     (base-free-items.json), its crossbow of 1.5.0
                      (base-crossbow.json), a world pack of format 1.1 for the library's tests
                      (world-1.1.json), the base pack's read, first stored from the library
                      before format 1.1 (base-read.json), a state file with the settings'
@@ -385,6 +385,46 @@ page and a `dev` page alike, every scene, every device and the cast it gives, wi
 overlay; a version changed after signing ships unsigned until its next run, and meanwhile a deployed
 page draws every scene from code and shows the collector's own words ([world-loading.md](./world-loading.md#where-the-scenes-are-drawn-from)). The page's tests hold in either state, so carrying a signature
 across changes no test.
+
+## Releases and images
+
+A release is a tag `vX.Y.Z` on `main`, made once the packs it ships are signed
+([Signing the packs](#signing-the-packs)) and the checks pass. `version` in `pyproject.toml` says
+the release, and the tag must match it: `v0.1.0` releases `0.1.0`. Pushing the tag runs
+`.github/workflows/image.yml`, which builds the Dockerfile for `linux/amd64` and `linux/arm64`
+(arm64 under QEMU) and pushes one image for both to `ghcr.io/knightwatcher-io/knightwatcher`,
+tagged `X.Y.Z`, `X.Y` and `latest` (a pre-release such as `v0.2.0-rc.1` gets its own tag
+alone), with the OCI labels: the source repository, the licence `AGPL-3.0-or-later` and a
+description. It refuses a tag that does not match `pyproject.toml`. A manual run (Run workflow,
+with the tag chosen under "Use workflow from") builds that tag again; run on a branch, it stops.
+
+```bash
+git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
+gh run watch "$(gh run list --workflow image.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
+docker buildx imagetools inspect ghcr.io/knightwatcher-io/knightwatcher:0.1.0   # both platforms
+```
+
+The package's visibility is set once, after the first push, in the package's settings on GitHub
+(the organisation's Packages, `knightwatcher`, Package settings, Change visibility): a new package
+on ghcr.io starts private, and a host pulls a private one only after `docker login ghcr.io`.
+
+The page in the image is stamped at build time by `server/stamp.py`, from the files alone, so the
+build needs no `.git` (which `.dockerignore` leaves out of the build context in any case): the
+Status page shows the 12-character hash of `web/` that `tools/deploy.sh` would give the same files,
+and the collector's usage counts send the same hash as the version. The release's number is in
+the image's `org.opencontainers.image.version` label and its tags.
+
+`compose.yaml` runs `ghcr.io/knightwatcher-io/knightwatcher:${KW_VERSION:-latest}` and keeps
+`build: .`, so `docker compose build` builds a checkout under the same name. On a Raspberry Pi with a
+64-bit OS, or any other arm64 host, `docker compose pull` takes the arm64 image by itself (there
+is no 32-bit arm image); to try one release
+before the quick start's `docker compose up -d`, set `KW_VERSION` in `.env` and check:
+
+```bash
+docker compose pull
+docker image inspect --format '{{.Architecture}}' ghcr.io/knightwatcher-io/knightwatcher:0.1.0   # arm64
+docker compose up -d
+```
 
 ## Deploying
 

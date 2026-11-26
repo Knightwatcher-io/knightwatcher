@@ -67,6 +67,10 @@
      shared settings the server gave, which a page served by it starts from until the server
      answers. */
   const KEY = 'knightwatcher.settings', SHARED_KEY = 'knightwatcher.shared', VERSION = 1;
+  /* The source of the page, the collector and the server, which the AGPL offers to everyone who uses
+     them over a network: the status page and the admin page link to it. A fork that changes them
+     points this at its own repository. */
+  const SOURCE = 'https://github.com/knightwatcher-io/knightwatcher';
   const pick = (sec, field) => { const o = {}; for (const k of Object.keys(SCHEMA[sec])) o[k] = SCHEMA[sec][k][field]; return o; };
   /* The quiet scenes, and every scene the page draws in the order the settings screen lists them:
      the files of web/js/scenes/. The collector's QUIET_SCENES and PAGE_SCENES follow the same
@@ -980,7 +984,7 @@
     return Object.assign({ can, hosts, homes }, cat);
   }
 
-  const api = { SCHEMA, KEY, SHARED_KEY, VERSION, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, WEAPONS, ONE_HANDED, WEAPON_CHIPS, ITEMS, TABLES, KINDS, BASE_WORLD, LONG,
+  const api = { SCHEMA, KEY, SHARED_KEY, VERSION, SOURCE, SCENES, ALL_SCENES, ONE_OF, KEYS, BUILT_IN, MINUTES, WEAPONS, ONE_HANDED, WEAPON_CHIPS, ITEMS, TABLES, KINDS, BASE_WORLD, LONG,
     isLong, isPart, itemId, itemChoices, itemsOf, buildsOf, buildName, buildChoices, lookOf, builtIn, worldOf, worldParts, offered, clean, resolve, knightLook, greyed, engineInput, clock, usageLines,
     load, save, sharedOf, create, connect, pageWorld };
   KW.settings = api;
@@ -1886,6 +1890,8 @@
         stat('Version', dd => {
           const p = line(dd, '', 'Page '); p.appendChild(el('code', '', info.version));
           line(dd, 'quiet', info.version === 'dev' ? 'The repository\'s own copy, which never checks for a new version.' : 'It reloads by itself when a new version is deployed.');
+          const src = el('a', '', 'Source code (AGPL-3.0)'); src.href = SOURCE; src.target = '_blank'; src.rel = 'noopener noreferrer'; src.style.color = 'inherit';
+          line(dd, 'quiet', '').appendChild(src);
         });
         stat('State file', dd => {
           if (!view) { line(dd, info.mode === 'demo' ? 'quiet' : 'warn', info.mode === 'demo' ? 'None. The display is showing the demo, on invented data.' : 'None read yet.'); return; }

@@ -381,7 +381,7 @@ rather than the memory file, and starts again when the collector restarts.
 |---|---|---|---|
 | `ad_blocked` | enough blocked queries have built up for at least one fly | the flies, at most 8 unless `fly_every_s` is 0 | empty |
 | `ip_banned` | a read of `[sources.security]` finds bans it has not seen, and names the newest | the new bans | `BANNED 203.0.113.77 · sshd` |
-| `import` | a new import record appears in the history of Sonarr, Radarr, Lidarr (one for each album) or an entry of `[[sources.imports]]` | 1 each | `IMPORTED · The Night Shift S02E04` |
+| `import` | a new import record appears in the history of Sonarr, Radarr, Lidarr (one for each album) or an entry of `[[sources.imports]]` | 1 each | `IMPORTED · The Gull Ledger S02E04` |
 | `backup_done` | the backup log shows a completion newer than the last one seen | 1 | `BACKUP DONE 03:12` |
 
 Every caption is cut to 44 characters, with runs of spaces, tabs and line breaks made one space,

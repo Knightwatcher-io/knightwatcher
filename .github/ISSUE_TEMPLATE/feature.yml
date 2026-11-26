@@ -1,0 +1,27 @@
+name: Feature request
+description: Something new for the knight, the collector, the server or the admin page.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a service the collector should read, use the provider request instead. For a large change, opening this issue first means nobody spends days on something that cannot be merged.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you want to do
+      description: What you are trying to do, and what stops you today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: "How you picture it working, whether on the display, in config.toml or on the admin page."
+    validations:
+      required: true
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else
+      description: Other ways round it you have tried, or a sketch.

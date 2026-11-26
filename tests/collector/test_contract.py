@@ -443,7 +443,7 @@ class StreamsContractTest(unittest.TestCase):
     def test_each_mode_of_show_keeps_the_contract(self):
         names = {
             "count": 2,
-            "titles": ["Harbour of Glass", "Fen Owls - Low Tide"],
+            "titles": ["Harbour of Glass", "Fen Owls - Reedsong"],
             "sessions": [{"who": "Sam", "title": "Harbour of Glass"}, {"who": "Alex"}],
         }
         self.assertEqual(streams(names), [])

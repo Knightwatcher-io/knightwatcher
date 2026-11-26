@@ -322,7 +322,7 @@ last the sword hand's gauntlet: the sword arm stays behind the shield, and the b
 front of the shield, so a blow struck across the body is seen. The off gauntlet lies behind the
 shield in every pose.
 
-The order of one frame has changed three times since the format was approved. The first change
+The order of one frame has changed three times since the first version of the format. The first change
 put both arms before the weapon in `twoR` and `twoL`. The second: `oneCrossed` used to draw the
 shield last, over the blade, and at the camp, where the goblin stands low on the shield's side, the
 shield hid the blade at the bonk and in the swat to the left. The blade is now drawn over the

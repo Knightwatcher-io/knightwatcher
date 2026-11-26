@@ -202,12 +202,16 @@ test('_headers: a strict policy for the site, self alone for the demo, and the f
   assert.doesNotMatch(DEMO_CSP, /cloudflareinsights|https?:|data:|unsafe/);
 });
 
-test('the demo\'s files name no outside host, and its page has no inline script or style', () => {
+// The one outside address the demo may name is a link, never a fetch: the AGPL source link on the
+// settings screen's Status page (KW.settings.SOURCE). The demo's policy still allows no outside host.
+const DEMO_LINKS = new Set(['http://www.w3.org/2000/svg', 'https://github.com/knightwatcher-io/knightwatcher']);
+
+test('the demo\'s files name no outside host but the source link, and its page has no inline script or style', () => {
   const demo = path.join(once().out, 'demo');
   for (const f of walk(demo).filter(f => /\.(html|js|css|json|svg)$/.test(f))) {
     const text = fs.readFileSync(f, 'utf8');
     for (const [url] of text.matchAll(/(?:https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}[^\s"'<>)]*/gi)) {
-      assert.equal(url, 'http://www.w3.org/2000/svg', `${path.relative(demo, f)}: ${url}`);
+      assert.ok(DEMO_LINKS.has(url), `${path.relative(demo, f)}: ${url}`);
     }
   }
   const html = fs.readFileSync(path.join(demo, 'index.html'), 'utf8');

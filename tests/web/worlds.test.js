@@ -418,7 +418,7 @@ test('the line under the cards names the world chosen, what it cleared, what con
 
 test('the device rows show only once a second prop set is loaded, a row a kind, each set that draws it, the world\'s first', () => {
   const one = store({ world: plain(CODE.KW.settings.pageWorld()) }).s;
-  assert.equal(SCR.deviceRows(one.catalogue(), one.now()), null, 'at launch nobody sees them');
+  assert.equal(SCR.deviceRows(one.catalogue(), one.now()), null, 'with one prop set nobody sees them');
   const { s } = store({ saved: { look: { devices: { camera: 'kw.test/props.neon' } } } });
   const d = SCR.deviceRows(s.catalogue(), s.now());
   assert.equal(d.world, 'medieval');

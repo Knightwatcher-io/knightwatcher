@@ -17,7 +17,7 @@
 <!-- @nav -->
   <div class="doc-title">
     <h1>Install</h1>
-    <p>On a Linux machine with Docker and its compose plugin.</p>
+    <p>On a Linux machine with Docker, its compose plugin and the <code>acl</code> package.</p>
   </div>
   <div class="merlons" aria-hidden="true"></div>
 </header>
@@ -42,17 +42,18 @@ cp config.example.toml config.toml
 cp .env.example .env &amp;&amp; chmod 600 .env
 mkdir -p var/out var/server
 setfacl -m u:10001:rwx var var/out var/server
-setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server</pre>
-        <p>The containers run as uid 10001; the last two lines let them write to those folders.</p>
+setfacl -d -m u:10001:rwx,u:$(id -u):rwx var var/out var/server
+touch var/backup.log</pre>
+        <p>The containers run as uid 10001; the two <code>setfacl</code> lines let them write to those folders.</p>
       </li>
       <li>
-        <h3>Point it at two things</h3>
-        <p>In <code>.env</code>, set <code>KW_BACKUP_LOG</code> to your backup log and <code>KW_DATA_DISK</code> to any folder on the disk to watch. Both must exist. No backup log yet? Run <code>touch var/backup.log</code> and use <code>./var/backup.log</code>.</p>
+        <h3>Point it at two things, now or later</h3>
+        <p><code>.env</code> as copied starts as it is: <code>KW_BACKUP_LOG</code> is the empty <code>./var/backup.log</code>, which raises nothing until it records a backup, and <code>KW_DATA_DISK</code> is <code>./var</code>. Set them to your real backup log and to any folder on the disk to watch. Both must exist.</p>
       </li>
       <li>
         <h3>Start it</h3>
 <pre>docker compose up -d</pre>
-        <p>Compose pulls <code>ghcr.io/knightwatcher-io/knightwatcher</code> and runs the collector and the display's server from it. Open <code>http://&lt;this machine&gt;:8080/</code>: the knight appears at once, and the first readings within a minute.</p>
+        <p>Compose pulls <code>ghcr.io/knightwatcher-io/knightwatcher</code>, or builds it from the checkout with <code>docker compose build</code>, and runs the collector and the display's server from it. <code>KW_VERSION</code> in <code>.env</code> pins a release. Open <code>http://&lt;this machine&gt;:8080/</code>, or the port <code>KW_SERVER_PORT</code> sets: the knight appears at once, and the first readings within a minute.</p>
       </li>
     </ol>
     <p class="note">The example config turns on the sources that read this machine, plus an internet check and a DNS check. Each service is written out in <code>config.toml</code> but commented: remove the <code>#</code>, add your address, and put its key in <code>.env</code>.</p>

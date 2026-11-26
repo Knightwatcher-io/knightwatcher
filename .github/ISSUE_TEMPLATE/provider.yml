@@ -1,0 +1,52 @@
+name: Provider request
+description: A service the collector should read, through a built-in provider.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A service that answers with JSON can often be read already, through a provider file of your own or a generic check ([Providers](https://knightwatcher.io/docs/providers/)). Please remove every credential, token, address and name from your own network from what you post here.
+  - type: input
+    id: name
+    attributes:
+      label: Service
+      description: Its name, and the version you run.
+      placeholder: Example Service 2.4
+    validations:
+      required: true
+  - type: input
+    id: docs
+    attributes:
+      label: API documentation
+      description: A link to the service's API documentation.
+      placeholder: https://
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: How it authenticates
+      options:
+        - None
+        - An API key or token in a header
+        - An API key or token in the address
+        - HTTP basic authentication
+        - A login that returns a session
+        - Something else (say below)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What the knight should show
+      description: Which condition or count it feeds, such as the streams playing, the adverts blocked or the imports.
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: A sample response
+      description: The JSON the service answers with, with every private value replaced by an invented one. It is formatted as code.
+      render: json
+    validations:
+      required: true
