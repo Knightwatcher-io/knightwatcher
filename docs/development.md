@@ -443,11 +443,14 @@ alone), with the OCI labels: the source repository, the licence `AGPL-3.0-or-lat
 description. It refuses a tag that does not match `pyproject.toml`. A manual run (Run workflow,
 with the tag chosen under "Use workflow from") builds that tag again; run on a branch, it stops.
 
-Once the image is pushed, the same run makes the tag's GitHub Release, unless the tag has one
-already: a few lines naming the image, `ghcr.io/knightwatcher-io/knightwatcher:X.Y.Z`, and its
-digest, then the notes GitHub writes from the pull requests and commits since the last release. A
-pre-release tag makes a pre-release. The job is given `contents: write` for the release, beside the
-`packages: write` that pushes the image.
+Once the image is pushed, a second job in the same run makes the tag's GitHub Release, unless the
+tag has one already: a few lines naming the image, `ghcr.io/knightwatcher-io/knightwatcher:X.Y.Z`,
+and its digest, then the notes GitHub writes from the pull requests and commits since the last
+release. A pre-release tag makes a pre-release. The two jobs hold different rights: the one that
+builds, `Build and push`, has `packages: write` to push the image and reads the repository alone,
+and `Create the GitHub Release` has `contents: write` for the release and nothing more. It takes
+the image's digest from the first job and checks nothing out, since `gh` makes the release from
+the tag on GitHub.
 
 ```bash
 git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0

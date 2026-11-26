@@ -1,8 +1,9 @@
 # The published image: the collector and the bundled server, built from the Dockerfile for amd64
 # and arm64 and pushed to ghcr.io/knightwatcher-io/knightwatcher when a release tag vX.Y.Z is
-# pushed, tagged X.Y.Z, X.Y and latest. The run then makes the tag's GitHub Release, unless the
-# tag has one already. A manual run builds the tag it is run on, chosen under "Use workflow from".
-# docs/development.md describes a release. Every action is pinned to a full commit SHA.
+# pushed, tagged X.Y.Z, X.Y and latest. A second job then makes the tag's GitHub Release, unless
+# the tag has one already, so the job that builds never holds the right to write to the repository.
+# A manual run builds the tag it is run on, chosen under "Use workflow from". docs/development.md
+# describes a release. Every action is pinned to a full commit SHA.
 name: Image
 
 on:
@@ -21,10 +22,12 @@ jobs:
   image:
     name: Build and push
     runs-on: ubuntu-latest
-    # packages: write pushes the image; contents: write makes the release.
+    # packages: write pushes the image; the release is the next job's.
     permissions:
-      contents: write
+      contents: read
       packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Check out the tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -100,6 +103,16 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
 
+  # The tag's release, once the image is pushed. contents: write makes it, and nothing else in the
+  # run has that right. gh works from GH_REPO and the tag on GitHub (--verify-tag), so the job
+  # needs no checkout.
+  release:
+    name: Create the GitHub Release
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
       # The release's notes: a few lines naming the image and its digest, then the notes GitHub
       # writes from the pull requests and commits since the last release, which it puts after any
       # notes it is given. A pre-release tag such as v0.2.0-rc.1 makes a pre-release. A tag that
@@ -108,7 +121,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          DIGEST: ${{ steps.build.outputs.digest }}
+          DIGEST: ${{ needs.image.outputs.digest }}
         run: |
           set -euo pipefail
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
