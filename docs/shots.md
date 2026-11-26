@@ -14,7 +14,8 @@ two sets:
 
 `take`, `worlds` and `site` need `CHROME`, the path of a headless Chromium, and `PAGE` names another
 copy of the page for `take` to shoot, such as one kept outside the repository. The comparison needs
-`python3`, and `site` needs `node`. The script runs itself inside the ceiling of `tools/capped.sh` unless `KW_CAPPED` says it
+`python3`, and `site` needs `node`. The script runs itself inside the ceiling of `tools/capped.sh`
+unless `KW_CAPPED`, which the wrapper exports with or without a systemd user session, says it
 already is ([development.md](./development.md#checks)). It exits 2 on a wrong mode or a missing
 `CHROME`. `take`, `worlds` and `site` exit 1 when the browser wrote no file for a shot, naming each such
 shot after taking the rest; a file left from an earlier run does not count, since each is removed

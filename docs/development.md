@@ -191,10 +191,11 @@ Under a systemd user session the wrapper runs its command in a transient scope w
 (four cores) and `MemoryMax=4G`, at `nice` 10; without systemd it lowers the priority alone.
 `KW_CPU` and `KW_MEM` change the ceiling, for example `KW_CPU=200% tools/capped.sh ...`.
 `tools/check.sh` and `tools/shots.sh` put themselves inside the same ceiling, and `node --test` is given
-`--test-concurrency=2`, so at most two test files run at once. The wrapper exports `KW_CAPPED` in
-the scope it makes, and a script that caps itself, as `tools/shots.sh` does, sees it and does not
-cap itself again; `tools/capped.sh` called inside a scope runs its command at `nice` 10 without a
-second scope. The command's exit code is the wrapper's.
+`--test-concurrency=2`, so at most two test files run at once. The wrapper exports `KW_CAPPED` to
+its command either way, the ceiling in the scope it makes and `nice` where it makes none, and a
+script that caps itself, as `tools/shots.sh` does, sees it and does not cap itself again;
+`tools/capped.sh` called with `KW_CAPPED` set runs its command at `nice` 10 without a second scope.
+The command's exit code is the wrapper's.
 
 The collector and the server:
 

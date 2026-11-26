@@ -1,6 +1,7 @@
-// Tests for the deploy tool, tools/deploy.sh. Run with: node --test tests/tools/
+// Tests for the deploy tool, tools/deploy.sh. Run with: node --test 'tests/tools/**/*.test.js'
 // Each test copies web/ and the tool into a temporary folder and deploys from there into another,
-// so the repository's own web/ is never touched and the copy has no git behind it.
+// so the repository's own web/ is never touched and the copy has no git behind it. The tool needs
+// rsync, so every test is skipped where it is not installed.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,6 +12,9 @@ const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '../..');
+// The reason every test is skipped, or false when rsync is there to run the tool with. A missing
+// rsync leaves status null (the spawn fails with ENOENT), never 0.
+const SKIP = spawnSync('rsync', ['--version'], { stdio: 'ignore' }).status === 0 ? false : 'rsync is not installed';
 
 // Every file under dir, as paths relative to it, sorted, with data/ at the top left out.
 function files(dir, rel = '') {
@@ -41,7 +45,7 @@ function run(tool, ...args) {
 }
 const versionIn = dir => JSON.parse(read(dir, 'version.json')).version;
 
-test('a deploy copies web/ and stamps the copy with a version', t => {
+test('a deploy copies web/ and stamps the copy with a version', { skip: SKIP }, t => {
   const s = sandbox(t), site = path.join(s.base, 'site');
   const r = s.deploy(site);
   assert.equal(r.code, 0, r.err);
@@ -64,7 +68,7 @@ test('a deploy copies web/ and stamps the copy with a version', t => {
   assert.equal(html.split('?v=' + v).join('').replace('content="' + v + '"', 'content="dev"'), read(s.web, 'index.html'));
 });
 
-test('the copy leaves the target\'s data/ alone and deletes stale files', t => {
+test('the copy leaves the target\'s data/ alone and deletes stale files', { skip: SKIP }, t => {
   const s = sandbox(t), site = path.join(s.base, 'site');
   fs.mkdirSync(path.join(site, 'data'), { recursive: true });
   fs.mkdirSync(path.join(site, 'js/old'), { recursive: true });
@@ -77,7 +81,7 @@ test('the copy leaves the target\'s data/ alone and deletes stale files', t => {
   assert.ok(!fs.existsSync(path.join(site, 'js/old')));
 });
 
-test('the version follows the page\'s files and nothing else', t => {
+test('the version follows the page\'s files and nothing else', { skip: SKIP }, t => {
   const s = sandbox(t), site = path.join(s.base, 'site');
   s.deploy(site); const v1 = versionIn(site);
   // the same files again: the same version, whatever the times on them
@@ -100,7 +104,7 @@ test('the version follows the page\'s files and nothing else', t => {
   assert.ok(!fs.existsSync(path.join(site, 'fonts/OFL.txt')));
 });
 
-test('a target that is web/, inside it or holds it is refused', t => {
+test('a target that is web/, inside it or holds it is refused', { skip: SKIP }, t => {
   const s = sandbox(t), before = digest(s.web);
   for (const target of [s.web, path.join(s.web, 'js'), path.join(s.web, 'deep/site'), path.join(s.base, 'src'), s.base]) {
     const r = s.deploy(target);
@@ -113,7 +117,7 @@ test('a target that is web/, inside it or holds it is refused', t => {
   assert.equal(run(s.tool, '').code, 2);
 });
 
-test('an index.html without the version tag is refused and nothing is copied', t => {
+test('an index.html without the version tag is refused and nothing is copied', { skip: SKIP }, t => {
   const s = sandbox(t), site = path.join(s.base, 'site');
   fs.writeFileSync(path.join(s.web, 'index.html'), read(s.web, 'index.html').replace('name="kw-version"', 'name="other"'));
   const r = s.deploy(site);
@@ -122,7 +126,7 @@ test('an index.html without the version tag is refused and nothing is copied', t
   assert.deepEqual(fs.readdirSync(site), []);
 });
 
-test('the repository\'s own tool leaves web/ unchanged', t => {
+test('the repository\'s own tool leaves web/ unchanged', { skip: SKIP }, t => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'kw-deploy-'));
   t.after(() => fs.rmSync(base, { recursive: true, force: true }));
   const web = path.join(ROOT, 'web'), before = digest(web);

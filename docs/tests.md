@@ -42,10 +42,11 @@ out.
 | `tests/web/world-loading.test.js` | the medieval world's pack refused, missing, failing to compile or throwing while drawing |
 | `tests/web/world-mix.test.js` | parts mixed across worlds, on the settings screen and the admin page |
 | `tests/web/worlds.test.js` | worlds as presets, the catalogue, the resolution rule and the devices per kind |
+| `tests/tools/capped.test.js` | `tools/capped.sh` with no systemd user session: a script that caps itself as `tools/shots.sh` does runs once with `KW_CAPPED` set, a `KW_CAPPED` already set is kept, and the command's exit code is the wrapper's |
 | `tests/tools/cat-stamps.test.js` | the medieval world's pack holds what `tools/cat-stamps.js` writes, pixel for pixel |
 | `tests/tools/check-private.test.js` | `tools/check-private.sh` in a small repository made for the run: clean, a match, no patterns, and a pattern `git grep` cannot read |
 | `tests/tools/check.test.js` | `tools/check.sh` refuses an argument it does not take, gives `node --test` glob patterns that each match a file and never a folder, and fails a shard that runs no test; the CI workflow runs every subset but `all` and `private` through it and never the private check, and `CI gate` needs every other job |
-| `tests/tools/deploy.test.js` | `tools/deploy.sh` run on temporary folders and copies of `web/` |
+| `tests/tools/deploy.test.js` | `tools/deploy.sh` run on temporary folders and copies of `web/`; every test is skipped where `rsync` is not installed, since the tool needs it |
 | `tests/tools/pack-carrier.test.js` | each carrier pushes its pack file's exact text |
 | `tests/tools/settings-schema.test.js` | `tools/settings-schema.js` and what it writes |
 | `tests/tools/shot-scale.test.js` | `tools/shot-scale.js` reads, shrinks and writes PNGs the same each time, and `site/img/` holds exactly the pictures of `SITE_SHOTS` |
@@ -584,7 +585,8 @@ each effect with its own function at the ends of the scene's ranges; that effect
 frame, or with too many glows, are refused; and that the world fixture still reads clean.
 
 The deploy tool, which it runs against temporary folders and copies of `web/`, never the
-repository's own, and the pack carriers against their pack files:
+repository's own, skipping those tests where `rsync` is not installed; `tools/capped.sh` as it runs
+with no systemd user session; and the pack carriers against their pack files:
 
 ```bash
 node --test 'tests/tools/**/*.test.js'

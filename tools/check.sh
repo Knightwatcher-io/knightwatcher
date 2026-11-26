@@ -76,13 +76,9 @@ if [[ ! "$concurrency" =~ ^[1-9][0-9]*$ ]]; then
   echo "check: KW_TEST_CONCURRENCY=$concurrency is not a positive whole number" >&2; exit 2
 fi
 
-# Within the ceiling of tools/capped.sh. capped.sh exports KW_CAPPED only in the scope it makes,
-# so KW_CHECK_RUN marks a run it has already wrapped where there is no systemd user session (as
-# on a CI runner), and the script does not wrap itself again.
-if [[ -z "${KW_CAPPED:-}" && -z "${KW_CHECK_RUN:-}" ]]; then
-  export KW_CHECK_RUN=1
-  exec "$root/tools/capped.sh" "$root/tools/check.sh" "$@"
-fi
+# Within the ceiling of tools/capped.sh, which exports KW_CAPPED to the run it wraps, with or
+# without a systemd user session (as on a CI runner), so the script does not wrap itself again.
+[[ -n "${KW_CAPPED:-}" ]] || exec "$root/tools/capped.sh" "$root/tools/check.sh" "$@"
 cd "$root"
 
 started=$SECONDS steps=0
