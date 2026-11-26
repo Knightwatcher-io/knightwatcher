@@ -10,14 +10,19 @@
 #
 #   page        node --check on every .js under web/js, web/packs and web/admin (run first of all
 #               by all, and left out of shards 2 and above, so that a sharded run does it once),
-#               then the page's tests, tests/web/
+#               then the page's tests, tests/web/**/*.test.js
 #   python      the collector's and the server's unittest suites
 #   lint        ruff check and ruff format --check at ruff RUFF_VERSION: the ruff on the path when
 #               it is that version, otherwise uvx ruff@RUFF_VERSION
-#   tools-site  the tools' tests and the website's, tests/tools/ and tests/site/*.test.mjs
+#   tools-site  the tools' tests and the website's, tests/tools/**/*.test.js and
+#               tests/site/**/*.test.mjs
 #   schema      node tools/settings-schema.js --check
 #   private     tools/check-private.sh; all runs it only when tools/private-patterns.txt exists,
 #               and says so when it does not
+#
+# node --test is given glob patterns, which node expands itself, never folders: Node 24 takes a
+# folder for a module to load, and Node 26 for one to search. A run fails when a pattern matches no
+# file, or when node runs no test at all, as a shard that is given no file does.
 #
 # all runs node --check, python, lint, the page's tests, tools-site, schema and private. Each step
 # prints a line as it starts and one as it ends; the first failure stops the run, with that
@@ -126,7 +131,30 @@ private() {
   step "tools/check-private.sh" tools/check-private.sh
 }
 
-node_test=(node --test "--test-concurrency=$concurrency")
+PAGE_TESTS='tests/web/**/*.test.js'
+TOOLS_TESTS='tests/tools/**/*.test.js'
+SITE_TESTS='tests/site/**/*.test.mjs'
+
+# node_tests [--test-shard=N/M] PATTERN...: node --test over the files the patterns match, with
+# the spec reporter. Fails when a pattern matches no file, and when node reports no test run.
+node_tests() {
+  local shard_arg=() p n out rc=0
+  if [[ "${1:-}" == --test-shard=* ]]; then shard_arg=("$1"); shift; fi
+  for p in "$@"; do
+    n="$(node -e 'console.log(require("node:fs").globSync(process.argv[1]).length)' "$p")"
+    if [[ "$n" == 0 ]]; then echo "$p matches no file"; return 1; fi
+    echo "$p: $n files"
+  done
+  out="$(mktemp)"
+  node --test "--test-concurrency=$concurrency" --test-reporter=spec "${shard_arg[@]}" "$@" | tee "$out" || rc=$?
+  n="$(grep -E '^ℹ tests [0-9]+$' "$out" | tail -n 1 | grep -oE '[0-9]+$' || true)"
+  rm -f "$out"
+  if (( rc != 0 )); then return "$rc"; fi
+  if [[ -z "$n" || "$n" == 0 ]]; then
+    echo "node --test ran no tests${shard:+ in shard $shard}"
+    return 1
+  fi
+}
 
 run_syntax() { step "node --check web/js web/packs web/admin" syntax; }
 run_python() {
@@ -139,13 +167,13 @@ run_lint() {
 }
 run_page_tests() {
   if [[ -n "$shard" ]]; then
-    step "node --test tests/web/ (shard $shard)" "${node_test[@]}" "--test-shard=$shard" tests/web/
+    step "node --test $PAGE_TESTS (shard $shard)" node_tests "--test-shard=$shard" "$PAGE_TESTS"
   else
-    step "node --test tests/web/" "${node_test[@]}" tests/web/
+    step "node --test $PAGE_TESTS" node_tests "$PAGE_TESTS"
   fi
 }
 run_tools_site() {
-  step "node --test tests/tools/ tests/site/" "${node_test[@]}" tests/tools/ 'tests/site/*.test.mjs'
+  step "node --test $TOOLS_TESTS $SITE_TESTS" node_tests "$TOOLS_TESTS" "$SITE_TESTS"
 }
 run_schema() { step "settings-schema --check" node tools/settings-schema.js --check; }
 

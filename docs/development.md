@@ -113,10 +113,10 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
   [library.md](./library.md#carriers).
 - **A change to the medieval art is made in both copies, in the same commit.** A scene the medieval
   world's pack holds (today every scene) is drawn from the pack and, as the fallback, from its code in
-  `web/js/scenes/`. Change both, write the carrier, and `node --test tests/web/` holds the two to the
+  `web/js/scenes/`. Change both, write the carrier, and `node --test 'tests/web/**/*.test.js'` holds the two to the
   same call records. See [world-loading.md](./world-loading.md#two-copies-held-equal). The mouser cat is written
   into the pack by a tool: after a change to `web/js/cat.js`, run `node tools/cat-stamps.js` and
-  then `node tools/pack-carrier.js`, and `node --test tests/tools/` fails while the pack and the
+  then `node tools/pack-carrier.js`, and `node --test 'tests/tools/**/*.test.js'` fails while the pack and the
   code differ.
 - **A setting starts in the schema.** Every setting of `config.toml` and every variable of `.env`
   is described in `collector/settings-schema.json`. A new or changed one is written there first,
@@ -124,7 +124,7 @@ compose.yaml  Dockerfile  config.example.toml  .env.example  pyproject.toml
   writes the page's copy in `web/js/settings.js` and the reference in
   [configuration.md](./configuration.md#every-setting). Tests fail while any of them disagree.
 - **A signed pack is signed again after any change.** Editing a pack that carries a `sig` breaks
-  its signature, and `node --test tests/tools/` fails until it is signed again or unsigned with
+  its signature, and `node --test 'tests/tools/**/*.test.js'` fails until it is signed again or unsigned with
   `node tools/sign-pack.js --unsign`. See [Signing the packs](#signing-the-packs).
 - **No key in the repository.** No private key of any kind is committed, test keys included; the
   tests generate theirs in memory for each run.
@@ -151,10 +151,10 @@ tools/check.sh page --shard=1/3    # the first of three parts of the page's test
 
 | Subset | What it runs |
 |---|---|
-| `page` | `node --check` on every script under `web/js`, `web/packs` and `web/admin`, then `node --test tests/web/` |
+| `page` | `node --check` on every script under `web/js`, `web/packs` and `web/admin`, then `node --test 'tests/web/**/*.test.js'` |
 | `python` | the collector's and the server's unittest suites |
 | `lint` | `ruff check` and `ruff format --check` on `collector`, `server` and `tests` at ruff 0.17.6: the `ruff` on the path when it is that version, otherwise `uvx ruff@0.17.6` |
-| `tools-site` | `node --test tests/tools/ 'tests/site/*.test.mjs'` |
+| `tools-site` | `node --test 'tests/tools/**/*.test.js' 'tests/site/**/*.test.mjs'` |
 | `schema` | `node tools/settings-schema.js --check` |
 | `private` | `tools/check-private.sh` |
 
@@ -162,7 +162,11 @@ tools/check.sh page --shard=1/3    # the first of three parts of the page's test
 schema, and private last when `tools/private-patterns.txt` exists, saying so when it skips it.
 `tools/check.sh private` alone runs the check whether or not the file exists, so without one it
 fails with exit 2. `--shard=N/M` passes `--test-shard` to node, and a part after the first leaves
-`node --check` out, so a sharded run does it once. `KW_TEST_CONCURRENCY` (default 2) is node's
+`node --check` out, so a sharded run does it once. node is given glob patterns in quotes, which it
+expands itself, and never a folder: Node 24 loads a folder as a module, so `node --test tests/web/`
+fails there although it runs on Node 26. A pattern that matches no file fails the step, and so
+does a run in which node reports no test, such as a shard that is given no file, so a mistake in a
+pattern cannot pass having run nothing. `KW_TEST_CONCURRENCY` (default 2) is node's
 `--test-concurrency`. Each step prints a line as it starts and one as it ends, the run stops with
 the failing command's exit code, and the script exits 2 on an argument it does not take. It puts
 itself inside the ceiling described below. The whole set takes about 13 minutes, nearly all of it
@@ -254,8 +258,8 @@ The page:
 
 ```bash
 for f in $(find web/js web/packs web/admin -name '*.js'); do node --check "$f" || exit 1; done
-tools/capped.sh node --test --test-concurrency=2 tests/web/
-tools/capped.sh node --test --test-concurrency=2 tests/tools/
+tools/capped.sh node --test --test-concurrency=2 'tests/web/**/*.test.js'
+tools/capped.sh node --test --test-concurrency=2 'tests/tools/**/*.test.js'
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-ref    # before a change
 CHROME=/path/to/chrome-headless-shell tools/shots.sh take /tmp/kw-new    # after it
 tools/shots.sh compare /tmp/kw-ref /tmp/kw-new
@@ -283,7 +287,7 @@ The website, in `site/`, needs Node 24 or newer and nothing else. Its tests, and
 writes `site/dist/` (ignored by git):
 
 ```bash
-tools/capped.sh node --test --test-concurrency=2 'tests/site/*.test.mjs'
+tools/capped.sh node --test --test-concurrency=2 'tests/site/**/*.test.mjs'
 tools/capped.sh node site/build.mjs
 ```
 
@@ -309,7 +313,7 @@ node tests/web/fixtures/worlds/orbit.js --check   # the test world and its 1.2 c
 ```
 
 `tools/settings-schema.js --check` names each stale file, and exits 2 on an error or an argument it
-does not take. The carriers and the signatures have no such mode: `node --test tests/tools/` fails
+does not take. The carriers and the signatures have no such mode: `node --test 'tests/tools/**/*.test.js'` fails
 while a carrier differs from its pack or a signed pack no longer verifies.
 
 `tools/check-private.sh` checks that no tracked file holds a private detail of the operator's. It

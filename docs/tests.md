@@ -44,7 +44,7 @@ out.
 | `tests/web/worlds.test.js` | worlds as presets, the catalogue, the resolution rule and the devices per kind |
 | `tests/tools/cat-stamps.test.js` | the medieval world's pack holds what `tools/cat-stamps.js` writes, pixel for pixel |
 | `tests/tools/check-private.test.js` | `tools/check-private.sh` in a small repository made for the run: clean, a match, no patterns, and a pattern `git grep` cannot read |
-| `tests/tools/check.test.js` | `tools/check.sh` refuses an argument it does not take; the CI workflow runs every subset but `all` and `private` through it and never the private check, and `CI gate` needs every other job |
+| `tests/tools/check.test.js` | `tools/check.sh` refuses an argument it does not take, gives `node --test` glob patterns that each match a file and never a folder, and fails a shard that runs no test; the CI workflow runs every subset but `all` and `private` through it and never the private check, and `CI gate` needs every other job |
 | `tests/tools/deploy.test.js` | `tools/deploy.sh` run on temporary folders and copies of `web/` |
 | `tests/tools/pack-carrier.test.js` | each carrier pushes its pack file's exact text |
 | `tests/tools/settings-schema.test.js` | `tools/settings-schema.js` and what it writes |
@@ -245,7 +245,7 @@ drawing and rig on both paths, the base pack, the pack library, and loading the 
 is drawn when they fail:
 
 ```bash
-node --test tests/web/
+node --test 'tests/web/**/*.test.js'
 ```
 
 `tests/web/knight.test.js` checks the knight call by call. It loads the scripts `index.html` loads
@@ -587,7 +587,7 @@ The deploy tool, which it runs against temporary folders and copies of `web/`, n
 repository's own, and the pack carriers against their pack files:
 
 ```bash
-node --test tests/tools/
+node --test 'tests/tools/**/*.test.js'
 ```
 
 `tests/web/main.test.js` runs `main.js` in a sandbox, with the real `state.js` and stand-ins for the
@@ -604,7 +604,7 @@ without `set=` opens nothing.
 ## The website's tests
 
 ```bash
-node --test tests/site/
+node --test 'tests/site/**/*.test.mjs'
 ```
 
 `tests/site/build.test.mjs` builds the site into scratch folders from a copy of what the build
@@ -689,7 +689,7 @@ worst moment of each group of faults. It is not part of `node --test`.
 ## What each test file checks
 
 
-`node --test tests/web/` includes a faster check for the knight: it draws the knight in 105 poses,
+`node --test 'tests/web/**/*.test.js'` includes a faster check for the knight: it draws the knight in 105 poses,
 the bare head in bed, the speech bubble, the gear at rest, and the house and the smithy, which show that gear, against a fake canvas, once
 from code and once from the base pack, and compares every call with a
 stored record, in about a second. The record is stored again only when the knight or those scenes are meant to change;
@@ -707,7 +707,7 @@ and swing frame without a throw and within the look's cost; the hands on the gri
 through both swings, the attack and the goblin strike; and the arm check on Broad and Slim.
 `tests/web/foe.test.js` checks the goblin's plan and hit on every build with each weapon, the
 weapon against the goblin to [the contact standard](#the-contact-standard), and that the blade the
-engine measures is the one drawn. `node --test tests/tools/` also checks that every pack
+engine measures is the one drawn. `node --test 'tests/tools/**/*.test.js'` also checks that every pack
 carrier matches its pack file, that the mouser cat's stamps and member in the medieval world's pack
 are what `tools/cat-stamps.js` writes from `web/js/cat.js` and read back to the code's pixels, that the copy of the settings schema in `web/js/settings.js` and the
 reference in `docs/configuration.md` are what `tools/settings-schema.js` writes, tests the signing tool with keys generated for the run, and checks
@@ -860,7 +860,7 @@ from code otherwise; to shoot the code path as well, take a second pair of sets 
 ## The pack library's tests
 
 ```bash
-node --test tests/web/
+node --test 'tests/web/**/*.test.js'
 ```
 
 `tests/web/pack.test.js` reads `tests/web/fixtures/base.pack.json`, a base-like pack, and signs it
@@ -1118,7 +1118,7 @@ every skin, hair and robe of the base pack, each monarch's own hair and robe amo
 [The page's tests](#the-pages-tests) lists the rest of what it checks.
 
 ```bash
-node --test tests/tools/
+node --test 'tests/tools/**/*.test.js'
 ```
 
 `tests/tools/pack-carrier.test.js` checks the carriers against their pack files and the tool

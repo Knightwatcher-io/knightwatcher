@@ -58,6 +58,21 @@ test('KW_TEST_CONCURRENCY must be a positive whole number', () => {
   assert.match(r.stderr, /KW_TEST_CONCURRENCY/);
 });
 
+test('node --test is given glob patterns, never a folder, which Node 24 would load as a module', () => {
+  const script = fs.readFileSync(TOOL, 'utf8');
+  const patterns = [...script.matchAll(/^[A-Z]+_TESTS='([^']+)'$/gm)].map(m => m[1]);
+  assert.deepEqual(patterns, ['tests/web/**/*.test.js', 'tests/tools/**/*.test.js', 'tests/site/**/*.test.mjs']);
+  for (const p of patterns) assert.ok(fs.globSync(p, { cwd: ROOT }).length > 0, p + ' matches no file');
+  const code = script.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
+  assert.doesNotMatch(code, /\btests\/(web|tools|site)\/?['"]?(\s|$)/, 'a folder passed to node');
+});
+
+test('a shard that is given no test file fails, never passes having run nothing', () => {
+  const r = run('page', '--shard=100/100');
+  assert.equal(r.code, 1, r.out + r.err);
+  assert.match(r.out, /node --test ran no tests in shard 100\/100/);
+});
+
 test('CI runs every subset but all and private through the script, and never the private check', () => {
   const ci = code();
   const called = new Set([...ci.matchAll(/^\s*run: tools\/check\.sh (\S+)/gm)].map(m => m[1]));
